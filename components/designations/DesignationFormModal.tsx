@@ -1,47 +1,40 @@
 import { useEffect, useMemo, useState, FormEvent } from "react";
 import { TablesInsert } from "@/types/supabase-types";
 import { EmployeeDesignation, DesignationWithRelations } from "@/components/designations/designationTypes";
-
-const EMPTY_FORM_DATA: TablesInsert<"employee_designations"> = {
-  name: "",
-  parent_id: null,
-  status: true,
-};
+import { Resolver, useForm } from "react-hook-form";
+import { employeeDesignationSchema } from "@/schemas/schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 interface DesignationFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TablesInsert<"employee_designations">) => void;
+  onSubmit: (data: EmployeeDesignation) => void;
   designation: DesignationWithRelations | null;
   allDesignations: EmployeeDesignation[];
   isLoading: boolean;
 }
 
-export function DesignationFormModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  designation,
-  allDesignations,
-  isLoading,
-}: DesignationFormModalProps) {
-  const [formData, setFormData] = useState<TablesInsert<"employee_designations">>(EMPTY_FORM_DATA);
+export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, allDesignations, isLoading }: DesignationFormModalProps) {
+  // === React Hook Form Setup ===
+  // Create a form-specific schema that excludes timestamp fields to avoid Date vs string/null mismatches
+  const designationFormSchema = employeeDesignationSchema.pick({ id: true, name: true, parent_id: true, status: true });
+  type DesignationForm = z.infer<typeof designationFormSchema>;
 
-  useEffect(() => {
-    if (designation) {
-      setFormData({
-        name: designation.name,
-        parent_id: designation.parent_id,
-      });
-    } else {
-      setFormData(EMPTY_FORM_DATA);
-    }
-  }, [designation]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value || null }));
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty, isSubmitting },
+    reset,
+    watch,
+  } = useForm<DesignationForm>({
+    resolver: zodResolver(designationFormSchema),
+    defaultValues: {
+      name: "",
+      parent_id: null,
+      status: true,
+    },
+  });
 
   const availableParents = useMemo(() => {
     if (!designation) return allDesignations;
@@ -60,10 +53,25 @@ export function DesignationFormModal({
     return allDesignations.filter((d) => !excludeIds.has(d.id));
   }, [designation, allDesignations]);
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  // Reset form when designation changes (to pre-fill the form when editing)
+  useEffect(() => {
+    if (designation) {
+      reset({
+        id: designation.id,
+        name: designation.name,
+        parent_id: designation.parent_id ?? null,
+        status: designation.status ?? true,
+      });
+    }
+  }, [designation, reset]);
+
+  const onValidSubmit = (data: DesignationForm) => {
+    // Forward only the fields we collect; backend/consumer can add timestamps as needed
+    onSubmit(data as unknown as EmployeeDesignation);
   };
+
+  // Watch the name field to control submit button state
+  const nameValue = watch("name") ?? "";
 
   if (!isOpen) return null;
 
@@ -76,25 +84,25 @@ export function DesignationFormModal({
             ×
           </button>
         </div>
-        <form onSubmit={handleSubmit} className='space-y-4'>
+        <form onSubmit={handleSubmit(onValidSubmit)} className='space-y-4'>
           <div>
             <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Designation Name *</label>
             <input
-              name='name'
-              value={formData.name}
-              onChange={handleChange}
+              id='name'
+              type='text'
+              {...register("name")}
               placeholder='Designation Name'
               required
               className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'
             />
+            {errors.name && <p className='text-red-500 text-xs mt-1'>{errors.name.message}</p>}
           </div>
 
           <div>
             <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Parent Designation</label>
             <select
-              name='parent_id'
-              value={formData.parent_id ?? ""}
-              onChange={handleChange}
+              id='parent_id'
+              {...register("parent_id", { setValueAs: (v) => (v === "" ? null : v) })}
               className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'>
               <option value=''>No Parent (Root Level)</option>
               {availableParents.map((d) => (
@@ -103,13 +111,17 @@ export function DesignationFormModal({
                 </option>
               ))}
             </select>
+            {errors.parent_id && <p className='text-red-500 text-xs mt-1'>{errors.parent_id.message}</p>}
           </div>
 
           <div className='flex gap-3 pt-4'>
             <button type='button' onClick={onClose} disabled={isLoading} className='flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'>
               Cancel
             </button>
-            <button type='submit' disabled={isLoading || !formData.name.trim()} className='flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800'>
+            <button
+              type='submit'
+              disabled={isLoading || nameValue.trim().length === 0 || isSubmitting || !isDirty}
+              className='flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800'>
               {isLoading ? "Saving..." : designation ? "Update" : "Create"}
             </button>
           </div>
