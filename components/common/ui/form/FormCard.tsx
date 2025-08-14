@@ -6,7 +6,7 @@ interface FormCardProps {
   subtitle?: string;
   isLoading?: boolean;
   onCancel: () => void;
-  onSubmit?: () => void;
+  onSubmit?: React.FormEventHandler<HTMLFormElement>;
   submitText?: string;
   cancelText?: string;
   children: React.ReactNode;
@@ -55,43 +55,45 @@ export const FormCard: React.FC<FormCardProps> = ({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)] relative">
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
-              <span className="text-gray-600 dark:text-gray-300">Loading...</span>
-            </div>
-          )}
-          <div className="p-6">{children}</div>
-        </div>
+        {/* Form Body + Footer */}
+        <form onSubmit={onSubmit} className="contents">
+          {/* Body */}
+          <div className="overflow-y-auto max-h-[calc(90vh-140px)] relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
+                <span className="text-gray-600 dark:text-gray-300">Loading...</span>
+              </div>
+            )}
+            <div className="p-6">{children}</div>
+          </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-          {footerContent ? (
-            footerContent
-          ) : (
-            <div className="flex justify-end space-x-3 w-full">
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={isLoading}
-                className="px-6 py-2 border rounded-md dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-              >
-                {cancelText}
-              </button>
-              {onSubmit && (
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+            {footerContent ? (
+              footerContent
+            ) : (
+              <div className="flex justify-end space-x-3 w-full">
                 <button
                   type="button"
-                  onClick={onSubmit}
-                  disabled={isLoading || disableSubmit}
-                  className="px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                  onClick={onCancel}
+                  disabled={isLoading}
+                  className="px-6 py-2 border rounded-md dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {submitText}
+                  {cancelText}
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+                {onSubmit && (
+                  <button
+                    type="submit"
+                    disabled={isLoading || disableSubmit}
+                    className="px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    {submitText}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </form>
       </div>
     </div>
   );

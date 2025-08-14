@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, FormEvent } from "react";
 import { TablesInsert } from "@/types/supabase-types";
 import { EmployeeDesignation, DesignationWithRelations } from "@/components/designations/designationTypes";
-import { Resolver, useForm } from "react-hook-form";
+import { Resolver, useForm, Controller } from "react-hook-form";
 import { employeeDesignationSchema } from "@/schemas/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { SearchableSelect } from "../common/SearchableSelect";
+import { FormCard } from "../common/ui/form/FormCard";
+import { Input } from "../common/ui";
 
 interface DesignationFormModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
     formState: { errors, isDirty, isSubmitting },
     reset,
     watch,
+    control,
   } = useForm<DesignationForm>({
     resolver: zodResolver(designationFormSchema),
     defaultValues: {
@@ -84,10 +88,10 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
             ×
           </button>
         </div>
-        <form onSubmit={handleSubmit(onValidSubmit)} className='space-y-4'>
+        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose}>
           <div>
             <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Designation Name *</label>
-            <input
+            <Input
               id='name'
               type='text'
               {...register("name")}
@@ -100,32 +104,22 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
 
           <div>
             <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Parent Designation</label>
-            <select
-              id='parent_id'
-              {...register("parent_id", { setValueAs: (v) => (v === "" ? null : v) })}
-              className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'>
-              <option value=''>No Parent (Root Level)</option>
-              {availableParents.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            <Controller
+              name='parent_id'
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <SearchableSelect
+                  value={value ?? ""}
+                  onChange={(val) => onChange(val)}
+                  options={availableParents.map((d) => ({ value: d.id, label: d.name }))}
+                  placeholder='Select Parent Designation'
+                  className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'
+                />
+              )}
+            />
             {errors.parent_id && <p className='text-red-500 text-xs mt-1'>{errors.parent_id.message}</p>}
           </div>
-
-          <div className='flex gap-3 pt-4'>
-            <button type='button' onClick={onClose} disabled={isLoading} className='flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'>
-              Cancel
-            </button>
-            <button
-              type='submit'
-              disabled={isLoading || nameValue.trim().length === 0 || isSubmitting || !isDirty}
-              className='flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800'>
-              {isLoading ? "Saving..." : designation ? "Update" : "Create"}
-            </button>
-          </div>
-        </form>
+        </FormCard>
       </div>
     </div>
   );

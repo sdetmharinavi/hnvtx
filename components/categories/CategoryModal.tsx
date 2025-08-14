@@ -73,30 +73,6 @@ export function CategoryModal({
   const { mutate: createCategory } = useTableInsert(supabase, "lookup_types");
   const { mutate: updateCategory } = useTableUpdate(supabase, "lookup_types");
 
-  // Load existing category when editing
-  useEffect(() => {
-    if (editingCategory && isOpen) {
-      try {
-        const categoryLookups = lookupsByCategory?.[editingCategory] || [];
-        if (categoryLookups.length > 0) {
-          const template = categoryLookups[0];
-          reset({
-            category: template.category,
-            code: template.code || "default",
-            description: template.description || "",
-            name: template.name || "DEFAULT",
-            sort_order: template.sort_order || 0,
-            is_system_default: template.is_system_default ?? true,
-            status: template.status ?? true,
-          });
-        }
-      } catch (error) {
-        console.error("Error loading category data:", error);
-        toast.error("Failed to load category data");
-      }
-    }
-  }, [editingCategory, isOpen, lookupsByCategory, reset]);
-
 // Only reset when editingCategory changes or when opening for creation
 useEffect(() => {
   if (isOpen) {

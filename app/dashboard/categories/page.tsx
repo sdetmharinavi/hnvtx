@@ -90,7 +90,7 @@ export default function CategoriesPage() {
         refetchCategories(),
         refetchGroupedLookupsByCategory(),
       ]);
-      toast.success("Data refreshed successfully");
+      !isModalOpen && toast.success("Data refreshed successfully");
     } catch (error) {
       console.error("Error refreshing data:", error);
     }
@@ -105,7 +105,7 @@ export default function CategoriesPage() {
   const handleEdit = (categoryName: string) => {
     setEditingCategory(categoryName);
     setIsModalOpen(true);
-    handleRefresh();
+    // handleRefresh();
   };
 
   const handleDeleteCategory = (categoryToDelete: string) => {
