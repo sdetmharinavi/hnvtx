@@ -1,29 +1,40 @@
 "use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { redirect, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import OAuthProviders from "@/components/auth/OAuthProviders";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
+import { UserFormData, userSchema } from "@/schemas/userSchema";
 
 export default function LoginPage() {
   const { authState, signIn } = useAuth();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
-  if (authState === "authenticated") {
-    redirect("/dashboard");
-  }
-
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const errorParam = searchParams.get("error");
   const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const errorParam = searchParams.get("error");
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (authState === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [authState, router]);
 
   useEffect(() => {
     if (errorParam === "oauth_failed") {
@@ -31,30 +42,10 @@ export default function LoginPage() {
     }
   }, [errorParam]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!formData.email || !formData.password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const success = await signIn(formData.email, formData.password);
-
+  const onSubmit = async (data: UserFormData) => {
+    const success = await signIn(data.email, data.password);
     if (success) {
       router.push(redirectTo);
-    } else {
-      setIsSubmitting(false);
     }
   };
 
@@ -79,22 +70,20 @@ export default function LoginPage() {
         <div className='bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg'>
           <OAuthProviders variant='login' providers={["google"]} className='mb-6' />
 
-          <form className='space-y-6' onSubmit={handleSubmit}>
+          <form className='space-y-6' onSubmit={handleSubmit(onSubmit)}>
             <div>
               <label htmlFor='email' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
                 Email address
               </label>
               <input
                 id='email'
-                name='email'
                 type='email'
                 autoComplete='email'
-                value={formData.email}
-                onChange={handleInputChange}
-                required
+                {...register("email")}
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white'
                 placeholder='Enter your email'
               />
+              {errors.email && <p className='text-red-500 text-sm'>{errors.email.message}</p>}
             </div>
 
             <div>
@@ -103,15 +92,13 @@ export default function LoginPage() {
               </label>
               <input
                 id='password'
-                name='password'
                 type='password'
                 autoComplete='current-password'
-                value={formData.password}
-                onChange={handleInputChange}
-                required
+                {...register("password")}
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white'
                 placeholder='Enter your password'
               />
+              {errors.password && <p className='text-red-500 text-sm'>{errors.password.message}</p>}
             </div>
 
             <div className='flex items-center justify-between'>
@@ -131,7 +118,11 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400'
               >
-                {isSubmitting ? <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div> : "Sign in"}
+                {isSubmitting ? (
+                  <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
+                ) : (
+                  "Sign in"
+                )}
               </button>
             </div>
           </form>

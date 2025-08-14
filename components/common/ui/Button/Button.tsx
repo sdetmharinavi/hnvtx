@@ -1,7 +1,7 @@
 // src/components/common/Button/Button.tsx
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/utils/classNames';
-import { LoadingSpinner } from '../LoadingSpinner/LoadingSpinner';
+import { ButtonSpinner } from '../LoadingSpinner';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ghost' | 'outline';
@@ -84,10 +84,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {/* Loading spinner */}
         {loading && (
-          <LoadingSpinner
+          <ButtonSpinner
             size={size === 'xs' ? 'xs' : size === 'sm' ? 'sm' : 'sm'}
-            color="white"
-            className="mr-2"
           />
         )}
 

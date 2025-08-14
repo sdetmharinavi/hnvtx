@@ -1,0 +1,24 @@
+mkdir -p telecom_network_db/{1_master_tables,2_core_infrastructure,3_system_specific_tables,4_indexes,5_views,6_functions,7_triggers,8_fts_indexes,9_utility_functions/{1_query_execution,2_data_operations,3_aggregation,4_pagination},10_rls_policies/3_system_tables_policies,11_user_management/{1_tables,2_views,3_functions/{1_admin_functions,2_utility_functions,3_trigger_functions},4_triggers,5_rls_policies,6_grants}} && \
+touch \
+telecom_network_db/1_master_tables/{1_lookup_types.sql,2_maintenance_areas.sql,3_employee_designations.sql,4_employees.sql} \
+telecom_network_db/2_core_infrastructure/{1_rings.sql,2_nodes.sql,3_ofc_cables.sql,4_systems.sql,5_ofc_connections.sql,6_system_connections.sql,7_management_ports.sql,8_sdh_node_associations.sql} \
+telecom_network_db/3_system_specific_tables/{1_cpan_systems.sql,2_maan_systems.sql,3_sdh_systems.sql,4_vmux_systems.sql,5_cpan_connections.sql,6_maan_connections.sql,7_sdh_connections.sql,8_vmux_connections.sql} \
+telecom_network_db/4_indexes/{1_core_indexes.sql,2_composite_indexes.sql,3_lookup_type_indexes.sql,4_system_specific_indexes.sql} \
+telecom_network_db/5_views/{1_nodes_complete.sql,2_systems_complete.sql,3_ofc_cables_complete.sql,4_ofc_connections_complete.sql,5_system_connections_complete.sql} \
+telecom_network_db/6_functions/{1_update_ring_node_count.sql,2_update_updated_at_column.sql,3_lookup_type_functions.sql,4_dom_update_functions.sql} \
+telecom_network_db/7_triggers/{1_ring_node_count_trigger.sql,2_updated_at_triggers.sql,3_dom_update_triggers.sql} \
+telecom_network_db/8_fts_indexes/1_full_text_search_indexes.sql \
+telecom_network_db/9_utility_functions/1_query_execution/{1_execute_sql.sql,2_get_unique_values.sql} \
+telecom_network_db/9_utility_functions/2_data_operations/1_bulk_update.sql \
+telecom_network_db/9_utility_functions/3_aggregation/1_aggregate_query.sql \
+telecom_network_db/9_utility_functions/4_pagination/{1_paged_v_systems_complete.sql,2_paged_ofc_cables_complete.sql,3_paged_nodes_complete.sql} \
+telecom_network_db/10_rls_policies/{1_enable_rls.sql,2_core_tables_policies.sql,4_management_ports_policies.sql,5_sdh_node_associations_policies.sql,6_role_grants.sql} \
+telecom_network_db/10_rls_policies/3_system_tables_policies/{1_generic_systems.sql,2_generic_connections.sql,3_cpan_systems.sql,4_maan_systems.sql,5_sdh_systems.sql,6_vmux_systems.sql,7_cpan_connections.sql,8_maan_connections.sql,9_sdh_connections.sql,10_vmux_connections.sql} \
+telecom_network_db/11_user_management/1_tables/1_user_profiles.sql \
+telecom_network_db/11_user_management/2_views/{1_v_user_profiles_extended.sql,2_admin_get_all_users_extended.sql} \
+telecom_network_db/11_user_management/3_functions/1_admin_functions/{1_admin_get_all_users.sql,2_admin_get_user_by_id.sql,3_admin_update_user_profile.sql,4_admin_bulk_update_status.sql,5_admin_bulk_update_role.sql,6_admin_bulk_delete_users.sql} \
+telecom_network_db/11_user_management/3_functions/2_utility_functions/{1_is_super_admin.sql,2_get_my_role.sql,3_get_my_user_details.sql} \
+telecom_network_db/11_user_management/3_functions/3_trigger_functions/{1_update_user_profile_timestamp.sql,2_sync_user_role_to_auth.sql,3_create_public_profile_for_new_user.sql} \
+telecom_network_db/11_user_management/4_triggers/{1_on_auth_user_created.sql,2_update_user_profile_updated_at.sql,3_sync_user_role_trigger.sql,4_sync_user_role_insert_trigger.sql} \
+telecom_network_db/11_user_management/5_rls_policies/1_user_profiles_policies.sql \
+telecom_network_db/11_user_management/6_grants/1_user_management_grants.sql

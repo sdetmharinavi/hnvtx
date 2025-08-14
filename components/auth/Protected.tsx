@@ -129,12 +129,12 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
 
   // Render based on current auth state
   switch (authStateExtended) {
-    case "loading":
-      return <PageSpinner />;
+    // case "loading":
+    //   return <PageSpinner />;
 
-    case "unauthenticated":
-      // Show spinner while redirecting to login
-      return <PageSpinner />;
+    // case "unauthenticated":
+    //   // Show spinner while redirecting to login
+    //   return <PageSpinner />;
 
     case "unauthorized":
       // Show custom fallback or default unauthorized modal
@@ -145,6 +145,6 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
 
     default:
       console.error("Unknown auth state:", authStateExtended);
-      return <PageSpinner />;
+      // return <PageSpinner />;
   }
 };
