@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { FaGoogle } from 'react-icons/fa';
 import { ButtonSpinner } from '../common/ui/LoadingSpinner';
-import { useAuthStore } from '@/stores/authStore';
 
 interface OAuthButtonProps {
   provider: string;

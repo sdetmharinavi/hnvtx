@@ -2,22 +2,14 @@
 
 import useIsMobile from "@/hooks/useIsMobile";
 import { UserRole } from "@/types/user-roles";
-import { useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Protected } from "@/components/auth/Protected";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { Database } from "@/types/supabase-types";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
-import { useCurrentTableName } from "@/hooks/useCurrentTableName";
-import AdvancedLoader from "@/components/common/ui/LoadingSpinner/AdvancedLoader";
-
-type CurrentTableName = keyof Database["public"]["Tables"];
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  // Optional props that pages can pass down
-  tableName?: CurrentTableName;
   showFileUpload?: boolean;
   showColumnManagement?: boolean;
   allowedRoles?: UserRole[];
@@ -25,12 +17,12 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({
   children,
-  tableName,
   showFileUpload = true,
   showColumnManagement = true,
   allowedRoles = [
     UserRole.VIEWER,
     UserRole.ADMIN,
+    UserRole.CPANADMIN,
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
     UserRole.VMUXADMIN,
@@ -39,7 +31,6 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const isMobile = useIsMobile();
-  const pathname = usePathname();
 
   // Determine table name based on current route
 
