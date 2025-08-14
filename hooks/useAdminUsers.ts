@@ -1,0 +1,334 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import { Database, Json } from "@/types/supabase-types";
+
+// Types (assuming these are imported from your database types file)
+type AdminGetAllUsers =
+  Database["public"]["Functions"]["admin_get_all_users"]["Args"];
+
+type AdminGetAllUsersExtended =
+  Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
+
+// type AdminGetUserByID = Database['public']['Functions']['admin_get_user_by_id']['Args']
+
+type AdminBulkDeleteUsersFunction =
+  Database["public"]["Functions"]["admin_bulk_delete_users"]["Args"];
+
+type AdminBulkUpdateUserRole =
+  Database["public"]["Functions"]["admin_bulk_update_role"]["Args"];
+
+type AdminBulkUpdateUserStatus =
+  Database["public"]["Functions"]["admin_bulk_update_status"]["Args"];
+
+type AdminUpdateUserProfile =
+  Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
+
+export interface UserData {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url: string;
+  phone_number: string;
+  date_of_birth: string;
+  address: Json;
+  preferences: Json;
+  role: string;
+  designation: string;
+  status: string;
+  is_email_verified: boolean;
+  last_sign_in_at: string;
+  created_at: string;
+  updated_at: string;
+  total_count: number;
+}
+
+type SingleUserData = Omit<UserData, "total_count">;
+
+const supabase = createClient();
+
+// Query Keys
+export const adminUserKeys = {
+  all: ["admin-users"] as const,
+  lists: () => [...adminUserKeys.all, "list"] as const,
+  list: (filters: AdminGetAllUsers) =>
+    [...adminUserKeys.lists(), filters] as const,
+  details: () => [...adminUserKeys.all, "detail"] as const,
+  detail: (id: string) => [...adminUserKeys.details(), id] as const,
+  role: () => [...adminUserKeys.all, "my-role"] as const,
+  userDetails: () => [...adminUserKeys.all, "my-details"] as const,
+  superAdmin: () => [...adminUserKeys.all, "super-admin"] as const,
+};
+
+// Hook to get all users with filtering and pagination
+export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
+  return useQuery({
+    queryKey: adminUserKeys.list(params),
+    queryFn: async (): Promise<UserData[]> => {
+      const { data, error } = await supabase.rpc("admin_get_all_users", params);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {}) => {
+  return useQuery({
+    queryKey: adminUserKeys.list(params),
+    queryFn: async (): Promise<UserData[]> => {
+      const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+// Hook to get user by ID
+export const useAdminGetUserById = (userId: string, enabled = true) => {
+  return useQuery({
+    queryKey: adminUserKeys.detail(userId),
+    queryFn: async (): Promise<SingleUserData | null> => {
+      const { data, error } = await supabase.rpc("admin_get_user_by_id", {
+        user_id: userId,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data?.[0] || null;
+    },
+    enabled: enabled && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+// Hook to get current user's role
+export const useGetMyRole = () => {
+  return useQuery({
+    queryKey: adminUserKeys.role(),
+    queryFn: async (): Promise<string> => {
+      const { data, error } = await supabase.rpc("get_my_role");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || "";
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes (roles don't change often)
+  });
+};
+
+// Hook to get current user's details
+export const useGetMyUserDetails = () => {
+  return useQuery({
+    queryKey: adminUserKeys.userDetails(),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_user_details");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data?.[0] || null;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+};
+
+// Hook to check if current user is super admin
+export const useIsSuperAdmin = () => {
+  return useQuery({
+    queryKey: adminUserKeys.superAdmin(),
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("is_super_admin");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || false;
+    },
+    staleTime: 15 * 60 * 1000,
+  });
+};
+
+// Hook to update user profile
+export const useAdminUpdateUserProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: AdminUpdateUserProfile): Promise<boolean> => {
+      const { data, error } = await supabase.rpc(
+        "admin_update_user_profile",
+        params
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success("User profile updated successfully");
+
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: adminUserKeys.detail(variables.user_id),
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user profile: ${error.message}`);
+    },
+  });
+};
+
+// Hook to bulk delete users
+export const useAdminBulkDeleteUsers = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      params: AdminBulkDeleteUsersFunction
+    ): Promise<boolean> => {
+      const { data, error } = await supabase.rpc(
+        "admin_bulk_delete_users",
+        params
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        `Successfully deleted ${variables.user_ids.length} user(s)`
+      );
+
+      // Invalidate all user lists
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+
+      // Remove individual user queries from cache
+      variables.user_ids.forEach((userId) => {
+        queryClient.removeQueries({ queryKey: adminUserKeys.detail(userId) });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete users: ${error.message}`);
+    },
+  });
+};
+
+// Hook to bulk update user roles
+export const useAdminBulkUpdateUserRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: AdminBulkUpdateUserRole): Promise<boolean> => {
+      const { data, error } = await supabase.rpc(
+        "admin_bulk_update_role",
+        params
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        `Successfully updated role for ${variables.user_ids.length} user(s)`
+      );
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+
+      // Invalidate individual user details
+      variables.user_ids.forEach((userId) => {
+        queryClient.invalidateQueries({
+          queryKey: adminUserKeys.detail(userId),
+        });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user roles: ${error.message}`);
+    },
+  });
+};
+
+// Hook to bulk update user status
+export const useAdminBulkUpdateUserStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: AdminBulkUpdateUserStatus): Promise<boolean> => {
+      const { data, error } = await supabase.rpc(
+        "admin_bulk_update_status",
+        params
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        `Successfully updated status for ${variables.user_ids.length} user(s)`
+      );
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+
+      // Invalidate individual user details
+      variables.user_ids.forEach((userId) => {
+        queryClient.invalidateQueries({
+          queryKey: adminUserKeys.detail(userId),
+        });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user status: ${error.message}`);
+    },
+  });
+};
+
+// Combined hook for multiple operations
+export const useAdminUserOperations = () => {
+  const updateProfile = useAdminUpdateUserProfile();
+  const bulkDelete = useAdminBulkDeleteUsers();
+  const bulkUpdateRole = useAdminBulkUpdateUserRole();
+  const bulkUpdateStatus = useAdminBulkUpdateUserStatus();
+
+  return {
+    updateProfile,
+    bulkDelete,
+    bulkUpdateRole,
+    bulkUpdateStatus,
+    isLoading:
+      updateProfile.isPending ||
+      bulkDelete.isPending ||
+      bulkUpdateRole.isPending ||
+      bulkUpdateStatus.isPending,
+  };
+};
