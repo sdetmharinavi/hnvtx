@@ -718,6 +718,212 @@ export type Database = {
   }
   public: {
     Tables: {
+      employee_designations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          status: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_designations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "employee_designations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string | null
+          employee_addr: string | null
+          employee_contact: string | null
+          employee_designation_id: string | null
+          employee_dob: string | null
+          employee_doj: string | null
+          employee_email: string | null
+          employee_name: string
+          employee_pers_no: string | null
+          id: string
+          maintenance_terminal_id: string | null
+          remark: string | null
+          status: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_addr?: string | null
+          employee_contact?: string | null
+          employee_designation_id?: string | null
+          employee_dob?: string | null
+          employee_doj?: string | null
+          employee_email?: string | null
+          employee_name: string
+          employee_pers_no?: string | null
+          id?: string
+          maintenance_terminal_id?: string | null
+          remark?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_addr?: string | null
+          employee_contact?: string | null
+          employee_designation_id?: string | null
+          employee_dob?: string | null
+          employee_doj?: string | null
+          employee_email?: string | null
+          employee_name?: string
+          employee_pers_no?: string | null
+          id?: string
+          maintenance_terminal_id?: string | null
+          remark?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_employee_designation_id_fkey"
+            columns: ["employee_designation_id"]
+            isOneToOne: false
+            referencedRelation: "employee_designations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_maintenance_terminal_id_fkey"
+            columns: ["maintenance_terminal_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lookup_types: {
+        Row: {
+          category: string
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system_default: boolean | null
+          name: string
+          sort_order: number | null
+          status: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_default?: boolean | null
+          name: string
+          sort_order?: number | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_default?: boolean | null
+          name?: string
+          sort_order?: number | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      maintenance_areas: {
+        Row: {
+          address: string | null
+          area_type_id: string | null
+          code: string | null
+          contact_number: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          latitude: string | null
+          longitude: string | null
+          name: string
+          parent_id: string | null
+          status: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          area_type_id?: string | null
+          code?: string | null
+          contact_number?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          latitude?: string | null
+          longitude?: string | null
+          name: string
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          area_type_id?: string | null
+          code?: string | null
+          contact_number?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          latitude?: string | null
+          longitude?: string | null
+          name?: string
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_areas_area_type_id_fkey"
+            columns: ["area_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_areas_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           address: Json | null

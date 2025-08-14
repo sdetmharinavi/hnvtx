@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import OAuthProviders from "@/components/auth/OAuthProviders";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { UserFormData, userSchema } from "@/schemas/userSchema";
+import { UserFormData, userSchema } from "@/schemas/schema";
 
 export default function LoginPage() {
   const { authState, signIn } = useAuth();
@@ -21,7 +21,7 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<UserFormData>({
+  } = useForm<userProfileSchema>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       email: "",

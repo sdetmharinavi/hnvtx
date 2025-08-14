@@ -1,0 +1,491 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useDebounce } from "use-debounce";
+import { ConfirmModal } from "@/components/common/ui/Modal";
+import {
+  useTableWithRelations,
+  useTableInsert,
+  useTableUpdate,
+  useToggleStatus,
+  Filters,
+} from "@/hooks/database";
+import { TablesInsert, TablesUpdate } from "@/types/supabase-types";
+import { createClient } from "@/utils/supabase/client";
+import {
+  MdWork as Briefcase,
+  MdAdd as Plus,
+  MdFileDownload as Download,
+  MdInfo as Info,
+} from "react-icons/md";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+import {
+  DesignationWithRelations,
+  EmployeeDesignation,
+} from "@/components/designations/designationTypes";
+import { useDelete } from "@/components/designations/useDelete";
+import { SearchAndFilters } from "@/components/designations/SearchAndFilters";
+import { ViewModeToggle } from "@/components/designations/ViewModeToggle";
+import { DesignationTreeItem } from "@/components/designations/DesignationTreeItem";
+import { DesignationListItem } from "@/components/designations/DesignationListItem";
+import { DesignationDetailsPanel } from "@/components/designations/DesignationDetailsPanel";
+import { DesignationFormModal } from "@/components/designations/DesignationFormModal";
+import { formatDate } from "@/utils/formatters";
+import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
+import { toast } from "sonner";
+
+export default function DesignationManagerPage() {
+  const supabase = createClient();
+
+  // State management
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
+  const [filters, setFilters] = useState<{ status?: string }>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedDesignationId, setSelectedDesignationId] = useState<
+    string | null
+  >(null);
+  const [expandedDesignations, setExpandedDesignations] = useState<Set<string>>(
+    new Set()
+  );
+  const [viewMode, setViewMode] = useState<"tree" | "list">("tree");
+  const [isFormOpen, setFormOpen] = useState(false);
+  const [editingDesignation, setEditingDesignation] =
+    useState<DesignationWithRelations | null>(null);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
+  // Data queries
+  const serverFilters = useMemo(() => {
+    const f: Filters = {};
+    if (filters.status) f.status = filters.status === "true";
+    return f;
+  }, [filters]);
+
+  const designationsQuery = useTableWithRelations(
+    supabase,
+    "employee_designations",
+    ["parent_designation:parent_id(id, name)"],
+    {
+      filters: serverFilters,
+      orderBy: [{ column: "name", ascending: true }],
+    }
+  );
+
+  // Data mutations
+  const onMutationSuccess = () => {
+    designationsQuery.refetch();
+    setFormOpen(false);
+    setEditingDesignation(null);
+  };
+
+  const createDesignationMutation = useTableInsert(
+    supabase,
+    "employee_designations",
+    { onSuccess: onMutationSuccess }
+  );
+  const updateDesignationMutation = useTableUpdate(
+    supabase,
+    "employee_designations",
+    { onSuccess: onMutationSuccess }
+  );
+  const toggleStatusMutation = useToggleStatus(
+    supabase,
+    "employee_designations",
+    { onSuccess: onMutationSuccess }
+  );
+
+
+  
+  // Download configuration
+  const columns = useDynamicColumnConfig("employee_designations");
+
+  const tableExcelDownload = useTableExcelDownload(
+    supabase,
+    "employee_designations",
+    {
+      onSuccess: () => {
+        toast.success("Export successful");
+        
+      },
+      onError: () => toast.error("Export failed"),
+    }
+  );
+
+  const handleExport = async () => {
+    const tableName = "employee_designations";
+    const tableOptions = {
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${String(
+        tableName
+      )}-export.xlsx`,
+      sheetName: String(tableName),
+      columns: columns,
+      filters: serverFilters,
+      maxRows: 1000,
+      customStyles: {},
+    };
+    tableExcelDownload.mutate(tableOptions);
+  };
+
+  const deleteManager = useDelete({
+    tableName: "employee_designations",
+    onSuccess: () => {
+      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
+        setSelectedDesignationId(null);
+        setShowDetailsPanel(false);
+      }
+      designationsQuery.refetch();
+    },
+  });
+
+  // Derived state
+  const allDesignations = useMemo(
+    () => (designationsQuery.data as DesignationWithRelations[]) || [],
+    [designationsQuery.data]
+  );
+
+  const searchedDesignations = useMemo(() => {
+    if (!debouncedSearchTerm) return allDesignations;
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    return allDesignations.filter((designation) =>
+      designation.name.toLowerCase().includes(searchLower)
+    );
+  }, [allDesignations, debouncedSearchTerm]);
+
+  const hierarchicalDesignations = useMemo(() => {
+    const relevantDesignations = debouncedSearchTerm
+      ? searchedDesignations
+      : allDesignations;
+    const designationsMap = new Map<string, DesignationWithRelations>();
+
+    relevantDesignations.forEach((designation) => {
+      designationsMap.set(designation.id, {
+        ...designation,
+        child_designations: [],
+      });
+    });
+
+    const tree: DesignationWithRelations[] = [];
+    designationsMap.forEach((designation) => {
+      if (designation.parent_id && designationsMap.has(designation.parent_id)) {
+        const parent = designationsMap.get(designation.parent_id)!;
+        parent.child_designations.push(designation);
+      } else {
+        tree.push(designation);
+      }
+    });
+
+    const sortByName = (
+      a: DesignationWithRelations,
+      b: DesignationWithRelations
+    ) => a.name.localeCompare(b.name);
+    tree.sort(sortByName);
+    tree.forEach(function sortChildren(designation) {
+      designation.child_designations.sort(sortByName);
+      designation.child_designations.forEach(sortChildren);
+    });
+
+    return tree;
+  }, [allDesignations, searchedDesignations, debouncedSearchTerm]);
+
+  const selectedDesignation = useMemo(() => {
+    return (
+      allDesignations.find(
+        (designation) => designation.id === selectedDesignationId
+      ) || null
+    );
+  }, [selectedDesignationId, allDesignations]);
+
+  // Event handlers
+  const handleOpenCreateForm = () => {
+    setEditingDesignation(null);
+    setFormOpen(true);
+  };
+
+  const handleOpenEditForm = (designation: DesignationWithRelations) => {
+    setEditingDesignation(designation);
+    setFormOpen(true);
+  };
+
+  const handleFormSubmit = (data: TablesInsert<"employee_designations">) => {
+    if (editingDesignation) {
+      updateDesignationMutation.mutate({
+        id: editingDesignation.id,
+        data: data as TablesUpdate<"employee_designations">,
+      });
+    } else {
+      createDesignationMutation.mutate(data);
+    }
+  };
+
+  const handleToggleStatus = (
+    e: React.MouseEvent,
+    designation: EmployeeDesignation
+  ) => {
+    e.stopPropagation();
+    toggleStatusMutation.mutate({
+      id: designation.id,
+      status: !designation.status,
+    });
+  };
+
+  const toggleExpanded = (designationId: string) => {
+    setExpandedDesignations((prev) => {
+      const next = new Set(prev);
+      if (next.has(designationId)) {
+        next.delete(designationId);
+      } else {
+        next.add(designationId);
+      }
+      return next;
+    });
+  };
+
+  const handleDesignationSelect = (designationId: string) => {
+    setSelectedDesignationId(designationId);
+    setShowDetailsPanel(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white sm:text-xl">
+              Designations
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
+              Manage employee roles
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 sm:px-3 sm:py-2"
+              title="Export"
+            >
+              <Download className="h-5 w-5" />
+              <span className="hidden sm:ml-2 sm:inline">Export</span>
+            </button>
+            <button
+              onClick={handleOpenCreateForm}
+              className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 sm:px-4"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="ml-1 sm:ml-2">Add</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
+        {/* Left Panel - List */}
+        <div
+          className={`flex-1 flex flex-col ${
+            showDetailsPanel ? "hidden lg:flex" : "flex"
+          } lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}
+        >
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <SearchAndFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters((p) => !p)}
+              filters={filters}
+              onFilterChange={setFilters}
+              onClearFilters={() => setFilters({})}
+            />
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </div>
+
+          <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+            {designationsQuery.isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Loading designations...
+                  </p>
+                </div>
+              </div>
+            ) : designationsQuery.isError ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 inline-block mb-4">
+                    <svg
+                      className="h-6 w-6 text-red-600 dark:text-red-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-red-600 dark:text-red-400">
+                    Error: {designationsQuery.error.message}
+                  </p>
+                </div>
+              </div>
+            ) : allDesignations.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Briefcase className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No designations found.
+                  </p>
+                  <button
+                    onClick={handleOpenCreateForm}
+                    className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Designation
+                  </button>
+                </div>
+              </div>
+            ) : viewMode === "tree" ? (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {hierarchicalDesignations.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-gray-500 dark:text-gray-400">
+                      No designations match your search criteria.
+                    </p>
+                  </div>
+                ) : (
+                  hierarchicalDesignations.map((designation) => (
+                    <DesignationTreeItem
+                      key={designation.id}
+                      designation={designation}
+                      level={0}
+                      isSelected={selectedDesignationId === designation.id}
+                      isExpanded={expandedDesignations.has(designation.id)}
+                      onSelect={handleDesignationSelect}
+                      onToggleExpand={toggleExpanded}
+                      onToggleStatus={handleToggleStatus}
+                      isLoading={toggleStatusMutation.isPending}
+                    />
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {searchedDesignations.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-gray-500 dark:text-gray-400">
+                      No designations match your search criteria.
+                    </p>
+                  </div>
+                ) : (
+                  searchedDesignations.map((designation) => (
+                    <DesignationListItem
+                      key={designation.id}
+                      designation={designation}
+                      isSelected={selectedDesignationId === designation.id}
+                      onSelect={handleDesignationSelect}
+                      onToggleStatus={handleToggleStatus}
+                      isLoading={toggleStatusMutation.isPending}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel - Details */}
+        <div
+          className={`${
+            showDetailsPanel ? "flex" : "hidden lg:flex"
+          } flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}
+        >
+          {/* Mobile Details Header */}
+          <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                Details
+              </h2>
+              <button
+                onClick={() => setShowDetailsPanel(false)}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Details Header */}
+          <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+              Designation Details
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {selectedDesignation ? (
+              <DesignationDetailsPanel
+                designation={selectedDesignation}
+                onEdit={handleOpenEditForm}
+                onDelete={deleteManager.deleteSingle}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full p-8">
+                <div className="text-center">
+                  <Info className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Select a designation to view details
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      {isFormOpen && (
+        <DesignationFormModal
+          isOpen={isFormOpen}
+          onClose={() => setFormOpen(false)}
+          onSubmit={handleFormSubmit}
+          designation={editingDesignation}
+          allDesignations={allDesignations}
+          isLoading={
+            createDesignationMutation.isPending ||
+            updateDesignationMutation.isPending
+          }
+        />
+      )}
+      <ConfirmModal
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
+        title="Confirm Deletion"
+        message={deleteManager.confirmationMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        showIcon
+        closeOnBackdrop
+        closeOnEscape
+        loading={deleteManager.isPending}
+        size="md"
+      />
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
-import { SignupFormData, signupSchema } from "@/schemas/userSchema";
+import { SignupFormData, signupSchema } from "@/schemas/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 export default function SignUpPage() {
