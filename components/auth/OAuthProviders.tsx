@@ -1,7 +1,7 @@
 // components/auth/OAuthProviders.tsx
 'use client';
 
-import OAuthButton from './OAuthButton';
+import { OAuthButton } from '@/components/auth/OAuthButton';
 
 interface OAuthProvidersProps {
   variant?: 'login' | 'signup';

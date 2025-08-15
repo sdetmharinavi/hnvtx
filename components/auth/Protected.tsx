@@ -85,8 +85,11 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
 
     // If auth is explicitly unauthenticated, handle it
     if (authState === "unauthenticated") {
-      setAuthStateExtended("unauthenticated");
-      handleUnauthenticated();
+      // Only update state if it's not already unauthenticated to prevent unnecessary re-renders
+      if (authStateExtended !== "unauthenticated") {
+        setAuthStateExtended("unauthenticated");
+      }
+      // Don't call handleUnauthenticated here - we'll handle the redirect in the render phase
       return;
     }
 
@@ -127,26 +130,31 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
     }
   }, [authState, allowedRoles, canAccess, user, setAuthState, router, redirectTo, isLoadingRole, loadingStartTime]);
 
-  // Render based on current auth state
-  switch (authStateExtended) {
-    case "loading":
-      // return <PageSpinner />;
-      return console.log("🔄 Loading state, waiting for auth...");
-
-    case "unauthenticated":
-      // Show spinner while redirecting to login
-      // return <PageSpinner />;
-      console.log("🔄 Unauthenticated, redirecting to login...");
-
-    case "unauthorized":
-      // Show custom fallback or default unauthorized modal
-      return fallbackComponent || <UnauthorizedModal allowedRoles={allowedRoles || []} currentRole={role} />;
-
-    case "authenticated":
-      return <>{children}</>;
-
-    default:
-      console.error("Unknown auth state:", authStateExtended);
-      // return <PageSpinner />;
+  // Don't render anything until we've determined the auth state
+  if (authStateExtended === "loading") {
+    return null; // Or <PageSpinner /> if you prefer
   }
+
+  // Handle unauthenticated state
+  if (authStateExtended === "unauthenticated") {
+    // Use a timeout to prevent flash of content
+    const handleRedirect = () => {
+      if (!hasRedirected.current) {
+        hasRedirected.current = true;
+        router.replace(redirectTo);
+      }
+    };
+    
+    // Queue the redirect to the next tick to ensure we don't block rendering
+    setTimeout(handleRedirect, 0);
+    return null; // Or <PageSpinner /> if you prefer
+  }
+
+  // Handle unauthorized state
+  if (authStateExtended === "unauthorized") {
+    return fallbackComponent || <UnauthorizedModal allowedRoles={allowedRoles || []} currentRole={role} />;
+  }
+
+  // If we get here, user is authenticated and authorized
+  return <>{children}</>;
 };

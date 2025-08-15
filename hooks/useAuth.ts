@@ -124,12 +124,23 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { 
+          redirectTo: `${window.location.origin}/auth/callback`,
+          // Skip browser redirect to prevent page reload
+          skipBrowserRedirect: true
+        },
       });
-      if (data) sessionStorage.removeItem('oauth_in_progress');
+      
       if (error) throw error;
+      
+      // If we have a URL, perform the redirect manually
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+      
       return { data, error: null };
     } catch (error) {
+      sessionStorage.removeItem('oauth_in_progress');
       const message = error instanceof Error ? error.message : "Google sign in failed";
       toast.error(message);
       return { data: null, error: message };

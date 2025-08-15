@@ -34,14 +34,21 @@ export const useAuthStore = create<AuthStore>()(
 
         // Actions
         setUser: (user) => {
-          set({
-            user,
-            authState: user ? "authenticated" : "unauthenticated",
-          });
+          // Only update if the user has actually changed
+          const currentUser = get().user;
+          if (user?.id !== currentUser?.id) {
+            set({
+              user,
+              authState: user ? "authenticated" : "unauthenticated",
+            });
+          }
         },
 
-        setAuthState: (authState) => {
-          set({ authState });
+        setAuthState: (newAuthState) => {
+          // Only update if the state has actually changed
+          if (get().authState !== newAuthState) {
+            set({ authState: newAuthState });
+          }
         },
 
         logout: () => {
@@ -54,6 +61,7 @@ export const useAuthStore = create<AuthStore>()(
         // Fixed async action wrapper
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
           const currentState = get().authState;
+          const currentUser = get().user;
 
           // Only set loading if not already in a loading state
           if (currentState !== "loading") {
@@ -62,23 +70,27 @@ export const useAuthStore = create<AuthStore>()(
 
           try {
             const result = await action();
-
-            // IMPORTANT: Don't automatically restore state after action completes
-            // Let the action itself set the final state (like logout setting "unauthenticated")
-            // Only restore if the state is still "loading" (meaning action didn't set a final state)
-            const stateAfterAction = get().authState;
-            if (stateAfterAction === "loading") {
-              set({
-                authState: get().user ? "authenticated" : "unauthenticated",
-              });
+            
+            // Get the latest state after action completes
+            const { authState: latestState, user: latestUser } = get();
+            
+            // Only update state if still in loading state and we have a definitive state
+            if (latestState === "loading") {
+              // If user exists, we're authenticated, otherwise unauthenticated
+              const newState = latestUser ? "authenticated" : "unauthenticated";
+              if (newState !== currentState) {
+                set({ authState: newState });
+              }
             }
 
             return result;
           } catch (error) {
-            // On error, reset to appropriate state
-            set({
-              authState: get().user ? "authenticated" : "unauthenticated",
-            });
+            // On error, reset to appropriate state based on current user
+            const { user } = get();
+            const newState = user ? "authenticated" : "unauthenticated";
+            if (newState !== currentState) {
+              set({ authState: newState });
+            }
             throw error;
           }
         },
