@@ -10,6 +10,7 @@ import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
 import { usePagedOfcCablesComplete } from "@/hooks/database";
+import { useRouter } from "next/navigation";
 
 // --- UI COMPONENTS ---
 import { DataTable } from "@/components/table/DataTable";
@@ -30,6 +31,7 @@ import { OfcCablesFilters, OfcCablesWithRelations } from "@/components/ofc/ofc-t
 const OfcPage = () => {
   // --- SUPABASE CLIENT ---
   const supabase = createClient();
+  const router = useRouter();
 
   // --- STATE ---
   const [showForm, setShowForm] = useState(false);
@@ -128,7 +130,7 @@ const OfcPage = () => {
   const actions = useMemo(
     () =>
       GetOfcTableActions({
-        onView: (id) => setViewingOfcCableId(id),
+        onView: (id) => router.push(`/dashboard/ofc/${id}`),
         onEdit: (id) => {
           const c = pageData.find((c) => c.id === id);
           if (c) {
@@ -140,7 +142,7 @@ const OfcPage = () => {
         onDelete: (id, name) => deleteManager.deleteSingle({ id, name: name || "OFC Cable" }),
         isSuperAdmin: isSuperAdmin || false,
       }),
-    [pageData, isSuperAdmin, toggleStatus, deleteManager]
+    [pageData, isSuperAdmin, toggleStatus, deleteManager, router]
   );
 
   const isLoading = ofcCablesLoading || isInserting || isUpdating || deleteManager.isPending;
