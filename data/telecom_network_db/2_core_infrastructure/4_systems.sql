@@ -7,6 +7,7 @@ create table systems (
   ip_address INET,
   maintenance_terminal_id UUID references maintenance_areas (id),
   commissioned_on DATE,
+  s_no TEXT,
   remark TEXT,
   status BOOLEAN default true,
   created_at timestamp with time zone default NOW(),

@@ -29,6 +29,16 @@ BEGIN
         role = new_role,
         updated_at = NOW()
     WHERE id = ANY(user_ids);
+
+    -- Log this bulk action
+    PERFORM public.log_user_activity(
+        'BULK_UPDATE_ROLE',
+        'user_profiles',
+        NULL,
+        jsonb_build_object('user_ids', user_ids),
+        jsonb_build_object('new_role', new_role),
+        'Bulk role update performed by admin'
+    );
     
     RETURN FOUND;
 END;

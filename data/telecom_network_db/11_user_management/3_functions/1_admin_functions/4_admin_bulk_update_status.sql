@@ -21,6 +21,16 @@ BEGIN
         status = new_status,
         updated_at = NOW()
     WHERE id = ANY(user_ids);
+
+    -- Log this bulk action
+    PERFORM public.log_user_activity(
+        'BULK_UPDATE_STATUS',
+        'user_profiles',
+        NULL,
+        jsonb_build_object('user_ids', user_ids),
+        jsonb_build_object('new_status', new_status),
+        'Bulk status update performed by admin'
+    );
     
     RETURN FOUND;
 END;
