@@ -75,7 +75,7 @@ export const maintenanceAreaSchema = z.object({
   parent_id: z.uuid().optional().nullable(),
   contact_person: z.string().optional().nullable(),
   contact_number: z.string().optional().nullable(),
-  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
+  email: z.email({ message: "Invalid email address." }).optional().or(z.literal('')),
   latitude: z.string().optional().nullable(),
   longitude: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
@@ -98,9 +98,14 @@ export const employeeSchema = z.object({
   employee_name: z.string().min(1, { message: "Employee name is required." }),
   employee_pers_no: z.string().optional().nullable(),
   employee_contact: z.string().optional().nullable(),
-  employee_email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
-  employee_dob: z.coerce.date().optional().nullable(),
-  employee_doj: z.coerce.date().optional().nullable(),
+  employee_email: z.email({ message: "Invalid email address." }).optional().or(z.literal('')),
+  // dob/doj should not be future dates
+  employee_dob: z.coerce.date().optional().nullable().refine(date => !date || (date < new Date()), {
+    message: "Date of birth cannot be in the future.",
+  }),
+  employee_doj: z.coerce.date().optional().nullable().refine(date => !date || (date < new Date()), {
+    message: "Date of joining cannot be in the future.",
+  }),
   employee_designation_id: z.uuid().optional().nullable(),
   employee_addr: z.string().optional().nullable(),
   maintenance_terminal_id: z.uuid().optional().nullable(),
@@ -151,20 +156,33 @@ export const nodeSchema = z.object({
 export const ofcCableSchema = z.object({
   id: z.uuid().optional(),
   route_name: z.string().min(1, { message: "Route name is required." }),
-  starting_node_id: z.string().uuid({ message: "Starting node is required." }),
-  ending_node_id: z.string().uuid({ message: "Ending node is required." }),
-  ofc_type_id: z.string().uuid({ message: "OFC type is required." }),
-  capacity: requiredStringToNumber.pipe(z.number().int({ message: "Capacity must be an integer." })),
-  current_rkm: emptyStringToNumber,
+  starting_node_id: z.uuid({ message: "Starting node is required." }),
+  ending_node_id: z.uuid({ message: "Ending node is required." }),
+  ofc_type_id: z.uuid({ message: "OFC type is required." }),
+  // capacity must be a positive integer
+  capacity: requiredStringToNumber.pipe(z.number().int({ message: "Capacity must be an integer." }).refine(val => val > 0, { message: "Capacity must be a positive integer." })),
+  // current_rkm must be a positive number
+  current_rkm: emptyStringToNumber.pipe(z.number().refine(val => val >= 0, { message: "Current RKM must be a positive number." })),
   transnet_id: z.string().optional().nullable(),
-  transnet_rkm: emptyStringToNumber,
-  asset_no: z.string().optional().nullable(),
+  // transnet_rkm must be a positive number
+  transnet_rkm: emptyStringToNumber.pipe(z.number().refine(val => val >= 0, { message: "Transnet RKM must be a positive number." })),
+  // asset_no must be a positive number
+  asset_no: z.string().optional().nullable().refine(val => val && parseInt(val) > 0, { message: "Asset number must be a positive number." }),
   maintenance_terminal_id: z.uuid().optional().nullable(),
   commissioned_on: z.coerce.date().optional().nullable(),
   remark: z.string().optional().nullable(),
   status: z.boolean().default(true).optional(),
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
+}).superRefine((data, ctx) => {
+  // Check if ending node is different from starting node
+  if (data.starting_node_id === data.ending_node_id) {
+    ctx.addIssue({
+      code: 'custom',
+      message: "Ending node must be different from starting node.",
+      path: ["ending_node_id"], // This will show the error on the ending_node_id field
+    });
+  }
 });
 
 export const systemSchema = z.object({
@@ -320,14 +338,14 @@ export const userProfileSchema = z.object({
       message: "Please enter a valid date of birth.",
     }),
   role: z.enum([
-      'admin',
-      'viewer',
-      'cpan_admin',
-      'maan_admin',
-      'sdh_admin',
-      'vmux_admin',
-      'mng_admin'
-    ]).default('viewer'),
+    'admin',
+    'viewer',
+    'cpan_admin',
+    'maan_admin',
+    'sdh_admin',
+    'vmux_admin',
+    'mng_admin'
+  ]).default('viewer'),
   designation: z.string().optional().nullable(),
   address: z.object({
     street: z.string().optional(),
