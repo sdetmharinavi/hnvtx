@@ -31,9 +31,10 @@ export default function HeroContent({
   const handleGetStarted = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1000); // Simulate loading for 1 second
+    router.push("/dashboard");
+    // setTimeout(() => {
+    //   router.push("/dashboard");
+    // }, 1000); // Simulate loading for 1 second
   };
   return (
     <motion.div
