@@ -24,13 +24,13 @@ export default function DashboardPage() {
 
     // Get cache stats for specific table
     const lookupTypesCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'lookup_types');
-    console.log('Lookup Types cache stats:', lookupTypesCacheStats);
+    // console.log('Lookup Types cache stats:', lookupTypesCacheStats);
 
     const employeesCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'employees');
-    console.log('Employees cache stats:', employeesCacheStats);
+    // console.log('Employees cache stats:', employeesCacheStats);
 
     const employeeDesignationsCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'employee_designations');
-    console.log('Employee Designations cache stats:', employeeDesignationsCacheStats);
+    // console.log('Employee Designations cache stats:', employeeDesignationsCacheStats);
   };
   return (
     <div className="flex flex-col items-center justify-center py-16">

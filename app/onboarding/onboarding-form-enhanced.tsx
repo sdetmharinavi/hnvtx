@@ -85,7 +85,7 @@ export default function OnboardingFormEnhanced() {
   // Initialize form data when profile loads
   useEffect(() => {
     if (profile) {
-      console.log("profile", profile);
+      // console.log("profile", profile);
       const newFormData: ProfileFormData = {
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",

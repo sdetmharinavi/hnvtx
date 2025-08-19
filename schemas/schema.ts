@@ -166,8 +166,7 @@ export const ofcCableSchema = z.object({
   transnet_id: z.string().optional().nullable(),
   // transnet_rkm must be a positive number
   transnet_rkm: emptyStringToNumber.pipe(z.number().refine(val => val >= 0, { message: "Transnet RKM must be a positive number." })),
-  // asset_no must be a positive number
-  asset_no: z.string().optional().nullable().refine(val => val && parseInt(val) > 0, { message: "Asset number must be a positive number." }),
+  asset_no: z.string().optional().nullable(),
   maintenance_terminal_id: z.uuid().optional().nullable(),
   commissioned_on: z.coerce.date().optional().nullable(),
   remark: z.string().optional().nullable(),
@@ -175,12 +174,15 @@ export const ofcCableSchema = z.object({
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
 }).superRefine((data, ctx) => {
-  // Check if ending node is different from starting node
-  if (data.starting_node_id === data.ending_node_id) {
+  const a = data.starting_node_id;
+  const b = data.ending_node_id;
+  // Run this check only when both IDs are present
+  if (!a || !b) return;
+  if (a === b) {
     ctx.addIssue({
       code: 'custom',
       message: "Ending node must be different from starting node.",
-      path: ["ending_node_id"], // This will show the error on the ending_node_id field
+      path: ["ending_node_id"],
     });
   }
 });

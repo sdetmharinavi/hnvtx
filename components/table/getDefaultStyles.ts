@@ -15,7 +15,7 @@ export const getDefaultStyles = (): ExcelStyles => {
       },
     };
     
-    console.log('Default styles:', styles);
+    // console.log('Default styles:', styles);
     return styles;
   };
   

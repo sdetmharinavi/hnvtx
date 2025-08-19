@@ -5,7 +5,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiDownload, FiPlus } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
-import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
+import { Filters, useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
@@ -24,8 +24,10 @@ import OfcDetailsModal from "@/components/ofc/OfcDetailsModal";
 
 // --- TYPES ---
 import { Json, TablesInsert } from "@/types/supabase-types";
-import { Column } from "@/hooks/database/excel-queries";
+import { Column, useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { OfcCablesFilters, OfcCablesWithRelations } from "@/components/ofc/ofc-types";
+import { toast } from "sonner";
+import { formatDate } from "@/utils/formatters";
 
 // --- COMPONENT ---
 const OfcPage = () => {
@@ -106,14 +108,42 @@ const OfcPage = () => {
   }, []);
   const handleBulkDelete = () => {
     /* ... */
+    // console.log(selectedOfcCableIds);
+    deleteManager.deleteMultiple(selectedOfcCableIds.map((id) => ({ id, name: pageData.find((c) => c.id === id)?.route_name || "OFC Cable" })));
+    setSelectedOfcCableIds([]);
   };
   const handleBulkUpdateStatus = (status: "active" | "inactive") => {
     /* ... */
+    selectedOfcCableIds.forEach((id) => toggleStatus({ id, status: status === "active" }));
+    setSelectedOfcCableIds([]);
+  };
+
+  // Download Configuration
+  const downloadColumns = useDynamicColumnConfig("nodes");
+
+  const tableExcelDownload = useTableExcelDownload(supabase, "nodes", {
+    onSuccess: () => {
+      toast.success("Export successful");
+      refetch();
+    },
+    onError: () => toast.error("Export failed"),
+  });
+
+  const handleExport = async () => {
+    const tableName = "nodes";
+    const tableOptions = {
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${String(tableName)}-export.xlsx`,
+      sheetName: String(tableName),
+      columns: downloadColumns,
+      maxRows: 1000,
+      customStyles: {},
+    };
+    tableExcelDownload.mutate(tableOptions);
   };
 
   // DataTable Configuration
   const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
-    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "transnet_id", "transnet_rkm", "current_rkm", "capacity", "commissioned_on"],
+    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "starting_node_id", "ending_node_id"],
     overrides: {
       asset_no: { title: "Asset No.", sortable: true, width: 150 },
       route_name: { title: "Route Name", sortable: true, width: 250 },
@@ -155,7 +185,7 @@ const OfcPage = () => {
           <div className='flex items-center gap-2'>
             <button
               onClick={() => {
-                /* Add export logic */
+                handleExport();
               }}
               className='flex items-center gap-2 px-3 py-2 text-sm border rounded-lg hover:bg-gray-50'>
               <FiDownload /> Export

@@ -538,7 +538,7 @@ export function useExcelUpload<T extends TableName>(
       // 1. Parse the Excel file using our xlsx utility function
       const jsonData = await parseExcelFile(file);
 
-      console.log("jsonData", jsonData);
+      // console.log("jsonData", jsonData);
       
 
       if (!jsonData || jsonData.length < 2) {
@@ -549,7 +549,7 @@ export function useExcelUpload<T extends TableName>(
       // 2. Map Excel headers to their column index for efficient lookup
       const excelHeaders: string[] = jsonData[0];
       const headerMap: Record<string, number> = {};
-      console.log("Excel Headers:", excelHeaders);
+      // console.log("Excel Headers:", excelHeaders);
       excelHeaders.forEach((header, index) => {
         headerMap[String(header).trim().toLowerCase()] = index;
       });

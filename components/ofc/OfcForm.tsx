@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { OfcCable, ofcCableSchema } from "@/schemas/schema";
 import { useForm, SubmitHandler, type Resolver } from "react-hook-form";
 import { z } from "zod";
-import { FormInput, FormSearchableSelect, FormTextarea } from "../common/FormControls";
+import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "../common/FormControls";
 
 interface OfcFormProps {
   ofcCable?: OfcCablesWithRelations | null;
@@ -34,16 +34,24 @@ const formSchema = ofcCableSchema.omit({
 type OfcFormValues = z.infer<typeof formSchema>;
 
 const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) => {
-  const [startingNodeId, setStartingNodeId] = useState<string | null>(ofcCable?.starting_node_id ? String(ofcCable.starting_node_id) : null);
-  const [endingNodeId, setEndingNodeId] = useState<string | null>(ofcCable?.ending_node_id ? String(ofcCable.ending_node_id) : null);
-  const [routeNumber, setRouteNumber] = useState<number>(1);
+  // Remove redundant local state for node IDs; use RHF values instead
   const [existingRoutes, setExistingRoutes] = useState<string[] | null>(null);
   const [isCapacityLocked, setIsCapacityLocked] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [routeNumber, setRouteNumber] = useState<number>(1);
   const isEdit = Boolean(ofcCable);
 
-  const { register, handleSubmit, control, formState: { errors }, setValue, watch } = useForm<OfcFormValues, any, OfcFormValues>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<OfcFormValues, any, OfcFormValues>({
     resolver: zodResolver(formSchema) as unknown as Resolver<OfcFormValues>,
+    mode: "all",
+    reValidateMode: "onChange",
     defaultValues: {
       starting_node_id: ofcCable?.starting_node_id ? String(ofcCable.starting_node_id) : undefined,
       ending_node_id: ofcCable?.ending_node_id ? String(ofcCable.ending_node_id) : undefined,
@@ -62,35 +70,27 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
 
   // Watch form values
   const watchedValues = watch();
-  const currentOfcTypeId = watch("ofc_type_id");
   const currentStatus = watch("status");
+  const startingNodeId = watch("starting_node_id") || null;
+  const endingNodeId = watch("ending_node_id") || null;
 
   const supabase = createClient();
 
   // Fallback: If editing but IDs are missing on the view row, fetch from base table
   useEffect(() => {
-    const needsFallback = Boolean(
-      ofcCable?.id && (!ofcCable.starting_node_id || !ofcCable.ending_node_id)
-    );
+    const needsFallback = Boolean(ofcCable?.id && (!ofcCable.starting_node_id || !ofcCable.ending_node_id));
     if (!needsFallback) return;
 
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("ofc_cables")
-        .select(
-          "starting_node_id, ending_node_id, ofc_type_id, asset_no, capacity, commissioned_on, current_rkm, maintenance_terminal_id, status, remark"
-        )
-        .eq("id", ofcCable!.id)
-        .single();
+      const { data, error } = await supabase.from("ofc_cables").select("starting_node_id, ending_node_id, ofc_type_id, asset_no, capacity, commissioned_on, current_rkm, maintenance_terminal_id, status, remark").eq("id", ofcCable!.id).single();
 
       if (cancelled || error || !data) return;
 
       const sId = data.starting_node_id ? String(data.starting_node_id) : null;
       const eId = data.ending_node_id ? String(data.ending_node_id) : null;
 
-      setStartingNodeId(sId);
-      setEndingNodeId(eId);
+      // Set only the form values; no local state needed
       setValue("starting_node_id", sId || "");
       setValue("ending_node_id", eId || "");
     })();
@@ -99,12 +99,6 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
       cancelled = true;
     };
   }, [ofcCable?.id, ofcCable?.starting_node_id, ofcCable?.ending_node_id, supabase, setValue]);
-
-  // Keep formData node IDs in sync with selection state
-  useEffect(() => {
-    setValue("starting_node_id", startingNodeId || "");
-    setValue("ending_node_id", endingNodeId || "");
-  }, [startingNodeId, endingNodeId, setValue]);
 
   // Clear node validation errors when IDs become available (e.g., after edit prefill)
   useEffect(() => {
@@ -148,7 +142,7 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
   } = usePagedNodesComplete(supabase, {
     filters: {
       status: true,
-      node_type_name: "Fiber Terminal Node",
+      node_type_name: "Terminal Node",
     },
     limit: 1000,
   });
@@ -200,34 +194,47 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
       label: type.name,
     })) || [];
 
-  // Helper: extract capacity (fibers) from OFC type name if present
-  const extractCapacityFromTypeName = (name: string | undefined | null): number | null => {
-    if (!name) return null;
-    const KNOWN = [2, 4, 6, 12, 24, 48, 96, 144, 288, 576, 864, 1728];
-    const lower = name.toLowerCase();
-    // Try patterns like "24f", "24 f", "24 fibers", or standalone number token
-    for (const cap of KNOWN) {
-      const patterns = [
-        // match like "24f", "24 f", "24 fibers"
-        new RegExp(`(^|[^\\d])${cap}\\s*f(ibers)?([^\\d]|$)`, "i"),
-        new RegExp(`(^|[^\\d])${cap}([^\\d]|$)`),
-      ];
-      if (patterns.some((rx) => rx.test(lower))) return cap;
-    }
-    return null;
-  };
-
   // Auto-set capacity from selected OFC type name and lock the selector if found
+  // watch OFC type selection
+  const currentOfcTypeId = watch("ofc_type_id");
+  const capacityOptions: Option[] = [
+    { value: "2", label: "2" },
+    { value: "4", label: "4" },
+    { value: "6", label: "6" },
+    { value: "12", label: "12" },
+    { value: "24", label: "24" },
+    { value: "48", label: "48" },
+    { value: "96", label: "96" },
+    { value: "144", label: "144" },
+    { value: "288", label: "288" },
+    { value: "576", label: "576" },
+    { value: "864", label: "864" },
+    { value: "1728", label: "1728" },
+  ];
+
   useEffect(() => {
-    const selectedType = ofcTypesData?.find((t) => t.id === currentOfcTypeId);
-    const inferred = extractCapacityFromTypeName(selectedType?.name);
-    if (inferred !== null) {
-      setValue("capacity", inferred);
-      setIsCapacityLocked(true);
-    } else {
-      setIsCapacityLocked(false);
+    if (currentOfcTypeId) {
+      const selectedOption = ofcTypeOptions.find((opt) => opt.value === currentOfcTypeId);
+      // console.log("selectedOption", selectedOption);
+
+      if (selectedOption) {
+        const match = selectedOption.label.match(/(\d+)\s*F/i);
+        if (match) {
+          const inferredCapacity = match[1]; // "24"
+          const matchingCapacityOption = capacityOptions.find((opt) => opt.value === inferredCapacity);
+          // console.log("matchingCapacityOption", matchingCapacityOption);
+
+          if (matchingCapacityOption) {
+            setValue("capacity", Number(matchingCapacityOption.value), { shouldValidate: true });
+            setIsCapacityLocked(true);
+            return;
+          }
+        }
+      }
     }
-  }, [currentOfcTypeId, ofcTypesData, setValue]);
+
+    setIsCapacityLocked(false);
+  }, [currentOfcTypeId, setValue]);
 
   // Data fetching for maintenance terminals
   const { data: maintenanceTerminalsData, isLoading: maintenanceTerminalsLoading } = useTableQuery(supabase, "maintenance_areas", {
@@ -249,11 +256,11 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
     filters:
       startingNodeId && endingNodeId
         ? {
-          $or: {
-            operator: "or",
-            value: `and(starting_node_id.eq.${startingNodeId},ending_node_id.eq.${endingNodeId}),and(starting_node_id.eq.${endingNodeId},ending_node_id.eq.${startingNodeId})`,
-          },
-        }
+            $or: {
+              operator: "or",
+              value: `and(starting_node_id.eq.${startingNodeId},ending_node_id.eq.${endingNodeId}),and(starting_node_id.eq.${endingNodeId},ending_node_id.eq.${startingNodeId})`,
+            },
+          }
         : {},
     columns: "id, route_name",
     includeCount: true,
@@ -274,33 +281,17 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
     setExistingRoutes(existingRoute?.map((route) => route.route_name) ?? null);
   }, [existingRoute]);
 
-  const capacityOptions: Option[] = [
-    { value: "2", label: "2" },
-    { value: "4", label: "4" },
-    { value: "6", label: "6" },
-    { value: "12", label: "12" },
-    { value: "24", label: "24" },
-    { value: "48", label: "48" },
-    { value: "96", label: "96" },
-    { value: "144", label: "144" },
-    { value: "288", label: "288" },
-    { value: "576", label: "576" },
-    { value: "864", label: "864" },
-    { value: "1728", label: "1728" },
-  ];
-
   const isLoading = nodesLoading || ofcTypesLoading || maintenanceTerminalsLoading || pageLoading || existingRouteLoading;
 
   return (
     <FormCard
-      key={isEdit ? ofcCable?.id ?? 'edit' : 'new'}
-      title={isEdit ? 'Edit Optical Fiber Cable' : 'Add Optical Fiber Cable'}
-      subtitle={isEdit ? 'Update the cable details below' : 'Fill in the Optical Fiber Cable details below'}
+      key={isEdit ? ofcCable?.id ?? "edit" : "new"}
+      title={isEdit ? "Edit Optical Fiber Cable" : "Add Optical Fiber Cable"}
+      subtitle={isEdit ? "Update the cable details below" : "Fill in the Optical Fiber Cable details below"}
       isLoading={isLoading}
       onCancel={onCancel}
       onSubmit={handleSubmit(onValidSubmit)}
-      submitText={isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'}
-    >
+      submitText={isEdit ? "Update Optical Fiber Cable" : "Create Optical Fiber Cable"}>
       <div className='p-6'>
         {/* Loading Overlay */}
         {isLoading && (
@@ -357,28 +348,12 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {/* Starting Node */}
               <div className='space-y-2'>
-                <FormSearchableSelect
-                  name="starting_node_id"
-                  label="Starting Node"
-                  control={control}
-                  options={startingNodeOptions}
-                  error={errors.starting_node_id}
-                  placeholder="Select starting node"
-                  searchPlaceholder="Search starting nodes..."
-                />
+                <FormSearchableSelect name='starting_node_id' label='Starting Node' control={control} options={startingNodeOptions} error={errors.starting_node_id} placeholder='Select starting node' searchPlaceholder='Search starting nodes...' />
               </div>
 
               {/* Ending Node */}
               <div className='space-y-2'>
-                <FormSearchableSelect
-                  name="ending_node_id"
-                  label="Ending Node"
-                  control={control}
-                  options={endingNodeOptions}
-                  error={errors.ending_node_id}
-                  placeholder="Select ending node"
-                  searchPlaceholder="Search ending nodes..."
-                />
+                <FormSearchableSelect name='ending_node_id' label='Ending Node' control={control} options={endingNodeOptions} error={errors.ending_node_id} placeholder='Select ending node' searchPlaceholder='Search ending nodes...' />
               </div>
             </div>
 
@@ -387,9 +362,7 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
               <div className='mt-6 space-y-2'>
                 <Label className='text-gray-700 dark:text-gray-300 font-medium'>Generated Route Name</Label>
                 <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md px-3 py-2'>
-                  <span className='text-blue-900 dark:text-blue-100 font-mono text-sm'>
-                    {watchedValues.route_name}
-                  </span>
+                  <span className='text-blue-900 dark:text-blue-100 font-mono text-sm'>{watchedValues.route_name}</span>
                 </div>
               </div>
             )}
@@ -407,108 +380,57 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
               {/* Asset Number */}
               <div className='space-y-2'>
-                <FormInput
-                  name="asset_no"
-                  label="Asset Number"
-                  register={register}
-                  error={errors.asset_no}
-                  placeholder="Enter asset number"
-                />
+                <FormInput name='asset_no' label='Asset Number' register={register} error={errors.asset_no} placeholder='Enter asset number' />
               </div>
 
               {/* OFC Type */}
               <div className='space-y-2'>
-                <FormSearchableSelect
-                  name="ofc_type_id"
-                  label="OFC Type"
-                  control={control}
-                  options={ofcTypeOptions}
-                  error={errors.ofc_type_id}
-                  placeholder="Select OFC type"
-                  searchPlaceholder="Search OFC types..."
-                />
+                <FormSearchableSelect name='ofc_type_id' label='OFC Type' control={control} options={ofcTypeOptions} error={errors.ofc_type_id} placeholder='Select OFC type' searchPlaceholder='Search OFC types...' />
               </div>
 
               {/* Capacity */}
               <div className='space-y-2'>
                 <FormSearchableSelect
-                  name="capacity"
+                  name='capacity'
                   control={control}
-                  label="Capacity (Fibers)"
+                  label='Capacity'
                   error={errors.capacity}
-                  placeholder="Select capacity"
-                  searchPlaceholder="Search capacities..."
+                  placeholder='Select capacity'
+                  searchPlaceholder='Search capacities...'
                   options={capacityOptions}
+                  disabled={isCapacityLocked} // 🔒 lock if inferred from OFC type
                 />
-                {isCapacityLocked && (
-                  <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                    Capacity inferred from selected OFC type and locked.
-                  </p>
-                )}
+                {isCapacityLocked && <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>Capacity inferred from selected OFC type and locked.</p>}
               </div>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
               {/* Current RKM */}
               <div className='space-y-2'>
-                <FormInput
-                  name="current_rkm"
-                  label="Current RKM (km)"
-                  register={register}
-                  error={errors.current_rkm}
-                  placeholder="Enter current RKM"
-                  type="number"
-                  step="0.01"
-                />
+                <FormInput name='current_rkm' label='Current RKM (km)' register={register} error={errors.current_rkm} placeholder='Enter current RKM' type='number' step='0.01' />
               </div>
 
               {/* Transnet RKM */}
               <div className='space-y-2'>
-                <FormInput
-                  name="transnet_rkm"
-                  label="Transnet RKM (km)"
-                  register={register}
-                  error={errors.transnet_rkm}
-                  placeholder="Enter transnet RKM"
-                  type="number"
-                  step="0.01"
-                />
+                <FormInput name='transnet_rkm' label='Transnet RKM (km)' register={register} error={errors.transnet_rkm} placeholder='Enter transnet RKM' type='number' step='0.01' />
               </div>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
               {/* Transnet ID */}
               <div className='space-y-2'>
-                <FormInput
-                  name="transnet_id"
-                  label="Transnet ID"
-                  register={register}
-                  error={errors.transnet_id}
-                  placeholder="Enter transnet ID"
-                />
+                <FormInput name='transnet_id' label='Transnet ID' register={register} error={errors.transnet_id} placeholder='Enter transnet ID' />
               </div>
 
               {/* Commissioned On */}
               <div className='space-y-2'>
-                <FormInput
-                  name="commissioned_on"
-                  label="Commissioned Date"
-                  register={register}
-                  error={errors.commissioned_on}
-                  placeholder="Select commissioned date"
-                  type="date"
-                />
+                <FormDateInput name='commissioned_on' label='Commissioned Date' control={control} error={errors.commissioned_on} placeholder='Select commissioned date' />
               </div>
             </div>
 
             {/* Status Switch */}
             <div className='flex items-center space-x-3 pt-6'>
-              <Switch 
-                id='status' 
-                checked={currentStatus ?? true} 
-                onChange={(checked: boolean) => setValue("status", checked)} 
-                className='dark:bg-gray-600' 
-              />
+              <Switch id='status' checked={currentStatus ?? true} onChange={(checked: boolean) => setValue("status", checked)} className='dark:bg-gray-600' />
               <Label htmlFor='status' className='text-gray-700 dark:text-gray-300 font-medium'>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -539,25 +461,19 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
               {/* Maintenance Terminal */}
               <div className='space-y-2'>
                 <FormSearchableSelect
-                  name="maintenance_terminal_id"
-                  label="Maintenance Terminal"
+                  name='maintenance_terminal_id'
+                  label='Maintenance Terminal'
                   control={control}
                   options={maintenanceTerminalOptions}
                   error={errors.maintenance_terminal_id}
-                  placeholder="Select maintenance terminal"
-                  searchPlaceholder="Search maintenance terminals..."
+                  placeholder='Select maintenance terminal'
+                  searchPlaceholder='Search maintenance terminals...'
                 />
               </div>
 
               {/* Remarks */}
               <div className='space-y-2'>
-                <FormTextarea
-                  name="remark"
-                  label="Additional Notes"
-                  register={register}
-                  error={errors.remark}
-                  placeholder="Enter any maintenance notes, installation details, or other relevant information..."
-                />
+                <FormTextarea name='remark' label='Additional Notes' register={register} error={errors.remark} placeholder='Enter any maintenance notes, installation details, or other relevant information...' />
               </div>
             </div>
           </div>
