@@ -66,24 +66,32 @@ export const FormDateInput: React.FC<FormDateInputProps> = ({ name, control, lab
       <Controller
         name={name}
         control={control}
-        defaultValue={null} // important: matches schema's nullable
-        render={({ field }) => (
-          <input
-            type='date'
-            id={name}
-            value={field.value ? field.value.toISOString().split("T")[0] : ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              field.onChange(value || null);
-              // send string (for Zod coerce) or null
-            }}
-            onBlur={field.onBlur}
-            placeholder={placeholder}
-            className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 
-        ${error ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-600 focus:ring-blue-500"} 
-        dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600`}
-          />
-        )}
+        defaultValue={null}
+        render={({ field }) => {
+          // Convert the value to a Date object if it's a string
+          const dateValue = field.value 
+            ? typeof field.value === 'string' 
+              ? new Date(field.value) 
+              : field.value
+            : null;
+            
+          return (
+            <input
+              type='date'
+              id={name}
+              value={dateValue ? dateValue.toISOString().split("T")[0] : ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                field.onChange(value || null);
+              }}
+              onBlur={field.onBlur}
+              placeholder={placeholder}
+              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 
+                ${error ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-600 focus:ring-blue-500"} 
+                dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600`}
+            />
+          );
+        }}
       />
       {error && <p className='mt-1 text-sm text-red-500'>{(error as FieldError).message}</p>}
     </div>

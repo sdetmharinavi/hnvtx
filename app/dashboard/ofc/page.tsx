@@ -119,9 +119,9 @@ const OfcPage = () => {
   };
 
   // Download Configuration
-  const downloadColumns = useDynamicColumnConfig("nodes");
+  const downloadColumns = useDynamicColumnConfig("ofc_cables");
 
-  const tableExcelDownload = useTableExcelDownload(supabase, "nodes", {
+  const tableExcelDownload = useTableExcelDownload(supabase, "ofc_cables", {
     onSuccess: () => {
       toast.success("Export successful");
       refetch();
@@ -130,7 +130,7 @@ const OfcPage = () => {
   });
 
   const handleExport = async () => {
-    const tableName = "nodes";
+    const tableName = "ofc_cables";
     const tableOptions = {
       fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${String(tableName)}-export.xlsx`,
       sheetName: String(tableName),

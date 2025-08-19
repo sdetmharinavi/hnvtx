@@ -142,7 +142,9 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
   } = usePagedNodesComplete(supabase, {
     filters: {
       status: true,
-      node_type_name: "Terminal Node",
+      // Include both Terminal Nodes and Joint / Splice Points
+      // The RPC filter supports a special 'or' key that accepts a raw SQL condition as the first array item
+      or: ["node_type_name IN ('Terminal Node','Joint / Splice Point')"],
     },
     limit: 1000,
   });
