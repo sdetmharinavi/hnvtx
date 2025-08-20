@@ -144,7 +144,7 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
       status: true,
       // Include both Terminal Nodes and Joint / Splice Points
       // The RPC filter supports a special 'or' key that accepts a raw SQL condition as the first array item
-      or: ["node_type_name IN ('Terminal Node','Joint / Splice Point')"],
+      or: ["node_type_name IN ('Terminal Node','Joint / Splice Point','Base Transceiver Station','Backhaul Hub / Block HQ','Customer Premises','Gram Panchayat')"],
     },
     limit: 1000,
   });

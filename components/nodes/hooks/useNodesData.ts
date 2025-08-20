@@ -28,10 +28,10 @@ export const useNodesData = ({
     if (filters.status) f.status = filters.status === "true";
     if (filters.nodeType) f.node_type_id = filters.nodeType;
     if (debouncedSearchTerm) {
-      f.name = { 
-        operator: "ilike", 
-        value: `%${debouncedSearchTerm}%` 
-      };
+      // The RPC get_paged_nodes_complete treats any non-boolean filter value as text
+      // and applies ILIKE with surrounding wildcards itself. So we should pass
+      // the raw search term string, not an operator object nor pre-wildcarded value.
+      f.name = debouncedSearchTerm;
     }
     return f;
   }, [filters, debouncedSearchTerm]);
