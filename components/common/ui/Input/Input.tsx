@@ -49,20 +49,32 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const errorId = `${inputId}-error`;
     const helperTextId = `${inputId}-helper`;
     
+    // File inputs cannot be controlled via value attribute
+    const isFileInput = type === 'file';
+    
     // Track internal value for clearable functionality
-    const [internalValue, setInternalValue] = useState(value || defaultValue || '');
+    const [internalValue, setInternalValue] = useState(
+      isFileInput ? '' : (value || defaultValue || '')
+    );
+    // Track if a file is selected (for file inputs)
+    const [hasFile, setHasFile] = useState(false);
     
     // Update internal value when external value changes
     useEffect(() => {
+      if (isFileInput) return; // file inputs remain uncontrolled
       if (value !== undefined) {
         setInternalValue(value);
       }
-    }, [value]);
+    }, [value, isFileInput]);
     
     // Handle input change
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      setInternalValue(newValue);
+      if (isFileInput) {
+        setHasFile(Boolean(e.target.files && e.target.files.length > 0));
+      } else {
+        const newValue = e.target.value;
+        setInternalValue(newValue);
+      }
       if (onChange) {
         onChange(e);
       }
@@ -70,29 +82,50 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     
     // Handle clear action
     const handleClear = () => {
-      const syntheticEvent = {
-        target: { value: '' },
-        currentTarget: { value: '' },
-      } as React.ChangeEvent<HTMLInputElement>;
-      
-      setInternalValue('');
-      
-      if (onChange) {
-        onChange(syntheticEvent);
-      }
-      
-      if (onClear) {
-        onClear();
-      }
-      
-      // Focus the input after clearing
-      if (ref && 'current' in ref && ref.current) {
-        ref.current.focus();
+      if (isFileInput) {
+        // Clear selected file by setting input's value to empty string
+        if (ref && 'current' in ref && ref.current) {
+          try {
+            ref.current.value = '';
+          } catch {}
+          setHasFile(false);
+          // Optionally notify change to consumers
+          if (onChange) {
+            const syntheticEvent = {
+              target: { value: '' },
+              currentTarget: { value: '' },
+            } as React.ChangeEvent<HTMLInputElement>;
+            onChange(syntheticEvent);
+          }
+          ref.current.focus();
+        }
+      } else {
+        const syntheticEvent = {
+          target: { value: '' },
+          currentTarget: { value: '' },
+        } as React.ChangeEvent<HTMLInputElement>;
+        
+        setInternalValue('');
+        
+        if (onChange) {
+          onChange(syntheticEvent);
+        }
+        
+        if (onClear) {
+          onClear();
+        }
+        
+        // Focus the input after clearing
+        if (ref && 'current' in ref && ref.current) {
+          ref.current.focus();
+        }
       }
     };
     
     // Check if we should show the clear button
-    const shouldShowClear = clearable && !disabled && !isLoading && String(internalValue).length > 0;
+    const shouldShowClear = clearable && !disabled && !isLoading && (
+      isFileInput ? hasFile : String(internalValue).length > 0
+    );
     
     // Build aria-describedby dynamically
     const describedBy = [
@@ -282,7 +315,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             className={inputClasses}
             disabled={disabled || isLoading}
             required={required}
-            value={value !== undefined ? value : internalValue}
+            value={isFileInput ? undefined : (value !== undefined ? value : internalValue)}
             onChange={handleChange}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={describedBy}

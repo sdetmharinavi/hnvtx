@@ -19,7 +19,7 @@ export const useCurrentTableName = (tableName?: UploadConfigTableName): UploadCo
     if (path.includes("/dashboard/rings")) return TABLE_NAMES.rings;
     if (path.includes("/dashboard/maintenance-areas")) return TABLE_NAMES.maintenance_areas;
     if (path.includes("/dashboard/lookup")) return TABLE_NAMES.lookup_types;
-    if (path.includes("/dashboard/ofc_cables")) return TABLE_NAMES.ofc_cables;
+    if (path.includes("/dashboard/ofc")) return TABLE_NAMES.ofc_cables;
     if (path.includes("/dashboard/ofc_connections")) return TABLE_NAMES.ofc_connections;
     if (path.includes("/dashboard/nodes")) return TABLE_NAMES.nodes;
     if (path.includes("/dashboard/systems")) return TABLE_NAMES.systems;
