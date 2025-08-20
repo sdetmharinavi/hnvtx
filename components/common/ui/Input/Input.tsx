@@ -1,4 +1,4 @@
-import React, { forwardRef, useId } from 'react';
+import React, { forwardRef, useId, useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
@@ -12,6 +12,8 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   isLoading?: boolean;
   required?: boolean;
   fullWidth?: boolean;
+  clearable?: boolean;
+  onClear?: () => void;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -30,6 +32,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       disabled,
       required = false,
       fullWidth = true,
+      clearable = false,
+      onClear,
+      value,
+      defaultValue,
+      onChange,
       id,
       'aria-describedby': ariaDescribedBy,
       ...props
@@ -41,6 +48,51 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || generatedId;
     const errorId = `${inputId}-error`;
     const helperTextId = `${inputId}-helper`;
+    
+    // Track internal value for clearable functionality
+    const [internalValue, setInternalValue] = useState(value || defaultValue || '');
+    
+    // Update internal value when external value changes
+    useEffect(() => {
+      if (value !== undefined) {
+        setInternalValue(value);
+      }
+    }, [value]);
+    
+    // Handle input change
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setInternalValue(newValue);
+      if (onChange) {
+        onChange(e);
+      }
+    };
+    
+    // Handle clear action
+    const handleClear = () => {
+      const syntheticEvent = {
+        target: { value: '' },
+        currentTarget: { value: '' },
+      } as React.ChangeEvent<HTMLInputElement>;
+      
+      setInternalValue('');
+      
+      if (onChange) {
+        onChange(syntheticEvent);
+      }
+      
+      if (onClear) {
+        onClear();
+      }
+      
+      // Focus the input after clearing
+      if (ref && 'current' in ref && ref.current) {
+        ref.current.focus();
+      }
+    };
+    
+    // Check if we should show the clear button
+    const shouldShowClear = clearable && !disabled && !isLoading && String(internalValue).length > 0;
     
     // Build aria-describedby dynamically
     const describedBy = [
@@ -79,21 +131,30 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         'focus:ring-blue-500',
       ],
       
-      // Size styles
+      // Size styles with adjusted padding for multiple right icons
       size === 'sm' && [
         'px-3 py-1.5 text-sm',
         leftIcon && 'pl-9',
-        (rightIcon || isLoading) && 'pr-9',
+        // Adjust right padding based on what's showing on the right
+        (shouldShowClear && (rightIcon || isLoading)) && 'pr-16',
+        (shouldShowClear && !(rightIcon || isLoading)) && 'pr-9',
+        (!shouldShowClear && (rightIcon || isLoading)) && 'pr-9',
       ],
       size === 'md' && [
         'px-4 py-2.5 text-base',
         leftIcon && 'pl-11',
-        (rightIcon || isLoading) && 'pr-11',
+        // Adjust right padding based on what's showing on the right
+        (shouldShowClear && (rightIcon || isLoading)) && 'pr-20',
+        (shouldShowClear && !(rightIcon || isLoading)) && 'pr-11',
+        (!shouldShowClear && (rightIcon || isLoading)) && 'pr-11',
       ],
       size === 'lg' && [
         'px-5 py-3 text-lg',
         leftIcon && 'pl-13',
-        (rightIcon || isLoading) && 'pr-13',
+        // Adjust right padding based on what's showing on the right
+        (shouldShowClear && (rightIcon || isLoading)) && 'pr-24',
+        (shouldShowClear && !(rightIcon || isLoading)) && 'pr-13',
+        (!shouldShowClear && (rightIcon || isLoading)) && 'pr-13',
       ],
       
       // State styles
@@ -130,6 +191,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         md: 'right-3', 
         lg: 'right-4',
       },
+      rightSecondary: {
+        sm: 'right-8',
+        md: 'right-10',
+        lg: 'right-12',
+      },
     };
 
     const leftIconClasses = clsx(
@@ -142,8 +208,17 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const rightIconClasses = clsx(
       iconBaseClasses,
       iconSizeClasses[size],
-      iconPositionClasses.right[size],
+      shouldShowClear ? iconPositionClasses.rightSecondary[size] : iconPositionClasses.right[size],
       error ? 'text-red-400' : 'text-gray-400'
+    );
+
+    const clearIconClasses = clsx(
+      'absolute top-1/2 -translate-y-1/2 flex items-center justify-center',
+      'cursor-pointer pointer-events-auto transition-colors duration-200',
+      'hover:text-gray-600 rounded-full p-0.5',
+      iconSizeClasses[size],
+      iconPositionClasses.right[size],
+      error ? 'text-red-400 hover:text-red-600' : 'text-gray-400 hover:text-gray-600'
     );
 
     const LoadingSpinner = () => (
@@ -154,6 +229,24 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         size === 'lg' && 'h-5 w-5 border-t-blue-500',
         error && 'border-t-red-500'
       )} />
+    );
+
+    // Clear icon SVG
+    const ClearIcon = () => (
+      <svg
+        className="w-full h-full"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
     );
 
     return (
@@ -189,6 +282,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             className={inputClasses}
             disabled={disabled || isLoading}
             required={required}
+            value={value !== undefined ? value : internalValue}
+            onChange={handleChange}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={describedBy}
             {...props}
@@ -204,6 +299,18 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             <div className={rightIconClasses} aria-hidden="true">
               <LoadingSpinner />
             </div>
+          )}
+          
+          {shouldShowClear && (
+            <button
+              type="button"
+              className={clearIconClasses}
+              onClick={handleClear}
+              aria-label="Clear input"
+              tabIndex={-1}
+            >
+              <ClearIcon />
+            </button>
           )}
         </div>
         

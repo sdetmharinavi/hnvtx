@@ -1,4 +1,4 @@
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiXCircle } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
 import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
 
@@ -17,8 +17,15 @@ export function NodesFilters({ searchQuery, onSearchChange, nodeTypes, selectedN
     <div className='w-full'>
       <div className='flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-start'>
         <div className='relative flex-1 sm:max-w-md lg:max-w-xl'>
-          <FiSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5' />
-          <Input type='text' placeholder='Search nodes...' value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} />
+          <Input
+            type='text'
+            placeholder='Search nodes...'
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            leftIcon={<FiSearch />}
+            clearable={true}
+            onClear={() => onSearchChange("")}
+          />
         </div>
         <div className='w-full sm:w-64'>
           <SearchableSelect
