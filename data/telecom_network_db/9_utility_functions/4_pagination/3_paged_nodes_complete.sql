@@ -53,6 +53,13 @@ BEGIN
           where_clause := where_clause || format(' AND %I = %L', filter_key, filter_value::text::boolean);
         ELSIF filter_key = 'or' THEN 
           where_clause := where_clause || format(' AND %s', filter_value->>0);
+        ELSIF right(filter_key, 3) = '_id' THEN
+          -- For id fields, use exact match instead of ILIKE
+          where_clause := where_clause || format(
+            ' AND %I::text = %L',
+            filter_key,
+            trim(BOTH '"' FROM filter_value::text)
+          );
         ELSE 
           where_clause := where_clause || format(
             ' AND %I::text ILIKE %L',
