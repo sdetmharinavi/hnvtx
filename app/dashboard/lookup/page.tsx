@@ -6,12 +6,14 @@ import { useLookupTypes } from "@/components/lookup/lookup-hooks";
 import { LookupTypesHeader } from "@/components/lookup/LookupTypesHeader";
 import { LookupTypesFilters } from "@/components/lookup/LookupTypesFilters";
 import { LookupTypesTable } from "@/components/lookup/LookupTypesTable";
+import { useSorting } from "@/hooks/useSorting";
 import {
   NoCategoriesState,
   SelectCategoryPrompt,
   LoadingState,
   ErrorState
 } from "@/components/lookup/LookupTypesEmptyStates";
+import { useMemo } from "react";
 
 export default function LookupTypesPage() {
   const {
@@ -41,6 +43,33 @@ export default function LookupTypesPage() {
       handleLookupUpdated
     }
   } = useLookupTypes();
+
+  // Apply sorting to lookup types
+  const {
+    sortedData: sortedLookupTypes,
+    handleSort,
+    getSortDirection
+  } = useSorting({
+    data: lookupTypes,
+    defaultSortKey: 'name',
+    defaultDirection: 'asc',
+    options: {
+      caseSensitive: false,
+      numericSort: true
+    }
+  });
+
+  // Filter sorted data based on search term
+  const filteredAndSortedLookupTypes = useMemo(() => {
+    if (!searchTerm.trim()) return sortedLookupTypes;
+    
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return sortedLookupTypes.filter(lookup => 
+      lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
+      lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
+      lookup.description?.toLowerCase().includes(lowerSearchTerm)
+    );
+  }, [sortedLookupTypes, searchTerm]);
 
   return (
     <div className="space-y-6 p-6">
@@ -78,18 +107,25 @@ export default function LookupTypesPage() {
         <Card className="overflow-hidden">
           <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {lookupTypes.length} of {lookupTypes.length} lookup
+              Showing {filteredAndSortedLookupTypes.length} of {lookupTypes.length} lookup
               types for category: <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
+              {searchTerm && (
+                <span className="ml-2">
+                  (filtered by: <em>&quot;{searchTerm}&quot;</em>)
+                </span>
+              )}
             </p>
           </div>
 
           <LookupTypesTable
-            lookups={lookupTypes}
+            lookups={filteredAndSortedLookupTypes}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}
             selectedCategory={selectedCategory}
             searchTerm={searchTerm}
+            onSort={handleSort}
+            getSortDirection={getSortDirection}
           />
         </Card>
       )}

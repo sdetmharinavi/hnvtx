@@ -25,6 +25,7 @@ interface SearchableSelectProps {
   loading?: boolean;
   required?: boolean;
   error?: boolean;
+  sortOptions?: boolean; // New prop to control sorting
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -41,6 +42,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   loading = false,
   required = false,
   error = false,
+  sortOptions = true, // Default to true for ascending order
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,13 +52,27 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Filter options based on search term
+  // Sort options in ascending order (if enabled) and filter based on search term
   const filteredOptions = useMemo(() => {
-    if (!searchTerm.trim()) return options;
-    return options.filter(option =>
+    let processedOptions = [...options];
+    
+    // Sort options alphabetically if sorting is enabled
+    if (sortOptions) {
+      processedOptions = processedOptions.sort((a, b) => 
+        a.label.localeCompare(b.label, undefined, { 
+          sensitivity: 'base',
+          numeric: true 
+        })
+      );
+    }
+    
+    // Filter based on search term
+    if (!searchTerm.trim()) return processedOptions;
+    
+    return processedOptions.filter(option =>
       option.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [options, searchTerm]);
+  }, [options, searchTerm, sortOptions]);
 
   // Get selected option label
   const selectedOption = options.find(option => option.value === value);
