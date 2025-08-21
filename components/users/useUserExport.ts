@@ -36,6 +36,7 @@ export const useUserExport = () => {
       // Add data rows
       data.forEach((row: UserProfileData) => {
         const rowData = headers.map(header => row[header as keyof UserProfileData]);
+        console.log(rowData);
         worksheet.addRow(rowData);
       });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiUser, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiCamera, FiShield } from "react-icons/fi";
 import { useAdminGetUserById, useAdminUpdateUserProfile, useGetMyRole, useIsSuperAdmin } from "@/hooks/useAdminUsers";
@@ -9,33 +9,6 @@ import Image from "next/image";
 import { useForm, Resolver } from "react-hook-form";
 import { UserProfile, userProfileSchema } from "@/schemas/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-// This type is no longer needed as we use the Zod-inferred type
-// // Define Address as a type that can be serialized to JSON
-// type Address = {
-//   street?: string | null;
-//   city?: string | null;
-//   state?: string | null;
-//   zip_code?: string | null;
-//   country?: string | null;
-// };
-
-// interface UserPreferences {
-//   [key: string]: string | number | boolean
-// }
-
-// interface FormData {
-//   first_name: string
-//   last_name: string
-//   avatar_url: string
-//   phone_number: string
-//   date_of_birth: string | null
-//   address: Address | null,
-//   preferences: UserPreferences
-//   role: UserRole
-//   designation: string
-//   status: string
-// }
 
 interface UpdateParams {
   user_id: string;

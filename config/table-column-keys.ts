@@ -9,9 +9,13 @@ export type TableName = keyof Database["public"]["Tables"];
 export type TableOrViewName = TableName | ViewName;
 
 // A generic Row type helper that works for both tables and views
-export type GenericRow<T extends TableOrViewName> = T extends TableName ? Tables<T> : T extends ViewName ? Database["public"]["Views"][T]["Row"] : never;
+export type GenericRow<T extends TableOrViewName> = T extends TableName
+  ? Tables<T>
+  : T extends ViewName
+  ? Database["public"]["Views"][T]["Row"]
+  : never;
 
-// FIX: This Mapped Type now correctly includes both Tables and Views.
+// This Mapped Type now correctly includes both Tables and Views.
 type AllColumnKeys = {
   [K in TableName]: (keyof Tables<K> & string)[];
 } & {
@@ -93,13 +97,18 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
 };
 
 function toTitleCase(str: string): string {
-  return str.replace(/_/g, " ").replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
+  return str
+    .replace(/_/g, " ")
+    .replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
 }
 
 // Build UI column configs (lightweight structure; consumer can enrich widths/formats)
-export function buildColumnConfig<T extends TableName>(tableName: T) {
-  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof Tables<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<string, ColumnMeta>;
+export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
+  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[];
+  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<
+    string,
+    ColumnMeta
+  >;
   return keys.map((key) => {
     const m = meta[key] || {};
     const title = m.title ?? toTitleCase(key);
@@ -115,7 +124,10 @@ export function buildColumnConfig<T extends TableName>(tableName: T) {
 // Build upload config from SSOT
 export function buildUploadConfig<T extends TableName>(tableName: T) {
   const keys = TABLE_COLUMN_KEYS[tableName] as (keyof Tables<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<string, ColumnMeta>;
+  const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<
+    string,
+    ColumnMeta
+  >;
   const tableMeta = (UPLOAD_TABLE_META[tableName] || {
     uploadType: "upsert",
   }) as UploadTableMeta<T>;
@@ -129,7 +141,14 @@ export function buildUploadConfig<T extends TableName>(tableName: T) {
       const k = String(key).toLowerCase();
       if (k.endsWith("_at") || k.endsWith("_on") || k.includes("date")) {
         transform = toPgDate;
-      } else if (k.startsWith("is_") || k.startsWith("has_") || k.startsWith("can_") || k.includes("enabled") || k.includes("active") || k === "status") {
+      } else if (
+        k.startsWith("is_") ||
+        k.startsWith("has_") ||
+        k.startsWith("can_") ||
+        k.includes("enabled") ||
+        k.includes("active") ||
+        k === "status"
+      ) {
         transform = toPgBoolean;
       }
     }
@@ -149,8 +168,9 @@ export function buildUploadConfig<T extends TableName>(tableName: T) {
   };
 }
 
-// FIX: Add your views to this central constant
+// Add all tables and views to this central constant
 export const TABLE_NAMES = {
+  // Tables
   user_profiles: "user_profiles",
   employees: "employees",
   lookup_types: "lookup_types",
@@ -161,12 +181,34 @@ export const TABLE_NAMES = {
   ofc_connections: "ofc_connections",
   nodes: "nodes",
   systems: "systems",
+  cpan_connections: "cpan_connections",
+  cpan_systems: "cpan_systems",
+  fiber_joint_connections: "fiber_joint_connections",
+  fiber_joints: "fiber_joints",
+  logical_fiber_paths: "logical_fiber_paths",
+  maan_connections: "maan_connections",
+  maan_systems: "maan_systems",
+  management_ports: "management_ports",
+  sdh_connections: "sdh_connections",
+  sdh_node_associations: "sdh_node_associations",
+  sdh_systems: "sdh_systems",
+  system_connections: "system_connections",
+  user_activity_logs: "user_activity_logs",
+  vmux_connections: "vmux_connections",
+  vmux_systems: "vmux_systems",
 
-  // ADD THE VIEW NAME HERE
+  // Views
+  v_cable_utilization: "v_cable_utilization",
+  v_end_to_end_paths: "v_end_to_end_paths",
+  v_nodes_complete: "v_nodes_complete",
   v_ofc_cables_complete: "v_ofc_cables_complete",
+  v_ofc_connections_complete: "v_ofc_connections_complete",
+  v_system_connections_complete: "v_system_connections_complete",
+  v_systems_complete: "v_systems_complete",
+  v_user_profiles_extended: "v_user_profiles_extended",
 } as const;
 
-export type CurrentTableName = keyof typeof TABLE_NAMES;
+export type CurrentTableOrViewName = keyof typeof TABLE_NAMES;
 
 // Helper: normalize various Excel/CSV date representations to 'YYYY-MM-DD' or null
 export const toPgDate = (value: unknown): string | null => {
@@ -194,7 +236,8 @@ export const toPgDate = (value: unknown): string | null => {
     }
 
     // Handle common D/M/Y or M/D/Y with optional time "DD/MM/YYYY HH:MM:SS" or "MM/DD/YYYY HH:MM:SS"
-    const dmYTime = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+    const dmYTime =
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
     const match = v.match(dmYTime);
     if (match) {
       const d1 = parseInt(match[1], 10);
@@ -282,7 +325,6 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     status: { transform: toPgBoolean },
   },
   user_profiles: {
-    status: { transform: toPgBoolean },
     date_of_birth: { transform: toPgDate, excelFormat: "date" },
   },
   ofc_cables: {
@@ -290,8 +332,8 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     status: { transform: toPgBoolean },
   },
   ofc_connections: {
-    ea_dom: { transform: toPgDate, excelFormat: "date" },
-    eb_dom: { transform: toPgDate, excelFormat: "date" },
+    en_dom: { transform: toPgDate, excelFormat: "date" },
+    sn_dom: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
   },
   nodes: {
@@ -310,12 +352,84 @@ export const TABLE_COLUMN_META: TableMetaMap = {
  */
 export const TABLE_COLUMN_KEYS: AllColumnKeys = {
   // We list all keys for each table here.
-  user_profiles: ["id", "first_name", "last_name", "phone_number", "role", "designation", "status", "avatar_url", "date_of_birth", "address", "preferences", "created_at", "updated_at"],
-  lookup_types: ["id", "category", "name", "code", "description", "sort_order", "status", "is_system_default", "created_at", "updated_at"],
-  maintenance_areas: ["id", "code", "name", "address", "email", "contact_person", "contact_number", "latitude", "longitude", "area_type_id", "parent_id", "status", "created_at", "updated_at"],
-  employee_designations: ["id", "name", "parent_id", "status", "created_at", "updated_at"],
-  employees: ["id", "employee_pers_no", "employee_name", "employee_email", "employee_dob", "employee_doj", "employee_contact", "employee_addr", "employee_designation_id", "maintenance_terminal_id", "status", "remark", "created_at", "updated_at"],
-  rings: ["id", "name", "description", "ring_type_id", "maintenance_terminal_id", "total_nodes", "status", "created_at", "updated_at"],
+  user_profiles: [
+    "id",
+    "first_name",
+    "last_name",
+    "phone_number",
+    "role",
+    "designation",
+    "status",
+    "avatar_url",
+    "date_of_birth",
+    "address",
+    "preferences",
+    "created_at",
+    "updated_at",
+  ],
+  lookup_types: [
+    "id",
+    "category",
+    "name",
+    "code",
+    "description",
+    "sort_order",
+    "status",
+    "is_system_default",
+    "created_at",
+    "updated_at",
+  ],
+  maintenance_areas: [
+    "id",
+    "code",
+    "name",
+    "address",
+    "email",
+    "contact_person",
+    "contact_number",
+    "latitude",
+    "longitude",
+    "area_type_id",
+    "parent_id",
+    "status",
+    "created_at",
+    "updated_at",
+  ],
+  employee_designations: [
+    "id",
+    "name",
+    "parent_id",
+    "status",
+    "created_at",
+    "updated_at",
+  ],
+  employees: [
+    "id",
+    "employee_pers_no",
+    "employee_name",
+    "employee_email",
+    "employee_dob",
+    "employee_doj",
+    "employee_contact",
+    "employee_addr",
+    "employee_designation_id",
+    "maintenance_terminal_id",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  rings: [
+    "id",
+    "name",
+    "description",
+    "ring_type_id",
+    "maintenance_terminal_id",
+    "total_nodes",
+    "status",
+    "created_at",
+    "updated_at",
+  ],
   nodes: [
     "id",
     "name",
@@ -337,29 +451,130 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "created_at",
     "updated_at",
   ],
-  ofc_cables: ["id", "route_name", "starting_node_id", "ending_node_id", "capacity", "ofc_type_id", "asset_no", "transnet_id", "transnet_rkm", "current_rkm", "maintenance_terminal_id", "commissioned_on", "status", "remark", "created_at", "updated_at"],
-  systems: ["id", "system_name", "node_id", "system_type_id", "ip_address", "maintenance_terminal_id", "commissioned_on", "status", "remark", "created_at", "updated_at"],
-  ofc_connections: ["id", "node_a_id", "node_b_id", "ofc_id", "system_a_id", "system_b_id", "fiber_no_ea", "fiber_no_eb", "ea_dom", "eb_dom", "otdr_distance_ea_km", "otdr_distance_eb_km", "status", "remark", "created_at", "updated_at"],
-  maan_connections: ["system_connection_id", "customer_name", "bandwidth_allocated_mbps", "sfp_type_id", "sfp_capacity", "sfp_serial_no", "sfp_port", "fiber_in", "fiber_out"],
+  ofc_cables: [
+    "id",
+    "route_name",
+    "sn_id",
+    "en_id",
+    "capacity",
+    "ofc_type_id",
+    "asset_no",
+    "transnet_id",
+    "transnet_rkm",
+    "current_rkm",
+    "maintenance_terminal_id",
+    "commissioned_on",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  systems: [
+    "id",
+    "system_name",
+    "s_no",
+    "node_id",
+    "system_type_id",
+    "ip_address",
+    "maintenance_terminal_id",
+    "commissioned_on",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  ofc_connections: [
+    "id",
+    "source_id",
+    "destination_id",
+    "ofc_id",
+    "logical_path_id",
+    "system_en_id",
+    "system_sn_id",
+    "fiber_no_en",
+    "fiber_no_sn",
+    "path_segment_order",
+    "connection_type",
+    "connection_category",
+    "source_port",
+    "destination_port",
+    "en_dom",
+    "sn_dom",
+    "otdr_distance_en_km",
+    "otdr_distance_sn_km",
+    "sn_power_dbm",
+    "en_power_dbm",
+    "route_loss_db",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  maan_connections: [
+    "system_connection_id",
+    "customer_name",
+    "bandwidth_allocated_mbps",
+    "sfp_type_id",
+    "sfp_capacity",
+    "sfp_serial_no",
+    "sfp_port",
+    "fiber_in",
+    "fiber_out",
+  ],
   maan_systems: ["system_id", "area", "ring_no"],
   cpan_systems: ["system_id", "area", "ring_no"],
-  cpan_connections: ["system_connection_id", "customer_name", "bandwidth_allocated_mbps", "sfp_type_id", "sfp_capacity", "sfp_serial_no", "sfp_port", "fiber_in", "fiber_out"],
-  management_ports: ["id", "name", "port_no", "commissioned_on", "node_id", "system_id", "status", "remark", "created_at", "updated_at"],
+  cpan_connections: [
+    "system_connection_id",
+    "customer_name",
+    "bandwidth_allocated_mbps",
+    "sfp_type_id",
+    "sfp_capacity",
+    "sfp_serial_no",
+    "sfp_port",
+    "fiber_in",
+    "fiber_out",
+  ],
+  management_ports: [
+    "id",
+    "name",
+    "port_no",
+    "commissioned_on",
+    "node_id",
+    "system_id",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
 
-  sdh_connections: ["system_connection_id", "stm_no", "carrier", "a_customer", "a_slot", "b_customer", "b_slot"],
-  sdh_node_associations: ["id", "sdh_system_id", "node_id", "node_position", "node_ip"],
+  sdh_connections: [
+    "system_connection_id",
+    "stm_no",
+    "carrier",
+    "a_customer",
+    "a_slot",
+    "b_customer",
+    "b_slot",
+  ],
+  sdh_node_associations: [
+    "id",
+    "sdh_system_id",
+    "node_id",
+    "node_position",
+    "node_ip",
+  ],
   sdh_systems: ["system_id", "make", "gne"],
   system_connections: [
     "id",
     "system_id",
-    "node_a_id",
-    "node_b_id",
+    "sn_id",
+    "en_id",
     "connected_system_id",
     "media_type_id",
-    "ea_interface",
-    "eb_interface",
-    "ea_ip",
-    "eb_ip",
+    "sn_interface",
+    "en_interface",
+    "sn_ip",
+    "en_ip",
     "vlan",
     "bandwidth_mbps",
     "commissioned_on",
@@ -368,15 +583,102 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "created_at",
     "updated_at",
   ],
-  vmux_connections: ["system_connection_id", "subscriber", "channel", "c_code", "tk"],
+  vmux_connections: [
+    "system_connection_id",
+    "subscriber",
+    "channel",
+    "c_code",
+    "tk",
+  ],
   vmux_systems: ["system_id", "vm_id"],
-  // ===== FIX: DEFINE THE COLUMNS FOR YOUR VIEW =====
+  fiber_joints: [
+    "id",
+    "joint_name",
+    "joint_category",
+    "joint_type",
+    "node_id",
+    "maintenance_area_id",
+    "latitude",
+    "longitude",
+    "location_description",
+    "installed_date",
+    "status",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  logical_fiber_paths: [
+    "id",
+    "path_name",
+    "source_system_id",
+    "destination_system_id",
+    "path_category",
+    "path_type",
+    "source_port",
+    "destination_port",
+    "service_type",
+    "operational_status_category",
+    "operational_status",
+    "commissioned_date",
+    "wavelength_nm",
+    "bandwidth_gbps",
+    "total_distance_km",
+    "total_loss_db",
+    "remark",
+    "created_at",
+    "updated_at",
+  ],
+  fiber_joint_connections: [
+    "id",
+    "joint_id",
+    "input_ofc_id",
+    "output_ofc_id",
+    "input_fiber_no",
+    "output_fiber_no",
+    "logical_path_id",
+    "splice_loss_db",
+    "created_at",
+    "updated_at",
+  ],
+  user_activity_logs: [
+    "id",
+    "created_at",
+    "user_id",
+    "user_role",
+    "action_type",
+    "table_name",
+    "record_id",
+    "old_data",
+    "new_data",
+    "details",
+  ],
+
+  // ===== Views =====
+  v_cable_utilization: [
+    "cable_id",
+    "route_name",
+    "capacity",
+    "used_fibers",
+    "available_fibers",
+    "utilization_percent",
+  ],
+  v_end_to_end_paths: [
+    "path_id",
+    "path_name",
+    "source_system_id",
+    "destination_system_id",
+    "operational_status",
+    "segment_count",
+    "route_names",
+    "total_distance_km",
+    "total_loss_db",
+  ],
   v_ofc_cables_complete: [
     // From ofc_cables table
     "id",
     "route_name",
-    "starting_node_id",
-    "ending_node_id",
+    "sn_id",
+    "en_id",
     "ofc_type_id",
     "capacity",
     "current_rkm",
@@ -413,6 +715,7 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "builtup",
     "east_port",
     "west_port",
+    "ring_status",
     "status",
     "remark",
     "created_at",
@@ -421,87 +724,57 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     // Extra fields from the joins
     "ring_name",
     "ring_type_id",
-    "node_type_name",
-    "node_type_code",
     "ring_type_name",
     "ring_type_code",
+    "node_type_name",
+    "node_type_code",
     "maintenance_area_name",
     "maintenance_area_code",
     "maintenance_area_type_name",
   ],
   v_ofc_connections_complete: [
-    // From ofc_connections table
     "id",
     "ofc_id",
-
-    // From ofc_cables join
     "ofc_route_name",
-
-    // From lookup_types (OFC type)
     "ofc_type_name",
-
-    // Node A details
-    "node_a_name",
-    "fiber_no_ea",
-    "otdr_distance_ea_km",
-    "ea_dom",
-    "system_a_name",
-
-    // Node B details
-    "node_b_name",
-    "fiber_no_eb",
-    "otdr_distance_eb_km",
-    "eb_dom",
-    "system_b_name",
-
-    // Common fields
+    "sn_id",
+    "sn_name",
+    "en_id",
+    "en_name",
+    "fiber_no_sn",
+    "fiber_no_en",
+    "otdr_distance_sn_km",
+    "otdr_distance_en_km",
+    "sn_dom",
+    "en_dom",
+    "system_sn_name",
+    "system_en_name",
     "remark",
     "status",
     "created_at",
     "updated_at",
   ],
   v_system_connections_complete: [
-    // From system_connections table
     "id",
     "system_id",
-
-    // From systems join
     "system_name",
-
-    // From lookup_types (system type)
     "system_type_name",
-
-    // From nodes
-    "node_a_name",
-    "node_b_name",
-
-    // Connection details
-    "ea_ip",
-    "ea_interface",
-    "eb_ip",
-    "eb_interface",
-
-    // From lookup_types (media type)
+    "sn_name",
+    "en_name",
+    "sn_ip",
+    "en_ip",
+    "sn_interface",
+    "en_interface",
     "media_type_name",
-
-    // From system_connections
     "bandwidth_mbps",
-
-    // Connected system details
     "connected_system_name",
     "connected_system_type_name",
-
-    // VLAN and commissioning
     "vlan",
     "commissioned_on",
-
-    // Common info
     "remark",
     "status",
     "created_at",
     "updated_at",
-
-    // MAAN-specific fields
     "maan_sfp_port",
     "maan_sfp_type_name",
     "maan_sfp_capacity",
@@ -510,67 +783,48 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "maan_fiber_out",
     "maan_customer_name",
     "maan_bandwidth_allocated_mbps",
-
-    // SDH-specific fields
     "sdh_stm_no",
     "sdh_carrier",
     "sdh_a_slot",
     "sdh_a_customer",
     "sdh_b_slot",
     "sdh_b_customer",
-
-    // VMUX-specific fields
     "vmux_subscriber",
     "vmux_c_code",
     "vmux_channel",
     "vmux_tk",
   ],
   v_systems_complete: [
-    // From systems table
     "id",
     "system_name",
     "ip_address",
+    "s_no",
     "commissioned_on",
     "remark",
     "status",
     "created_at",
     "updated_at",
-
-    // From nodes join
     "node_name",
     "latitude",
     "longitude",
     "node_ip",
-
-    // From lookup_types (system type)
     "system_type_name",
     "system_type_code",
     "system_category",
-
-    // From maintenance_areas
     "maintenance_area_name",
-
-    // MAAN-specific fields (from maan_systems)
     "maan_ring_no",
     "maan_area",
-
-    // SDH-specific fields (from sdh_systems)
     "sdh_gne",
     "sdh_make",
-
-    // VMUX-specific fields (from vmux_systems)
     "vmux_vm_id",
   ],
   v_user_profiles_extended: [
-    // From auth.users
     "id",
     "email",
     "last_sign_in_at",
     "created_at",
     "is_super_admin",
     "is_email_verified",
-
-    // From user_profiles
     "first_name",
     "last_name",
     "avatar_url",
@@ -582,16 +836,12 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "designation",
     "updated_at",
     "status",
-
-    // From auth.users (again)
     "email_confirmed_at",
     "phone_confirmed_at",
     "is_phone_verified",
     "auth_updated_at",
     "raw_user_meta_data",
     "raw_app_meta_data",
-
-    // Computed / derived fields
     "full_name",
     "computed_status",
     "account_age_days",

@@ -910,6 +910,319 @@ export type Database = {
           },
         ]
       }
+      fiber_joint_connections: {
+        Row: {
+          created_at: string | null
+          id: string
+          input_fiber_no: number
+          input_ofc_id: string
+          joint_id: string
+          logical_path_id: string | null
+          output_fiber_no: number
+          output_ofc_id: string
+          splice_loss_db: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          input_fiber_no: number
+          input_ofc_id: string
+          joint_id: string
+          logical_path_id?: string | null
+          output_fiber_no: number
+          output_ofc_id: string
+          splice_loss_db?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          input_fiber_no?: number
+          input_ofc_id?: string
+          joint_id?: string
+          logical_path_id?: string | null
+          output_fiber_no?: number
+          output_ofc_id?: string
+          splice_loss_db?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
+            columns: ["input_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
+            columns: ["input_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
+            columns: ["input_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_joint_id_fkey"
+            columns: ["joint_id"]
+            isOneToOne: false
+            referencedRelation: "fiber_joints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "logical_fiber_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "v_end_to_end_paths"
+            referencedColumns: ["path_id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
+            columns: ["output_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
+            columns: ["output_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
+            columns: ["output_ofc_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiber_joints: {
+        Row: {
+          created_at: string | null
+          id: string
+          installed_date: string | null
+          joint_category: string
+          joint_name: string
+          joint_type: string
+          latitude: number | null
+          location_description: string | null
+          longitude: number | null
+          maintenance_area_id: string | null
+          node_id: string | null
+          remark: string | null
+          status: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          installed_date?: string | null
+          joint_category?: string
+          joint_name: string
+          joint_type?: string
+          latitude?: number | null
+          location_description?: string | null
+          longitude?: number | null
+          maintenance_area_id?: string | null
+          node_id?: string | null
+          remark?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          installed_date?: string | null
+          joint_category?: string
+          joint_name?: string
+          joint_type?: string
+          latitude?: number | null
+          location_description?: string | null
+          longitude?: number | null
+          maintenance_area_id?: string | null
+          node_id?: string | null
+          remark?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiber_joints_maintenance_area_id_fkey"
+            columns: ["maintenance_area_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joints_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_joints_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_joint_type"
+            columns: ["joint_category", "joint_type"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["category", "name"]
+          },
+          {
+            foreignKeyName: "fk_joint_type"
+            columns: ["joint_category", "joint_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_type_name"]
+          },
+        ]
+      }
+      logical_fiber_paths: {
+        Row: {
+          bandwidth_gbps: number | null
+          commissioned_date: string | null
+          created_at: string | null
+          destination_port: string | null
+          destination_system_id: string | null
+          id: string
+          operational_status: string
+          operational_status_category: string
+          path_category: string
+          path_name: string | null
+          path_type: string
+          remark: string | null
+          service_type: string | null
+          source_port: string | null
+          source_system_id: string | null
+          total_distance_km: number | null
+          total_loss_db: number | null
+          updated_at: string | null
+          wavelength_nm: number | null
+        }
+        Insert: {
+          bandwidth_gbps?: number | null
+          commissioned_date?: string | null
+          created_at?: string | null
+          destination_port?: string | null
+          destination_system_id?: string | null
+          id?: string
+          operational_status?: string
+          operational_status_category?: string
+          path_category?: string
+          path_name?: string | null
+          path_type?: string
+          remark?: string | null
+          service_type?: string | null
+          source_port?: string | null
+          source_system_id?: string | null
+          total_distance_km?: number | null
+          total_loss_db?: number | null
+          updated_at?: string | null
+          wavelength_nm?: number | null
+        }
+        Update: {
+          bandwidth_gbps?: number | null
+          commissioned_date?: string | null
+          created_at?: string | null
+          destination_port?: string | null
+          destination_system_id?: string | null
+          id?: string
+          operational_status?: string
+          operational_status_category?: string
+          path_category?: string
+          path_name?: string | null
+          path_type?: string
+          remark?: string | null
+          service_type?: string | null
+          source_port?: string | null
+          source_system_id?: string | null
+          total_distance_km?: number | null
+          total_loss_db?: number | null
+          updated_at?: string | null
+          wavelength_nm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_operational_status"
+            columns: ["operational_status_category", "operational_status"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["category", "name"]
+          },
+          {
+            foreignKeyName: "fk_operational_status"
+            columns: ["operational_status_category", "operational_status"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_type_name"]
+          },
+          {
+            foreignKeyName: "fk_path_type"
+            columns: ["path_category", "path_type"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["category", "name"]
+          },
+          {
+            foreignKeyName: "fk_path_type"
+            columns: ["path_category", "path_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_type_name"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lookup_types: {
         Row: {
           category: string
@@ -1050,8 +1363,8 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
-          latitude: string | null
-          longitude: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
           parent_id: string | null
           status: boolean | null
@@ -1066,8 +1379,8 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
-          latitude?: string | null
-          longitude?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
           parent_id?: string | null
           status?: boolean | null
@@ -1082,8 +1395,8 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
-          latitude?: string | null
-          longitude?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           parent_id?: string | null
           status?: boolean | null
@@ -1269,13 +1582,13 @@ export type Database = {
           commissioned_on: string | null
           created_at: string | null
           current_rkm: number | null
-          ending_node_id: string
+          en_id: string
           id: string
           maintenance_terminal_id: string | null
           ofc_type_id: string
           remark: string | null
           route_name: string
-          starting_node_id: string
+          sn_id: string
           status: boolean | null
           transnet_id: string | null
           transnet_rkm: number | null
@@ -1287,13 +1600,13 @@ export type Database = {
           commissioned_on?: string | null
           created_at?: string | null
           current_rkm?: number | null
-          ending_node_id: string
+          en_id: string
           id?: string
           maintenance_terminal_id?: string | null
           ofc_type_id: string
           remark?: string | null
           route_name: string
-          starting_node_id: string
+          sn_id: string
           status?: boolean | null
           transnet_id?: string | null
           transnet_rkm?: number | null
@@ -1305,13 +1618,13 @@ export type Database = {
           commissioned_on?: string | null
           created_at?: string | null
           current_rkm?: number | null
-          ending_node_id?: string
+          en_id?: string
           id?: string
           maintenance_terminal_id?: string | null
           ofc_type_id?: string
           remark?: string | null
           route_name?: string
-          starting_node_id?: string
+          sn_id?: string
           status?: boolean | null
           transnet_id?: string | null
           transnet_rkm?: number | null
@@ -1319,15 +1632,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -1347,15 +1660,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -1364,93 +1677,111 @@ export type Database = {
       }
       ofc_connections: {
         Row: {
+          connection_category: string
+          connection_type: string
           created_at: string | null
-          ea_dom: string | null
-          ea_power_dbm: number | null
-          eb_dom: string | null
-          eb_power_dbm: number | null
-          fiber_no_ea: number | null
-          fiber_no_eb: number | null
+          destination_id: string | null
+          destination_port: string | null
+          en_dom: string | null
+          en_power_dbm: number | null
+          fiber_no_en: number | null
+          fiber_no_sn: number
           id: string
-          node_a_id: string
-          node_b_id: string
+          logical_path_id: string | null
           ofc_id: string
-          otdr_distance_ea_km: number | null
-          otdr_distance_eb_km: number | null
+          otdr_distance_en_km: number | null
+          otdr_distance_sn_km: number | null
+          path_segment_order: number | null
           remark: string | null
           route_loss_db: number | null
+          sn_dom: string | null
+          sn_power_dbm: number | null
+          source_id: string | null
+          source_port: string | null
           status: boolean | null
-          system_a_id: string | null
-          system_b_id: string | null
+          system_en_id: string | null
+          system_sn_id: string | null
           updated_at: string | null
         }
         Insert: {
+          connection_category?: string
+          connection_type?: string
           created_at?: string | null
-          ea_dom?: string | null
-          ea_power_dbm?: number | null
-          eb_dom?: string | null
-          eb_power_dbm?: number | null
-          fiber_no_ea?: number | null
-          fiber_no_eb?: number | null
+          destination_id?: string | null
+          destination_port?: string | null
+          en_dom?: string | null
+          en_power_dbm?: number | null
+          fiber_no_en?: number | null
+          fiber_no_sn: number
           id?: string
-          node_a_id: string
-          node_b_id: string
+          logical_path_id?: string | null
           ofc_id: string
-          otdr_distance_ea_km?: number | null
-          otdr_distance_eb_km?: number | null
+          otdr_distance_en_km?: number | null
+          otdr_distance_sn_km?: number | null
+          path_segment_order?: number | null
           remark?: string | null
           route_loss_db?: number | null
+          sn_dom?: string | null
+          sn_power_dbm?: number | null
+          source_id?: string | null
+          source_port?: string | null
           status?: boolean | null
-          system_a_id?: string | null
-          system_b_id?: string | null
+          system_en_id?: string | null
+          system_sn_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          connection_category?: string
+          connection_type?: string
           created_at?: string | null
-          ea_dom?: string | null
-          ea_power_dbm?: number | null
-          eb_dom?: string | null
-          eb_power_dbm?: number | null
-          fiber_no_ea?: number | null
-          fiber_no_eb?: number | null
+          destination_id?: string | null
+          destination_port?: string | null
+          en_dom?: string | null
+          en_power_dbm?: number | null
+          fiber_no_en?: number | null
+          fiber_no_sn?: number
           id?: string
-          node_a_id?: string
-          node_b_id?: string
+          logical_path_id?: string | null
           ofc_id?: string
-          otdr_distance_ea_km?: number | null
-          otdr_distance_eb_km?: number | null
+          otdr_distance_en_km?: number | null
+          otdr_distance_sn_km?: number | null
+          path_segment_order?: number | null
           remark?: string | null
           route_loss_db?: number | null
+          sn_dom?: string | null
+          sn_power_dbm?: number | null
+          source_id?: string | null
+          source_port?: string | null
           status?: boolean | null
-          system_a_id?: string | null
-          system_b_id?: string | null
+          system_en_id?: string | null
+          system_sn_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "ofc_connections_node_a_id_fkey"
-            columns: ["node_a_id"]
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["category", "name"]
+          },
+          {
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_type_name"]
+          },
+          {
+            foreignKeyName: "ofc_connections_destination_id_fkey"
+            columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_connections_node_a_id_fkey"
-            columns: ["node_a_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_connections_node_b_id_fkey"
-            columns: ["node_b_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_connections_node_b_id_fkey"
-            columns: ["node_b_id"]
+            foreignKeyName: "ofc_connections_destination_id_fkey"
+            columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -1466,33 +1797,54 @@ export type Database = {
             foreignKeyName: "ofc_connections_ofc_id_fkey"
             columns: ["ofc_id"]
             isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_ofc_id_fkey"
+            columns: ["ofc_id"]
+            isOneToOne: false
             referencedRelation: "v_ofc_cables_complete"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_connections_system_a_id_fkey"
-            columns: ["system_a_id"]
+            foreignKeyName: "ofc_connections_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_system_en_id_fkey"
+            columns: ["system_en_id"]
             isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_connections_system_a_id_fkey"
-            columns: ["system_a_id"]
+            foreignKeyName: "ofc_connections_system_en_id_fkey"
+            columns: ["system_en_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_connections_system_b_id_fkey"
-            columns: ["system_b_id"]
+            foreignKeyName: "ofc_connections_system_sn_id_fkey"
+            columns: ["system_sn_id"]
             isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_connections_system_b_id_fkey"
-            columns: ["system_b_id"]
+            foreignKeyName: "ofc_connections_system_sn_id_fkey"
+            columns: ["system_sn_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
@@ -1595,6 +1947,52 @@ export type Database = {
           },
         ]
       }
+      sdh_node_associations: {
+        Row: {
+          id: string
+          node_id: string
+          node_ip: unknown | null
+          node_position: string | null
+          sdh_system_id: string
+        }
+        Insert: {
+          id?: string
+          node_id: string
+          node_ip?: unknown | null
+          node_position?: string | null
+          sdh_system_id: string
+        }
+        Update: {
+          id?: string
+          node_id?: string
+          node_ip?: unknown | null
+          node_position?: string | null
+          sdh_system_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sdh_node_associations_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sdh_node_associations_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sdh_node_associations_sdh_system_id_fkey"
+            columns: ["sdh_system_id"]
+            isOneToOne: false
+            referencedRelation: "sdh_systems"
+            referencedColumns: ["system_id"]
+          },
+        ]
+      }
       sdh_systems: {
         Row: {
           gne: string | null
@@ -1634,15 +2032,15 @@ export type Database = {
           commissioned_on: string | null
           connected_system_id: string | null
           created_at: string | null
-          ea_interface: string | null
-          ea_ip: unknown | null
-          eb_interface: string | null
-          eb_ip: unknown | null
+          en_id: string | null
+          en_interface: string | null
+          en_ip: unknown | null
           id: string
           media_type_id: string | null
-          node_a_id: string | null
-          node_b_id: string | null
           remark: string | null
+          sn_id: string | null
+          sn_interface: string | null
+          sn_ip: unknown | null
           status: boolean | null
           system_id: string
           updated_at: string | null
@@ -1653,15 +2051,15 @@ export type Database = {
           commissioned_on?: string | null
           connected_system_id?: string | null
           created_at?: string | null
-          ea_interface?: string | null
-          ea_ip?: unknown | null
-          eb_interface?: string | null
-          eb_ip?: unknown | null
+          en_id?: string | null
+          en_interface?: string | null
+          en_ip?: unknown | null
           id?: string
           media_type_id?: string | null
-          node_a_id?: string | null
-          node_b_id?: string | null
           remark?: string | null
+          sn_id?: string | null
+          sn_interface?: string | null
+          sn_ip?: unknown | null
           status?: boolean | null
           system_id: string
           updated_at?: string | null
@@ -1672,15 +2070,15 @@ export type Database = {
           commissioned_on?: string | null
           connected_system_id?: string | null
           created_at?: string | null
-          ea_interface?: string | null
-          ea_ip?: unknown | null
-          eb_interface?: string | null
-          eb_ip?: unknown | null
+          en_id?: string | null
+          en_interface?: string | null
+          en_ip?: unknown | null
           id?: string
           media_type_id?: string | null
-          node_a_id?: string | null
-          node_b_id?: string | null
           remark?: string | null
+          sn_id?: string | null
+          sn_interface?: string | null
+          sn_ip?: unknown | null
           status?: boolean | null
           system_id?: string
           updated_at?: string | null
@@ -1702,6 +2100,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "system_connections_media_type_id_fkey"
             columns: ["media_type_id"]
             isOneToOne: false
@@ -1709,31 +2121,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_node_a_id_fkey"
-            columns: ["node_a_id"]
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
-            referencedRelation: "nodes"
+            referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_node_a_id_fkey"
-            columns: ["node_a_id"]
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_node_b_id_fkey"
-            columns: ["node_b_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_node_b_id_fkey"
-            columns: ["node_b_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
@@ -1761,6 +2159,7 @@ export type Database = {
           maintenance_terminal_id: string | null
           node_id: string
           remark: string | null
+          s_no: string | null
           status: boolean | null
           system_name: string | null
           system_type_id: string
@@ -1774,6 +2173,7 @@ export type Database = {
           maintenance_terminal_id?: string | null
           node_id: string
           remark?: string | null
+          s_no?: string | null
           status?: boolean | null
           system_name?: string | null
           system_type_id: string
@@ -1787,6 +2187,7 @@ export type Database = {
           maintenance_terminal_id?: string | null
           node_id?: string
           remark?: string | null
+          s_no?: string | null
           status?: boolean | null
           system_name?: string | null
           system_type_id?: string
@@ -1819,6 +2220,53 @@ export type Database = {
             columns: ["system_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          details: string | null
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          details?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          details?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
             referencedColumns: ["id"]
           },
         ]
@@ -1950,6 +2398,60 @@ export type Database = {
       }
     }
     Views: {
+      v_cable_utilization: {
+        Row: {
+          available_fibers: number | null
+          cable_id: string | null
+          capacity: number | null
+          route_name: string | null
+          used_fibers: number | null
+          utilization_percent: number | null
+        }
+        Relationships: []
+      }
+      v_end_to_end_paths: {
+        Row: {
+          destination_system_id: string | null
+          operational_status: string | null
+          path_id: string | null
+          path_name: string | null
+          route_names: string | null
+          segment_count: number | null
+          source_system_id: string | null
+          total_distance_km: number | null
+          total_loss_db: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_nodes_complete: {
         Row: {
           builtup: string | null
@@ -2019,7 +2521,7 @@ export type Database = {
           commissioned_on: string | null
           created_at: string | null
           current_rkm: number | null
-          ending_node_id: string | null
+          en_id: string | null
           id: string | null
           maintenance_area_code: string | null
           maintenance_area_name: string | null
@@ -2029,7 +2531,7 @@ export type Database = {
           ofc_type_name: string | null
           remark: string | null
           route_name: string | null
-          starting_node_id: string | null
+          sn_id: string | null
           status: boolean | null
           transnet_id: string | null
           transnet_rkm: number | null
@@ -2037,15 +2539,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -2065,15 +2567,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -2083,51 +2585,51 @@ export type Database = {
       v_ofc_connections_complete: {
         Row: {
           created_at: string | null
-          ea_dom: string | null
-          eb_dom: string | null
-          ending_node_id: string | null
-          fiber_no_ea: number | null
-          fiber_no_eb: number | null
+          en_dom: string | null
+          en_id: string | null
+          en_name: string | null
+          fiber_no_en: number | null
+          fiber_no_sn: number | null
           id: string | null
-          node_a_name: string | null
-          node_b_name: string | null
           ofc_id: string | null
           ofc_route_name: string | null
           ofc_type_name: string | null
-          otdr_distance_ea_km: number | null
-          otdr_distance_eb_km: number | null
+          otdr_distance_en_km: number | null
+          otdr_distance_sn_km: number | null
           remark: string | null
-          starting_node_id: string | null
+          sn_dom: string | null
+          sn_id: string | null
+          sn_name: string | null
           status: boolean | null
-          system_a_name: string | null
-          system_b_name: string | null
+          system_en_name: string | null
+          system_sn_name: string | null
           updated_at: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_ending_node_id_fkey"
-            columns: ["ending_node_id"]
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ofc_cables_starting_node_id_fkey"
-            columns: ["starting_node_id"]
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
@@ -2138,6 +2640,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ofc_cables"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_ofc_id_fkey"
+            columns: ["ofc_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
           },
           {
             foreignKeyName: "ofc_connections_ofc_id_fkey"
@@ -2155,10 +2664,9 @@ export type Database = {
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
-          ea_interface: string | null
-          ea_ip: unknown | null
-          eb_interface: string | null
-          eb_ip: unknown | null
+          en_interface: string | null
+          en_ip: unknown | null
+          en_name: string | null
           id: string | null
           maan_bandwidth_allocated_mbps: number | null
           maan_customer_name: string | null
@@ -2169,8 +2677,6 @@ export type Database = {
           maan_sfp_serial_no: string | null
           maan_sfp_type_name: string | null
           media_type_name: string | null
-          node_a_name: string | null
-          node_b_name: string | null
           remark: string | null
           sdh_a_customer: string | null
           sdh_a_slot: string | null
@@ -2178,6 +2684,9 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
+          sn_interface: string | null
+          sn_ip: unknown | null
+          sn_name: string | null
           status: boolean | null
           system_id: string | null
           system_name: string | null
@@ -2220,6 +2729,7 @@ export type Database = {
           node_ip: unknown | null
           node_name: string | null
           remark: string | null
+          s_no: string | null
           sdh_gne: string | null
           sdh_make: string | null
           status: boolean | null
@@ -2503,7 +3013,7 @@ export type Database = {
           commissioned_on: string
           created_at: string
           current_rkm: number
-          ending_node_id: string
+          en_id: string
           id: string
           maintenance_area_code: string
           maintenance_area_name: string
@@ -2513,7 +3023,7 @@ export type Database = {
           ofc_type_name: string
           remark: string
           route_name: string
-          starting_node_id: string
+          sn_id: string
           status: boolean
           total_count: number
           transnet_id: string
@@ -2570,6 +3080,17 @@ export type Database = {
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      log_user_activity: {
+        Args: {
+          p_action_type: string
+          p_details?: string
+          p_new_data?: Json
+          p_old_data?: Json
+          p_record_id?: string
+          p_table_name?: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

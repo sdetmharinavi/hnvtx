@@ -7,6 +7,8 @@ import { NavItem as NavItemType, submenuVariants } from "./sidebar-types";
 import { useUserPermissions } from "@/hooks/useRoleFunctions";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
+import { ButtonSpinner } from "@/components/common/ui/LoadingSpinner";
+import { useState, useEffect } from "react";
 
 interface NavItemProps {
   item: NavItemType;
@@ -28,6 +30,8 @@ export const NavItem = ({
   const router = useRouter();
   const pathname = usePathname();
   const { isSuperAdmin, role } = useUserPermissions();
+  const [isLoading, setIsLoading] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   const hasPermission = (roles: UserRole[]) => {
     if (isSuperAdmin) return true;
@@ -43,7 +47,7 @@ export const NavItem = ({
     return pathname.startsWith(item.href);
   };
 
-  const handleItemClick = (e: React.MouseEvent) => {
+  const handleItemClick = async (e: React.MouseEvent) => {
     if (!hasPermission(item.roles)) {
       e.preventDefault();
       toast.error("You are not authorized to access this section.");
@@ -57,13 +61,32 @@ export const NavItem = ({
     }
     
     if (item.href) {
-      if (item.external) {
-        window.open(item.href, "_blank", "noopener,noreferrer");
-      } else {
-        router.push(item.href);
+      try {
+        setNavigatingTo(item.href);
+        setIsLoading(true);
+        if (item.external) {
+          window.open(item.href, "_blank", "noopener,noreferrer");
+          setIsLoading(false);
+        } else {
+          await router.push(item.href);
+          // The loading state will be cleared by the effect below
+        }
+      } catch (error) {
+        console.error("Navigation error:", error);
+        toast.error("Failed to navigate. Please try again.");
+        setIsLoading(false);
+        setNavigatingTo(null);
       }
     }
   };
+
+  // Clear loading state when the route changes
+  useEffect(() => {
+    if (pathname === navigatingTo) {
+      setIsLoading(false);
+      setNavigatingTo(null);
+    }
+  }, [pathname, navigatingTo]);
 
   if (!hasPermission(item.roles)) return null;
 
@@ -99,8 +122,14 @@ export const NavItem = ({
         }}
       >
         <div className="flex items-center space-x-3">
-          <span className="flex-shrink-0">{item.icon}</span>
-          {!isCollapsed && <span className="truncate">{item.label}</span>}
+          <span className="flex-shrink-0">
+            {isLoading && pathname !== item.href ? <ButtonSpinner size="xs" /> : item.icon}
+          </span>
+          {!isCollapsed && (
+            <span className="truncate">
+              {isLoading && pathname !== item.href ? 'Loading...' : item.label}
+            </span>
+          )}
         </div>
         {!isCollapsed && hasChildren && (
           <button
