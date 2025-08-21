@@ -82,7 +82,7 @@ export function usePagedOfcCablesComplete(supabase: SupabaseClient<Database>, op
   const { 
     limit = 10, 
     offset = 0, 
-    orderBy = "asset_no", 
+    orderBy = "route_name", 
     orderDir = "asc", 
     filters = {}, 
     queryOptions 
