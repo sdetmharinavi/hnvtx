@@ -53,8 +53,8 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
     mode: "all",
     reValidateMode: "onChange",
     defaultValues: {
-      starting_node_id: ofcCable?.starting_node_id ? String(ofcCable.starting_node_id) : undefined,
-      ending_node_id: ofcCable?.ending_node_id ? String(ofcCable.ending_node_id) : undefined,
+      sn_id: ofcCable?.sn_id ? String(ofcCable.sn_id) : undefined,
+      en_id: ofcCable?.en_id ? String(ofcCable.en_id) : undefined,
       route_name: ofcCable?.route_name || "",
       ofc_type_id: ofcCable?.ofc_type_id || "",
       capacity: ofcCable?.capacity || 0,
@@ -71,42 +71,42 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
   // Watch form values
   const watchedValues = watch();
   const currentStatus = watch("status");
-  const startingNodeId = watch("starting_node_id") || null;
-  const endingNodeId = watch("ending_node_id") || null;
+  const startingNodeId = watch("sn_id") || null;
+  const endingNodeId = watch("en_id") || null;
 
   const supabase = createClient();
 
   // Fallback: If editing but IDs are missing on the view row, fetch from base table
   useEffect(() => {
-    const needsFallback = Boolean(ofcCable?.id && (!ofcCable.starting_node_id || !ofcCable.ending_node_id));
+    const needsFallback = Boolean(ofcCable?.id && (!ofcCable.sn_id || !ofcCable.en_id));
     if (!needsFallback) return;
 
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from("ofc_cables").select("starting_node_id, ending_node_id, ofc_type_id, asset_no, capacity, commissioned_on, current_rkm, maintenance_terminal_id, status, remark").eq("id", ofcCable!.id).single();
+      const { data, error } = await supabase.from("ofc_cables").select("sn_id, en_id, ofc_type_id, asset_no, capacity, commissioned_on, current_rkm, maintenance_terminal_id, status, remark").eq("id", ofcCable!.id).single();
 
       if (cancelled || error || !data) return;
 
-      const sId = data.starting_node_id ? String(data.starting_node_id) : null;
-      const eId = data.ending_node_id ? String(data.ending_node_id) : null;
+      const sId = data.sn_id ? String(data.sn_id) : null;
+      const eId = data.en_id ? String(data.en_id) : null;
 
       // Set only the form values; no local state needed
-      setValue("starting_node_id", sId || "");
-      setValue("ending_node_id", eId || "");
+      setValue("sn_id", sId || "");
+      setValue("en_id", eId || "");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [ofcCable?.id, ofcCable?.starting_node_id, ofcCable?.ending_node_id, supabase, setValue]);
+  }, [ofcCable?.id, ofcCable?.sn_id, ofcCable?.en_id, supabase, setValue]);
 
   // Clear node validation errors when IDs become available (e.g., after edit prefill)
   useEffect(() => {
-    if ((startingNodeId && validationErrors.starting_node_id) || (endingNodeId && validationErrors.ending_node_id)) {
+    if ((startingNodeId && validationErrors.sn_id) || (endingNodeId && validationErrors.en_id)) {
       setValidationErrors((prev) => {
         const next = { ...prev };
-        if (startingNodeId) delete next.starting_node_id;
-        if (endingNodeId) delete next.ending_node_id;
+        if (startingNodeId) delete next.sn_id;
+        if (endingNodeId) delete next.en_id;
         return next;
       });
     }
@@ -260,7 +260,7 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
         ? {
             $or: {
               operator: "or",
-              value: `and(starting_node_id.eq.${startingNodeId},ending_node_id.eq.${endingNodeId}),and(starting_node_id.eq.${endingNodeId},ending_node_id.eq.${startingNodeId})`,
+              value: `and(sn_id.eq.${startingNodeId},en_id.eq.${endingNodeId}),and(sn_id.eq.${endingNodeId},en_id.eq.${startingNodeId})`,
             },
           }
         : {},
@@ -350,12 +350,12 @@ const OfcForm = ({ ofcCable, onSubmit, onCancel, pageLoading }: OfcFormProps) =>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {/* Starting Node */}
               <div className='space-y-2'>
-                <FormSearchableSelect name='starting_node_id' label='Starting Node' control={control} options={startingNodeOptions} error={errors.starting_node_id} placeholder='Select starting node' searchPlaceholder='Search starting nodes...' />
+                <FormSearchableSelect name='sn_id' label='Starting Node' control={control} options={startingNodeOptions} error={errors.sn_id} placeholder='Select starting node' searchPlaceholder='Search starting nodes...' />
               </div>
 
               {/* Ending Node */}
               <div className='space-y-2'>
-                <FormSearchableSelect name='ending_node_id' label='Ending Node' control={control} options={endingNodeOptions} error={errors.ending_node_id} placeholder='Select ending node' searchPlaceholder='Search ending nodes...' />
+                <FormSearchableSelect name='en_id' label='Ending Node' control={control} options={endingNodeOptions} error={errors.en_id} placeholder='Select ending node' searchPlaceholder='Search ending nodes...' />
               </div>
             </div>
 

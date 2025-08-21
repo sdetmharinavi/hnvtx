@@ -156,8 +156,8 @@ export const nodeSchema = z.object({
 export const ofcCableSchema = z.object({
   id: z.uuid().optional(),
   route_name: z.string().min(1, { message: "Route name is required." }),
-  starting_node_id: z.uuid({ message: "Starting node is required." }),
-  ending_node_id: z.uuid({ message: "Ending node is required." }),
+  sn_id: z.uuid({ message: "Starting node is required." }),
+  en_id: z.uuid({ message: "Ending node is required." }),
   ofc_type_id: z.uuid({ message: "OFC type is required." }),
   // capacity must be a positive integer
   capacity: requiredStringToNumber.pipe(z.number().int({ message: "Capacity must be an integer." }).refine(val => val > 0, { message: "Capacity must be a positive integer." })),
@@ -174,15 +174,15 @@ export const ofcCableSchema = z.object({
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
 }).superRefine((data, ctx) => {
-  const a = data.starting_node_id;
-  const b = data.ending_node_id;
+  const a = data.sn_id;
+  const b = data.en_id;
   // Run this check only when both IDs are present
   if (!a || !b) return;
   if (a === b) {
     ctx.addIssue({
       code: 'custom',
       message: "Ending node must be different from starting node.",
-      path: ["ending_node_id"],
+      path: ["en_id"],
     });
   }
 });

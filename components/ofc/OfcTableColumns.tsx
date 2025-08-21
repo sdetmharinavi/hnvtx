@@ -3,7 +3,7 @@ import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 const OfcTableColumns = (ofcTypeMap: Record<string, string>, areaMap: Record<string, string>) => {
 
     const columns = useDynamicColumnConfig("ofc_cables", {
-        omit: ['updated_at', 'created_at', 'id','starting_node_id','ending_node_id'],
+        omit: ['updated_at', 'created_at', 'id','sn_id','en_id'],
         overrides: {
            ofc_type_id: {
             render: (value) => ofcTypeMap[value as string]

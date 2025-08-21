@@ -4,7 +4,6 @@ import { Database } from "@/types/supabase-types";
 import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns, UseRpcQueryOptions, UseTableMutationOptions, PagedSystemsCompleteResult, UsePagedSystemsCompleteOptions, UsePagedNodesCompleteOptions, PagedNodesCompleteResult } from "./queries-type-helpers";
 import { createRpcQueryKey } from "./utility-functions";
 import { PagedOfcCablesCompleteResult, UsePagedOfcCablesCompleteOptions } from "@/hooks/database/queries-type-helpers";
-import { createClient } from "@/utils/supabase/client";
 
 // RPC query hook with performance enhancements
 export function useRpcQuery<T extends RpcFunctionName, TData = RpcFunctionReturns<T>>(supabase: SupabaseClient<Database>, functionName: T, args?: RpcFunctionArgs<T>, options?: UseRpcQueryOptions<T, TData>) {
@@ -112,6 +111,7 @@ export function usePagedOfcCablesComplete(supabase: SupabaseClient<Database>, op
     ...queryOptions,
   });
 }
+
 
 export function usePagedNodesComplete(supabase: SupabaseClient<Database>, options: UsePagedNodesCompleteOptions) {
   const { limit = 10, offset = 0, orderBy = "name", orderDir = "asc", filters = {}, queryOptions } = options;

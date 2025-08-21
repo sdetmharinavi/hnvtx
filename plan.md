@@ -50,8 +50,8 @@ SELECT
   fiber_no_sn,
   gen_random_uuid(), -- Generate logical path ID
   1, -- First segment
-  'node', starting_node_id,
-  'node', ending_node_id,
+  'node', sn_id,
+  'node', en_id,
   (otdr_distance_sn_km + otdr_distance_en_km) / 2, -- Average distance
   (sn_power_dbm + en_power_dbm) / 2, -- Average power
   'straight',

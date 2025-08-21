@@ -5,7 +5,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiDownload, FiPlus } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
-import { Filters, useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
+import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
@@ -24,7 +24,7 @@ import OfcDetailsModal from "@/components/ofc/OfcDetailsModal";
 
 // --- TYPES ---
 import { Json, TablesInsert } from "@/types/supabase-types";
-import { Column, useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { OfcCablesFilters, OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatters";
@@ -143,7 +143,7 @@ const OfcPage = () => {
 
   // DataTable Configuration
   const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
-    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "starting_node_id", "ending_node_id"],
+    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "sn_id", "en_id"],
     overrides: {
       asset_no: { title: "Asset No.", sortable: true, width: 150 },
       route_name: { title: "Route Name", sortable: true, width: 250 },
@@ -160,7 +160,9 @@ const OfcPage = () => {
   const actions = useMemo(
     () =>
       GetOfcTableActions({
-        onView: (id) => router.push(`/dashboard/ofc/${id}`),
+        onView: (id) => {
+          router.push(`/dashboard/ofc/${id}`);
+        },
         onEdit: (id) => {
           const c = pageData.find((c) => c.id === id);
           if (c) {

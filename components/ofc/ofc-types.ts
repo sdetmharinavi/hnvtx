@@ -1,6 +1,4 @@
-import { Filters } from "@/hooks/database";
 import { Database } from "@/types/supabase-types";
-import { UseQueryOptions } from "@tanstack/react-query";
 
 export interface OfcCablesFilters {
   search: string;
@@ -18,7 +16,15 @@ export type OfcCablesWithRelations =
   // `OfcForm` for initializing edit state, but they are not present in the
   // generated View Row type. Keep them optional to avoid lying about what the
   // view guarantees while allowing the component to reference them safely.
-  starting_node_id?: string | null;
-  ending_node_id?: string | null;
+  sn_id?: string | null;
+  en_id?: string | null;
+  ofc_type: {
+    id: string;
+    name: string;
+  } | null;
+  maintenance_area: {
+    id: string;
+    name: string;
+  } | null;
 };
 
