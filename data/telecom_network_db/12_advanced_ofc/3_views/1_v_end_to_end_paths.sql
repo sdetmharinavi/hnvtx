@@ -11,7 +11,7 @@ SELECT
   COUNT(oce.id) as segment_count,
   STRING_AGG(DISTINCT oc.route_name, ' -> ' ORDER BY oc.route_name) as route_names
 FROM logical_fiber_paths lfp
-LEFT JOIN ofc_connections_enhanced oce ON lfp.id = oce.logical_path_id
+LEFT JOIN ofc_connections oce ON lfp.id = oce.logical_path_id
 LEFT JOIN ofc_cables oc ON oce.ofc_id = oc.id
 GROUP BY lfp.id, lfp.path_name, lfp.source_system_id, lfp.destination_system_id, 
          lfp.total_distance_km, lfp.total_loss_db, lfp.operational_status;

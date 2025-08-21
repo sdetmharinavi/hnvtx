@@ -18,7 +18,7 @@ GRANT ALL ON public.maan_connections TO admin;
 GRANT ALL ON public.sdh_connections TO admin;
 GRANT ALL ON public.vmux_connections TO admin;
 GRANT ALL ON public.management_ports TO admin;
-GRANT ALL ON public.sdh_node_associations TO admin;
+GRANT ALL ON public.sdh_snssociations TO admin;
 
 -- Grant read-only (SELECT) access to viewer on all tables
 GRANT SELECT ON public.lookup_types TO viewer;
@@ -40,4 +40,4 @@ GRANT SELECT ON public.maan_connections TO viewer;
 GRANT SELECT ON public.sdh_connections TO viewer;
 GRANT SELECT ON public.vmux_connections TO viewer;
 GRANT SELECT ON public.management_ports TO viewer;
-GRANT SELECT ON public.sdh_node_associations TO viewer;
+GRANT SELECT ON public.sdh_snssociations TO viewer;

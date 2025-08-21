@@ -4,8 +4,8 @@ select sc.id,
   sc.system_id,
   s.system_name,
   lt_system.name as system_type_name,
-  na.name as node_a_name,
-  nb.name as node_b_name,
+  na.name as sn_name,
+  nb.name as en_name,
   sc.sn_ip,
   sc.sn_interface,
   sc.en_ip,
@@ -41,8 +41,8 @@ select sc.id,
 from system_connections sc
   join systems s on sc.system_id = s.id
   join lookup_types lt_system on s.system_type_id = lt_system.id
-  left join nodes na on sc.node_a_id = na.id
-  left join nodes nb on sc.node_b_id = nb.id
+  left join nodes na on sc.sn_id = na.id
+  left join nodes nb on sc.en_id = nb.id
   left join systems cs on sc.connected_system_id = cs.id
   left join lookup_types lt_cs_type on cs.system_type_id = lt_cs_type.id
   left join lookup_types lt_media on sc.media_type_id = lt_media.id

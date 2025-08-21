@@ -1,26 +1,34 @@
 -- 4. Logical paths table (end-to-end connectivity)
 CREATE TABLE logical_fiber_paths (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  path_name VARCHAR(100),
+  path_name TEXT,
   
   -- End-to-end connectivity
   source_system_id UUID REFERENCES systems (id),
-  source_port VARCHAR(50),
+  source_port TEXT,
   destination_system_id UUID REFERENCES systems (id),
-  destination_port VARCHAR(50),
+  destination_port TEXT,
   
   -- Path characteristics
   total_distance_km DECIMAL(10, 3),
   total_loss_db DECIMAL(10, 3),
-  path_type VARCHAR(20) DEFAULT 'Point-to-Point' CHECK (path_type IN ('lookup_types')),
+  -- ✅ Enforce category + name
+  path_category TEXT NOT NULL DEFAULT 'OFC_PATH_TYPES',
+  path_type TEXT NOT NULL DEFAULT 'Point-to-Point',
+  CONSTRAINT fk_path_type FOREIGN KEY (path_category, path_type)
+    REFERENCES lookup_types(category, name),
   
   -- Service information
-  service_type VARCHAR(50),
+  service_type TEXT,
   bandwidth_gbps INTEGER,
   wavelength_nm INTEGER,
   
   -- Status and metadata
-  operational_status VARCHAR(20) DEFAULT 'planned' CHECK (operational_status IN ('planned', 'active', 'maintenance', 'fault', 'decommissioned')),
+  -- ✅ Enforce category + name
+  operational_status_category TEXT NOT NULL DEFAULT 'OFC_PATH_STATUSES',
+  operational_status TEXT NOT NULL DEFAULT 'planned',
+  CONSTRAINT fk_operational_status FOREIGN KEY (operational_status_category, operational_status)
+    REFERENCES lookup_types(category, name),
   commissioned_date DATE,
   remark TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

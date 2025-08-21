@@ -3,19 +3,21 @@
 ## Phase 1: Immediate Implementation (Current Requirement)
 
 ### 1. Keep Current Schema
+
 - Continue using your existing `ofc_cables` and `ofc_connections` tables
 - Implement the auto-creation logic as shown in the code artifact
 
 ### 2. Business Logic for Auto-Creation
+
 ```typescript
 // Service function for connection management
 export class OfcConnectionService {
   static async ensureConnectionsExist(cableId: string): Promise<void> {
     const cable = await this.getCableById(cableId);
     const existingConnections = await this.getConnectionsByCableId(cableId);
-    
+  
     const missingCount = cable.capacity - existingConnections.length;
-    
+  
     if (missingCount > 0) {
       await this.createMissingConnections(cableId, missingCount, existingConnections);
     }
@@ -28,12 +30,14 @@ export class OfcConnectionService {
 ### Migration Steps:
 
 #### Step 1: Add New Tables
+
 1. Create `fiber_joints` table
-2. Create `logical_fiber_paths` table  
+2. Create `logical_fiber_paths` table
 3. Create `fiber_joint_connections` table
 4. Create `ofc_connections_enhanced` table
 
 #### Step 2: Data Migration Script
+
 ```sql
 -- Migrate existing connections to enhanced structure
 INSERT INTO ofc_connections_enhanced (
@@ -58,6 +62,7 @@ JOIN ofc_cables cable ON oc.ofc_id = cable.id;
 ```
 
 #### Step 3: Create Logical Paths
+
 ```sql
 -- Create logical paths for existing straight connections
 INSERT INTO logical_fiber_paths (
@@ -79,6 +84,7 @@ WHERE oc.system_sn_id IS NOT NULL AND oc.system_en_id IS NOT NULL;
 ## Phase 3: Advanced Features Implementation
 
 ### 1. Joint Management System
+
 ```typescript
 interface FiberJoint {
   id: string;
@@ -98,7 +104,7 @@ class JointManagementService {
       joint_type: 'splice',
       location_description: location
     });
-    
+  
     // Update fiber connections to route through joint
     await this.updateFiberRoutingThroughJoint(joint.id, cableAId, cableBId);
   }
@@ -110,6 +116,7 @@ class JointManagementService {
 ```
 
 ### 2. Path Calculation Engine
+
 ```typescript
 class PathCalculationService {
   async calculateEndToEndPath(sourceSystemId: string, destSystemId: string): Promise<LogicalPath> {
@@ -132,22 +139,26 @@ class PathCalculationService {
 ## Benefits of This Approach
 
 ### 1. Immediate Value
+
 - ✅ Solve current requirement quickly
 - ✅ Maintain existing functionality
 - ✅ No disruption to current operations
 
 ### 2. Future Flexibility
+
 - ✅ Support complex network topologies
 - ✅ Handle joints and splicing
 - ✅ Track end-to-end logical paths
 - ✅ Support multiple routing scenarios
 
 ### 3. Scalability
+
 - ✅ Efficient querying with proper indexes
 - ✅ Modular design for easy extensions
 - ✅ Support for different connection types
 
 ### 4. Data Integrity
+
 - ✅ Referential integrity through foreign keys
 - ✅ Constraint checks for valid data
 - ✅ Audit trail with timestamps
@@ -155,21 +166,25 @@ class PathCalculationService {
 ## Recommended Implementation Timeline
 
 ### Week 1-2: Immediate Solution
+
 - Implement auto-connection creation
 - Deploy cable detail page
 - Test with existing data
 
 ### Week 3-4: Schema Enhancement
+
 - Create new tables
 - Implement migration scripts
 - Test data migration
 
 ### Week 5-8: Advanced Features
+
 - Implement joint management
 - Build path calculation engine
 - Create management interfaces
 
 ### Week 9-10: Testing & Optimization
+
 - Performance testing
 - User acceptance testing
 - Production deployment
@@ -189,12 +204,14 @@ You're absolutely right! I made an error in my terminology. Those are not tables
 ## Key Improvements:
 
 ### 1. **Lookup Tables Instead of Enums:**
+
 - `joint_types` table instead of hardcoded values
 - `connection_types` table for different connection types
 - `endpoint_types` table for source/destination types
 - `path_statuses` table for path operational states
 
 ### 2. **Benefits of Using Lookup Tables:**
+
 - **Extensible**: Easy to add new types without schema changes
 - **Referential Integrity**: Foreign key constraints ensure data consistency
 - **Descriptive**: Each type has a name and description
@@ -236,6 +253,7 @@ const query = `
 ```
 
 ### 4. **Migration from Current Schema:**
+
 ```sql
 -- Get joint type ID by code
 SELECT id FROM joint_types WHERE type_code = 'SPLICE';

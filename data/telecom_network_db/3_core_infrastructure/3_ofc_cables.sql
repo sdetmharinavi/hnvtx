@@ -2,8 +2,8 @@
 create table ofc_cables (
   id UUID primary key default gen_random_uuid(),
   route_name TEXT not null,
-  starting_node_id UUID references nodes (id) not null,
-  ending_node_id UUID references nodes (id) not null,
+  sn_id UUID references nodes (id) not null,
+  en_id UUID references nodes (id) not null,
   ofc_type_id UUID references lookup_types (id) not null,
   capacity INTEGER not null,
   current_rkm DECIMAL(10, 3),

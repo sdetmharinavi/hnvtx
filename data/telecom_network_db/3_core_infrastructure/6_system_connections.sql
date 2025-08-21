@@ -2,8 +2,8 @@
 create table system_connections (
   id UUID primary key default gen_random_uuid(),
   system_id UUID references systems (id) not null,
-  node_a_id UUID references nodes (id),
-  node_b_id UUID references nodes (id),
+  sn_id UUID references systems (id),
+  en_id UUID references systems (id),
   connected_system_id UUID references systems (id),
   sn_ip INET,
   sn_interface TEXT,

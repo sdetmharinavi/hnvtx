@@ -2,7 +2,11 @@
 CREATE TABLE fiber_joints (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   joint_name TEXT NOT NULL,
-  joint_type TEXT CHECK (joint_type IN ('lookup_types')) NOT NULL,
+  -- ✅ Enforce category + name
+  joint_category TEXT NOT NULL DEFAULT 'OFC_JOINT_TYPES',
+  joint_type TEXT NOT NULL DEFAULT 'straight',
+  CONSTRAINT fk_joint_type FOREIGN KEY (joint_category, joint_type)
+    REFERENCES lookup_types(category, name),
   location_description TEXT,
   
   -- Geographic information

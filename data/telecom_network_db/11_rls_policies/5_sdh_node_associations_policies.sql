@@ -5,7 +5,7 @@ DECLARE
   role text;
 BEGIN 
   -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY ['sdh_node_associations'] 
+  FOREACH tbl IN ARRAY ARRAY ['sdh_snssociations'] 
   LOOP 
     -- Drop viewer_read_access first (common)
     EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
@@ -17,7 +17,7 @@ BEGIN
   END LOOP;
 
   -- SDH Node Associations: only admin
-  FOREACH tbl IN ARRAY ARRAY ['sdh_node_associations'] 
+  FOREACH tbl IN ARRAY ARRAY ['sdh_snssociations'] 
   LOOP 
     FOREACH role IN ARRAY ARRAY ['admin'] 
     LOOP 
