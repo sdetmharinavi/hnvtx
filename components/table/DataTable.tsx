@@ -2,14 +2,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableExcelDownload, useRPCExcelDownload, Column } from "@/hooks/database/excel-queries";
-import { 
-  TableToolbar,
-  TableHeader,
-  TableBody,
-  TablePagination,
-  TableColumnSelector,
-  TableFilterPanel
-} from "./";
+import { TableToolbar, TableHeader, TableBody, TablePagination, TableColumnSelector, TableFilterPanel } from "./";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
 
@@ -60,7 +53,7 @@ export function DataTable<T extends AuthTableOrViewName>({
       }
     },
   });
-  
+
   const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
     showToasts: true,
     onError: (error) => {
@@ -93,7 +86,9 @@ export function DataTable<T extends AuthTableOrViewName>({
             if (iv === null || iv === undefined) return false;
             return (value as (string | number)[]).includes(iv as string | number);
           }
-          return String(itemValue ?? "").toLowerCase().includes(String(value).toLowerCase());
+          return String(itemValue ?? "")
+            .toLowerCase()
+            .includes(String(value).toLowerCase());
         });
       }
     });
@@ -182,7 +177,7 @@ export function DataTable<T extends AuthTableOrViewName>({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = exportOptions?.fileName?.replace(/\.xlsx?$/, '.csv') || `${String(tableName)}-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = exportOptions?.fileName?.replace(/\.xlsx?$/, ".csv") || `${String(tableName)}-${new Date().toISOString().split("T")[0]}.csv`;
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
@@ -240,7 +235,8 @@ export function DataTable<T extends AuthTableOrViewName>({
 
   return (
     <div className={`relative bg-white dark:bg-gray-800 rounded-lg ${bordered ? "border border-gray-200 dark:border-gray-700" : ""} ${className}`}>
-      <div className="relative">
+      <TablePagination pagination={pagination} bordered={bordered} />
+      <div className='relative'>
         <TableToolbar
           title={title}
           searchable={searchable}
@@ -260,24 +256,12 @@ export function DataTable<T extends AuthTableOrViewName>({
           isExporting={isExporting}
         />
 
-        <TableColumnSelector
-          columns={columns}
-          visibleColumns={visibleColumns}
-          setVisibleColumns={setVisibleColumns}
-          showColumnSelector={showColumnSelector}
-          setShowColumnSelector={setShowColumnSelector}
-        />
+        <TableColumnSelector columns={columns} visibleColumns={visibleColumns} setVisibleColumns={setVisibleColumns} showColumnSelector={showColumnSelector} setShowColumnSelector={setShowColumnSelector} />
       </div>
 
-      <TableFilterPanel
-        columns={columns}
-        filters={filters}
-        setFilters={setFilters}
-        showFilters={showFilters}
-        filterable={filterable}
-      />
+      <TableFilterPanel columns={columns} filters={filters} setFilters={setFilters} showFilters={showFilters} filterable={filterable} />
 
-      <div className='overflow-x-auto'>
+      <div className='max-h-[calc(100vh-200px)] overflow-auto'>
         <table className={`w-full ${bordered ? "border-separate border-spacing-0" : ""}`}>
           <TableHeader
             columns={columns}
@@ -294,7 +278,6 @@ export function DataTable<T extends AuthTableOrViewName>({
             allSelected={selectedRows.length === processedData.length}
             hasData={processedData.length > 0}
           />
-
           <TableBody
             columns={columns}
             processedData={processedData}
@@ -320,7 +303,6 @@ export function DataTable<T extends AuthTableOrViewName>({
           />
         </table>
       </div>
-
       <TablePagination pagination={pagination} bordered={bordered} />
     </div>
   );

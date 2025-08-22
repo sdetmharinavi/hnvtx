@@ -12,6 +12,8 @@ export interface OfcCablesFilters {
 export type OfcCablesWithRelations = 
   Database["public"]["Views"]["v_ofc_cables_complete"]["Row"] & {
   total_count?: number;
+  active_count?: number;
+  inactive_count?: number;
   // NOTE: These fields exist on the base table `ofc_cables` and are used by
   // `OfcForm` for initializing edit state, but they are not present in the
   // generated View Row type. Keep them optional to avoid lying about what the

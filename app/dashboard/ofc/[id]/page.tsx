@@ -1,7 +1,7 @@
 "use client";
 
 // app/dashboard/ofc/[id]/page.tsx
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -10,6 +10,8 @@ import { useOfcConnection } from "@/hooks/useOfcConnection";
 import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { Database } from "@/types/supabase-types";
 import { PageSpinner } from "@/components/common/ui/LoadingSpinner";
+import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
+import { DataTable } from "@/components/table";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +20,8 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
-  // const [cable, setCable] = useState<OfcCablesWithRelations | null>(null);
   const supabase = createClient();
+  const [pagination, setPagination] = useState({ page: 1, limit: 10 });
 
   const {
     cable,
@@ -39,6 +41,43 @@ useEffect(() => {
     ensureConnectionsExist();
   }
 }, [isLoading, ensureConnectionsExist]);
+
+// DataTable Configuration
+  const columns = useDynamicColumnConfig("ofc_connections", {
+    omit: ["id","source_id","destination_id","source_port","destination_port","ofc_id","logical_path_id","created_at","updated_at"],
+    overrides: {
+      connection_type: { title: "Connection Type", sortable: true, width: 150 },
+      destination_id: { title: "Destination ID", sortable: true, width: 250 },
+      destination_port: { title: "Destination Port", sortable: true, width: 250 },
+      en_dom: { title: "EN DOM", sortable: true, width: 250 },
+      en_power_dbm: { title: "EN Power (dBm)", sortable: true, width: 250 },
+      fiber_no_en: { title: "Fiber No. (EN)", sortable: true, width: 250 },
+      fiber_no_sn: { title: "Fiber No. (SN)", sortable: true, width: 250 },
+      // id: { title: "ID", sortable: true, width: 250 },
+      logical_path_id: { title: "Logical Path ID", sortable: true, width: 250 },
+      ofc_id: { title: "OFC ID", sortable: true, width: 250 },
+      otdr_distance_en_km: { title: "OTDR Distance (EN) (km)", sortable: true, width: 250 },
+      otdr_distance_sn_km: { title: "OTDR Distance (SN) (km)", sortable: true, width: 250 },
+      path_segment_order: { title: "Path Segment Order", sortable: true, width: 250 },
+      remark: { title: "Remark", sortable: true, width: 250 },
+      route_loss_db: { title: "Route Loss (dB)", sortable: true, width: 250 },
+      sn_dom: { title: "SN DOM", sortable: true, width: 250 },
+      sn_power_dbm: { title: "SN Power (dBm)", sortable: true, width: 250 },
+      source_id: { title: "Source ID", sortable: true, width: 250 },
+      source_port: { title: "Source Port", sortable: true, width: 250 },
+      system_sn_id: { title: "System SN ID", sortable: true, width: 250 },
+      system_en_id: { title: "System EN ID", sortable: true, width: 250 },
+      updated_at: { title: "Updated At", sortable: true, width: 250 },
+      status: {
+        title: "Status",
+        sortable: true,
+        width: 100,
+        render: (value) => <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{value ? "Active" : "Inactive"}</span>,
+      },
+    },
+  });
+
+  const totalCount = useMemo(() => existingConnections.length, [existingConnections]);
 
 
 console.log("existingConnections", existingConnections);
@@ -135,8 +174,22 @@ console.log("existingConnections", existingConnections);
       </div>
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <h2 className="text-lg font-semibold mb-3">Raw Data</h2>
-        <pre className="text-xs overflow-x-auto bg-gray-50 dark:bg-gray-900/30 p-3 rounded">{JSON.stringify(existingConnections, null, 2)}</pre>
+        <DataTable
+                  tableName='ofc_connections'
+                  data={existingConnections}
+                  columns={columns}
+                  loading={isLoading}
+                  selectable={true}
+                  pagination={{
+                    current: pagination.page,
+                    pageSize: pagination.limit,
+                    total: totalCount,
+                    showSizeChanger: true,
+                    pageSizeOptions: [10, 20, 50, 100],
+                    onChange: (page, limit) => setPagination({ page, limit }),
+                  }}
+                  customToolbar={true}
+                />
       </div>
     </div>
   );

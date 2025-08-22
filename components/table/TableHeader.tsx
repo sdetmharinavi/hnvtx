@@ -37,7 +37,7 @@ export function TableHeader<T extends AuthTableOrViewName>({
   hasData,
 }: TableHeaderProps<T>) {
   return (
-    <thead className='bg-gray-50 dark:bg-gray-700'>
+    <thead className='bg-gray-50 dark:bg-gray-700 sticky top-0 z-10'>
       <tr>
         {selectable && (
           <th className={`w-12 px-2 sm:px-4 py-2 sm:py-3 text-left ${bordered ? "border-b border-r border-gray-200 dark:border-gray-700" : ""}`}>

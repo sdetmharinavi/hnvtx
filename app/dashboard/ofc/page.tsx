@@ -81,6 +81,8 @@ const OfcPage = () => {
   // Memoize derived data
   const pageData: OfcCablesWithRelations[] = useMemo(() => (pagedOfcData as OfcCablesWithRelations[]) || [], [pagedOfcData]);
   const totalCount = useMemo(() => pageData[0]?.total_count ?? 0, [pageData]);
+  const activeCount = useMemo(() => pageData[0]?.active_count ?? pageData.filter((c) => c.status).length, [pageData]);
+  const inactiveCount = useMemo(() => pageData[0]?.inactive_count ?? pageData.filter((c) => !c.status).length, [pageData]);
 
   // Mutations still target the base 'ofc_cables' table, which is correct
   const { data: isSuperAdmin } = useIsSuperAdmin();
@@ -184,6 +186,7 @@ const OfcPage = () => {
       <div className='mx-auto space-y-6 p-4 md:p-6'>
         <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
           <h1 className='text-3xl font-bold text-gray-800 dark:text-white'>OFC Cable Management</h1>
+          <OfcStats total={totalCount} active={activeCount} inactive={inactiveCount} />
           <div className='flex items-center gap-2'>
             <button
               onClick={() => {
@@ -219,7 +222,7 @@ const OfcPage = () => {
           filterable={false}
           customToolbar={true}
         />
-        <OfcStats total={totalCount} active={pageData.filter((c) => c.status).length} inactive={pageData.filter((c) => !c.status).length} />
+        
       </div>
       {showForm && (
         <OfcForm

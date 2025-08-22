@@ -28,7 +28,9 @@ RETURNS TABLE(
     transnet_id text,
     transnet_rkm numeric,
     updated_at text,
-    total_count bigint
+    total_count bigint,
+    active_count bigint,
+    inactive_count bigint
 ) 
 AS $$
 DECLARE 
@@ -79,7 +81,9 @@ BEGIN
       v.transnet_id::text,
       v.transnet_rkm,
       v.updated_at::text,
-      count(*) OVER() AS total_count
+      count(*) OVER() AS total_count,
+      sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count,
+      sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_ofc_cables_complete v
     WHERE 1 = 1 %s
     ORDER BY %I %s
