@@ -35,7 +35,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
   // Get the config for this specific context from the store.
   const { configs } = useUploadConfigStore();
   const storeConfig = configs[currentTableName as string];
-  console.log("storeConfig", storeConfig);
+  // console.log("storeConfig", storeConfig);
 
   // Initialize the upload hook. Note that we don't know the table name here yet.
   const { mutate, isPending } = useExcelUpload(

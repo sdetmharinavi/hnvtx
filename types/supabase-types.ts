@@ -2968,10 +2968,12 @@ export type Database = {
           p_order_dir?: string
         }
         Returns: {
+          active_count: number
           builtup: string
           created_at: string
           east_port: string
           id: string
+          inactive_count: number
           ip_address: unknown
           latitude: number
           longitude: number
@@ -3008,6 +3010,7 @@ export type Database = {
           p_order_dir?: string
         }
         Returns: {
+          active_count: number
           asset_no: string
           capacity: number
           commissioned_on: string
@@ -3015,6 +3018,7 @@ export type Database = {
           current_rkm: number
           en_id: string
           id: string
+          inactive_count: number
           maintenance_area_code: string
           maintenance_area_name: string
           maintenance_terminal_id: string
@@ -3040,6 +3044,7 @@ export type Database = {
           p_order_dir?: string
         }
         Returns: {
+          active_count: number
           created_at: string
           en_dom: string
           en_id: string
@@ -3047,6 +3052,7 @@ export type Database = {
           fiber_no_en: number
           fiber_no_sn: number
           id: string
+          inactive_count: number
           ofc_id: string
           ofc_route_name: string
           ofc_type_name: string
@@ -3072,6 +3078,7 @@ export type Database = {
           p_order_dir?: string
         }
         Returns: {
+          active_count: number
           bandwidth_mbps: number
           commissioned_on: string
           connected_system_name: string
@@ -3081,6 +3088,7 @@ export type Database = {
           en_ip: string
           en_name: string
           id: string
+          inactive_count: number
           maan_bandwidth_allocated_mbps: number
           maan_customer_name: string
           maan_fiber_in: number

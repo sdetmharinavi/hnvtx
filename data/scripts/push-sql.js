@@ -114,6 +114,60 @@ function naturalSort(a, b) {
 
 // --- 3. MAIN EXECUTION LOGIC ---
 
+// try {
+//   console.log('\n🔍 Finding all .sql files...');
+//   const allSqlFiles = getAllSqlFiles(folder);
+
+//   if (allSqlFiles.length === 0) {
+//     console.log('🟡 No .sql files found to execute.');
+//     process.exit(0);
+//   }
+
+//   console.log('🔀 Sorting files using natural sort to ensure correct execution order...');
+//   allSqlFiles.sort(naturalSort); // Use the custom sort function
+
+//   console.log(`\n▶️  Found ${allSqlFiles.length} scripts to execute in the following order:`);
+//   allSqlFiles.forEach((file, index) => {
+//     // Indent sub-directories for readability
+//     const depth = (file.match(/[\\/]/g) || []).length;
+//     const indent = '  '.repeat(depth);
+//     console.log(`   ${indent}${(index + 1).toString().padStart(2, ' ')}. ${path.basename(file)}`);
+//   });
+//   console.log('---\n');
+
+
+//   // Prepare environment variables for the psql command
+//   const psqlEnv = { ...process.env };
+//   if (dbUrl) {
+//     const url = new URL(dbUrl.trim());
+//     psqlEnv.PGHOST = url.hostname;
+//     psqlEnv.PGPORT = url.port || '5432';
+//     psqlEnv.PGDATABASE = url.pathname.slice(1) || 'postgres';
+//     psqlEnv.PGUSER = url.username;
+//     psqlEnv.PGPASSWORD = url.password;
+//   }
+
+//   // Execute each file in the correctly sorted order
+//   for (const file of allSqlFiles) {
+//     console.log(`   ▶ Running: ${file}`);
+//     // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
+//     const command = `psql -v ON_ERROR_STOP=1 -f "${file}"`;
+
+//     execSync(command, {
+//       stdio: 'inherit', // Show psql output in real-time
+//       env: psqlEnv,
+//     });
+//   }
+
+//   console.log('\n✅ All scripts executed successfully.');
+
+// } catch (err) {
+//   console.error(`\n❌ An error occurred during execution.`);
+//   console.error(`   The script has been halted. Please check the error message from psql above`);
+//   console.error(`   to debug the issue in the failed SQL file.`);
+//   process.exit(1);
+// }
+
 try {
   console.log('\n🔍 Finding all .sql files...');
   const allSqlFiles = getAllSqlFiles(folder);
@@ -151,7 +205,8 @@ try {
   for (const file of allSqlFiles) {
     console.log(`   ▶ Running: ${file}`);
     // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
-    const command = `psql -v ON_ERROR_STOP=1 -f "${file}"`;
+    // Use -q to suppress NOTICE messages (quiet mode)
+    const command = `psql -q -v ON_ERROR_STOP=1 -f "${file}"`;
 
     execSync(command, {
       stdio: 'inherit', // Show psql output in real-time

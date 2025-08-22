@@ -36,7 +36,7 @@ RETURNS TABLE(
     updated_at text,
     vlan text,
     west_port text,
-    total_count bigint
+    total_count bigint,
     active_count bigint,
     inactive_count bigint
 ) 
@@ -104,7 +104,7 @@ BEGIN
       v.updated_at::text,
       v.vlan::text,
       v.west_port::text,
-      count(*) OVER() AS total_count
+      count(*) OVER() AS total_count,
       sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count,
       sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_nodes_complete v

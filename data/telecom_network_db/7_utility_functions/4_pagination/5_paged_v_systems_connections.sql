@@ -48,7 +48,7 @@ RETURNS TABLE(
     vmux_subscriber text,
     vmux_c_code text,
     vmux_tk text,
-    total_count bigint
+    total_count bigint,
     active_count bigint,
     inactive_count bigint
 ) 
@@ -120,7 +120,7 @@ BEGIN
       v.vmux_subscriber::text,
       v.vmux_c_code::text,
       v.vmux_tk::text,
-      count(*) OVER() AS total_count
+      count(*) OVER() AS total_count,
       sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count,
       sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_system_connections_complete v -- Corrected the view name
