@@ -1,6 +1,6 @@
 "use client";
 
-import { tableQueryUtils, useQueryPerformance } from "@/hooks/database";
+import { tableQueryUtils, useDashboardOverview, useQueryPerformance } from "@/hooks/database";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/common/ui";
@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const { getQueryStats, clearStaleQueries, prefetchCriticalData } = useQueryPerformance();
   const queryClient = useQueryClient();
   const supabase = createClient();
+  // const { data } = useDashboardOverview(supabase, {});
 
   const stats = getQueryStats();
 
@@ -24,13 +25,15 @@ export default function DashboardPage() {
 
     // Get cache stats for specific table
     const lookupTypesCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'lookup_types');
-    // console.log('Lookup Types cache stats:', lookupTypesCacheStats);
+    console.log('Lookup Types cache stats:', lookupTypesCacheStats);
 
     const employeesCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'employees');
-    // console.log('Employees cache stats:', employeesCacheStats);
+    console.log('Employees cache stats:', employeesCacheStats);
 
     const employeeDesignationsCacheStats = tableQueryUtils.getTableCacheStats(queryClient, 'employee_designations');
-    // console.log('Employee Designations cache stats:', employeeDesignationsCacheStats);
+    console.log('Employee Designations cache stats:', employeeDesignationsCacheStats);
+
+    // console.log('Dashboard Overview:', data);
   };
   return (
     <div className="flex flex-col items-center justify-center py-16">

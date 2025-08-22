@@ -231,6 +231,10 @@ export function usePagedNodesComplete(supabase: SupabaseClient<Database>, option
   });
 }
 
+export function useDashboardOverview(supabase: SupabaseClient<Database>, options: UseRpcQueryOptions<"get_dashboard_overview">) {
+  return useRpcQuery(supabase, "get_dashboard_overview", {}, options);
+}
+
 // Lookup type hooks
 export function useGetLookupTypeId(supabase: SupabaseClient<Database>, category: string, name: string, options?: UseRpcQueryOptions<"get_lookup_type_id">) {
   return useRpcQuery(supabase, "get_lookup_type_id", { p_category: category, p_name: name }, options);
@@ -281,3 +285,5 @@ export function useAdminBulkUpdateStatus(supabase: SupabaseClient<Database>, opt
 export function useAdminBulkDeleteUsers(supabase: SupabaseClient<Database>, options?: UseTableMutationOptions<boolean, RpcFunctionArgs<"admin_bulk_delete_users">>) {
   return useRpcMutation(supabase, "admin_bulk_delete_users", options);
 }
+
+

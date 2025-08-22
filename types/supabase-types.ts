@@ -2920,6 +2920,10 @@ export type Database = {
         Args: { sql_query: string }
         Returns: Json
       }
+      get_dashboard_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_lookup_type_id: {
         Args: { p_category: string; p_name: string }
         Returns: string

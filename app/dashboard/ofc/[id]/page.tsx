@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { usePagedOfcCablesComplete, usePagedOfcConnectionsComplete, useRpcQuery, useTableQuery, useTableRecord } from "@/hooks/database";
 import { useOfcConnection } from "@/hooks/useOfcConnection";
 import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { Database } from "@/types/supabase-types";

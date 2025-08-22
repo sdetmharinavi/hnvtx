@@ -130,6 +130,7 @@ export interface UseTableRecordOptions<T extends TableOrViewName, TData = Row<T>
 
 // Options for getting unique values from a table OR view.
 export interface UseUniqueValuesOptions<T extends TableOrViewName, TData = unknown[]> extends Omit<UseQueryOptions<unknown[], Error, TData>, "queryKey" | "queryFn"> {
+  tableName: T;
   filters?: Filters;
   orderBy?: OrderBy[];
   limit?: number;
@@ -273,4 +274,21 @@ export type UsePagedSystemConnectionsCompleteOptions = {
   orderDir?: "asc" | "desc";
   filters?: Json;
   queryOptions?: Omit<UseQueryOptions<PagedSystemConnectionsCompleteResult>, "queryKey" | "queryFn">;
+};
+
+// Define a type for the function's return data for full type safety
+export type DashboardOverviewData = {
+  system_status_counts: { [key: string]: number };
+  node_status_counts: { [key: string]: number };
+  path_operational_status: { [key: string]: number };
+  cable_utilization_summary: {
+    average_utilization_percent: number;
+    high_utilization_count: number;
+    total_cables: number;
+  };
+  user_activity_last_30_days: {
+    date: string;
+    count: number;
+  }[];
+  systems_per_maintenance_area: { [key: string]: number };
 };
