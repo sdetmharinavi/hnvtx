@@ -5,10 +5,11 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { usePagedOfcCablesComplete, useRpcQuery, useTableQuery, useTableRecord } from "@/hooks/database";
+import { usePagedOfcCablesComplete, usePagedOfcConnectionsComplete, useRpcQuery, useTableQuery, useTableRecord } from "@/hooks/database";
 import { useOfcConnection } from "@/hooks/useOfcConnection";
 import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { Database } from "@/types/supabase-types";
+import { PageSpinner } from "@/components/common/ui/LoadingSpinner";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,6 @@ export default function OfcCableDetailsPage() {
     existingConnections: Database['public']['Tables']['ofc_connections']['Row'][];
     isLoading: boolean;
     ensureConnectionsExist: () => Promise<void>;
-    // ... other properties
   };
 
 // Automatically ensure connections exist when component mounts
@@ -41,31 +41,17 @@ useEffect(() => {
 }, [isLoading, ensureConnectionsExist]);
 
 
-
-const { data: cables, isLoading: isLoadingCables } = useTableQuery(supabase, "v_ofc_connections_complete",{
-  filters:{
-    id: id as string
-  }
-} );
-
 console.log("existingConnections", existingConnections);
-console.log("isLoading", isLoading);
-console.log("cable", cable);
-console.log("cables", cables);
 
 
 
-  const loading = isLoading || isLoadingCables;
+  const loading = isLoading;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
-  if (!cable || !cables) {
+  if (!cable) {
     return (
       <div className="p-6">
         <div className="bg-red-50 border-l-4 border-red-400 p-4">

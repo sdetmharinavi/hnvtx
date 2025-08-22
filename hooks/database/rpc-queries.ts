@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryResult } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns, UseRpcQueryOptions, UseTableMutationOptions, PagedSystemsCompleteResult, UsePagedSystemsCompleteOptions, UsePagedNodesCompleteOptions, PagedNodesCompleteResult } from "./queries-type-helpers";
+import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns, UseRpcQueryOptions, UseTableMutationOptions, PagedSystemsCompleteResult, UsePagedSystemsCompleteOptions, UsePagedNodesCompleteOptions, PagedNodesCompleteResult, PagedOfcConnectionsCompleteResult, UsePagedOfcConnectionsCompleteOptions, UsePagedSystemConnectionsCompleteOptions, PagedSystemConnectionsCompleteResult } from "./queries-type-helpers";
 import { createRpcQueryKey } from "./utility-functions";
 import { PagedOfcCablesCompleteResult, UsePagedOfcCablesCompleteOptions } from "@/hooks/database/queries-type-helpers";
 
@@ -74,6 +74,51 @@ export function usePagedSystemsComplete(supabase: SupabaseClient<Database>, opti
 }
 
 /**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_system_connections_complete view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedSystemConnectionsComplete(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedSystemConnectionsCompleteOptions
+): UseQueryResult<PagedSystemConnectionsCompleteResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "system_name", // Default order_by is a valid column
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedSystemConnectionsCompleteResult, Error>({
+    // Query key includes all parameters to ensure uniqueness and refetching when they change.
+    queryKey: ["v_system_connections_complete", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      // Call the Supabase RPC function with the specified parameters.
+      const { data, error } = await supabase.rpc("get_paged_system_connections_complete", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged system connections:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    // Spread any additional react-query options for flexibility (e.g., enabled, staleTime).
+    ...queryOptions,
+  });
+}
+
+/**
  * A specialized hook to fetch paginated and filtered data from the 
  * `v_ofc_cables_complete` view using the high-performance RPC function.
  */
@@ -108,6 +153,51 @@ export function usePagedOfcCablesComplete(supabase: SupabaseClient<Database>, op
       return data ?? null;
     },
     // Spread any additional react-query options
+    ...queryOptions,
+  });
+}
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_ofc_connections_complete view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedOfcConnectionsComplete(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedOfcConnectionsCompleteOptions
+): UseQueryResult<PagedOfcConnectionsCompleteResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "ofc_route_name", // Default order_by is a valid column
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedOfcConnectionsCompleteResult, Error>({
+    // Query key includes all parameters to ensure uniqueness and refetching when they change.
+    queryKey: ["v_ofc_connections_complete", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      // Call the Supabase RPC function with the specified parameters.
+      const { data, error } = await supabase.rpc("get_paged_ofc_connections_complete", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged OFC connections:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    // Spread any additional react-query options for flexibility (e.g., enabled, staleTime).
     ...queryOptions,
   });
 }

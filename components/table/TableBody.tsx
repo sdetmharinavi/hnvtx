@@ -5,17 +5,7 @@ import { DataTableProps } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries";
 
-interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, 
-  | 'columns'
-  | 'selectable'
-  | 'bordered'
-  | 'density'
-  | 'actions'
-  | 'striped'
-  | 'hoverable'
-  | 'loading'
-  | 'emptyText'
-> {
+interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "actions" | "striped" | "hoverable" | "loading" | "emptyText"> {
   processedData: Row<T>[];
   visibleColumns: Column<Row<T>>[];
   hasActions: boolean;
@@ -33,7 +23,7 @@ interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTablePr
 const densityClasses = { compact: "py-1 px-3", default: "py-3 px-4", comfortable: "py-4 px-6" };
 
 export function TableBody<T extends AuthTableOrViewName>({
-//   columns,
+  //   columns,
   processedData,
   visibleColumns,
   selectable,
@@ -49,7 +39,7 @@ export function TableBody<T extends AuthTableOrViewName>({
   editingCell,
   editValue,
   setEditValue,
-//   setEditingCell,
+  //   setEditingCell,
   onRowSelect,
   onCellEdit,
   saveCellEdit,
@@ -91,30 +81,47 @@ export function TableBody<T extends AuthTableOrViewName>({
       {processedData.map((record, rowIndex) => (
         <tr
           key={rowIndex}
-          className={`${striped && rowIndex % 2 === 1 ? "bg-gray-50/50 dark:bg-gray-700/25" : ""} ${
-            hoverable ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : ""
-          } ${selectedRows.includes(record) ? "bg-blue-50 dark:bg-blue-900/20" : ""} transition-colors`}
-        >
+          className={`${striped && rowIndex % 2 === 1 ? "bg-gray-50/50 dark:bg-gray-700/25" : ""} ${hoverable ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : ""} ${
+            selectedRows.includes(record) ? "bg-blue-50 dark:bg-blue-900/20" : ""
+          } transition-colors`}>
           {selectable && (
             <td className={`px-4 py-3 ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} border-r border-gray-200 dark:border-gray-700` : ""}`}>
-              <input
-                type='checkbox'
-                checked={selectedRows.includes(record)}
-                onChange={(e) => onRowSelect(record, e.target.checked)}
-                className='rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-              />
+              <input type='checkbox' checked={selectedRows.includes(record)} onChange={(e) => onRowSelect(record, e.target.checked)} className='rounded border-gray-300 text-blue-600 focus:ring-blue-500' />
+            </td>
+          )}
+          {hasActions && (
+            <td className={`${densityClasses[density ?? "default"]} text-right ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}>
+              <div className='flex items-center justify-end gap-1'>
+                {actions?.map((action) => {
+                  if (action.hidden?.(record)) return null;
+                  const isDisabled = action.disabled?.(record);
+                  const variants = {
+                    primary: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
+                    secondary: "text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300",
+                    danger: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
+                    success: "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300",
+                  };
+                  return (
+                    <button
+                      key={action.key}
+                      onClick={() => !isDisabled && action.onClick(record, rowIndex)}
+                      disabled={isDisabled}
+                      className={`p-1 rounded transition-colors ${isDisabled ? "opacity-50 cursor-not-allowed" : variants[action.variant || "secondary"]}`}
+                      title={action.label}>
+                      {action.icon}
+                    </button>
+                  );
+                })}
+              </div>
             </td>
           )}
           {visibleColumns.map((column, colIndex) => (
             <td
               key={column.key}
-              className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white ${
-                column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""
-              } ${
+              className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
               } ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""}`}
-              onClick={() => column.editable && onCellEdit(record, column, rowIndex)}
-            >
+              onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
                 <div className='flex items-center gap-2'>
                   <input
@@ -143,33 +150,6 @@ export function TableBody<T extends AuthTableOrViewName>({
               )}
             </td>
           ))}
-          {hasActions && (
-            <td className={`${densityClasses[density ?? "default"]} text-right ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}>
-              <div className='flex items-center justify-end gap-1'>
-                {actions?.map((action) => {
-                  if (action.hidden?.(record)) return null;
-                  const isDisabled = action.disabled?.(record);
-                  const variants = {
-                    primary: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
-                    secondary: "text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300",
-                    danger: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
-                    success: "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300",
-                  };
-                  return (
-                    <button
-                      key={action.key}
-                      onClick={() => !isDisabled && action.onClick(record, rowIndex)}
-                      disabled={isDisabled}
-                      className={`p-1 rounded transition-colors ${isDisabled ? "opacity-50 cursor-not-allowed" : variants[action.variant || "secondary"]}`}
-                      title={action.label}
-                    >
-                      {action.icon}
-                    </button>
-                  );
-                })}
-              </div>
-            </td>
-          )}
         </tr>
       ))}
     </tbody>

@@ -143,7 +143,7 @@ const OfcPage = () => {
 
   // DataTable Configuration
   const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
-    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "sn_id", "en_id"],
+    omit: ["id", "created_at", "updated_at", "remark", "ofc_type_id", "maintenance_terminal_id", "ofc_type_code", "maintenance_area_code", "sn_id", "en_id","capacity"],
     overrides: {
       asset_no: { title: "Asset No.", sortable: true, width: 150 },
       route_name: { title: "Route Name", sortable: true, width: 250 },

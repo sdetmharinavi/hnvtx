@@ -23,13 +23,13 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
       filters: { id: cableId },
     }
   );
-
+  
   // Get existing connections for this cable
   const { data: existingConnections = [], isLoading: isLoadingConnections } = useTableQuery(
     supabase,
     'ofc_connections',
     {
-      columns: 'id, ofc_id, connection_type, status, created_at',
+      columns: 'connection_type,destination_id,destination_port,en_dom,en_power_dbm,fiber_no_en,fiber_no_sn,id,logical_path_id,ofc_id,otdr_distance_en_km,otdr_distance_sn_km,path_segment_order,remark,route_loss_db,sn_dom,sn_power_dbm,source_id,source_port,status,system_en_id,system_sn_id,updated_at',
       filters: { ofc_id: cableId },
     }
   );

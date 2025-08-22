@@ -250,3 +250,27 @@ export type UsePagedNodesCompleteOptions = {
   filters?: Json;
   queryOptions?: Omit<UseQueryOptions<PagedNodesCompleteResult, Error>, "queryKey" | "queryFn">;
 };
+
+export type PagedOfcConnectionsCompleteResult = 
+  Array<Database["public"]["Functions"]["get_paged_ofc_connections_complete"]["Returns"][number]> | null;
+
+// FIX: Add the options type for the new hook we will create
+export type UsePagedOfcConnectionsCompleteOptions = {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDir?: "asc" | "desc";
+  filters?: Json;
+  queryOptions?: Omit<UseQueryOptions<PagedOfcConnectionsCompleteResult, Error>, "queryKey" | "queryFn">;
+};
+
+export type PagedSystemConnectionsCompleteResult = Array<Database["public"]["Functions"]["get_paged_system_connections_complete"]["Returns"][number]> | null;
+
+export type UsePagedSystemConnectionsCompleteOptions = {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDir?: "asc" | "desc";
+  filters?: Json;
+  queryOptions?: Omit<UseQueryOptions<PagedSystemConnectionsCompleteResult>, "queryKey" | "queryFn">;
+};

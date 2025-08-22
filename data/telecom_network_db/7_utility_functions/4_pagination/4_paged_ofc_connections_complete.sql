@@ -1,32 +1,33 @@
--- Function: get_paged_ofc_cables_complete
-DROP FUNCTION IF EXISTS public.get_paged_ofc_cables_complete;
-CREATE OR REPLACE FUNCTION public.get_paged_ofc_cables_complete(
+-- Function: get_paged_ofc_connections_complete
+DROP FUNCTION IF EXISTS public.get_paged_ofc_connections_complete;
+CREATE OR REPLACE FUNCTION public.get_paged_ofc_connections_complete(
     p_limit integer,
     p_offset integer,
-    p_order_by text DEFAULT 'route_name',
+    p_order_by text DEFAULT 'ofc_route_name', -- Changed default to a valid column
     p_order_dir text DEFAULT 'asc',
     p_filters jsonb DEFAULT '{}'::jsonb
 ) 
 RETURNS TABLE(
+    -- Replaced with columns from v_ofc_connections_complete
     id text,
-    asset_no text,
-    route_name text,
-    sn_id text,
-    en_id text,
-    capacity integer,
-    commissioned_on text,
-    created_at text,
-    current_rkm numeric,
-    maintenance_area_code text,
-    maintenance_area_name text,
-    maintenance_terminal_id text,
-    ofc_type_code text,
-    ofc_type_id text,
+    ofc_id text,
+    ofc_route_name text,
     ofc_type_name text,
-    remark text,
+    sn_id text,
+    sn_name text,
+    sn_dom text,
+    fiber_no_sn integer,
+    system_sn_name text,
+    otdr_distance_sn_km numeric,
+    en_id text,
+    en_name text,
+    en_dom text,
+    fiber_no_en integer,
+    system_en_name text,
+    otdr_distance_en_km numeric,
     status boolean,
-    transnet_id text,
-    transnet_rkm numeric,
+    remark text,
+    created_at text,
     updated_at text,
     total_count bigint
 ) 
@@ -59,28 +60,29 @@ BEGIN
   sql_query := format(
     $query$
     SELECT 
+      -- Replaced with columns from v_ofc_connections_complete
       v.id::text,
-      v.asset_no::text,
-      v.route_name::text,
-      v.sn_id::text,
-      v.en_id::text,
-      v.capacity,
-      v.commissioned_on::text,
-      v.created_at::text,
-      v.current_rkm,
-      v.maintenance_area_code::text,
-      v.maintenance_area_name::text,
-      v.maintenance_terminal_id::text,
-      v.ofc_type_code::text,
-      v.ofc_type_id::text,
+      v.ofc_id::text,
+      v.ofc_route_name::text,
       v.ofc_type_name::text,
-      v.remark::text,
+      v.sn_id::text,
+      v.sn_name::text,
+      v.sn_dom::text,
+      v.fiber_no_sn,
+      v.system_sn_name::text,
+      v.otdr_distance_sn_km,
+      v.en_id::text,
+      v.en_name::text,
+      v.en_dom::text,
+      v.fiber_no_en,
+      v.system_en_name::text,
+      v.otdr_distance_en_km,
       v.status,
-      v.transnet_id::text,
-      v.transnet_rkm,
+      v.remark::text,
+      v.created_at::text,
       v.updated_at::text,
       count(*) OVER() AS total_count
-    FROM public.v_ofc_cables_complete v
+    FROM public.v_ofc_connections_complete v -- Corrected the view name
     WHERE 1 = 1 %s
     ORDER BY %I %s
     LIMIT %L OFFSET %L 
@@ -96,6 +98,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.get_paged_ofc_cables_complete(integer, integer, text, text, jsonb) TO authenticated;
-ALTER FUNCTION public.get_paged_ofc_cables_complete(integer, integer, text, text, jsonb)
+-- Corrected the function name in the GRANT and ALTER statements
+GRANT EXECUTE ON FUNCTION public.get_paged_ofc_connections_complete(integer, integer, text, text, jsonb) TO authenticated;
+ALTER FUNCTION public.get_paged_ofc_connections_complete(integer, integer, text, text, jsonb)
 SET search_path = public, auth, pg_temp;

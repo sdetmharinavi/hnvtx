@@ -3031,6 +3031,88 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_paged_ofc_connections_complete: {
+        Args: {
+          p_filters?: Json
+          p_limit: number
+          p_offset: number
+          p_order_by?: string
+          p_order_dir?: string
+        }
+        Returns: {
+          created_at: string
+          en_dom: string
+          en_id: string
+          en_name: string
+          fiber_no_en: number
+          fiber_no_sn: number
+          id: string
+          ofc_id: string
+          ofc_route_name: string
+          ofc_type_name: string
+          otdr_distance_en_km: number
+          otdr_distance_sn_km: number
+          remark: string
+          sn_dom: string
+          sn_id: string
+          sn_name: string
+          status: boolean
+          system_en_name: string
+          system_sn_name: string
+          total_count: number
+          updated_at: string
+        }[]
+      }
+      get_paged_system_connections_complete: {
+        Args: {
+          p_filters?: Json
+          p_limit: number
+          p_offset: number
+          p_order_by?: string
+          p_order_dir?: string
+        }
+        Returns: {
+          bandwidth_mbps: number
+          commissioned_on: string
+          connected_system_name: string
+          connected_system_type_name: string
+          created_at: string
+          en_interface: string
+          en_ip: string
+          en_name: string
+          id: string
+          maan_bandwidth_allocated_mbps: number
+          maan_customer_name: string
+          maan_fiber_in: number
+          maan_fiber_out: number
+          maan_sfp_capacity: string
+          maan_sfp_port: string
+          maan_sfp_serial_no: string
+          maan_sfp_type_name: string
+          media_type_name: string
+          remark: string
+          sdh_a_customer: string
+          sdh_a_slot: string
+          sdh_b_customer: string
+          sdh_b_slot: string
+          sdh_carrier: string
+          sdh_stm_no: string
+          sn_interface: string
+          sn_ip: string
+          sn_name: string
+          status: boolean
+          system_id: string
+          system_name: string
+          system_type_name: string
+          total_count: number
+          updated_at: string
+          vlan: string
+          vmux_c_code: string
+          vmux_channel: string
+          vmux_subscriber: string
+          vmux_tk: string
+        }[]
+      }
       get_paged_v_systems_complete: {
         Args: {
           p_filters?: Json
