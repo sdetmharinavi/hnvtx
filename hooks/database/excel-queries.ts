@@ -538,7 +538,7 @@ export function useExcelUpload<T extends TableName>(
       // 1. Parse the Excel file using our xlsx utility function
       const jsonData = await parseExcelFile(file);
 
-      // console.log("jsonData", jsonData);
+      console.log("jsonData", jsonData);
       
 
       if (!jsonData || jsonData.length < 2) {

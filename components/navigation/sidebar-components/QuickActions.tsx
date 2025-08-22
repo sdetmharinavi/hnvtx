@@ -44,6 +44,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
     {
       onSuccess: (result) => {
         // ... success handler
+        console.log("result", result);
         return result.successCount > 0
           ? toast.success(
               `Successfully uploaded ${result.successCount} of ${result.totalRows} records.`
