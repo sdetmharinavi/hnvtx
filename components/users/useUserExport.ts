@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import * as ExcelJS from "exceljs";
 import { createClient } from "@/utils/supabase/client";
 import { UserProfileData } from "@/components/users/user-types";
+import { snakeToTitleCase } from "@/utils/formatters";
 
 export const useUserExport = () => {
   const supabase = createClient();
@@ -31,17 +32,19 @@ export const useUserExport = () => {
 
       // Add headers (adjust based on your actual data structure)
       const headers = Object.keys(data[0] || {});
-      worksheet.addRow(headers);
+      const formattedHeaders = headers.map(header => snakeToTitleCase(header));
+      // console.log("formattedHeaders",formattedHeaders);
+      worksheet.addRow(formattedHeaders);
 
       // Add data rows
       data.forEach((row: UserProfileData) => {
         const rowData = headers.map(header => row[header as keyof UserProfileData]);
-        console.log(rowData);
+        // console.log("rowData",rowData);
         worksheet.addRow(rowData);
       });
 
       // Auto-fit columns
-      worksheet.columns = headers.map(header => ({
+      worksheet.columns = formattedHeaders.map(header => ({
         header,
         key: header,
         width: Math.min(Math.max(header.length + 2, 10), 50)
