@@ -5,6 +5,7 @@ import Link from "next/link";
 import MenuButton from "./MenuButton";
 import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
+import ThemeToggle from "../common/ui/theme/ThemeToggle";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -70,6 +71,7 @@ export default function DashboardHeader({
                 </div>
               </div>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </div>

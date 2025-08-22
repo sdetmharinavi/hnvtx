@@ -2,10 +2,10 @@
 'use client';
 
 import { Toaster } from 'sonner';
-import { useTheme } from '@/providers/ThemeProvider';
+import { useThemeStore } from '@/stores/themeStore';
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
+  const { theme } = useThemeStore();
 
   return (
     <>

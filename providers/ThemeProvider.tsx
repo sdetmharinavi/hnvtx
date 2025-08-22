@@ -1,70 +1,56 @@
-// providers/ThemeProvider.tsx
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect } from "react";
+import { useThemeStore, hydrateThemeStore, Theme } from "@/stores/themeStore";
 
-type Theme = 'dark' | 'light' | 'system';
-
-type ThemeProviderProps = {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
-};
-
-type ThemeProviderState = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-};
-
-const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
-
-export function ThemeProvider({
+export default function ThemeProvider({
   children,
-  defaultTheme = 'system',
-  storageKey = 'hnvtx-ui-theme',
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
+}: {
+  children: React.ReactNode;
+}) {
+  const { theme, hydrated } = useThemeStore();
 
+  // Hydrate theme from localStorage on mount
   useEffect(() => {
-    const storedTheme = localStorage.getItem(storageKey) as Theme | null;
-    if (storedTheme) {
-      setTheme(storedTheme);
-    }
+    // Add class to disable transitions during initial load
+    document.documentElement.classList.add("no-transition");
+
+    hydrateThemeStore();
+
+    // Re-enable transitions after a short delay
+    setTimeout(() => {
+      document.documentElement.classList.remove("no-transition");
+    }, 50);
   }, []);
 
+  // Apply theme when hydrated or theme changes
   useEffect(() => {
-    const root = window.document.documentElement;
+    if (!hydrated) return;
 
     const applyTheme = (theme: Theme) => {
-      root.classList.remove('light', 'dark');
-      root.classList.add(theme);
+      const isDark =
+        theme === "dark" ||
+        (theme === "system" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     };
 
-    if (theme === 'system') {
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => applyTheme(media.matches ? 'dark' : 'light');
-      handleChange();
-      media.addEventListener('change', handleChange);
-      return () => media.removeEventListener('change', handleChange);
-    }
-
     applyTheme(theme);
-  }, [theme]);
 
-  const changeTheme = (newTheme: Theme) => {
-    localStorage.setItem(storageKey, newTheme);
-    setTheme(newTheme);
-  };
+    // Listen for system theme changes
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => applyTheme("system");
 
-  return (
-    <ThemeProviderContext.Provider value={{ theme, setTheme: changeTheme }}>
-      {children}
-    </ThemeProviderContext.Provider>
-  );
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [theme, hydrated]);
+
+  return <>{children}</>;
 }
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext);
-  if (!context) throw new Error('useTheme must be used within ThemeProvider');
-  return context;
-};
