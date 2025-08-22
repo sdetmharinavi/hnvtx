@@ -1,21 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { employeeSchema, Employee } from "@/schemas/schema";
+import { employeeSchema } from "@/schemas/schema";
 import { Tables } from "@/types/supabase-types";
 import { Option } from "@/components/common/SearchableSelect";
 import { EmployeeWithRelations } from "./employee-types";
 import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "@/components/common/FormControls";
-
-// Helper: format a Date or ISO string to YYYY-MM-DD for input[type="date"]
-function formatAsDateInputValue(value: Date | string): string {
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "";
-  // Adjust for timezone to get the local date portion correctly
-  const tzOffsetMs = d.getTimezoneOffset() * 60 * 1000;
-  const local = new Date(d.getTime() - tzOffsetMs);
-  return local.toISOString().slice(0, 10);
-}
 
 // Define the form-specific schema by omitting fields not in the form
 // (dates are kept as z.coerce.date in schema and will be coerced by the resolver)

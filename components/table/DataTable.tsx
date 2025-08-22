@@ -1,10 +1,11 @@
 // @/components/table/DataTable.tsx
 import React, { useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useTableExcelDownload, useRPCExcelDownload, Column } from "@/hooks/database/excel-queries";
+import { useTableExcelDownload, useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { TableToolbar, TableHeader, TableBody, TablePagination, TableColumnSelector, TableFilterPanel } from "./";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 
 export function DataTable<T extends AuthTableOrViewName>({
   data = [],

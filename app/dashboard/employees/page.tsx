@@ -22,7 +22,7 @@ import {
   EmployeeFilters as EmployeeFiltersType,
 } from "@/components/employee/employee-types";
 import { TablesInsert } from "@/types/supabase-types";
-import { Column, useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { formatDate } from "@/utils/formatters";
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
@@ -31,6 +31,7 @@ import { getEmployeeTableActions } from "@/components/employee/EmployeeTableActi
 import { BulkActions } from "@/components/employee/BulkActions";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useDebouncedCallback } from "use-debounce";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 // import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 
 const EmployeesPage = () => {
@@ -156,11 +157,40 @@ const EmployeesPage = () => {
   });
 
   // Handlers
-  const handleFormSubmit = (data: TablesInsert<"employees">) => {
+  const handleFormSubmit = (data: {
+    employee_name: string;
+    employee_pers_no?: string | null | undefined;
+    employee_contact?: string | null | undefined;
+    employee_email?: string | undefined;
+    employee_dob?: Date | null | undefined;
+    employee_doj?: Date | null | undefined;
+    employee_designation_id?: string | null | undefined;
+    employee_addr?: string | null | undefined;
+    maintenance_terminal_id?: string | null | undefined;
+    remark?: string | null | undefined;
+  }) => {
+    // Convert form data (Date fields) to DB insert shape (strings)
+    const payload: TablesInsert<"employees"> = {
+      employee_name: data.employee_name,
+      employee_pers_no: data.employee_pers_no ?? null,
+      employee_contact: data.employee_contact ?? null,
+      employee_email: data.employee_email ?? null,
+      employee_dob: data.employee_dob
+        ? formatDate(data.employee_dob, { format: "yyyy-mm-dd" })
+        : null,
+      employee_doj: data.employee_doj
+        ? formatDate(data.employee_doj, { format: "yyyy-mm-dd" })
+        : null,
+      employee_designation_id: data.employee_designation_id ?? null,
+      employee_addr: data.employee_addr ?? null,
+      maintenance_terminal_id: data.maintenance_terminal_id ?? null,
+      remark: data.remark ?? null,
+    };
+
     if (editingEmployee) {
-      updateEmployee({ id: editingEmployee.id, data });
+      updateEmployee({ id: editingEmployee.id, data: payload });
     } else {
-      insertEmployee(data);
+      insertEmployee(payload);
     }
   };
 
