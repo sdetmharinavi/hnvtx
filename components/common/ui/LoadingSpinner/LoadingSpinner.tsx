@@ -18,10 +18,10 @@ const sizeClasses = {
 };
 
 const colorClasses = {
-  primary: 'text-blue-600',
-  secondary: 'text-gray-600',
-  white: 'text-white',
-  gray: 'text-gray-400',
+  primary: 'text-blue-600 dark:text-blue-400',
+  secondary: 'text-gray-600 dark:text-gray-400',
+  white: 'text-white dark:text-white',
+  gray: 'text-gray-400 dark:text-gray-500',
 };
 
 const textSizeClasses = {
@@ -68,7 +68,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       
       {text && (
         <p className={cn(
-          'font-medium text-gray-600',
+          'font-medium text-gray-600 dark:text-gray-300',
           textSizeClasses[size]
         )}>
           {text}
@@ -79,8 +79,8 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   if (overlay) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-25 backdrop-blur-sm">
-        <div className="rounded-lg bg-white p-6 shadow-lg">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-25 dark:bg-black dark:bg-opacity-40 backdrop-blur-sm">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-lg">
           {spinnerContent}
         </div>
       </div>
@@ -94,7 +94,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 export const ButtonSpinner: React.FC<{ size?: 'xs' | 'sm' | 'md' }> = ({ 
   size = 'sm' 
 }) => (
-  <LoadingSpinner size={size} color="white" className="inline-flex" />
+  <LoadingSpinner size={size} color="primary" className="inline-flex" />
 );
 
 export const PageSpinner: React.FC<{ text?: string }> = ({ 
@@ -122,7 +122,7 @@ export const LoadingSkeleton: React.FC<{
     {Array.from({ length: rows }).map((_, index) => (
       <div
         key={index}
-        className="h-4 rounded bg-gray-200"
+        className="h-4 rounded bg-gray-200 dark:bg-gray-700"
         style={{
           width: `${Math.random() * 40 + 60}%`,
         }}
@@ -134,14 +134,14 @@ export const LoadingSkeleton: React.FC<{
 export const LoadingCard: React.FC<{
   className?: string;
 }> = ({ className }) => (
-  <div className={cn('animate-pulse rounded-lg border p-6', className)}>
+  <div className={cn('animate-pulse rounded-lg border border-gray-200 dark:border-gray-700 p-6', className)}>
     <div className="space-y-4">
-      <div className="h-6 w-3/4 rounded bg-gray-200" />
+      <div className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
       <div className="space-y-2">
-        <div className="h-4 rounded bg-gray-200" />
-        <div className="h-4 w-5/6 rounded bg-gray-200" />
+        <div className="h-4 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-4 w-5/6 rounded bg-gray-200 dark:bg-gray-700" />
       </div>
-      <div className="h-10 w-24 rounded bg-gray-200" />
+      <div className="h-10 w-24 rounded bg-gray-200 dark:bg-gray-700" />
     </div>
   </div>
 );

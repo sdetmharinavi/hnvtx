@@ -460,6 +460,7 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "ofc_type_id",
     "asset_no",
     "transnet_id",
+    "ofc_owner_id",
     "transnet_rkm",
     "current_rkm",
     "maintenance_terminal_id",

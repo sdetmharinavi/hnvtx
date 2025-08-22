@@ -1585,6 +1585,7 @@ export type Database = {
           en_id: string
           id: string
           maintenance_terminal_id: string | null
+          ofc_owner_id: string
           ofc_type_id: string
           remark: string | null
           route_name: string
@@ -1603,6 +1604,7 @@ export type Database = {
           en_id: string
           id?: string
           maintenance_terminal_id?: string | null
+          ofc_owner_id: string
           ofc_type_id: string
           remark?: string | null
           route_name: string
@@ -1621,6 +1623,7 @@ export type Database = {
           en_id?: string
           id?: string
           maintenance_terminal_id?: string | null
+          ofc_owner_id?: string
           ofc_type_id?: string
           remark?: string | null
           route_name?: string
@@ -1650,6 +1653,13 @@ export type Database = {
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
             referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_ofc_owner_id_fkey"
+            columns: ["ofc_owner_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -2526,6 +2536,9 @@ export type Database = {
           maintenance_area_code: string | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null
+          ofc_owner_code: string | null
+          ofc_owner_id: string | null
+          ofc_owner_name: string | null
           ofc_type_code: string | null
           ofc_type_id: string | null
           ofc_type_name: string | null
@@ -2557,6 +2570,13 @@ export type Database = {
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
             referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_ofc_owner_id_fkey"
+            columns: ["ofc_owner_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -3026,6 +3046,9 @@ export type Database = {
           maintenance_area_code: string
           maintenance_area_name: string
           maintenance_terminal_id: string
+          ofc_owner_code: string
+          ofc_owner_id: string
+          ofc_owner_name: string
           ofc_type_code: string
           ofc_type_id: string
           ofc_type_name: string

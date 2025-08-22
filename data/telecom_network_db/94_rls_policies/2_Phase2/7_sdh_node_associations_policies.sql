@@ -24,7 +24,7 @@ BEGIN
     FOREACH role IN ARRAY ARRAY['admin'] LOOP
       
       -- SELECT
-      EXECUTE format(
+      -- EXECUTE format(
         'DROP POLICY IF EXISTS allow_%s_select ON public.%I;',
         role, tbl
       );

@@ -6,6 +6,7 @@ create table ofc_cables (
   en_id UUID references nodes (id) not null,
   ofc_type_id UUID references lookup_types (id) not null,
   capacity INTEGER not null,
+  ofc_owner_id UUID references lookup_types (id) not null,
   current_rkm DECIMAL(10, 3),
   transnet_id TEXT,
   transnet_rkm DECIMAL(10, 3),

@@ -677,8 +677,27 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             await queryClient.invalidateQueries({
               predicate: (q) => {
                 const key = q.queryKey as unknown[];
-                return Array.isArray(key) && key.includes(tableName);
+                if (!Array.isArray(key)) return false;
+                // Match if any segment equals the tableName or contains it as a substring (to catch views/RPC keys like "v_ofc_cables_complete")
+                return key.some((seg) => {
+                  if (seg === tableName) return true;
+                  if (typeof seg === "string" && seg.toLowerCase().includes(String(tableName).toLowerCase())) return true;
+                  return false;
+                });
               },
+            });
+            // Force refetch so UI reflects changes immediately even if staleTime is large
+            await queryClient.refetchQueries({
+              predicate: (q) => {
+                const key = q.queryKey as unknown[];
+                if (!Array.isArray(key)) return false;
+                return key.some((seg) => {
+                  if (seg === tableName) return true;
+                  if (typeof seg === "string" && seg.toLowerCase().includes(String(tableName).toLowerCase())) return true;
+                  return false;
+                });
+              },
+              type: "active",
             });
             console.log("✅ Query cache invalidated successfully");
           } catch (err) {

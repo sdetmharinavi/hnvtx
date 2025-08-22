@@ -1,5 +1,5 @@
 -- Enable RLS
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
 
 -- Drop existing policies
 DROP POLICY IF EXISTS "Super admins have full access to user_profiles" ON public.user_profiles;

@@ -2,10 +2,10 @@
 "use client";
 
 // --- IMPORTS ---
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { FiDownload, FiPlus } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
-import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
+import { useTableInsert, useTableUpdate, useToggleStatus, useTableQuery } from "@/hooks/database";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
@@ -44,23 +44,41 @@ const OfcPage = () => {
   const [filters, setFilters] = useState<OfcCablesFilters>({ search: "", ofc_type_id: "", status: "", maintenance_terminal_id: "" });
   const [pagination, setPagination] = useState({ page: 1, limit: 10 });
 
-  // --- DATA FOR FILTER DROPDOWNS ---
-  const [ofcTypes, setOfcTypes] = useState<{ id: string; name: string }[]>([]);
-  const [maintenanceAreas, setMaintenanceAreas] = useState<{ id: string; name: string; code?: string | null }[]>([]);
-
-  useEffect(() => {
-    const fetchFilterData = async () => {
-      const [typesRes, areasRes] = await Promise.all([supabase.from("lookup_types").select("id, name").eq("category", "OFC_TYPE").order("name"), supabase.from("maintenance_areas").select("id, name, code").order("name")]);
-      if (typesRes.data) setOfcTypes(typesRes.data);
-      if (areasRes.data) setMaintenanceAreas(areasRes.data);
-    };
-    fetchFilterData();
-  }, [supabase]);
+  // --- DATA FOR FILTER DROPDOWNS (React Query so uploads invalidate and refresh automatically) ---
+  const { data: ofcTypesData } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: { operator: "eq", value: "OFC_TYPE" } },
+    orderBy: [{ column: "name", ascending: true }],
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: maintenanceAreasData } = useTableQuery(supabase, "maintenance_areas", {
+    columns: "id, name, code",
+    orderBy: [{ column: "name", ascending: true }],
+    staleTime: 5 * 60 * 1000,
+  });
+  const ofcTypes = useMemo(() => (ofcTypesData as { id: string; name: string }[] | undefined) ?? [], [ofcTypesData]);
+  const maintenanceAreas = useMemo(
+    () => (maintenanceAreasData as { id: string; name: string; code?: string | null }[] | undefined) ?? [],
+    [maintenanceAreasData]
+  );
 
   // Format filters for the RPC function
   const rpcFilters = useMemo(() => {
     const dbFilters: Record<string, Json> = {};
-    if (filters.search) dbFilters.search_term = { operator: "ilike", value: `%${filters.search}%` }; // Assuming your SQL function handles 'search_term'
+    if (filters.search) {
+      // The SQL function supports a special 'or' key where we can pass a raw condition string.
+      // Build a safe OR expression across real columns in v_ofc_cables_complete
+      const search = filters.search.replace(/'/g, "''");
+      const pattern = `%${search}%`;
+      dbFilters.or = [
+        `(
+          route_name::text ILIKE '${pattern}' OR
+          asset_no::text ILIKE '${pattern}' OR
+          maintenance_area_name::text ILIKE '${pattern}' OR
+          ofc_type_name::text ILIKE '${pattern}'
+        )`,
+      ] as unknown as Json;
+    }
     if (filters.ofc_type_id) dbFilters.ofc_type_id = { operator: "eq", value: filters.ofc_type_id };
     if (filters.status !== "") dbFilters.status = { operator: "eq", value: filters.status === "true" };
     if (filters.maintenance_terminal_id) dbFilters.maintenance_terminal_id = { operator: "eq", value: filters.maintenance_terminal_id };
