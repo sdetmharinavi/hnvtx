@@ -742,10 +742,27 @@ export function useExcelUpload<T extends TableName>(
         if (isCompositeConflict) {
           for (let j = 0; j < batch.length; j++) {
             const row = batch[j];
+            console.log('[ExcelUpload] Upserting single row (composite conflict)', {
+              tableName,
+              rowIndex: i + j,
+              conflictColumn,
+              uploadType,
+              keys: Object.keys(row || {})
+            });
             const { error } = await supabase
               .from(tableName)
               .upsert(row as any, { onConflict: conflictColumn as string });
             if (error) {
+              console.error('[ExcelUpload] Row error (composite conflict)', {
+                code: (error as any).code,
+                message: error.message,
+                details: (error as any).details,
+                hint: (error as any).hint,
+                rowIndex: i + j,
+                tableName,
+                conflictColumn,
+                uploadType
+              });
               uploadResult.errorCount += 1;
               uploadResult.errors.push({ rowIndex: i + j, data: row as any, error: error.message });
               if (showToasts) {
@@ -759,6 +776,14 @@ export function useExcelUpload<T extends TableName>(
         }
 
         // Simple insert/upsert for non-composite conflicts
+        console.log('[ExcelUpload] Executing batch', {
+          tableName,
+          uploadType,
+          conflictColumn,
+          batchStart: i,
+          batchSize: batch.length,
+          sampleRow: batch[0]
+        });
         let query;
         if (uploadType === 'insert') {
           query = supabase.from(tableName).insert(batch as any);
@@ -768,6 +793,18 @@ export function useExcelUpload<T extends TableName>(
 
         const { error } = await query;
         if (error) {
+          console.error('[ExcelUpload] Batch error', {
+            code: (error as any).code,
+            message: error.message,
+            details: (error as any).details,
+            hint: (error as any).hint,
+            tableName,
+            batchStart: i,
+            batchSize: batch.length,
+            conflictColumn,
+            uploadType,
+            sampleRowKeys: Object.keys(batch[0] || {})
+          });
           uploadResult.errorCount += batch.length;
           uploadResult.errors.push({ rowIndex: i, data: batch, error: error.message });
           if (showToasts) {
