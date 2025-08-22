@@ -38,12 +38,12 @@ CREATE INDEX idx_fiber_joint_connections_output_ofc_id ON public.fiber_joint_con
 CREATE INDEX idx_fiber_joint_connections_logical_path_id ON public.fiber_joint_connections (logical_path_id);
 
 -- Create an index for the foreign key fk_joint_type
-CREATE INDEX idx_fiber_joints_joint_type ON public.fiber_joints (fk_joint_type);
-CREATE INDEX idx_logical_fiber_paths_operational_status ON public.logical_fiber_paths (fk_operational_status);
-CREATE INDEX idx_logical_fiber_paths_fk_path_type ON public.logical_fiber_paths (fk_path_type);
-CREATE INDEX idx_ofc_connections_connection_type ON public.ofc_connections (fk_connection_type);
-CREATE INDEX idx_ofc_connections_destination_id ON public.ofc_connections (destination_id);
-CREATE INDEX idx_ofc_connections_system_en_id ON public.ofc_connections(system_en_id);
-CREATE INDEX idx_system_connections_en_id ON public.system_connections (en_id);
+-- CREATE INDEX idx_fiber_joints_joint_type ON public.fiber_joints (fk_joint_type);
+-- CREATE INDEX idx_logical_fiber_paths_operational_status ON public.logical_fiber_paths (fk_operational_status);
+-- CREATE INDEX idx_logical_fiber_paths_fk_path_type ON public.logical_fiber_paths (fk_path_type);
+-- CREATE INDEX idx_ofc_connections_connection_type ON public.ofc_connections (fk_connection_type);
+-- CREATE INDEX idx_ofc_connections_destination_id ON public.ofc_connections (destination_id);
+-- CREATE INDEX idx_ofc_connections_system_en_id ON public.ofc_connections(system_en_id);
+-- CREATE INDEX idx_system_connections_en_id ON public.system_connections (en_id);
 
 
