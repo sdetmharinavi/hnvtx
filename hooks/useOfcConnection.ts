@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useTableQuery, useTableWithRelations } from './database/core-queries';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 type OfcConnection = Database['public']['Tables']['ofc_connections']['Insert'] & {
   id?: string;
@@ -14,6 +14,8 @@ interface UseOfcConnectionProps {
 }
 
 export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) => {
+  const queryClient = useQueryClient();
+
   // Get cable details
   const { data: cable, isLoading: isLoadingCable } = useTableWithRelations<'ofc_cables'>(
     supabase,
@@ -25,7 +27,7 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
   );
   
   // Get existing connections for this cable
-  const { data: existingConnections = [], isLoading: isLoadingConnections } = useTableQuery(
+  const { data: existingConnections = [], isLoading: isLoadingConnections, refetch: refetchConnections } = useTableQuery(
     supabase,
     'ofc_connections',
     {
@@ -42,21 +44,44 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
         .insert(newConnections);
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch the connections query after successful insertion
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      refetchConnections();
     }
   });
 
   const createMissingConnections = useCallback(async (): Promise<void> => {
-    if (!cable) return;
+    if (!cable || !cable[0]) return;
 
-    const missingCount = (cable[0].capacity as number) - (existingConnections?.length || 0);
+    // Get fresh connection count to avoid stale data
+    const { data: currentConnections, error } = await supabase
+      .from('ofc_connections')
+      .select('id')
+      .eq('ofc_id', cableId);
+
+    if (error) {
+      console.error('Failed to fetch current connections:', error);
+      throw error;
+    }
+
+    const currentConnectionCount = currentConnections?.length || 0;
+    const cableCapacity = cable[0].capacity as number;
+    const missingCount = cableCapacity - currentConnectionCount;
     
-    if (missingCount <= 0) return;
+    console.log(`Cable capacity: ${cableCapacity}, Current connections: ${currentConnectionCount}, Missing: ${missingCount}`);
+    
+    if (missingCount <= 0) {
+      console.log('No missing connections to create');
+      return;
+    }
 
     // Create an array of new connections to insert
     const newConnections = Array.from({ length: missingCount }, (_, index) => {
       const connection: OfcConnection = {
         ofc_id: cableId,
-        fiber_no_sn: existingConnections.length + index + 1,
+        fiber_no_sn: currentConnectionCount + index + 1,
         connection_type: 'straight',
         connection_category: 'OFC_JOINT_TYPES',
         status: true, // Set to true by default as per schema
@@ -83,15 +108,19 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
     });
 
     try {
+      console.log(`Creating ${newConnections.length} new connections`);
       await createConnections(newConnections);
     } catch (error) {
       console.error('Failed to create connections:', error);
       throw error;
     }
-  }, [cable, existingConnections, cableId, createConnections]);
+  }, [cable, cableId, createConnections, supabase]);
 
   const ensureConnectionsExist = useCallback(async (): Promise<void> => {
-    if (isLoadingCable || isLoadingConnections) return;
+    if (isLoadingCable || isLoadingConnections) {
+      console.log('Still loading data, skipping connection creation');
+      return;
+    }
     
     try {
       await createMissingConnections();
