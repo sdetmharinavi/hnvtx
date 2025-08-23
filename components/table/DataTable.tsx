@@ -1,5 +1,5 @@
 // @/components/table/DataTable.tsx
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableExcelDownload, useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { TableToolbar, TableHeader, TableBody, TablePagination, TableColumnSelector, TableFilterPanel } from "./";
@@ -15,6 +15,7 @@ export function DataTable<T extends AuthTableOrViewName>({
   pagination,
   actions = [],
   searchable = true,
+  serverSearch = false,
   filterable = true,
   sortable = true,
   selectable = false,
@@ -32,7 +33,9 @@ export function DataTable<T extends AuthTableOrViewName>({
   onRowSelect,
   onCellEdit,
   customToolbar,
+  showColumnSelector: showColumnSelectorProp,
   exportOptions,
+  onSearchChange,
 }: DataTableProps<T>): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig<Row<T>> | null>(null);
@@ -41,9 +44,22 @@ export function DataTable<T extends AuthTableOrViewName>({
   const [visibleColumns, setVisibleColumns] = useState<string[]>(columns.map((col) => col.key));
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [showColumnSelector, setShowColumnSelector] = useState<boolean>(!!showColumnSelectorProp);
+  // Sync with external prop if it changes
+  useEffect(() => {
+    if (typeof showColumnSelectorProp === "boolean") {
+      setShowColumnSelector(showColumnSelectorProp);
+    }
+  }, [showColumnSelectorProp]);
   const [showFilters, setShowFilters] = useState(false);
   const supabase = createClient();
+
+  // When filter UI is disabled, clear any existing filters to avoid hidden filters impacting results
+  useEffect(() => {
+    if (!filterable) {
+      setFilters({});
+    }
+  }, [filterable]);
 
   const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
     showToasts: true,
@@ -67,32 +83,35 @@ export function DataTable<T extends AuthTableOrViewName>({
 
   const processedData = useMemo(() => {
     let filtered = [...data];
-    if (searchQuery && searchable) {
+    // Only perform client-side search if not using server-side search
+    if (searchQuery && searchable && !serverSearch) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter((item) =>
         columns.some((column) => {
-          if (!column.searchable) return false;
+          // Default to searchable unless explicitly set to false
+          if (column.searchable === false) return false;
           const value = column.dataIndex ? item[column.dataIndex as keyof typeof item] : undefined;
-          return String(value || "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
+          return String(value ?? "").toLowerCase().includes(q);
         })
       );
     }
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== "") {
-        filtered = filtered.filter((item) => {
-          const itemValue = item[key as keyof Row<T>];
-          if (Array.isArray(value)) {
-            const iv = itemValue as unknown;
-            if (iv === null || iv === undefined) return false;
-            return (value as (string | number)[]).includes(iv as string | number);
-          }
-          return String(itemValue ?? "")
-            .toLowerCase()
-            .includes(String(value).toLowerCase());
-        });
-      }
-    });
+    if (filterable) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") {
+          filtered = filtered.filter((item) => {
+            const itemValue = item[key as keyof Row<T>];
+            if (Array.isArray(value)) {
+              const iv = itemValue as unknown;
+              if (iv === null || iv === undefined) return false;
+              return (value as (string | number)[]).includes(iv as string | number);
+            }
+            return String(itemValue ?? "")
+              .toLowerCase()
+              .includes(String(value).toLowerCase());
+          });
+        }
+      });
+    }
     if (sortConfig && sortable) {
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key];
@@ -106,7 +125,7 @@ export function DataTable<T extends AuthTableOrViewName>({
       });
     }
     return filtered;
-  }, [data, searchQuery, filters, sortConfig, columns, searchable, sortable]);
+  }, [data, searchQuery, filters, sortConfig, columns, searchable, sortable, filterable, serverSearch]);
 
   const handleSort = (columnKey: keyof Row<T> & string) => {
     if (!sortable) return;
@@ -247,6 +266,7 @@ export function DataTable<T extends AuthTableOrViewName>({
           customToolbar={customToolbar}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          onSearchChange={onSearchChange}
           showFilters={showFilters}
           setShowFilters={setShowFilters}
           showColumnSelector={showColumnSelector}

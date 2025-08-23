@@ -17,9 +17,11 @@ interface UseOfcConnectionProps {
   offset?: number;
   orderBy?: string;
   orderDir?: "asc" | "desc";
+  // optional server-side search query
+  search?: string;
 }
 
-export const useOfcConnection = ({ supabase, cableId, limit = 10, offset = 0, orderBy = "fiber_no_sn", orderDir = "asc" }: UseOfcConnectionProps) => {
+export const useOfcConnection = ({ supabase, cableId, limit = 10, offset = 0, orderBy = "fiber_no_sn", orderDir = "asc", search }: UseOfcConnectionProps) => {
   const queryClient = useQueryClient();
 
   // Get cable details
@@ -41,7 +43,7 @@ export const useOfcConnection = ({ supabase, cableId, limit = 10, offset = 0, or
   // Get existing connections for this cable with pagination
   // Also retrieve Total Count of Connections, activeCount, inactiveCount from the view
   const { data: existingConnections = [], isLoading: isLoadingOfcConnections, refetch: refetchOfcConnections } = usePagedOfcConnectionsComplete(supabase, {
-    filters: { ofc_id: cableId },
+    filters: { ofc_id: cableId, ...(search ? { search } : {}) },
     limit,
     offset,
     orderBy,

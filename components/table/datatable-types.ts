@@ -1,6 +1,6 @@
 // @/components/table/types.ts
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
-import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries";
+import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries/excel-helpers";
 
 export interface TableAction<T extends AuthTableOrViewName> {
   key: string;
@@ -27,6 +27,7 @@ export interface DataTableProps<T extends AuthTableOrViewName> {
   tableName: T;
   columns: Column<Row<T>>[];
   loading?: boolean;
+  showColumnSelector?: boolean;
   pagination?: {
     current: number;
     pageSize: number;
@@ -37,6 +38,8 @@ export interface DataTableProps<T extends AuthTableOrViewName> {
   };
   actions?: TableAction<T>[];
   searchable?: boolean;
+  // If true, DataTable will not perform client-side search and will delegate to parent via onSearchChange
+  serverSearch?: boolean;
   filterable?: boolean;
   sortable?: boolean;
   selectable?: boolean;
@@ -50,6 +53,8 @@ export interface DataTableProps<T extends AuthTableOrViewName> {
   emptyText?: string;
   title?: string;
   onRefresh?: () => void;
+  // Called when the search query changes; useful for server-side search or fetching more rows
+  onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
   onCellEdit?: (record: Row<T>, column: Column<Row<T>>, newValue: string) => void;

@@ -53,49 +53,21 @@ export default function OfcCableDetailsPage() {
   // DataTable Configuration
   const columns = useDynamicColumnConfig("v_ofc_connections_complete", {
     omit: ["id", "ofc_id", "created_at", "updated_at", "sn_id", "en_id"],
-    // "connection_category",
-    // "connection_type",
-    // "created_at",
-    // "destination_port",
-    // "en_dom",
-    // "en_id",
-    // "en_name",
-    // "en_power_dbm",
-    // "fiber_no_en",
-    // "fiber_no_sn",
-    // "id",
-    // "logical_path_id",
-    // "maintenance_area_name",
-    // "ofc_id",
-    // "ofc_route_name",
-    // "ofc_type_name",
-    // "otdr_distance_en_km",
-    // "otdr_distance_sn_km",
-    // "path_segment_order",
-    // "remark",
-    // "route_loss_db",
-    // "sn_dom",
-    // "sn_id",
-    // "sn_name",
-    // "sn_power_dbm",
-    // "source_port",
-    // "status",
-    // "system_id",
-    // "system_name",
-    // "updated_at"
 
     overrides: {
-      fiber_no_sn: { title: "End A Fiber", sortable: true, width: 80 },
+      fiber_no_sn: { title: "End A Fiber", sortable: true, width: 80},
       fiber_no_en: { title: "End B Fiber", sortable: true, width: 80 },
       otdr_distance_sn_km: {
         title: "End A OTDR Distance (km)",
         sortable: true,
         width: 80,
+        searchable: true
       },
       otdr_distance_en_km: {
         title: "End B OTDR Distance (km)",
         sortable: true,
         width: 80,
+        searchable: true
       },
       en_dom: { title: "End B DOM", sortable: true, width: 250 },
       en_power_dbm: { title: "End B Power (dBm)", sortable: true, width: 250 },
@@ -103,7 +75,7 @@ export default function OfcCableDetailsPage() {
       sn_power_dbm: { title: "End A Power (dBm)", sortable: true, width: 250 },
       route_loss_db: { title: "Route Loss (dB)", sortable: true, width: 250 },
       connection_type: { title: "Connection Type", sortable: true, width: 150 },
-      ofc_type_name: {title: "Ofc Type", sortable: true, width: 150},
+      ofc_type_name: { title: "Ofc Type", sortable: true, width: 150 },
       destination_port: {
         title: "Destination Port",
         sortable: true,
@@ -322,9 +294,16 @@ export default function OfcCableDetailsPage() {
         <DataTable<"v_ofc_connections_complete">
           tableName='v_ofc_connections_complete'
           data={tableData as Row<"v_ofc_connections_complete">[]}
-          columns={orderedColumns}
+          columns={orderedColumns as Column<Row<"v_ofc_connections_complete">>[]}
           loading={isLoading}
           selectable={true}
+          searchable={true}
+          onSearchChange={(value) => {
+            // reset to first page and update debounced server-side search
+            setPagination((p) => ({ ...p, page: 1 }));
+            handleSearch(value);
+          }}
+          filterable={false}
           pagination={{
             current: pagination.page,
             pageSize: pagination.pageLimit,
@@ -333,7 +312,6 @@ export default function OfcCableDetailsPage() {
             pageSizeOptions: [10, 20, 50, 100],
             onChange: (page, pageLimit) => setPagination({ page, pageLimit }),
           }}
-          customToolbar={true}
         />
       </div>
     </div>

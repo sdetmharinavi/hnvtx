@@ -1,6 +1,6 @@
 // @/components/table/TableColumnSelector.tsx
 import React from "react";
-import { Column } from "@/hooks/database/excel-queries";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { AuthTableOrViewName, Row } from "@/hooks/database";
 
 interface TableColumnSelectorProps<T extends AuthTableOrViewName> {
