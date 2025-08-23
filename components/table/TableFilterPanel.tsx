@@ -1,7 +1,8 @@
 // @/components/table/TableFilterPanel.tsx
-import React from "react";
-import { Column } from "@/hooks/database/excel-queries";
+import React, { useState, useEffect } from "react";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface TableFilterPanelProps<T extends AuthTableOrViewName> {
   columns: Column<Row<T>>[];
@@ -10,6 +11,29 @@ interface TableFilterPanelProps<T extends AuthTableOrViewName> {
   showFilters: boolean;
   filterable: boolean;
 }
+
+const DebouncedInput = ({ value, onChange, placeholder, className }: { value: string; onChange: (value: string) => void; placeholder: string; className: string; }) => {
+    const [internalValue, setInternalValue] = useState(value);
+    const debouncedValue = useDebounce(internalValue, 500);
+
+    useEffect(() => {
+        onChange(debouncedValue);
+    }, [debouncedValue, onChange]);
+
+    useEffect(() => {
+        setInternalValue(value);
+    }, [value]);
+
+    return (
+        <input
+            type='text'
+            value={internalValue}
+            onChange={(e) => setInternalValue(e.target.value)}
+            placeholder={placeholder}
+            className={className}
+        />
+    );
+};
 
 export function TableFilterPanel<T extends AuthTableOrViewName>({
   columns,
@@ -29,12 +53,7 @@ export function TableFilterPanel<T extends AuthTableOrViewName>({
             <label className='text-xs font-medium text-gray-700 dark:text-gray-300'>{column.title}</label>
             {column.filterOptions ? (
               <select
-                value={
-                  typeof filters[column.dataIndex] === 'string' ||
-                  typeof filters[column.dataIndex] === 'number'
-                    ? (filters[column.dataIndex] as string | number)
-                    : ''
-                }
+                value={String(filters[column.dataIndex] ?? '')}
                 onChange={(e) => setFilters({ ...filters, [column.dataIndex]: e.target.value })}
                 className='px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
               >
@@ -46,14 +65,9 @@ export function TableFilterPanel<T extends AuthTableOrViewName>({
                 ))}
               </select>
             ) : (
-              <input
-                type='text'
-                value={
-                  typeof filters[column.dataIndex] === 'string'
-                    ? (filters[column.dataIndex] as string)
-                    : ''
-                }
-                onChange={(e) => setFilters({ ...filters, [column.dataIndex]: e.target.value })}
+              <DebouncedInput
+                value={typeof filters[column.dataIndex] === 'string' ? (filters[column.dataIndex] as string) : ''}
+                onChange={(value) => setFilters(prev => ({ ...prev, [column.dataIndex]: value }))}
                 placeholder={`Filter ${column.title.toLowerCase()}...`}
                 className='px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400'
               />

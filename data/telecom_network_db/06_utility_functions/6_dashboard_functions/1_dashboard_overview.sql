@@ -1,12 +1,13 @@
 DROP FUNCTION IF EXISTS public.get_dashboard_overview;
-CREATE OR REPLACE FUNCTION get_dashboard_overview()
-RETURNS jsonb
-SECURITY INVOKER
-LANGUAGE plpgsql
-AS $$
+
+CREATE OR REPLACE FUNCTION public.get_dashboard_overview () RETURNS JSONB SECURITY INVOKER LANGUAGE plpgsql
+SET
+  search_path = '' -- Already correct
+  AS $$
 DECLARE
     result jsonb;
 BEGIN
+    -- [Your existing code remains the same]
     SELECT jsonb_build_object(
         -- Chart 1: System Status Overview (e.g., for a Pie Chart)
         'system_status_counts', (
@@ -88,5 +89,10 @@ BEGIN
     ) INTO result;
 
     RETURN result;
+EXCEPTION 
+    WHEN OTHERS THEN
+        -- Add error handling
+        RAISE WARNING 'Error in get_dashboard_overview: %', SQLERRM;
+        RETURN NULL;
 END;
 $$;

@@ -1,11 +1,67 @@
 // @/components/table/DataTable.tsx
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useMemo, useCallback, useEffect, useReducer } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableExcelDownload, useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { TableToolbar, TableHeader, TableBody, TablePagination, TableColumnSelector, TableFilterPanel } from "./";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queries/excel-helpers";
+
+// Define a type for your row that guarantees a unique identifier
+type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
+
+// --- State Management with useReducer ---
+
+type TableState<T extends AuthTableOrViewName> = {
+  searchQuery: string;
+  sortConfig: SortConfig<Row<T>> | null;
+  filters: Filters;
+  selectedRows: DataRow<T>[];
+  visibleColumns: string[];
+  editingCell: { rowIndex: number; columnKey: string } | null;
+  editValue: string;
+  showColumnSelector: boolean;
+  showFilters: boolean;
+};
+
+type TableAction<T extends AuthTableOrViewName> =
+  | { type: 'SET_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
+  | { type: 'SET_FILTERS'; payload: Filters }
+  | { type: 'SET_SELECTED_ROWS'; payload: DataRow<T>[] }
+  | { type: 'SET_VISIBLE_COLUMNS'; payload: string[] }
+  | { type: 'START_EDIT_CELL'; payload: { rowIndex: number; columnKey: string; value: string } }
+  | { type: 'SET_EDIT_VALUE'; payload: string }
+  | { type: 'CANCEL_EDIT' }
+  | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
+  | { type: 'TOGGLE_FILTERS'; payload?: boolean };
+
+function tableReducer<T extends AuthTableOrViewName>(state: TableState<T>, action: TableAction<T>): TableState<T> {
+  switch (action.type) {
+    case 'SET_SEARCH_QUERY':
+      return { ...state, searchQuery: action.payload };
+    case 'SET_SORT_CONFIG':
+      return { ...state, sortConfig: action.payload };
+    case 'SET_FILTERS':
+      return { ...state, filters: action.payload };
+    case 'SET_SELECTED_ROWS':
+      return { ...state, selectedRows: action.payload };
+    case 'SET_VISIBLE_COLUMNS':
+      return { ...state, visibleColumns: action.payload };
+    case 'START_EDIT_CELL':
+      return { ...state, editingCell: { rowIndex: action.payload.rowIndex, columnKey: action.payload.columnKey }, editValue: action.payload.value };
+    case 'SET_EDIT_VALUE':
+      return { ...state, editValue: action.payload };
+    case 'CANCEL_EDIT':
+      return { ...state, editingCell: null, editValue: '' };
+    case 'TOGGLE_COLUMN_SELECTOR':
+      return { ...state, showColumnSelector: action.payload ?? !state.showColumnSelector };
+    case 'TOGGLE_FILTERS':
+      return { ...state, showFilters: action.payload ?? !state.showFilters };
+    default:
+      return state;
+  }
+}
 
 export function DataTable<T extends AuthTableOrViewName>({
   data = [],
@@ -37,250 +93,251 @@ export function DataTable<T extends AuthTableOrViewName>({
   exportOptions,
   onSearchChange,
 }: DataTableProps<T>): React.ReactElement {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState<SortConfig<Row<T>> | null>(null);
-  const [filters, setFilters] = useState<Filters>({});
-  const [selectedRows, setSelectedRows] = useState<Row<T>[]>([]);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(columns.map((col) => col.key));
-  const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [showColumnSelector, setShowColumnSelector] = useState<boolean>(!!showColumnSelectorProp);
-  // Sync with external prop if it changes
-  useEffect(() => {
-    if (typeof showColumnSelectorProp === "boolean") {
-      setShowColumnSelector(showColumnSelectorProp);
-    }
-  }, [showColumnSelectorProp]);
-  const [showFilters, setShowFilters] = useState(false);
+
+  const initialState: TableState<T> = {
+    searchQuery: '',
+    sortConfig: null,
+    filters: {},
+    selectedRows: [],
+    visibleColumns: columns.map((col) => col.key),
+    editingCell: null,
+    editValue: '',
+    showColumnSelector: !!showColumnSelectorProp,
+    showFilters: false,
+  };
+
+  const [state, dispatch] = useReducer(tableReducer, initialState);
+  const { searchQuery, sortConfig, filters, selectedRows, visibleColumns, editingCell, editValue, showColumnSelector, showFilters } = state;
+  
   const supabase = createClient();
 
-  // When filter UI is disabled, clear any existing filters to avoid hidden filters impacting results
+  useEffect(() => {
+    if (typeof showColumnSelectorProp === "boolean") {
+      dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: showColumnSelectorProp });
+    }
+  }, [showColumnSelectorProp]);
+
   useEffect(() => {
     if (!filterable) {
-      setFilters({});
+      dispatch({ type: 'SET_FILTERS', payload: {} });
     }
   }, [filterable]);
-
-  const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
-    showToasts: true,
-    onError: (error) => {
-      console.error("Table download failed:", error);
-      if (exportOptions?.fallbackToCsv !== false) {
-        fallbackCsvExport();
-      }
-    },
-  });
-
-  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
-    showToasts: true,
-    onError: (error) => {
-      console.error("RPC download failed:", error);
-      if (exportOptions?.fallbackToCsv !== false) {
-        fallbackCsvExport();
-      }
-    },
-  });
+  
+  // (Excel download hooks remain the same)
+  const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, { showToasts: true });
+  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, { showToasts: true });
 
   const processedData = useMemo(() => {
-    let filtered = [...data];
-    // Only perform client-side search if not using server-side search
+    let filteredData = [...data] as DataRow<T>[];
+
     if (searchQuery && searchable && !serverSearch) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter((item) =>
-        columns.some((column) => {
-          // Default to searchable unless explicitly set to false
+      filteredData = filteredData.filter(item =>
+        columns.some(column => {
           if (column.searchable === false) return false;
-          const value = column.dataIndex ? item[column.dataIndex as keyof typeof item] : undefined;
+          const value = item[column.dataIndex as keyof typeof item];
           return String(value ?? "").toLowerCase().includes(q);
         })
       );
     }
-    if (filterable) {
+
+    if (filterable && Object.keys(filters).length > 0) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== "") {
-          filtered = filtered.filter((item) => {
-            const itemValue = item[key as keyof Row<T>];
-            if (Array.isArray(value)) {
-              const iv = itemValue as unknown;
-              if (iv === null || iv === undefined) return false;
-              return (value as (string | number)[]).includes(iv as string | number);
-            }
-            return String(itemValue ?? "")
-              .toLowerCase()
-              .includes(String(value).toLowerCase());
-          });
+          filteredData = filteredData.filter(item =>
+            String(item[key as keyof DataRow<T>] ?? "").toLowerCase().includes(String(value).toLowerCase())
+          );
         }
       });
     }
+    
     if (sortConfig && sortable) {
-      filtered.sort((a, b) => {
+      filteredData.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortConfig.direction === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
         }
-        return sortConfig.direction === "asc" ? (aValue > bValue ? 1 : -1) : aValue < bValue ? 1 : -1;
+        return sortConfig.direction === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
       });
     }
-    return filtered;
+
+    return filteredData;
   }, [data, searchQuery, filters, sortConfig, columns, searchable, sortable, filterable, serverSearch]);
 
-  const handleSort = (columnKey: keyof Row<T> & string) => {
+  const handleSort = useCallback((columnKey: keyof Row<T> & string) => {
     if (!sortable) return;
-    setSortConfig((current) => {
-      if (!current || current.key !== columnKey) return { key: columnKey, direction: "asc" };
-      if (current.direction === "asc") return { key: columnKey, direction: "desc" };
-      return null;
-    });
-  };
+    const direction = sortConfig?.key === columnKey && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    if (sortConfig?.key === columnKey && sortConfig.direction === 'desc') {
+      dispatch({ type: 'SET_SORT_CONFIG', payload: null });
+    } else {
+      dispatch({ type: 'SET_SORT_CONFIG', payload: { key: columnKey, direction } });
+    }
+  }, [sortable, sortConfig]);
 
-  const handleRowSelect = useCallback(
-    (record: Row<T>, selected: boolean) => {
-      if (!selectable) return;
-      const newSelection = selected ? [...selectedRows, record] : selectedRows.filter((row) => row !== record);
-      setSelectedRows(newSelection);
-      onRowSelect?.(newSelection);
-    },
-    [selectedRows, selectable, onRowSelect]
-  );
+  const handleRowSelect = useCallback((record: DataRow<T>, selected: boolean) => {
+    const newSelection = selected
+      ? [...selectedRows, record]
+      : selectedRows.filter(row => row.id !== record.id);
+    dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
+    onRowSelect?.(newSelection);
+  }, [selectedRows, onRowSelect]);
 
-  const handleSelectAll = useCallback(
-    (selected: boolean) => {
-      if (!selectable) return;
-      const newSelection = selected ? [...processedData] : [];
-      setSelectedRows(newSelection);
-      onRowSelect?.(newSelection);
-    },
-    [processedData, selectable, onRowSelect]
-  );
+  const handleSelectAll = useCallback((selected: boolean) => {
+    const newSelection = selected ? [...processedData] : [];
+    dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
+    onRowSelect?.(newSelection);
+  }, [processedData, onRowSelect]);
 
-  const handleCellEdit = (record: Row<T>, column: Column<Row<T>>, rowIndex: number) => {
+  const handleCellEdit = useCallback((record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => {
     if (!column.editable) return;
-    setEditingCell({ rowIndex, columnKey: column.key });
-    setEditValue(String(record[column.dataIndex as keyof Row<T>] ?? ""));
-  };
+    dispatch({ type: 'START_EDIT_CELL', payload: { rowIndex, columnKey: column.key, value: String(record[column.dataIndex as keyof DataRow<T>] ?? "") } });
+  }, []);
 
-  const saveCellEdit = () => {
+  const saveCellEdit = useCallback(() => {
     if (!editingCell) return;
     const record = processedData[editingCell.rowIndex];
-    const column = columns.find((col) => col.key === editingCell.columnKey);
+    const column = columns.find(col => col.key === editingCell.columnKey);
     if (column && onCellEdit) {
       onCellEdit(record, column, editValue);
     }
-    setEditingCell(null);
-  };
+    dispatch({ type: 'CANCEL_EDIT' });
+  }, [editingCell, processedData, columns, onCellEdit, editValue]);
+  
+  const cancelCellEdit = useCallback(() => dispatch({ type: 'CANCEL_EDIT' }), []);
 
-  const cancelCellEdit = () => setEditingCell(null);
+  const visibleColumnsData = useMemo<Column<Row<T>>[]>(
+    () => columns.filter(col => visibleColumns.includes(col.key) && !col.hidden),
+    [columns, visibleColumns]
+  );
 
-  const fallbackCsvExport = useCallback(() => {
-    const visibleColumnsForExport = columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden);
-    const headers = visibleColumnsForExport.map((col) => col.title);
-    const csvContent = [
-      headers.join(","),
-      ...processedData.map((row) =>
-        visibleColumnsForExport
-          .map((col) => {
-            const value = row[col.dataIndex as keyof Row<T>] || "";
-            const stringValue = String(value);
-            if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
-              return `"${stringValue.replace(/"/g, '""')}"`;
-            }
-            return stringValue;
-          })
-          .join(",")
-      ),
-    ].join("\n");
+  const setSearchQueryCb = useCallback((query: string) => {
+    dispatch({ type: 'SET_SEARCH_QUERY', payload: query });
+  }, []);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = exportOptions?.fileName?.replace(/\.xlsx?$/, ".csv") || `${String(tableName)}-${new Date().toISOString().split("T")[0]}.csv`;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [columns, visibleColumns, processedData, exportOptions?.fileName, tableName]);
-
-  const handleExport = async () => {
-    const visibleColumnsForExport = columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden);
-
+  const handleExport = useCallback(async () => {
+    // 1) If a custom export handler is provided by the parent, use it
     if (onExport) {
-      try {
-        await onExport(processedData, visibleColumnsForExport);
-      } catch (error) {
-        console.error("Custom export failed:", error);
-        if (exportOptions?.fallbackToCsv !== false) {
-          fallbackCsvExport();
-        }
+      await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
+      return;
+    }
+
+    // 2) Build export options: prefer explicit options, else use current visible columns and filters
+    const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
+    const mergedFilters = exportOptions?.includeFilters
+      ? { ...filters, ...(exportOptions?.filters ?? {}) }
+      : exportOptions?.filters;
+
+    const baseOptions: Omit<DownloadOptions<T>, 'rpcConfig'> = {
+      fileName: exportOptions?.fileName,
+      sheetName: exportOptions?.sheetName,
+      maxRows: exportOptions?.maxRows,
+      customStyles: exportOptions?.customStyles,
+      columns: columnsToExport,
+      filters: mergedFilters,
+    };
+
+    try {
+      // 3) Use RPC-based download if rpcConfig is provided; otherwise, table/view download
+      if (exportOptions?.rpcConfig) {
+        const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
+          ...baseOptions,
+          rpcConfig: exportOptions.rpcConfig,
+        };
+        await rpcExcelDownload.mutateAsync(rpcOptions);
+      } else {
+        await tableExcelDownload.mutateAsync(baseOptions);
       }
-      return;
+    } catch (err) {
+      // 4) Optional CSV fallback using currently processed rows
+      if (exportOptions?.fallbackToCsv) {
+        try {
+          const headers = columnsToExport.map((c) => c.title).join(",");
+          const keys = columnsToExport.map((c) => c.dataIndex as keyof Row<T> & string);
+          const rows = (processedData as Row<T>[])?.map((r) =>
+            keys
+              .map((k) => {
+                const v = (r as Row<T>)[k] as unknown;
+                if (v === null || v === undefined) return "";
+                const s = String(v).replace(/"/g, '""');
+                return `"${s}"`;
+              })
+              .join(",")
+          );
+          const csv = [headers, ...(rows || [])].join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          const csvName = (exportOptions?.fileName?.replace(/\.xlsx$/i, "") || "export") + ".csv";
+          link.href = URL.createObjectURL(blob);
+          link.download = csvName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+        } catch {
+          // If CSV fallback also fails, rethrow original error
+          throw err;
+        }
+      } else {
+        throw err;
+      }
     }
-
-    if (exportOptions?.fallbackToCsv === true) {
-      fallbackCsvExport();
-      return;
-    }
-
-    if (exportOptions?.rpcConfig) {
-      const rpcOptions = {
-        fileName: exportOptions.fileName || `${String(tableName)}-export.xlsx`,
-        sheetName: exportOptions.sheetName || String(tableName),
-        filters: exportOptions.filters,
-        columns: visibleColumnsForExport as Column<Row<T>>[],
-        maxRows: exportOptions.maxRows,
-        customStyles: exportOptions.customStyles,
-        rpcConfig: exportOptions.rpcConfig,
-      };
-      rpcExcelDownload.mutate(rpcOptions);
-    } else {
-      const tableOptions = {
-        fileName: exportOptions?.fileName || `${String(tableName)}-export.xlsx`,
-        sheetName: exportOptions?.sheetName || String(tableName),
-        filters: exportOptions?.filters,
-        columns: visibleColumnsForExport as Column<Row<T>>[],
-        maxRows: exportOptions?.maxRows,
-        customStyles: exportOptions?.customStyles,
-      };
-      tableExcelDownload.mutate(tableOptions);
-    }
-  };
-
-  const visibleColumnsData = columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden);
+  }, [
+    onExport,
+    processedData,
+    visibleColumnsData,
+    exportOptions,
+    filters,
+    tableExcelDownload,
+    rpcExcelDownload,
+  ]);
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
   return (
     <div className={`relative bg-white dark:bg-gray-800 rounded-lg ${bordered ? "border border-gray-200 dark:border-gray-700" : ""} ${className}`}>
-      <TablePagination pagination={pagination} bordered={bordered} />
-      <div className='relative'>
-        <TableToolbar
-          title={title}
-          searchable={searchable}
-          filterable={filterable}
-          exportable={exportable}
-          refreshable={refreshable}
-          customToolbar={customToolbar}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearchChange={onSearchChange}
-          showFilters={showFilters}
-          setShowFilters={setShowFilters}
-          showColumnSelector={showColumnSelector}
-          setShowColumnSelector={setShowColumnSelector}
-          onRefresh={onRefresh}
-          onExport={handleExport}
-          loading={loading}
-          isExporting={isExporting}
-        />
+      <TableToolbar
+        title={title}
+        searchable={searchable}
+        filterable={filterable}
+        exportable={exportable}
+        refreshable={refreshable}
+        customToolbar={customToolbar}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQueryCb}
+        onSearchChange={onSearchChange}
+        showFilters={showFilters}
+        setShowFilters={() => dispatch({ type: 'TOGGLE_FILTERS' })}
+        showColumnSelector={showColumnSelector}
+        setShowColumnSelector={(show) => dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: show })}
+        onRefresh={onRefresh}
+        onExport={handleExport}
+        loading={loading}
+        isExporting={isExporting}
+      />
 
-        <TableColumnSelector columns={columns} visibleColumns={visibleColumns} setVisibleColumns={setVisibleColumns} showColumnSelector={showColumnSelector} setShowColumnSelector={setShowColumnSelector} />
-      </div>
+      <TableColumnSelector 
+        columns={columns} 
+        visibleColumns={visibleColumns} 
+        setVisibleColumns={(cols) => dispatch({ type: 'SET_VISIBLE_COLUMNS', payload: cols })} 
+        showColumnSelector={showColumnSelector} 
+        setShowColumnSelector={(show) => dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: show })} 
+      />
 
-      <TableFilterPanel columns={columns} filters={filters} setFilters={setFilters} showFilters={showFilters} filterable={filterable} />
+      <TableFilterPanel 
+        columns={columns} 
+        filters={filters} 
+        setFilters={(f) =>
+          dispatch({
+            type: 'SET_FILTERS',
+            payload: typeof f === 'function' ? (f as (prev: Filters) => Filters)(filters) : f,
+          })
+        } 
+        showFilters={showFilters} 
+        filterable={filterable} 
+      />
 
       <div className='max-h-[calc(100vh-200px)] overflow-auto'>
         <table className={`w-full table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
@@ -296,7 +353,7 @@ export function DataTable<T extends AuthTableOrViewName>({
             sortConfig={sortConfig}
             onSort={handleSort}
             onSelectAll={handleSelectAll}
-            allSelected={selectedRows.length === processedData.length}
+            allSelected={processedData.length > 0 && selectedRows.length === processedData.length}
             hasData={processedData.length > 0}
           />
           <TableBody
@@ -315,8 +372,7 @@ export function DataTable<T extends AuthTableOrViewName>({
             selectedRows={selectedRows}
             editingCell={editingCell}
             editValue={editValue}
-            setEditValue={setEditValue}
-            setEditingCell={setEditingCell}
+            setEditValue={(value) => dispatch({ type: 'SET_EDIT_VALUE', payload: value })}
             onRowSelect={handleRowSelect}
             onCellEdit={handleCellEdit}
             saveCellEdit={saveCellEdit}

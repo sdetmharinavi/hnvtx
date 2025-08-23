@@ -1,8 +1,9 @@
 // @/components/table/TableToolbar.tsx
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
 import { AuthTableOrViewName } from "@/hooks/database";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface TableToolbarProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, 
   | 'searchable'
@@ -37,13 +38,38 @@ export function TableToolbar<T extends AuthTableOrViewName>({
   onSearchChange,
   showFilters,
   setShowFilters,
-  showColumnSelector,
+  // showColumnSelector,
   setShowColumnSelector,
   onRefresh,
   onExport,
   loading,
   isExporting,
 }: TableToolbarProps<T>) {
+
+  const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
+  const debouncedSearchQuery = useDebounce(internalSearchQuery, 300);
+  const setSearchQueryRef = useRef(setSearchQuery);
+  const onSearchChangeRef = useRef(onSearchChange);
+
+  // Keep refs in sync with latest props without retriggering the search effect
+  useEffect(() => {
+    setSearchQueryRef.current = setSearchQuery;
+  }, [setSearchQuery]);
+  useEffect(() => {
+    onSearchChangeRef.current = onSearchChange;
+  }, [onSearchChange]);
+
+  // Only react to content changes, not function identity changes
+  useEffect(() => {
+    setSearchQueryRef.current(debouncedSearchQuery);
+    onSearchChangeRef.current?.(debouncedSearchQuery);
+  }, [debouncedSearchQuery]);
+
+  useEffect(() => {
+    setInternalSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+
   return (
     <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
       {title && (
@@ -53,10 +79,8 @@ export function TableToolbar<T extends AuthTableOrViewName>({
       )}
       
       <div className="space-y-3 sm:space-y-0 sm:flex sm:justify-between sm:items-center">
-        {/* Search, Filter and Columns Section (shown when not using custom toolbar) */}
         {!customToolbar && (
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
-            {/* Left: Search + Filter */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1 sm:gap-3">
               {searchable && (
                 <div className="relative flex-1 sm:max-w-sm">
@@ -64,8 +88,8 @@ export function TableToolbar<T extends AuthTableOrViewName>({
                   <input
                     type="text"
                     placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => { const v = e.target.value; setSearchQuery(v); onSearchChange?.(v); }}
+                    value={internalSearchQuery}
+                    onChange={(e) => setInternalSearchQuery(e.target.value)}
                     className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -86,11 +110,11 @@ export function TableToolbar<T extends AuthTableOrViewName>({
               )}
             </div>
 
-            {/* Right: Action buttons (Columns, Refresh, Export) */}
             <div className="flex w-full sm:w-auto sm:flex-none items-center gap-2 sm:gap-3 justify-end mt-1 sm:mt-0">
               <button
-                onClick={() => setShowColumnSelector(!showColumnSelector)}
+                onClick={() => setShowColumnSelector(true)}
                 className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                aria-label="Show/Hide Columns"
               >
                 <FiEye size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Columns</span>
@@ -102,6 +126,7 @@ export function TableToolbar<T extends AuthTableOrViewName>({
                   onClick={onRefresh}
                   disabled={loading}
                   className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0"
+                  aria-label="Refresh data"
                 >
                   <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
                 </button>
@@ -118,79 +143,6 @@ export function TableToolbar<T extends AuthTableOrViewName>({
                 </button>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Custom Toolbar Section */}
-        {customToolbar && (
-          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:flex-1 sm:gap-3 sm:items-center">
-            <div className="flex-1">
-              {customToolbar}
-            </div>
-            
-            {/* Action Buttons - Mobile: Full width row, Desktop: Inline */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 sm:flex-nowrap">
-              <button
-                onClick={() => setShowColumnSelector(!showColumnSelector)}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex-1 sm:flex-none min-w-0"
-              >
-                <FiEye size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Columns</span>
-                <span className="sm:hidden">Cols</span>
-                <FiChevronDown size={12} className="sm:w-3.5 sm:h-3.5" />
-              </button>
-              
-              {refreshable && onRefresh && (
-                <button 
-                  onClick={onRefresh} 
-                  disabled={loading} 
-                  className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0"
-                >
-                  <FiRefreshCw size={14} className={`sm:w-4 sm:h-4 ${loading ? "animate-spin" : ""}`} />
-                </button>
-              )}
-              
-              {exportable && (
-                <button 
-                  onClick={onExport} 
-                  disabled={isExporting} 
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors flex-1 sm:flex-none min-w-0"
-                >
-                  <FiDownload size={14} className="sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">
-                    {isExporting ? "Exporting..." : "Export"}
-                  </span>
-                  <span className="sm:hidden">
-                    {isExporting ? "..." : "Export"}
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons for Non-Custom Toolbar (Mobile Only) */}
-        {!customToolbar && (exportable || refreshable) && (
-          <div className="flex gap-2 sm:hidden">
-            {refreshable && onRefresh && (
-              <button 
-                onClick={onRefresh} 
-                disabled={loading} 
-                className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50"
-              >
-                <FiRefreshCw size={16} className={loading ? "animate-spin" : ""} />
-              </button>
-            )}
-            {exportable && (
-              <button 
-                onClick={onExport} 
-                disabled={isExporting} 
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors flex-1"
-              >
-                <FiDownload size={16} />
-                {isExporting ? "Exporting..." : "Export"}
-              </button>
-            )}
           </div>
         )}
       </div>
