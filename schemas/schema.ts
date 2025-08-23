@@ -15,8 +15,8 @@ const baseNumberSchema = z.number().refine(
 
 // 2. Create a preprocessor for OPTIONAL numbers.
 const emptyStringToNumber = z.preprocess(
-  (val) => (val === "" || val === null ? undefined : val),
-  baseNumberSchema.optional() // Use the base schema and make it optional.
+  (val) => (val === "" || val === null ? null : Number(val)),
+  z.number().optional().nullable()
 );
 
 // 3. Create a preprocessor for REQUIRED numbers.
@@ -202,30 +202,48 @@ export const systemSchema = z.object({
 });
 
 export const ofcConnectionSchema = z.object({
+  // Primary key and foreign keys
   id: z.uuid().optional(),
-  ofc_id: z.string().uuid({ message: "OFC Cable is required." }),
-  node_a_id: z.string().uuid({ message: "Node A is required." }),
-  fiber_no_ea: z.number().int().optional().nullable(),
-  otdr_distance_ea_km: emptyStringToNumber,
-  ea_dom: z.coerce.date().optional().nullable(),
-  ea_power_dbm: emptyStringToNumber,
-  system_a_id: z.uuid().optional().nullable(),
-  node_b_id: z.string().uuid({ message: "Node B is required." }),
-  fiber_no_eb: z.number().int().optional().nullable(),
-  otdr_distance_eb_km: emptyStringToNumber,
-  eb_dom: z.coerce.date().optional().nullable(),
-  eb_power_dbm: emptyStringToNumber,
+  ofc_id: z.uuid({ message: "OFC Cable is required." }),
+  logical_path_id: z.uuid().optional().nullable(),
+  system_id: z.uuid().optional().nullable(),
+
+  // Fiber connection details
+  fiber_no_sn: z.number().int({ message: "Start Node Fiber No. is required." }),
+  fiber_no_en: z.number().int().optional().nullable(),
+
+  // Fields for logical path ordering and type
+  path_segment_order: z.number().int().optional().nullable(),
+  connection_category: z.string({ message: "Connection Category is required." }),
+  connection_type: z.string({ message: "Connection Type is required." }),
+
+  // Port names
+  source_port: z.string().optional().nullable(),
+  destination_port: z.string().optional().nullable(),
+
+  // Start Node (sn) side measurements
+  sn_dom: z.coerce.date().optional().nullable(),
+  otdr_distance_sn_km: emptyStringToNumber,
+  sn_power_dbm: emptyStringToNumber,
+
+  // End Node (en) side measurements
+  en_dom: z.coerce.date().optional().nullable(),
+  otdr_distance_en_km: emptyStringToNumber,
+  en_power_dbm: emptyStringToNumber,
+
+  // Overall measurements and status
   route_loss_db: emptyStringToNumber,
-  system_b_id: z.uuid().optional().nullable(),
+  status: z.boolean().optional().nullable(), // Corrected to allow null
   remark: z.string().optional().nullable(),
-  status: z.boolean().default(true).optional(),
-  created_at: z.coerce.date().optional(),
-  updated_at: z.coerce.date().optional(),
+
+  // Timestamps are usually handled by the database
+  created_at: z.coerce.date().optional().nullable(),
+  updated_at: z.coerce.date().optional().nullable(),
 });
 
 export const systemConnectionSchema = z.object({
   id: z.uuid().optional(),
-  system_id: z.string().uuid({ message: "System is required." }),
+  system_id: z.uuid({ message: "System is required." }),
   node_a_id: z.uuid().optional().nullable(),
   node_b_id: z.uuid().optional().nullable(),
   connected_system_id: z.uuid().optional().nullable(),

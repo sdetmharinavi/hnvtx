@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { useTableQuery, useTableWithRelations } from "./database/core-queries";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePagedOfcConnectionsComplete } from "./database";
 
 type OfcConnection = Database["public"]["Tables"]["ofc_connections"]["Insert"] & {
   id?: string;
@@ -11,26 +12,45 @@ type OfcConnection = Database["public"]["Tables"]["ofc_connections"]["Insert"] &
 interface UseOfcConnectionProps {
   supabase: SupabaseClient<Database>;
   cableId: string;
+  // pagination and sorting options
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDir?: "asc" | "desc";
 }
 
-export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) => {
+export const useOfcConnection = ({ supabase, cableId, limit = 10, offset = 0, orderBy = "fiber_no_sn", orderDir = "asc" }: UseOfcConnectionProps) => {
   const queryClient = useQueryClient();
 
   // Get cable details
-  const { data: cable, isLoading: isLoadingCable } = useTableWithRelations<"ofc_cables">(supabase, "ofc_cables", ["maintenance_area:maintenance_terminal_id(id, name)", "ofc_type:ofc_type_id(id, name)"], {
+  type OfcCableWithJoins = Database["public"]["Tables"]["ofc_cables"]["Row"] & {
+    maintenance_area: { id: string; name: string } | null;
+    ofc_type: { id: string; name: string } | null;
+  };
+
+  const { data: cable, isLoading: isLoadingCable } = useTableWithRelations<
+    "ofc_cables",
+    OfcCableWithJoins[]
+  >(supabase, "ofc_cables", [
+    "maintenance_area:maintenance_terminal_id(id, name)",
+    "ofc_type:ofc_type_id(id, name)",
+  ], {
     filters: { id: cableId },
   });
 
-  // Get existing connections for this cable
-  const {
-    data: existingConnections = [],
-    isLoading: isLoadingConnections,
-    refetch: refetchConnections,
-  } = useTableQuery(supabase, "ofc_connections", {
-    columns:
-      "connection_type,destination_id,destination_port,en_dom,en_power_dbm,fiber_no_en,fiber_no_sn,id,logical_path_id,ofc_id,otdr_distance_en_km,otdr_distance_sn_km,path_segment_order,remark,route_loss_db,sn_dom,sn_power_dbm,source_id,source_port,status,system_en_id,system_sn_id,updated_at",
+  // Get existing connections for this cable with pagination
+  // Also retrieve Total Count of Connections, activeCount, inactiveCount from the view
+  const { data: existingConnections = [], isLoading: isLoadingOfcConnections, refetch: refetchOfcConnections } = usePagedOfcConnectionsComplete(supabase, {
     filters: { ofc_id: cableId },
+    limit,
+    offset,
+    orderBy,
+    orderDir,
   });
+
+  const totalCount = existingConnections?.[0]?.total_count || 0;
+  const activeCount = existingConnections?.[0]?.active_count || 0;
+  const inactiveCount = existingConnections?.[0]?.inactive_count || 0;
 
   // Mutation for creating new connections
   const { mutateAsync: createConnections } = useMutation({
@@ -42,7 +62,7 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
     onSuccess: () => {
       // Invalidate and refetch the connections query after successful insertion
       queryClient.invalidateQueries({ queryKey: ["ofc_connections"] });
-      refetchConnections();
+      refetchOfcConnections();
     },
   });
 
@@ -73,15 +93,12 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
       const connection: OfcConnection = {
         ofc_id: cableId,
         fiber_no_sn: currentConnectionCount + index + 1,
-        connection_type: "straight",
-        connection_category: "OFC_JOINT_TYPES",
-        status: true, // Set to true by default as per schema
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        // Set required fields with default values
-        destination_id: null,
+        connection_type: "straight", // Or a default value
+        connection_category: "OFC_JOINT_TYPES", // Or a default value
+        status: true,
+        // --- All optional fields are explicitly set to null for clarity ---
+        system_id: null, // <-- The only missing field, now added
         destination_port: null,
-        source_id: null,
         source_port: null,
         en_dom: null,
         en_power_dbm: null,
@@ -94,6 +111,7 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
         route_loss_db: null,
         sn_dom: null,
         sn_power_dbm: null,
+        // created_at and updated_at are best handled by the database itself
       };
       return connection;
     });
@@ -108,7 +126,7 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
   }, [cable, cableId, createConnections, supabase]);
 
   const ensureConnectionsExist = useCallback(async (): Promise<void> => {
-    if (isLoadingCable || isLoadingConnections) {
+    if (isLoadingCable || isLoadingOfcConnections) {
       console.log("Still loading data, skipping connection creation");
       return;
     }
@@ -119,13 +137,16 @@ export const useOfcConnection = ({ supabase, cableId }: UseOfcConnectionProps) =
       console.error("Error ensuring connections exist:", error);
       throw error;
     }
-  }, [isLoadingCable, isLoadingConnections, createMissingConnections]);
+  }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 
   return {
     cable: cable?.[0],
     existingConnections,
-    isLoading: isLoadingCable || isLoadingConnections,
+    isLoading: isLoadingCable || isLoadingOfcConnections,
     ensureConnectionsExist,
     createMissingConnections,
+    totalCount,
+    activeCount,
+    inactiveCount,
   };
 };

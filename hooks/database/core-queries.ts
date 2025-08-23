@@ -164,10 +164,15 @@ export function useDeduplicated<T extends TableName>(supabase: SupabaseClient<Da
 }
 
 // Relationship query hook with optimizations
-export function useTableWithRelations<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, relations: string[], options?: UseTableQueryOptions<T>) {
+export function useTableWithRelations<T extends TableName, TData = RowWithCount<Row<T>>[]>(
+  supabase: SupabaseClient<Database>,
+  tableName: T,
+  relations: string[],
+  options?: UseTableQueryOptions<T, TData>
+) {
   const columnsString = relations.length > 0 ? `*, ${relations.join(", ")}` : "*";
 
-  return useTableQuery(supabase, tableName, {
+  return useTableQuery<T, TData>(supabase, tableName, {
     ...options,
     columns: columnsString,
   });
