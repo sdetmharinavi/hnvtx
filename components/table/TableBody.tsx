@@ -103,7 +103,7 @@ function TableRowBase<T extends AuthTableOrViewName>({
           {visibleColumns.map((column, colIndex) => (
             <td
               key={column.key}
-              className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
+              className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white whitespace-nowrap ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
               } ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} overflow-hidden`}
               style={{

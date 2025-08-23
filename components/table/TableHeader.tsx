@@ -81,7 +81,7 @@ function TableHeaderBase<
             key={column.key}
             className={`${
               densityClasses[density ?? "default"]
-            } text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider ${
+            } text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap ${
               column.sortable && sortable
                 ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                 : ""
