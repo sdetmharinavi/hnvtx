@@ -85,24 +85,25 @@ export default function OfcCableDetailsPage() {
     // "updated_at"
 
     overrides: {
-      fiber_no_sn: { title: "Fiber No. (Starting Node)", sortable: true, width: 250 },
-      fiber_no_en: { title: "Fiber No. (Ending Node)", sortable: true, width: 250 },
+      fiber_no_sn: { title: "End A Fiber", sortable: true, width: 80 },
+      fiber_no_en: { title: "End B Fiber", sortable: true, width: 80 },
       otdr_distance_sn_km: {
-        title: "OTDR Distance (Starting Node) (km)",
+        title: "End A OTDR Distance (km)",
         sortable: true,
-        width: 250,
+        width: 80,
       },
       otdr_distance_en_km: {
-        title: "OTDR Distance (Ending Node) (km)",
+        title: "End B OTDR Distance (km)",
         sortable: true,
-        width: 250,
+        width: 80,
       },
-      en_dom: { title: "EN DOM", sortable: true, width: 250 },
-      en_power_dbm: { title: "EN Power (dBm)", sortable: true, width: 250 },
-      sn_dom: { title: "SN DOM", sortable: true, width: 250 },
-      sn_power_dbm: { title: "SN Power (dBm)", sortable: true, width: 250 },
+      en_dom: { title: "End B DOM", sortable: true, width: 250 },
+      en_power_dbm: { title: "End B Power (dBm)", sortable: true, width: 250 },
+      sn_dom: { title: "End A DOM", sortable: true, width: 250 },
+      sn_power_dbm: { title: "End A Power (dBm)", sortable: true, width: 250 },
       route_loss_db: { title: "Route Loss (dB)", sortable: true, width: 250 },
       connection_type: { title: "Connection Type", sortable: true, width: 150 },
+      ofc_type_name: {title: "Ofc Type", sortable: true, width: 150},
       destination_port: {
         title: "Destination Port",
         sortable: true,
@@ -123,7 +124,7 @@ export default function OfcCableDetailsPage() {
         title: "Status",
         sortable: true,
         width: 100,
-        render: (value: boolean) => <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{value ? "Active" : "Inactive"}</span>,
+        render: (value) => <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{value ? "Active" : "Inactive"}</span>,
       },
     },
   });

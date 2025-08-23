@@ -1,4 +1,4 @@
-// src/hooks/useCurrentTableName.ts
+// hooks/useCurrentTableName.ts
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { TABLE_NAMES } from "@/hooks/defaultUploadConfigs";
@@ -11,18 +11,46 @@ export const useCurrentTableName = (tableName?: UploadConfigTableName): UploadCo
 
   return useMemo(() => {
     if (tableName) return tableName;
+
     const path = pathname || "";
-    if (path.includes("/dashboard/users")) return TABLE_NAMES.user_profiles;
-    if (path.includes("/dashboard/employees")) return TABLE_NAMES.employees;
-    if (path.includes("/dashboard/categories")) return TABLE_NAMES.lookup_types;
-    if (path.includes("/dashboard/designations")) return TABLE_NAMES.employee_designations;
-    if (path.includes("/dashboard/rings")) return TABLE_NAMES.rings;
-    if (path.includes("/dashboard/maintenance-areas")) return TABLE_NAMES.maintenance_areas;
-    if (path.includes("/dashboard/lookup")) return TABLE_NAMES.lookup_types;
-    if (path.includes("/dashboard/ofc")) return TABLE_NAMES.ofc_cables;
-    if (path.includes("/dashboard/ofc_connections")) return TABLE_NAMES.ofc_connections;
-    if (path.includes("/dashboard/nodes")) return TABLE_NAMES.nodes;
-    if (path.includes("/dashboard/systems")) return TABLE_NAMES.systems;
-    return null;
+    const segments = path.split("/").filter(Boolean); // Remove empty segments
+
+    // Look for the dashboard segment and get the next segment as the route
+    const dashboardIndex = segments.findIndex((segment) => segment === "dashboard");
+    if (dashboardIndex === -1 || dashboardIndex >= segments.length - 1) {
+      return null;
+    }
+
+    const routeSegment = segments[dashboardIndex + 1];
+
+    // Map route segments to table names
+    switch (routeSegment) {
+      case "users":
+        return TABLE_NAMES.user_profiles;
+      case "employees":
+        return TABLE_NAMES.employees;
+      case "categories":
+        return TABLE_NAMES.lookup_types;
+      case "designations":
+        return TABLE_NAMES.employee_designations;
+      case "rings":
+        return TABLE_NAMES.rings;
+      case "maintenance-areas":
+        return TABLE_NAMES.maintenance_areas;
+      case "lookup":
+        return TABLE_NAMES.lookup_types;
+      case "ofc":
+        // Check if there's a third segment (ID) after ofc
+        const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
+        return hasId ? TABLE_NAMES.ofc_connections : TABLE_NAMES.ofc_cables;
+      case "ofc_connections":
+        return TABLE_NAMES.ofc_connections;
+      case "nodes":
+        return TABLE_NAMES.nodes;
+      case "systems":
+        return TABLE_NAMES.systems;
+      default:
+        return null;
+    }
   }, [tableName, pathname]);
 };

@@ -263,7 +263,7 @@ export function DataTable<T extends AuthTableOrViewName>({
       <TableFilterPanel columns={columns} filters={filters} setFilters={setFilters} showFilters={showFilters} filterable={filterable} />
 
       <div className='max-h-[calc(100vh-200px)] overflow-auto'>
-        <table className={`w-full ${bordered ? "border-separate border-spacing-0" : ""}`}>
+        <table className={`w-full table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}

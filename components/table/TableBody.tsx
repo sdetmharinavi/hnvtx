@@ -3,7 +3,7 @@ import React, { useRef } from "react";
 import { FiEdit3, FiCheck, FiX } from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row } from "@/hooks/database";
-import { Column } from "@/hooks/database/excel-queries";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 
 interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "actions" | "striped" | "hoverable" | "loading" | "emptyText"> {
   processedData: Row<T>[];
@@ -120,7 +120,8 @@ export function TableBody<T extends AuthTableOrViewName>({
               key={column.key}
               className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
-              } ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""}`}
+              } ${bordered ? `${rowIndex < processedData.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} overflow-hidden`}
+              style={{ width: column.width, minWidth: column.width ? undefined : "80px", maxWidth: "350px" }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
                 <div className='flex items-center gap-2'>
@@ -143,8 +144,12 @@ export function TableBody<T extends AuthTableOrViewName>({
                   </button>
                 </div>
               ) : (
-                <div className='flex items-center gap-2 group'>
-                  {column.render ? column.render(record[column.dataIndex as keyof Row<T>], record, rowIndex) : <span>{String(record[column.dataIndex as keyof Row<T>] ?? "—")}</span>}
+                <div className='flex items-center gap-2 group min-w-0'>
+                  {column.render ? (
+                    column.render(record[column.dataIndex as keyof Row<T>], record, rowIndex)
+                  ) : (
+                    <span className='truncate'>{String(record[column.dataIndex as keyof Row<T>] ?? "—")}</span>
+                  )}
                   {column.editable && <FiEdit3 size={12} className='opacity-0 group-hover:opacity-50 text-gray-400' />}
                 </div>
               )}

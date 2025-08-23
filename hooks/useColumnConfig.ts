@@ -4,7 +4,7 @@ import {
   TABLE_COLUMN_KEYS,
   GenericRow,
 } from "@/config/table-column-keys";
-import { Column } from "@/hooks/database/excel-queries";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 
 /**
  * This is the final, compatible Column Configuration type.
