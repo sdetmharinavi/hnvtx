@@ -297,6 +297,8 @@ export function DataTable<T extends AuthTableOrViewName>({
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
+  console.log(visibleColumnsData.map(c => c.key))
+
   return (
     <div className={`relative bg-white dark:bg-gray-800 rounded-lg ${bordered ? "border border-gray-200 dark:border-gray-700" : ""} ${className}`}>
       <TableToolbar
@@ -336,8 +338,9 @@ export function DataTable<T extends AuthTableOrViewName>({
         filterable={filterable} 
       />
 
-      <div className='max-h-[calc(100vh-200px)] overflow-auto'>
-        <table className={`w-full table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
+      <div className='w-full overflow-x-auto'>
+        <div className='max-h-[calc(100vh-200px)] overflow-y-auto'>
+          <table className={`min-w-[720px] w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}
@@ -375,7 +378,8 @@ export function DataTable<T extends AuthTableOrViewName>({
             saveCellEdit={saveCellEdit}
             cancelCellEdit={cancelCellEdit}
           />
-        </table>
+          </table>
+        </div>
       </div>
       <TablePagination pagination={pagination} bordered={bordered} />
     </div>

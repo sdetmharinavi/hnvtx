@@ -245,11 +245,14 @@ const OfcPage = () => {
       "sn_id",
       "en_id",
       "capacity",
+      "transnet_id",
     ],
     overrides: {
       asset_no: { title: "Asset No.", sortable: true, width: 150 },
       route_name: { title: "Route Name", sortable: true, width: 250 },
       ofc_type_name: { title: "OFC Type", width: 180 },
+      transnet_rkm: { title: "Transnet Rkm", width: 120, align: "right" },
+      current_rkm: { title: "Current Rkm", width: 120, align: "right" },
       maintenance_area_name: { title: "Maint. Area", width: 200 },
       status: {
         title: "Status",

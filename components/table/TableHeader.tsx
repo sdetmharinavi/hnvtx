@@ -102,8 +102,8 @@ function TableHeaderBase<
             }`}
             style={{
               width: column.width,
-              minWidth: column.width ? undefined : "80px",
-              maxWidth: "350px",
+              minWidth: column.width ? undefined : "100px",
+              maxWidth: "350px"
             }}
             onClick={() =>
               column.sortable &&

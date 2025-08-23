@@ -138,7 +138,7 @@ export function TableToolbar<T extends AuthTableOrViewName>({
               </button>
               <div className="absolute right-0 top-full z-50">
                 <TableColumnSelector
-                  columns={columns}
+                  columns={columns.filter((c) => !c.hidden)}
                   visibleColumns={visibleColumns}
                   setVisibleColumns={setVisibleColumns}
                   showColumnSelector={showColumnSelector}

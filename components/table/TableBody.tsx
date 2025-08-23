@@ -106,7 +106,11 @@ function TableRowBase<T extends AuthTableOrViewName>({
               className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
               } ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} overflow-hidden`}
-              style={{ width: column.width, minWidth: column.width ? undefined : "80px", maxWidth: "350px" }}
+              style={{
+                width: column.width,
+                minWidth: column.width ? undefined : "100px",
+                maxWidth: "350px"
+              }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
                 <div className='flex items-center gap-2'>
