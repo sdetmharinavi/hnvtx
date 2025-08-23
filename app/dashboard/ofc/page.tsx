@@ -357,6 +357,7 @@ const OfcPage = () => {
           searchable={false}
           filterable={false}
           customToolbar={true}
+          showColumnsToggle={true}
         />
       </div>
       {showForm && (

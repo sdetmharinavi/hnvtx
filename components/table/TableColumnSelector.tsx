@@ -22,7 +22,8 @@ export function TableColumnSelector<T extends AuthTableOrViewName>({
 
   return (
     <>
-      <div className='absolute right-0 top-2/3 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20'>
+      {/* Dropdown content; positioning handled by parent wrapper */}
+      <div className='mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg'>
         <div className='p-3 border-b border-gray-200 dark:border-gray-700'>
           <h4 className='font-medium text-gray-900 dark:text-white'>Show/Hide Columns</h4>
         </div>
@@ -42,7 +43,8 @@ export function TableColumnSelector<T extends AuthTableOrViewName>({
           ))}
         </div>
       </div>
-      <div className='fixed inset-0 z-10' onClick={() => setShowColumnSelector(false)} />
+      {/* Backdrop to capture outside clicks */}
+      <div className='fixed inset-0 z-40' onClick={() => setShowColumnSelector(false)} />
     </>
   );
 }

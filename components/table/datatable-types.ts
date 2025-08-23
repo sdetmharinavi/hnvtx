@@ -28,6 +28,8 @@ export interface DataTableProps<T extends AuthTableOrViewName> {
   columns: Column<Row<T>>[];
   loading?: boolean;
   showColumnSelector?: boolean;
+  // Controls visibility of the Columns toggle button in the toolbar
+  showColumnsToggle?: boolean;
   pagination?: {
     current: number;
     pageSize: number;

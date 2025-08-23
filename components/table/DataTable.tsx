@@ -2,7 +2,7 @@
 import React, { useMemo, useCallback, useEffect, useReducer } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableExcelDownload, useRPCExcelDownload } from "@/hooks/database/excel-queries";
-import { TableToolbar, TableHeader, TableBody, TablePagination, TableColumnSelector, TableFilterPanel } from "./";
+import { TableToolbar, TableHeader, TableBody, TablePagination, TableFilterPanel } from "./";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
 import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queries/excel-helpers";
@@ -90,6 +90,7 @@ export function DataTable<T extends AuthTableOrViewName>({
   onCellEdit,
   customToolbar,
   showColumnSelector: showColumnSelectorProp,
+  showColumnsToggle,
   exportOptions,
   onSearchChange,
 }: DataTableProps<T>): React.ReactElement {
@@ -312,18 +313,14 @@ export function DataTable<T extends AuthTableOrViewName>({
         setShowFilters={() => dispatch({ type: 'TOGGLE_FILTERS' })}
         showColumnSelector={showColumnSelector}
         setShowColumnSelector={(show) => dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: show })}
+        showColumnsToggle={showColumnsToggle}
+        columns={columns}
+        visibleColumns={visibleColumns}
+        setVisibleColumns={(cols: string[]) => dispatch({ type: 'SET_VISIBLE_COLUMNS', payload: cols })}
         onRefresh={onRefresh}
         onExport={handleExport}
         loading={loading}
         isExporting={isExporting}
-      />
-
-      <TableColumnSelector 
-        columns={columns} 
-        visibleColumns={visibleColumns} 
-        setVisibleColumns={(cols) => dispatch({ type: 'SET_VISIBLE_COLUMNS', payload: cols })} 
-        showColumnSelector={showColumnSelector} 
-        setShowColumnSelector={(show) => dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: show })} 
       />
 
       <TableFilterPanel 

@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import { Row } from "@/hooks/database";
+import { TableColumnSelector } from "./TableColumnSelector";
 import { AuthTableOrViewName } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -22,6 +25,10 @@ interface TableToolbarProps<T extends AuthTableOrViewName> extends Pick<DataTabl
   setShowFilters: (show: boolean) => void;
   showColumnSelector: boolean;
   setShowColumnSelector: (show: boolean) => void;
+  showColumnsToggle?: boolean;
+  columns: Column<Row<T>>[];
+  visibleColumns: string[];
+  setVisibleColumns: (cols: string[]) => void;
   onExport: () => void;
   isExporting: boolean;
 }
@@ -38,8 +45,12 @@ export function TableToolbar<T extends AuthTableOrViewName>({
   onSearchChange,
   showFilters,
   setShowFilters,
-  // showColumnSelector,
+  showColumnSelector,
   setShowColumnSelector,
+  showColumnsToggle,
+  columns,
+  visibleColumns,
+  setVisibleColumns,
   onRefresh,
   onExport,
   loading,
@@ -109,10 +120,15 @@ export function TableToolbar<T extends AuthTableOrViewName>({
                 </button>
               )}
             </div>
+          </div>
+        )}
 
-            <div className="flex w-full sm:w-auto sm:flex-none items-center gap-2 sm:gap-3 justify-end mt-1 sm:mt-0">
+        {/* Right-side controls should be available even when customToolbar is used */}
+        <div className="flex w-full sm:w-auto sm:flex-none items-center gap-2 sm:gap-3 justify-end mt-1 sm:mt-0 ml-auto">
+          {(showColumnsToggle || (!customToolbar && true)) && (
+            <div className="relative">
               <button
-                onClick={() => setShowColumnSelector(true)}
+                onClick={() => setShowColumnSelector(!showColumnSelector)}
                 className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 aria-label="Show/Hide Columns"
               >
@@ -120,31 +136,40 @@ export function TableToolbar<T extends AuthTableOrViewName>({
                 <span className="hidden sm:inline">Columns</span>
                 <FiChevronDown size={12} className="sm:w-3.5 sm:h-3.5" />
               </button>
-
-              {refreshable && onRefresh && (
-                <button
-                  onClick={onRefresh}
-                  disabled={loading}
-                  className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0"
-                  aria-label="Refresh data"
-                >
-                  <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
-                </button>
-              )}
-
-              {exportable && (
-                <button
-                  onClick={onExport}
-                  disabled={isExporting}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
-                >
-                  <FiDownload size={14} />
-                  <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
-                </button>
-              )}
+              <div className="absolute right-0 top-full z-50">
+                <TableColumnSelector
+                  columns={columns}
+                  visibleColumns={visibleColumns}
+                  setVisibleColumns={setVisibleColumns}
+                  showColumnSelector={showColumnSelector}
+                  setShowColumnSelector={setShowColumnSelector}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {refreshable && onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0"
+              aria-label="Refresh data"
+            >
+              <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
+            </button>
+          )}
+
+          {exportable && (
+            <button
+              onClick={onExport}
+              disabled={isExporting}
+              className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
+            >
+              <FiDownload size={14} />
+              <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
