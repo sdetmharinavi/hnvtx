@@ -13,8 +13,12 @@ import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
 import { getEmployeeTableColumns } from "@/components/employee/EmployeeTableColumns";
 import { getEmployeeTableActions } from "@/components/employee/EmployeeTableActions";
-import { BulkActions } from "@/components/employee/BulkActions";
 import { EmployeeWithRelations } from "@/components/employee/employee-types";
+import { BulkActions } from "@/components/common/BulkActions";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { toast } from "sonner";
+import { formatDate } from "@/utils/formatters";
+import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -38,53 +42,117 @@ const EmployeesPage = () => {
     searchColumn: "employee_name",
   });
 
-  const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(null);
-  
+  const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(
+    null
+  );
+
   const supabase = createClient();
-  const { data: designations = [] } = useTableQuery(supabase, "employee_designations", { orderBy: [{ column: "name" }] });
-  const { data: maintenanceAreas = [] } = useTableQuery(supabase, "maintenance_areas", { filters: { status: true }, orderBy: [{ column: "name" }] });
+  const { data: designations = [] } = useTableQuery(
+    supabase,
+    "employee_designations",
+    { orderBy: [{ column: "name" }] }
+  );
+  const { data: maintenanceAreas = [] } = useTableQuery(
+    supabase,
+    "maintenance_areas",
+    { filters: { status: true }, orderBy: [{ column: "name" }] }
+  );
 
-  const columns = useMemo(() => getEmployeeTableColumns({
-    designationMap: Object.fromEntries(designations.map((d) => [d.id, d.name])),
-    areaMap: Object.fromEntries(maintenanceAreas.map((a) => [a.id, a.name])),
-  }), [designations, maintenanceAreas]);
+  const columns = useMemo(
+    () =>
+      getEmployeeTableColumns({
+        designationMap: Object.fromEntries(
+          designations.map((d) => [d.id, d.name])
+        ),
+        areaMap: Object.fromEntries(
+          maintenanceAreas.map((a) => [a.id, a.name])
+        ),
+      }),
+    [designations, maintenanceAreas]
+  );
 
-  const tableActions = useMemo(() => getEmployeeTableActions({
-    onView: (id) => setViewingEmployeeId(id),
-    onEdit: (id) => {
-      const emp = employeesData.find((e) => e.id === id);
-      if (emp) modal.openEditModal(emp);
-    },
-    onToggleStatus: (record) => crudActions.handleToggleStatus(record),
-    onDelete: (employeeId, displayName = "this employee") => crudActions.handleDelete({ id: employeeId, name: displayName }),
-  }), [employeesData, modal, crudActions]);
+  const tableActions = useMemo(
+    () =>
+      getEmployeeTableActions({
+        onView: (id) => setViewingEmployeeId(id),
+        onEdit: (id) => {
+          const emp = employeesData.find((e) => e.id === id);
+          if (emp) modal.openEditModal(emp);
+        },
+        onToggleStatus: (record) => crudActions.handleToggleStatus(record),
+        onDelete: (employeeId, displayName = "this employee") =>
+          crudActions.handleDelete({ id: employeeId, name: displayName }),
+      }),
+    [employeesData, modal, crudActions]
+  );
+
+  // Download Configurations
+  const exportColumns = useDynamicColumnConfig("employees");
+  const tableExcelDownload = useTableExcelDownload(
+    supabase,
+    "employees",
+    {
+      onSuccess: () => {
+        toast.success("Export successful");
+        
+      },
+      onError: () => toast.error("Export failed"),
+    }
+  );
+
+  const handleExport = async () => {
+    const tableName = "employees";
+    const tableOptions = {
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${String(
+        tableName
+      )}-export.xlsx`,
+      sheetName: String(tableName),
+      columns: exportColumns,
+      // filters: filters.filters,
+      maxRows: 1000,
+      customStyles: {},
+    };
+    tableExcelDownload.mutate(tableOptions);
+  };
 
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[
-      {
-        label: "Retry",
-        onClick: refetch,
-        variant: "primary",
-      },
-    ]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[
+          {
+            label: "Retry",
+            onClick: refetch,
+            variant: "primary",
+          },
+        ]}
+      />
+    );
   }
 
   return (
     <div className="mx-auto space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Employee Management ({totalCount})</h1>
+        <h1 className="text-2xl font-bold">
+          Employee Management ({totalCount})
+        </h1>
         <div className="flex gap-2">
-          <Button variant="outline" leftIcon={<FiDownload />}>Export</Button>
-          <Button onClick={modal.openAddModal} leftIcon={<FiPlus />}>Add Employee</Button>
+          <Button variant="outline" leftIcon={<FiDownload />} onClick={handleExport}>
+            Export
+          </Button>
+          <Button onClick={modal.openAddModal} leftIcon={<FiPlus />}>
+            Add Employee
+          </Button>
         </div>
       </div>
-
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
         onBulkDelete={bulkActions.handleBulkDelete}
         onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
         onClearSelection={bulkActions.handleClearSelection}
+        entityName="employee"
+        showStatusUpdate={true}
       />
 
       <DataTable
@@ -94,7 +162,10 @@ const EmployeesPage = () => {
         loading={isLoading}
         actions={tableActions}
         selectable
-        onRowSelect={bulkActions.handleRowSelect}
+        onRowSelect={(selectedRows) => {
+          // Update selection with new row IDs
+          bulkActions.handleRowSelect(selectedRows);
+        }}
         searchable={false} // Turn off internal search
         filterable={false} // Turn off internal filters
         showColumnsToggle={true}
@@ -115,9 +186,21 @@ const EmployeesPage = () => {
             filters={filters.filters}
             onSearchChange={search.setSearchQuery}
             onFilterToggle={() => setShowFilters(!showFilters)}
-            onDesignationChange={(value) => filters.setFilters((prev) => ({ ...prev, employee_designation_id: value }))}
-            onStatusChange={(value) => filters.setFilters((prev) => ({ ...prev, status: value }))}
-            onMaintenanceAreaChange={(value) => filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: value }))}
+            onDesignationChange={(value) =>
+              filters.setFilters((prev) => ({
+                ...prev,
+                employee_designation_id: value,
+              }))
+            }
+            onStatusChange={(value) =>
+              filters.setFilters((prev) => ({ ...prev, status: value }))
+            }
+            onMaintenanceAreaChange={(value) =>
+              filters.setFilters((prev) => ({
+                ...prev,
+                maintenance_terminal_id: value,
+              }))
+            }
             designations={designations as Row<"employee_designations">[]}
             maintenanceAreas={maintenanceAreas as Row<"maintenance_areas">[]}
           />

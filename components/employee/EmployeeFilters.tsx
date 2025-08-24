@@ -80,15 +80,15 @@ const EmployeeFiltersComponent = memo(({
         <div className="mt-4 grid grid-cols-1 gap-3 border-t pt-4 dark:border-gray-700 sm:grid-cols-3">
           <SearchableSelect
             options={designations.map((d) => ({ value: d.id, label: d.name }))}
-            value={filters.employee_designation_id as string ?? ""}
+            value={filters.employee_designation_id as string}
             onChange={(v) => onDesignationChange(v ?? "")}
             placeholder="All Designations"
             searchPlaceholder="Search designations..."
             clearable={true}
           />
           <select
-            value={filters.status as string ?? ""}
-            onChange={(e) => onStatusChange(e.target.value as "true" | "false" | "")}
+            value={filters.status as string}
+            onChange={(e) => onStatusChange(e.target.value as "true" | "false")}
             className="rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
           >
             <option value="">All Status</option>
@@ -97,7 +97,7 @@ const EmployeeFiltersComponent = memo(({
           </select>
           <SearchableSelect
             options={maintenanceAreas.map((area) => ({ value: area.id, label: `${area.name}${area.code ? ` (${area.code})` : ""}` }))}
-            value={filters.maintenance_terminal_id as string ?? ""}
+            value={filters.maintenance_terminal_id as string}
             onChange={(v) => onMaintenanceAreaChange(v ?? "")}
             placeholder="All Maintenance Areas"
             searchPlaceholder="Search areas..."

@@ -81,6 +81,7 @@ export function useCrudPage<T extends TableName>({
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       includeCount: true,
+      orderBy: [{ column: "employee_name", ascending: true }],
     }
   );
 

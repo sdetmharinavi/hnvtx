@@ -1,11 +1,13 @@
 {
     "cSpell.words": [
         "builtup",
+        "cleandev",
         "cpan",
         "datatable",
         "dedup",
         "defval",
         "exceljs",
+        "gitpush",
         "hoverable",
         "MAAN",
         "Maint",
@@ -13,6 +15,7 @@
         "officedocument",
         "openxmlformats",
         "otdr",
+        "papaparse",
         "pers",
         "Postgrest",
         "refreshable",
