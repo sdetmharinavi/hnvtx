@@ -40,6 +40,7 @@ const EmployeesPage = () => {
     tableName: "employees",
     relations: ["employee_designations(name)", "maintenance_areas(name, code)"],
     searchColumn: "employee_name",
+    orderByColumn: "employee_name",
   });
 
   const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(

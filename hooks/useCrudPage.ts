@@ -38,10 +38,12 @@ export function useCrudPage<T extends TableName>({
   tableName,
   relations = [],
   searchColumn = "name",
+  orderByColumn = "name",
 }: {
   tableName: T;
   relations?: string[];
   searchColumn: (keyof Row<T> & string) | "name";
+  orderByColumn?: string;
 }) {
   const supabase = createClient();
 
@@ -82,7 +84,7 @@ export function useCrudPage<T extends TableName>({
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       includeCount: true,
-      orderBy: [{ column: "employee_name", ascending: true }],
+      orderBy: [{ column: orderByColumn, ascending: true }],
     }
   );
 
