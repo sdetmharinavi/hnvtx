@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/common/ui/Button";
 import { FiEdit2, FiTrash2, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import { LookupType } from "@/components/lookup/lookup-types";
+import { type LookupType } from "@/schemas/schema";
 import { useMemo } from "react";
 import { SortDirection } from "@/hooks/useSorting";
 
@@ -159,7 +159,7 @@ export function LookupTypesTable({
               <td className="px-6 py-4 whitespace-nowrap">
                 <Button
                   variant="ghost"
-                  onClick={() => onToggleStatus(lookup.id, !!lookup.status)}
+                  onClick={() => onToggleStatus(lookup.id!, !!lookup.status)}
                   className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                     lookup.status
                       ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50"
@@ -191,7 +191,7 @@ export function LookupTypesTable({
                     variant="outline"
                     onClick={() => {
                       if (confirm(`Are you sure you want to delete "${lookup.name}"?`)) {
-                        onDelete(lookup.id);
+                        onDelete(lookup.id!);
                       }
                     }}
                     className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"

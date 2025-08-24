@@ -118,7 +118,15 @@ export default function LookupTypesPage() {
           </div>
 
           <LookupTypesTable
-            lookups={filteredAndSortedLookupTypes}
+            lookups={filteredAndSortedLookupTypes.map(lookup => ({
+              ...lookup,
+              sort_order: lookup.sort_order ?? 0,
+              created_at: lookup.created_at ? new Date(lookup.created_at) : undefined,
+              updated_at: lookup.updated_at ? new Date(lookup.updated_at) : undefined,
+              is_system_default: lookup.is_system_default ?? false,
+              status: lookup.status ?? true
+
+            }))}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}

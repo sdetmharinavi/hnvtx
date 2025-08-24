@@ -1,25 +1,15 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { employeeSchema } from "@/schemas/schema";
+import { EmployeeFormData, employeeFormSchema } from "@/schemas/schema";
 import { Tables } from "@/types/supabase-types";
 import { Option } from "@/components/common/SearchableSelect";
 import { EmployeeWithRelations } from "./employee-types";
-import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "@/components/common/FormControls";
-
-// Define the form-specific schema by omitting fields not in the form
-// (dates are kept as z.coerce.date in schema and will be coerced by the resolver)
-const formSchema = employeeSchema
-  .omit({
-    id: true,
-    status: true,
-    created_at: true,
-    updated_at: true,
-  });
-
-// RHF field values (input to Zod) and parsed values (output from Zod)
-type EmployeeFormInput = z.input<typeof formSchema>;
-type EmployeeFormOutput = z.output<typeof formSchema>;
+import {
+  FormDateInput,
+  FormInput,
+  FormSearchableSelect,
+  FormTextarea,
+} from "@/components/common/FormControls";
 
 const EmployeeForm = ({
   employee,
@@ -30,7 +20,7 @@ const EmployeeForm = ({
   maintenanceAreas,
 }: {
   employee?: EmployeeWithRelations | null;
-  onSubmit: (data: EmployeeFormOutput) => void;
+  onSubmit: (data: EmployeeFormData) => void;
   onCancel: () => void;
   isLoading: boolean;
   designations: Tables<"employee_designations">[];
@@ -41,16 +31,20 @@ const EmployeeForm = ({
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm<EmployeeFormInput>({
-    resolver: zodResolver(formSchema),
+  } = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       employee_name: employee?.employee_name || "",
       employee_pers_no: employee?.employee_pers_no || null,
       employee_designation_id: employee?.employee_designation_id || null,
       employee_contact: employee?.employee_contact || null,
       employee_email: employee?.employee_email || "",
-      employee_dob: employee?.employee_dob ? new Date(employee.employee_dob) : null,
-      employee_doj: employee?.employee_doj ? new Date(employee.employee_doj) : null,
+      employee_dob: employee?.employee_dob
+        ? new Date(employee.employee_dob)
+        : null,
+      employee_doj: employee?.employee_doj
+        ? new Date(employee.employee_doj)
+        : null,
       employee_addr: employee?.employee_addr || null,
       maintenance_terminal_id: employee?.maintenance_terminal_id || null,
       remark: employee?.remark || null,
@@ -67,17 +61,14 @@ const EmployeeForm = ({
     label: `${area.name}${area.code ? ` (${area.code})` : ""}`,
   }));
 
-  const handleFormSubmit = (data: EmployeeFormInput) => {
-    // zodResolver already coerces and parses values at runtime.
-    // RHF types the callback with the input type, so cast to the output when forwarding.
-    onSubmit(data as EmployeeFormOutput);
+  const onValidFormSubmit = (data: EmployeeFormData) => {
+    onSubmit(data);
   };
-
 
   return (
     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
       <form
-        onSubmit={handleSubmit(handleFormSubmit)}
+        onSubmit={handleSubmit(onValidFormSubmit)}
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800"
       >
         <h2 className="mb-4 text-xl font-semibold dark:text-white">
@@ -89,6 +80,7 @@ const EmployeeForm = ({
             <FormInput
               name="employee_name"
               label="Employee Name"
+              id="employee_name"
               register={register}
               error={errors.employee_name}
               required
@@ -97,12 +89,14 @@ const EmployeeForm = ({
             <FormInput
               name="employee_pers_no"
               label="Personnel Number"
+              id="employee_pers_no"
               register={register}
               error={errors.employee_pers_no}
               placeholder="Enter personnel number"
             />
             <FormSearchableSelect
               name="employee_designation_id"
+              id="employee_designation_id"
               label="Designation"
               control={control}
               options={designationOptions}
@@ -113,6 +107,7 @@ const EmployeeForm = ({
             <FormInput
               name="employee_contact"
               label="Contact Number"
+              id="employee_contact"
               register={register}
               error={errors.employee_contact}
               type="tel"
@@ -121,6 +116,7 @@ const EmployeeForm = ({
             <FormInput
               name="employee_email"
               label="Email Address"
+              id="employee_email"
               register={register}
               error={errors.employee_email}
               type="email"
@@ -145,6 +141,7 @@ const EmployeeForm = ({
             <FormSearchableSelect
               name="maintenance_terminal_id"
               label="Maintenance Area"
+              id="maintenance_terminal_id"
               control={control}
               options={maintenanceAreaOptions}
               error={errors.maintenance_terminal_id}
@@ -156,6 +153,7 @@ const EmployeeForm = ({
           <FormTextarea
             name="employee_addr"
             label="Address"
+            id="employee_addr"
             register={register}
             error={errors.employee_addr}
             rows={3}
@@ -165,6 +163,7 @@ const EmployeeForm = ({
           <FormTextarea
             name="remark"
             label="Remarks"
+            id="remark"
             register={register}
             error={errors.remark}
             rows={2}

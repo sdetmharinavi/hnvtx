@@ -297,7 +297,7 @@ export function DataTable<T extends AuthTableOrViewName>({
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
-  console.log(visibleColumnsData.map(c => c.key))
+  // console.log(visibleColumnsData.map(c => c.key))
 
   return (
     <div className={`relative bg-white dark:bg-gray-800 rounded-lg ${bordered ? "border border-gray-200 dark:border-gray-700" : ""} ${className}`}>

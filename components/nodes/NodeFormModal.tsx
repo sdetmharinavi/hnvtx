@@ -8,8 +8,7 @@ import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
 import { createClient } from "@/utils/supabase/client";
 import { Database, TablesInsert } from "@/types/supabase-types";
 import { useTableInsert, useTableUpdate, useTableQuery } from "@/hooks/database";
-import { nodeFormSchema } from "./nodes_types";
-import z from "zod";
+import { nodeFormSchema, type NodeFormData } from "@/schemas/schema";;
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -25,7 +24,6 @@ interface NodeFormModalProps {
 }
 
 export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdated }: NodeFormModalProps) {
-  type NodeForm = z.infer<typeof nodeFormSchema>;
 
   const {
     register,
@@ -33,21 +31,21 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
     formState: { errors, isSubmitting },
     reset,
     control,
-  } = useForm<NodeForm>({
+  } = useForm({
     resolver: zodResolver(nodeFormSchema),
     defaultValues: {
       name: "",
       node_type_id: null,
-      ip_address: null,
-      latitude: null,
-      longitude: null,
+      ip_address: "",
+      latitude: 0.0,
+      longitude: 0.0,
       vlan: null,
       site_id: null,
       builtup: null,
       maintenance_terminal_id: null,
       ring_id: null,
       order_in_ring: null,
-      ring_status: null,
+      ring_status: "ACTIVE",
       east_port: null,
       west_port: null,
       remark: null,
@@ -81,16 +79,16 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
       reset({
         name: editingNode.name ?? "",
         node_type_id: editingNode.node_type_id ?? null,
-        ip_address: typeof editingNode.ip_address === 'string' ? editingNode.ip_address : null,
-        latitude: editingNode.latitude ?? null,
-        longitude: editingNode.longitude ?? null,
+        ip_address: typeof editingNode.ip_address === 'string' ? editingNode.ip_address : "",
+        latitude: editingNode.latitude ?? 0.0,
+        longitude: editingNode.longitude ?? 0.0,
         vlan: typeof editingNode.vlan === 'string' ? editingNode.vlan : null,
         site_id: typeof editingNode.site_id === 'string' ? editingNode.site_id : null,
         builtup: typeof editingNode.builtup === 'string' ? editingNode.builtup : null,
         maintenance_terminal_id: editingNode.maintenance_terminal_id ?? null,
         ring_id: editingNode.ring_id ?? null,
         order_in_ring: editingNode.order_in_ring ?? null,
-        ring_status: typeof editingNode.ring_status === 'string' ? editingNode.ring_status : null,
+        ring_status: typeof editingNode.ring_status === 'string' ? editingNode.ring_status : "ACTIVE",
         east_port: typeof editingNode.east_port === 'string' ? editingNode.east_port : null,
         west_port: typeof editingNode.west_port === 'string' ? editingNode.west_port : null,
         remark: typeof editingNode.remark === 'string' ? editingNode.remark : null,
@@ -100,16 +98,16 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
       reset({
         name: "",
         node_type_id: null,
-        ip_address: null,
-        latitude: null,
-        longitude: null,
+        ip_address: "",
+        latitude: 0.0,
+        longitude: 0.0,
         vlan: null,
         site_id: null,
         builtup: null,
         maintenance_terminal_id: null,
         ring_id: null,
         order_in_ring: null,
-        ring_status: null,
+        ring_status: "ACTIVE",
         east_port: null,
         west_port: null,
         remark: null,
@@ -123,7 +121,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
     onClose();
   }, [creating, updating, onClose]);
 
-  const onValidSubmit = useCallback((formData: NodeForm) => {
+  const onValidSubmit = useCallback((formData: NodeFormData) => {
     const submitData = {
       name: formData.name.trim(),
       node_type_id: formData.node_type_id,
@@ -147,7 +145,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
       updateNode(
         { id: editingNode.id, data: submitData as Partial<NodeInsert> },
         {
-          onSuccess: (data: any) => {
+          onSuccess: (data: unknown) => {
             onUpdated?.(Array.isArray(data) ? data[0] : data);
             onClose();
           },
@@ -157,7 +155,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
       insertNode(
         submitData as NodeInsert,
         {
-          onSuccess: (data: any) => {
+          onSuccess: (data: unknown) => {
             onCreated?.(Array.isArray(data) ? data[0] : data);
             onClose();
           },

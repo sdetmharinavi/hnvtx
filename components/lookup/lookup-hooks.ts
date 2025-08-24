@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useDeduplicated, useTableDelete, useTableQuery, useToggleStatus } from "@/hooks/database";
-import { LookupType } from "@/components/lookup/lookup-types";
+import { type LookupType } from "@/schemas/schema";
 
 export function useLookupTypes(initialCategory = "") {
   const router = useRouter();

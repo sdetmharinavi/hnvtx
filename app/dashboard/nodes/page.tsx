@@ -1,171 +1,131 @@
-// app/dashboard/nodes/page.tsx
-"use client"
+"use client";
 
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { NodesHeader } from "@/components/nodes/NodesHeader";
 import { NodesFilters } from "@/components/nodes/NodesFilters";
 import { getNodesTableColumns } from "@/components/nodes/NodesTableColumns";
-import { NodeFormModal } from "@/components/nodes/NodeFormModal";
-import { ConfirmModal } from "@/components/common/ui/Modal";
-import { Row } from "@/hooks/database";
+import { NodeFormModal, NodeRow } from "@/components/nodes/NodeFormModal";
+import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { Row, useTableQuery } from "@/hooks/database";
+import { useCrudPage } from "@/hooks/useCrudPage";
+import { TableAction } from "@/components/table/datatable-types";
+import { FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { createClient } from "@/utils/supabase/client";
 
-import { 
-  useNodesPageState, 
-  useNodesData, 
-  useNodesMutations,
-  useNodesTableActions 
-} from "@/components/nodes/hooks";
-
-const NodesPageContent: React.FC = () => {
-  const state = useNodesPageState();
+const NodesPage = () => {
   
   const {
-    searchTerm,
-    currentPage,
-    pageLimit,
-    filters,
-    isFormOpen,
-    editingNode,
-    setSearchTerm,
-    resetPagination,
-    openCreateForm,
-    openEditForm,
-    closeForm,
-    updateFilters,
-    updatePagination,
-  } = state;
-
-  // Data management
-  const {
-    nodesQuery,
-    allNodes,
+    data: nodesData,
     totalCount,
-    filteredNodeTypes,
-    debouncedSearchTerm,
-  } = useNodesData({
+    isLoading,
+    error,
+    refetch,
+    pagination,
+    search,
     filters,
-    searchTerm,
-    currentPage,
-    pageLimit,
+    modal,
+    actions: crudActions,
+    deleteModal,
+  } = useCrudPage({
+    tableName: "nodes",
+    relations: [
+      "node_type:node_type_id(name)",
+      "ring:ring_id(name)",
+      "maintenance_terminal:maintenance_terminal_id(name)"
+    ],
+    searchColumn: 'name',
   });
 
-  // Mutations
-  const {
-    toggleStatusMutation,
-    deleteManager,
-  } = useNodesMutations({
-    onSuccess: closeForm,
-    refetchNodes: nodesQuery.refetch,
+  const supabase = createClient();
+  const { data: nodeTypesData = [] } = useTableQuery(supabase, "lookup_types", {
+    filters: { category: 'NODE_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
+    orderBy: [{ column: 'name' }]
   });
 
-  // Table actions
-  const actions = useNodesTableActions({
-    onEdit: openEditForm,
-    onToggleStatus: (id: string, status: boolean) => 
-      toggleStatusMutation.mutate({ id, status }),
-    onDelete: (id: string, name: string) => 
-      deleteManager.deleteSingle({ id, name }),
-  });
-
-  // Table columns
+  const nodeTypes = useMemo(() => 
+    (nodeTypesData as { id: string; name: string }[]).map(nt => ({ id: nt.id, name: nt.name })),
+    [nodeTypesData]
+  );
+  
   const columns = useMemo(() => getNodesTableColumns(), []);
 
-  // Reset to first page when search changes
-  useEffect(() => {
-    resetPagination();
-  }, [debouncedSearchTerm, resetPagination]);
-
-  // Event handlers
-  const handleNodeTypeChange = useCallback((nodeType: string | null) => {
-    updateFilters({ nodeType: nodeType ?? "" });
-  }, [updateFilters]);
-
-  const onCreated = useCallback((node: any) => {
-    nodesQuery.refetch();
-    closeForm();
-  }, [nodesQuery, closeForm]);
-
-  const onUpdated = useCallback((node: any) => {
-    nodesQuery.refetch();
-    closeForm();
-  }, [nodesQuery, closeForm]);
-
-  // Custom toolbar
-  const customToolbar = useMemo(
-    () => (
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
-        <NodesFilters
-          searchQuery={searchTerm}
-          onSearchChange={setSearchTerm}
-          nodeTypes={filteredNodeTypes}
-          selectedNodeType={filters.nodeType ?? ""}
-          onNodeTypeChange={handleNodeTypeChange}
-        />
-      </div>
-    ),
-    [searchTerm, setSearchTerm, filteredNodeTypes, filters.nodeType, handleNodeTypeChange]
-  );
+  const tableActions = useMemo<TableAction<'nodes'>[]>(() => [
+    { key: "edit", label: "Edit", icon: <FiEdit2 />, onClick: (record) => modal.openEditModal(record) },
+    { key: "activate", label: "Activate", icon: <FiToggleRight />, hidden: (r) => !!r.status, onClick: (r) => crudActions.handleToggleStatus(r) },
+    { key: "deactivate", label: "Deactivate", icon: <FiToggleLeft />, hidden: (r) => !r.status, onClick: (r) => crudActions.handleToggleStatus(r) },
+    { key: "delete", label: "Delete", icon: <FiTrash2 />, variant: "danger", onClick: (r) => crudActions.handleDelete(r) },
+  ], [modal, crudActions]);
+  
+  if (error) {
+    return <ErrorDisplay error={error.message} actions={[
+      {
+        label: "Retry",
+        onClick: refetch,
+        variant: "primary",
+      },
+    ]} />;
+  }
 
   return (
     <div className="mx-auto space-y-4">
       <NodesHeader
-        onRefresh={nodesQuery.refetch}
-        onAddNew={openCreateForm}
-        isLoading={nodesQuery.isLoading}
+        onRefresh={refetch}
+        onAddNew={modal.openAddModal}
+        isLoading={isLoading}
         totalCount={totalCount}
       />
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <DataTable
-          tableName="nodes"
-          data={allNodes as unknown as Row<"nodes">[]}
-          columns={columns}
-          loading={nodesQuery.isLoading}
-          pagination={{
-            current: currentPage,
-            pageSize: pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            pageSizeOptions: [10, 20, 50, 100],
-            onChange: updatePagination,
-          }}
-          actions={actions}
-          selectable={false}
-          exportable={false}
-          searchable={false}
-          filterable={true}
-          customToolbar={customToolbar}
-        />
-      </div>
+      <DataTable
+        tableName="nodes"
+        data={nodesData as Row<"nodes">[]}
+        columns={columns}
+        loading={isLoading}
+        actions={tableActions}
+        selectable={true} // Assuming you might want bulk actions later
+        showColumnsToggle={true}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+        customToolbar={
+            <NodesFilters
+              searchQuery={search.searchQuery}
+              onSearchChange={search.setSearchQuery}
+              nodeTypes={nodeTypes}
+              selectedNodeType={filters.filters.node_type_id as string | undefined}
+              onNodeTypeChange={(value) => filters.setFilters(prev => ({ ...prev, node_type_id: value }))}
+            />
+        }
+      />
 
-      {isFormOpen && (
-        <NodeFormModal
-          isOpen={isFormOpen}
-          onClose={closeForm}
-          editingNode={editingNode}
-          onCreated={onCreated}
-          onUpdated={onUpdated}
-        />
+      {modal.isModalOpen && (
+          <NodeFormModal
+            isOpen={modal.isModalOpen}
+            onClose={modal.closeModal}
+            editingNode={modal.editingRecord as NodeRow | null}
+            onCreated={crudActions.handleSave}
+            onUpdated={crudActions.handleSave}
+          />
       )}
-
+      
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.confirm}
+        onCancel={deleteModal.cancel}
         title="Confirm Deletion"
-        message={deleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
+        message={deleteModal.message}
+        loading={deleteModal.isLoading}
         type="danger"
-        showIcon
-        closeOnBackdrop
-        closeOnEscape
-        loading={deleteManager.isPending}
-        size="md"
       />
     </div>
   );
 };
 
-export default NodesPageContent;
+export default NodesPage;

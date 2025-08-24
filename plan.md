@@ -15,9 +15,9 @@ export class OfcConnectionService {
   static async ensureConnectionsExist(cableId: string): Promise<void> {
     const cable = await this.getCableById(cableId);
     const existingConnections = await this.getConnectionsByCableId(cableId);
-  
+
     const missingCount = cable.capacity - existingConnections.length;
-  
+
     if (missingCount > 0) {
       await this.createMissingConnections(cableId, missingCount, existingConnections);
     }
@@ -45,7 +45,7 @@ INSERT INTO ofc_connections_enhanced (
   source_type, source_id, destination_type, destination_id,
   otdr_distance_km, power_dbm, connection_type, remark, status
 )
-SELECT 
+SELECT
   ofc_id,
   fiber_no_sn,
   gen_random_uuid(), -- Generate logical path ID
@@ -104,11 +104,11 @@ class JointManagementService {
       joint_type: 'splice',
       location_description: location
     });
-  
+
     // Update fiber connections to route through joint
     await this.updateFiberRoutingThroughJoint(joint.id, cableAId, cableBId);
   }
-  
+
   async createTJoint(mainCableId: string, branchCableId: string, fiberNumbers: number[]) {
     // Implementation for T-joint creation
   }
@@ -126,7 +126,7 @@ class PathCalculationService {
     // - T-joints
     // - Cross-connects
   }
-  
+
   async calculatePathLoss(pathId: string): Promise<number> {
     // Sum up all losses along the path:
     // - Fiber loss (distance × attenuation)
@@ -241,7 +241,7 @@ interface ConnectionType {
 
 // Query with proper joins
 const query = `
-  SELECT 
+  SELECT
     fj.joint_name,
     jt.type_name as joint_type,
     jt.description,
@@ -260,8 +260,8 @@ SELECT id FROM joint_types WHERE type_code = 'SPLICE';
 
 -- Insert new joint with proper foreign key
 INSERT INTO fiber_joints (joint_name, joint_type_id, location_description)
-VALUES ('Main_Splice_001', 
-        (SELECT id FROM joint_types WHERE type_code = 'SPLICE'), 
+VALUES ('Main_Splice_001',
+        (SELECT id FROM joint_types WHERE type_code = 'SPLICE'),
         'Junction Box at Node A');
 ```
 
@@ -275,52 +275,52 @@ Your `DRY-guide-ofc.md` shows you're already thinking about this, which is fanta
 
 #### **Suggestion: Create a Generic CRUD Page Component/Hook**
 
-*   **Observation:** Your dashboard pages (`rings/page.tsx`, `employees/page.tsx`, `nodes/page.tsx`) share a significant amount of boilerplate logic: state for pagination, search, filters, modals, data fetching, mutations, and rendering a `DataTable`.
-*   **Improvement:** Abstract this common logic into a reusable component or a higher-level hook.
-    *   **High-Level Hook (`useCrudManager`):** Create a hook like `useCrudManager("employees", { relations: [...] })`. This hook would internally manage `useTableQuery`, `useTableInsert`, etc., and expose a clean API:
-        ```typescript
-        const {
-          data,
-          isLoading,
-          pagination,
-          setPagination,
-          filters,
-          setFilters,
-          createItem,
-          updateItem,
-          deleteItem
-        } = useCrudManager("employees");
-        ```
-    *   **Layout Component (`<CrudPageLayout>`):** This component would use the hook above and accept props for entity-specific parts like `columns`, `pageTitle`, `FiltersComponent`, and `FormComponent`.
+* **Observation:** Your dashboard pages (`rings/page.tsx`, `employees/page.tsx`, `nodes/page.tsx`) share a significant amount of boilerplate logic: state for pagination, search, filters, modals, data fetching, mutations, and rendering a `DataTable`.
+* **Improvement:** Abstract this common logic into a reusable component or a higher-level hook.
 
-*   **Benefit:** Creating a new CRUD page would be reduced to defining the columns, filter UI, and form, eliminating dozens of lines of repeated code per page. This dramatically improves maintainability.
+  * **High-Level Hook (`useCrudManager`):** Create a hook like `useCrudManager("employees", { relations: [...] })`. This hook would internally manage `useTableQuery`, `useTableInsert`, etc., and expose a clean API:
+    ```typescript
+    const {
+      data,
+      isLoading,
+      pagination,
+      setPagination,
+      filters,
+      setFilters,
+      createItem,
+      updateItem,
+      deleteItem
+    } = useCrudManager("employees");
+    ```
+  * **Layout Component (`<CrudPageLayout>`):** This component would use the hook above and accept props for entity-specific parts like `columns`, `pageTitle`, `FiltersComponent`, and `FormComponent`.
+* **Benefit:** Creating a new CRUD page would be reduced to defining the columns, filter UI, and form, eliminating dozens of lines of repeated code per page. This dramatically improves maintainability.
 
 #### **Suggestion: Modularize `schema.ts`**
 
-*   **Observation:** The `schemas/schema.ts` file is becoming a monolith, containing schemas for auth, master tables, core infrastructure, and user profiles. As the application grows, this will become difficult to navigate.
-*   **Improvement:** Create a `schemas/` directory and split the file by domain.
-    *   `schemas/auth.ts` (userSchema, signupSchema)
-    *   `schemas/masters.ts` (lookupTypeSchema, maintenanceAreaSchema, etc.)
-    *   `schemas/core.ts` (ringSchema, nodeSchema, ofcCableSchema, etc.)
-    *   `schemas/user.ts` (userProfileSchema)
-    *   `schemas/index.ts` (to re-export all schemas from one place)
-*   **Benefit:** Improves code organization, making it faster to find and update specific schemas.
+* **Observation:** The `schemas/schema.ts` file is becoming a monolith, containing schemas for auth, master tables, core infrastructure, and user profiles. As the application grows, this will become difficult to navigate.
+* **Improvement:** Create a `schemas/` directory and split the file by domain.
+  * `schemas/auth.ts` (userSchema, signupSchema)
+  * `schemas/masters.ts` (lookupTypeSchema, maintenanceAreaSchema, etc.)
+  * `schemas/core.ts` (ringSchema, nodeSchema, ofcCableSchema, etc.)
+  * `schemas/user.ts` (userProfileSchema)
+  * `schemas/index.ts` (to re-export all schemas from one place)
+* **Benefit:** Improves code organization, making it faster to find and update specific schemas.
 
 #### **Suggestion: Centralize Table Actions Logic**
 
-*   **Observation:** You have separate functions like `getRingsTableColumns`, `getEmployeeTableActions`, etc. This is a good pattern.
-*   **Improvement:** Consolidate the creation of common actions. For example, the `edit`, `delete`, and `toggleStatus` actions are nearly identical across pages. You can create a helper function that generates these standard actions.
-    ```typescript
-    // in a new file, e.g., components/table/action-helpers.ts
-    export function createStandardActions({ onEdit, onDelete, onToggleStatus }) {
-      return [
-        // Edit action config...
-        // Delete action config...
-        // Toggle status action config...
-      ];
-    }
-    ```
-*   **Benefit:** Ensures consistency in action icons, labels, and behavior across all data tables.
+* **Observation:** You have separate functions like `getRingsTableColumns`, `getEmployeeTableActions`, etc. This is a good pattern.
+* **Improvement:** Consolidate the creation of common actions. For example, the `edit`, `delete`, and `toggleStatus` actions are nearly identical across pages. You can create a helper function that generates these standard actions.
+  ```typescript
+  // in a new file, e.g., components/table/action-helpers.ts
+  export function createStandardActions({ onEdit, onDelete, onToggleStatus }) {
+    return [
+      // Edit action config...
+      // Delete action config...
+      // Toggle status action config...
+    ];
+  }
+  ```
+* **Benefit:** Ensures consistency in action icons, labels, and behavior across all data tables.
 
 ### 2. UI/UX Consistency & Improvement
 
@@ -328,52 +328,54 @@ The UI is clean and functional. These suggestions focus on creating a more polis
 
 #### **Suggestion: Create a Standard `PageHeader` Component**
 
-*   **Observation:** The headers on pages like `rings/page.tsx` (`RingsHeader.tsx`) and `employees/page.tsx` (inline JSX) have similar elements (title, description, action buttons) but are implemented differently.
-*   **Improvement:** Create a single, reusable `<PageHeader>` component.
-    ```typescript
-    <PageHeader
-      title="Ring Management"
-      description="Manage network rings and related info"
-      actions={
-        <>
-          <Button onClick={onRefresh} variant="outline" icon={<FiRefreshCw />}>Refresh</Button>
-          <Button onClick={onAddNew} icon={<FiPlus />}>Add Ring</Button>
-        </>
-      }
-    />
-    ```
-*   **Benefit:** Enforces a consistent layout and style for all page titles and primary actions, improving user experience.
+* **Observation:** The headers on pages like `rings/page.tsx` (`RingsHeader.tsx`) and `employees/page.tsx` (inline JSX) have similar elements (title, description, action buttons) but are implemented differently.
+* **Improvement:** Create a single, reusable `<PageHeader>` component.
+  ```typescript
+  <PageHeader
+    title="Ring Management"
+    description="Manage network rings and related info"
+    actions={
+      <>
+        <Button onClick={onRefresh} variant="outline" icon={<FiRefreshCw />}>Refresh</Button>
+        <Button onClick={onAddNew} icon={<FiPlus />}>Add Ring</Button>
+      </>
+    }
+  />
+  ```
+* **Benefit:** Enforces a consistent layout and style for all page titles and primary actions, improving user experience.
 
 #### **Suggestion: Enhance the Form Component Suite**
 
-*   **Observation:** Your `FormControls.tsx` is a great start. However, the forms themselves (`OfcForm.tsx`, `RingModal.tsx`) still contain repetitive layout code.
-*   **Improvement:** Create a generic `<Form>` component that integrates with `react-hook-form`. It could accept a schema and render fields dynamically or provide slots for layout. Also, standardize the modal forms to use a consistent footer with `Cancel` and `Submit` buttons. Your `FormCard` component is an excellent step in this direction.
-*   **Benefit:** Speeds up form creation and ensures all forms have a similar look, feel, and validation message style.
+* **Observation:** Your `FormControls.tsx` is a great start. However, the forms themselves (`OfcForm.tsx`, `RingModal.tsx`) still contain repetitive layout code.
+* **Improvement:** Create a generic `<Form>` component that integrates with `react-hook-form`. It could accept a schema and render fields dynamically or provide slots for layout. Also, standardize the modal forms to use a consistent footer with `Cancel` and `Submit` buttons. Your `FormCard` component is an excellent step in this direction.
+* **Benefit:** Speeds up form creation and ensures all forms have a similar look, feel, and validation message style.
 
 #### **Suggestion: Standardize Colors and Theming**
 
-*   **Observation:** Colors are used directly in components (e.g., `bg-blue-600`, `text-red-500`).
-*   **Improvement:** Define your color palette as CSS variables in `globals.css` and reference them in `tailwind.config.js`.
-    ```css
-    /* globals.css */
-    :root {
-      --primary: 220 83% 53%; /* HSL for blue */
-      --destructive: 0 84% 60%; /* HSL for red */
-      /* ... other colors */
-    }
-    ```
-    ```javascript
-    // tailwind.config.js
-    theme: {
-      extend: {
-        colors: {
-          primary: 'hsl(var(--primary))',
-          destructive: 'hsl(var(--destructive))',
-        },
+* **Observation:** Colors are used directly in components (e.g., `bg-blue-600`, `text-red-500`).
+* **Improvement:** Define your color palette as CSS variables in `globals.css` and reference them in `tailwind.config.js`.
+
+  ```css
+  /* globals.css */
+  :root {
+    --primary: 220 83% 53%; /* HSL for blue */
+    --destructive: 0 84% 60%; /* HSL for red */
+    /* ... other colors */
+  }
+  ```
+
+  ```javascript
+  // tailwind.config.js
+  theme: {
+    extend: {
+      colors: {
+        primary: 'hsl(var(--primary))',
+        destructive: 'hsl(var(--destructive))',
       },
     },
-    ```
-*   **Benefit:** Creates a centralized design system. Changing the primary brand color becomes a one-line change.
+  },
+  ```
+* **Benefit:** Creates a centralized design system. Changing the primary brand color becomes a one-line change.
 
 ### 3. Performance Optimization
 
@@ -381,51 +383,51 @@ Your application seems well-structured, but as it scales, these optimizations wi
 
 #### **Suggestion: Aggressive Caching for Lookup Data**
 
-*   **Observation:** Data like "Node Types", "Ring Types", and "Maintenance Areas" are fetched on multiple pages and likely change infrequently.
-*   **Improvement:** In your `useTableQuery` hooks for this type of data, set a much longer `staleTime` in the React Query options.
-    ```typescript
-    // Example for fetching node types
-    useTableQuery(supabase, "lookup_types", {
-      filters: { category: { operator: 'eq', value: 'NODE_TYPES' } },
-      staleTime: 15 * 60 * 1000, // 15 minutes
-      gcTime: 30 * 60 * 1000, // 30 minutes
-    });
-    ```
-*   **Benefit:** Prevents redundant network requests for semi-static data, making navigation between pages feel instantaneous.
+* **Observation:** Data like "Node Types", "Ring Types", and "Maintenance Areas" are fetched on multiple pages and likely change infrequently.
+* **Improvement:** In your `useTableQuery` hooks for this type of data, set a much longer `staleTime` in the React Query options.
+  ```typescript
+  // Example for fetching node types
+  useTableQuery(supabase, "lookup_types", {
+    filters: { category: { operator: 'eq', value: 'NODE_TYPES' } },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+  });
+  ```
+* **Benefit:** Prevents redundant network requests for semi-static data, making navigation between pages feel instantaneous.
 
 #### **Suggestion: Differentiate List vs. Detail Queries**
 
-*   **Observation:** The data tables might be fetching all columns for every row (e.g., long `description` or `remark` fields), which can increase the data payload for list views.
-*   **Improvement:** When fetching data for a `DataTable`, explicitly select only the columns needed for display using the `columns` option in `useTableQuery`. Fetch the full record only when the user opens an edit modal or a details view.
-    ```typescript
-    // For a list view
-    useTableQuery(supabase, "rings", { columns: "id, name, status, ring_type_id" });
+* **Observation:** The data tables might be fetching all columns for every row (e.g., long `description` or `remark` fields), which can increase the data payload for list views.
+* **Improvement:** When fetching data for a `DataTable`, explicitly select only the columns needed for display using the `columns` option in `useTableQuery`. Fetch the full record only when the user opens an edit modal or a details view.
+  ```typescript
+  // For a list view
+  useTableQuery(supabase, "rings", { columns: "id, name, status, ring_type_id" });
 
-    // For an edit modal (using useTableRecord)
-    useTableRecord(supabase, "rings", editingRingId, { columns: "*" });
-    ```
-*   **Benefit:** Reduces the amount of data transferred from the database, leading to faster page loads, especially on tables with many rows.
+  // For an edit modal (using useTableRecord)
+  useTableRecord(supabase, "rings", editingRingId, { columns: "*" });
+  ```
+* **Benefit:** Reduces the amount of data transferred from the database, leading to faster page loads, especially on tables with many rows.
 
 #### **Suggestion: Leverage Next.js Server Components**
 
-*   **Observation:** Most of your pages are client components (`"use client";`). This is necessary for interactivity, but the initial data can often be fetched on the server.
-*   **Improvement:** Adopt a hybrid approach. Create a server component as the main page entry point to fetch the initial data. Then, pass this data as a prop to your interactive client component. Your `ofcadv/page.tsx` already does this perfectly with `getRoutesForSelection`.
-    ```typescript
-    // app/dashboard/rings/page.tsx (now a Server Component)
-    export default async function RingsPage() {
-      const supabase = createClient(); // Server client
-      const { data: initialRings } = await supabase.from('rings').select('*');
-      return <RingsClientPage initialRings={initialRings} />;
-    }
+* **Observation:** Most of your pages are client components (`"use client";`). This is necessary for interactivity, but the initial data can often be fetched on the server.
+* **Improvement:** Adopt a hybrid approach. Create a server component as the main page entry point to fetch the initial data. Then, pass this data as a prop to your interactive client component. Your `ofcadv/page.tsx` already does this perfectly with `getRoutesForSelection`.
+  ```typescript
+  // app/dashboard/rings/page.tsx (now a Server Component)
+  export default async function RingsPage() {
+    const supabase = createClient(); // Server client
+    const { data: initialRings } = await supabase.from('rings').select('*');
+    return <RingsClientPage initialRings={initialRings} />;
+  }
 
-    // components/rings/RingsClientPage.tsx (your old page.tsx content)
-    "use client";
-    export default function RingsClientPage({ initialRings }) {
-      // Use useQuery with `initialData: initialRings`
-      // ...
-    }
-    ```
-*   **Benefit:** Improves initial page load performance (First Contentful Paint) as the data is fetched and rendered on the server, sending a more complete HTML page to the client.
+  // components/rings/RingsClientPage.tsx (your old page.tsx content)
+  "use client";
+  export default function RingsClientPage({ initialRings }) {
+    // Use useQuery with `initialData: initialRings`
+    // ...
+  }
+  ```
+* **Benefit:** Improves initial page load performance (First Contentful Paint) as the data is fetched and rendered on the server, sending a more complete HTML page to the client.
 
 By focusing on these areas, you can significantly enhance the `hnvtx` project, making it more robust, scalable, and easier to build upon in the future.
 
@@ -468,8 +470,9 @@ export interface LookupType { // <-- REPETITION
 ```
 
 This is problematic because:
-1.  **Maintenance Overhead:** If you add a field to `lookupTypeSchema`, you must remember to manually add it to the interface in `lookup-types.ts`.
-2.  **Risk of Divergence:** It's easy to forget to update one, leading to subtle bugs where your validation schema and your component's type expectations are out of sync.
+
+1. **Maintenance Overhead:** If you add a field to `lookupTypeSchema`, you must remember to manually add it to the interface in `lookup-types.ts`.
+2. **Risk of Divergence:** It's easy to forget to update one, leading to subtle bugs where your validation schema and your component's type expectations are out of sync.
 
 **Solution: Use a Single Source of Truth**
 
@@ -484,6 +487,7 @@ Remove the `LookupType` interface from `components/lookup/lookup-types.ts`.
 In any file that was using the manually defined type (like `LookupModal.tsx`, `lookup-hooks.ts`, etc.), change the import.
 
 **Before:**
+
 ```typescript
 // in: components/lookup/lookup-hooks.ts
 import { LookupType } from "@/components/lookup/lookup-types"; ```
@@ -493,6 +497,7 @@ import { LookupType } from "@/components/lookup/lookup-types"; ```
 // in: components/lookup/lookup-hooks.ts
 import { type LookupType } from "@/schemas/schema"; // Import the type from your single source of truth
 ```
+
 *(Note: Using `import type` is a good practice as it ensures the import is erased at compile time if only used for type annotations, resulting in a smaller JavaScript bundle.)*
 
 By making this change, `schemas/schema.ts` becomes the undisputed **Single Source of Truth** for the shape of `LookupType`.
@@ -501,53 +506,53 @@ By making this change, `schemas/schema.ts` becomes the undisputed **Single Sourc
 
 While not a direct repetition, you have two "sources of truth" for your data types, which requires careful management to stay DRY.
 
-1.  **Zod Schemas (`schemas/schema.ts`):** Your source of truth for **validation and form data**.
-2.  **Supabase Types (`types/supabase-types.ts`):** Your source of truth for **raw database interactions**.
+1. **Zod Schemas (`schemas/schema.ts`):** Your source of truth for **validation and form data**.
+2. **Supabase Types (`types/supabase-types.ts`):** Your source of truth for **raw database interactions**.
 
 This is a common and perfectly valid pattern, but the key to keeping it DRY is to establish clear rules on when to use which.
 
 **How to Apply the DRY Principle Here:**
 
-1.  **For Forms and Validation:** Always use the Zod-inferred types. Your `RingModal.tsx` and `EmployeeForm.tsx` do this well by creating a form-specific schema and using `z.infer` for the form data type. This is excellent.
-
-2.  **For Database Query/Return Types:** Use the Supabase-generated types. Your hooks in `hooks/database/` and pages like `employees/page.tsx` correctly use types like `Row<"employees">` and `Tables<"maintenance_areas">`. This is also excellent.
-
-3.  **For Component Props and Shared Types:** When a component needs to accept data that has been fetched from the database, it's best to use the types generated by Supabase.
+1. **For Forms and Validation:** Always use the Zod-inferred types. Your `RingModal.tsx` and `EmployeeForm.tsx` do this well by creating a form-specific schema and using `z.infer` for the form data type. This is excellent.
+2. **For Database Query/Return Types:** Use the Supabase-generated types. Your hooks in `hooks/database/` and pages like `employees/page.tsx` correctly use types like `Row<"employees">` and `Tables<"maintenance_areas">`. This is also excellent.
+3. **For Component Props and Shared Types:** When a component needs to accept data that has been fetched from the database, it's best to use the types generated by Supabase.
 
 **Good Examples in Your Project (What to Keep Doing):**
 
 You are already applying the DRY principle well in several places by *extending* or *aliasing* base types instead of re-creating them.
 
-*   In `components/maintenance-areas/maintenance-areas-types.ts`:
-    ```typescript
-    // This is GOOD. It's not a re-declaration.
-    // It's creating a new, more specific type from a base type.
-    export interface MaintenanceAreaWithRelations extends MaintenanceArea {
-      area_type: AreaType | null;
-      parent_area: MaintenanceAreaWithRelations | null;
-      child_areas: MaintenanceAreaWithRelations[];
-    }
-    ```
+* In `components/maintenance-areas/maintenance-areas-types.ts`:
 
-*   In `components/users/user-types.ts`:
-    ```typescript
-    // This is also GOOD. It's creating a clear, readable alias for a generated type.
-    export type UserProfileData = Database["public"]["Views"]["v_user_profiles_extended"]["Row"];
-    ```
+  ```typescript
+  // This is GOOD. It's not a re-declaration.
+  // It's creating a new, more specific type from a base type.
+  export interface MaintenanceAreaWithRelations extends MaintenanceArea {
+    area_type: AreaType | null;
+    parent_area: MaintenanceAreaWithRelations | null;
+    child_areas: MaintenanceAreaWithRelations[];
+  }
+  ```
+* In `components/users/user-types.ts`:
+
+  ```typescript
+  // This is also GOOD. It's creating a clear, readable alias for a generated type.
+  export type UserProfileData = Database["public"]["Views"]["v_user_profiles_extended"]["Row"];
+  ```
 
 ### Actionable Summary to Improve DRY Compliance
 
-1.  **Refactor `LookupType`:** Delete the interface in `components/lookup/lookup-types.ts` and update all relevant files to import `type LookupType` from `@/schemas/schema`.
-2.  **Establish a Convention:**
-    *   Use **Zod-inferred types** for all form data and validation logic.
-    *   Use **Supabase-generated types** (`Row<T>`, `Tables<T>`) for database query results and component props that receive that data.
-3.  **Continue the Pattern:** Keep using type composition (extending interfaces, creating aliases) as you've done in `maintenance-areas-types.ts`. Avoid manually re-typing the properties of an object that is already defined elsewhere.
+1. **Refactor `LookupType`:** Delete the interface in `components/lookup/lookup-types.ts` and update all relevant files to import `type LookupType` from `@/schemas/schema`.
+2. **Establish a Convention:**
+   * Use **Zod-inferred types** for all form data and validation logic.
+   * Use **Supabase-generated types** (`Row<T>`, `Tables<T>`) for database query results and component props that receive that data.
+3. **Continue the Pattern:** Keep using type composition (extending interfaces, creating aliases) as you've done in `maintenance-areas-types.ts`. Avoid manually re-typing the properties of an object that is already defined elsewhere.
 
 Of course. Here is the complete and actionable list of all the files you need to change to eliminate the repetitive `LookupType` definition and follow the DRY principle.
 
 ### Summary of Changes:
-1.  We will delete the manually created `LookupType` interface.
-2.  We will update all components that were using it to import the `LookupType` type that is automatically generated from your Zod schema (`schemas/schema.ts`). This makes your schema the single source of truth.
+
+1. We will delete the manually created `LookupType` interface.
+2. We will update all components that were using it to import the `LookupType` type that is automatically generated from your Zod schema (`schemas/schema.ts`). This makes your schema the single source of truth.
 
 ---
 
@@ -558,6 +563,7 @@ Of course. Here is the complete and actionable list of all the files you need to
 **Action:** Delete the `LookupType` interface from this file.
 
 **Change from this:**
+
 ```typescript
 export interface LookupType {
     id: string;
@@ -571,17 +577,18 @@ export interface LookupType {
     created_at: string | null;
     updated_at: string | null;
   }
-  
+
   export interface LookupTypesPageProps {
     initialCategory?: string;
   }
 ```
 
 **To this:**
+
 ```typescript
 // The LookupType interface has been removed.
 // We only keep what's still necessary.
-  
+
 export interface LookupTypesPageProps {
     initialCategory?: string;
 }
@@ -596,11 +603,13 @@ export interface LookupTypesPageProps {
 **Action:** Change the import source for `LookupType`.
 
 **Change this line:**
+
 ```typescript
 import { LookupType } from "@/components/lookup/lookup-types";
 ```
 
 **To this:**
+
 ```typescript
 import { type LookupType } from "@/schemas/schema";
 ```
@@ -614,11 +623,13 @@ import { type LookupType } from "@/schemas/schema";
 **Action:** Change the import source for `LookupType`.
 
 **Change this line:**
+
 ```typescript
 import { LookupType } from "@/components/lookup/lookup-types";
 ```
 
 **To this:**
+
 ```typescript
 import { type LookupType } from "@/schemas/schema";
 ```
@@ -632,11 +643,13 @@ import { type LookupType } from "@/schemas/schema";
 **Action:** This file was using the Supabase-generated type. We will update it to use the Zod-inferred type from `schemas/schema.ts` for consistency across all `lookup` components, especially since this modal deals with form validation.
 
 **Change this line:**
+
 ```typescript
 type LookupType = Database["public"]["Tables"]["lookup_types"]["Row"];
 ```
 
 **To this (add it near your other imports):**
+
 ```typescript
 import { type LookupType } from "@/schemas/schema";
 ```
@@ -655,12 +668,12 @@ Here is the complete list of changes, including the new finding.
 
 This remains the most critical change.
 
-*   **Problem:** The `LookupType` interface is manually defined in `components/lookup/lookup-types.ts`, repeating the structure already defined in `schemas/schema.ts`.
-*   **Solution:**
-    1.  **Modify `components/lookup/lookup-types.ts`:** Remove the manual `LookupType` interface.
-    2.  **Update `components/lookup/lookup-hooks.ts`:** Change `import { LookupType } from "@/components/lookup/lookup-types";` to `import { type LookupType } from "@/schemas/schema";`.
-    3.  **Update `components/lookup/LookupTypesTable.tsx`:** Change `import { LookupType } from "@/components/lookup/lookup-types";` to `import { type LookupType } from "@/schemas/schema";`.
-    4.  **Update `components/lookup/LookupModal.tsx`:** Change `type LookupType = Database["public"]["Tables"]["lookup_types"]["Row"];` to `import { type LookupType } from "@/schemas/schema";`.
+* **Problem:** The `LookupType` interface is manually defined in `components/lookup/lookup-types.ts`, repeating the structure already defined in `schemas/schema.ts`.
+* **Solution:**
+  1. **Modify `components/lookup/lookup-types.ts`:** Remove the manual `LookupType` interface.
+  2. **Update `components/lookup/lookup-hooks.ts`:** Change `import { LookupType } from "@/components/lookup/lookup-types";` to `import { type LookupType } from "@/schemas/schema";`.
+  3. **Update `components/lookup/LookupTypesTable.tsx`:** Change `import { LookupType } from "@/components/lookup/lookup-types";` to `import { type LookupType } from "@/schemas/schema";`.
+  4. **Update `components/lookup/LookupModal.tsx`:** Change `type LookupType = Database["public"]["Tables"]["lookup_types"]["Row"];` to `import { type LookupType } from "@/schemas/schema";`.
 
 ---
 
@@ -670,26 +683,27 @@ This issue is identical in nature to the `LookupType` problem. You have defined 
 
 **Problem:**
 
-1.  **Source of Truth:** In `schemas/schema.ts`, you have the main `nodeSchema`.
-    ```typescript
-    // in: schemas/schema.ts
-    export const nodeSchema = z.object({
-      id: z.uuid().optional(),
-      name: z.string().min(1, { message: "Node name is required." }),
-      node_type_id: z.uuid().optional().nullable(),
-      // ...all other node fields
-    });
-    ```
+1. **Source of Truth:** In `schemas/schema.ts`, you have the main `nodeSchema`.
 
-2.  **Repetition:** In `components/nodes/nodes_types.ts`, you have a second, slightly different Zod schema for the form.
-    ```typescript
-    // in: components/nodes/nodes_types.ts
-    export const nodeFormSchema = z.object({ // <-- REPETITION
-      name: z.string().min(1, { message: "Node name is required." }),
-      node_type_id: z.string().uuid().optional().nullable(),
-      // ...all other node fields except timestamps and id
-    });
-    ```
+   ```typescript
+   // in: schemas/schema.ts
+   export const nodeSchema = z.object({
+     id: z.uuid().optional(),
+     name: z.string().min(1, { message: "Node name is required." }),
+     node_type_id: z.uuid().optional().nullable(),
+     // ...all other node fields
+   });
+   ```
+2. **Repetition:** In `components/nodes/nodes_types.ts`, you have a second, slightly different Zod schema for the form.
+
+   ```typescript
+   // in: components/nodes/nodes_types.ts
+   export const nodeFormSchema = z.object({ // <-- REPETITION
+     name: z.string().min(1, { message: "Node name is required." }),
+     node_type_id: z.string().uuid().optional().nullable(),
+     // ...all other node fields except timestamps and id
+   });
+   ```
 
 This creates the same maintenance problem: if you change a validation rule in `nodeSchema`, you must remember to change it in `nodeFormSchema` as well.
 
@@ -704,6 +718,7 @@ We will modify the main schema file to export a derived version specifically for
 **Action:** At the end of the `nodeSchema` definition, use Zod's `.omit()` method to create and export a new schema for your form. Also, export the inferred type for the form data.
 
 **Change this:**
+
 ```typescript
 // in: schemas/schema.ts (current code)
 export const nodeSchema = z.object({
@@ -730,6 +745,7 @@ export const nodeSchema = z.object({
 ```
 
 **To this (add the new exports at the end):**
+
 ```typescript
 // in: schemas/schema.ts (new code)
 export const nodeSchema = z.object({
@@ -770,6 +786,7 @@ export type NodeFormData = z.infer<typeof nodeFormSchema>;
 **Action:** Delete the entire `nodeFormSchema` object. We will now import it. Also, update the `NodeForm` type to be imported.
 
 **Change from this:**
+
 ```typescript
 // in: components/nodes/nodes_types.ts (current code)
 export const nodeFormSchema = z.object({
@@ -782,6 +799,7 @@ export type NodeForm = z.infer<typeof nodeFormSchema>;
 ```
 
 **To this:**
+
 ```typescript
 // in: components/nodes/nodes_types.ts (new code)
 // The manual zod schema has been removed.
@@ -815,6 +833,7 @@ export function NodeFormModal(...) {
 ```
 
 **To this:**
+
 ```typescript
 // in: components/nodes/NodeFormModal.tsx (new code)
 import { nodeFormSchema, type NodeFormData } from "@/schemas/schema"; // <-- Updated import
@@ -845,18 +864,20 @@ This is the most significant area for improvement. Your dashboard pages are exce
 
 **Observation:**
 The following pages all repeat the same core logic for managing a database table:
-*   `app/dashboard/rings/page.tsx`
-*   `app/dashboard/employees/page.tsx`
-*   `app/dashboard/nodes/page.tsx`
-*   `app/dashboard/users/page.tsx`
-*   `app/dashboard/ofc/page.tsx`
+
+* `app/dashboard/rings/page.tsx`
+* `app/dashboard/employees/page.tsx`
+* `app/dashboard/nodes/page.tsx`
+* `app/dashboard/users/page.tsx`
+* `app/dashboard/ofc/page.tsx`
 
 The repeated logic in each file includes:
-*   **State Management:** `useState` for pagination (`currentPage`, `pageLimit`), search (`searchQuery`), filters, and modal visibility (`isModalOpen`, `editing...`).
-*   **Data Fetching:** A `useTableQuery` or `usePaged...` hook to get data, along with a separate `useEffect` to calculate `totalCount`.
-*   **Mutations:** `useTableDelete`, `useToggleStatus`, `useTableInsert`, `useTableUpdate`.
-*   **Event Handlers:** Functions like `openAddModal`, `openEditModal`, `closeModal`, `handleDelete`, `handleToggleStatus`.
-*   **Memoization:** `useMemo` blocks to derive server filters and define table `actions`.
+
+* **State Management:** `useState` for pagination (`currentPage`, `pageLimit`), search (`searchQuery`), filters, and modal visibility (`isModalOpen`, `editing...`).
+* **Data Fetching:** A `useTableQuery` or `usePaged...` hook to get data, along with a separate `useEffect` to calculate `totalCount`.
+* **Mutations:** `useTableDelete`, `useToggleStatus`, `useTableInsert`, `useTableUpdate`.
+* **Event Handlers:** Functions like `openAddModal`, `openEditModal`, `closeModal`, `handleDelete`, `handleToggleStatus`.
+* **Memoization:** `useMemo` blocks to derive server filters and define table `actions`.
 
 **Improvement: Create a Reusable `useCrudPage` Hook**
 
@@ -864,67 +885,203 @@ You can abstract almost all this logic into a single, generic hook. This hook wo
 
 **Step 1: Create the `useCrudPage` Hook**
 Create a new file, for example `hooks/useCrudPage.ts`:
+
 ```typescript
 // hooks/useCrudPage.ts
-import { useState, useMemo, useCallback } from 'react';
-import { useDebounce } from 'use-debounce';
-import { createClient } from '@/utils/supabase/client';
-import { useTableQuery, useTableInsert, useTableUpdate, useTableDelete, useToggleStatus, Filters, TableName } from '@/hooks/database';
-import { toast } from 'sonner';
+"use client";
 
-export function useCrudPage<T extends TableName>(tableName: T, initialRelations: string[] = []) {
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useDebounce } from "use-debounce";
+import { createClient } from "@/utils/supabase/client";
+import {
+  useTableWithRelations,
+  useTableInsert,
+  useTableUpdate,
+  useToggleStatus,
+  Filters,
+  TableName,
+  Row,
+  TableInsert,
+  TableUpdate,
+} from "@/hooks/database";
+import { toast } from "sonner";
+import { useDeleteManager } from "./useDeleteManager";
+
+// A generic type to ensure records passed to actions have an 'id' and optionally a 'name'
+type RecordWithId<T = Record<string, unknown>> = {
+  id: string | number;
+  name?: string;
+} & T;
+
+/**
+ * A comprehensive hook to manage the state and logic for a standard CRUD page.
+ * @param tableName The name of the Supabase table.
+ * @param options Configuration options for the hook.
+ */
+export function useCrudPage<T extends TableName>({
+  tableName,
+  relations = [],
+  searchColumn = "name",
+}: {
+  tableName: T;
+  relations?: string[];
+  searchColumn: (keyof Row<T> & string) | "name";
+}) {
   const supabase = createClient();
-  const queryClient = useQueryClient();
 
-  // All common state is managed here
+  // --- STATE MANAGEMENT ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Filters>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Row<T> | null>(null);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
-  // Centralized data fetching
-  const { data, isLoading, refetch } = useTableQuery(supabase, tableName, {
-    relations: initialRelations, // Pass relations if needed
-    filters: { ...filters, ...(debouncedSearch && { name: { operator: 'ilike', value: `%${debouncedSearch}%` } }) }, // Simple search by name, can be customized
-    limit: pageLimit,
-    offset: (currentPage - 1) * pageLimit,
-    includeCount: true,
-  });
-  
-  const totalCount = data?.[0]?.total_count ?? 0;
-
-  // Centralized mutations
-  const { mutate: insertItem } = useTableInsert(supabase, tableName, { onSuccess: () => { refetch(); closeModal(); toast.success("Item created successfully!"); }});
-  const { mutate: updateItem } = useTableUpdate(supabase, tableName, { onSuccess: () => { refetch(); closeModal(); toast.success("Item updated successfully!"); }});
-  const { mutate: deleteItem } = useTableDelete(supabase, tableName, { onSuccess: () => { refetch(); toast.success("Item deleted successfully!"); }});
-  const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, { onSuccess: () => refetch() });
-
-  // Centralized handlers
-  const openAddModal = useCallback(() => { setEditingRecord(null); setIsModalOpen(true); }, []);
-  const openEditModal = useCallback((record: any) => { setEditingRecord(record); setIsModalOpen(true); }, []);
-  const closeModal = useCallback(() => { setIsModalOpen(false); setEditingRecord(null); }, []);
-  
-  const handleSubmit = useCallback((formData: any) => {
-    if (editingRecord?.id) {
-      updateItem({ id: editingRecord.id, data: formData });
-    } else {
-      insertItem(formData);
+  // --- FILTERS ---
+  const serverFilters = useMemo(() => {
+    const combinedFilters: Filters = { ...filters };
+    if (debouncedSearch) {
+      combinedFilters[searchColumn] = {
+        operator: "ilike",
+        value: `%${debouncedSearch}%`,
+      };
     }
-  }, [editingRecord, insertItem, updateItem]);
+    return combinedFilters;
+  }, [filters, debouncedSearch, searchColumn]);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filters]);
+
+  // --- DATA FETCHING ---
+  const { data, isLoading, error, refetch } = useTableWithRelations(
+    supabase,
+    tableName,
+    relations,
+    {
+      filters: serverFilters,
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+      includeCount: true,
+    }
+  );
+
+  const totalCount =
+    (data?.[0] as { total_count: number })?.total_count ?? data?.length ?? 0;
+
+  // --- MUTATIONS ---
+  const { mutate: insertItem, isPending: isInserting } = useTableInsert(
+    supabase,
+    tableName,
+    {
+      onSuccess: () => {
+        refetch();
+        closeModal();
+        toast.success("Record created successfully!");
+      },
+      onError: (err) => toast.error(`Creation failed: ${err.message}`),
+    }
+  );
+  const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(
+    supabase,
+    tableName,
+    {
+      onSuccess: () => {
+        refetch();
+        closeModal();
+        toast.success("Record updated successfully!");
+      },
+      onError: (err) => toast.error(`Update failed: ${err.message}`),
+    }
+  );
+  const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
+    onSuccess: () => refetch(),
+    onError: (err) => toast.error(`Status toggle failed: ${err.message}`),
+  });
+
+  // *** INTEGRATE useDeleteManager ***
+  const deleteManager = useDeleteManager({ tableName, onSuccess: refetch });
+
+  const isMutating = isInserting || isUpdating || deleteManager.isPending;
+
+  // --- HANDLERS ---
+  const openAddModal = useCallback(() => {
+    setEditingRecord(null);
+    setIsModalOpen(true);
+  }, []);
+  const openEditModal = useCallback((record: Row<T>) => {
+    setEditingRecord(record);
+    setIsModalOpen(true);
+  }, []);
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingRecord(null);
+  }, []);
+
+  const handleSave = useCallback(
+    (formData: Partial<TableInsert<T>>) => {
+      if (editingRecord && "id" in editingRecord && editingRecord.id) {
+        updateItem({
+          id: String(editingRecord.id),
+          data: formData as TableUpdate<T>,
+        });
+      } else {
+        insertItem(formData as TableInsert<T>);
+      }
+    },
+    [editingRecord, insertItem, updateItem]
+  );
+
+  // The delete handler now just triggers the delete manager
+  const handleDelete = useCallback(
+    (record: RecordWithId) => {
+      deleteManager.deleteSingle({
+        id: String(record.id),
+        name: record.name || String(record.id),
+      });
+    },
+    [deleteManager]
+  );
+
+  const handleToggleStatus = useCallback(
+    (record: RecordWithId & { status?: boolean | null }) => {
+      toggleStatus({
+        id: String(record.id),
+        status: !(record.status ?? false) // Default to false if null/undefined
+      });
+    },
+    [toggleStatus]
+  );
+
+  // --- RETURN VALUE ---
   return {
-    data,
+    // Data and state
+    data: data || [],
     totalCount,
     isLoading,
+    error,
+    isMutating,
     refetch,
+
+    // UI State
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },
     modal: { isModalOpen, editingRecord, openAddModal, openEditModal, closeModal },
-    mutations: { handleSubmit, deleteItem, toggleStatus },
+
+    // Actions
+    actions: { handleSave, handleDelete, handleToggleStatus },
+
+    // Expose delete modal state and handlers directly
+    deleteModal: {
+      isOpen: deleteManager.isConfirmModalOpen,
+      message: deleteManager.confirmationMessage,
+      confirm: deleteManager.handleConfirm,
+      cancel: deleteManager.handleCancel,
+      isLoading: deleteManager.isPending,
+    },
   };
 }
 ```
@@ -934,54 +1091,96 @@ export function useCrudPage<T extends TableName>(tableName: T, initialRelations:
 Now, your `app/dashboard/rings/page.tsx` would become dramatically simpler.
 
 **Before (app/dashboard/rings/page.tsx):**
-*   ~150 lines of state, effects, memos, and handlers.
 
-**After (app/dashboard/rings/page.tsx):**```typescript
+* ~150 lines of state, effects, memos, and handlers.
+
+**After (app/dashboard/rings/page.tsx):**
+```typescript
+// app/dashboard/rings/page.tsx
 "use client";
 
-import { useMemo } from "react";
-import { useCrudPage } from "@/hooks/useCrudPage"; // Your new hook
+import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
+import { Row } from "@/hooks/database";
 import { getRingsTableColumns } from "@/components/rings/RingsTableColumns";
 import { RingsFilters } from "@/components/rings/RingsFilters";
-import { RingModal } from "@/components/rings/RingModal";
-import { RingsHeader } from "@/components/rings/RingsHeader";
 import { FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { RingModal, RingRow } from "@/components/rings/RingModal";
+import { RingsHeader } from "@/components/rings/RingsHeader";
+import { useCrudPage } from "@/hooks/useCrudPage";
+import { ConfirmModal } from "@/components/common/ui";
+import { TableAction } from "@/components/table/datatable-types";
 
 const RingsPage = () => {
   const {
-    data: ringsData = [],
+    data: ringsData,
     totalCount,
     isLoading,
     refetch,
     pagination,
     search,
     modal,
-    mutations,
-  } = useCrudPage("rings", ["ring_type:ring_type_id(id, code)"]);
+    actions: crudActions,
+    deleteModal, // Destructure the delete modal state
+  } = useCrudPage({
+    tableName: "rings",
+    relations: [
+      "ring_type:ring_type_id(id, code)",
+      "maintenance_terminal:maintenance_terminal_id(id,name)"
+    ],
+    searchColumn: 'name',
+  });
 
   const columns = useMemo(() => getRingsTableColumns(), []);
 
-  const actions = useMemo(() => [
-      { key: "edit", label: "Edit", icon: <FiEdit2 />, onClick: modal.openEditModal },
-      { key: "activate", label: "Activate", icon: <FiToggleRight />, hidden: (r: any) => r.status, onClick: (r: any) => mutations.toggleStatus({ id: r.id, status: true }) },
-      { key: "deactivate", label: "Deactivate", icon: <FiToggleLeft />, hidden: (r: any) => !r.status, onClick: (r: any) => mutations.toggleStatus({ id: r.id, status: false }) },
-      { key: "delete", label: "Delete", icon: <FiTrash2 />, variant: "danger", onClick: (r: any) => window.confirm(`Delete ${r.name}?`) && mutations.deleteItem(r.id) },
-    ], [modal.openEditModal, mutations.toggleStatus, mutations.deleteItem]
-  );
-  
+  const tableActions = useMemo<TableAction<'rings'>[]>(() => [
+    {
+      key: "edit",
+      label: "Edit",
+      icon: <FiEdit2 />,
+      onClick: (record) => modal.openEditModal(record)
+    },
+    {
+      key: "activate",
+      label: "Activate",
+      icon: <FiToggleRight />,
+      hidden: (r) => Boolean(r.status),
+      onClick: (r) => crudActions.handleToggleStatus(r)
+    },
+    {
+      key: "deactivate",
+      label: "Deactivate",
+      icon: <FiToggleLeft />,
+      hidden: (r) => !r.status,
+      onClick: (r) => crudActions.handleToggleStatus(r)
+    },
+    {
+      key: "delete",
+      label: "Delete",
+      icon: <FiTrash2 />,
+      variant: "danger" as const,
+      onClick: (r) => crudActions.handleDelete(r)
+    },
+  ], [modal, crudActions]);
+
+
   return (
     <div className='mx-auto space-y-4'>
+      {/* Header */}
       <RingsHeader onRefresh={refetch} onAddNew={modal.openAddModal} isLoading={isLoading} totalCount={totalCount} />
+
+      {/* Table */}
       <DataTable
-        data={ringsData}
+        tableName='rings'
+        data={ringsData as Row<'rings'>[]}
         columns={columns}
         loading={isLoading}
-        actions={actions}
+        actions={tableActions}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
+          showSizeChanger: true,
           onChange: (page, pageSize) => {
             pagination.setCurrentPage(page);
             pagination.setPageLimit(pageSize);
@@ -989,11 +1188,27 @@ const RingsPage = () => {
         }}
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
+
       <RingModal
         isOpen={modal.isModalOpen}
         onClose={modal.closeModal}
-        editingRing={modal.editingRecord}
-        onSave={mutations.handleSubmit} // Pass the submit handler to the modal
+        editingRing={modal.editingRecord as RingRow | null}
+        onCreated={crudActions.handleSave}
+        onUpdated={crudActions.handleSave}
+      />
+
+      {/* Render the confirmation modal, driven by the hook's state */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.confirm}
+        onCancel={deleteModal.cancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        showIcon
+        loading={deleteModal.isLoading}
       />
     </div>
   );
@@ -1080,13 +1295,14 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
 ```
 
 **After (with Optimistic Update):**
+
 ```typescript
 export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; }>) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, status }) => { /* ... */ },
-    
+
     // This is the new part
     onMutate: async (variables) => {
       const { id, status } = variables;
@@ -1104,7 +1320,7 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
       // 4. Return a context object with the snapshotted value
       return { previousData };
     },
-    
+
     // 5. If the mutation fails, use the context returned from onMutate to roll back
     onError: (err, variables, context) => {
       if (context?.previousData) {
@@ -1121,7 +1337,7 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
 }
 ```
 
-*   **Benefit:** The UI updates instantly, providing a much faster and more responsive user experience. The application feels more like a native desktop app. This pattern can be applied to `delete` and `update` mutations as well.
+* **Benefit:** The UI updates instantly, providing a much faster and more responsive user experience. The application feels more like a native desktop app. This pattern can be applied to `delete` and `update` mutations as well.
 
 ### 2. API Layer Abstraction
 
@@ -1135,6 +1351,7 @@ Create a directory like `services/` and abstract the actual Supabase calls into 
 **Example: Ring Management**
 
 **Step 1: Create `services/ringService.ts`**
+
 ```typescript
 // services/ringService.ts
 import { createClient } from '@/utils/supabase/client';
@@ -1161,6 +1378,7 @@ export const ringService = {
 ```
 
 **Step 2: Refactor the Hook to Use the Service**
+
 ```typescript
 // in your react-query hooks file
 import { ringService } from '@/services/ringService';
@@ -1180,10 +1398,10 @@ export function useUpdateRing() {
 }
 ```
 
-*   **Benefit:**
-    *   **Decoupling:** If you ever migrate away from Supabase or change your backend, you only need to update the `services` files, not every single hook.
-    *   **Testability:** It's much easier to mock `ringService.getAll` in a unit test than to mock the entire Supabase client.
-    *   **Centralization:** All logic related to fetching or manipulating "rings" is in one place.
+* **Benefit:**
+  * **Decoupling:** If you ever migrate away from Supabase or change your backend, you only need to update the `services` files, not every single hook.
+  * **Testability:** It's much easier to mock `ringService.getAll` in a unit test than to mock the entire Supabase client.
+  * **Centralization:** All logic related to fetching or manipulating "rings" is in one place.
 
 ### 3. Error Handling and User Feedback
 
@@ -1192,11 +1410,11 @@ Most errors are handled by a `toast`. While good, some errors (like a full page 
 
 **Improvement: Use Error Boundaries and a Standard `<ErrorDisplay>` Component**
 
-1.  **Create an Error Boundary:** Wrap your main dashboard layout in a React Error Boundary. This is a class component that catches JavaScript errors anywhere in its child component tree. Instead of the whole app crashing, it can display a fallback UI.
-
-2.  **Generalize Your `<ErrorDisplay>` Component:** Your `components/categories/ErrorDisplay.tsx` is perfect. Generalize it to be used on any page where a primary data fetch might fail (e.g., inside the `AdminUsersPage` if the user query fails).
+1. **Create an Error Boundary:** Wrap your main dashboard layout in a React Error Boundary. This is a class component that catches JavaScript errors anywhere in its child component tree. Instead of the whole app crashing, it can display a fallback UI.
+2. **Generalize Your `<ErrorDisplay>` Component:** Your `components/categories/ErrorDisplay.tsx` is perfect. Generalize it to be used on any page where a primary data fetch might fail (e.g., inside the `AdminUsersPage` if the user query fails).
 
 **Example Usage in a Page:**
+
 ```typescript
 // app/dashboard/users/page.tsx
 
@@ -1208,7 +1426,7 @@ if (isError) {
 }
 ```
 
-*   **Benefit:** Makes your application more resilient. A single component crashing won't take down the entire page, and you can provide more contextual error messages to the user than a simple toast.
+* **Benefit:** Makes your application more resilient. A single component crashing won't take down the entire page, and you can provide more contextual error messages to the user than a simple toast.
 
 ### 4. Developer Experience: Storybook
 
@@ -1219,10 +1437,10 @@ You have a growing library of well-defined, reusable UI components (`Button`, `M
 
 Storybook is a tool for building UI components in isolation. You would create "stories" for each of your components, allowing you to see and interact with them in all their different states (e.g., a `Button` in its `loading`, `disabled`, `primary`, and `danger` states) without needing to run the full application.
 
-*   **Benefit:**
-    *   **Faster Development:** Build and test components without needing to navigate through your app's auth and page structure.
-    *   **Visual Regression Testing:** Automatically detect unintended visual changes to your components.
-    *   **Living Documentation:** Storybook acts as a live style guide and documentation for your design system.
+* **Benefit:**
+  * **Faster Development:** Build and test components without needing to navigate through your app's auth and page structure.
+  * **Visual Regression Testing:** Automatically detect unintended visual changes to your components.
+  * **Living Documentation:** Storybook acts as a live style guide and documentation for your design system.
 
 Of course. Since we've covered the most direct code repetitions, let's move on to higher-level architectural patterns and best practices. These suggestions focus on making the `hnvtx` project more scalable, secure, and professional.
 
@@ -1232,33 +1450,33 @@ As your database grows, how you fetch and display data becomes critical.
 
 #### **Suggestion: Implement Database Indexing**
 
-*   **Observation:** Your queries rely on filtering and ordering by columns like `category`, `name`, `status`, `ofc_id`, `sn_id`, `en_id`, and various foreign keys (`_id` columns). Without proper indexes, these queries will become progressively slower as your tables grow.
-*   **Improvement:** Add database indexes on frequently queried columns. You can do this directly in the Supabase dashboard or via a SQL migration script.
-    ```sql
-    -- Example indexes for a migration file
+* **Observation:** Your queries rely on filtering and ordering by columns like `category`, `name`, `status`, `ofc_id`, `sn_id`, `en_id`, and various foreign keys (`_id` columns). Without proper indexes, these queries will become progressively slower as your tables grow.
+* **Improvement:** Add database indexes on frequently queried columns. You can do this directly in the Supabase dashboard or via a SQL migration script.
+  ```sql
+  -- Example indexes for a migration file
 
-    -- For filtering lookup types by category
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lookup_types_category ON public.lookup_types (category);
+  -- For filtering lookup types by category
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lookup_types_category ON public.lookup_types (category);
 
-    -- For filtering OFC connections by the cable they belong to
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ofc_connections_ofc_id ON public.ofc_connections (ofc_id);
+  -- For filtering OFC connections by the cable they belong to
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ofc_connections_ofc_id ON public.ofc_connections (ofc_id);
 
-    -- For searching employees by name (using a trigram index for ILIKE)
-    CREATE EXTENSION IF NOT EXISTS pg_trgm;
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_employees_name_trgm ON public.employees USING gin (employee_name gin_trgm_ops);
+  -- For searching employees by name (using a trigram index for ILIKE)
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_employees_name_trgm ON public.employees USING gin (employee_name gin_trgm_ops);
 
-    -- Composite index for frequent combined filters
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_systems_type_and_node ON public.systems (system_type_id, node_id);
-    ```
-*   **Benefit:** This is one of the most effective ways to boost database performance. Queries that used to take seconds on large tables can be reduced to milliseconds, dramatically improving application speed.
+  -- Composite index for frequent combined filters
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_systems_type_and_node ON public.systems (system_type_id, node_id);
+  ```
+* **Benefit:** This is one of the most effective ways to boost database performance. Queries that used to take seconds on large tables can be reduced to milliseconds, dramatically improving application speed.
 
 #### **Suggestion: Implement UI Skeleton Loaders**
 
-*   **Observation:** When data is loading, the UI shows a spinner. While functional, it can lead to a disjointed experience where the layout shifts abruptly once data arrives.
-*   **Improvement:** Create and use skeleton loader components that mimic the final layout of your data tables, cards, and headers. Your `components/common/ui/table/TableSkeleton.tsx` is the perfect foundation for this.
-    *   In `app/dashboard/rings/page.tsx`, when `ringsLoading` is true, render `<PageSkeleton />` instead of the `DataTable`.
-    *   The `<PageSkeleton />` can be configured to show a skeleton version of the header, filter bar, and table rows.
-*   **Benefit:** Improves the *perceived performance* of your application significantly. The user sees a stable layout immediately, which feels faster and more polished than a blank screen with a spinner.
+* **Observation:** When data is loading, the UI shows a spinner. While functional, it can lead to a disjointed experience where the layout shifts abruptly once data arrives.
+* **Improvement:** Create and use skeleton loader components that mimic the final layout of your data tables, cards, and headers. Your `components/common/ui/table/TableSkeleton.tsx` is the perfect foundation for this.
+  * In `app/dashboard/rings/page.tsx`, when `ringsLoading` is true, render `<PageSkeleton />` instead of the `DataTable`.
+  * The `<PageSkeleton />` can be configured to show a skeleton version of the header, filter bar, and table rows.
+* **Benefit:** Improves the *perceived performance* of your application significantly. The user sees a stable layout immediately, which feels faster and more polished than a blank screen with a spinner.
 
 ### 2. Security & Robustness
 
@@ -1266,24 +1484,25 @@ Moving security logic as close to the data as possible is a best practice.
 
 #### **Suggestion: Implement Supabase Row-Level Security (RLS)**
 
-*   **Observation:** Your current security model relies on client-side logic (`useUserPermissions`, `Protected` component) to hide UI elements and prevent navigation. While this is good for UX, a savvy user could still attempt to call the API directly to access data they shouldn't see.
-*   **Improvement:** Enable Row-Level Security (RLS) on your Supabase tables. RLS applies security rules directly in the database, ensuring that even direct API calls only return data the authenticated user is permitted to see.
-    *   **Example Policy:** An RLS policy on the `user_profiles` table could state that a user can only see their own profile, unless they have the 'admin' role.
-    ```sql
-    -- Enable RLS on the user_profiles table
-    ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+* **Observation:** Your current security model relies on client-side logic (`useUserPermissions`, `Protected` component) to hide UI elements and prevent navigation. While this is good for UX, a savvy user could still attempt to call the API directly to access data they shouldn't see.
+* **Improvement:** Enable Row-Level Security (RLS) on your Supabase tables. RLS applies security rules directly in the database, ensuring that even direct API calls only return data the authenticated user is permitted to see.
+  * **Example Policy:** An RLS policy on the `user_profiles` table could state that a user can only see their own profile, unless they have the 'admin' role.
 
-    -- Policy: Admins can see all profiles
-    CREATE POLICY "Admins can view all profiles"
-    ON public.user_profiles FOR SELECT
-    USING (get_my_role() = 'admin'); -- Assumes you have a helper function
+  ```sql
+  -- Enable RLS on the user_profiles table
+  ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
-    -- Policy: Users can view their own profile
-    CREATE POLICY "Users can view their own profile"
-    ON public.user_profiles FOR SELECT
-    USING (auth.uid() = id);
-    ```
-*   **Benefit:** This creates a much more secure application. It becomes your primary line of defense, ensuring data access rules are enforced at the database level, regardless of how the data is requested.
+  -- Policy: Admins can see all profiles
+  CREATE POLICY "Admins can view all profiles"
+  ON public.user_profiles FOR SELECT
+  USING (get_my_role() = 'admin'); -- Assumes you have a helper function
+
+  -- Policy: Users can view their own profile
+  CREATE POLICY "Users can view their own profile"
+  ON public.user_profiles FOR SELECT
+  USING (auth.uid() = id);
+  ```
+* **Benefit:** This creates a much more secure application. It becomes your primary line of defense, ensuring data access rules are enforced at the database level, regardless of how the data is requested.
 
 ### 3. Developer Experience & Code Quality
 
@@ -1291,44 +1510,46 @@ These suggestions make the project easier to work on and less prone to bugs.
 
 #### **Suggestion: Centralize React Query Keys**
 
-*   **Observation:** Your query keys are often constructed inline within the `useQuery` calls (e.g., `["table", tableName, ...]`). This can lead to inconsistencies and makes it difficult to manage cache invalidation from different parts of the app. Your `ofcadv/queryKeys.ts` is a great start, but this pattern should be global.
-*   **Improvement:** Create a central `queryKeys.ts` factory file for the entire application.
-    ```typescript
-    // lib/queryKeys.ts
-    export const queryKeys = {
-      all: ['all'] as const,
-      
-      // Tables
-      tables: () => [...queryKeys.all, 'tables'] as const,
-      table: (tableName: string) => [...queryKeys.tables(), tableName] as const,
-      tableList: (tableName: string, filters: any) => [...queryKeys.table(tableName), 'list', filters] as const,
-      tableDetail: (tableName: string, id: string) => [...queryKeys.table(tableName), 'detail', id] as const,
+* **Observation:** Your query keys are often constructed inline within the `useQuery` calls (e.g., `["table", tableName, ...]`). This can lead to inconsistencies and makes it difficult to manage cache invalidation from different parts of the app. Your `ofcadv/queryKeys.ts` is a great start, but this pattern should be global.
+* **Improvement:** Create a central `queryKeys.ts` factory file for the entire application.
+  ```typescript
+  // lib/queryKeys.ts
+  export const queryKeys = {
+    all: ['all'] as const,
 
-      // Auth
-      user: () => ['user'] as const,
-      role: () => ['role'] as const,
-    };
-    ```
-    Now your hooks can use this factory:
-    `useQuery({ queryKey: queryKeys.tableList("rings", { filters }), ... })`
-*   **Benefit:** Eliminates "magic strings" for query keys, provides autocompletion, and makes cache invalidation (`queryClient.invalidateQueries({ queryKey: queryKeys.table("rings") })`) much safer and less error-prone.
+    // Tables
+    tables: () => [...queryKeys.all, 'tables'] as const,
+    table: (tableName: string) => [...queryKeys.tables(), tableName] as const,
+    tableList: (tableName: string, filters: any) => [...queryKeys.table(tableName), 'list', filters] as const,
+    tableDetail: (tableName: string, id: string) => [...queryKeys.table(tableName), 'detail', id] as const,
+
+    // Auth
+    user: () => ['user'] as const,
+    role: () => ['role'] as const,
+  };
+  ```
+
+  Now your hooks can use this factory:
+  `useQuery({ queryKey: queryKeys.tableList("rings", { filters }), ... })`
+* **Benefit:** Eliminates "magic strings" for query keys, provides autocompletion, and makes cache invalidation (`queryClient.invalidateQueries({ queryKey: queryKeys.table("rings") })`) much safer and less error-prone.
 
 #### **Suggestion: Implement Automated Testing**
 
-*   **Observation:** The project currently lacks an automated testing suite. As complexity grows, it becomes impossible to manually test every feature after making a change.
-*   **Improvement:** Introduce a multi-layered testing strategy.
-    1.  **Unit Tests (Jest & React Testing Library):** For small, isolated components and utility functions. Test your `formatters.ts` functions or your `Button` component in different states.
-    2.  **Integration Tests (Jest & React Testing Library):** Test how multiple components work together. For example, test that clicking the "Add Ring" button correctly opens the `RingModal`.
-    3.  **End-to-End (E2E) Tests (Cypress or Playwright):** Simulate a real user journey. Write a test that logs in, navigates to the rings page, creates a new ring, verifies it appears in the table, and then deletes it.
-*   **Benefit:** Provides a safety net that catches regressions automatically, giving you the confidence to refactor and add new features without breaking existing ones. This is a cornerstone of professional software development.
+* **Observation:** The project currently lacks an automated testing suite. As complexity grows, it becomes impossible to manually test every feature after making a change.
+* **Improvement:** Introduce a multi-layered testing strategy.
+  1. **Unit Tests (Jest & React Testing Library):** For small, isolated components and utility functions. Test your `formatters.ts` functions or your `Button` component in different states.
+  2. **Integration Tests (Jest & React Testing Library):** Test how multiple components work together. For example, test that clicking the "Add Ring" button correctly opens the `RingModal`.
+  3. **End-to-End (E2E) Tests (Cypress or Playwright):** Simulate a real user journey. Write a test that logs in, navigates to the rings page, creates a new ring, verifies it appears in the table, and then deletes it.
+* **Benefit:** Provides a safety net that catches regressions automatically, giving you the confidence to refactor and add new features without breaking existing ones. This is a cornerstone of professional software development.
 
 You've hit on a critical and advanced feature that moves your project from a simple inventory system to a true network topology management tool. This is an excellent next step, and while it's complex, it's absolutely achievable with your current setup.
 
 I understand completely:
-1.  **Schema Correction:** The `systems` table needs a `ring_no` field.
-2.  **Path Building:** You want to create a specific, ordered path for a system's ring using existing `ofc_cables` as segments.
-3.  **Cascading Logic:** If one cable doesn't complete the path to the next required node, you need to add another cable in sequence.
-4.  **Contextual UI:** The UI for adding a path segment should be "smart"—it should only show you cables that can logically be connected next.
+
+1. **Schema Correction:** The `systems` table needs a `ring_no` field.
+2. **Path Building:** You want to create a specific, ordered path for a system's ring using existing `ofc_cables` as segments.
+3. **Cascading Logic:** If one cable doesn't complete the path to the next required node, you need to add another cable in sequence.
+4. **Contextual UI:** The UI for adding a path segment should be "smart"—it should only show you cables that can logically be connected next.
 
 Here is a comprehensive, step-by-step strategy to implement this.
 
@@ -1341,6 +1562,7 @@ First, we need to update your database and Zod schemas to support this new relat
 Let's add the `ring_no` field you mentioned.
 
 **SQL Migration:**
+
 ```sql
 ALTER TABLE public.systems
 ADD COLUMN ring_no VARCHAR(255);
@@ -1354,6 +1576,7 @@ CREATE INDEX IF NOT EXISTS idx_systems_ring_no ON public.systems (ring_no);
 This is the core of the solution. We need a new table to define the relationship between a system, the OFC cables that form its path, and the order of those cables. Let's call it `system_ring_paths`.
 
 **SQL Migration:**
+
 ```sql
 CREATE TABLE public.system_ring_paths (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1361,10 +1584,10 @@ CREATE TABLE public.system_ring_paths (
     ofc_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE RESTRICT,
     path_order INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     -- Ensures a system can't have the same cable twice in its path
     UNIQUE (system_id, ofc_cable_id),
-    
+
     -- Ensures the order is unique for each system's path
     UNIQUE (system_id, path_order)
 );
@@ -1373,9 +1596,10 @@ CREATE TABLE public.system_ring_paths (
 CREATE INDEX idx_system_ring_paths_system_id ON public.system_ring_paths (system_id);
 CREATE INDEX idx_system_ring_paths_ofc_cable_id ON public.system_ring_paths (ofc_cable_id);
 ```
-*   `system_id`: Links back to the system this path belongs to.
-*   `ofc_cable_id`: Links to the `ofc_cables` record that acts as a segment in the path.
-*   `path_order`: A simple integer (`1`, `2`, `3`...) that defines the sequence of the cables. This is how you achieve the "cascading" effect.
+
+* `system_id`: Links back to the system this path belongs to.
+* `ofc_cable_id`: Links to the `ofc_cables` record that acts as a segment in the path.
+* `path_order`: A simple integer (`1`, `2`, `3`...) that defines the sequence of the cables. This is how you achieve the "cascading" effect.
 
 ### Phase 2: Update Zod Schemas (`schemas/schema.ts`)
 
@@ -1384,8 +1608,9 @@ Now, reflect these database changes in your Zod schemas to maintain type safety.
 **File:** `schemas/schema.ts`
 
 **Action:**
-1.  Add `ring_no` to `systemSchema`.
-2.  Create a new schema for `system_ring_paths`.
+
+1. Add `ring_no` to `systemSchema`.
+2. Create a new schema for `system_ring_paths`.
 
 ```typescript
 // ... inside schemas/schema.ts
@@ -1427,10 +1652,11 @@ Create a new page at `app/dashboard/systems/[id]/page.tsx`. This page will fetch
 #### **Step 2: Design the "Ring Path" UI Component**
 
 On the System Details page, create a new component. It should:
-1.  Display the system's `ring_no`.
-2.  Show a list of the OFC cables currently in its path, in the correct order. Each item should show the cable's `route_name` and its start/end nodes.
-3.  Have an "Add Path Segment" button.
-4.  Allow re-ordering and deleting of existing segments.
+
+1. Display the system's `ring_no`.
+2. Show a list of the OFC cables currently in its path, in the correct order. Each item should show the cable's `route_name` and its start/end nodes.
+3. Have an "Add Path Segment" button.
+4. Allow re-ordering and deleting of existing segments.
 
 #### **Step 3: Implement the "Smart" Segment Selector Logic**
 
@@ -1438,17 +1664,19 @@ This is the most crucial part. When a user clicks "Add Path Segment", the dropdo
 
 Here's the logic for the hook that will power this dropdown (`useAvailableSegments`):
 
-1.  **Determine the "Last Node":**
-    *   Query the `system_ring_paths` table for the current system, ordered by `path_order DESC`, limit 1.
-    *   If a segment exists, get its `ofc_cable_id` and then fetch that cable's `en_id` (ending node). This is your "last node".
-    *   If **no segments exist** for this system yet, the "last node" is the system's own `node_id`.
+1. **Determine the "Last Node":**
 
-2.  **Find Available Cables:**
-    *   Query the `ofc_cables` table.
-    *   The condition is: `WHERE sn_id = <last_node_id> OR en_id = <last_node_id>`.
-    *   **Crucially**, you must also filter out any `ofc_cable_id` that is *already* in the current system's path to prevent adding the same cable twice or creating loops.
+   * Query the `system_ring_paths` table for the current system, ordered by `path_order DESC`, limit 1.
+   * If a segment exists, get its `ofc_cable_id` and then fetch that cable's `en_id` (ending node). This is your "last node".
+   * If **no segments exist** for this system yet, the "last node" is the system's own `node_id`.
+2. **Find Available Cables:**
+
+   * Query the `ofc_cables` table.
+   * The condition is: `WHERE sn_id = <last_node_id> OR en_id = <last_node_id>`.
+   * **Crucially**, you must also filter out any `ofc_cable_id` that is *already* in the current system's path to prevent adding the same cable twice or creating loops.
 
 **Example Hook Implementation:**
+
 ```typescript
 // hooks/useAvailableSegments.ts
 import { useTableQuery } from '@/hooks/database';
@@ -1529,8 +1757,8 @@ The direct answer is **no, it will not happen automatically** based on the schem
 
 This is a crucial distinction in your data model:
 
-*   **`system_ring_paths` (Physical Path):** This table defines the *physical route* or the sequence of cables the ring follows. Think of it as defining the series of highways you will take on a road trip.
-*   **`ofc_connections` (Logical Connection):** This table represents an individual *fiber* within a cable. Assigning a `system_id` to a row here means you are provisioning a specific service onto a specific strand of glass. Think of it as assigning a specific car (your system) to a specific lane (a fiber) on one of those highways.
+* **`system_ring_paths` (Physical Path):** This table defines the *physical route* or the sequence of cables the ring follows. Think of it as defining the series of highways you will take on a road trip.
+* **`ofc_connections` (Logical Connection):** This table represents an individual *fiber* within a cable. Assigning a `system_id` to a row here means you are provisioning a specific service onto a specific strand of glass. Think of it as assigning a specific car (your system) to a specific lane (a fiber) on one of those highways.
 
 When you add a cable to the path, the system doesn't know *which of the 48 or 96 fibers* inside that cable should be assigned to this specific system. This needs to be a separate, deliberate action.
 
@@ -1538,9 +1766,8 @@ When you add a cable to the path, the system doesn't know *which of the 48 or 96
 
 The best practice is to treat this as a two-step process in your UI, which mirrors real-world network provisioning:
 
-1.  **Step 1: Define the Physical Path (What you just designed).** A user goes to the System Details page and adds the `ofc_cable` segments in the correct order to build the ring. The `system_ring_paths` table is now populated.
-
-2.  **Step 2: Provision the System onto the Fibers (The new part).** After the path is defined, the user needs to assign the system to specific fibers along that path.
+1. **Step 1: Define the Physical Path (What you just designed).** A user goes to the System Details page and adds the `ofc_cable` segments in the correct order to build the ring. The `system_ring_paths` table is now populated.
+2. **Step 2: Provision the System onto the Fibers (The new part).** After the path is defined, the user needs to assign the system to specific fibers along that path.
 
 Here is how you can implement this second step:
 
@@ -1549,21 +1776,23 @@ Here is how you can implement this second step:
 On your `app/dashboard/systems/[id]/page.tsx`, below the "Ring Path" builder, add a new section called "Fiber-Level Connections" or "System Provisioning".
 
 This UI will:
-*   Fetch all the cable segments from your `v_system_ring_paths_detailed` view for the current system.
-*   For each cable segment in the path, it will display a list of its available fiber connections (rows from `ofc_connections`).
-*   The user can then select a fiber (e.g., `fiber_no_sn`) and click an "Assign to this System" button.
+
+* Fetch all the cable segments from your `v_system_ring_paths_detailed` view for the current system.
+* For each cable segment in the path, it will display a list of its available fiber connections (rows from `ofc_connections`).
+* The user can then select a fiber (e.g., `fiber_no_sn`) and click an "Assign to this System" button.
 
 #### **2. Implement the "Assign System" Logic**
 
 The "Assign to this System" button will trigger a mutation.
 
-*   **Action:** It will perform an `UPDATE` on the `ofc_connections` table.
-*   **Condition:** `WHERE id = <selected_fiber_connection_id>`
-*   **Update:** `SET system_id = <current_system_id>`
+* **Action:** It will perform an `UPDATE` on the `ofc_connections` table.
+* **Condition:** `WHERE id = <selected_fiber_connection_id>`
+* **Update:** `SET system_id = <current_system_id>`
 
 You can build a powerful UI for this. Imagine a list of all fibers in the path, and you can bulk-select and assign them.
 
 **Conceptual Code for the Connections Component:**
+
 ```typescript
 // components/systems/SystemFiberProvisioning.tsx
 
@@ -1627,6 +1856,7 @@ const SystemFiberProvisioning = ({ system }) => {
 If you wanted this to be truly automatic, you would need to write a database trigger. This is generally **not recommended** because it hides business logic in the database and is less flexible.
 
 **How it would work:**
+
 ```sql
 -- Create a trigger function
 CREATE OR REPLACE FUNCTION public.assign_first_available_fiber()
@@ -1653,11 +1883,12 @@ AFTER INSERT ON public.system_ring_paths
 FOR EACH ROW
 EXECUTE FUNCTION public.assign_first_available_fiber();
 ```
-*   **Pros:** Fully automatic.
-*   **Cons:**
-    *   **No User Control:** It just picks the first available fiber. The user has no say in which one.
-    *   **"Magic":** This behavior is not obvious from the application code.
-    *   **Error Handling:** What happens if there are no available fibers? The trigger would do nothing, and the user wouldn't know why.
+
+* **Pros:** Fully automatic.
+* **Cons:**
+  * **No User Control:** It just picks the first available fiber. The user has no say in which one.
+  * **"Magic":** This behavior is not obvious from the application code.
+  * **Error Handling:** What happens if there are no available fibers? The trigger would do nothing, and the user wouldn't know why.
 
 ### Recommendation
 
@@ -1675,8 +1906,8 @@ This is a significant architectural upgrade, but it will make your application v
 
 The most robust and future-proof solution is to clearly separate the concepts of the **physical network layer** (what exists in the ground) and the **logical service layer** (what services run over it).
 
-1.  **Physical Layer:** Consists of `nodes`, `ofc_cables`, and `fiber_joints`. These are tangible assets. An `ofc_connection` represents a single strand of glass *within a single cable*.
-2.  **Logical Layer:** A `logical_fiber_path` represents an end-to-end circuit or service that is provisioned for a `system`. This path traverses one or more physical assets.
+1. **Physical Layer:** Consists of `nodes`, `ofc_cables`, and `fiber_joints`. These are tangible assets. An `ofc_connection` represents a single strand of glass *within a single cable*.
+2. **Logical Layer:** A `logical_fiber_path` represents an end-to-end circuit or service that is provisioned for a `system`. This path traverses one or more physical assets.
 
 Your current `ofc_connections` table mixes these two layers by having both physical measurements (`otdr_distance`) and logical assignments (`system_id`, `source_port`). We will fix this.
 
@@ -1691,11 +1922,12 @@ This migration fully embraces the concepts from your `plan.md` and provides the 
 This table should only describe the state of a fiber within one cable. We will move the logical/system-related fields out.
 
 **SQL Migration (ALTER TABLE):**
+
 ```sql
 -- First, we need to move the data before we can drop the columns.
 -- This is a one-time data migration script.
 INSERT INTO logical_fiber_paths (path_name, source_system_id, destination_system_id, path_type, operational_status)
-SELECT 
+SELECT
     'Migrated Path for System ' || system_id,
     system_id, -- Assuming a system connects to itself or another system (logic may need refinement)
     NULL,      -- Destination system is often unknown in the old model
@@ -1724,12 +1956,13 @@ CREATE INDEX IF NOT EXISTS idx_ofc_connections_logical_path_id ON public.ofc_con
 This is the central table for your services. It represents a named, end-to-end circuit.
 
 **SQL Migration (CREATE TABLE):**
+
 ```sql
 CREATE TABLE public.logical_fiber_paths (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     path_name VARCHAR(255) NOT NULL,
     path_type_id UUID REFERENCES public.lookup_types(id), -- e.g., Ring, Point-to-Point, Spur
-    
+
     -- A path is provisioned FOR a system
     source_system_id UUID NOT NULL REFERENCES public.systems(id) ON DELETE CASCADE,
     destination_system_id UUID REFERENCES public.systems(id) ON DELETE SET NULL,
@@ -1751,11 +1984,12 @@ CREATE TABLE public.logical_fiber_paths (
 This is the key to your "cascading" logic. It defines the ordered sequence of physical assets that make up a logical path.
 
 **SQL Migration (CREATE TABLE):**
+
 ```sql
 CREATE TABLE public.logical_path_segments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     logical_path_id UUID NOT NULL REFERENCES public.logical_fiber_paths(id) ON DELETE CASCADE,
-    
+
     -- A segment can be EITHER a cable OR a joint (polymorphic)
     ofc_cable_id UUID REFERENCES public.ofc_cables(id),
     fiber_joint_id UUID REFERENCES public.fiber_joints(id),
@@ -1765,7 +1999,7 @@ CREATE TABLE public.logical_path_segments (
 
     -- Ensure a segment is either a cable or a joint, not both
     CHECK ((ofc_cable_id IS NOT NULL AND fiber_joint_id IS NULL) OR (ofc_cable_id IS NULL AND fiber_joint_id IS NOT NULL)),
-    
+
     -- The order must be unique for each path
     UNIQUE (logical_path_id, path_order)
 );
@@ -1774,7 +2008,9 @@ CREATE INDEX idx_logical_path_segments_path_id ON public.logical_path_segments(l
 ```
 
 #### **Step 4: Update `systems` Table**
+
 As requested, add `ring_no`.
+
 ```sql
 ALTER TABLE public.systems ADD COLUMN ring_no VARCHAR(255);
 ```
@@ -1827,7 +2063,7 @@ export const logicalPathSegmentSchema = z.object({
     path_order: z.number().int().positive(),
 }).refine(data => (data.ofc_cable_id && !data.fiber_joint_id) || (!data.ofc_cable_id && data.fiber_joint_id), {
     message: "A segment must be either a cable or a joint, not both.",
-    path: ["ofc_cable_id"], 
+    path: ["ofc_cable_id"],
 });
 ```
 
@@ -1839,34 +2075,32 @@ This is how a user would interact with the new system. This would live on a **Sy
 
 #### **Step 1: The User Defines a Logical Path**
 
-*   On the system's detail page, there is a section called "Logical Paths". The user clicks "Create New Path".
-*   A modal appears. The user gives the path a **Name** (e.g., "Primary Ring - CPAN Node 12"), selects a **Path Type** (from `lookup_types`), and selects a **Destination System**. The Source System is pre-filled.
-*   This creates a new record in `logical_fiber_paths` with a status of `planning`.
+* On the system's detail page, there is a section called "Logical Paths". The user clicks "Create New Path".
+* A modal appears. The user gives the path a **Name** (e.g., "Primary Ring - CPAN Node 12"), selects a **Path Type** (from `lookup_types`), and selects a **Destination System**. The Source System is pre-filled.
+* This creates a new record in `logical_fiber_paths` with a status of `planning`.
 
 #### **Step 2: The User Builds the Physical Route (Segment by Segment)**
 
-*   After creating the path, the user is presented with the "Path Builder" UI.
-*   It shows: **Current Path End Point: [Node Name]**. Initially, this is the source system's `node_id`.
-*   A button "Add Next Segment" opens a "smart" selector.
-*   **Selector Logic:** The selector queries `ofc_cables` where `sn_id` or `en_id` matches the **Current Path End Point**. It filters out cables already used in this path.
-*   When a user selects a cable (e.g., `NodeA -> NodeB`), it's added to the path. A new record is created in `logical_path_segments` with the correct `path_order`. The UI updates the **Current Path End Point** to `NodeB`.
-*   The user repeats this process, "walking" the network from node to node, until the path's end point matches the destination system's `node_id`.
+* After creating the path, the user is presented with the "Path Builder" UI.
+* It shows: **Current Path End Point: [Node Name]**. Initially, this is the source system's `node_id`.
+* A button "Add Next Segment" opens a "smart" selector.
+* **Selector Logic:** The selector queries `ofc_cables` where `sn_id` or `en_id` matches the **Current Path End Point**. It filters out cables already used in this path.
+* When a user selects a cable (e.g., `NodeA -> NodeB`), it's added to the path. A new record is created in `logical_path_segments` with the correct `path_order`. The UI updates the **Current Path End Point** to `NodeB`.
+* The user repeats this process, "walking" the network from node to node, until the path's end point matches the destination system's `node_id`.
 
 #### **Step 3: The User Provisions a Fiber**
 
-*   Once the physical path is complete, a new UI section appears: "Provision Fibers".
-*   The system checks for end-to-end fiber continuity. It queries `ofc_connections` for **every cable** in the path and finds fiber numbers that are available (i.e., `logical_path_id IS NULL`) across the entire chain.
-*   The user selects an available fiber number (e.g., Fiber #5).
-*   On confirmation, a transaction is executed:
-    1.  `UPDATE public.logical_fiber_paths SET operational_status = 'active' WHERE id = ...;`
-    2.  For *each* `ofc_cable_id` in the path, it runs: `UPDATE public.ofc_connections SET logical_path_id = <new_path_id> WHERE ofc_cable_id = ... AND fiber_no_sn = 5;`
+* Once the physical path is complete, a new UI section appears: "Provision Fibers".
+* The system checks for end-to-end fiber continuity. It queries `ofc_connections` for **every cable** in the path and finds fiber numbers that are available (i.e., `logical_path_id IS NULL`) across the entire chain.
+* The user selects an available fiber number (e.g., Fiber #5).
+* On confirmation, a transaction is executed:
+  1. `UPDATE public.logical_fiber_paths SET operational_status = 'active' WHERE id = ...;`
+  2. For *each* `ofc_cable_id` in the path, it runs: `UPDATE public.ofc_connections SET logical_path_id = <new_path_id> WHERE ofc_cable_id = ... AND fiber_no_sn = 5;`
 
 ### Benefits of This Future-Proof Solution
 
-1.  **Correctly Models Reality:** It separates the physical infrastructure from the logical services that run on top of it.
-2.  **Scalable:** This model can handle incredibly complex paths that traverse dozens of cables and joints without modification.
-3.  **Flexible:** You can now model different types of paths (rings, point-to-point, spurs) using the same tables.
-4.  **Future-Ready:** It seamlessly integrates your planned `fiber_joints` table. A joint is just another type of segment in the `logical_path_segments` table.
-5.  **Clear Provisioning:** The link between a system and a fiber is now explicit through the `logical_fiber_paths` table, which is exactly how network services are managed in the real world. The `system_id` is no longer ambiguously attached to a single piece of cable.
-
-
+1. **Correctly Models Reality:** It separates the physical infrastructure from the logical services that run on top of it.
+2. **Scalable:** This model can handle incredibly complex paths that traverse dozens of cables and joints without modification.
+3. **Flexible:** You can now model different types of paths (rings, point-to-point, spurs) using the same tables.
+4. **Future-Ready:** It seamlessly integrates your planned `fiber_joints` table. A joint is just another type of segment in the `logical_path_segments` table.
+5. **Clear Provisioning:** The link between a system and a fiber is now explicit through the `logical_fiber_paths` table, which is exactly how network services are managed in the real world. The `system_id` is no longer ambiguously attached to a single piece of cable.

@@ -1,4 +1,8 @@
-import { FiSearch, FiXCircle } from "react-icons/fi";
+"use client";
+
+import { useState, useEffect, memo } from "react";
+import { useDebounce } from "use-debounce";
+import { FiSearch } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
 import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
 
@@ -10,7 +14,26 @@ interface NodesFiltersProps {
   onNodeTypeChange: (value: string | null) => void;
 }
 
-export function NodesFilters({ searchQuery, onSearchChange, nodeTypes, selectedNodeType = "", onNodeTypeChange }: NodesFiltersProps) {
+const NodesFiltersComponent = memo(({
+  searchQuery,
+  onSearchChange,
+  nodeTypes,
+  selectedNodeType = "",
+  onNodeTypeChange
+}: NodesFiltersProps) => {
+  const [internalSearch, setInternalSearch] = useState(searchQuery);
+  const [debouncedSearch] = useDebounce(internalSearch, 300); // 300ms delay
+
+  // Effect to call the parent's onSearchChange only when the debounced value changes
+  useEffect(() => {
+    onSearchChange(debouncedSearch);
+  }, [debouncedSearch, onSearchChange]);
+
+  // Effect to sync the internal state if the parent's state changes
+  useEffect(() => {
+    setInternalSearch(searchQuery);
+  }, [searchQuery]);
+
   const nodeTypeOptions: Option[] = (nodeTypes || []).map((nt) => ({ value: nt.id, label: nt.name }));
 
   return (
@@ -20,11 +43,12 @@ export function NodesFilters({ searchQuery, onSearchChange, nodeTypes, selectedN
           <Input
             type='text'
             placeholder='Search nodes...'
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            leftIcon={<FiSearch />}
+            value={internalSearch} // Use internal state
+            onChange={(e) => setInternalSearch(e.target.value)} // Update internal state
+            leftIcon={<FiSearch className="text-gray-400 dark:text-gray-500" />}
             clearable={true}
-            onClear={() => onSearchChange("")}
+            onClear={() => setInternalSearch("")} // Clear internal state
+            className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
           />
         </div>
         <div className='w-full sm:w-64'>
@@ -40,6 +64,7 @@ export function NodesFilters({ searchQuery, onSearchChange, nodeTypes, selectedN
       </div>
     </div>
   );
-}
+});
 
-export default NodesFilters;
+NodesFiltersComponent.displayName = "NodesFilters";
+export const NodesFilters = NodesFiltersComponent;

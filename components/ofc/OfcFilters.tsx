@@ -33,7 +33,7 @@ const OfcFiltersComponent = ({
             value={filters.search}
             onChange={(e) => onFiltersChange({ search: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
-            className="w-full rounded-md border border-gray-300 py-2 pr-4 pl-10 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600 sm:w-80"
+            className="w-full rounded-md border border-gray-300 py-2 pr-4 pl-10 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:ring-blue-600 sm:w-80"
           />
         </div>
         {/* Filter Toggle Button */}
@@ -61,6 +61,7 @@ const OfcFiltersComponent = ({
             placeholder="All OFC Types"
             searchPlaceholder="Search types..."
             clearable
+            className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
           <select
             value={filters.status}
@@ -81,6 +82,7 @@ const OfcFiltersComponent = ({
             placeholder="All Maintenance Areas"
             searchPlaceholder="Search areas..."
             clearable
+            className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
       )}

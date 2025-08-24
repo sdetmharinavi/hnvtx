@@ -5,6 +5,15 @@ import { Database, Tables, TablesInsert, TablesUpdate, Json } from "@/types/supa
 
 // --- TYPE HELPERS ---
 
+// The type to include Date as a possible type
+export type TableInsertWithDates<T extends TableName> = {
+  [K in keyof TablesInsert<T>]?: TablesInsert<T>[K] | Date | null;
+};
+
+export type TableUpdateWithDates<T extends TableName> = {
+  [K in keyof TablesUpdate<T>]?: TablesUpdate<T>[K] | Date | null;
+};
+
 // A table is a source that can be read from and written to.
 export type TableName = keyof Database["public"]["Tables"];
 

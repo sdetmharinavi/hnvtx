@@ -1,6 +1,13 @@
 // @/components/table/TableToolbar.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
+import {
+  FiSearch,
+  FiFilter,
+  FiDownload,
+  FiRefreshCw,
+  FiEye,
+  FiChevronDown,
+} from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
@@ -8,16 +15,18 @@ import { TableColumnSelector } from "./TableColumnSelector";
 import { AuthTableOrViewName } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
 
-interface TableToolbarProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, 
-  | 'searchable'
-  | 'filterable'
-  | 'exportable'
-  | 'refreshable'
-  | 'title'
-  | 'customToolbar'
-  | 'onRefresh'
-  | 'loading'
-> {
+interface TableToolbarProps<T extends AuthTableOrViewName>
+  extends Pick<
+    DataTableProps<T>,
+    | "searchable"
+    | "filterable"
+    | "exportable"
+    | "refreshable"
+    | "title"
+    | "customToolbar"
+    | "onRefresh"
+    | "loading"
+  > {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onSearchChange?: (query: string) => void;
@@ -56,7 +65,6 @@ export function TableToolbar<T extends AuthTableOrViewName>({
   loading,
   isExporting,
 }: TableToolbarProps<T>) {
-
   const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
   const debouncedSearchQuery = useDebounce(internalSearchQuery, 300);
   const setSearchQueryRef = useRef(setSearchQuery);
@@ -80,7 +88,6 @@ export function TableToolbar<T extends AuthTableOrViewName>({
     setInternalSearchQuery(searchQuery);
   }, [searchQuery]);
 
-
   return (
     <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
       {title && (
@@ -88,9 +95,11 @@ export function TableToolbar<T extends AuthTableOrViewName>({
           {title}
         </h3>
       )}
-      
+
       <div className="space-y-3 sm:space-y-0 sm:flex sm:justify-between sm:items-center">
-        {!customToolbar && (
+        {customToolbar ? (
+          <div className="w-full">{customToolbar}</div>
+        ) : (
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1 sm:gap-3">
               {searchable && (
@@ -155,7 +164,10 @@ export function TableToolbar<T extends AuthTableOrViewName>({
               className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0"
               aria-label="Refresh data"
             >
-              <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
+              <FiRefreshCw
+                size={14}
+                className={`${loading ? "animate-spin" : ""}`}
+              />
             </button>
           )}
 
@@ -166,7 +178,9 @@ export function TableToolbar<T extends AuthTableOrViewName>({
               className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
             >
               <FiDownload size={14} />
-              <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
+              <span className="hidden sm:inline">
+                {isExporting ? "Exporting..." : "Export"}
+              </span>
             </button>
           )}
         </div>
