@@ -14,6 +14,7 @@ import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
 import { AuthTableOrViewName } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
+import { DEFAULTS } from "@/config/constants";
 
 interface TableToolbarProps<T extends AuthTableOrViewName>
   extends Pick<
@@ -66,7 +67,7 @@ export function TableToolbar<T extends AuthTableOrViewName>({
   isExporting,
 }: TableToolbarProps<T>) {
   const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
-  const debouncedSearchQuery = useDebounce(internalSearchQuery, 300);
+  const debouncedSearchQuery = useDebounce(internalSearchQuery, DEFAULTS.DEBOUNCE_DELAY);
   const setSearchQueryRef = useRef(setSearchQuery);
   const onSearchChangeRef = useRef(onSearchChange);
 

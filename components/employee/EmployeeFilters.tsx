@@ -5,6 +5,7 @@ import { FiFilter, FiSearch } from "react-icons/fi";
 import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { Filters, Row } from "@/hooks/database";
 import { useDebounce } from "use-debounce"; // <-- IMPORT useDebounce
+import { DEFAULTS } from "@/config/constants";
 
 interface EmployeeFiltersProps {
   searchQuery: string; // This prop is now used to set the initial value
@@ -33,7 +34,7 @@ const EmployeeFiltersComponent = memo(({
 }: EmployeeFiltersProps) => {
   // --- DEBOUNCING LOGIC ---
   const [internalSearch, setInternalSearch] = useState(searchQuery);
-  const [debouncedSearch] = useDebounce(internalSearch, 300); // 300ms delay
+  const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY); 
 
   // Effect to call the parent's onSearchChange only when the debounced value changes
   useEffect(() => {

@@ -15,11 +15,12 @@ import UserProfileEdit from "@/components/users/UserProfileEdit";
 import UserDetailsModal from "@/components/users/UserDetailsModal";
 import { Button, ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
+import { DEFAULTS } from "@/config/constants";
 
 const AdminUsersPage = () => {
   // --- STATE MANAGEMENT (Mimicking useCrudPage) ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -27,7 +28,7 @@ const AdminUsersPage = () => {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
+  const [debouncedSearchQuery] = useDebounce(searchQuery, DEFAULTS.DEBOUNCE_DELAY);
 
   // --- DATA FETCHING (Specialized Hook) ---
   const { data: usersData, isLoading, isError, error, refetch } = useAdminGetAllUsersExtended({

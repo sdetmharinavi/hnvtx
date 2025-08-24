@@ -18,13 +18,14 @@ import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatters";
+import { DEFAULTS } from "@/config/constants";
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, DEFAULTS.DEBOUNCE_DELAY);
   const [filters, setFilters] = useState<{ status?: string; areaType?: string }>({});
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);

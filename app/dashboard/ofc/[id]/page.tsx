@@ -6,18 +6,17 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useOfcConnection } from "@/hooks/useOfcConnection";
-import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
-import { Database } from "@/types/supabase-types";
 import { ButtonSpinner, PageSpinner } from "@/components/common/ui/LoadingSpinner";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { DataTable } from "@/components/table";
 import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { formatDate } from "@/utils/formatters";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { Row, usePagedOfcConnectionsComplete } from "@/hooks/database";
+import { Row } from "@/hooks/database";
 import { useDebouncedCallback } from "use-debounce";
 import { Button } from "@/components/common/ui";
 import { OfcStats } from "@/components/ofc/OfcStats";
+import { DEFAULTS } from "@/config/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,7 @@ export default function OfcCableDetailsPage() {
   const params = useParams();
   const { id } = params;
   const supabase = createClient();
-  const [pagination, setPagination] = useState({ page: 1, pageLimit: 10 });
+  const [pagination, setPagination] = useState({ page: 1, pageLimit: DEFAULTS.PAGE_SIZE });
   const [isBackClicked, setIsBackClicked] = useState(false);
 
   const { cable, existingConnections, isLoading, ensureConnectionsExist, totalCount, activeCount, inactiveCount } = useOfcConnection({
@@ -142,13 +141,6 @@ export default function OfcCableDetailsPage() {
     search: "",
     ofc_owner_id: "",
   });
-  const serverFilters = useMemo(() => {
-    const dbFilters: Record<string, string | boolean> = {};
-    if (filters.ofc_owner_id) {
-      dbFilters.ofc_owner_id = filters.ofc_owner_id;
-    }
-    return dbFilters;
-  }, [filters.ofc_owner_id]);
 
   const tableExcelDownload = useTableExcelDownload(supabase, "ofc_connections");
   const columnsForExcelExport = useDynamicColumnConfig("ofc_connections");
@@ -175,7 +167,7 @@ export default function OfcCableDetailsPage() {
   // Debounced search handler
   const debouncedSearch = useDebouncedCallback((value: string) => {
     setFilters((prev) => ({ ...prev, search: value }));
-  }, 300);
+  }, DEFAULTS.DEBOUNCE_DELAY);
 
   // Define handleSearch before using it in customToolbar
   const handleSearch = useCallback(
@@ -193,8 +185,6 @@ export default function OfcCableDetailsPage() {
     const rows = existingConnections ?? [];
     return rows.map(({ active_count, inactive_count, total_count, ...rest }) => rest);
   }, [existingConnections]);
-
-  console.log("existingConnections", existingConnections);
 
   const loading = isLoading;
 
@@ -309,7 +299,7 @@ export default function OfcCableDetailsPage() {
             pageSize: pagination.pageLimit,
             total: totalCount,
             showSizeChanger: true,
-            pageSizeOptions: [10, 20, 50, 100],
+            pageSizeOptions: DEFAULTS.PAGE_SIZE_OPTIONS,
             onChange: (page, pageLimit) => setPagination({ page, pageLimit }),
           }}
         />

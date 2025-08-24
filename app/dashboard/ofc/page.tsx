@@ -22,6 +22,7 @@ import { Json, TablesInsert, TablesUpdate } from "@/types/supabase-types";
 import { OfcCablesFilters, OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { toast } from "sonner";
+import { DEFAULTS } from "@/config/constants";
 
 const OfcPage = () => {
   const supabase = createClient();
@@ -29,14 +30,14 @@ const OfcPage = () => {
 
   // --- STATE MANAGEMENT (Mimicking useCrudPage) ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [filters, setFilters] = useState<OfcCablesFilters>({ search: "", ofc_type_id: "", status: "", maintenance_terminal_id: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<OfcCablesWithRelations | null>(null);
   const [viewingRecordId, setViewingRecordId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [debouncedSearch] = useDebounce("", 400);
+  const [debouncedSearch] = useDebounce("", DEFAULTS.DEBOUNCE_DELAY);
 
   // --- FILTERS ---
   const serverFilters = useMemo(() => {

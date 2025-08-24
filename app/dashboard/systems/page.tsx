@@ -16,6 +16,7 @@ import { TableAction } from "@/components/table/datatable-types";
 import { Column } from '@/hooks/database/excel-queries';
 import { Row } from "@/hooks/database";
 import { PageSkeleton, StatsCardsSkeleton } from "@/components/common/ui/table/TableSkeleton";
+import { DEFAULTS } from "@/config/constants";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -49,7 +50,7 @@ export default function SystemsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
+  const [debouncedSearchQuery] = useDebounce(searchQuery, DEFAULTS.DEBOUNCE_DELAY);
 
   // --- Data Fetching ---
   const systemFilters = useMemo(() => {

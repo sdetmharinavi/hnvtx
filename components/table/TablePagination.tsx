@@ -2,6 +2,7 @@
 import React from "react";
 import { FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from "react-icons/fi";
 import { TablePaginationProps } from "@/components/table/datatable-types";
+import { DEFAULTS } from "@/config/constants";
 
 
 
@@ -20,7 +21,7 @@ export function TablePagination({ pagination, bordered }: TablePaginationProps) 
             onChange={(e) => pagination.onChange(1, Number(e.target.value))}
             className='px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700'
           >
-            {(pagination.pageSizeOptions || [10, 20, 50, 100]).map((size) => (
+            {(pagination.pageSizeOptions || DEFAULTS.PAGE_SIZE_OPTIONS).map((size) => (
               <option key={size} value={size}>
                 {size} per page
               </option>

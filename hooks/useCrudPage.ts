@@ -18,6 +18,7 @@ import {
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
+import { DEFAULTS } from "@/config/constants";
 
 // A generic type to ensure records passed to actions have an 'id' and optionally a 'name'
 type RecordWithId = {
@@ -46,12 +47,12 @@ export function useCrudPage<T extends TableName>({
 
   // --- STATE MANAGEMENT ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Filters>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Row<T> | null>(null);
-  const [debouncedSearch] = useDebounce(searchQuery, 400);
+  const [debouncedSearch] = useDebounce(searchQuery, DEFAULTS.DEBOUNCE_DELAY);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // --- FILTERS ---

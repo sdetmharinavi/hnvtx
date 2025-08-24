@@ -2,11 +2,12 @@
 import { useState, useCallback } from 'react';
 import { NodeWithRelations } from '@/components/nodes/nodes_types';
 import { NodesFilters } from '@/components/nodes/nodes_types';
+import { DEFAULTS } from '@/config/constants';
 
 export const useNodesPageState = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [filters, setFilters] = useState<NodesFilters>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<NodeWithRelations | null>(null);

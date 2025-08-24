@@ -5,6 +5,7 @@ import { useDebounce } from "use-debounce";
 import { FiSearch } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
 import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
+import { DEFAULTS } from "@/config/constants";
 
 interface NodesFiltersProps {
   searchQuery: string;
@@ -22,8 +23,7 @@ const NodesFiltersComponent = memo(({
   onNodeTypeChange
 }: NodesFiltersProps) => {
   const [internalSearch, setInternalSearch] = useState(searchQuery);
-  const [debouncedSearch] = useDebounce(internalSearch, 300); // 300ms delay
-
+  const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY); 
   // Effect to call the parent's onSearchChange only when the debounced value changes
   useEffect(() => {
     onSearchChange(debouncedSearch);

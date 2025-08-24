@@ -33,13 +33,14 @@ import { DesignationFormModal } from "@/components/designations/DesignationFormM
 import { formatDate } from "@/utils/formatters";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { toast } from "sonner";
+import { DEFAULTS } from "@/config/constants";
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, DEFAULTS.DEBOUNCE_DELAY);
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDesignationId, setSelectedDesignationId] = useState<
