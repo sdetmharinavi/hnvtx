@@ -15,10 +15,8 @@ import { createClient } from "@/utils/supabase/client";
 import {
   MdWork as Briefcase,
   MdAdd as Plus,
-  MdFileDownload as Download,
   MdInfo as Info,
 } from "react-icons/md";
-import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import {
   DesignationWithRelations,
   EmployeeDesignation,
@@ -30,17 +28,19 @@ import { DesignationTreeItem } from "@/components/designations/DesignationTreeIt
 import { DesignationListItem } from "@/components/designations/DesignationListItem";
 import { DesignationDetailsPanel } from "@/components/designations/DesignationDetailsPanel";
 import { DesignationFormModal } from "@/components/designations/DesignationFormModal";
-import { formatDate } from "@/utils/formatters";
-import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
-import { toast } from "sonner";
 import { DEFAULTS } from "@/config/constants";
+import { PageHeader } from "@/components/common/PageHeader";
+import { FiPlus, FiRefreshCw } from "react-icons/fi";
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm] = useDebounce(searchTerm, DEFAULTS.DEBOUNCE_DELAY);
+  const [debouncedSearchTerm] = useDebounce(
+    searchTerm,
+    DEFAULTS.DEBOUNCE_DELAY
+  );
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDesignationId, setSelectedDesignationId] = useState<
@@ -51,8 +51,7 @@ export default function DesignationManagerPage() {
   );
   const [viewMode, setViewMode] = useState<"tree" | "list">("tree");
   const [isFormOpen, setFormOpen] = useState(false);
-  const [editingDesignation, setEditingDesignation] =
-    useState<DesignationWithRelations | null>(null);
+  const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   // Data queries
   const serverFilters = useMemo(() => {
@@ -93,38 +92,6 @@ export default function DesignationManagerPage() {
     "employee_designations",
     { onSuccess: onMutationSuccess }
   );
-
-
-  
-  // Download configuration
-  const columns = useDynamicColumnConfig("employee_designations");
-
-  const tableExcelDownload = useTableExcelDownload(
-    supabase,
-    "employee_designations",
-    {
-      onSuccess: () => {
-        toast.success("Export successful");
-        
-      },
-      onError: () => toast.error("Export failed"),
-    }
-  );
-
-  const handleExport = async () => {
-    const tableName = "employee_designations";
-    const tableOptions = {
-      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${String(
-        tableName
-      )}-export.xlsx`,
-      sheetName: String(tableName),
-      columns: columns,
-      filters: serverFilters,
-      maxRows: 1000,
-      customStyles: {},
-    };
-    tableExcelDownload.mutate(tableOptions);
-  };
 
   const deleteManager = useDelete({
     tableName: "employee_designations",
@@ -228,6 +195,10 @@ export default function DesignationManagerPage() {
     });
   };
 
+  const handleRefresh = () => {
+    designationsQuery.refetch();
+  };
+
   const toggleExpanded = (designationId: string) => {
     setExpandedDesignations((prev) => {
       const next = new Set(prev);
@@ -245,38 +216,57 @@ export default function DesignationManagerPage() {
     setShowDetailsPanel(true);
   };
 
+  const isLoading =
+    designationsQuery.isLoading ||
+    createDesignationMutation.isPending ||
+    updateDesignationMutation.isPending ||
+    toggleStatusMutation.isPending;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      {/* Mobile Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 px-4 py-3 sm:px-6">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white sm:text-xl">
-              Designations
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
-              Manage employee roles
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 sm:px-3 sm:py-2"
-              title="Export"
-            >
-              <Download className="h-5 w-5" />
-              <span className="hidden sm:ml-2 sm:inline">Export</span>
-            </button>
-            <button
-              onClick={handleOpenCreateForm}
-              className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 sm:px-4"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="ml-1 sm:ml-2">Add</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        isLoading={isLoading}
+        exportConfig={{
+          tableName: "employee_designations",
+          filters: serverFilters,
+          maxRows: 1000,
+          customStyles: {},
+        }}
+        // Remove the built-in functionality and only use customActions
+        showExport={true}
+        showRefresh={false} // Disable built-in refresh since you have custom refresh
+        onAddNew={undefined} // Remove built-in add since you have custom add
+        customActions={[
+          {
+            label: "Add Designation",
+            onClick: handleOpenCreateForm,
+            variant: "outline",
+            disabled: isLoading,
+            hideOnMobile: false,
+            hideTextOnMobile: false,
+            tooltip: "Add new designation",
+            leftIcon: <FiPlus />,
+          },
+          {
+            label: "Refresh",
+            onClick: handleRefresh,
+            variant: "outline",
+            disabled: isLoading,
+            hideOnMobile: false,
+            hideTextOnMobile: false,
+            tooltip: "Refresh",
+            leftIcon: (
+              <FiRefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+            ),
+          },
+        ]}
+        countLabel="Total Designations"
+        title="Designations"
+        description="Manage designations"
+        totalCount={designationsQuery.data?.length || 0}
+      />
 
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
