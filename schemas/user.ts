@@ -6,16 +6,17 @@ import z from "zod";
 
 export const userProfileSchema = z.object({
   id: z.uuid().optional(),
-  first_name: z.string().min(1, { message: "First name cannot be empty." }),
-  last_name: z.string().min(1, { message: "Last name cannot be empty." }),
+  first_name: z.string().min(1, { message: "First name cannot be empty." }).nullable(),
+  last_name: z.string().min(1, { message: "Last name cannot be empty." }).nullable(),
   avatar_url: z.url({ message: "Invalid URL format." })
     .optional()
-    .or(z.literal("")),
+    .or(z.literal("")).nullable(),
   phone_number: z
     .string()
     .regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format.")
     .optional()
-    .or(z.literal("")),
+    .or(z.literal(""))
+    .nullable(),
   date_of_birth: z.coerce
     .date()
     .optional()
@@ -47,13 +48,13 @@ export const userProfileSchema = z.object({
       country: z.string().optional(),
     })
     .default({})
-    .optional(),
+    .optional().nullable(),
   preferences: z.object({
     theme: z.string().optional(),
     language: z.string().optional(),
   })
   .default({})
-  .optional(),
+  .optional().nullable(),
   status: z.enum(["active", "inactive", "suspended"]).default("inactive"),
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),

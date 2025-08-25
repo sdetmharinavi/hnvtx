@@ -24,11 +24,10 @@ type TableState<T extends AuthTableOrViewName> = {
   showFilters: boolean;
 };
 
-type TableAction<T extends AuthTableOrViewName> =
+// Base action type that works with any row type
+type BaseTableAction<R> =
   | { type: 'SET_SEARCH_QUERY'; payload: string }
-  | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
-  | { type: 'SET_FILTERS'; payload: Filters }
-  | { type: 'SET_SELECTED_ROWS'; payload: DataRow<T>[] }
+  | { type: 'SET_SELECTED_ROWS'; payload: R[] }
   | { type: 'SET_VISIBLE_COLUMNS'; payload: string[] }
   | { type: 'START_EDIT_CELL'; payload: { rowIndex: number; columnKey: string; value: string } }
   | { type: 'SET_EDIT_VALUE'; payload: string }
@@ -36,7 +35,16 @@ type TableAction<T extends AuthTableOrViewName> =
   | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
   | { type: 'TOGGLE_FILTERS'; payload?: boolean };
 
-function tableReducer<T extends AuthTableOrViewName>(state: TableState<T>, action: TableAction<T>): TableState<T> {
+// Table-specific action type that extends the base with table-aware actions
+type TableAction<T extends AuthTableOrViewName> =
+  | BaseTableAction<DataRow<T>>
+  | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
+  | { type: 'SET_FILTERS'; payload: Filters };
+
+function tableReducer<T extends AuthTableOrViewName>(
+  state: TableState<T>,
+  action: TableAction<T> | BaseTableAction<DataRow<T>>
+): TableState<T> {
   switch (action.type) {
     case 'SET_SEARCH_QUERY':
       return { ...state, searchQuery: action.payload };

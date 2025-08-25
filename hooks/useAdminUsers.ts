@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { Database, Json } from "@/types/supabase-types";
+import { UserProfileData } from "@/components/users/user-types";
 
 // Types (assuming these are imported from your database types file)
 type AdminGetAllUsers =
@@ -44,7 +45,6 @@ export interface UserData {
   total_count: number;
 }
 
-type SingleUserData = Omit<UserData, "total_count">;
 
 const supabase = createClient();
 
@@ -82,14 +82,14 @@ export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
 export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {}) => {
   return useQuery({
     queryKey: adminUserKeys.list(params),
-    queryFn: async (): Promise<UserData[]> => {
+    queryFn: async (): Promise<UserProfileData[]> => {
       const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
 
       if (error) {
         throw new Error(error.message);
       }
 
-      return data || [];
+      return data as UserProfileData[] || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -100,7 +100,7 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
 export const useAdminGetUserById = (userId: string, enabled = true) => {
   return useQuery({
     queryKey: adminUserKeys.detail(userId),
-    queryFn: async (): Promise<SingleUserData | null> => {
+    queryFn: async (): Promise<UserProfileData | null> => {
       const { data, error } = await supabase.rpc("admin_get_user_by_id", {
         user_id: userId,
       });
@@ -109,7 +109,7 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
         throw new Error(error.message);
       }
 
-      return data?.[0] || null;
+      return data?.[0] as UserProfileData || null;
     },
     enabled: enabled && !!userId,
     staleTime: 5 * 60 * 1000,

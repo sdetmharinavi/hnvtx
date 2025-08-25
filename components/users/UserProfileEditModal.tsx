@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { motion } from "framer-motion";
-import { FiX, FiShield } from "react-icons/fi";
+import { FiShield } from "react-icons/fi";
 import { useAdminUpdateUserProfile, useGetMyRole, useIsSuperAdmin } from "@/hooks/useAdminUsers";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
@@ -21,9 +20,9 @@ interface UserProfileEditProps {
 }
 
 // Helper to safely parse JSON-like data
-const toObject = (val: unknown): Record<string, any> => {
+const toObject = (val: unknown): Record<string, unknown> => {
   if (!val) return {};
-  if (typeof val === "object") return val as Record<string, any>;
+  if (typeof val === "object") return val as Record<string, unknown>;
   return {};
 };
 
@@ -53,38 +52,40 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
     },
   });
 
+  console.log("user", user);
+
   useEffect(() => {
     if (!isOpen) return;
-    // if (user) {
-    //   console.log("Populating form with user data:", user);
-    //   reset({
-    //     first_name: user?.first_name || "",
-    //     last_name: user?.last_name || "",
-    //     avatar_url: user?.avatar_url || "",
-    //     phone_number: user?.phone_number || "",
-    //     date_of_birth: user?.date_of_birth ? new Date(user.date_of_birth) : null,
-    //     address: user?.address ? toObject(user.address) : {},
-    //     preferences: user?.preferences ? toObject(user.preferences) : {},
-    //     role: (user?.role as "admin" | "viewer" | "cpan_admin" | "maan_admin" | "sdh_admin" | "vmux_admin" | "mng_admin") || UserRole.VIEWER,
-    //     designation: user?.designation || "",
-    //     status: (user?.status as "active" | "inactive" | "suspended") || "inactive",
-    //   });
-    // } else {
-    //   // If the modal is opened for a new user, reset to blank fields
-    //   reset({
-    //     first_name: "",
-    //     last_name: "",
-    //     avatar_url: "",
-    //     phone_number: "",
-    //     date_of_birth: null,
-    //     address: {},
-    //     preferences: {},
-    //     role: UserRole.VIEWER,
-    //     designation: "",
-    //     status: "inactive",
-    //   });
-    // }
-  }, [isOpen]);
+    if (user) {
+      console.log("Populating form with user data:", user);
+      reset({
+        first_name: user?.first_name || "",
+        last_name: user?.last_name || "",
+        avatar_url: user?.avatar_url || "",
+        phone_number: user?.phone_number || "",
+        date_of_birth: user?.date_of_birth ? new Date(user.date_of_birth) : null,
+        address: user?.address ? toObject(user.address) : {},
+        preferences: user?.preferences ? toObject(user.preferences) : {},
+        role: (user?.role as "admin" | "viewer" | "cpan_admin" | "maan_admin" | "sdh_admin" | "vmux_admin" | "mng_admin") || UserRole.VIEWER,
+        designation: user?.designation || "",
+        status: (user?.status as "active" | "inactive" | "suspended") || "inactive",
+      });
+    } else {
+      // If the modal is opened for a new user, reset to blank fields
+      reset({
+        first_name: "",
+        last_name: "",
+        avatar_url: "",
+        phone_number: "",
+        date_of_birth: null,
+        address: {},
+        preferences: {},
+        role: UserRole.VIEWER,
+        designation: "",
+        status: "inactive",
+      });
+    }
+  }, [isOpen, reset, user]);
 
   // Watch the avatar_url for live preview
   const avatarUrl = watch("avatar_url");
@@ -103,10 +104,10 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
     }
 
     // Create the update payload only with changed fields
-    const updateParams: { user_id: string; [key: string]: any } = { user_id: user?.id! };
+    const updateParams: { user_id: string; [key: string]: unknown } = { user_id: user?.id || "" };
 
     (Object.keys(data) as Array<keyof UserProfileFormData>).forEach((key) => {
-      if (JSON.stringify(data[key]) !== JSON.stringify((user as any)[key])) {
+      if (JSON.stringify(data[key]) !== JSON.stringify((user as UserProfileFormData)[key])) {
         // Special handling for date to ensure correct format
         if (key === "date_of_birth" && data.date_of_birth) {
           updateParams[`update_${key}`] = data.date_of_birth.toISOString().split("T")[0];

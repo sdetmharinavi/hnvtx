@@ -1,39 +1,60 @@
-import { FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye } from "react-icons/fi";
-import { TableAction } from "@/components/table/datatable-types";
-import { Row, TableName } from "@/hooks/database";
 import React from "react";
+import {
+  FiEdit2,
+  FiTrash2,
+  FiToggleLeft,
+  FiToggleRight,
+  FiEye,
+} from "react-icons/fi";
+import { RecordWithId } from "@/hooks/useCrudManager";
 
-// Defines the shape of the handlers that a page component will provide.
-// All handlers are optional, so a page can pick and choose which actions it needs.
-interface StandardActionHandlers<T extends TableName> {
-  onView?: (record: Row<T>) => void;
-  onEdit?: (record: Row<T>) => void;
-  onToggleStatus?: (record: Row<T>) => void;
-  onDelete?: (record: Row<T>) => void;
+type ActionableRecord = RecordWithId & {
+  status?: boolean | string | null; // Allow both boolean and string status
+};
 
-  // Optional functions to control the disabled/hidden state dynamically per row.
-  canEdit?: (record: Row<T>) => boolean;
-  canDelete?: (record: Row<T>) => boolean;
+// Define a flexible TableAction type that can work with any record type
+export interface TableAction<T = unknown> {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  onClick: (record: T, index?: number) => void;
+  variant?: 'primary' | 'secondary' | 'danger' | 'success';
+  disabled?: (record: T) => boolean;
+  hidden?: (record: T) => boolean;
+  // Additional properties that might be used by the DataTable
+  [key: string]: unknown;
 }
 
+// Defines the shape of the handlers that a page component will provide.
+// The helper is now generic over `V`, which represents the data type in the table row (e.g., UserProfileData)
+interface StandardActionHandlers<V extends ActionableRecord> {
+  onView?: (record: V) => void;
+  onEdit?: (record: V) => void;
+  onToggleStatus?: (record: V) => void;
+  onDelete?: (record: V) => void;
+
+  canEdit?: (record: V) => boolean;
+  canDelete?: (record: V) => boolean;
+}
 /**
  * Creates a standardized array of TableAction objects for CRUD operations.
  * This ensures all tables have consistent icons, labels, variants, and behaviors.
  * @param handlers - An object containing the onClick handlers and optional logic for the actions.
  * @returns An array of TableAction<T> objects.
  */
-export function createStandardActions<T extends TableName>({
+export function createStandardActions<V extends ActionableRecord>({
   onView,
   onEdit,
   onToggleStatus,
   onDelete,
   canEdit = () => true, // By default, all actions are enabled
   canDelete = () => true,
-}: StandardActionHandlers<T>): TableAction<T>[] {
-  const actions: TableAction<T>[] = [];
+}: StandardActionHandlers<V>): TableAction<V>[] {
+  const actions: TableAction<V>[] = [];
 
   // Narrower type guard: only treat records with a boolean `status` as toggle-able
-  const hasBooleanStatus = (record: Row<T>): record is Row<T> & { status: boolean } => typeof (record as any)?.status === "boolean";
+  const hasBooleanStatus = (record: V): record is V & { status: boolean } =>
+    typeof (record as unknown as V)?.status === "boolean";
 
   // --- Toggle Status Actions (Activate/Deactivate) ---
   if (onToggleStatus) {
