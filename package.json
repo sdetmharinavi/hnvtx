@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "gitpush": "git add . && git commit -m \"$(date +'%Y-%m-%d %H:%M:%S')\" && git push",
+    "find-unused": "node data/scripts/find-unused-files.js",
     "supabase": "supabase",
     "gen:types": "supabase gen types typescript --project-id yunvefyvwbqaigkawcvj --schema public,auth > types/supabase-types.ts",
     "push:all": "dotenv -e .env node data/scripts/push-sql.js",

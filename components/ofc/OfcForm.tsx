@@ -13,7 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import { FormCard } from "../common/ui/form/FormCard";
 import SectionCard from "../common/ui/form/SectionCard";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { OfcCable, ofcCableSchema } from "@/schemas/schema";
+import { OfcCable, ofcCableSchema } from "@/schemas";
 import { useForm, SubmitHandler, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "../common/FormControls";

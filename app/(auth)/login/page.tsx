@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import OAuthProviders from "@/components/auth/OAuthProviders";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { UserFormData, userSchema } from "@/schemas/schema";
+import { UserFormData, userSchema } from "@/schemas";
 
 export default function LoginPage() {
   const { authState, signIn } = useAuth();

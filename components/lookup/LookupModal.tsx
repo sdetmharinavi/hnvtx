@@ -11,7 +11,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type LookupType, lookupTypeSchema } from "@/schemas/schema";
+import { type LookupType, lookupTypeSchema } from "@/schemas";
 import z from "zod";
 
 type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];

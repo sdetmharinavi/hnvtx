@@ -10,7 +10,7 @@ import {
   MdPerson as User,
   MdPhone as Phone,
 } from "react-icons/md";
-import { maintenanceAreaSchema } from "@/schemas/schema";
+import { maintenanceAreaSchema } from "@/schemas";
 import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

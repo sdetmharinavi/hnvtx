@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useTableDelete } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
+import { hasDetails } from '@/types/error-types';
 
 interface DeleteItem {
   id: string;
@@ -33,6 +34,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const supabase = createClient();
   const { mutate: deleteRowsById, isPending } = useTableDelete(supabase, tableName);
 
+  
+  
   // Single item deletion
   const deleteSingle = useCallback((item: DeleteItem) => {
     setDeleteConfig({
@@ -82,7 +85,11 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
           },
           onError: (err) => {
             console.error('Deletion failed:', err);
-            toast.error('Failed to delete items');
+            if (hasDetails(err)) {
+              toast.error('Failed to delete items'+ err.details);
+            } else {
+              toast.error('Failed to delete items');
+            }
           },
         });
       } else if (deleteConfig.type === 'bulk' && deleteConfig.filter) {
@@ -112,7 +119,11 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
           },
           onError: (err) => {
             console.error('Deletion failed:', err);
-            toast.error('Failed to delete items');
+            if (hasDetails(err)) {
+              toast.error('Failed to delete items'+ err.details);
+            } else {
+              toast.error('Failed to delete items');
+            }
           },
         });
       }

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/common/ui/Button";
 import { FiEdit2, FiTrash2, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import { type LookupType } from "@/schemas/schema";
+import { type LookupType } from "@/schemas";
 import { useMemo } from "react";
 import { SortDirection } from "@/hooks/useSorting";
 

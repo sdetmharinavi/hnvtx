@@ -26,5 +26,7 @@
         "upserts",
         "vmux",
         "yxxx"
-    ]
+    ],
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "javascript.preferences.importModuleSpecifier": "non-relative"
 }

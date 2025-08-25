@@ -8,7 +8,7 @@ import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
 import { createClient } from "@/utils/supabase/client";
 import { Database, TablesInsert } from "@/types/supabase-types";
 import { useTableInsert, useTableUpdate, useTableQuery } from "@/hooks/database";
-import { nodeFormSchema, type NodeFormData } from "@/schemas/schema";;
+import { nodeFormSchema, type NodeFormData } from "@/schemas";;
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 

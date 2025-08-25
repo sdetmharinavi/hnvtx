@@ -15,11 +15,13 @@ import StatusBadge from '@/components/users/StatusBadge'
 import RoleBadge from '@/components/users/RoleBadge'
 import Image from 'next/image'
 import { UserRole } from '@/types/user-roles'
+import { Modal } from '@/components/common/ui'
+import { UserProfile } from '@/schemas'
 
 type Props = {
-  userId: string
+  user: UserProfile | null
   onClose: () => void
-  onEdit: () => void
+  isOpen: boolean
 }
 
 type Address = {
@@ -30,41 +32,28 @@ type Address = {
   country?: string | null;
 };
 
-const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
-  const { data: user, isLoading, isError, error } = useAdminGetUserById(userId)
+const UserDetailsModal = ({ user, onClose, isOpen }: Props) => {
+  console.log(user);
+  
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-700 text-center">Loading user details...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (isError || !user) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4 text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {isError ? 'Error Loading User' : 'User Not Found'}
-          </h3>
-          {isError && error && (
-            <p className="text-sm text-gray-600 mb-4">{error.message}</p>
-          )}
-          <button
-            onClick={onClose}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // if (!user) {
+  //   return (
+  //     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  //       <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4 text-center">
+  //         <div className="text-red-500 text-5xl mb-4">⚠️</div>
+  //         <h3 className="text-lg font-medium text-gray-900 mb-2">
+  //           User Not Found
+  //         </h3>
+  //         <button
+  //           onClick={onClose}
+  //           className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+  //         >
+  //           Close
+  //         </button>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // Helper function to format address
   const formatAddress = (address: Address) => {
@@ -83,7 +72,7 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
   const getUserInitials = () => {
     const firstInitial = user.first_name?.charAt(0)?.toUpperCase() || ''
     const lastInitial = user.last_name?.charAt(0)?.toUpperCase() || ''
-    return firstInitial + lastInitial || user.email?.charAt(0)?.toUpperCase() || '?'
+    return firstInitial + lastInitial || '?'
   }
 
   // Helper function to get full name
@@ -127,6 +116,10 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
   const formattedAddress = user.address ? formatAddress(user.address as Address) : null
 
   return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+    >
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -161,7 +154,7 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
               <h2 className="text-xl font-semibold text-gray-900">
                 {getFullName()}
               </h2>
-              <p className="text-sm text-gray-500">{user.email}</p>
+              {/* <p className="text-sm text-gray-500">{user.email}</p> */}
               {user.designation && (
                 <p className="text-xs text-blue-600 font-medium">{user.designation}</p>
               )}
@@ -194,7 +187,7 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
                 
                 <div>
                   <label className="text-sm font-medium text-gray-500 block mb-1">Email Address</label>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <FiMail className="text-gray-400 flex-shrink-0" />
                     <p className="text-gray-900">{user.email}</p>
                     <span className={`text-xs px-2 py-1 rounded-full ${
@@ -204,7 +197,7 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
                     }`}>
                       {user.is_email_verified ? '✓ Verified' : '✗ Unverified'}
                     </span>
-                  </div>
+                  </div> */}
                 </div>
                 
                 <div>
@@ -313,6 +306,7 @@ const UserDetailsModal = ({ userId, onClose, onEdit }: Props) => {
         </div>
       </motion.div>
     </div>
+    </Modal>
   )
 }
 

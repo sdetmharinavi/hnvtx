@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, FormEvent } from "react";
 import { TablesInsert } from "@/types/supabase-types";
 import { EmployeeDesignation, DesignationWithRelations } from "@/components/designations/designationTypes";
 import { Resolver, useForm, Controller } from "react-hook-form";
-import { employeeDesignationSchema } from "@/schemas/schema";
+import { employeeDesignationSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { SearchableSelect } from "../common/SearchableSelect";

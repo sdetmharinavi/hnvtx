@@ -6,12 +6,13 @@ import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
 import { getRingsTableColumns } from "@/components/rings/RingsTableColumns";
 import { RingsFilters } from "@/components/rings/RingsFilters";
-import { FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from "react-icons/fi";
 import { RingModal, RingRow } from "@/components/rings/RingModal";
-import { RingsHeader } from "@/components/rings/RingsHeader";
 import { useCrudPage } from "@/hooks/useCrudPage";
 import { ConfirmModal } from "@/components/common/ui";
-import { TableAction } from "@/components/table/datatable-types";
+import { createStandardActions } from "@/components/table/action-helpers";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
+import { GiLinkedRings } from "react-icons/gi";
+import { toast } from "sonner";
 
 const RingsPage = () => {
   const {
@@ -23,7 +24,7 @@ const RingsPage = () => {
     search,
     modal,
     actions: crudActions,
-    deleteModal, // Destructure the delete modal state
+    deleteModal,
   } = useCrudPage({
     tableName: "rings",
     relations: [
@@ -35,41 +36,44 @@ const RingsPage = () => {
 
   const columns = useMemo(() => getRingsTableColumns(), []);
 
-  const tableActions = useMemo<TableAction<'rings'>[]>(() => [
-    { 
-      key: "edit", 
-      label: "Edit", 
-      icon: <FiEdit2 />, 
-      onClick: (record) => modal.openEditModal(record) 
+   // --- tableActions ---
+   const tableActions = useMemo(() => createStandardActions<'rings'>({
+    onEdit: modal.openEditModal,
+    onToggleStatus: crudActions.handleToggleStatus,
+    onDelete: crudActions.handleDelete,
+    // You can also add custom logic, for example:
+    // canDelete: (record) => record.name !== 'CRITICAL_RING', 
+  }), [modal.openEditModal, crudActions.handleToggleStatus, crudActions.handleDelete]);
+
+  // --- Define header content using the hook ---
+  const headerActions = useStandardHeaderActions({
+    onRefresh: async () => {
+      await refetch();
+      toast.success("Refreshed successfully!");
     },
-    { 
-      key: "activate", 
-      label: "Activate", 
-      icon: <FiToggleRight />, 
-      hidden: (r) => Boolean(r.status), 
-      onClick: (r) => crudActions.handleToggleStatus(r) 
-    },
-    { 
-      key: "deactivate", 
-      label: "Deactivate", 
-      icon: <FiToggleLeft />, 
-      hidden: (r) => !r.status, 
-      onClick: (r) => crudActions.handleToggleStatus(r) 
-    },
-    { 
-      key: "delete", 
-      label: "Delete", 
-      icon: <FiTrash2 />, 
-      variant: "danger" as const, 
-      onClick: (r) => crudActions.handleDelete(r) 
-    },
-  ], [modal, crudActions]);
+    onAddNew: modal.openAddModal,
+    isLoading: isLoading,
+    exportConfig: { tableName: "rings" }
+  });
+
+  const headerStats = [
+    { value: totalCount, label: "Total Rings" },
+    { value: ringsData.filter(r => r.status).length, label: "Active", color: 'success' as const },
+    { value: ringsData.filter(r => !r.status).length, label: "Inactive", color: 'danger' as const },
+  ];
 
 
   return (
     <div className='mx-auto space-y-4'>
       {/* Header */}
-      <RingsHeader onRefresh={refetch} onAddNew={modal.openAddModal} isLoading={isLoading} totalCount={totalCount} />
+      <PageHeader
+        title="Ring Management"
+        description="Manage network rings and their related information."
+        icon={<GiLinkedRings />}
+        stats={headerStats}
+        actions={headerActions} // <-- Pass the generated actions
+        isLoading={isLoading}
+      />
 
       {/* Table */}
       <DataTable

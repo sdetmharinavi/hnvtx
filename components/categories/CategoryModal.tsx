@@ -4,7 +4,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { lookupTypeSchema } from "@/schemas/schema";
+import { lookupTypeSchema } from "@/schemas";
 import { Database } from "@/types/supabase-types";
 import { snakeToTitleCase } from "@/utils/formatters";
 import { createClient } from "@/utils/supabase/client";

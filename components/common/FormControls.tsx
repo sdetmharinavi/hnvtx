@@ -1,160 +1,205 @@
-// components/common/FormControls.tsx
+"use client";
 
-import { Control, Controller, FieldError, FieldErrorsImpl, Merge, UseFormRegister } from "react-hook-form";
+import { Control, Controller, FieldError, FieldErrorsImpl, Merge, UseFormRegister, Path, FieldValues } from "react-hook-form";
 import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
+import { Input } from "@/components/common/ui/Input";
+import { Textarea } from "@/components/common/ui/textarea/Textarea";
+import { Label, Switch } from "@/components/common/ui";
 
-// --- OPTIMIZED: Reusable Input Component using register ---
-interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  name: string;
-  // Pass the register function from useForm
-  register: UseFormRegister<any>;
-  label: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
-}
+// --- TYPE DEFINITIONS for Generic Components ---
 
-export const FormInput: React.FC<FormInputProps> = ({ name, register, label, error, type, ...props }) => {
-  // Special handling for date and number inputs
-  const registerOptions =
-    type === "date"
-      ? {
-          valueAsDate: true, // return Date object
-          setValueAs: (value: string) => (value ? new Date(value) : null),
-        }
-      : type === "number"
-      ? {
-          valueAsNumber: true, // ensure number is passed to RHF
-          setValueAs: (value: string) => (value === "" || value === null ? undefined : Number(value)),
-        }
-      : {};
-
-  return (
-    <div>
-      <label htmlFor={name} className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'>
-        {label} {props.required && "*"}
-      </label>
-      <input
-        // Spread the result of the register function with date-specific options
-        {...register(name, registerOptions)}
-        {...props}
-        type={type}
-        id={name}
-        className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 
-          ${error ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-600 focus:ring-blue-500"} 
-          dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600`}
-      />
-      {error && <p className='mt-1 text-sm text-red-500'>{(error as FieldError).message}</p>}
-    </div>
-  );
-};
-
-// --- Alternative: Using Controller for more complex date handling ---
-interface FormDateInputProps {
-  name: string;
-  control: Control<any>;
+type BaseProps<T extends FieldValues> = {
+  name: Path<T>;
   label: string;
   error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
   required?: boolean;
-  placeholder?: string;
+  className?: string;
+  labelClassName?: string;
+};
+
+// --- FORM INPUT COMPONENT ---
+
+interface FormInputProps<T extends FieldValues> extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
+  register: UseFormRegister<T>;
 }
 
-export const FormDateInput: React.FC<FormDateInputProps> = ({ name, control, label, error, required, placeholder }) => {
+export function FormInput<T extends FieldValues>({
+  name,
+  register,
+  label,
+  error,
+  type = 'text',
+  className,
+  labelClassName,
+  ...props
+}: FormInputProps<T>) {
   return (
-    <div>
-      <label htmlFor={name} className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'>
-        {label} {required && "*"}
-      </label>
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
+      <Input
+        id={name}
+        type={type}
+        error={typeof error?.message === 'string' ? error.message : undefined}
+        {...props}
+        {...register(name, {
+            ...(type === 'number' && { valueAsNumber: true }),
+            ...(type === 'date' && {
+              setValueAs: (v) => (v ? new Date(v) : null),
+            }),
+        })}
+      />
+    </div>
+  );
+}
+
+// --- FORM TEXTAREA COMPONENT ---
+
+interface FormTextareaProps<T extends FieldValues> extends BaseProps<T>, Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'name' | 'value' | 'onChange'> {
+  register?: UseFormRegister<T>;
+  control?: Control<T>;
+}
+
+export function FormTextarea<T extends FieldValues>({ name, register, control, label, error, className, labelClassName, ...props }: FormTextareaProps<T>) {
+  return (
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
+      {control ? (
+        <Controller
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              id={name}
+              value={(field.value as string) ?? ''}
+              onChange={(_e, val) => field.onChange(val)}
+              onBlur={field.onBlur}
+              error={!!error}
+              errorMessage={typeof error?.message === 'string' ? error.message : undefined}
+              {...props}
+            />
+          )}
+        />
+      ) : (
+        <Textarea
+          id={name}
+          error={!!error}
+          errorMessage={typeof error?.message === 'string' ? error.message : undefined}
+          {...props}
+        />
+      )}
+    </div>
+  );
+}
+
+// --- FORM SEARCHABLE SELECT COMPONENT ---
+
+interface FormSearchableSelectProps<T extends FieldValues> extends BaseProps<T> {
+  control: Control<T>;
+  options: Option[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  clearable?: boolean;
+}
+
+export function FormSearchableSelect<T extends FieldValues>({
+  name,
+  control,
+  label,
+  options,
+  error,
+  className,
+  labelClassName,
+  ...props
+}: FormSearchableSelectProps<T>) {
+  return (
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
       <Controller
         name={name}
         control={control}
-        defaultValue={null}
+        render={({ field }) => (
+          <SearchableSelect
+            {...props}
+            value={field.value as string ?? ""}
+            onChange={(value) => field.onChange(value === "" ? null : value)}
+            options={options}
+            error={!!error}
+          />
+        )}
+      />
+      {error && (
+        <p className='mt-1 text-sm text-red-500'>
+          {typeof error?.message === 'string' ? error.message : null}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// --- FORM DATE INPUT COMPONENT ---
+
+interface FormDateInputProps<T extends FieldValues> extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
+    control: Control<T>;
+}
+
+export function FormDateInput<T extends FieldValues>({ name, control, label, error, className, labelClassName, ...props }: FormDateInputProps<T>) {
+  return (
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
+      <Controller
+        name={name}
+        control={control}
         render={({ field }) => {
-          // Convert the value to a Date object if it's a string
-          const dateValue = field.value 
-            ? typeof field.value === 'string' 
-              ? new Date(field.value) 
-              : field.value
-            : null;
-            
+          // Handle both Date objects and string representations from the database
+          const dateValue = field.value
+            ? new Date(field.value).toISOString().split("T")[0]
+            : "";
           return (
-            <input
-              type='date'
+            <Input
               id={name}
-              value={dateValue ? dateValue.toISOString().split("T")[0] : ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                field.onChange(value || null);
-              }}
+              type="date"
+              {...props}
+              value={dateValue}
+              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
               onBlur={field.onBlur}
-              placeholder={placeholder}
-              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 
-                ${error ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-600 focus:ring-blue-500"} 
-                dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600`}
+              error={typeof error?.message === 'string' ? error.message : undefined}
             />
           );
         }}
       />
-      {error && <p className='mt-1 text-sm text-red-500'>{(error as FieldError).message}</p>}
     </div>
   );
-};
-
-// --- OPTIMIZED: Reusable Textarea Component using register ---
-interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  name: string;
-  register: UseFormRegister<any>;
-  label: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
 }
 
-export const FormTextarea: React.FC<FormTextareaProps> = ({ name, register, label, error, ...props }) => (
-  <div>
-    <label htmlFor={name} className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'>
-      {label}
-    </label>
-    <textarea
-      {...register(name)}
-      {...props}
-      id={name}
-      className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 
-        ${error ? "border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-gray-600 focus:ring-blue-500"} 
-        dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600`}
-    />
-    {error && <p className='mt-1 text-sm text-red-500'>{(error as FieldError).message}</p>}
-  </div>
-);
+// --- FORM SWITCH COMPONENT ---
 
-// --- CORRECT: Wrapper for SearchableSelect using Controller ---
-
-interface FormSearchableSelectProps {
-  name: string;
-  control: Control<any>;
-  label: string;
-  options: Option[];
-  placeholder?: string;
-  searchPlaceholder?: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
-  [key: string]: any;
+interface FormSwitchProps<T extends FieldValues> extends BaseProps<T> {
+    control: Control<T>;
+    description?: string;
 }
 
-export const FormSearchableSelect: React.FC<FormSearchableSelectProps> = ({ name, control, label, options, error, ...props }) => (
-  <div>
-    <label className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'>{label}</label>
-    <Controller
-      name={name}
-      control={control}
-      defaultValue={"" as any}
-      render={({ field }) => (
-        <SearchableSelect
-          options={options}
-          value={typeof field.value === "number" ? String(field.value) : field.value ?? ""}
-          onChange={(value) => field.onChange(value === "" ? null : value)}
-          clearable={true}
-          className='w-full'
-          error={!!error}
-          {...props}
-        />
-      )}
-    />
-    {error && <p className='mt-1 text-sm text-red-500'>{(error as FieldError).message}</p>}
-  </div>
-);
+export function FormSwitch<T extends FieldValues>({ name, control, label, error, description, className }: FormSwitchProps<T>) {
+  return (
+    <div className={className}>
+       <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+            <div className="flex items-center space-x-2">
+                <Switch
+                    id={name}
+                    checked={!!field.value}
+                    onChange={(checked: boolean) => field.onChange(checked)}
+                />
+                <div>
+                    <Label htmlFor={name}>{label}</Label>
+                    {description && <p className="text-xs text-gray-500">{description}</p>}
+                </div>
+            </div>
+        )}
+      />
+      {error && <p className='mt-1 text-sm text-red-500'>{typeof error?.message === 'string' ? error.message : null}</p>}
+    </div>
+  );
+}
