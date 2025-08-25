@@ -2,35 +2,30 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { TableName, TableInsert } from "@/hooks/database";
+import { TableNames } from "@/config/helper-types";
+import { Tables } from "@/types/supabase-types";
 
-// ... (interfaces remain the same)
-export interface UploadColumnMapping<T extends TableName> {
+export interface UploadColumnMapping<T extends TableNames> {
   excelHeader: string;
-  dbKey: keyof TableInsert<T> & string;
+  dbKey: keyof Tables<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
-export interface UploadConfig<T extends TableName> {
+export interface UploadConfig<T extends TableNames> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
-  conflictColumn?: keyof TableInsert<T> & string;
+  conflictColumn?: keyof Tables<T> & string;
   isUploadEnabled: boolean;
 }
 
 interface UploadConfigState {
-  configs: Record<string, UploadConfig<TableName>>;
-  setUploadConfig: <T extends TableName>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<TableName> | undefined;
+  configs: Record<string, UploadConfig<TableNames>>;
+  setUploadConfig: <T extends TableNames>(pageKey: string, config: UploadConfig<T>) => void;
+  getUploadConfig: (pageKey: string) => UploadConfig<TableNames> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
 
-
-// =================================================================
-// THE FIX IS HERE: Swap the order of 'persist' and 'devtools'
-// It should be `persist(devtools(...))`
-// =================================================================
 export const useUploadConfigStore = create<UploadConfigState>()(
   persist( // `persist` should be the outer wrapper
     devtools( // `devtools` should be the inner wrapper

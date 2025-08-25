@@ -1,55 +1,18 @@
-// config/table-column-keys.ts
-import { Database, Tables } from "@/types/supabase-types";
+import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
+import {
+  AllColumnKeys,
+  ColumnMeta,
+  ColumnTransform,
+  GenericRow,
+  TableMetaMap,
+  TableName,
+  TableOrViewName,
+  UploadMetaMap,
+  UploadTableMeta,
+} from "@/config/helper-types";
+import { Tables } from "@/types/supabase-types";
 
-// NOTE: We need to import the ViewName type from the hooks that define it.
-// Assuming it's in a file like 'queries-type-helpers.ts' or similar.
-// If it's not exported, you can define it here as shown.
-export type ViewName = keyof Database["public"]["Views"];
-export type TableName = keyof Database["public"]["Tables"];
-export type TableOrViewName = TableName | ViewName;
 
-// A generic Row type helper that works for both tables and views
-export type GenericRow<T extends TableOrViewName> = T extends TableName
-  ? Tables<T>
-  : T extends ViewName
-  ? Database["public"]["Views"][T]["Row"]
-  : never;
-
-// This Mapped Type now correctly includes both Tables and Views.
-type AllColumnKeys = {
-  [K in TableName]: (keyof Tables<K> & string)[];
-} & {
-  // Add a mapped type for Views. This merges the view keys into the type.
-  [K in ViewName]: (keyof Database["public"]["Views"][K]["Row"] & string)[];
-};
-
-// -----------------------------
-// Column meta and builders (SSOT)
-// -----------------------------
-
-type ExcelFormat = "text" | "number" | "date" | "currency" | "percentage";
-type ColumnTransform = (value: unknown) => unknown;
-
-export type ColumnMeta = {
-  title?: string;
-  excelHeader?: string;
-  excelFormat?: ExcelFormat;
-  transform?: ColumnTransform;
-};
-
-type TableMetaMap = {
-  [K in TableName]?: Partial<Record<keyof Tables<K> & string, ColumnMeta>>;
-};
-
-export type UploadTableMeta<T extends TableName> = {
-  uploadType: "insert" | "upsert";
-  conflictColumn?: keyof Tables<T> & string;
-  isUploadEnabled?: boolean;
-};
-
-type UploadMetaMap = {
-  [K in TableName]?: UploadTableMeta<K>;
-};
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -96,210 +59,6 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
   },
 };
 
-function toTitleCase(str: string): string {
-  return str
-    .replace(/_/g, " ")
-    .replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
-}
-
-// Build UI column configs (lightweight structure; consumer can enrich widths/formats)
-export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
-  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<
-    string,
-    ColumnMeta
-  >;
-  return keys.map((key) => {
-    const m = meta[key] || {};
-    const title = m.title ?? toTitleCase(key);
-    return {
-      key,
-      dataIndex: key,
-      title,
-      excelFormat: m.excelFormat,
-    };
-  });
-}
-
-// Build upload config from SSOT
-export function buildUploadConfig<T extends TableName>(tableName: T) {
-  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof Tables<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<
-    string,
-    ColumnMeta
-  >;
-  const tableMeta = (UPLOAD_TABLE_META[tableName] || {
-    uploadType: "upsert",
-  }) as UploadTableMeta<T>;
-
-  const columnMapping = keys.map((key) => {
-    const m = meta[key] || {};
-    const excelHeader = m.excelHeader ?? toTitleCase(key);
-    // Auto-infer transforms if not explicitly provided
-    let transform = m.transform as ColumnTransform | undefined;
-    if (!transform) {
-      const k = String(key).toLowerCase();
-      if (k.endsWith("_at") || k.endsWith("_on") || k.includes("date")) {
-        transform = toPgDate;
-      } else if (
-        k.startsWith("is_") ||
-        k.startsWith("has_") ||
-        k.startsWith("can_") ||
-        k.includes("enabled") ||
-        k.includes("active") ||
-        k === "status"
-      ) {
-        transform = toPgBoolean;
-      }
-    }
-    return {
-      excelHeader,
-      dbKey: key,
-      transform,
-    };
-  });
-
-  return {
-    tableName,
-    columnMapping,
-    uploadType: tableMeta.uploadType,
-    conflictColumn: tableMeta.conflictColumn,
-    isUploadEnabled: tableMeta.isUploadEnabled ?? true,
-  };
-}
-
-// Add all tables and views to this central constant
-export const TABLE_NAMES = {
-  // Tables
-  user_profiles: "user_profiles",
-  employees: "employees",
-  lookup_types: "lookup_types",
-  rings: "rings",
-  employee_designations: "employee_designations",
-  maintenance_areas: "maintenance_areas",
-  ofc_cables: "ofc_cables",
-  ofc_connections: "ofc_connections",
-  nodes: "nodes",
-  systems: "systems",
-  cpan_connections: "cpan_connections",
-  cpan_systems: "cpan_systems",
-  fiber_joint_connections: "fiber_joint_connections",
-  fiber_joints: "fiber_joints",
-  logical_fiber_paths: "logical_fiber_paths",
-  maan_connections: "maan_connections",
-  maan_systems: "maan_systems",
-  management_ports: "management_ports",
-  sdh_connections: "sdh_connections",
-  sdh_node_associations: "sdh_node_associations",
-  sdh_systems: "sdh_systems",
-  system_connections: "system_connections",
-  user_activity_logs: "user_activity_logs",
-  vmux_connections: "vmux_connections",
-  vmux_systems: "vmux_systems",
-
-  // Views
-  v_cable_utilization: "v_cable_utilization",
-  v_end_to_end_paths: "v_end_to_end_paths",
-  v_nodes_complete: "v_nodes_complete",
-  v_ofc_cables_complete: "v_ofc_cables_complete",
-  v_ofc_connections_complete: "v_ofc_connections_complete",
-  v_system_connections_complete: "v_system_connections_complete",
-  v_systems_complete: "v_systems_complete",
-  v_user_profiles_extended: "v_user_profiles_extended",
-} as const;
-
-export type CurrentTableOrViewName = keyof typeof TABLE_NAMES;
-
-// Helper: normalize various Excel/CSV date representations to 'YYYY-MM-DD' or null
-export const toPgDate = (value: unknown): string | null => {
-  if (value === null || value === undefined) return null;
-  // Treat empty string as null to avoid Postgres date parse errors
-  if (typeof value === "string") {
-    const v = value.trim();
-    if (v === "") return null;
-    // If already in YYYY-MM-DD, return as-is
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-
-    // If the string is a numeric-like Excel serial, treat it as such
-    if (/^\d+(?:\.\d+)?$/.test(v)) {
-      const num = parseFloat(v);
-      if (!isNaN(num)) {
-        const ms = Math.round((num - 25569) * 86400 * 1000);
-        const d = new Date(ms);
-        if (!isNaN(d.getTime())) {
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, "0");
-          const dd = String(d.getDate()).padStart(2, "0");
-          return `${yyyy}-${mm}-${dd}`;
-        }
-      }
-    }
-
-    // Handle common D/M/Y or M/D/Y with optional time "DD/MM/YYYY HH:MM:SS" or "MM/DD/YYYY HH:MM:SS"
-    const dmYTime =
-      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
-    const match = v.match(dmYTime);
-    if (match) {
-      const d1 = parseInt(match[1], 10);
-      const d2 = parseInt(match[2], 10);
-      const yyyy = parseInt(match[3], 10);
-      // Disambiguate: if first part > 12 -> DD/MM/YYYY; if second part > 12 -> MM/DD/YYYY; otherwise assume DD/MM/YYYY (common in India)
-      const isDMY = d1 > 12 || (d2 <= 12 && d1 <= 12);
-      const dd = String(isDMY ? d1 : d2).padStart(2, "0");
-      const mm = String(isDMY ? d2 : d1).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-
-    // Fallback to Date parsing for other formats
-    const d = new Date(v);
-    if (!isNaN(d.getTime())) {
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-    return null;
-  }
-  // Excel serial number dates
-  if (typeof value === "number") {
-    // Excel epoch (days since 1899-12-30). Multiply by ms per day.
-    const ms = Math.round((value - 25569) * 86400 * 1000);
-    const d = new Date(ms);
-    if (!isNaN(d.getTime())) {
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-    return null;
-  }
-  // Date object
-  if (value instanceof Date && !isNaN(value.getTime())) {
-    const yyyy = value.getFullYear();
-    const mm = String(value.getMonth() + 1).padStart(2, "0");
-    const dd = String(value.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  return null;
-};
-
-// Helper: normalize boolean-like values to true/false or null
-export const toPgBoolean = (value: unknown): boolean | null => {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") {
-    if (value === 1) return true;
-    if (value === 0) return false;
-  }
-  if (typeof value === "string") {
-    const v = value.trim().toLowerCase();
-    if (v === "") return null;
-    if (["true", "t", "1", "yes", "y"].includes(v)) return true;
-    if (["false", "f", "0", "no", "n"].includes(v)) return false;
-  }
-  return null;
-};
-
 // Per-table column metadata for UI/export and upload (only override where needed)
 export const TABLE_COLUMN_META: TableMetaMap = {
   employees: {
@@ -344,6 +103,71 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     status: { transform: toPgBoolean },
   },
 };
+
+  // Build UI column configs (lightweight structure; consumer can enrich widths/formats)
+  export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
+    const keys = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[];
+    const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<
+      string,
+      ColumnMeta
+    >;
+    return keys.map((key) => {
+      const m = meta[key] || {};
+      const title = m.title ?? toTitleCase(key);
+      return {
+        key,
+        dataIndex: key,
+        title,
+        excelFormat: m.excelFormat,
+      };
+    });
+  }
+  // Build upload config from SSOT
+  export function buildUploadConfig<T extends TableName>(tableName: T) {
+    const keys = TABLE_COLUMN_KEYS[tableName] as (keyof Tables<T> & string)[];
+    const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<
+      string,
+      ColumnMeta
+    >;
+    const tableMeta = (UPLOAD_TABLE_META[tableName] || {
+      uploadType: "upsert",
+    }) as UploadTableMeta<T>;
+  
+    const columnMapping = keys.map((key) => {
+      const m = meta[key] || {};
+      const excelHeader = m.excelHeader ?? toTitleCase(key);
+      // Auto-infer transforms if not explicitly provided
+      let transform = m.transform as ColumnTransform | undefined;
+      if (!transform) {
+        const k = String(key).toLowerCase();
+        if (k.endsWith("_at") || k.endsWith("_on") || k.includes("date")) {
+          transform = toPgDate;
+        } else if (
+          k.startsWith("is_") ||
+          k.startsWith("has_") ||
+          k.startsWith("can_") ||
+          k.includes("enabled") ||
+          k.includes("active") ||
+          k === "status"
+        ) {
+          transform = toPgBoolean;
+        }
+      }
+      return {
+        excelHeader,
+        dbKey: key,
+        transform,
+      };
+    });
+  
+    return {
+      tableName,
+      columnMapping,
+      uploadType: tableMeta.uploadType,
+      conflictColumn: tableMeta.conflictColumn,
+      isUploadEnabled: tableMeta.isUploadEnabled ?? true,
+    };
+  }
 
 /**
  * The single source of truth for the default columns to be displayed for each table.
@@ -756,7 +580,7 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "status",
     "system_id",
     "system_name",
-    "updated_at"
+    "updated_at",
   ],
   v_system_connections_complete: [
     "id",
@@ -854,3 +678,50 @@ export const TABLE_COLUMN_KEYS: AllColumnKeys = {
     "last_activity_period",
   ],
 };
+
+// Separate tables and views for better type safety
+export const TABLES = {
+  user_profiles: "user_profiles",
+  employees: "employees",
+  lookup_types: "lookup_types",
+  rings: "rings",
+  employee_designations: "employee_designations",
+  maintenance_areas: "maintenance_areas",
+  ofc_cables: "ofc_cables",
+  ofc_connections: "ofc_connections",
+  nodes: "nodes",
+  systems: "systems",
+  cpan_connections: "cpan_connections",
+  cpan_systems: "cpan_systems",
+  fiber_joint_connections: "fiber_joint_connections",
+  fiber_joints: "fiber_joints",
+  logical_fiber_paths: "logical_fiber_paths",
+  maan_connections: "maan_connections",
+  maan_systems: "maan_systems",
+  management_ports: "management_ports",
+  sdh_connections: "sdh_connections",
+  sdh_node_associations: "sdh_node_associations",
+  sdh_systems: "sdh_systems",
+  system_connections: "system_connections",
+  user_activity_logs: "user_activity_logs",
+  vmux_connections: "vmux_connections",
+  vmux_systems: "vmux_systems",
+} as const;
+
+// Define views separately
+export const VIEWS = {
+  v_cable_utilization: "v_cable_utilization",
+  v_end_to_end_paths: "v_end_to_end_paths",
+  v_nodes_complete: "v_nodes_complete",
+  v_ofc_cables_complete: "v_ofc_cables_complete",
+  v_ofc_connections_complete: "v_ofc_connections_complete",
+  v_system_connections_complete: "v_system_connections_complete",
+  v_systems_complete: "v_systems_complete",
+  v_user_profiles_extended: "v_user_profiles_extended",
+} as const;
+
+// For backward compatibility, export TABLE_NAMES as a union of tables and views
+export const TABLE_NAMES = {
+  ...TABLES,
+  ...VIEWS,
+} as const;

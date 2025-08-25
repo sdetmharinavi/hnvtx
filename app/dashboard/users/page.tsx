@@ -7,7 +7,6 @@ import {
   useIsSuperAdmin,
   useAdminUserOperations,
 } from "@/hooks/useAdminUsers";
-import { getUserTableColumns } from "@/components/users/UserTableColumns";
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
 import UserDetailsModal from "@/components/users/UserDetailsModal";
@@ -28,6 +27,10 @@ import { createStandardActions } from "@/components/table/action-helpers";
 import UserProfileEditModal from "@/components/users/UserProfileEditModal";
 import { UserProfileFormData } from "@/schemas";
 import { UserProfileData } from "@/components/users/user-types";
+import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
+import { formatDate } from "@/utils/formatters";
+import Image from "next/image";
+import StatusBadge from "@/components/common/ui/status/StatusBadge";
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
@@ -86,16 +89,40 @@ const AdminUsersPage = () => {
 
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
-  // --- MEMOIZED VALUES ---
-  const columns = useMemo(() => getUserTableColumns(), []);
+
+  const columns = useDynamicColumnConfig("v_user_profiles_extended", {
+    omit: ["id", "created_at", "updated_at","auth_updated_at","email_confirmed_at","raw_user_meta_data","raw_app_meta_data","phone_confirmed_at","first_name","last_name","is_phone_verified","computed_status"],
+    overrides: {
+      "last_sign_in_at": {
+        render: (value) => {
+          return formatDate(value as string, { format: "dd-mm-yyyy" })
+        }
+      },
+      "status": {
+        render: (value) => {
+          return <StatusBadge status={value as boolean} />
+        }
+      },
+      "date_of_birth": {
+        render: (value) => {
+          return formatDate(value as string, { format: "dd-mm-yyyy" })
+        }
+      },
+      "avatar_url": {
+        render: (value) => {
+          return value ? <Image src={value as string} alt="Avatar" className="w-10 h-10 rounded-full" width={40} height={40} /> : <Image src="/default-avatar.png" alt="Avatar" className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700" width={40} height={40} />
+        }
+      }
+    }
+  })
+
+  console.log(columns)
   const tableActions = useMemo(
     () =>
       createStandardActions<UserProfileData>({
-        // <-- Specify the View type here
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
-        // Example of custom logic using the view data
         canDelete: (record) => !record.is_super_admin,
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
@@ -204,7 +231,6 @@ const AdminUsersPage = () => {
         loading={isLoading || isOperationLoading}
         actions={tableActions}
         selectable
-        // onRowSelect={(rows) => setSelectedUserIds(rows.map(r => r.id).filter((id): id is string => !!id))}
         onRowSelect={(rows) => {
           // Filter out any rows where id is null
           const validRows = rows.filter(

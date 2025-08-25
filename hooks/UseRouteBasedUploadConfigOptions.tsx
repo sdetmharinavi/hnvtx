@@ -6,24 +6,21 @@ import {
   useUploadConfigStore,
   UploadConfig,
 } from "@/stores/useUploadConfigStore";
+import { useCurrentTableName } from "./useCurrentTableName";
+import { TableNames } from "@/config/helper-types";
 import { buildUploadConfig } from "@/config/table-column-keys";
-import {
-  useCurrentTableName,
-  UploadConfigTableName,
-} from "./useCurrentTableName";
-import { TableName } from "./database";
 
-interface UseRouteBasedUploadConfigOptions {
-  tableName?: UploadConfigTableName;
+export interface UseRouteBasedUploadConfigOptions {
+  tableName?: TableNames;
   autoSetConfig?: boolean;
-  customConfig?: Partial<UploadConfig<UploadConfigTableName>>;
+  customConfig?: Partial<UploadConfig<TableNames>>;
 }
 
 export const useRouteBasedUploadConfig = (
   options: UseRouteBasedUploadConfigOptions = {}
 ) => {
   const { tableName, autoSetConfig = true, customConfig } = options;
-  const previousTableNameRef = useRef<UploadConfigTableName | null>(null);
+  const previousTableNameRef = useRef<TableNames | null>(null);
 
   // Get current table name from the new hook
   const currentTableName = useCurrentTableName(tableName);
@@ -44,12 +41,12 @@ export const useRouteBasedUploadConfig = (
 
     // Set new config if applicable
     if (autoSetConfig && currentTableName) {
-      const generated = buildUploadConfig(currentTableName as TableName);
+      const generated = buildUploadConfig(currentTableName);
       const finalConfig = {
         ...generated,
         ...customConfig,
-      } as UploadConfig<UploadConfigTableName>;
-      setUploadConfig(currentTableName as string, finalConfig);
+      } as UploadConfig<TableNames>;
+      setUploadConfig(currentTableName, finalConfig);
     }
 
     // Update the ref with current table name
@@ -71,7 +68,7 @@ export const useRouteBasedUploadConfig = (
 
   return {
     currentTableName,
-    config: getUploadConfig((currentTableName as string) || ""),
+    config: currentTableName ? getUploadConfig(currentTableName) : undefined,
   };
 };
 

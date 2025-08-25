@@ -3,7 +3,7 @@ import { UserProfileData } from "@/components/users/user-types";
 import { formatDate, formatPhoneNumber } from "@/utils/formatters";
 import { UserDisplay } from "./UserDisplay";
 import RoleBadge from "@/components/users/RoleBadge";
-import StatusBadge from "@/components/users/StatusBadge";
+import StatusBadge from "@/components/common/ui/StatusBadge";
 import { UserRole } from "@/types/user-roles";
 
 export const getUserTableColumns = (): Column<UserProfileData>[] => [

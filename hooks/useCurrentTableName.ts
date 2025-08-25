@@ -1,12 +1,9 @@
 // hooks/useCurrentTableName.ts
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { TABLE_NAMES } from "@/hooks/defaultUploadConfigs";
+import { TableNames } from "@/config/helper-types";
 
-// Define a type for the table names that have upload configurations
-export type UploadConfigTableName = keyof typeof TABLE_NAMES;
-
-export const useCurrentTableName = (tableName?: UploadConfigTableName): UploadConfigTableName | null => {
+export const useCurrentTableName = (tableName?: TableNames): TableNames | null => {
   const pathname = usePathname();
 
   return useMemo(() => {
@@ -26,29 +23,59 @@ export const useCurrentTableName = (tableName?: UploadConfigTableName): UploadCo
     // Map route segments to table names
     switch (routeSegment) {
       case "users":
-        return TABLE_NAMES.user_profiles;
+        return "user_profiles";
       case "employees":
-        return TABLE_NAMES.employees;
+        return "employees";
       case "categories":
-        return TABLE_NAMES.lookup_types;
+        return "lookup_types";
       case "designations":
-        return TABLE_NAMES.employee_designations;
+        return "employee_designations";
       case "rings":
-        return TABLE_NAMES.rings;
+        return "rings";
       case "maintenance-areas":
-        return TABLE_NAMES.maintenance_areas;
+        return "maintenance_areas";
       case "lookup":
-        return TABLE_NAMES.lookup_types;
+        return "lookup_types";
       case "ofc":
         // Check if there's a third segment (ID) after ofc
         const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
-        return hasId ? TABLE_NAMES.ofc_connections : TABLE_NAMES.ofc_cables;
+        return hasId ? "ofc_connections" : "ofc_cables";
       case "ofc_connections":
-        return TABLE_NAMES.ofc_connections;
+        return "ofc_connections";
       case "nodes":
-        return TABLE_NAMES.nodes;
+        return "nodes";
       case "systems":
-        return TABLE_NAMES.systems;
+        return "systems";
+      case "cpan":
+        return "cpan_systems";
+      case "cpan_connections":
+        return "cpan_connections";
+      case "fiber-joints":
+        return "fiber_joints";
+      case "fiber-joint-connections":
+        return "fiber_joint_connections";
+      case "logical-fiber-paths":
+        return "logical_fiber_paths";
+      case "maan":
+        return "maan_systems";
+      case "maan_connections":
+        return "maan_connections";
+      case "management-ports":
+        return "management_ports";
+      case "sdh":
+        return "sdh_systems";
+      case "sdh_connections":
+        return "sdh_connections";
+      case "sdh_node_associations":
+        return "sdh_node_associations";
+      case "system-connections":
+        return "system_connections";
+      case "user-activity-logs":
+        return "user_activity_logs";
+      case "vmux":
+        return "vmux_systems";
+      case "vmux_connections":
+        return "vmux_connections";
       default:
         return null;
     }
