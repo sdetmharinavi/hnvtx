@@ -5,6 +5,8 @@ import { DataTableProps } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
+import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
+ 
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
@@ -21,6 +23,7 @@ interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTablePr
   onCellEdit: (record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => void;
   saveCellEdit: () => void;
   cancelCellEdit: () => void;
+  isLoading: boolean;
 }
 
 interface TableRowProps<T extends AuthTableOrViewName> extends Omit<TableBodyProps<T>, 'processedData' | 'loading' | 'emptyText'> {
@@ -51,7 +54,8 @@ function TableRowBase<T extends AuthTableOrViewName>({
     onRowSelect,
     onCellEdit,
     saveCellEdit,
-    cancelCellEdit
+    cancelCellEdit,
+    isLoading,
 }: TableRowProps<T>) {
     const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +65,8 @@ function TableRowBase<T extends AuthTableOrViewName>({
             editInputRef.current?.select();
         }
     }, [editingCell, rowIndex]);
+
+    // Loading UI is handled at the TableBodyBase level.
     
     return (
         <tr
@@ -174,8 +180,12 @@ function TableBodyBase<T extends AuthTableOrViewName>({
       <tbody>
         <tr>
           <td colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)} className={rest.bordered ? "border-b border-gray-200 dark:border-gray-700" : ""}>
-            <div className='flex items-center justify-center py-12'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+            <div className='py-6'>
+              <TableSkeleton
+                rows={processedData.length || 5}
+                columns={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)}
+                showHeader={false}
+              />
             </div>
           </td>
         </tr>
