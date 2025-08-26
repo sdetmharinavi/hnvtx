@@ -1,6 +1,6 @@
-import { Column } from "@/hooks/database/excel-queries";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
-import StatusBadge from "@/components/common/ui/badges/StatusBadge";
+import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 
 // Columns for employees table using DataTable component
 // Note: We type columns against Row<"employees">; relation fields are accessed via custom render using any casts.

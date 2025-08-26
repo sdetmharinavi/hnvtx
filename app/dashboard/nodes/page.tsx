@@ -2,83 +2,166 @@
 
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { NodesHeader } from "@/components/nodes/NodesHeader";
 import { NodesFilters } from "@/components/nodes/NodesFilters";
 import { getNodesTableColumns } from "@/components/nodes/NodesTableColumns";
-import { NodeFormModal, NodeRow } from "@/components/nodes/NodeFormModal";
+import { NodeFormModal } from "@/components/nodes/NodeFormModal";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { Row, useTableQuery } from "@/hooks/database";
-import { useCrudPage } from "@/hooks/useCrudPage";
-import { TableAction } from "@/components/table/datatable-types";
-import { FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { useTableWithRelations } from "@/hooks/database";
+import { FiCpu } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from "@/hooks/useCrudManager";
+import { createStandardActions } from "@/components/table/action-helpers";
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from "@/components/common/PageHeader";
+import { toast } from "sonner";
+import { NodeRowsWithRelations } from "@/types/relational-row-types";
+
+// 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
+const useNodesData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<NodeRowsWithRelations> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  const supabase = createClient();
+
+  const { data, isLoading, error, refetch } = useTableWithRelations(
+    supabase,
+    "nodes",
+    [
+      "node_type:node_type_id(name)",
+      "ring:ring_id(name)",
+      "maintenance_terminal:maintenance_terminal_id(name)",
+    ],
+    {
+      filters: {
+        name: { operator: "ilike", value: `%${searchQuery}%` },
+        ...filters,
+      },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+      includeCount: true,
+      orderBy: [{ column: "name", ascending: true }],
+    }
+  );
+
+  return {
+    data: data || [],
+    totalCount: data?.length || 0,
+    isLoading,
+    error,
+    refetch,
+  };
+};
 
 const NodesPage = () => {
-  
+  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
-    data: nodesData,
+    data: nodes,
     totalCount,
     isLoading,
+    // isMutating,
     error,
     refetch,
     pagination,
     search,
     filters,
-    modal,
-    actions: crudActions,
+    editModal,
+    viewModal,
+    // bulkActions,
     deleteModal,
-  } = useCrudPage({
+    actions: crudActions,
+  } = useCrudManager<"nodes", NodeRowsWithRelations>({
     tableName: "nodes",
-    relations: [
-      "node_type:node_type_id(name)",
-      "ring:ring_id(name)",
-      "maintenance_terminal:maintenance_terminal_id(name)"
-    ],
-    searchColumn: 'name',
+    dataQueryHook: useNodesData,
   });
 
-  const supabase = createClient();
-  const { data: nodeTypesData = [] } = useTableQuery(supabase, "lookup_types", {
-    filters: { category: 'NODE_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
-    orderBy: [{ column: 'name' }]
-  });
+  // 3. Extract node types from the nodes data
+  const nodeTypes = useMemo(() => {
+    const uniqueNodeTypes = new Map();
+    nodes.forEach((node) => {
+      if (node.node_type && node.node_type_id) {
+        uniqueNodeTypes.set(node.node_type_id, {
+          id: node.node_type_id,
+          name: node.node_type.name,
+        });
+      }
+    });
 
-  const nodeTypes = useMemo(() => 
-    (nodeTypesData as { id: string; name: string }[]).map(nt => ({ id: nt.id, name: nt.name })),
-    [nodeTypesData]
-  );
-  
+    return Array.from(uniqueNodeTypes.values());
+  }, [nodes]);
+
   const columns = useMemo(() => getNodesTableColumns(), []);
 
-  const tableActions = useMemo<TableAction<'nodes'>[]>(() => [
-    { key: "edit", label: "Edit", icon: <FiEdit2 />, onClick: (record) => modal.openEditModal(record) },
-    { key: "activate", label: "Activate", icon: <FiToggleRight />, hidden: (r) => !!r.status, onClick: (r) => crudActions.handleToggleStatus(r) },
-    { key: "deactivate", label: "Deactivate", icon: <FiToggleLeft />, hidden: (r) => !r.status, onClick: (r) => crudActions.handleToggleStatus(r) },
-    { key: "delete", label: "Delete", icon: <FiTrash2 />, variant: "danger", onClick: (r) => crudActions.handleDelete(r) },
-  ], [modal, crudActions]);
-  
+  const tableActions = useMemo(
+    () =>
+      createStandardActions<NodeRowsWithRelations>({
+        onEdit: editModal.openEdit,
+        onView: viewModal.open,
+        onDelete: crudActions.handleDelete,
+      }),
+    [editModal.openEdit, viewModal.open, crudActions.handleDelete]
+  );
+
+  // --- Define header content using the hook ---
+  const headerActions = useStandardHeaderActions({
+    onRefresh: () => {
+      refetch();
+      toast.success("Refreshed successfully!");
+    },
+    // onAddNew: placeholder ToDo,
+    isLoading: isLoading,
+    exportConfig: { tableName: "nodes" },
+  });
+
+  const headerStats = [
+    { value: totalCount, label: "Total Nodes" },
+    {
+      value: nodes.filter((r) => r.status).length,
+      label: "Active",
+      color: "success" as const,
+    },
+    {
+      value: nodes.filter((r) => !r.status).length,
+      label: "Inactive",
+      color: "danger" as const,
+    },
+  ];
+
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[
-      {
-        label: "Retry",
-        onClick: refetch,
-        variant: "primary",
-      },
-    ]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[
+          {
+            label: "Retry",
+            onClick: refetch,
+            variant: "primary",
+          },
+        ]}
+      />
+    );
   }
 
   return (
     <div className="mx-auto space-y-4">
-      <NodesHeader
-        onRefresh={refetch}
-        onAddNew={modal.openAddModal}
+      <PageHeader
+        title="Node Management"
+        description="Manage network nodes and their related information."
+        icon={<FiCpu />}
+        stats={headerStats}
+        actions={headerActions} // <-- Pass the generated actions
         isLoading={isLoading}
-        totalCount={totalCount}
       />
 
       <DataTable
         tableName="nodes"
-        data={nodesData as Row<"nodes">[]}
+        data={nodes}
         columns={columns}
         loading={isLoading}
         actions={tableActions}
@@ -95,26 +178,30 @@ const NodesPage = () => {
           },
         }}
         customToolbar={
-            <NodesFilters
-              searchQuery={search.searchQuery}
-              onSearchChange={search.setSearchQuery}
-              nodeTypes={nodeTypes}
-              selectedNodeType={filters.filters.node_type_id as string | undefined}
-              onNodeTypeChange={(value) => filters.setFilters(prev => ({ ...prev, node_type_id: value }))}
-            />
+          <NodesFilters
+            searchQuery={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
+            nodeTypes={nodeTypes}
+            selectedNodeType={
+              filters.filters.node_type_id as string | undefined
+            }
+            onNodeTypeChange={(value) =>
+              filters.setFilters((prev) => ({ ...prev, node_type_id: value }))
+            }
+          />
         }
       />
 
-      {modal.isModalOpen && (
-          <NodeFormModal
-            isOpen={modal.isModalOpen}
-            onClose={modal.closeModal}
-            editingNode={modal.editingRecord as NodeRow | null}
-            onCreated={crudActions.handleSave}
-            onUpdated={crudActions.handleSave}
-          />
+      {editModal.isOpen && (
+        <NodeFormModal
+          isOpen={editModal.isOpen}
+          onClose={editModal.close}
+          editingNode={editModal.record as NodeRowsWithRelations | null}
+          onCreated={crudActions.handleSave}
+          onUpdated={crudActions.handleSave}
+        />
       )}
-      
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.confirm}

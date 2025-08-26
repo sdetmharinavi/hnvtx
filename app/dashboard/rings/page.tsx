@@ -3,68 +3,149 @@
 
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { Row } from "@/hooks/database";
+import { useTableWithRelations } from "@/hooks/database";
 import { RingsFilters } from "@/components/rings/RingsFilters";
-import { RingModal, RingRow } from "@/components/rings/RingModal";
-import { useCrudPage } from "@/hooks/useCrudPage";
+import { RingModal } from "@/components/rings/RingModal";
 import { ConfirmModal } from "@/components/common/ui";
 import { createStandardActions } from "@/components/table/action-helpers";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from "@/components/common/PageHeader";
 import { GiLinkedRings } from "react-icons/gi";
 import { toast } from "sonner";
-import { RingsColumns } from "@/components/table-columns/RingsTableColumns";
-import { Database } from "@/types/supabase-types";
+import { RingsColumns } from "@/config/table-columns/RingsTableColumns";
 import { createClient } from "@/utils/supabase/client";
-import { useTableQuery } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { desiredRingColumnOrder } from "@/config/column-orders";
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from "@/hooks/useCrudManager";
+import { RingRowsWithRelations } from "@/types/relational-row-types";
 
-export type RingData = Database["public"]["Tables"]["rings"]["Row"];
+// 1. ADAPTER HOOK: Makes `useRingsData` compatible with `useCrudManager`
+const useRingsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<RingRowsWithRelations> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+  const supabase = createClient();
 
-const RingsPage = () => {
-  const {
-    data: ringsData,
+  const { data, isLoading, error, refetch } = useTableWithRelations(
+    supabase,
+    "rings",
+    [
+      "ring_type:ring_type_id(id, code)",
+      "maintenance_terminal:maintenance_terminal_id(id,name)",
+    ],
+    {
+      filters: {
+        name: { operator: "ilike", value: `%${searchQuery}%` },
+        ...filters,
+      },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+      includeCount: true, // This will include the total count
+      orderBy: [{ column: "name", ascending: true }],
+    }
+  );
+
+  // Calculate counts from the full dataset
+  const totalCount = data?.[0].total_count || 0;
+
+  return {
+    data: data || [],
     totalCount,
     isLoading,
+    error,
+    refetch,
+  };
+};
+
+const RingsPage = () => {
+  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  const {
+    data: rings,
+    totalCount,
+    isLoading,
+    // isMutating,
+    // error,
     refetch,
     pagination,
     search,
-    modal,
-    actions: crudActions,
+    // filters,
+    editModal,
+    viewModal,
+    // bulkActions,
     deleteModal,
-  } = useCrudPage({
+    actions: crudActions,
+  } = useCrudManager<"rings", RingRowsWithRelations>({
     tableName: "rings",
-    relations: [
-      "ring_type:ring_type_id(id, code)", 
-      "maintenance_terminal:maintenance_terminal_id(id,name)"
-    ],
-    searchColumn: 'name',
+    dataQueryHook: useRingsData,
   });
 
-  // Fetch lookup lists here and pass to modal
-  const supabase = createClient();
-  const { data: ringTypes = [] } = useTableQuery(supabase, "lookup_types", {
-    columns: "id,name,code",
-    filters: { category: { operator: "eq", value: "RING_TYPES" }, name: { operator: "neq", value: "DEFAULT" } },
-    orderBy: [{ column: "name", ascending: true }],
-  });
-  const { data: maintenanceAreas = [] } = useTableQuery(supabase, "maintenance_areas", {
-    columns: "id,name,code",
-    filters: { status: { operator: "eq", value: true } },
-    orderBy: [{ column: "name", ascending: true }],
-  });
+  // 3. Extract ring types from the rings data
+  const ringTypes = useMemo(() => {
+    const uniqueRingTypes = new Map();
+    rings.forEach((ring) => {
+      if (ring.ring_type && ring.ring_type_id) {
+        uniqueRingTypes.set(ring.ring_type_id, {
+          id: ring.ring_type_id,
+          name: ring.ring_type.code,
+        });
+      }
+    });
+    return Array.from(uniqueRingTypes.values());
+  }, [rings]);
+
+  // 4. Extract maintenance areas from the rings data
+  const maintenanceAreas = useMemo(() => {
+    const uniqueMaintenanceAreas = new Map();
+    rings.forEach((ring) => {
+      if (ring.maintenance_terminal && ring.maintenance_terminal_id) {
+        uniqueMaintenanceAreas.set(ring.maintenance_terminal_id, {
+          id: ring.maintenance_terminal_id,
+          name: ring.maintenance_terminal.name,
+        });
+      }
+    });
+    return Array.from(uniqueMaintenanceAreas.values());
+  }, [rings]);
 
   const columns = RingsColumns();
-  const orderedColumns = [...desiredRingColumnOrder.map((k) => columns.find((c) => c.key === k)).filter(Boolean), ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key))];
+  const orderedColumns = [
+    ...desiredRingColumnOrder
+      .map((k) => columns.find((c) => c.key === k))
+      .filter(Boolean),
+    ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
+  ];
 
-   // --- tableActions ---
-   const tableActions = useMemo(() => createStandardActions<RingData>({
-    onEdit: modal.openEditModal,
-    onToggleStatus: crudActions.handleToggleStatus,
-    onDelete: crudActions.handleDelete,
-    // You can also add custom logic, for example:
-    // canDelete: (record) => record.name !== 'CRITICAL_RING', 
-  }), [modal.openEditModal, crudActions.handleToggleStatus, crudActions.handleDelete]);
+  // --- tableActions ---
+  const tableActions = useMemo(
+    () =>
+      createStandardActions<RingRowsWithRelations>({
+        onEdit: editModal.openEdit,
+        onView: viewModal.open,
+        onDelete: crudActions.handleDelete,
+        // You can also add custom logic, for example:
+        // canDelete: (record) => record.name !== 'CRITICAL_RING',
+      }),
+    [
+      editModal.openEdit,
+      viewModal.open,
+      crudActions.handleDelete,
+    ]
+  );
+
+  const { activeCount, inactiveCount } = (rings || []).reduce(
+    (acc, ring) => {
+      if (ring.status) acc.activeCount++;
+      else acc.inactiveCount++;
+      return acc;
+    },
+    { activeCount: 0, inactiveCount: 0 }
+  );
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
@@ -72,20 +153,27 @@ const RingsPage = () => {
       await refetch();
       toast.success("Refreshed successfully!");
     },
-    onAddNew: modal.openAddModal,
+    onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: "rings" }
+    exportConfig: { tableName: "rings" },
   });
 
   const headerStats = [
     { value: totalCount, label: "Total Rings" },
-    { value: ringsData.filter(r => r.status).length, label: "Active", color: 'success' as const },
-    { value: ringsData.filter(r => !r.status).length, label: "Inactive", color: 'danger' as const },
+    {
+      value: activeCount,
+      label: "Active",
+      color: "success" as const,
+    },
+    {
+      value: inactiveCount,
+      label: "Inactive",
+      color: "danger" as const,
+    },
   ];
 
-
   return (
-    <div className='mx-auto space-y-4'>
+    <div className="mx-auto space-y-4">
       {/* Header */}
       <PageHeader
         title="Ring Management"
@@ -98,9 +186,9 @@ const RingsPage = () => {
 
       {/* Table */}
       <DataTable
-        tableName='rings'
-        data={ringsData as Row<'rings'>[]}
-        columns={orderedColumns as Column<Row<'rings'>>[]}
+        tableName="rings"
+        data={rings}
+        columns={orderedColumns as Column<RingRowsWithRelations>[]}
         loading={isLoading}
         actions={tableActions}
         pagination={{
@@ -113,13 +201,18 @@ const RingsPage = () => {
             pagination.setPageLimit(pageSize);
           },
         }}
-        customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
+        customToolbar={
+          <RingsFilters
+            searchQuery={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
+          />
+        }
       />
 
       <RingModal
-        isOpen={modal.isModalOpen}
-        onClose={modal.closeModal}
-        editingRing={modal.editingRecord as RingRow | null}
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        editingRing={editModal.record as RingRowsWithRelations | null}
         onCreated={crudActions.handleSave}
         onUpdated={crudActions.handleSave}
         ringTypes={ringTypes}
@@ -144,4 +237,3 @@ const RingsPage = () => {
 };
 
 export default RingsPage;
-

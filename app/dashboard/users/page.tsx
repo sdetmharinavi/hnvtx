@@ -16,7 +16,7 @@ import { createStandardActions } from "@/components/table/action-helpers";
 import UserProfileEditModal from "@/components/users/UserProfileEditModal";
 import { UserProfileFormData } from "@/schemas";
 import { UserProfileData } from "@/components/users/user-types";
-import { UserProfileColumns } from "@/components/table-columns/UsersTableColumns";
+import { UserProfileColumns } from "@/config/table-columns/UsersTableColumns";
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
