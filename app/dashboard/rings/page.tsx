@@ -14,6 +14,8 @@ import { GiLinkedRings } from "react-icons/gi";
 import { toast } from "sonner";
 import { RingsColumns } from "@/components/table-columns/RingsTableColumns";
 import { Database } from "@/types/supabase-types";
+import { createClient } from "@/utils/supabase/client";
+import { useTableQuery } from "@/hooks/database";
 
 export type RingData = Database["public"]["Tables"]["rings"]["Row"];
 
@@ -35,6 +37,19 @@ const RingsPage = () => {
       "maintenance_terminal:maintenance_terminal_id(id,name)"
     ],
     searchColumn: 'name',
+  });
+
+  // Fetch lookup lists here and pass to modal
+  const supabase = createClient();
+  const { data: ringTypes = [] } = useTableQuery(supabase, "lookup_types", {
+    columns: "id,name,code",
+    filters: { category: { operator: "eq", value: "RING_TYPES" }, name: { operator: "neq", value: "DEFAULT" } },
+    orderBy: [{ column: "name", ascending: true }],
+  });
+  const { data: maintenanceAreas = [] } = useTableQuery(supabase, "maintenance_areas", {
+    columns: "id,name,code",
+    filters: { status: { operator: "eq", value: true } },
+    orderBy: [{ column: "name", ascending: true }],
   });
 
   const columns = RingsColumns();
@@ -105,6 +120,8 @@ const RingsPage = () => {
         onCreated={crudActions.handleSave}
         onUpdated={crudActions.handleSave}
         data={ringsData}
+        ringTypes={ringTypes as any}
+        maintenanceAreas={maintenanceAreas as any}
       />
 
       {/* Render the confirmation modal, driven by the hook's state */}
@@ -125,3 +142,4 @@ const RingsPage = () => {
 };
 
 export default RingsPage;
+

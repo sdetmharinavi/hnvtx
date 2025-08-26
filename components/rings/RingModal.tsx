@@ -5,7 +5,7 @@ import { Modal } from "@/components/common/ui/Modal";
 import { Option } from "@/components/common/SearchableSelect";
 import { createClient } from "@/utils/supabase/client";
 import { Database, TablesInsert } from "@/types/supabase-types";
-import { useTableInsert, useTableUpdate, useTableQuery } from "@/hooks/database";
+import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { RingFormData, ringFormSchema } from "@/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,9 +22,11 @@ interface RingModalProps {
   onCreated?: (ring: RingRow) => void;
   onUpdated?: (ring: RingRow) => void;
   data?: RingRow[];
+  ringTypes: Array<{ id: string; name: string; code: string | null }>;
+  maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
 
-export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, data }: RingModalProps) {
+export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, data, ringTypes, maintenanceAreas }: RingModalProps) {
   const {
     register,
     handleSubmit,
@@ -48,15 +50,28 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
 
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
-  // Fetch ring types (from lookup_types with category RING_TYPES) and maintenance areas
-  const { data: ringTypes = [], isLoading: ringTypesLoading } = useTableQuery(supabase, "lookup_types", {
-    filters: { category: { operator: "eq", value: "RING_TYPES" }, name: { operator: "neq", value: "DEFAULT" } },
-    orderBy: [{ column: "name", ascending: true }],
-  });
-  const { data: maintenanceAreas = [], isLoading: areasLoading } = useTableQuery(supabase, "maintenance_areas", {
-    filters: { status: { operator: "eq", value: true } },
-    orderBy: [{ column: "name", ascending: true }],
-  });
+  // Memoized options for selects
+  const ringTypeOptions: Option[] = useMemo(
+    () =>
+      (ringTypes || []).map(
+        (rt) => ({
+          value: rt.id,
+          label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
+        }) as Option
+      ),
+    [ringTypes]
+  );
+
+  const maintenanceAreaOptions: Option[] = useMemo(
+    () =>
+      (maintenanceAreas || []).map(
+        (a) => ({
+          value: a.id,
+          label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
+        }) as Option
+      ),
+    [maintenanceAreas]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,13 +144,7 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
           error={errors.ring_type_id}
           disabled={submitting}
           placeholder='Select ring type'
-          options={ringTypes.map(
-            (rt) =>
-              ({
-                value: rt.id,
-                label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
-              } as Option)
-          )}
+          options={ringTypeOptions}
         />
 
         <FormSearchableSelect
@@ -145,13 +154,7 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
           error={errors.maintenance_terminal_id}
           disabled={submitting}
           placeholder='Select maintenance terminal'
-          options={maintenanceAreas.map(
-            (a) =>
-              ({
-                value: a.id,
-                label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
-              } as Option)
-          )}
+          options={maintenanceAreaOptions}
         />
 
         <FormTextarea name='description' label='Description' register={register} error={errors.description} disabled={submitting} placeholder='Optional description' />
