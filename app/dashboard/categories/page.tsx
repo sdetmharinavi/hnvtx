@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { Filters, useDeduplicated, useTableQuery } from "@/hooks/database";
+import { useDeduplicated, useTableQuery } from "@/hooks/database";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { CategoriesTable } from "@/components/categories/CategoriesTable";
 import { CategorySearch } from "@/components/categories/CategorySearch";
@@ -12,27 +12,25 @@ import { ConfirmModal } from "@/components/common/ui/Modal";
 import { ErrorDisplay } from "@/components/categories/ErrorDisplay";
 import { EmptyState } from "@/components/categories/EmptyState";
 import { LoadingState } from "@/components/categories/LoadingState";
-import {
-  Categories,
-  GroupedLookupsByCategory,
-} from "@/components/categories/categories-types";
-import { PageHeader } from "@/components/common/PageHeader";
-import { FiPlus, FiRefreshCw } from "react-icons/fi";
+import { Categories, CategoryInfo, GroupedLookupsByCategory } from "@/components/categories/categories-types";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
+import { FiLayers, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { useDelete } from "@/hooks/useDelete";
+import { formatCategoryName } from "@/components/categories/utils";
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryLookupCounts, setCategoryLookupCounts] = useState<
-    Record<string, CategoryInfo>
-  >({});
+  const [categoryLookupCounts, setCategoryLookupCounts] = useState<Record<string, CategoryInfo>>({});
+  const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
 
   const supabase = createClient();
 
-  const deleteManager = useDeleteManager({
-    tableName: "lookup_types",
-    onSuccess: handleRefresh,
-  });
+  // const deleteManager = useDeleteManager({
+  //   tableName: "lookup_types",
+  //   onSuccess: handleRefresh,
+  // });
 
   const {
     data: categoriesDeduplicated = [],
@@ -63,20 +61,26 @@ export default function CategoriesPage() {
     },
   });
 
-  const isLoading =
-    dedupLoading || groupedLookupsByCategoryLoading || deleteManager.isPending;
+  const deleteManager = useDelete({
+    tableName: "lookup_types",
+    onSuccess: () => {
+      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
+        setSelectedDesignationId(null);
+      }
+      refetchCategories();
+    },
+  });
+
+  const isLoading = dedupLoading || groupedLookupsByCategoryLoading || deleteManager.isPending;
 
   const refreshCategoryInfo = useCallback(() => {
     const counts: Record<string, CategoryInfo> = {};
     for (const category of categoriesDeduplicated) {
-      const categoryLookups =
-        groupedLookupsByCategory?.[category.category] || [];
+      const categoryLookups = groupedLookupsByCategory?.[category.category] || [];
       counts[category.category] = {
         name: category.category,
         lookupCount: categoryLookups.length,
-        hasSystemDefaults: categoryLookups.some(
-          (lookup) => lookup.is_system_default
-        ),
+        hasSystemDefaults: categoryLookups.some((lookup) => lookup.is_system_default),
       };
     }
     setCategoryLookupCounts(counts);
@@ -86,19 +90,11 @@ export default function CategoriesPage() {
     if (!isLoading) {
       refreshCategoryInfo();
     }
-  }, [
-    categoriesDeduplicated,
-    groupedLookupsByCategory,
-    isLoading,
-    refreshCategoryInfo,
-  ]);
+  }, [categoriesDeduplicated, groupedLookupsByCategory, isLoading, refreshCategoryInfo]);
 
   async function handleRefresh() {
     try {
-      await Promise.all([
-        refetchCategories(),
-        refetchGroupedLookupsByCategory(),
-      ]);
+      await Promise.all([refetchCategories(), refetchGroupedLookupsByCategory()]);
       if (!isModalOpen) {
         toast.success("Data refreshed successfully");
       }
@@ -119,8 +115,17 @@ export default function CategoriesPage() {
     // handleRefresh();
   };
 
+  const bulkDeleteManager = useDeleteManager({
+    tableName: "lookup_types",
+    onSuccess: () => {
+      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
+        setSelectedDesignationId(null);
+      }
+      refetchCategories();
+    },
+  });
   const handleDeleteCategory = (categoryToDelete: string) => {
-    deleteManager.deleteBulk({
+    bulkDeleteManager.deleteBulk({
       column: "category",
       value: categoryToDelete,
       displayName: categoryToDelete,
@@ -139,75 +144,51 @@ export default function CategoriesPage() {
 
   const filteredCategories = (categoriesDeduplicated as Categories[])?.filter(
     (category) =>
-      (category.category &&
-        category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (category.category && category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
       formatCategoryName(category as Categories)
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
   );
 
-  const serverFilters = useMemo(() => {
-    const f: Filters = {
-      // Filter to download only categories with name = "DEFAULT"
-      name: "DEFAULT",
-    };
-    return f;
-  }, []);
+  // --- Define header content using the hook ---
+  const headerActions = useStandardHeaderActions({
+    onRefresh: async () => {
+      await refetchCategories();
+      toast.success("Refreshed successfully!");
+    },
+    onAddNew: openCreateModal,
+    isLoading: isLoading,
+    exportConfig: { tableName: "lookup_types", fileName: "Categories" },
+  });
+
+  const activeCategories = categoriesDeduplicated.filter((category) => category.status);
+  const inactiveCategories = categoriesDeduplicated.filter((category) => !category.status);
+
+  const headerStats = [
+    { value: categoriesDeduplicated.length, label: "Total Categories" },
+    {
+      value: activeCategories.length,
+      label: "Active",
+      color: "success" as const,
+    },
+    {
+      value: inactiveCategories.length,
+      label: "Inactive",
+      color: "danger" as const,
+    },
+  ];
+
+  const error = dedupError || groupedLookupsByCategoryError;
+
+  if (error) {
+    return <ErrorDisplay error={error} onRetry={handleRefresh} />;
+  }
 
   return (
-    <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
-      <PageHeader
-        isLoading={isLoading}
-        exportConfig={{
-          tableName: "lookup_types",
-          filters: serverFilters,
-          maxRows: 1000,
-          customStyles: {},
-        }}
-        // Remove the built-in functionality and only use customActions
-        showExport={true}
-        showRefresh={false} // Disable built-in refresh since you have custom refresh
-        onAddNew={undefined} // Remove built-in add since you have custom add
-        customActions={[
-          {
-            label: "Add Category",
-            onClick: openCreateModal,
-            variant: "outline",
-            disabled: isLoading,
-            hideOnMobile: false,
-            hideTextOnMobile: false,
-            tooltip: "Add new category",
-            leftIcon: <FiPlus />,
-          },
-          {
-            label: "Refresh",
-            onClick: handleRefresh,
-            variant: "outline",
-            disabled: isLoading,
-            hideOnMobile: false,
-            hideTextOnMobile: false,
-            tooltip: "Refresh categories",
-            leftIcon: (
-              <FiRefreshCw
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
-            ),
-          },
-        ]}
-        countLabel="Total Categories"
-        title="Categories"
-        description="Manage categories"
-        totalCount={categoriesDeduplicated.length}
-      />
+    <div className='space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100'>
+      <PageHeader title='Categories' description='Manage categories and their related information.' icon={<FiLayers />} stats={headerStats} actions={headerActions} isLoading={isLoading} />
 
       <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-
-      {(dedupError || groupedLookupsByCategoryError) && (
-        <ErrorDisplay
-          error={dedupError || (groupedLookupsByCategoryError as Error)}
-          onRetry={handleRefresh}
-        />
-      )}
 
       {isLoading && <LoadingState />}
 
@@ -223,47 +204,29 @@ export default function CategoriesPage() {
         />
       )}
 
-      {categoriesDeduplicated.length === 0 && !isLoading && !dedupError && (
-        <EmptyState onCreate={openCreateModal} />
-      )}
+      {categoriesDeduplicated.length === 0 && !isLoading && !dedupError && <EmptyState onCreate={openCreateModal} />}
 
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
         showIcon
         closeOnBackdrop
         closeOnEscape
         loading={deleteManager.isPending}
-        size="md"
+        size='md'
       />
 
-      <CategoryModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onCategoryCreated={handleCategoryCreated}
-        editingCategory={editingCategory || ""}
-        categories={categoriesDeduplicated}
-        lookupsByCategory={groupedLookupsByCategory}
-      />
+      <CategoryModal isOpen={isModalOpen} onClose={handleModalClose} onCategoryCreated={handleCategoryCreated} editingCategory={editingCategory || ""} categories={categoriesDeduplicated} lookupsByCategory={groupedLookupsByCategory} />
     </div>
   );
 }
 
-function formatCategoryName(category: Categories): string {
-  return category.category
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
-interface CategoryInfo {
-  name: string;
-  lookupCount: number;
-  hasSystemDefaults: boolean;
-}
+
+

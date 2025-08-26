@@ -13,9 +13,10 @@ import {
   ErrorState,
 } from "@/components/lookup/LookupTypesEmptyStates";
 import { useMemo } from "react";
-import { FiPlus, FiRefreshCw } from "react-icons/fi";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FiList, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
 import { Filters } from "@/hooks/database";
+import { toast } from "sonner";
 
 export default function LookupTypesPage() {
   const {
@@ -85,50 +86,35 @@ export default function LookupTypesPage() {
       return f;
     }, []);
 
+    // --- Define header content using the hook ---
+    const headerActions = useStandardHeaderActions({
+      onRefresh: async () => {
+        await handleRefresh();
+        toast.success("Refreshed successfully!");
+      },
+      onAddNew: handleAddNew,
+      isLoading: isLoading,
+      exportConfig: { tableName: "lookup_types", fileName: "Categories" },
+    });
+
+    // --- Define header stats ---
+    const activeLookups = lookupTypes.filter((lookup) => lookup.status);
+    const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
+    const headerStats = [
+      { value: lookupTypes.length, label: "Total Lookup Types" },
+      { value: activeLookups.length, label: "Active", color: "success" as const },
+      { value: inactiveLookups.length, label: "Inactive", color: "danger" as const },
+    ];
+
   return (
     <div className="space-y-6 p-6">
       <PageHeader
-        isLoading={isLoading}
-        exportConfig={{
-          tableName: "lookup_types",
-          filters: serverFilters,
-          maxRows: 1000,
-          customStyles: {},
-        }}
-        // Remove the built-in functionality and only use customActions
-        showExport={true}
-        showRefresh={false} // Disable built-in refresh since you have custom refresh
-        onAddNew={undefined} // Remove built-in add since you have custom add
-        customActions={[
-          {
-            label: "Add Lookup Type",
-            onClick: handleAddNew,
-            variant: "outline",
-            disabled: isLoading,
-            hideOnMobile: false,
-            hideTextOnMobile: false,
-            tooltip: "Add new lookup type",
-            leftIcon: <FiPlus />,
-          },
-          {
-            label: "Refresh",
-            onClick: handleRefresh,
-            variant: "outline",
-            disabled: isLoading,
-            hideOnMobile: false,
-            hideTextOnMobile: false,
-            tooltip: "Refresh",
-            leftIcon: (
-              <FiRefreshCw
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
-            ),
-          },
-        ]}
-        countLabel="Total Lookup Types"
         title="Lookup Types"
         description="Manage lookup types"
-        totalCount={lookupTypes.length || 0}
+        icon={<FiList />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading}
       />
 
       {!hasCategories && !isLoading && (

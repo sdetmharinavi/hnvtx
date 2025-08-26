@@ -5,8 +5,8 @@ import { ConfirmModal } from "@/components/common/ui/Modal";
 import { useTableWithRelations, useTableInsert, useTableUpdate, useToggleStatus, Filters } from "@/hooks/database";
 import { TablesInsert, TablesUpdate } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
-import { EmployeeDesignation, DesignationWithRelations } from "@/components/designations/designationTypes";
-import { useDelete } from "@/components/designations/useDelete";
+import { EmployeeDesignation, DesignationWithRelations } from "@/config/designations";
+import { useDelete } from "@/hooks/useDelete";
 import { DesignationFormModal } from "@/components/designations/DesignationFormModal";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
 import { ErrorDisplay } from "@/components/common/ui";
@@ -129,7 +129,7 @@ export default function DesignationManagerPage() {
 
   return (
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden'>
-      <PageHeader title='Designation Management' description='Manage designations and their related information.' icon={<ImUserTie />} stats={headerStats} actions={headerActions} isLoading={isLoading} />
+      <PageHeader title='Designation Management' description='Manage designations and their related information.' icon={<ImUserTie />} stats={headerStats} actions={headerActions} isLoading={isLoading} className="mb-4" />
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}

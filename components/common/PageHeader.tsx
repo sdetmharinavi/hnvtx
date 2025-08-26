@@ -8,6 +8,8 @@ import { Filters, TableOrViewName, Row } from "@/hooks/database";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { Button, ButtonProps } from "@/components/common/ui/Button/Button";
 import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { formatDate } from "@/utils/formatters";
+import { cn } from "@/lib/utils";
 
 // --- TYPE DEFINITIONS ---
 
@@ -16,6 +18,7 @@ interface ExportConfig<T extends TableOrViewName> {
   filters?: Filters;
   maxRows?: number;
   columns?: (keyof Row<T> & string)[]; // Allow specifying a subset of columns for export
+  fileName?: string;
 }
 
 export interface ActionButton extends ButtonProps {
@@ -39,6 +42,7 @@ export interface PageHeaderProps {
   stats?: StatProps[];
   actions?: ActionButton[];
   isLoading?: boolean;
+  className?: string;
 }
 
 // --- SUB-COMPONENTS ---
@@ -71,10 +75,11 @@ export function PageHeader({
   stats,
   actions = [],
   isLoading = false,
+  className,
 }: PageHeaderProps) {
   
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className={cn("space-y-4 sm:space-y-6", isLoading && "opacity-50",className)}>
       {/* Header Section */}
       <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
@@ -169,8 +174,8 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
       return;
     }
     tableExcelDownload.mutate({
-      fileName: `${exportConfig.tableName}-export-${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName: exportConfig.tableName,
+      fileName: `${exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName}-export-${formatDate(new Date(), { format: "dd-mm-yyyy" })}.xlsx`,
+      sheetName: exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName,
       filters: exportConfig.filters,
       columns: columns.filter(c => exportConfig.columns ? exportConfig.columns.includes(c.key as any) : true),
       maxRows: exportConfig.maxRows

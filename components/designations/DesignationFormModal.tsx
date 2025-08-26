@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState, FormEvent } from "react";
-import { TablesInsert } from "@/types/supabase-types";
-import { EmployeeDesignation, DesignationWithRelations } from "@/components/designations/designationTypes";
-import { Resolver, useForm, Controller } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import { EmployeeDesignation, DesignationWithRelations } from "@/config/designations";
+import { useForm } from "react-hook-form";
 import { employeeDesignationSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { SearchableSelect } from "../common/SearchableSelect";
 import { FormCard } from "../common/ui/form/FormCard";
-import { Input } from "../common/ui";
 import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/ui/form/FormControls";
 
 interface DesignationFormModalProps {
@@ -28,9 +25,8 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { errors },
     reset,
-    watch,
     control,
   } = useForm<DesignationForm>({
     resolver: zodResolver(designationFormSchema),
@@ -77,9 +73,6 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
     };
     onSubmit(parsedData as unknown as EmployeeDesignation);
   };
-
-  // Watch the name field to control submit button state
-  const nameValue = watch("name") ?? "";
 
   if (!isOpen) return null;
 
