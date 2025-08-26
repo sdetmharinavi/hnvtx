@@ -8,6 +8,7 @@ import { z } from "zod";
 import { SearchableSelect } from "../common/SearchableSelect";
 import { FormCard } from "../common/ui/form/FormCard";
 import { Input } from "../common/ui";
+import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/ui/form/FormControls";
 
 interface DesignationFormModalProps {
   isOpen: boolean;
@@ -71,7 +72,10 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
 
   const onValidSubmit = (data: DesignationForm) => {
     // Forward only the fields we collect; backend/consumer can add timestamps as needed
-    onSubmit(data as unknown as EmployeeDesignation);
+    const parsedData = {
+      ...data,
+    };
+    onSubmit(parsedData as unknown as EmployeeDesignation);
   };
 
   // Watch the name field to control submit button state
@@ -88,37 +92,10 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
             ×
           </button>
         </div>
-        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose}>
-          <div>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Designation Name *</label>
-            <Input
-              id='name'
-              type='text'
-              {...register("name")}
-              placeholder='Designation Name'
-              required
-              className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'
-            />
-            {errors.name && <p className='text-red-500 text-xs mt-1'>{errors.name.message}</p>}
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Parent Designation</label>
-            <Controller
-              name='parent_id'
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <SearchableSelect
-                  value={value ?? ""}
-                  onChange={(val) => onChange(val)}
-                  options={availableParents.map((d) => ({ value: d.id, label: d.name }))}
-                  placeholder='Select Parent Designation'
-                  className='w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600'
-                />
-              )}
-            />
-            {errors.parent_id && <p className='text-red-500 text-xs mt-1'>{errors.parent_id.message}</p>}
-          </div>
+        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose} hightClass="h-[calc(90vh-140px)]">
+          <FormInput name='name' label='Designation Name' register={register} error={errors.name} required />
+          <FormSearchableSelect name='parent_id' label='Parent Designation' control={control} error={errors.parent_id} required options={availableParents.map((d) => ({ value: d.id, label: d.name }))} />
+          <FormSwitch name='status' label='Status' control={control} error={errors.status} className="mt-4" />
         </FormCard>
       </div>
     </div>

@@ -9,7 +9,7 @@ import {
   FormInput,
   FormSearchableSelect,
   FormTextarea,
-} from "@/components/common/FormControls";
+} from "@/components/common/ui/form/FormControls";
 
 const EmployeeForm = ({
   employee,

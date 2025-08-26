@@ -7,6 +7,7 @@ import { Textarea } from "@/components/common/ui/textarea/Textarea";
 import { Label, Switch } from "@/components/common/ui";
 import { forwardRef } from "react";
 import DatePicker, { type DatePickerProps } from "react-datepicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select/Select";
 
 // --- TYPE DEFINITIONS for Generic Components ---
 
@@ -139,11 +140,62 @@ export function FormSearchableSelect<T extends FieldValues>({
   );
 }
 
-// --- FORM DATE INPUT COMPONENT ---
+// --- FORM SELECT COMPONENT ---
 
-// interface FormDateInputProps<T extends FieldValues> extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
-//     control: Control<T>;
-// }
+interface FormSelectProps<T extends FieldValues> extends BaseProps<T> {
+  control: Control<T>;
+  options: Option[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  clearable?: boolean;
+}
+
+export function FormSelect<T extends FieldValues>({
+  name,
+  control,
+  label,
+  options,
+  error,
+  className,
+  labelClassName,
+  ...props
+}: FormSelectProps<T>) {
+  return (
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <Select
+            {...props}
+            value={(field.value as string ) ?? ""}
+            onValueChange={(value) => field.onChange(value)}
+          >
+            <SelectTrigger className="w-full" aria-invalid={!!error}>
+              <SelectValue placeholder={props.placeholder ?? "Select"} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {error && (
+        <p className='mt-1 text-sm text-red-500'>
+          {typeof error?.message === 'string' ? error.message : null}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// --- FORM DATE INPUT COMPONENT ---
 
 // Keep your original prop intent; allow passing datepicker props safely
 export interface FormDateInputProps<T extends FieldValues>

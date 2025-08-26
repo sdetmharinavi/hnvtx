@@ -9,7 +9,7 @@ import Image from "next/image";
 import { useForm, Resolver, FieldErrors, Controller } from "react-hook-form";
 import { UserProfileFormData, userProfileFormSchema } from "@/schemas"; // Use the main schema and type
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormInput, FormDateInput } from "../common/FormControls"; // Import your new controls
+import { FormInput, FormDateInput } from "../common/ui/form/FormControls"; // Import your new controls
 import { Button, Input, Label, Modal } from "@/components/common/ui";
 import { FormCard } from "@/components/common/ui/form/FormCard";
 import { Theme } from "@/stores/themeStore";
@@ -163,13 +163,13 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
               placeholder='YYYY-MM-DD'
               pickerProps={{
                 maxDate: new Date(),
-                dateFormat: 'yyyy-MM-dd',
+                dateFormat: "yyyy-MM-dd",
                 showMonthDropdown: true,
                 showYearDropdown: true,
                 yearDropdownItemNumber: 100,
                 scrollableYearDropdown: true,
                 withPortal: true,
-                popperPlacement: 'bottom-start',
+                popperPlacement: "bottom-start",
               }}
             />
           </div>
@@ -191,12 +191,10 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
           <div>
             <Label>Preferences</Label>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-1'>
-              <Label>Theme</Label>
-              <select id='theme' {...register("preferences.theme")} className='w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white'>
-                    <option value='light'>Light</option>
-                    <option value='dark'>Dark</option>
-                    <option value='system'>System</option>
-                  </select>
+              <Label>Language</Label>
+              <select id='language' {...register("preferences.language")} className='w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white'>
+                <option value='en'>English</option>
+              </select>
             </div>
           </div>
 
@@ -232,15 +230,6 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
             </div>
           )}
         </div>
-
-        {/* <div className='flex items-center justify-end gap-3 mt-8 p-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 z-10'>
-          <Button type='button' variant='outline' onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type='submit' disabled={isSubmitting || !isDirty}>
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </Button>
-        </div> */}
       </FormCard>
     </Modal>
   );

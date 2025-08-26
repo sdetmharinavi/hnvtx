@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { OfcCable, ofcCableSchema } from "@/schemas";
 import { useForm, SubmitHandler, type Resolver } from "react-hook-form";
 import { z } from "zod";
-import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "../common/FormControls";
+import { FormDateInput, FormInput, FormSearchableSelect, FormTextarea } from "../common/ui/form/FormControls";
 
 interface OfcFormProps {
   ofcCable?: OfcCablesWithRelations | null;

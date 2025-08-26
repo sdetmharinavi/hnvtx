@@ -13,6 +13,7 @@ interface FormCardProps {
   footerContent?: React.ReactNode; // custom footer override
   widthClass?: string; // e.g. "max-w-2xl"
   disableSubmit?: boolean;
+  hightClass?: string; // e.g. "max-h-[99vh]"
 }
 
 export const FormCard: React.FC<FormCardProps> = ({
@@ -26,13 +27,14 @@ export const FormCard: React.FC<FormCardProps> = ({
   children,
   footerContent,
   widthClass = "max-w-3xl",
+  hightClass = "max-h-[99vh]",
   disableSubmit = false,
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         className={cn(
-          "w-full max-h-[99vh] overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-900 dark:border dark:border-gray-700",
+          "w-full overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-900 dark:border dark:border-gray-700",
           widthClass
         )}
       >
@@ -58,7 +60,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         {/* Form Body + Footer */}
         <form onSubmit={onSubmit} className="contents">
           {/* Body */}
-          <div className="overflow-y-auto max-h-[calc(90vh-140px)] relative">
+          <div className={cn("overflow-y-auto relative", hightClass)}>
             {isLoading && (
               <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
                 <span className="text-gray-600 dark:text-gray-300">Loading...</span>
