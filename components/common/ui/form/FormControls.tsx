@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Control, Controller, FieldError, FieldErrorsImpl, Merge, UseFormRegister, Path, FieldValues } from "react-hook-form";
@@ -62,7 +63,7 @@ interface FormTextareaProps<T extends FieldValues> extends BaseProps<T>, Omit<Re
   control?: Control<T>;
 }
 
-export function FormTextarea<T extends FieldValues>({ name, register, control, label, error, className, labelClassName, ...props }: FormTextareaProps<T>) {
+export function FormTextarea<T extends FieldValues>({ name, control, label, error, className, labelClassName, ...props }: FormTextareaProps<T>) {
   return (
     <div className={className}>
       <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>

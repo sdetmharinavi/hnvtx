@@ -16,6 +16,8 @@ import { RingsColumns } from "@/components/table-columns/RingsTableColumns";
 import { Database } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
 import { useTableQuery } from "@/hooks/database";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import { desiredRingColumnOrder } from "@/config/column-orders";
 
 export type RingData = Database["public"]["Tables"]["rings"]["Row"];
 
@@ -53,6 +55,7 @@ const RingsPage = () => {
   });
 
   const columns = RingsColumns();
+  const orderedColumns = [...desiredRingColumnOrder.map((k) => columns.find((c) => c.key === k)).filter(Boolean), ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key))];
 
    // --- tableActions ---
    const tableActions = useMemo(() => createStandardActions<RingData>({
@@ -97,7 +100,7 @@ const RingsPage = () => {
       <DataTable
         tableName='rings'
         data={ringsData as Row<'rings'>[]}
-        columns={columns}
+        columns={orderedColumns as Column<Row<'rings'>>[]}
         loading={isLoading}
         actions={tableActions}
         pagination={{
@@ -119,9 +122,8 @@ const RingsPage = () => {
         editingRing={modal.editingRecord as RingRow | null}
         onCreated={crudActions.handleSave}
         onUpdated={crudActions.handleSave}
-        data={ringsData}
-        ringTypes={ringTypes as any}
-        maintenanceAreas={maintenanceAreas as any}
+        ringTypes={ringTypes}
+        maintenanceAreas={maintenanceAreas}
       />
 
       {/* Render the confirmation modal, driven by the hook's state */}

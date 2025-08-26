@@ -21,12 +21,11 @@ interface RingModalProps {
   editingRing?: RingRow | null;
   onCreated?: (ring: RingRow) => void;
   onUpdated?: (ring: RingRow) => void;
-  data?: RingRow[];
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
 
-export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, data, ringTypes, maintenanceAreas }: RingModalProps) {
+export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, ringTypes, maintenanceAreas }: RingModalProps) {
   const {
     register,
     handleSubmit,
@@ -113,7 +112,7 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
         updateRing(
           { id: editingRing.id, data: submitData as Partial<RingInsert> },
           {
-            onSuccess: (data: any) => {
+            onSuccess: (data: unknown) => {
               onUpdated?.(Array.isArray(data) ? data[0] : data);
               onClose();
             },
@@ -121,7 +120,7 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
         );
       } else {
         insertRing(submitData as RingInsert, {
-          onSuccess: (data: any) => {
+          onSuccess: (data: unknown) => {
             onCreated?.(Array.isArray(data) ? data[0] : data);
             onClose();
           },
@@ -157,7 +156,7 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
           options={maintenanceAreaOptions}
         />
 
-        <FormTextarea name='description' label='Description' register={register} error={errors.description} disabled={submitting} placeholder='Optional description' />
+        <FormTextarea name='description' label='Description' control={control} error={errors.description} disabled={submitting} placeholder='Optional description' />
         <FormSwitch name='status' label='Status' control={control} error={errors.status} className='my-2' />
 
       </FormCard>

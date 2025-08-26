@@ -75,7 +75,7 @@ export const Textarea: React.FC<TextareaProps> = ({
 
   const variantClasses: Record<TextareaVariant, string> = {
     default: "border shadow-sm",
-    filled: "border-b-2 bg-gray-50 dark:bg-gray-700",
+    filled: "border-b-2 bg-gray-50 dark:bg-gray-900",
     outlined: "border-2"
   };
 
@@ -121,7 +121,7 @@ export const Textarea: React.FC<TextareaProps> = ({
             ${
               disabled
                 ? "bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500"
-                : "bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+                : "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
             }
             focus:outline-none placeholder-gray-400 dark:placeholder-gray-500
           `}
@@ -129,7 +129,7 @@ export const Textarea: React.FC<TextareaProps> = ({
         />
 
         {maxLength && showCharCount && (
-          <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-gray-400 bg-white dark:bg-gray-700 px-1 rounded">
+          <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-gray-400 bg-white dark:bg-gray-900 px-1 rounded">
             {charCount}/{maxLength}
           </div>
         )}
@@ -161,206 +161,3 @@ export const Textarea: React.FC<TextareaProps> = ({
     </div>
   );
 };
-
-// // Basic usage
-// <Textarea value={content} onChange={(e, val) => setContent(val)} />
-
-// // With label and helper text
-// <Textarea
-//   label="Description"
-//   helperText="Enter a detailed description"
-//   value={description}
-//   onChange={(e, val) => setDescription(val)}
-// />
-
-// // Error state
-// <Textarea
-//   error
-//   errorMessage="This field is required"
-//   value={comment}
-//   onChange={(e, val) => setComment(val)}
-// />
-
-// // Dark mode ready
-// <Textarea
-//   label="Bio"
-//   variant="filled"
-//   value={bio}
-//   onChange={(e, val) => setBio(val)}
-//   className="dark:bg-gray-800"
-// />
-
-// // With character count
-// <Textarea
-//   maxLength={500}
-//   showCharCount
-//   value={essay}
-//   onChange={(e, val) => setEssay(val)}
-// />
-
-//   // Demo Component
-//   const ComponentDemo: React.FC = () => {
-//     const [switchState, setSwitchState] = useState<boolean>(false);
-//     const [switchState2, setSwitchState2] = useState<boolean>(true);
-//     const [textValue, setTextValue] = useState<string>("");
-//     const [textValue2, setTextValue2] = useState<string>("This textarea has an error");
-
-//     return (
-//       <div className="max-w-4xl mx-auto p-8 bg-gray-50 min-h-screen">
-//         <div className="bg-white rounded-xl shadow-lg p-8">
-//           <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-//             Reusable Components Demo
-//           </h1>
-
-//           {/* Switch Examples */}
-//           <section className="mb-12">
-//             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Switch Component</h2>
-//             <div className="space-y-6">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                 <div>
-//                   <h3 className="text-lg font-medium text-gray-700 mb-4">Basic Switches</h3>
-//                   <div className="space-y-4">
-//                     <Switch
-//                       checked={switchState}
-//                       onChange={setSwitchState}
-//                       label="Enable notifications"
-//                       id="notifications"
-//                     />
-//                     <Switch
-//                       checked={switchState2}
-//                       onChange={setSwitchState2}
-//                       label="Dark mode"
-//                       id="darkmode"
-//                     />
-//                     <Switch
-//                       checked={false}
-//                       disabled={true}
-//                       label="Disabled switch"
-//                       id="disabled"
-//                     />
-//                   </div>
-//                 </div>
-
-//                 <div>
-//                   <h3 className="text-lg font-medium text-gray-700 mb-4">Different Sizes</h3>
-//                   <div className="space-y-4">
-//                     <Switch
-//                       checked={true}
-//                       size="sm"
-//                       label="Small switch"
-//                       id="small"
-//                     />
-//                     <Switch
-//                       checked={true}
-//                       size="md"
-//                       label="Medium switch"
-//                       id="medium"
-//                     />
-//                     <Switch
-//                       checked={true}
-//                       size="lg"
-//                       label="Large switch"
-//                       id="large"
-//                     />
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </section>
-
-//           {/* Label Examples */}
-//           <section className="mb-12">
-//             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Label Component</h2>
-//             <div className="space-y-4">
-//               <Label>Standard label</Label>
-//               <Label required>Required field label</Label>
-//               <Label disabled>Disabled label</Label>
-//               <div className="grid grid-cols-3 gap-4">
-//                 <Label size="sm">Small label</Label>
-//                 <Label size="md">Medium label</Label>
-//                 <Label size="lg">Large label</Label>
-//               </div>
-//             </div>
-//           </section>
-
-//           {/* Textarea Examples */}
-//           <section>
-//             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Textarea Component</h2>
-//             <div className="space-y-6">
-//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//                 <Textarea
-//                   label="Basic Textarea"
-//                   placeholder="Enter your message here..."
-//                   value={textValue}
-//                   onChange={setTextValue}
-//                   helperText="This is a helper text"
-//                   rows={4}
-//                 />
-
-//                 <Textarea
-//                   label="Textarea with Character Limit"
-//                   placeholder="Limited to 100 characters..."
-//                   maxLength={100}
-//                   helperText="Character count shown in bottom right"
-//                   rows={4}
-//                 />
-//               </div>
-
-//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//                 <Textarea
-//                   label="Required Field"
-//                   placeholder="This field is required..."
-//                   required
-//                   helperText="Please fill in this field"
-//                   rows={3}
-//                 />
-
-//                 <Textarea
-//                   label="Error State"
-//                   placeholder="This has an error..."
-//                   value={textValue2}
-//                   onChange={setTextValue2}
-//                   error={true}
-//                   errorMessage="This field contains invalid content"
-//                   rows={3}
-//                 />
-//               </div>
-
-//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//                 <Textarea
-//                   label="Disabled Textarea"
-//                   value="This textarea is disabled"
-//                   disabled={true}
-//                   helperText="This field cannot be edited"
-//                   rows={3}
-//                 />
-
-//                 <Textarea
-//                   label="No Resize"
-//                   placeholder="This textarea cannot be resized..."
-//                   resize="none"
-//                   helperText="Resize is disabled"
-//                   rows={3}
-//                 />
-//               </div>
-//             </div>
-//           </section>
-
-//           {/* Usage Tips */}
-//           <section className="mt-12 p-6 bg-blue-50 rounded-lg">
-//             <h3 className="text-lg font-semibold text-blue-900 mb-3">Component Features</h3>
-//             <ul className="text-blue-800 space-y-1">
-//               <li>• <strong>Switch:</strong> Accessible, multiple sizes, disabled states, with/without labels</li>
-//               <li>• <strong>Label:</strong> Required indicators, size variants, disabled states</li>
-//               <li>• <strong>Textarea:</strong> Error states, character counting, resize control, helper text</li>
-//               <li>• All components support custom className and standard HTML props</li>
-//               <li>• Built with accessibility in mind (ARIA labels, focus management)</li>
-//               <li>• Full TypeScript support with proper type definitions</li>
-//             </ul>
-//           </section>
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   export default ComponentDemo;

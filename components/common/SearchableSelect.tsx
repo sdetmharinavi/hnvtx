@@ -184,7 +184,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
     ${disabled 
       ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" 
-      : "bg-white dark:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500"
+      : "bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500"
     }
     dark:text-white dark:focus-within:ring-blue-600
   `;
@@ -227,7 +227,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-[9999] w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+        <div className="absolute z-[9999] w-full mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
           {/* Search Input */}
           <div className="p-2 border-b border-gray-200 dark:border-gray-600">
             <div className="relative">
@@ -252,7 +252,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
           {/* Options List */}
           <div 
-            className="overflow-y-auto dark:bg-gray-700 dark:border-gray-600"
+            className="overflow-y-auto dark:bg-gray-900 dark:border-gray-600"
             style={{ maxHeight: `${maxHeight}px` }}
             role="listbox"
           >

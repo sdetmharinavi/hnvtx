@@ -3,19 +3,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
-import {
-  MdEmail as Mail,
-  MdLocationOn as MapPin,
-  MdPerson as User,
-  MdPhone as Phone,
-} from "react-icons/md";
 import { MaintenanceAreaFormData, maintenanceAreaFormSchema } from "@/schemas";
-import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SearchableSelect } from "../common/SearchableSelect";
 import { FormCard } from "../common/ui/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/ui/form/FormControls";
-import { Switch } from "@/components/common/ui";
+import { useForm } from "react-hook-form";
 
 export function AreaFormModal({
   isOpen,
@@ -30,7 +22,7 @@ export function AreaFormModal({
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty },
+    formState: { errors },
     reset,
     control,
   } = useForm<MaintenanceAreaFormData>({
@@ -215,7 +207,7 @@ export function AreaFormModal({
           <FormTextarea
             name="address"
             label="Address"
-            register={register}
+            control={control}
             error={errors.address}
             disabled={isLoading}
           />
