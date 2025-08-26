@@ -21,22 +21,20 @@ export const RingsColumns = () => {
         },
       },
       ring_type_id: {
-        render: (value) => {
-          // Expecting a joined object from lookup_types or string "N/A"
-          if (value && typeof value === 'object' && 'code' in (value as any)) {
-            return (value as any).code ?? 'N/A';
-          }
-          return 'N/A';
-        }
+        // We keep the dataIndex as the *_id column (since it's in TABLE_COLUMN_KEYS),
+        // but read the display value from the joined relation available on the record.
+        // The page query loads: "ring_type:ring_type_id(id, code)"
+        render: (_value, record) => {
+          const rel = (record as any)?.ring_type;
+          return rel?.code ?? 'N/A';
+        },
       },
       maintenance_terminal_id: {
-        render: (value) => {
-          // Expecting a joined object from maintenance_areas or string "N/A"
-          if (value && typeof value === 'object' && 'name' in (value as any)) {
-            return (value as any).name ?? 'N/A';
-          }
-          return 'N/A';
-        }
+        // The page query loads: "maintenance_terminal:maintenance_terminal_id(id,name)"
+        render: (_value, record) => {
+          const rel = (record as any)?.maintenance_terminal;
+          return rel?.name ?? 'N/A';
+        },
       },
       status: {
         render: (value) => {
@@ -45,4 +43,5 @@ export const RingsColumns = () => {
       },
     },
   });
-};
+}
+;
