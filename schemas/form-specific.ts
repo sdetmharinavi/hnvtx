@@ -57,3 +57,10 @@ export const userProfileFormSchema = userProfileSchema.omit({
   updated_at: true,
 });
 export type UserProfileFormData = z.infer<typeof userProfileFormSchema>
+
+export const maintenanceAreaFormSchema = maintenanceAreaSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type MaintenanceAreaFormData = z.infer<typeof maintenanceAreaFormSchema>

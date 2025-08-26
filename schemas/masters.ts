@@ -29,8 +29,8 @@ export const maintenanceAreaSchema = z.object({
     .email({ message: "Invalid email address." })
     .optional()
     .or(z.literal("")),
-  latitude: z.string().optional().nullable(),
-  longitude: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   address: z.string().optional().nullable(),
   status: z.boolean().default(true).optional(),
   created_at: z.coerce.date().optional(),

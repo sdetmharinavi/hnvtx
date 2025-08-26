@@ -1,15 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { useDeduplicated, useTableQuery } from "@/hooks/database";
+import { Filters, useDeduplicated, useTableQuery } from "@/hooks/database";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { CategoriesTable } from "@/components/categories/CategoriesTable";
 import { CategorySearch } from "@/components/categories/CategorySearch";
 import { CategoryModal } from "@/components/categories/CategoryModal";
 import { ConfirmModal } from "@/components/common/ui/Modal";
-import { ErrorDisplay } from "@/components/categories/ErrorDisplay";
 import { EmptyState } from "@/components/categories/EmptyState";
 import { LoadingState } from "@/components/categories/LoadingState";
 import { Categories, CategoryInfo, GroupedLookupsByCategory } from "@/components/categories/categories-types";
@@ -17,6 +16,7 @@ import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHe
 import { FiLayers, FiPlus, FiRefreshCw } from "react-icons/fi";
 import { useDelete } from "@/hooks/useDelete";
 import { formatCategoryName } from "@/components/categories/utils";
+import { ErrorDisplay } from "@/components/common/ui";
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -151,6 +151,16 @@ export default function CategoriesPage() {
   );
 
   // --- Define header content using the hook ---
+  const serverFilters = useMemo(() => {
+    const f: Filters = {
+      // Filter to download only categories with name not equal to "DEFAULT"
+      name: {
+        operator: "eq",
+        value: "DEFAULT",
+      },
+    };
+    return f;
+  }, []);
   const headerActions = useStandardHeaderActions({
     onRefresh: async () => {
       await refetchCategories();
@@ -158,7 +168,7 @@ export default function CategoriesPage() {
     },
     onAddNew: openCreateModal,
     isLoading: isLoading,
-    exportConfig: { tableName: "lookup_types", fileName: "Categories" },
+    exportConfig: { tableName: "lookup_types", fileName: "Categories", filters: serverFilters },
   });
 
   const activeCategories = categoriesDeduplicated.filter((category) => category.status);
@@ -181,7 +191,13 @@ export default function CategoriesPage() {
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {
-    return <ErrorDisplay error={error} onRetry={handleRefresh} />;
+    return <ErrorDisplay error={error.message} actions={[
+      {
+        label: "Retry",
+        onClick: refetchCategories,
+        variant: "primary",
+      },
+    ]} />;
   }
 
   return (

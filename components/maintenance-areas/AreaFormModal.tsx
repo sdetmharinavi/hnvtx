@@ -2,20 +2,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TablesInsert, TablesUpdate } from "@/types/supabase-types";
-import { MaintenanceArea, AreaFormModalProps } from "@/components/maintenance-areas/maintenance-areas-types";
+import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
 import {
   MdEmail as Mail,
   MdLocationOn as MapPin,
   MdPerson as User,
   MdPhone as Phone,
 } from "react-icons/md";
-import { maintenanceAreaSchema } from "@/schemas";
-import { z } from "zod";
+import { MaintenanceAreaFormData, maintenanceAreaFormSchema } from "@/schemas";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SearchableSelect } from "../common/SearchableSelect";
 import { FormCard } from "../common/ui/form/FormCard";
+import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/ui/form/FormControls";
+import { Switch } from "@/components/common/ui";
 
 export function AreaFormModal({
   isOpen,
@@ -26,22 +26,6 @@ export function AreaFormModal({
   areaTypes,
   isLoading
 }: AreaFormModalProps) {
-  // Create a form-specific schema that excludes timestamp fields
-  const areaFormSchema = maintenanceAreaSchema.pick({ 
-    name: true, 
-    code: true, 
-    area_type_id: true, 
-    parent_id: true, 
-    contact_person: true, 
-    contact_number: true, 
-    email: true, 
-    address: true, 
-    latitude: true, 
-    longitude: true, 
-    status: true 
-  });
-
-  type AreaForm = z.infer<typeof areaFormSchema>;
 
   const {
     register,
@@ -49,8 +33,8 @@ export function AreaFormModal({
     formState: { errors, isDirty },
     reset,
     control,
-  } = useForm<AreaForm>({
-    resolver: zodResolver(areaFormSchema),
+  } = useForm<MaintenanceAreaFormData>({
+    resolver: zodResolver(maintenanceAreaFormSchema),
     defaultValues: {
       name: "",
       code: "",
@@ -60,8 +44,8 @@ export function AreaFormModal({
       contact_number: "",
       email: "",
       address: "",
-      latitude: "",
-      longitude: "",
+      latitude: null,
+      longitude: null,
       status: true
     },
   });
@@ -81,8 +65,8 @@ export function AreaFormModal({
           contact_number: area.contact_number || "",
           email: area.email || "",
           address: area.address || "",
-          latitude: area.latitude || "",
-          longitude: area.longitude || "",
+          latitude: area.latitude || null,
+          longitude: area.longitude || null,
           status: area.status ?? true
         });
       } else {
@@ -95,8 +79,8 @@ export function AreaFormModal({
           contact_number: "",
           email: "",
           address: "",
-          latitude: "",
-          longitude: "",
+          latitude: null,
+          longitude: null,
           status: true
         });
       }
@@ -128,22 +112,8 @@ export function AreaFormModal({
     return allAreas.filter(a => !excludeIds.has(a.id));
   }, [area, allAreas]);
 
-  const onValidSubmit = (data: AreaForm) => {
-    // Convert empty strings to null for database
-    const cleanedData = {
-      ...data,
-      area_type_id: data.area_type_id || null,
-      parent_id: data.parent_id || null,
-      code: data.code || null,
-      contact_person: data.contact_person || null,
-      contact_number: data.contact_number || null,
-      email: data.email || null,
-      address: data.address || null,
-      latitude: data.latitude || null,
-      longitude: data.longitude || null,
-    };
-    
-    onSubmit(cleanedData);
+  const onValidSubmit = (data: MaintenanceAreaFormData) => {
+    onSubmit(data);
   };
 
   if (!isOpen) return null;
@@ -170,218 +140,110 @@ export function AreaFormModal({
           title={area ? "Edit Area" : "Add New Area"} 
           onCancel={onClose}
           isLoading={isLoading}
+          hightClass="max-h-[calc(90vh-140px)]"
         >
           {/* Name Field */}
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Area Name *
-            </label>
-            <input
-              id="name"
-              type="text"
-              {...register("name")}
-              placeholder="Area Name" 
-              required 
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-              disabled={isLoading}
-            />
-            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>}
-          </div>
+          <FormInput
+            name="name"
+            label="Area Name"
+            register={register}
+            error={errors.name}
+            required
+            disabled={isLoading}
+          />
           
           {/* Code Field */}
-          <div className="mb-4">
-            <label htmlFor="code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Area Code
-            </label>
-            <input
-              id="code"
-              type="text"
-              {...register("code")}
-              placeholder="Area Code" 
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-              disabled={isLoading}
-            />
-            {errors.code && <p className="mt-1 text-sm text-red-500">{errors.code.message}</p>}
-          </div>
+          <FormInput
+            name="code"
+            label="Area Code"
+            register={register}
+            error={errors.code}
+            disabled={isLoading}
+          />
           
           {/* Area Type Field */}
-          <div className="mb-4">
-            <label htmlFor="area_type_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Area Type *
-            </label>
-            <Controller
-              control={control}
-              name="area_type_id"
-              render={({ field }) => (
-                <SearchableSelect
-                  value={field.value as string}
-                  onChange={field.onChange}
-                  options={areaTypes
-                    .filter(type => type.name !== "DEFAULT")
-                    .map(type => ({ value: type.id, label: type.name }))
-                  }
-                  placeholder="Select area type"
-                  className="w-full"
-                  disabled={isLoading}
-                  required
-                />
-              )}
-            />
-            {errors.area_type_id && <p className="mt-1 text-sm text-red-500">{errors.area_type_id.message}</p>}
-          </div>
+          <FormSearchableSelect
+            name="area_type_id"
+            label="Area Type"
+            control={control}
+            error={errors.area_type_id}
+            disabled={isLoading}
+            options={areaTypes
+              .filter(type => type.name !== "DEFAULT")
+              .map(type => ({ value: type.id, label: type.name }))
+            }
+          />
           
           {/* Parent Area Field */}
-          <div className="mb-4">
-            <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Parent Area
-            </label>
-            <Controller
-              control={control}
-              name="parent_id"
-              render={({ field }) => (
-                <SearchableSelect
-                  value={field.value as string}
-                  onChange={field.onChange}
-                  options={availableParents.map(a => ({ value: a.id, label: a.name }))}
-                  placeholder="Select parent area"
-                  className="w-full"
-                  disabled={isLoading}
-                  clearable
-                />
-              )}
-            />
-            {errors.parent_id && <p className="mt-1 text-sm text-red-500">{errors.parent_id.message}</p>}
-          </div>
+          <FormSearchableSelect
+            name="parent_id"
+            label="Parent Area"
+            control={control}
+            error={errors.parent_id}
+            disabled={isLoading}
+            options={availableParents.map(a => ({ value: a.id, label: a.name }))}
+          />
           
           {/* Contact Person Field */}
-          <div className="mb-4">
-            <label htmlFor="contact_person" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Contact Person
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <User className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-              <input
-                id="contact_person"
-                type="text"
-                {...register("contact_person")}
-                placeholder="Contact Person" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-10 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-            </div>
-            {errors.contact_person && <p className="mt-1 text-sm text-red-500">{errors.contact_person.message}</p>}
-          </div>
+          <FormInput
+            name="contact_person"
+            label="Contact Person"
+            register={register}
+            error={errors.contact_person}
+            disabled={isLoading}
+          />
           
           {/* Contact Number Field */}
-          <div className="mb-4">
-            <label htmlFor="contact_number" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Contact Number
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Phone className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-              <input
-                id="contact_number"
-                type="tel"
-                {...register("contact_number")}
-                placeholder="Contact Number" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-10 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-            </div>
-            {errors.contact_number && <p className="mt-1 text-sm text-red-500">{errors.contact_number.message}</p>}
-          </div>
+          <FormInput
+            name="contact_number"
+            label="Contact Number"
+            register={register}
+            error={errors.contact_number}
+            disabled={isLoading}
+          />
           
           {/* Email Field */}
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email Address
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-              <input
-                id="email"
-                type="email"
-                {...register("email")}
-                placeholder="Email Address" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-10 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-            </div>
-            {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
-          </div>
+          <FormInput
+            name="email"
+            label="Email Address"
+            register={register}
+            error={errors.email}
+            disabled={isLoading}
+          />
           
           {/* Address Field */}
-          <div className="mb-4">
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Address
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pt-2 pointer-events-none">
-                <MapPin className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-              <textarea
-                id="address"
-                {...register("address")}
-                placeholder="Address" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-10 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600" 
-                rows={3}
-                disabled={isLoading}
-              />
-            </div>
-            {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address.message}</p>}
-          </div>
+          <FormTextarea
+            name="address"
+            label="Address"
+            register={register}
+            error={errors.address}
+            disabled={isLoading}
+          />
           
           {/* Coordinates Fields */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Latitude
-              </label>
-              <input
-                id="latitude"
-                type="text"
-                {...register("latitude")}
-                placeholder="Latitude" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-              {errors.latitude && <p className="mt-1 text-sm text-red-500">{errors.latitude.message}</p>}
-            </div>
-            <div>
-              <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Longitude
-              </label>
-              <input
-                id="longitude"
-                type="text"
-                {...register("longitude")}
-                placeholder="Longitude" 
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-              {errors.longitude && <p className="mt-1 text-sm text-red-500">{errors.longitude.message}</p>}
-            </div>
-          </div>
+          <FormInput
+            name="latitude"
+            label="Latitude"
+            register={register}
+            error={errors.latitude}
+            disabled={isLoading}
+          />
+          <FormInput
+            name="longitude"
+            label="Longitude"
+            register={register}
+            error={errors.longitude}
+            disabled={isLoading}
+          />
           
           {/* Status Field */}
-          <div className="pt-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                {...register("status")}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-blue-600"
-                disabled={isLoading}
-              />
-              Active
-            </label>
-            {errors.status && <p className="mt-1 text-sm text-red-500">{errors.status.message}</p>}
-          </div>
+          <FormSwitch
+            name="status"
+            label="Active"
+            control={control}
+            error={errors.status}
+            className="mt-2"
+          />
         </FormCard>
       </div>
     </div>

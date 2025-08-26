@@ -13,10 +13,11 @@ import {
   ErrorState,
 } from "@/components/lookup/LookupTypesEmptyStates";
 import { useMemo } from "react";
-import { FiList, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { FiList } from "react-icons/fi";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
-import { Filters } from "@/hooks/database";
 import { toast } from "sonner";
+import { Filters } from "@/hooks/database";
+import { ErrorDisplay } from "@/components/common/ui";
 
 export default function LookupTypesPage() {
   const {
@@ -75,18 +76,17 @@ export default function LookupTypesPage() {
     );
   }, [sortedLookupTypes, searchTerm]);
 
-  const serverFilters = useMemo(() => {
-      const f: Filters = {
-        // Filter to download only categories with name not equal to "DEFAULT"
-        name: {
-          operator: "neq",
-          value: "DEFAULT",
-        },
-      };
-      return f;
-    }, []);
-
     // --- Define header content using the hook ---
+      const serverFilters = useMemo(() => {
+        const f: Filters = {
+          // Filter to download only categories with name not equal to "DEFAULT"
+          name: {
+            operator: "neq",
+            value: "DEFAULT",
+          },
+        };
+        return f;
+      }, []);
     const headerActions = useStandardHeaderActions({
       onRefresh: async () => {
         await handleRefresh();
@@ -94,7 +94,7 @@ export default function LookupTypesPage() {
       },
       onAddNew: handleAddNew,
       isLoading: isLoading,
-      exportConfig: { tableName: "lookup_types", fileName: "Categories" },
+      exportConfig: { tableName: "lookup_types", filters: serverFilters },
     });
 
     // --- Define header stats ---
@@ -105,6 +105,22 @@ export default function LookupTypesPage() {
       { value: activeLookups.length, label: "Active", color: "success" as const },
       { value: inactiveLookups.length, label: "Inactive", color: "danger" as const },
     ];
+
+    // Error handling
+    if (lookupError) {
+      return (
+        <ErrorDisplay
+          error={lookupError.message}
+          actions={[
+            {
+              label: "Retry",
+              onClick: handleRefresh,
+              variant: "primary",
+            },
+          ]}
+        />
+      );
+    }
 
   return (
     <div className="space-y-6 p-6">

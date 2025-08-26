@@ -60,7 +60,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         {/* Form Body + Footer */}
         <form onSubmit={onSubmit} className="contents">
           {/* Body */}
-          <div className={cn("overflow-y-auto relative", hightClass)}>
+          <div className={cn("overflow-y-auto relative ", hightClass)}>
             {isLoading && (
               <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
                 <span className="text-gray-600 dark:text-gray-300">Loading...</span>
