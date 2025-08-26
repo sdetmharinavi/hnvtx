@@ -64,3 +64,11 @@ export const maintenanceAreaFormSchema = maintenanceAreaSchema.omit({
   updated_at: true,
 });
 export type MaintenanceAreaFormData = z.infer<typeof maintenanceAreaFormSchema>
+
+export const ringFormSchema = ringSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type RingFormData = z.infer<typeof ringFormSchema>
+

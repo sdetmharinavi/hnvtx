@@ -4,7 +4,6 @@
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
-import { getRingsTableColumns } from "@/components/rings/RingsTableColumns";
 import { RingsFilters } from "@/components/rings/RingsFilters";
 import { RingModal, RingRow } from "@/components/rings/RingModal";
 import { useCrudPage } from "@/hooks/useCrudPage";
@@ -13,6 +12,10 @@ import { createStandardActions } from "@/components/table/action-helpers";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
 import { GiLinkedRings } from "react-icons/gi";
 import { toast } from "sonner";
+import { RingsColumns } from "@/components/table-columns/RingsTableColumns";
+import { Database } from "@/types/supabase-types";
+
+export type RingData = Database["public"]["Tables"]["rings"]["Row"];
 
 const RingsPage = () => {
   const {
@@ -34,10 +37,10 @@ const RingsPage = () => {
     searchColumn: 'name',
   });
 
-  const columns = useMemo(() => getRingsTableColumns(), []);
+  const columns = RingsColumns();
 
    // --- tableActions ---
-   const tableActions = useMemo(() => createStandardActions<'rings'>({
+   const tableActions = useMemo(() => createStandardActions<RingData>({
     onEdit: modal.openEditModal,
     onToggleStatus: crudActions.handleToggleStatus,
     onDelete: crudActions.handleDelete,
@@ -101,6 +104,7 @@ const RingsPage = () => {
         editingRing={modal.editingRecord as RingRow | null}
         onCreated={crudActions.handleSave}
         onUpdated={crudActions.handleSave}
+        data={ringsData}
       />
 
       {/* Render the confirmation modal, driven by the hook's state */}
