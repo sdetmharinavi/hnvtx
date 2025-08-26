@@ -52,7 +52,7 @@ const useRingsData = (
   );
 
   // Calculate counts from the full dataset
-  const totalCount = data?.[0].total_count || 0;
+  const totalCount = data?.[0]?.total_count || 0;
 
   return {
     data: data || [],
