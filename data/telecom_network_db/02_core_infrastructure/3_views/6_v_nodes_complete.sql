@@ -9,7 +9,11 @@ select n.*,
   lt_ring.code as ring_type_code,
   ma.name as maintenance_area_name,
   ma.code as maintenance_area_code,
-  lt_ma.name as maintenance_area_type_name
+  lt_ma.name as maintenance_area_type_name,
+  count(*) OVER() AS total_count,
+  sum(CASE WHEN n.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
+  sum(CASE WHEN n.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+
 from nodes n
   left join rings r on n.ring_id = r.id
   left join lookup_types lt_node on n.node_type_id = lt_node.id

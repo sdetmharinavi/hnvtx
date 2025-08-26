@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryResult } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns, UseRpcQueryOptions, UseTableMutationOptions, PagedSystemsCompleteResult, UsePagedSystemsCompleteOptions, UsePagedNodesCompleteOptions, PagedNodesCompleteResult, PagedOfcConnectionsCompleteResult, UsePagedOfcConnectionsCompleteOptions, UsePagedSystemConnectionsCompleteOptions, PagedSystemConnectionsCompleteResult } from "./queries-type-helpers";
+import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns, UseRpcQueryOptions, UseTableMutationOptions, PagedSystemsCompleteResult, UsePagedSystemsCompleteOptions, UsePagedNodesCompleteOptions, PagedNodesCompleteResult, PagedOfcConnectionsCompleteResult, UsePagedOfcConnectionsCompleteOptions, UsePagedSystemConnectionsCompleteOptions, PagedSystemConnectionsCompleteResult, UsePagedLookupTypesWithCountOptions, PagedLookupTypesWithCountResult, UsePagedMaintenanceAreasWithCountOptions, PagedMaintenanceAreasWithCountResult, UsePagedEmployeeDesignationsWithCountOptions, PagedEmployeeDesignationsWithCountResult, UsePagedEmployeesWithCountOptions, PagedEmployeesWithCountResult, UsePagedRingsWithCountOptions, PagedRingsWithCountResult } from "./queries-type-helpers";
 import { createRpcQueryKey } from "./utility-functions";
 import { PagedOfcCablesCompleteResult, UsePagedOfcCablesCompleteOptions } from "@/hooks/database/queries-type-helpers";
 
@@ -230,6 +230,219 @@ export function usePagedNodesComplete(supabase: SupabaseClient<Database>, option
     ...queryOptions,
   });
 }
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_lookup_types_with_count view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedLookupTypesWithCount(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedLookupTypesWithCountOptions
+): UseQueryResult<PagedLookupTypesWithCountResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "name",
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedLookupTypesWithCountResult, Error>({
+    queryKey: ["v_lookup_types_with_count", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_paged_lookup_types_with_count", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged lookup types:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    ...queryOptions,
+  });
+}
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_maintenance_areas_with_count view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedMaintenanceAreasWithCount(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedMaintenanceAreasWithCountOptions
+): UseQueryResult<PagedMaintenanceAreasWithCountResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "name",
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedMaintenanceAreasWithCountResult, Error>({
+    queryKey: ["v_maintenance_areas_with_count", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_paged_maintenance_areas_with_count", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged maintenance areas:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    ...queryOptions,
+  });
+}
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_employee_designations_with_count view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedEmployeeDesignationsWithCount(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedEmployeeDesignationsWithCountOptions
+): UseQueryResult<PagedEmployeeDesignationsWithCountResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "name",
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedEmployeeDesignationsWithCountResult, Error>({
+    queryKey: ["v_employee_designations_with_count", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_paged_employee_designations_with_count", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged employee designations:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    ...queryOptions,
+  });
+}
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_employees_with_count view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedEmployeesWithCount(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedEmployeesWithCountOptions
+): UseQueryResult<PagedEmployeesWithCountResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "employee_name",
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedEmployeesWithCountResult, Error>({
+    queryKey: ["v_employees_with_count", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_paged_employees_with_count", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged employees:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    ...queryOptions,
+  });
+}
+
+/**
+ * Custom hook to fetch paginated, sorted, and filtered data from the v_rings_with_count view.
+ *
+ * @param supabase - The Supabase client instance.
+ * @param options - Options for pagination, sorting, filtering, and other React Query settings.
+ */
+export function usePagedRingsWithCount(
+  supabase: SupabaseClient<Database>,
+  options: UsePagedRingsWithCountOptions
+): UseQueryResult<PagedRingsWithCountResult, Error> {
+  const {
+    limit = 10,
+    offset = 0,
+    orderBy = "name",
+    orderDir = "asc",
+    filters = {},
+    queryOptions,
+  } = options;
+
+  return useQuery<PagedRingsWithCountResult, Error>({
+    queryKey: ["v_rings_with_count", { limit, offset, orderBy, orderDir, filters }],
+
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_paged_rings_with_count", {
+        p_limit: limit,
+        p_offset: offset,
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+        p_filters: filters,
+      });
+
+      if (error) {
+        console.error("Error fetching paged rings:", error);
+        throw new Error(error.message);
+      }
+
+      return data ?? null;
+    },
+    ...queryOptions,
+  });
+}
+
+
+
 
 export function useDashboardOverview(supabase: SupabaseClient<Database>, options: UseRpcQueryOptions<"get_dashboard_overview">) {
   return useRpcQuery(supabase, "get_dashboard_overview", {}, options);

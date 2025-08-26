@@ -30,7 +30,9 @@ CREATE OR REPLACE FUNCTION admin_get_all_users_extended(
     computed_status text,
     account_age_days integer,
     last_activity_period text,
-    total_count bigint
+    total_count bigint,
+    active_count bigint,
+    inactive_count bigint
 ) 
 LANGUAGE plpgsql 
 SECURITY DEFINER 
@@ -102,7 +104,9 @@ BEGIN
         v.computed_status,
         v.account_age_days,
         v.last_activity_period,
-        total_records
+        total_records,
+        active_count,
+        inactive_count
     FROM public.v_user_profiles_extended v
     WHERE (
         search_query IS NULL 
