@@ -11,6 +11,8 @@ import { UserProfileFormData, userProfileFormSchema } from "@/schemas"; // Use t
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput, FormDateInput } from "../common/FormControls"; // Import your new controls
 import { Button, Input, Label, Modal } from "@/components/common/ui";
+import { FormCard } from "@/components/common/ui/form/FormCard";
+import { Theme } from "@/stores/themeStore";
 
 interface UserProfileEditProps {
   user: UserProfileFormData | null;
@@ -134,7 +136,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title='Edit User Profile'>
-      <form onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}>
+      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} title='Edit User Profile' onCancel={onClose}>
         <div className='p-6 space-y-6'>
           {/* Profile Image & URL */}
           <div className='flex items-center gap-4'>
@@ -153,7 +155,23 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
           {/* Contact */}
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <FormInput<UserProfileFormData> name='phone_number' label='Phone Number' register={register} error={errors.phone_number} type='tel' />
-            <FormDateInput<UserProfileFormData> name='date_of_birth' label='Date of Birth' control={control} error={errors.date_of_birth} />
+            <FormDateInput<UserProfileFormData>
+              name='date_of_birth'
+              label='Date of Birth'
+              control={control}
+              error={errors.date_of_birth}
+              placeholder='YYYY-MM-DD'
+              pickerProps={{
+                maxDate: new Date(),
+                dateFormat: 'yyyy-MM-dd',
+                showMonthDropdown: true,
+                showYearDropdown: true,
+                yearDropdownItemNumber: 100,
+                scrollableYearDropdown: true,
+                withPortal: true,
+                popperPlacement: 'bottom-start',
+              }}
+            />
           </div>
 
           {/* Designation */}
@@ -173,7 +191,12 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
           <div>
             <Label>Preferences</Label>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-1'>
-              <Controller name='preferences.theme' control={control} render={({ field }) => <Input {...field} value={field.value || ""} placeholder='Theme' error={errors.preferences?.theme?.message} />} />
+              <Label>Theme</Label>
+              <select id='theme' {...register("preferences.theme")} className='w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white'>
+                    <option value='light'>Light</option>
+                    <option value='dark'>Dark</option>
+                    <option value='system'>System</option>
+                  </select>
             </div>
           </div>
 
@@ -210,15 +233,15 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
           )}
         </div>
 
-        <div className='flex items-center justify-end gap-3 mt-8 p-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 z-10'>
+        {/* <div className='flex items-center justify-end gap-3 mt-8 p-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 z-10'>
           <Button type='button' variant='outline' onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button type='submit' disabled={isSubmitting || !isDirty}>
             {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>
-        </div>
-      </form>
+        </div> */}
+      </FormCard>
     </Modal>
   );
 };

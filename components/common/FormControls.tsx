@@ -5,6 +5,8 @@ import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
 import { Input } from "@/components/common/ui/Input";
 import { Textarea } from "@/components/common/ui/textarea/Textarea";
 import { Label, Switch } from "@/components/common/ui";
+import { forwardRef } from "react";
+import DatePicker, { type DatePickerProps } from "react-datepicker";
 
 // --- TYPE DEFINITIONS for Generic Components ---
 
@@ -139,31 +141,134 @@ export function FormSearchableSelect<T extends FieldValues>({
 
 // --- FORM DATE INPUT COMPONENT ---
 
-interface FormDateInputProps<T extends FieldValues> extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
-    control: Control<T>;
+// interface FormDateInputProps<T extends FieldValues> extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
+//     control: Control<T>;
+// }
+
+// Keep your original prop intent; allow passing datepicker props safely
+export interface FormDateInputProps<T extends FieldValues>
+  extends BaseProps<T>,
+    Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "type" | "size"> {
+  control: Control<T>;
+  // Optional passthrough for DatePicker props (minDate, maxDate, showTimeSelect, etc.)
+  pickerProps?: Partial<
+    Omit<
+      DatePickerProps,
+      // Keep single-date mode: exclude props that change `onChange` signature
+      | "selected"
+      | "onChange"
+      | "customInput"
+      | "onBlur"
+      | "onSelect"
+      | "selectsRange"
+      | "selectsMultiple"
+      | "startDate"
+      | "endDate"
+    >
+  >;
 }
 
-export function FormDateInput<T extends FieldValues>({ name, control, label, error, className, labelClassName, ...props }: FormDateInputProps<T>) {
+/** A styled input used as ReactDatePicker's customInput to control theme + icon */
+const DateTextInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { errorText?: string }>(
+  ({ className, errorText, ...rest }, ref) => {
+    return (
+      <div className="relative">
+        <input
+          ref={ref}
+          {...rest}
+          className={[
+            "w-full rounded-md border bg-white text-gray-900",
+            "dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700",
+            "px-10 py-2 outline-none",
+            "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+            errorText ? "border-red-500 focus:ring-red-500 focus:border-red-500" : "border-gray-300",
+            className ?? "",
+          ].join(" ")}
+          readOnly // recommended with customInput to avoid parsing issues
+        />
+        {/* Calendar icon (theme-aware via currentColor) */}
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-300"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        {errorText ? (
+          <p className="mt-1 text-sm text-red-600">{errorText}</p>
+        ) : null}
+      </div>
+    );
+  }
+);
+DateTextInput.displayName = "DateTextInput";
+
+export function FormDateInput<T extends FieldValues>({
+  name,
+  control,
+  label,
+  error,
+  className,
+  labelClassName,
+  pickerProps,
+  required,
+  ...inputProps
+}: FormDateInputProps<T>) {
   return (
     <div className={className}>
-      <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>
+      {label ? (
+        <Label htmlFor={name} className={labelClassName}>
+          {label}
+          {required ? <span className="ml-0.5 text-red-600">*</span> : null}
+        </Label>
+      ) : null}
+
       <Controller
         name={name}
         control={control}
         render={({ field }) => {
-          // Handle both Date objects and string representations from the database
-          const dateValue = field.value
-            ? new Date(field.value).toISOString().split("T")[0]
-            : "";
+          // Normalize value to Date | null
+          const raw = field.value as unknown;
+          const selected: Date | null =
+            raw == null || (raw as any) === ""
+              ? null
+              : (typeof raw === "object" && raw !== null && "getTime" in (raw as object))
+              ? (raw as Date)
+              : new Date(raw as any);
+
           return (
-            <Input
+            // @ts-expect-error react-datepicker's prop union sometimes misinfers to multi-select variant.
+            // We intentionally use single-date mode: `selected: Date | null` and `onChange(date | null)`.
+            <DatePicker
               id={name}
-              type="date"
-              {...props}
-              value={dateValue}
-              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+              // --- recommended defaults for date-only fields ---
+              selected={selected}
+              onChange={(d: Date | null) => field.onChange(d)}
               onBlur={field.onBlur}
-              error={typeof error?.message === 'string' ? error.message : undefined}
+              // Keep keyboard nav and accessibility
+              // Use a date-only format; adjust as you like
+              dateFormat={(pickerProps as any)?.dateFormat ?? "yyyy-MM-dd"}
+              // Show clear button by default; optional
+              isClearable
+              // Render portal into Next.js root so it appears above modals/overflows
+              portalId="__next"
+              // Custom input so we fully control theme + icon
+              customInput={
+                <DateTextInput
+                  errorText={typeof error?.message === "string" ? error.message : undefined}
+                  placeholder={inputProps.placeholder ?? "Select date"}
+                />
+              }
+              // Pass through any extra ReactDatePicker props (minDate, maxDate, showTimeSelect, etc.)
+              {...pickerProps}
             />
           );
         }}

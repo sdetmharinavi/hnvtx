@@ -2,41 +2,25 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { FiUsers } from "react-icons/fi";
-import {
-  useAdminGetAllUsersExtended,
-  useIsSuperAdmin,
-  useAdminUserOperations,
-} from "@/hooks/useAdminUsers";
+import { useAdminGetAllUsersExtended, useIsSuperAdmin, useAdminUserOperations } from "@/hooks/useAdminUsers";
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
 import UserDetailsModal from "@/components/users/UserDetailsModal";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { UserFilters } from "@/components/users/UserFilters";
 import { BulkActions } from "@/components/users/BulkActions";
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from "@/hooks/useCrudManager";
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from "@/components/common/PageHeader";
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
 import { toast } from "sonner";
 import { createStandardActions } from "@/components/table/action-helpers";
 import UserProfileEditModal from "@/components/users/UserProfileEditModal";
 import { UserProfileFormData } from "@/schemas";
 import { UserProfileData } from "@/components/users/user-types";
-import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
-import { formatDate } from "@/utils/formatters";
-import Image from "next/image";
-import StatusBadge from "@/components/common/ui/status/StatusBadge";
+import { UserProfileColumns } from "@/components/table-columns/UsersTableColumns";
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
-const useUsersData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<UserProfileData> => {
+const useUsersData = (params: DataQueryHookParams): DataQueryHookReturn<UserProfileData> => {
   const { currentPage, pageLimit, searchQuery, filters } = params;
 
   const { data, isLoading, error, refetch } = useAdminGetAllUsersExtended({
@@ -59,12 +43,8 @@ const AdminUsersPage = () => {
   // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
-  const {
-    bulkDelete,
-    bulkUpdateRole,
-    bulkUpdateStatus,
-    isLoading: isOperationLoading,
-  } = useAdminUserOperations();
+  const { bulkDelete, bulkUpdateRole, bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
+  const columns = UserProfileColumns();
 
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
@@ -89,34 +69,6 @@ const AdminUsersPage = () => {
 
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
-
-  const columns = useDynamicColumnConfig("v_user_profiles_extended", {
-    omit: ["id", "created_at", "updated_at","auth_updated_at","email_confirmed_at","raw_user_meta_data","raw_app_meta_data","phone_confirmed_at","first_name","last_name","is_phone_verified","computed_status"],
-    overrides: {
-      "last_sign_in_at": {
-        render: (value) => {
-          return formatDate(value as string, { format: "dd-mm-yyyy" })
-        }
-      },
-      "status": {
-        render: (value) => {
-          return <StatusBadge status={value as boolean} />
-        }
-      },
-      "date_of_birth": {
-        render: (value) => {
-          return formatDate(value as string, { format: "dd-mm-yyyy" })
-        }
-      },
-      "avatar_url": {
-        render: (value) => {
-          return value ? <Image src={value as string} alt="Avatar" className="w-10 h-10 rounded-full" width={40} height={40} /> : <Image src="/default-avatar.png" alt="Avatar" className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700" width={40} height={40} />
-        }
-      }
-    }
-  })
-
-  console.log(columns)
   const tableActions = useMemo(
     () =>
       createStandardActions<UserProfileData>({
@@ -130,12 +82,7 @@ const AdminUsersPage = () => {
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`
-      )
-    )
-      return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`)) return;
 
     await bulkDelete.mutateAsync({ user_ids: selectedRowIds });
     handleClearSelection();
@@ -206,10 +153,10 @@ const AdminUsersPage = () => {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
+    <div className='p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6'>
       <PageHeader
-        title="User Management"
-        description="Manage network users and their related information."
+        title='User Management'
+        description='Manage network users and their related information.'
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions} // <-- Pass the generated actions
@@ -225,7 +172,7 @@ const AdminUsersPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
       />
       <DataTable
-        tableName="v_user_profiles_extended"
+        tableName='v_user_profiles_extended'
         data={users as unknown as Row<"v_user_profiles_extended">[]}
         columns={columns}
         loading={isLoading || isOperationLoading}
@@ -233,9 +180,7 @@ const AdminUsersPage = () => {
         selectable
         onRowSelect={(rows) => {
           // Filter out any rows where id is null
-          const validRows = rows.filter(
-            (row): row is UserProfileData & { id: string } => row.id !== null
-          );
+          const validRows = rows.filter((row): row is UserProfileData & { id: string } => row.id !== null);
           bulkActions.handleRowSelect(validRows);
         }}
         searchable={false}
@@ -255,13 +200,9 @@ const AdminUsersPage = () => {
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
             roleFilter={(filters.filters.role as string) || ""}
-            onRoleFilterChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, role: value }))
-            }
+            onRoleFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, role: value }))}
             statusFilter={(filters.filters.status as string) || ""}
-            onStatusFilterChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, status: value }))
-            }
+            onStatusFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, status: value }))}
             emailVerificationFilter={""} // This filter is not implemented in the hook yet
             onEmailVerificationFilterChange={() => {}}
             showFilters={showFilters}
@@ -282,20 +223,8 @@ const AdminUsersPage = () => {
         }}
       />
 
-      <UserDetailsModal
-        isOpen={viewModal.isOpen}
-        user={viewModal.record as UserProfileData}
-        onClose={viewModal.close}
-      />
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.confirm}
-        onCancel={deleteModal.cancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.isLoading}
-        type="danger"
-      />
+      <UserDetailsModal isOpen={viewModal.isOpen} user={viewModal.record as UserProfileData} onClose={viewModal.close} />
+      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.confirm} onCancel={deleteModal.cancel} title='Confirm Deletion' message={deleteModal.message} loading={deleteModal.isLoading} type='danger' />
     </div>
   );
 };

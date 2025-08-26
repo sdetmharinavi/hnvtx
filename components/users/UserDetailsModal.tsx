@@ -12,13 +12,13 @@ import {
   FiClock,
   FiSettings,
 } from "react-icons/fi";
-import RoleBadge from "@/components/users/RoleBadge";
+import { RoleBadge } from "@/components/common/ui/badges/RoleBadge";
 import Image from "next/image";
 import { UserRole } from "@/types/user-roles";
 import { Modal } from "@/components/common/ui";
 import { UserProfileData } from "@/components/users/user-types";
 import { CardSpinner } from "@/components/common/ui/LoadingSpinner";
-import StatusBadge from "@/components/common/ui/StatusBadge";
+import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 
 type Props = {
   user: UserProfileData;

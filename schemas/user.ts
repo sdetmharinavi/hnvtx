@@ -52,6 +52,7 @@ export const userProfileSchema = z.object({
   preferences: z.object({
     theme: z.string().optional(),
     language: z.string().optional(),
+    notifications: z.boolean().optional(),
   })
   .default({})
   .optional().nullable(),

@@ -15,5 +15,8 @@ export { Textarea } from './textarea/Textarea';
 export { ButtonSpinner } from './LoadingSpinner';
 export { ConfirmModal } from './Modal';
 export { ErrorDisplay } from './error/ErrorDisplay';
+export { RoleBadge } from './badges/RoleBadge';
+export { StatusBadge } from './badges/StatusBadge';
+
 
 

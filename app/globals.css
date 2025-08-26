@@ -30,6 +30,9 @@ a {
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
 }
 
 body {
@@ -37,4 +40,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
+}
+
+/* Ensure react-datepicker popper appears above modals/overlays */
+.react-datepicker-popper {
+  z-index: 9999 !important;
 }

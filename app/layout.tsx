@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "react-datepicker/dist/react-datepicker.css";
 import PolyfillLoader from "@/components/polyfills/PolyfillLoader";
 import { ToastProvider } from "@/providers/ToastProvider";
 import ThemeProvider from "@/providers/ThemeProvider";
