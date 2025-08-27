@@ -151,6 +151,7 @@ interface StandardActionsConfig<T extends TableOrViewName> {
   onAddNew?: () => void;
   exportConfig?: ExportConfig<T>;
   isLoading?: boolean;
+  data?: Row<T>[];
 }
 
 export function useStandardHeaderActions<T extends TableOrViewName>({
@@ -158,9 +159,10 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
   onAddNew,
   exportConfig,
   isLoading,
+  data
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
-  const columns = useDynamicColumnConfig(exportConfig?.tableName as T);
+  const columns = useDynamicColumnConfig(exportConfig?.tableName as T,{data: data});
 
   const tableExcelDownload = useTableExcelDownload(
     supabase,

@@ -34,9 +34,13 @@ const useUsersData = (params: DataQueryHookParams): DataQueryHookReturn<UserProf
   return {
     data: data || [], // `data` is now correctly typed as UserProfileData[]
     totalCount: data?.length || 0,
+    activeCount: (data || []).filter((u) => !!u.status).length,
+    inactiveCount: (data || []).filter((u) => !u.status).length,
     isLoading,
-    error,
-    refetch,
+    error: (error as Error) || null,
+    refetch: () => {
+      void refetch();
+    },
   };
 };
 const AdminUsersPage = () => {
@@ -44,8 +48,7 @@ const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
   const { bulkDelete, bulkUpdateRole, bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
-  const columns = UserProfileColumns();
-
+  
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: users,
@@ -66,7 +69,8 @@ const AdminUsersPage = () => {
     tableName: "user_profiles",
     dataQueryHook: useUsersData,
   });
-
+  
+  const columns = UserProfileColumns(users);
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
   const tableActions = useMemo(
@@ -113,7 +117,8 @@ const AdminUsersPage = () => {
   );
 
   // --- Define header content using the hook ---
-  const headerActions = useStandardHeaderActions({
+  const headerActions = useStandardHeaderActions<'user_profiles'>({
+    data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

@@ -88,6 +88,7 @@ export default function LookupTypesPage() {
         return f;
       }, []);
     const headerActions = useStandardHeaderActions({
+      data: lookupTypes,
       onRefresh: async () => {
         await handleRefresh();
         toast.success("Refreshed successfully!");

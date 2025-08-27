@@ -27,11 +27,6 @@ export default function CategoriesPage() {
 
   const supabase = createClient();
 
-  // const deleteManager = useDeleteManager({
-  //   tableName: "lookup_types",
-  //   onSuccess: handleRefresh,
-  // });
-
   const {
     data: categoriesDeduplicated = [],
     isLoading: dedupLoading,
@@ -162,6 +157,7 @@ export default function CategoriesPage() {
     return f;
   }, []);
   const headerActions = useStandardHeaderActions({
+    data: categoriesDeduplicated,
     onRefresh: async () => {
       await refetchCategories();
       toast.success("Refreshed successfully!");

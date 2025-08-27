@@ -198,6 +198,7 @@ const OfcPage = () => {
   // --- MEMOIZED VALUES ---
   const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
     /* ... your overrides ... */
+    data: ofcData,
   });
 
   const tableActions = useMemo(

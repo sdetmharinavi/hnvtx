@@ -79,6 +79,7 @@ export default function MaintenanceAreasPage() {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
+    data: allAreas,
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

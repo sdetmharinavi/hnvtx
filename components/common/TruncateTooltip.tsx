@@ -33,6 +33,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const checkOverflow = () => {
     const el = textRef.current;
     if (!el) return false;
+    // Compare scrollWidth vs clientWidth on the measured element itself
     const overflow = el.scrollWidth > el.clientWidth;
     setIsOverflowing(overflow);
     return overflow;
@@ -57,10 +58,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       const el = textRef.current!;
       const rect = el.getBoundingClientRect();
       // Clamp tooltip within viewport horizontally
-      const left = Math.min(
-        Math.max(8, rect.left),
-        window.innerWidth - maxWidth - 8
-      );
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - maxWidth - 8);
       setPos({ top: rect.bottom + 8, left });
       setShowTooltip(true);
     }
@@ -71,12 +69,13 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     <>
       <span
         ref={textRef}
-        className={`truncate block min-w-0 max-w-full ${className ?? ""}`}
+        className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 ${className ?? ""}`}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
         tabIndex={isOverflowing ? 0 : -1}
+        title={isOverflowing ? text : undefined}
         aria-describedby={showTooltip && isOverflowing ? tooltipId : undefined}
       >
         {text}

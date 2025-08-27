@@ -347,7 +347,7 @@ export function DataTable<T extends AuthTableOrViewName>({
 
       <div className='w-full overflow-x-auto'>
         <div className='max-h-[calc(100vh-200px)] overflow-y-auto'>
-          <table className={`min-w-[720px] w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
+          <table className={`min-w-max w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}

@@ -87,6 +87,7 @@ export default function DesignationManagerPage() {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
+    data: designationsQuery.data,
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

@@ -222,11 +222,12 @@ export const desiredCpanConnectionColumnOrder = [
     "id",
   ];
   
+  // "id", "created_at", "updated_at","active_count","inactive_count","maintenance_area_area_type_id","maintenance_area_code","maintenance_area_contact_number","maintenance_area_contact_person","maintenance_area_created_at","maintenance_area_email","maintenance_area_latitude","maintenance_area_longitude","maintenance_area_parent_id","maintenance_area_status","maintenance_area_updated_at","ring_type_category","ring_type_created_at","ring_type_id","ring_type_is_system_default","ring_type_name","ring_type_sort_order","ring_type_status","ring_type_updated_at","total_count","maintenance_terminal_id"
   export const desiredRingColumnOrder = [
     "name",
     "total_nodes",
-    "maintenance_terminal_id",
-    "ring_type_id",
+    "maintenance_area_name",
+    "ring_type_code",
     "description",
     "status",
     "created_at",

@@ -10,15 +10,15 @@ CREATE OR REPLACE FUNCTION public.get_paged_rings_with_count(
 )
 RETURNS TABLE(
     -- rings
-    id text,
+    id uuid,
     name text,
     description text,
-    ring_type_id text,
-    maintenance_terminal_id text,
+    ring_type_id uuid,
+    maintenance_terminal_id uuid,
     total_nodes integer,
     status boolean,
-    created_at text,
-    updated_at text,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone,
 
     -- lookup_types (ring type)
     ring_type_name text,
@@ -27,8 +27,8 @@ RETURNS TABLE(
     ring_type_sort_order integer,
     ring_type_is_system_default boolean,
     ring_type_status boolean,
-    ring_type_created_at text,
-    ring_type_updated_at text,
+    ring_type_created_at timestamp with time zone,
+    ring_type_updated_at timestamp with time zone,
 
     -- maintenance_areas
     maintenance_area_name text,
@@ -36,13 +36,13 @@ RETURNS TABLE(
     maintenance_area_email text,
     maintenance_area_contact_person text,
     maintenance_area_contact_number text,
-    maintenance_area_latitude double precision,
-    maintenance_area_longitude double precision,
-    maintenance_area_area_type_id text,
-    maintenance_area_parent_id text,
+    maintenance_area_latitude DECIMAL(10, 8),
+    maintenance_area_longitude DECIMAL(11, 8),
+    maintenance_area_area_type_id uuid,
+    maintenance_area_parent_id uuid,
     maintenance_area_status boolean,
-    maintenance_area_created_at text,
-    maintenance_area_updated_at text,
+    maintenance_area_created_at timestamp with time zone,
+    maintenance_area_updated_at timestamp with time zone,
 
     -- counts
     total_count bigint,

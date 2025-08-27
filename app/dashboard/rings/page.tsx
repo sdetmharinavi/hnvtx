@@ -3,7 +3,7 @@
 
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { usePagedRingsWithCount, useTableWithRelations } from "@/hooks/database";
+import { Row, usePagedRingsWithCount, useTableWithRelations } from "@/hooks/database";
 import { RingsFilters } from "@/components/rings/RingsFilters";
 import { RingModal } from "@/components/rings/RingModal";
 import { ConfirmModal } from "@/components/common/ui";
@@ -123,7 +123,7 @@ const RingsPage = () => {
     return Array.from(uniqueMaintenanceAreas.values());
   }, [rings]);
 
-  const columns = RingsColumns();
+  const columns = RingsColumns(rings);
   // Type guard to remove undefined from the mapped array
   const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
   const orderedColumns = [
@@ -154,6 +154,7 @@ const RingsPage = () => {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
+    data: rings as Row<"rings">[],
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

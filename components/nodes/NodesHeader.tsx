@@ -20,7 +20,7 @@ interface NodesHeaderProps {
 export function NodesHeader({ onRefresh, onAddNew, isLoading, totalCount }: NodesHeaderProps) {
   // Download configuration
   const supabase = createClient();
-  const columns = useDynamicColumnConfig("nodes");
+  const columns = useDynamicColumnConfig("nodes",{data: });
   const serverFilters = useMemo(() => {
     const f: Filters = {
       // Filter to download only categories with name not equal to "DEFAULT"

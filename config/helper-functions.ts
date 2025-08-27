@@ -132,3 +132,46 @@ export const toPgBoolean = (value: unknown): boolean | null => {
   }
   return null;
 };
+
+/**
+ * Dynamically calculates the width of a column based on its content.
+ * 
+ * @param columnName - The name of the column
+ * @param rows - The table data (array of objects from Supabase)
+ * @param ctx - Optional CanvasRenderingContext2D for measuring text width
+ * @returns A number representing the width in pixels (capped at 300px)
+ */
+export function inferDynamicColumnWidth(
+  columnName: string,
+  rows: Record<string, any>[],
+  ctx?: CanvasRenderingContext2D
+): number {
+  const MIN_WIDTH = 120;
+  const MAX_WIDTH = 400;
+  const PADDING = 32; // left + right cell padding
+  
+  // fallback font if no canvas context provided
+  if (!ctx) {
+    const canvas = document.createElement("canvas");
+    ctx = canvas.getContext("2d")!;
+    ctx.font = "14px Inter, sans-serif"; // match your table CSS font
+  }
+
+  // measure header
+  let maxWidth = ctx.measureText(columnName).width;
+
+  // measure each row cell
+  for (const row of rows) {
+    const value = row[columnName];
+    if (value == null) continue;
+    const text = String(value);
+    const width = ctx.measureText(text).width;
+    if (width > maxWidth) {
+      maxWidth = width;
+    }
+  }
+
+  // add padding and clamp
+  return Math.min(Math.max(Math.ceil(maxWidth) + PADDING, MIN_WIDTH), MAX_WIDTH);
+}
+

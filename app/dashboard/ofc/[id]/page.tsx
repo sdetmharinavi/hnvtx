@@ -49,9 +49,16 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, ensureConnectionsExist]);
 
+  // Prepare data for DataTable: strip aggregate fields returned by RPC
+  const tableData = useMemo(() => {
+    const rows = existingConnections ?? [];
+    return rows.map(({ active_count, inactive_count, total_count, ...rest }) => rest);
+  }, [existingConnections]);
+
   // DataTable Configuration
   const columns = useDynamicColumnConfig("v_ofc_connections_complete", {
     omit: ["id", "ofc_id", "created_at", "updated_at", "sn_id", "en_id"],
+    data: tableData as Row<"v_ofc_connections_complete">[],
 
     overrides: {
       fiber_no_sn: { title: "End A Fiber", sortable: true, width: 80},
@@ -179,12 +186,6 @@ export default function OfcCableDetailsPage() {
     },
     [debouncedSearch]
   );
-
-  // Prepare data for DataTable: strip aggregate fields returned by RPC
-  const tableData = useMemo(() => {
-    const rows = existingConnections ?? [];
-    return rows.map(({ active_count, inactive_count, total_count, ...rest }) => rest);
-  }, [existingConnections]);
 
   const loading = isLoading;
 

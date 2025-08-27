@@ -88,7 +88,7 @@ const EmployeesPage = () => {
   );
 
   // Download Configurations
-  const exportColumns = useDynamicColumnConfig("employees");
+  const exportColumns = useDynamicColumnConfig("employees", { data: employeesData as Row<"employees">[] });
   const tableExcelDownload = useTableExcelDownload(
     supabase,
     "employees",

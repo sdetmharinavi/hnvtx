@@ -11,7 +11,8 @@ const OfcTableColumns = (ofcTypeMap: Record<string, string>, areaMap: Record<str
            maintenance_terminal_id: {
             render: (value) => areaMap[value as string]
            }
-        }
+        },
+        data:
     });
   return columns
 }
