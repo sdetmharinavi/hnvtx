@@ -21,7 +21,7 @@ export const nodeSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1, { message: "Node name is required." }),
   node_type_id: z.uuid().optional().nullable(),
-  ip_address: ipValidation.optional().or(z.literal("")),
+  ip_address: ipValidation.optional().nullable().or(z.literal("")),
   latitude: requiredStringToNumber,
   longitude: requiredStringToNumber,
   vlan: z.string().optional().nullable(),

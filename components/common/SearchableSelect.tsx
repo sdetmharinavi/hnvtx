@@ -77,6 +77,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   // Get selected option label
   const selectedOption = options.find(option => option.value === value);
   const selectedLabel = selectedOption?.label || "";
+  const hasValue = selectedLabel.length > 0;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -184,7 +185,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
     ${disabled 
       ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" 
-      : "bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500"
+      : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500`
     }
     dark:text-white dark:focus-within:ring-blue-600
   `;

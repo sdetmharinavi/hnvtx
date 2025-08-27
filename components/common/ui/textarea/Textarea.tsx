@@ -49,6 +49,7 @@ export const Textarea: React.FC<TextareaProps> = ({
 }) => {
   const [focused, setFocused] = useState<boolean>(false);
   const [charCount, setCharCount] = useState<number>(value.length);
+  const hasValue = String(value ?? '').length > 0;
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -121,7 +122,9 @@ export const Textarea: React.FC<TextareaProps> = ({
             ${
               disabled
                 ? "bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-gray-900 dark:text-gray-500"
-                : "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
+                : hasValue
+                  ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                  : "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
             }
             focus:outline-none placeholder-gray-400 dark:placeholder-gray-500
           `}

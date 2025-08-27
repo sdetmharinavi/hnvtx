@@ -3,45 +3,34 @@
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { NodesFilters } from "@/components/nodes/NodesFilters";
-import { getNodesTableColumns } from "@/components/nodes/NodesTableColumns";
+import { NodesTableColumns } from "@/config/table-columns/NodesTableColumns";
 import { NodeFormModal } from "@/components/nodes/NodeFormModal";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { usePagedNodesComplete, useTableWithRelations } from "@/hooks/database";
+import { Row, usePagedNodesComplete, useTableWithRelations } from "@/hooks/database";
 import { FiCpu } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from "@/hooks/useCrudManager";
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
 import { createStandardActions } from "@/components/table/action-helpers";
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from "@/components/common/PageHeader";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
 import { toast } from "sonner";
 import { NodeRowsWithRelations } from "@/types/relational-row-types";
 import { NodeRowsWithCount } from "@/types/view-row-types";
+import { NodeDetailsModal } from "@/config/node-details-config";
 
 // 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
-const useNodesData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<NodeRowsWithCount> => {
+const useNodesData = (params: DataQueryHookParams): DataQueryHookReturn<NodeRowsWithCount> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedNodesComplete(
-    supabase,
-    {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
-      },
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-    }
-  );
+  const { data, isLoading, error, refetch } = usePagedNodesComplete(supabase, {
+    filters: {
+      ...filters,
+      ...(searchQuery ? { name: searchQuery } : {}),
+    },
+    limit: pageLimit,
+    offset: (currentPage - 1) * pageLimit,
+  });
 
   // Calculate counts from the full dataset
   const totalCount = data?.[0]?.total_count || 0;
@@ -98,7 +87,7 @@ const NodesPage = () => {
     return Array.from(uniqueNodeTypes.values());
   }, [nodes]);
 
-  const columns = useMemo(() => getNodesTableColumns(), []);
+  const columns = NodesTableColumns(nodes);
 
   const tableActions = useMemo(
     () =>
@@ -112,11 +101,14 @@ const NodesPage = () => {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
+    data: nodes as Row<"nodes">[],
+    onAddNew: () => {
+      editModal.openAdd();
+    },
     onRefresh: () => {
       refetch();
       toast.success("Refreshed successfully!");
     },
-    // onAddNew: placeholder ToDo,
     isLoading: isLoading,
     exportConfig: { tableName: "nodes" },
   });
@@ -151,18 +143,20 @@ const NodesPage = () => {
   }
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className='mx-auto space-y-4'>
       <PageHeader
-        title="Node Management"
-        description="Manage network nodes and their related information."
+        title='Node Management'
+        description='Manage network nodes and their related information.'
         icon={<FiCpu />}
         stats={headerStats}
         actions={headerActions} // <-- Pass the generated actions
         isLoading={isLoading}
       />
 
+      <NodeDetailsModal isOpen={viewModal.isOpen} node={viewModal.record as NodeRowsWithRelations} onClose={viewModal.close} />
+
       <DataTable
-        tableName="v_nodes_complete"
+        tableName='v_nodes_complete'
         data={nodes}
         columns={columns}
         loading={isLoading}
@@ -184,35 +178,15 @@ const NodesPage = () => {
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
             nodeTypes={nodeTypes}
-            selectedNodeType={
-              filters.filters.node_type_id as string | undefined
-            }
-            onNodeTypeChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, node_type_id: value }))
-            }
+            selectedNodeType={filters.filters.node_type_id as string | undefined}
+            onNodeTypeChange={(value) => filters.setFilters((prev) => ({ ...prev, node_type_id: value }))}
           />
         }
       />
 
-      {editModal.isOpen && (
-        <NodeFormModal
-          isOpen={editModal.isOpen}
-          onClose={editModal.close}
-          editingNode={editModal.record as NodeRowsWithRelations | null}
-          onCreated={crudActions.handleSave}
-          onUpdated={crudActions.handleSave}
-        />
-      )}
+      {editModal.isOpen && <NodeFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingNode={editModal.record as NodeRowsWithRelations | null} onCreated={crudActions.handleSave} onUpdated={crudActions.handleSave} />}
 
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.confirm}
-        onCancel={deleteModal.cancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.isLoading}
-        type="danger"
-      />
+      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.confirm} onCancel={deleteModal.cancel} title='Confirm Deletion' message={deleteModal.message} loading={deleteModal.isLoading} type='danger' />
     </div>
   );
 };

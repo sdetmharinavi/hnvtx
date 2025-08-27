@@ -13,6 +13,7 @@ interface ModalProps {
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   className?: string;
+  visible?: boolean;
 }
 
 export const Modal = ({
@@ -25,6 +26,7 @@ export const Modal = ({
   closeOnOverlayClick = true,
   closeOnEscape = true,
   className,
+  visible = true,
 }: ModalProps) => {
   // Handle escape key
   useEffect(() => {
@@ -94,7 +96,7 @@ export const Modal = ({
             )}
           >
             {/* Header */}
-            {(title || showCloseButton) && (
+            {(title || showCloseButton) && visible && (
               <div className="flex items-center justify-between border-b border-gray-200 p-6">
                 {title && (
                   <h2 className="text-xl font-semibold text-gray-900">

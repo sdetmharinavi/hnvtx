@@ -5,7 +5,6 @@ import { FiUsers } from "react-icons/fi";
 import { useAdminGetAllUsersExtended, useIsSuperAdmin, useAdminUserOperations } from "@/hooks/useAdminUsers";
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
-import UserDetailsModal from "@/components/users/UserDetailsModal";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { UserFilters } from "@/components/users/UserFilters";
 import { BulkActions } from "@/components/users/BulkActions";
@@ -17,6 +16,7 @@ import UserProfileEditModal from "@/components/users/UserProfileEditModal";
 import { UserProfileFormData } from "@/schemas";
 import { UserProfileData } from "@/components/users/user-types";
 import { UserProfileColumns } from "@/config/table-columns/UsersTableColumns";
+import { UserDetailsModal } from "@/config/user-details-config";
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
@@ -48,7 +48,7 @@ const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
   const { bulkDelete, bulkUpdateRole, bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
-  
+
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: users,
@@ -69,7 +69,7 @@ const AdminUsersPage = () => {
     tableName: "user_profiles",
     dataQueryHook: useUsersData,
   });
-  
+
   const columns = UserProfileColumns(users);
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
@@ -117,8 +117,8 @@ const AdminUsersPage = () => {
   );
 
   // --- Define header content using the hook ---
-  const headerActions = useStandardHeaderActions<'user_profiles'>({
-    data: users as Row<'user_profiles'>[],
+  const headerActions = useStandardHeaderActions<"user_profiles">({
+    data: users as Row<"user_profiles">[],
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

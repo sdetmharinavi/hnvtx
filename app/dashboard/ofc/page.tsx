@@ -266,17 +266,7 @@ const OfcPage = () => {
         title="OFC Cable Management"
         description="Manage OFC cables and their related information."
         icon={<AiFillMerge />}
-        stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
-        isLoading={isLoading}
-      />
-
-      <OfcStats
-        total={totalCount}
-        active={activeCount}
-        inactive={inactiveCount}
-      />
-
+/>
       <BulkActions
         selectedCount={selectedIds.length}
         isOperationLoading={isMutating}
@@ -334,12 +324,9 @@ const OfcPage = () => {
         <OfcDetailsModal
           ofcCableId={viewingRecordId}
           onClose={() => setViewingRecordId(null)}
+          isOpen={viewingRecordId !== null}
           onEdit={() => {
-            const record = ofcData.find((c) => c.id === viewingRecordId);
-            if (record) {
-              setEditingRecord(record as OfcCablesWithRelations);
-              setIsModalOpen(true);
-            }
+            // Handle edit if needed
             setViewingRecordId(null);
           }}
         />

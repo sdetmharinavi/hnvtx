@@ -9,7 +9,7 @@ import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
 import { Button, ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import EmployeeForm from "@/components/employee/EmployeeForm";
-import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
+// import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
 import { getEmployeeTableColumns } from "@/components/employee/EmployeeTableColumns";
 import { getEmployeeTableActions } from "@/components/employee/EmployeeTableActions";
@@ -19,6 +19,7 @@ import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatters";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
+import { EmployeeDetailsModal } from "@/config/employee-details-config";
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -219,7 +220,7 @@ const EmployeesPage = () => {
         />
       )}
 
-      {viewingEmployeeId && (
+      {/* {viewingEmployeeId && (
         <EmployeeDetailsModal
           employeeId={viewingEmployeeId}
           onClose={() => setViewingEmployeeId(null)}
@@ -229,7 +230,8 @@ const EmployeesPage = () => {
             setViewingEmployeeId(null);
           }}
         />
-      )}
+      )} */}
+      <EmployeeDetailsModal employee={employeesData.find((e) => e.id === viewingEmployeeId)} onClose={() => setViewingEmployeeId(null)} isOpen={viewingEmployeeId !== null} />
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
