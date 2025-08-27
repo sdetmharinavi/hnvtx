@@ -2,15 +2,23 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { usePagedOfcCablesComplete } from "@/hooks/database";
+import {
+  useTableInsert,
+  useTableUpdate,
+  useToggleStatus,
+  useTableBulkOperations,
+  usePagedOfcCablesComplete,
+} from "@/hooks/database";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
 import { useRouter } from "next/navigation";
 
 import { DataTable } from "@/components/table/DataTable";
 import { Row } from "@/hooks/database";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { BulkActions } from "@/components/common/BulkActions";
 import { OfcFilters } from "@/components/ofc/OfcFilters";
 import OfcForm from "@/components/ofc/OfcForm/OfcForm";
+import { TablesInsert, TablesUpdate } from "@/types/supabase-types";
 import {
   OfcCablesFilters,
   OfcCablesWithRelations,
@@ -23,7 +31,6 @@ import {
 } from "@/components/common/PageHeader";
 import { AiFillMerge } from "react-icons/ai";
 import { createStandardActions } from "@/components/table/action-helpers";
-import { BulkActions } from "@/components/common/BulkActions";
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -88,7 +95,7 @@ const OfcPage = () => {
   } = useCrudManager<"ofc_cables", OfcCableRowsWithCount>({
     tableName: "ofc_cables",
     dataQueryHook: useOfcData,
-    searchColumn: "route_name",
+     searchColumn: "route_name",
   });
 
   // 3. Extract ring types from the rings data
@@ -122,8 +129,146 @@ const OfcPage = () => {
 
   const supabase = createClient();
   const router = useRouter();
+
+  // --- STATE MANAGEMENT (Mimicking useCrudPage) ---
+  // const [filters, setFilters] = useState<OfcCablesFilters>({
+  //   search: "",
+  //   ofc_type_id: "",
+  //   status: "",
+  //   maintenance_terminal_id: "",
+  // });
+  // const [editingRecord, setEditingRecord] =
+  //   useState<OfcCablesWithRelations | null>(null);
+  // const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  // const [debouncedSearch] = useDebounce("", DEFAULTS.DEBOUNCE_DELAY);
+
+  // --- FILTERS ---
+  // const serverFilters = useMemo(() => {
+  //   const combinedFilters: Record<string, Json | string | boolean> = {};
+  //   if (debouncedSearch) combinedFilters.search = debouncedSearch; // RPC handles 'search' as a special ILIKE term
+  //   if (filters.ofc_type_id) combinedFilters.ofc_type_id = filters.ofc_type_id;
+  //   if (filters.status) combinedFilters.status = filters.status === "true";
+  //   if (filters.maintenance_terminal_id)
+  //     combinedFilters.maintenance_terminal_id = filters.maintenance_terminal_id;
+  //   return combinedFilters;
+  // }, [filters, debouncedSearch]);
+
+  // --- DATA FETCHING (Specialized Hooks) ---
+  // const {
+  //   data: pagedOfcData,
+  //   isLoading,
+  //   error,
+  //   refetch,
+  // } = usePagedOfcCablesComplete(supabase, {
+  //   limit: pageLimit,
+  //   offset: (currentPage - 1) * pageLimit,
+  //   filters: serverFilters,
+  // });
+
+  // const ofcData = useMemo(() => pagedOfcData || [], [pagedOfcData]);
+  // const totalCount = ofcData[0]?.total_count ?? 0;
+  // const activeCount =
+  //   ofcData[0]?.active_count ?? ofcData.filter((c) => c.status).length;
+  // const inactiveCount =
+  //   ofcData[0]?.inactive_count ?? ofcData.filter((c) => !c.status).length;
+
+  // const { data: ofcTypes = [] } = useTableQuery(supabase, "lookup_types", {
+  //   filters: { category: { operator: "eq", value: "OFC_TYPES" } },
+  // });
+  // const { data: maintenanceAreas = [] } = useTableQuery(
+  //   supabase,
+  //   "maintenance_areas"
+  // );
   const { data: isSuperAdmin } = useIsSuperAdmin();
+
+  // --- MUTATIONS ---
+  const { mutate: insertOfcCable, isPending: isInserting } = useTableInsert(
+    supabase,
+    "ofc_cables",
+    {
+      onSuccess: () => {
+        refetch();
+        closeModal();
+        toast.success("OFC Cable created.");
+      },
+    }
+  );
+  const { mutate: updateOfcCable, isPending: isUpdating } = useTableUpdate(
+    supabase,
+    "ofc_cables",
+    {
+      onSuccess: () => {
+        refetch();
+        closeModal();
+        toast.success("OFC Cable updated.");
+      },
+    }
+  );
+  const { mutate: toggleStatus } = useToggleStatus(supabase, "ofc_cables", {
+    onSuccess: () => {
+      refetch();
+      toast.success("OFC Cable status toggled.");
+    },
+  });
+  const { bulkDelete, bulkUpdate } = useTableBulkOperations(
+    supabase,
+    "ofc_cables"
+  );
+
+  // --- HANDLERS ---
+  const closeModal = useCallback(() => {
+    setEditingRecord(null);
+  }, []);
+  const handleSave = (data: TablesInsert<"ofc_cables">) => {
+    if (editingRecord) {
+      updateOfcCable({ id: editingRecord.id!, data });
+    } else {
+      insertOfcCable(data);
+    }
+  };
+
+  // const handleBulkDelete = useCallback(() => {
+  //   if (!window.confirm(`Delete ${selectedIds.length} selected cable(s)?`))
+  //     return;
+  //   if (isSuperAdmin) {
+  //     bulkDelete.mutate(
+  //       { ids: selectedIds },
+  //       {
+  //         onSuccess: () => {
+  //           setSelectedIds([]);
+  //           refetch();
+  //         toast.success(`${selectedIds.length} cables deleted.`);
+  //       },
+  //       onError: (err) => toast.error(`Bulk delete failed: ${err.message}`),
+  //     }
+  //   );
+  // } else {
+  //   toast.error("You do not have permission to delete cables.");
+  // }
+  // }, [selectedIds, isSuperAdmin, bulkDelete, refetch]);
+
+  // const handleBulkUpdateStatus = useCallback(
+  //   (status: "active" | "inactive") => {
+  //     const updates = selectedIds.map((id) => ({
+  //       id,
+  //       data: { status: status === "active" } as TablesUpdate<"ofc_cables">,
+  //     }));
+  //     bulkUpdate.mutate(
+  //       { updates },
+  //       {
+  //         onSuccess: () => {
+  //           setSelectedIds([]);
+  //           refetch();
+  //           toast.success(`${selectedIds.length} cables updated.`);
+  //         },
+  //         onError: (err) =>
+  //           toast.error(`Bulk status update failed: ${err.message}`),
+  //       }
+  //     );
+  //   },
+  //   [selectedIds, bulkUpdate, refetch]
+  // );
 
   // --- MEMOIZED VALUES ---
   const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
@@ -140,7 +285,7 @@ const OfcPage = () => {
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
       }),
-    [crudActions, editModal.openEdit, router, isSuperAdmin]
+   [crudActions, editModal.openEdit, router, isSuperAdmin]
   );
 
   const headerStats = [
@@ -243,9 +388,8 @@ const OfcPage = () => {
       <OfcForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        onCreated={crudActions.handleSave}
-        onUpdated={crudActions.handleSave}
         ofcCable={editModal.record as OfcCablesWithRelations | null}
+        onSubmit={handleSave}
         pageLoading={isMutating}
       />
 

@@ -110,7 +110,7 @@ export function LookupModal({
 
       reset(resetData);
     }
-  }, [isOpen, editingLookup, category, reset]);
+  }, [isOpen, editingLookup, category, reset]); // Ensure setValue is not in this array if you have it
 
   const onValidSubmit = useCallback(
     async (data: LookupTypeFormData) => {
