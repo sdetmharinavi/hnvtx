@@ -72,3 +72,11 @@ export const ringFormSchema = ringSchema.omit({
 });
 export type RingFormData = z.infer<typeof ringFormSchema>
 
+export const ofcCableFormSchema = ofcCableSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type OfcCableFormData = z.infer<typeof ofcCableFormSchema>
+
+

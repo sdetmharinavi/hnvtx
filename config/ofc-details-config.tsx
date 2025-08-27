@@ -16,15 +16,16 @@ import {
     FiTool
   } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+import { Row } from '@/hooks/database';
   
   // OFC details modal configuration
   export const ofcDetailsConfig = {
     header: {
-      title: (ofc: any) => ofc.route_name || "Unnamed OFC Route",
-      subtitle: (ofc: any) => ofc.ofc_owner_name || "Unknown Owner",
+      title: (ofc: Row<"v_ofc_cables_complete">) => ofc.route_name || "Unnamed OFC Route",
+      subtitle: (ofc: Row<"v_ofc_cables_complete">) => ofc.ofc_owner_name || "Unknown Owner",
       avatar: {
         urlKey: '', // OFC doesn’t have avatars
-        fallbackText: (ofc: any) => (ofc.ofc_owner_name?.charAt(0)?.toUpperCase() || "O")
+        fallbackText: (ofc: Row<"v_ofc_cables_complete">) => (ofc.ofc_owner_name?.charAt(0)?.toUpperCase() || "O")
       },
       badges: [
         {
@@ -105,7 +106,7 @@ import {
     ] as SectionConfig[]
   };
   
-  export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: any, onClose: () => void, isOpen: boolean }) => {
+  export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: Row<"v_ofc_connections_complete">[], onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
         data={ofc}

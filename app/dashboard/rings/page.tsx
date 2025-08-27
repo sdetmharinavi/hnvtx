@@ -3,7 +3,7 @@
 
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { Row, usePagedRingsWithCount, useTableWithRelations } from "@/hooks/database";
+import { Row, usePagedRingsWithCount } from "@/hooks/database";
 import { RingsFilters } from "@/components/rings/RingsFilters";
 import { RingModal } from "@/components/rings/RingModal";
 import { ConfirmModal } from "@/components/common/ui";
@@ -16,7 +16,6 @@ import { GiLinkedRings } from "react-icons/gi";
 import { toast } from "sonner";
 import { RingsColumns } from "@/config/table-columns/RingsTableColumns";
 import { createClient } from "@/utils/supabase/client";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { desiredRingColumnOrder } from "@/config/column-orders";
 import {
   DataQueryHookParams,

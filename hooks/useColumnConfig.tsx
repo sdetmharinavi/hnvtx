@@ -52,15 +52,17 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
   const { overrides = {}, omit = [], data = [] } = options;
 
   // generate column widths dynamically
-  const columnWidths: Record<string, number> = {};
-  if (data.length > 0) {
-    for (const colName of Object.keys(data[0])) {
-      columnWidths[colName] = inferDynamicColumnWidth(colName, data);
-      if (colName === "date_of_birth" || colName === "last_sign_in_at" || colName === "created_at" || colName === "updated_at" || colName === "auth_updated_at" || colName === "email_confirmed_at" || colName === "phone_confirmed_at") {
-        columnWidths[colName] = 120;
+  const columnWidths = useMemo(() => {
+    const widths: Record<string, number> = {};
+    if (data.length > 0) {
+      for (const colName of Object.keys(data[0])) {
+        widths[colName] = inferDynamicColumnWidth(colName, data);
+        if (colName === "date_of_birth" || colName === "last_sign_in_at" || colName === "created_at" || colName === "updated_at" || colName === "auth_updated_at" || colName === "email_confirmed_at" || colName === "phone_confirmed_at") {
+          widths[colName] = 120;
       }
     }
-  }
+    return widths;
+  }}, [data]); 
 
   const columns = useMemo(() => {
     const keysToUse = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[] | undefined;
@@ -76,18 +78,18 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
       .filter((key) => !omitSet.has(key))
       .map((key) => {
         const columnOverride = (key in overrides ? overrides[key as keyof typeof overrides] : {}) || {};
-        console.log(key + ":" + columnWidths[key]);
+        // console.log(key + ":" + columnWidths?.[key]);
         const defaultConfig: Column<GenericRow<T>> = {
           title: toTitleCase(key),
           dataIndex: key,
           key: key,
           excelFormat: inferExcelFormat(key),
-          width: columnWidths[key],
+          width: columnWidths?.[key],
         };
 
         return { ...defaultConfig, ...columnOverride };
       });
-  }, [tableName, overrides, omit]);
+  }, [tableName, overrides, omit, columnWidths]);
 
   return columns;
 }

@@ -3,15 +3,15 @@
 import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
-import { snakeToTitleCase } from "@/utils/formatters";
-import { useCallback, useEffect } from "react";
-import { toast } from "sonner";
-import { Database } from "@/types/supabase-types";
-import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { type LookupType, lookupTypeSchema } from "@/schemas";
+import { Database } from "@/types/supabase-types";
+import { snakeToTitleCase } from "@/utils/formatters";
+import { createClient } from "@/utils/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import z from "zod";
 
 type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];
@@ -29,14 +29,14 @@ interface LookupModalProps {
 // Add this function to extract unique categories
 const getUniqueCategories = (data?: Categories[]) => {
   if (!data) return [];
-  
+
   const categoriesSet = new Set<string>();
   data.forEach(item => {
     if (item.category) {
       categoriesSet.add(item.category);
     }
   });
-  
+
   return Array.from(categoriesSet).sort();
 };
 
@@ -61,7 +61,7 @@ export function LookupModal({
   // Extract unique categories
   const uniqueCategories = getUniqueCategories(categories);
   // console.log("uniqueCategories", uniqueCategories);
-  
+
   // Create a form-specific schema
   const lookupTypeFormSchema = lookupTypeSchema.pick({
     category: true,
@@ -108,21 +108,9 @@ export function LookupModal({
         status: editingLookup?.status !== false,
       };
 
-      console.log("Resetting form with data:", resetData);
       reset(resetData);
-
-      // Additional setValue calls to ensure the values are set properly
-      setTimeout(() => {
-        setValue("category", resetData.category);
-        setValue("name", resetData.name);
-        setValue("code", resetData.code || "");
-        setValue("description", resetData.description || "");
-        setValue("sort_order", resetData.sort_order);
-        setValue("is_system_default", resetData.is_system_default);
-        setValue("status", resetData.status);
-      }, 0);
     }
-  }, [isOpen, editingLookup, category, reset, setValue]);
+  }, [isOpen, editingLookup, category, reset]);
 
   const onValidSubmit = useCallback(
     async (data: LookupTypeFormData) => {

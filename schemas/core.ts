@@ -79,6 +79,7 @@ export const ofcCableSchema = z
     status: z.boolean().default(true).optional(),
     created_at: z.coerce.date().optional(),
     updated_at: z.coerce.date().optional(),
+    total_count: z.number().int().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     const a = data.sn_id;

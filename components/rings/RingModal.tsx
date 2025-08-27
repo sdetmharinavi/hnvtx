@@ -10,7 +10,12 @@ import { RingFormData, ringFormSchema } from "@/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/ui/form/FormCard";
-import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/ui/form/FormControls";
+import {
+  FormInput,
+  FormSearchableSelect,
+  FormSwitch,
+  FormTextarea,
+} from "@/components/common/ui/form/FormControls";
 
 export type RingRow = Database["public"]["Tables"]["rings"]["Row"];
 export type RingInsert = TablesInsert<"rings">;
@@ -25,7 +30,15 @@ interface RingModalProps {
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
 
-export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, ringTypes, maintenanceAreas }: RingModalProps) {
+export function RingModal({
+  isOpen,
+  onClose,
+  editingRing,
+  onCreated,
+  onUpdated,
+  ringTypes,
+  maintenanceAreas,
+}: RingModalProps) {
   const {
     register,
     handleSubmit,
@@ -44,8 +57,14 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
   });
 
   const supabase = createClient();
-  const { mutate: insertRing, isPending: creating } = useTableInsert(supabase, "rings");
-  const { mutate: updateRing, isPending: updating } = useTableUpdate(supabase, "rings");
+  const { mutate: insertRing, isPending: creating } = useTableInsert(
+    supabase,
+    "rings"
+  );
+  const { mutate: updateRing, isPending: updating } = useTableUpdate(
+    supabase,
+    "rings"
+  );
 
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
@@ -53,10 +72,11 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
   const ringTypeOptions: Option[] = useMemo(
     () =>
       (ringTypes || []).map(
-        (rt) => ({
-          value: rt.id,
-          label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
-        }) as Option
+        (rt) =>
+          ({
+            value: rt.id,
+            label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
+          } as Option)
       ),
     [ringTypes]
   );
@@ -64,10 +84,11 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
   const maintenanceAreaOptions: Option[] = useMemo(
     () =>
       (maintenanceAreas || []).map(
-        (a) => ({
-          value: a.id,
-          label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
-        }) as Option
+        (a) =>
+          ({
+            value: a.id,
+            label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
+          } as Option)
       ),
     [maintenanceAreas]
   );
@@ -133,32 +154,63 @@ export function RingModal({ isOpen, onClose, editingRing, onCreated, onUpdated, 
   const submitting = creating || updating || isSubmitting;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isEdit ? "Edit Ring" : "Add Ring"}>
-      <FormCard onSubmit={handleSubmit(onValidSubmit)} hightClass='min-h-calc(90vh - 200px)' title={isEdit ? "Edit Ring" : "Add Ring"} onCancel={handleClose}>
-        <FormInput name='name' label='Name' register={register} error={errors.name} disabled={submitting} placeholder='Enter ring name' />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={isEdit ? "Edit Ring" : "Add Ring"}
+      visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+    >
+      <FormCard
+        onSubmit={handleSubmit(onValidSubmit)}
+        heightClass="min-h-calc(90vh - 200px)"
+        title={isEdit ? "Edit Ring" : "Add Ring"}
+        onCancel={handleClose}
+        standalone
+      >
+        <FormInput
+          name="name"
+          label="Name"
+          register={register}
+          error={errors.name}
+          disabled={submitting}
+          placeholder="Enter ring name"
+        />
         <FormSearchableSelect
-          name='ring_type_id'
-          label='Ring Type'
+          name="ring_type_id"
+          label="Ring Type"
           control={control}
           error={errors.ring_type_id}
           disabled={submitting}
-          placeholder='Select ring type'
+          placeholder="Select ring type"
           options={ringTypeOptions}
         />
 
         <FormSearchableSelect
-          name='maintenance_terminal_id'
-          label='Maintenance Terminal'
+          name="maintenance_terminal_id"
+          label="Maintenance Terminal"
           control={control}
           error={errors.maintenance_terminal_id}
           disabled={submitting}
-          placeholder='Select maintenance terminal'
+          placeholder="Select maintenance terminal"
           options={maintenanceAreaOptions}
         />
 
-        <FormTextarea name='description' label='Description' control={control} error={errors.description} disabled={submitting} placeholder='Optional description' />
-        <FormSwitch name='status' label='Status' control={control} error={errors.status} className='my-2' />
-
+        <FormTextarea
+          name="description"
+          label="Description"
+          control={control}
+          error={errors.description}
+          disabled={submitting}
+          placeholder="Optional description"
+        />
+        <FormSwitch
+          name="status"
+          label="Status"
+          control={control}
+          error={errors.status}
+          className="my-2"
+        />
       </FormCard>
     </Modal>
   );

@@ -8,6 +8,7 @@ interface BulkActionsProps {
   onClearSelection: () => void;
   entityName?: string; // "ofc cable", "employee", etc.
   showStatusUpdate?: boolean;
+  canDelete?: () => boolean;
 }
 
 export function BulkActions({
@@ -18,6 +19,7 @@ export function BulkActions({
   onClearSelection,
   entityName = "item",
   showStatusUpdate = true,
+  canDelete = () => true,
 }: BulkActionsProps) {
   if (selectedCount === 0) return null;
 
@@ -55,7 +57,7 @@ export function BulkActions({
           
           <button
             onClick={onBulkDelete}
-            disabled={isOperationLoading}
+            disabled={isOperationLoading || !canDelete()}
             className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700
                       dark:bg-red-700 dark:hover:bg-red-800
                       text-sm disabled:opacity-50"

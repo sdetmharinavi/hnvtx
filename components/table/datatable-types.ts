@@ -6,10 +6,12 @@ export interface TableAction<T extends AuthTableOrViewName> {
   key: string;
   label: string;
   icon?: React.ReactNode;
+  getIcon?: (record: Row<T>) => React.ReactNode;
   onClick: (record: Row<T>, index?: number) => void;
   variant?: "primary" | "secondary" | "danger" | "success";
-  disabled?: (record: Row<T>) => boolean;
-  hidden?: (record: Row<T>) => boolean;
+  disabled?: boolean | ((record: Row<T>) => boolean);
+  hidden?: boolean | ((record: Row<T>) => boolean);
+  [key: string]: unknown;
 }
 
 export interface DownloadOptions<T extends AuthTableOrViewName> {

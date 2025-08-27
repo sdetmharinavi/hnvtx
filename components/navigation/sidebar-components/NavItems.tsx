@@ -44,6 +44,13 @@ function NavItems() {
         roles: [],
       },
       {
+        id: "employees",
+        label: "Employees",
+        icon: <BsPeople className="h-5 w-5" />,
+        href: "/dashboard/employees",
+        roles: [UserRole.ADMIN],
+      },
+      {
         id: "base-menu",
         label: "Base Structure",
         icon: <FiServer className="h-5 w-5" />,
@@ -104,39 +111,11 @@ function NavItems() {
       {
         id: "ofc-menu",
         label: "Optical Fiber Cable",
+        href: "/dashboard/ofc",
         icon: <AiFillMerge className="h-5 w-5" />, // replaced non-existent TbCableData with a valid icon
         roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
-        ],
-        children: [
-          {
-            id: "ofc-cables",
-            label: "Cables",
-            icon: <AiFillMerge className="h-5 w-5" />,
-            href: "/dashboard/ofc",
-            roles: [UserRole.ADMIN],
-          },
-          {
-            id: "ofc-details",
-            label: "Details",
-            icon: <TbListDetails className="h-5 w-5" />, // or <FiList className="h-5 w-5" /> or <MdOutlineArticle className="h-5 w-5" />
-            href: "/dashboard/ofc-details",
-            roles: [UserRole.ADMIN],
-          },
-        ],
-      },
-      {
-        id: "employees",
-        label: "Employees",
-        icon: <BsPeople className="h-5 w-5" />,
-        href: "/dashboard/employees",
-        roles: [UserRole.ADMIN],
+          UserRole.ADMIN
+        ]
       },
       {
         id: "systems",

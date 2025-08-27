@@ -1,7 +1,7 @@
 // @/components/table/TableBody.tsx
 import React, { useRef, useEffect } from "react";
 import { FiEdit3, FiCheck, FiX } from "react-icons/fi";
-import { DataTableProps } from "@/components/table/datatable-types";
+import { DataTableProps, TableAction } from "@/components/table/datatable-types";
 import { AuthTableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
@@ -11,7 +11,8 @@ import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
 
-interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "actions" | "striped" | "hoverable" | "loading" | "emptyText"> {
+interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "striped" | "hoverable" | "loading" | "emptyText"> {
+  actions?: TableAction<T>[];
   processedData: DataRow<T>[];
   visibleColumns: Column<Row<T>>[];
   hasActions: boolean;
@@ -55,7 +56,7 @@ function TableRowBase<T extends AuthTableOrViewName>({
     onCellEdit,
     saveCellEdit,
     cancelCellEdit,
-    isLoading,
+    // isLoading,
 }: TableRowProps<T>) {
     const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,22 +85,29 @@ function TableRowBase<T extends AuthTableOrViewName>({
                 style={{ width: 128, minWidth: 128, maxWidth: 128 }}>
               <div className='flex items-center justify-end gap-1'>
                 {actions?.map((action) => {
-                  if (action.hidden?.(record)) return null;
-                  const isDisabled = action.disabled?.(record);
+                  const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
+                  if (isHidden) return null;
+                  
+                  const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
                   const variants = {
                     primary: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
                     secondary: "text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300",
                     danger: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
                     success: "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300",
                   };
+                  
+                  const icon = action.getIcon ? action.getIcon(record) : action.icon;
+                  const variant = action.variant || 'secondary';
+                  
                   return (
                     <button
                       key={action.key}
                       onClick={() => !isDisabled && action.onClick(record, rowIndex)}
                       disabled={isDisabled}
-                      className={`p-1 rounded transition-colors ${isDisabled ? "opacity-50 cursor-not-allowed" : variants[action.variant || "secondary"]}`}
-                      title={action.label}>
-                      {action.icon}
+                      className={`p-1 rounded transition-colors ${isDisabled ? "opacity-50 cursor-not-allowed" : variants[variant]}`}
+                      title={action.label}
+                    >
+                      {icon}
                     </button>
                   );
                 })}

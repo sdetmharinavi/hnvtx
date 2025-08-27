@@ -17,10 +17,11 @@ export interface TableAction<T = unknown> {
   key: string;
   label: string;
   icon?: React.ReactNode;
+  getIcon?: (record: T) => React.ReactNode;
   onClick: (record: T, index?: number) => void;
   variant?: 'primary' | 'secondary' | 'danger' | 'success';
-  disabled?: (record: T) => boolean;
-  hidden?: (record: T) => boolean;
+  disabled?: boolean | ((record: T) => boolean);
+  hidden?: boolean | ((record: T) => boolean);
   // Additional properties that might be used by the DataTable
   [key: string]: unknown;
 }
@@ -58,26 +59,18 @@ export function createStandardActions<V extends ActionableRecord>({
 
   // --- Toggle Status Actions (Activate/Deactivate) ---
   if (onToggleStatus) {
-    actions.push(
-      {
-        key: "activate",
-        label: "Activate",
-        icon: React.createElement(FiToggleRight),
-        // Hide if no boolean status, or already active
-        hidden: (record) => !hasBooleanStatus(record) || !!record.status,
-        onClick: (record) => onToggleStatus(record),
-        variant: "success",
-      },
-      {
-        key: "deactivate",
-        label: "Deactivate",
-        icon: React.createElement(FiToggleLeft),
-        // Hide if no boolean status, or already inactive
-        hidden: (record) => !hasBooleanStatus(record) || !record.status,
-        onClick: (record) => onToggleStatus(record),
-        variant: "secondary",
-      }
-    );
+    actions.push({
+      key: "toggleStatus",
+      label: "Toggle Status",
+      getIcon: (record: V) => 
+        React.createElement(record.status ? FiToggleRight : FiToggleLeft, { 
+          className: `w-4 h-4 ${record.status ? 'text-green-500' : 'text-gray-400'}`,
+          size: 20
+        }),
+      variant: 'secondary',
+      onClick: (record) => onToggleStatus(record),
+      hidden: (record) => !hasBooleanStatus(record)
+    });
   }
 
   // --- View Action ---
