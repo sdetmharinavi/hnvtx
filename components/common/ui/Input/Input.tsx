@@ -63,7 +63,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       leftIcon && 'pl-11',
       shouldShowClear && 'pr-11',
       error ? 'border-red-500 focus:ring-red-500 dark:border-red-600' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:ring-blue-500',
-      (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed',
+      (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed',
       className
     );
     

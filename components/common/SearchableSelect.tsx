@@ -244,7 +244,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 onKeyDown={handleKeyDown}
                 className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md 
                          focus:ring-2 focus:ring-blue-500 focus:outline-none
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         bg-white dark:bg-gray-900 text-gray-900 dark:text-white
                          placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>

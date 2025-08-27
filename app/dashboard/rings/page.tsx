@@ -57,7 +57,6 @@ const useRingsData = (
   const totalCount = data?.[0]?.total_count || 0;
   const activeCount = data?.[0]?.active_count || 0;
   const inactiveCount = data?.[0]?.inactive_count || 0;
-  console.log("data", data);
 
   return {
     data: data || [],

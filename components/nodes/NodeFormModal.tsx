@@ -182,7 +182,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("name")}
                   placeholder="Node Name"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
                 {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
               </div>
@@ -196,7 +196,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("ip_address")}
                   placeholder="e.g., 192.168.1.1"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -312,7 +312,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("site_id")}
                   placeholder="Site ID"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -327,7 +327,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   step="any"
                   placeholder="Latitude"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -341,7 +341,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   step="any"
                   placeholder="Longitude"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -355,7 +355,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   type="number"
                   placeholder="Order"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -368,7 +368,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("vlan")}
                   placeholder="VLAN ID"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -381,7 +381,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("builtup")}
                   placeholder="e.g., Rack 5, Unit 10"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -394,7 +394,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("east_port")}
                   placeholder="East Port"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -406,7 +406,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   {...register("west_port")}
                   placeholder="West Port"
                   disabled={submitting}
-                  className="dark:bg-gray-800 dark:text-gray-100"
+                  className="dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
 
@@ -420,7 +420,7 @@ export function NodeFormModal({ isOpen, onClose, editingNode, onCreated, onUpdat
                   rows={3}
                   placeholder="Remarks..."
                   disabled={submitting}
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 

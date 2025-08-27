@@ -56,7 +56,7 @@ const StatCard: React.FC<StatProps> = ({ value, label, icon, color = 'default' }
       default: 'text-gray-900 dark:text-white',
     };
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 flex items-start gap-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 flex items-start gap-4">
         {icon && <div className={`flex-shrink-0 text-2xl ${statColors[color]}`}>{icon}</div>}
         <div>
           <div className={`text-2xl font-bold ${statColors[color]}`}>{value}</div>
@@ -116,7 +116,7 @@ export function PageHeader({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
           {isLoading ? (
             Array.from({ length: stats?.length || 2 }).map((_, i) => (
-              <div key={`stat-skeleton-${i}`} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 animate-pulse">
+              <div key={`stat-skeleton-${i}`} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 animate-pulse">
                 <div className="h-8 w-1/2 rounded-md bg-gray-200 dark:bg-gray-700 mb-2"></div>
                 <div className="h-4 w-3/4 rounded-md bg-gray-200 dark:bg-gray-700"></div>
               </div>

@@ -120,7 +120,7 @@ export const Textarea: React.FC<TextareaProps> = ({
             }
             ${
               disabled
-                ? "bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500"
+                ? "bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-gray-900 dark:text-gray-500"
                 : "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
             }
             focus:outline-none placeholder-gray-400 dark:placeholder-gray-500

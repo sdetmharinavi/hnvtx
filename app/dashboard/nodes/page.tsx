@@ -6,7 +6,7 @@ import { NodesFilters } from "@/components/nodes/NodesFilters";
 import { getNodesTableColumns } from "@/components/nodes/NodesTableColumns";
 import { NodeFormModal } from "@/components/nodes/NodeFormModal";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { useTableWithRelations } from "@/hooks/database";
+import { usePagedNodesComplete, useTableWithRelations } from "@/hooks/database";
 import { FiCpu } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -21,38 +21,38 @@ import {
 } from "@/components/common/PageHeader";
 import { toast } from "sonner";
 import { NodeRowsWithRelations } from "@/types/relational-row-types";
+import { NodeRowsWithCount } from "@/types/view-row-types";
 
 // 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<NodeRowsWithRelations> => {
+): DataQueryHookReturn<NodeRowsWithCount> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = useTableWithRelations(
+  const { data, isLoading, error, refetch } = usePagedNodesComplete(
     supabase,
-    "nodes",
-    [
-      "node_type:node_type_id(name)",
-      "ring:ring_id(name)",
-      "maintenance_terminal:maintenance_terminal_id(name)",
-    ],
     {
       filters: {
-        name: { operator: "ilike", value: `%${searchQuery}%` },
         ...filters,
+        ...(searchQuery ? { name: searchQuery } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
-      includeCount: true,
-      orderBy: [{ column: "name", ascending: true }],
     }
   );
 
+  // Calculate counts from the full dataset
+  const totalCount = data?.[0]?.total_count || 0;
+  const activeCount = data?.[0]?.active_count || 0;
+  const inactiveCount = data?.[0]?.inactive_count || 0;
+
   return {
     data: data || [],
-    totalCount: data?.length || 0,
+    totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     error,
     refetch,
@@ -64,6 +64,8 @@ const NodesPage = () => {
   const {
     data: nodes,
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     // isMutating,
     error,
@@ -76,7 +78,7 @@ const NodesPage = () => {
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"nodes", NodeRowsWithRelations>({
+  } = useCrudManager<"nodes", NodeRowsWithCount>({
     tableName: "nodes",
     dataQueryHook: useNodesData,
   });
@@ -85,10 +87,10 @@ const NodesPage = () => {
   const nodeTypes = useMemo(() => {
     const uniqueNodeTypes = new Map();
     nodes.forEach((node) => {
-      if (node.node_type && node.node_type_id) {
+      if (node.node_type_id) {
         uniqueNodeTypes.set(node.node_type_id, {
           id: node.node_type_id,
-          name: node.node_type.name,
+          name: node.node_type_id,
         });
       }
     });
@@ -100,7 +102,7 @@ const NodesPage = () => {
 
   const tableActions = useMemo(
     () =>
-      createStandardActions<NodeRowsWithRelations>({
+      createStandardActions<NodeRowsWithCount>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -122,12 +124,12 @@ const NodesPage = () => {
   const headerStats = [
     { value: totalCount, label: "Total Nodes" },
     {
-      value: nodes.filter((r) => r.status).length,
+      value: activeCount,
       label: "Active",
       color: "success" as const,
     },
     {
-      value: nodes.filter((r) => !r.status).length,
+      value: inactiveCount,
       label: "Inactive",
       color: "danger" as const,
     },
@@ -160,7 +162,7 @@ const NodesPage = () => {
       />
 
       <DataTable
-        tableName="nodes"
+        tableName="v_nodes_complete"
         data={nodes}
         columns={columns}
         loading={isLoading}
