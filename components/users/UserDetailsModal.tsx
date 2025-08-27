@@ -35,7 +35,6 @@ type Address = {
 };
 
 const UserDetailsModal = ({ user, onClose, isOpen }: Props) => {
-  console.log(user);
 
   // Helper function to format address
   const formatAddress = (address: Address) => {

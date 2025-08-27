@@ -82,7 +82,7 @@ export function toTitleCase(str: string): string {
 
 export function inferExcelFormat(
   columnName: string
-): "text" | "number" | "date" | "currency" | "percentage" {
+): "text" | "number" | "date" | "currency" | "percentage" | "json" {
   const name = columnName.toLowerCase();
   if (
     name.endsWith("_at") ||
@@ -101,6 +101,18 @@ export function inferExcelFormat(
   )
     return "number";
   if (name.includes("percent")) return "percentage";
+  // common JSON-like columns
+  if (
+    name.includes("address") ||
+    name.includes("preference") ||
+    name.includes("metadata") ||
+    name.includes("meta_data") ||
+    name.includes("raw_user_meta_data") ||
+    name.includes("raw_app_meta_data") ||
+    name.endsWith("_json") ||
+    name.includes("json")
+  )
+    return "json";
   return "text";
 }
 

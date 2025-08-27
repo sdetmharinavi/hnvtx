@@ -3,7 +3,7 @@
 
 import React, { useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { useTableWithRelations } from "@/hooks/database";
+import { usePagedRingsWithCount, useTableWithRelations } from "@/hooks/database";
 import { RingsFilters } from "@/components/rings/RingsFilters";
 import { RingModal } from "@/components/rings/RingModal";
 import { ConfirmModal } from "@/components/common/ui";
@@ -24,39 +24,46 @@ import {
   useCrudManager,
 } from "@/hooks/useCrudManager";
 import { RingRowsWithRelations } from "@/types/relational-row-types";
+import { RingTypeRowsWithCount } from "@/types/view-row-types";
 
 // 1. ADAPTER HOOK: Makes `useRingsData` compatible with `useCrudManager`
 const useRingsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<RingRowsWithRelations> => {
+): DataQueryHookReturn<RingTypeRowsWithCount> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = useTableWithRelations(
+  const { data, isLoading, error, refetch } = usePagedRingsWithCount(
     supabase,
-    "rings",
-    [
-      "ring_type:ring_type_id(id, code)",
-      "maintenance_terminal:maintenance_terminal_id(id,name)",
-    ],
     {
       filters: {
-        name: { operator: "ilike", value: `%${searchQuery}%` },
         ...filters,
+        ...(searchQuery ? { name: searchQuery } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
-      includeCount: true, // This will include the total count
-      orderBy: [{ column: "name", ascending: true }],
+      // queryOptions: {
+      //   enabled: true,
+      //   refetchOnWindowFocus: false,
+      //   refetchOnMount: true,
+      //   refetchInterval: 0,
+      //   refetchIntervalInBackground: false,
+      //   staleTime: 3 * 60 * 1000,
+      // }
     }
   );
 
   // Calculate counts from the full dataset
   const totalCount = data?.[0]?.total_count || 0;
+  const activeCount = data?.[0]?.active_count || 0;
+  const inactiveCount = data?.[0]?.inactive_count || 0;
+  console.log("data", data);
 
   return {
     data: data || [],
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     error,
     refetch,
@@ -68,6 +75,8 @@ const RingsPage = () => {
   const {
     data: rings,
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     // isMutating,
     // error,
@@ -80,7 +89,7 @@ const RingsPage = () => {
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"rings", RingRowsWithRelations>({
+  } = useCrudManager<"rings", RingTypeRowsWithCount>({
     tableName: "rings",
     dataQueryHook: useRingsData,
   });
@@ -88,11 +97,12 @@ const RingsPage = () => {
   // 3. Extract ring types from the rings data
   const ringTypes = useMemo(() => {
     const uniqueRingTypes = new Map();
+    console.log("rings", rings);
     rings.forEach((ring) => {
-      if (ring.ring_type && ring.ring_type_id) {
+      if (ring.ring_type_code) {
         uniqueRingTypes.set(ring.ring_type_id, {
           id: ring.ring_type_id,
-          name: ring.ring_type.code,
+          name: ring.ring_type_code,
         });
       }
     });
@@ -103,10 +113,10 @@ const RingsPage = () => {
   const maintenanceAreas = useMemo(() => {
     const uniqueMaintenanceAreas = new Map();
     rings.forEach((ring) => {
-      if (ring.maintenance_terminal && ring.maintenance_terminal_id) {
+      if (ring.maintenance_area_area_type_id && ring.maintenance_terminal_id) {
         uniqueMaintenanceAreas.set(ring.maintenance_terminal_id, {
           id: ring.maintenance_terminal_id,
-          name: ring.maintenance_terminal.name,
+          name: ring.maintenance_area_name,
         });
       }
     });
@@ -114,17 +124,19 @@ const RingsPage = () => {
   }, [rings]);
 
   const columns = RingsColumns();
+  // Type guard to remove undefined from the mapped array
+  const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
   const orderedColumns = [
     ...desiredRingColumnOrder
       .map((k) => columns.find((c) => c.key === k))
-      .filter(Boolean),
+      .filter(notUndefined),
     ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
   ];
 
   // --- tableActions ---
   const tableActions = useMemo(
     () =>
-      createStandardActions<RingRowsWithRelations>({
+      createStandardActions<RingTypeRowsWithCount>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -138,14 +150,7 @@ const RingsPage = () => {
     ]
   );
 
-  const { activeCount, inactiveCount } = (rings || []).reduce(
-    (acc, ring) => {
-      if (ring.status) acc.activeCount++;
-      else acc.inactiveCount++;
-      return acc;
-    },
-    { activeCount: 0, inactiveCount: 0 }
-  );
+  
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
@@ -186,9 +191,9 @@ const RingsPage = () => {
 
       {/* Table */}
       <DataTable
-        tableName="rings"
+        tableName="v_rings_with_count"
         data={rings}
-        columns={orderedColumns as Column<RingRowsWithRelations>[]}
+        columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
         pagination={{

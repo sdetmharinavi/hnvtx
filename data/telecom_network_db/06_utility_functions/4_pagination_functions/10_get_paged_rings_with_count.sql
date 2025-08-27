@@ -1,5 +1,6 @@
 -- Function: get_paged_rings_with_count
 DROP FUNCTION IF EXISTS public.get_paged_rings_with_count;
+
 CREATE OR REPLACE FUNCTION public.get_paged_rings_with_count(
     p_limit integer,
     p_offset integer,
@@ -8,15 +9,18 @@ CREATE OR REPLACE FUNCTION public.get_paged_rings_with_count(
     p_filters jsonb DEFAULT '{}'::jsonb
 )
 RETURNS TABLE(
+    -- rings
     id text,
     name text,
-    ring_type_id text,
     description text,
+    ring_type_id text,
     maintenance_terminal_id text,
     total_nodes integer,
     status boolean,
     created_at text,
     updated_at text,
+
+    -- lookup_types (ring type)
     ring_type_name text,
     ring_type_code text,
     ring_type_category text,
@@ -25,6 +29,22 @@ RETURNS TABLE(
     ring_type_status boolean,
     ring_type_created_at text,
     ring_type_updated_at text,
+
+    -- maintenance_areas
+    maintenance_area_name text,
+    maintenance_area_code text,
+    maintenance_area_email text,
+    maintenance_area_contact_person text,
+    maintenance_area_contact_number text,
+    maintenance_area_latitude double precision,
+    maintenance_area_longitude double precision,
+    maintenance_area_area_type_id text,
+    maintenance_area_parent_id text,
+    maintenance_area_status boolean,
+    maintenance_area_created_at text,
+    maintenance_area_updated_at text,
+
+    -- counts
     total_count bigint,
     active_count bigint,
     inactive_count bigint
@@ -64,23 +84,38 @@ BEGIN
   sql_query := format(
     $query$
     SELECT
-      r.id::text,
-      r.name::text,
-      r.ring_type_id::text,
-      r.description::text,
-      r.maintenance_terminal_id::text,
-      r.total_nodes::integer,
-      r.status::boolean,
-      r.created_at::text,
-      r.updated_at::text,
-      r.ring_type_name::text,
-      r.ring_type_code::text,
-      r.ring_type_category::text,
-      r.ring_type_sort_order::integer,
-      r.ring_type_is_system_default::boolean,
-      r.ring_type_status::boolean,
-      r.ring_type_created_at::text,
-      r.ring_type_updated_at::text,
+      r.id,
+      r.name,
+      r.description,
+      r.ring_type_id,
+      r.maintenance_terminal_id,
+      r.total_nodes,
+      r.status,
+      r.created_at,
+      r.updated_at,
+
+      r.ring_type_name,
+      r.ring_type_code,
+      r.ring_type_category,
+      r.ring_type_sort_order,
+      r.ring_type_is_system_default,
+      r.ring_type_status,
+      r.ring_type_created_at,
+      r.ring_type_updated_at,
+
+      r.maintenance_area_name,
+      r.maintenance_area_code,
+      r.maintenance_area_email,
+      r.maintenance_area_contact_person,
+      r.maintenance_area_contact_number,
+      r.maintenance_area_latitude,
+      r.maintenance_area_longitude,
+      r.maintenance_area_area_type_id,
+      r.maintenance_area_parent_id,
+      r.maintenance_area_status,
+      r.maintenance_area_created_at,
+      r.maintenance_area_updated_at,
+
       count(*) OVER() AS total_count,
       sum(CASE WHEN r.status THEN 1 ELSE 0 END) OVER() AS active_count,
       sum(CASE WHEN NOT r.status THEN 1 ELSE 0 END) OVER() AS inactive_count
@@ -101,5 +136,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION public.get_paged_rings_with_count(integer, integer, text, text, jsonb) TO authenticated;
+
 ALTER FUNCTION public.get_paged_rings_with_count(integer, integer, text, text, jsonb)
 SET search_path = public, auth, pg_temp;

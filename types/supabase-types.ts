@@ -3165,6 +3165,18 @@ export type Database = {
           description: string | null
           id: string | null
           inactive_count: number | null
+          maintenance_area_area_type_id: string | null
+          maintenance_area_code: string | null
+          maintenance_area_contact_number: string | null
+          maintenance_area_contact_person: string | null
+          maintenance_area_created_at: string | null
+          maintenance_area_email: string | null
+          maintenance_area_latitude: number | null
+          maintenance_area_longitude: number | null
+          maintenance_area_name: string | null
+          maintenance_area_parent_id: string | null
+          maintenance_area_status: boolean | null
+          maintenance_area_updated_at: string | null
           maintenance_terminal_id: string | null
           name: string | null
           ring_type_category: string | null
@@ -3182,6 +3194,34 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_areas_area_type_id_fkey"
+            columns: ["maintenance_area_area_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_areas_area_type_id_fkey"
+            columns: ["maintenance_area_area_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_areas_parent_id_fkey"
+            columns: ["maintenance_area_parent_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_areas_parent_id_fkey"
+            columns: ["maintenance_area_parent_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas_with_count"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rings_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
@@ -3758,6 +3798,18 @@ export type Database = {
           description: string
           id: string
           inactive_count: number
+          maintenance_area_area_type_id: string
+          maintenance_area_code: string
+          maintenance_area_contact_number: string
+          maintenance_area_contact_person: string
+          maintenance_area_created_at: string
+          maintenance_area_email: string
+          maintenance_area_latitude: number
+          maintenance_area_longitude: number
+          maintenance_area_name: string
+          maintenance_area_parent_id: string
+          maintenance_area_status: boolean
+          maintenance_area_updated_at: string
           maintenance_terminal_id: string
           name: string
           ring_type_category: string

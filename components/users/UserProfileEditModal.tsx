@@ -54,12 +54,9 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({ isOpen, user, on
     },
   });
 
-  console.log("user", user);
-
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
-      console.log("Populating form with user data:", user);
       reset({
         first_name: user?.first_name || "",
         last_name: user?.last_name || "",

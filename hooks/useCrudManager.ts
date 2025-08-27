@@ -40,6 +40,8 @@ export interface DataQueryHookParams {
 export interface DataQueryHookReturn<V> {
   data: V[];
   totalCount: number;
+  activeCount: number;
+  inactiveCount: number;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -88,7 +90,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   }, [debouncedSearch, filters]);
 
   // --- DATA FETCHING (Delegated to the injected hook) ---
-  const { data, totalCount, isLoading, error, refetch } = dataQueryHook({
+  const { data, totalCount, activeCount, inactiveCount, isLoading, error, refetch } = dataQueryHook({
     currentPage,
     pageLimit,
     searchQuery: debouncedSearch,
@@ -268,6 +270,8 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   return {
     data: data || [],
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     error,
     isMutating,

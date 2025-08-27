@@ -174,7 +174,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
       return;
     }
     tableExcelDownload.mutate({
-      fileName: `${exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName}-export-${formatDate(new Date(), { format: "dd-mm-yyyy" })}.xlsx`,
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName}.xlsx`,
       sheetName: exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName,
       filters: exportConfig.filters,
       columns: columns.filter(c => exportConfig.columns ? exportConfig.columns.includes(c.key as any) : true),

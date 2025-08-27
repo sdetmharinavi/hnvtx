@@ -20,7 +20,7 @@ export interface Column<T> {
   filterOptions?: { label: string; value: unknown }[];
   align?: "left" | "center" | "right";
   hidden?: boolean;
-  excelFormat?: "text" | "number" | "date" | "currency" | "percentage";
+  excelFormat?: "text" | "number" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
 }
 
@@ -124,6 +124,26 @@ export const formatCellValue = <T = unknown>(
       return typeof value === "number"
         ? value / 100
         : parseFloat(String(value)) / 100 || 0;
+    case "json": {
+      // If it's already a string, try to normalize to compact JSON; otherwise stringify objects/arrays
+      if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          return JSON.stringify(parsed); // compact
+        } catch {
+          // Not a JSON string, return as-is
+          return value;
+        }
+      }
+      if (typeof value === "object") {
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return String(value);
+        }
+      }
+      return String(value);
+    }
     default:
       return String(value);
   }

@@ -8,7 +8,7 @@
 const COLUMN_WIDTHS: Record<string, number> = {
   // --- Specific & Exact Column Names ---
   id: 290,
-  status: 100,
+  status: 130,
   role: 120,
   email: 240,
   address: 300,
