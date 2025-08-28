@@ -57,7 +57,11 @@ export function EntityListItem<T extends BaseEntity>({
           )}
         </div>
         <button
-          onClick={(e) => onToggleStatus(e, entity)}
+          onClick={(e) => {
+            // IMPROVEMENT: Stop the click from bubbling up to the parent div.
+            e.stopPropagation(); 
+            onToggleStatus(e, entity);
+          }}
           disabled={isLoading}
           className="ml-2"
         >

@@ -5,7 +5,7 @@ import { Control, FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } 
 import { FormInput, FormSearchableSelect, FormDateInput } from "@/components/common/ui/form/FormControls";
 import { Switch } from "@/components/common/ui/switch/Switch";
 import { Label } from "@/components/common/ui/label/Label";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { OfcCableFormData } from "@/schemas";
 import { OFC_FORM_CONFIG } from "@/components/ofc/OfcForm/constants/ofcFormConfig";
 import FormSection from "./FormSection";

@@ -2,7 +2,7 @@
 
 import React, { memo, useState, useEffect } from "react";
 import { FiFilter, FiSearch } from "react-icons/fi";
-import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { SearchableSelect } from "@/components/common/ui/select/SearchableSelect";
 import { Filters, Row } from "@/hooks/database";
 import { useDebounce } from "use-debounce"; // <-- IMPORT useDebounce
 import { DEFAULTS } from "@/config/constants";

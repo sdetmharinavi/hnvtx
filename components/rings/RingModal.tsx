@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { createClient } from "@/utils/supabase/client";
 import { Database, TablesInsert } from "@/types/supabase-types";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";

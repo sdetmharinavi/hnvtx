@@ -44,13 +44,16 @@ export function EntityManagementComponent<T extends BaseEntity>({
     toggleExpanded,
     handleOpenCreateForm,
     handleOpenEditForm,
-    onToggleStatus,
+    onToggleStatus, // This is the handler returned by the hook
   } = useEntityManagement({
     entitiesQuery,
     config,
     onEdit,
     onDelete,
-    onToggleStatus: (e, entity) => toggleStatusMutation.mutate(entity),
+    // It accepts both arguments but only uses the `entity` to trigger the mutation.
+    onToggleStatus: (e, entity) => {
+      toggleStatusMutation.mutate(entity);
+    },
     onCreateNew,
   });
 

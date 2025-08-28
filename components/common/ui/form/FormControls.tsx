@@ -2,7 +2,7 @@
 "use client";
 
 import { Control, Controller, FieldError, FieldErrorsImpl, Merge, UseFormRegister, Path, FieldValues } from "react-hook-form";
-import { SearchableSelect, Option } from "@/components/common/SearchableSelect";
+import { SearchableSelect, Option } from "@/components/common/ui/select/SearchableSelect";
 import { Input } from "@/components/common/ui/Input";
 import { Textarea } from "@/components/common/ui/textarea/Textarea";
 import { Label, Switch } from "@/components/common/ui";

@@ -1,7 +1,7 @@
 // Main OfcForm component
 import React, { useMemo } from "react";
 import { TablesInsert } from "@/types/supabase-types";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { usePagedNodesComplete, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";

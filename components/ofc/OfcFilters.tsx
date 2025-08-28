@@ -1,11 +1,12 @@
 // app/dashboard/ofc/components/OfcFilters.tsx
 import React, { memo } from "react";
 import { FiFilter, FiSearch } from "react-icons/fi";
-import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { SearchableSelect } from "@/components/common/ui/select/SearchableSelect";
 import type { OfcCablesFilters as OfcFiltersType } from "@/components/ofc/ofc-types";
+import { Filters } from "@/hooks/database";
 
 interface OfcFiltersProps {
-  filters: OfcFiltersType;
+  filters: Filters;
   showFilters: boolean;
   ofcTypes: { id: string; name: string }[];
   maintenanceAreas: { id: string; name: string; code?: string | null }[];

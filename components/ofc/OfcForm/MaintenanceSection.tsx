@@ -3,7 +3,7 @@ import React from "react";
 import { Settings } from "lucide-react";
 import { Control, FieldErrors } from "react-hook-form";
 import { FormSearchableSelect, FormTextarea } from "@/components/common/ui/form/FormControls";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { OfcCableFormData } from "@/schemas";
 import FormSection from "./FormSection";
 

@@ -11,7 +11,7 @@ import {
   TableBody,
   TablePagination,
   TableFilterPanel,
-} from './';
+} from '.';
 import { DataTableProps, SortConfig } from '@/components/table/datatable-types';
 import { AuthTableOrViewName, Row, Filters } from '@/hooks/database';
 import {
@@ -19,7 +19,6 @@ import {
   DownloadOptions,
   RPCConfig,
 } from '@/hooks/database/excel-queries/excel-helpers';
-import { cn } from '@/lib/utils';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
@@ -409,15 +408,11 @@ export function DataTable<T extends AuthTableOrViewName>({
     tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
   return (
-    <div 
-      className={cn(
-        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)]", 
-        bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md", 
-        className
-      )}
+    <div
+      className={`relative bg-white dark:bg-gray-800 rounded-lg ${
+        bordered ? 'border border-gray-200 dark:border-gray-700' : ''
+      } ${className}`}
     >
-      {/* Section 1: Toolbar and Filters (Non-scrolling) */}
-      <div className="flex-shrink-0 z-[9999]">
       <TableToolbar
         title={title}
         searchable={searchable}
@@ -461,11 +456,14 @@ export function DataTable<T extends AuthTableOrViewName>({
         showFilters={showFilters}
         filterable={filterable}
       />
-      </div>
 
-      {/* Section 2: Scrollable Table Area */}
-      <div className='flex-1 w-full overflow-auto min-h-0'>
-        <table className={`min-w-full  w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
+      <div className="w-full overflow-x-auto">
+        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <table
+            className={`min-w-max w-full table-auto sm:table-fixed ${
+              bordered ? 'border-separate border-spacing-0' : ''
+            }`}
+          >
             <TableHeader
               columns={columns}
               visibleColumns={visibleColumnsData}
@@ -510,12 +508,9 @@ export function DataTable<T extends AuthTableOrViewName>({
               isLoading={loading}
             />
           </table>
+        </div>
       </div>
-
-      {/* Section 3: Pagination (Non-scrolling) */}
-      <div className="flex-shrink-0">
-        <TablePagination pagination={pagination} bordered={bordered} />
-      </div>
+      <TablePagination pagination={pagination} bordered={bordered} />
     </div>
   );
 }

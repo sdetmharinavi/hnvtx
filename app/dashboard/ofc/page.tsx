@@ -1,42 +1,47 @@
-"use client";
+'use client';
 
-import React, { useMemo, useState, useCallback } from "react";
-import { createClient } from "@/utils/supabase/client";
+import React, { useMemo, useState, useCallback } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import {
   useTableInsert,
   useTableUpdate,
   useToggleStatus,
   useTableBulkOperations,
   usePagedOfcCablesComplete,
-} from "@/hooks/database";
-import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
-import { useRouter } from "next/navigation";
+  Filters,
+  convertRichFiltersToSimpleJson,
+} from '@/hooks/database';
+import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
+import { useRouter } from 'next/navigation';
 
-import { DataTable } from "@/components/table/DataTable";
-import { Row } from "@/hooks/database";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { BulkActions } from "@/components/common/BulkActions";
-import { OfcFilters } from "@/components/ofc/OfcFilters";
-import OfcForm from "@/components/ofc/OfcForm/OfcForm";
-import { TablesInsert, TablesUpdate } from "@/types/supabase-types";
+import { DataTable } from '@/components/table/DataTable';
+import { Row } from '@/hooks/database';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { BulkActions } from '@/components/common/BulkActions';
+import { OfcFilters } from '@/components/ofc/OfcFilters';
+import OfcForm from '@/components/ofc/OfcForm/OfcForm';
+import { Json, TablesInsert, TablesUpdate } from '@/types/supabase-types';
 import {
   OfcCablesFilters,
   OfcCablesWithRelations,
-} from "@/components/ofc/ofc-types";
-import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
-import { toast } from "sonner";
+} from '@/components/ofc/ofc-types';
+import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
+import { toast } from 'sonner';
 import {
   PageHeader,
   useStandardHeaderActions,
-} from "@/components/common/PageHeader";
-import { AiFillMerge } from "react-icons/ai";
-import { createStandardActions } from "@/components/table/action-helpers";
+} from '@/components/common/PageHeader';
+import { AiFillMerge } from 'react-icons/ai';
+import { createStandardActions } from '@/components/table/action-helpers';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
-} from "@/hooks/useCrudManager";
-import { OfcCableRowsWithCount } from "@/types/view-row-types";
+} from '@/hooks/useCrudManager';
+import { OfcCableRowsWithCount } from '@/types/view-row-types';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
@@ -45,13 +50,31 @@ const useOfcData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
+  // Build the server filters object that the RPC function expects.
+  const serverFilters = useMemo(() => {
+    const richFilters: Filters = { ...filters };
+    if (searchQuery) {
+      richFilters.or = `(route_name ILIKE '%${searchQuery}%' OR asset_no ILIKE '%${searchQuery}%')`;
+    }
+    return convertRichFiltersToSimpleJson(richFilters);
+  }, [filters, searchQuery]);
+
+
+  // const { data, isLoading, error, refetch } = usePagedOfcCablesComplete(
+  //   supabase,
+  //   {
+  //     filters: {
+  //       ...filters,
+  //       ...(searchQuery ? { route_name: searchQuery } : {}),
+  //     },
+  //     limit: pageLimit,
+  //     offset: (currentPage - 1) * pageLimit,
+  //   }
+  // );
   const { data, isLoading, error, refetch } = usePagedOfcCablesComplete(
     supabase,
     {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
-      },
+      filters: serverFilters as Json,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
@@ -92,16 +115,16 @@ const OfcPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"ofc_cables", OfcCableRowsWithCount>({
-    tableName: "ofc_cables",
+  } = useCrudManager<'ofc_cables', OfcCableRowsWithCount>({
+    tableName: 'ofc_cables',
     dataQueryHook: useOfcData,
-     searchColumn: "route_name",
+    searchColumn: "route_name", // This can be considered the "primary" search field for display purposes
   });
 
   // 3. Extract ring types from the rings data
   const ofcTypes = useMemo(() => {
     const uniqueOfcTypes = new Map();
-    console.log("ofcData", ofcData);
+    console.log('ofcData', ofcData);
     ofcData.forEach((ofc) => {
       if (ofc.ofc_type_code) {
         uniqueOfcTypes.set(ofc.ofc_type_id, {
@@ -115,7 +138,7 @@ const OfcPage = () => {
 
   const maintenanceAreas = useMemo(() => {
     const uniqueMaintenanceAreas = new Map();
-    console.log("ofcData", ofcData);
+    console.log('ofcData', ofcData);
     ofcData.forEach((ofc) => {
       if (ofc.maintenance_area_code) {
         uniqueMaintenanceAreas.set(ofc.maintenance_terminal_id, {
@@ -141,6 +164,16 @@ const OfcPage = () => {
   //   useState<OfcCablesWithRelations | null>(null);
   // const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  const activeFilterCount = Object.values(crudFilters.filters).filter(
+    Boolean
+  ).length;
+  const hasActiveFilters = activeFilterCount > 0 || !!search.searchQuery;
+
+  const handleClearFilters = () => {
+    crudFilters.setFilters({});
+    search.setSearchQuery('');
+  };
   // const [debouncedSearch] = useDebounce("", DEFAULTS.DEBOUNCE_DELAY);
 
   // --- FILTERS ---
@@ -185,44 +218,44 @@ const OfcPage = () => {
   // --- MUTATIONS ---
   const { mutate: insertOfcCable, isPending: isInserting } = useTableInsert(
     supabase,
-    "ofc_cables",
+    'ofc_cables',
     {
       onSuccess: () => {
         refetch();
         closeModal();
-        toast.success("OFC Cable created.");
+        toast.success('OFC Cable created.');
       },
     }
   );
   const { mutate: updateOfcCable, isPending: isUpdating } = useTableUpdate(
     supabase,
-    "ofc_cables",
+    'ofc_cables',
     {
       onSuccess: () => {
         refetch();
         closeModal();
-        toast.success("OFC Cable updated.");
+        toast.success('OFC Cable updated.');
       },
     }
   );
-  const { mutate: toggleStatus } = useToggleStatus(supabase, "ofc_cables", {
+  const { mutate: toggleStatus } = useToggleStatus(supabase, 'ofc_cables', {
     onSuccess: () => {
       refetch();
-      toast.success("OFC Cable status toggled.");
+      toast.success('OFC Cable status toggled.');
     },
   });
   const { bulkDelete, bulkUpdate } = useTableBulkOperations(
     supabase,
-    "ofc_cables"
+    'ofc_cables'
   );
 
   // --- HANDLERS ---
   const closeModal = useCallback(() => {
-    setEditingRecord(null);
+    editModal.close();
   }, []);
-  const handleSave = (data: TablesInsert<"ofc_cables">) => {
-    if (editingRecord) {
-      updateOfcCable({ id: editingRecord.id!, data });
+  const handleSave = (data: TablesInsert<'ofc_cables'>) => {
+    if (editModal.record) {
+      updateOfcCable({ id: editModal.record.id!, data });
     } else {
       insertOfcCable(data);
     }
@@ -271,7 +304,7 @@ const OfcPage = () => {
   // );
 
   // --- MEMOIZED VALUES ---
-  const columns = useDynamicColumnConfig("v_ofc_cables_complete", {
+  const columns = useDynamicColumnConfig('v_ofc_cables_complete', {
     /* ... your overrides ... */
     data: ofcData,
   });
@@ -285,31 +318,31 @@ const OfcPage = () => {
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
       }),
-   [crudActions, editModal.openEdit, router, isSuperAdmin]
+    [crudActions, editModal.openEdit, router, isSuperAdmin]
   );
 
   const headerStats = [
-    { value: totalCount, label: "Total OFC Cables" },
+    { value: totalCount, label: 'Total OFC Cables' },
     {
       value: activeCount,
-      label: "Active",
-      color: "success" as const,
+      label: 'Active',
+      color: 'success' as const,
     },
     {
       value: inactiveCount,
-      label: "Inactive",
-      color: "danger" as const,
+      label: 'Inactive',
+      color: 'danger' as const,
     },
   ];
 
   const headerActions = useStandardHeaderActions({
     onRefresh: async () => {
       await refetch();
-      toast.success("Refreshed successfully!");
+      toast.success('Refreshed successfully!');
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: "ofc_cables" },
+    exportConfig: { tableName: 'ofc_cables' },
   });
 
   if (error) {
@@ -318,9 +351,9 @@ const OfcPage = () => {
         error={error.message}
         actions={[
           {
-            label: "Retry",
+            label: 'Retry',
             onClick: refetch,
-            variant: "primary",
+            variant: 'primary',
           },
         ]}
       />
@@ -355,7 +388,7 @@ const OfcPage = () => {
         loading={isLoading}
         actions={tableActions}
         selectable
-        onRowSelect={(selectedRows:OfcCableRowsWithCount[]): void => {
+        onRowSelect={(selectedRows: OfcCableRowsWithCount[]): void => {
           // Update selection with new row IDs
           bulkActions.handleRowSelect(selectedRows as never);
         }}
@@ -372,16 +405,45 @@ const OfcPage = () => {
           },
         }}
         customToolbar={
-          <OfcFilters
-            filters={crudFilters.filters as OfcCablesFilters}
-            onFiltersChange={(newFilters) =>
-              crudFilters.setFilters((prev) => ({ ...prev, ...newFilters }))
-            }
-            maintenanceAreas={maintenanceAreas as Row<"maintenance_areas">[]}
-            ofcTypes={ofcTypes}
-            onFilterToggle={() => setShowFilters((p) => !p)}
+          <SearchAndFilters
+            searchTerm={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
             showFilters={showFilters}
-          />
+            onToggleFilters={() => setShowFilters((p) => !p)}
+            onClearFilters={handleClearFilters}
+            hasActiveFilters={hasActiveFilters}
+            activeFilterCount={activeFilterCount}
+            searchPlaceholder="Search by Asset No or Route Name..."
+          >
+            {/* THIS IS THE CLEANER, TYPE-SAFE WAY */}
+            <SelectFilter
+              label="OFC Type"
+              filterKey="ofc_type_id"
+              filters={crudFilters.filters}
+              setFilters={crudFilters.setFilters}
+              options={ofcTypes.map((t) => ({ value: t.id, label: t.name }))}
+            />
+            <SelectFilter
+              label="Status"
+              filterKey="status"
+              filters={crudFilters.filters}
+              setFilters={crudFilters.setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+            />
+            <SelectFilter
+              label="Maintenance Terminal"
+              filterKey="maintenance_terminal_id"
+              filters={crudFilters.filters}
+              setFilters={crudFilters.setFilters}
+              options={maintenanceAreas.map((t) => ({
+                value: t.id,
+                label: t.name,
+              }))}
+            />
+          </SearchAndFilters>
         }
       />
 

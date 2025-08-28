@@ -2,7 +2,7 @@
 
 // components/ofc/OfcForm/hooks/useCapacityInference.ts
 import { useEffect } from "react";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { useState } from "react";
 import { UseFormSetValue, Path, PathValue } from "react-hook-form";
 import { OfcCableFormData } from "@/schemas";

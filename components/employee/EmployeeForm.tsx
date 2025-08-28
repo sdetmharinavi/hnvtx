@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EmployeeFormData, employeeFormSchema } from "@/schemas";
 import { Tables } from "@/types/supabase-types";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { EmployeeWithRelations } from "./employee-types";
 import {
   FormDateInput,

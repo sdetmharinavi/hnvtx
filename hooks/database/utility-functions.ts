@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from "@tanstack/react-query";
 import { AggregationOptions, DeduplicationOptions, FilterOperator, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
+import { Json } from "@/types/supabase-types";
 
 // --- UTILITY FUNCTIONS ---
 export const createQueryKey = (
@@ -131,4 +132,43 @@ export function buildDeduplicationQuery(tableName: string, deduplication: Dedupl
     )
     SELECT * FROM deduplicated WHERE rn = 1 ${finalOrderClause}
   `;
+}
+
+/**
+ * Converts a rich "Filters" object (used by the PostgREST query builder)
+ * into a simple key-value JSON object suitable for RPC functions.
+ * It strips out complex operators and preserves simple values.
+ *
+ * @param filters The rich Filters object.
+ * @returns A Json-compatible object.
+ */
+export function convertRichFiltersToSimpleJson(filters: Filters): Json {
+  const simpleFilters: { [key: string]: Json | undefined } = {};
+
+  for (const key in filters) {
+    // Skip the client-side only '$or' operator
+    if (key === '$or') {
+      continue;
+    }
+
+    const filterValue = filters[key];
+
+    // Check if the value is a simple primitive (string, number, boolean, or null)
+    if (
+      typeof filterValue === 'string' ||
+      typeof filterValue === 'number' ||
+      typeof filterValue === 'boolean' ||
+      filterValue === null
+    ) {
+      simpleFilters[key] = filterValue;
+    }
+    // You can also handle simple arrays if your RPCs support the 'IN' operator
+    else if (Array.isArray(filterValue)) {
+        simpleFilters[key] = filterValue;
+    }
+    // We explicitly IGNORE complex objects like { operator: 'neq', value: '...' }
+    // because the RPC function doesn't know how to handle them.
+  }
+
+  return simpleFilters;
 }

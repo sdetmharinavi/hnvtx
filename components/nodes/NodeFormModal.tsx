@@ -18,7 +18,7 @@ import {
   FormSearchableSelect,
   FormTextarea,
 } from "@/components/common/ui/form/FormControls";
-import { Option } from "@/components/common/SearchableSelect";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 
 export type NodeRow = Database["public"]["Tables"]["nodes"]["Row"];
 export type NodeInsert = TablesInsert<"nodes">;
