@@ -1,4 +1,4 @@
-import { useMemo, ReactNode } from 'react';
+import { useMemo, ReactNode, useEffect } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { GenericRow, TableOrViewName } from '@/config/helper-types';
@@ -122,7 +122,10 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
 
   const columnsKeys = columns.map((col) => col.key);
 
-  console.log('columns', columnsKeys);
+  useEffect(() => {
+    console.log('columns', columnsKeys);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return columns;
 }

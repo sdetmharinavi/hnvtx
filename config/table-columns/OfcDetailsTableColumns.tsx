@@ -1,7 +1,5 @@
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
-import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { StatusBadge } from '@/components/common/ui';
 import { formatDate } from '@/utils/formatters';
 
 export const OfcDetailsTableColumns = (
