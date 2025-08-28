@@ -1,7 +1,7 @@
 "use client"
 
 // components/ofc/OfcForm/hooks/useRouteGeneration.ts
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { UseFormSetValue, FieldValues, Path, PathValue } from "react-hook-form";
@@ -21,6 +21,11 @@ export const useRouteGeneration = <T extends FieldValues>({
   isEdit,
   setValue,
 }: UseRouteGenerationProps<T>) => {
+  // Use refs to track previous values and prevent unnecessary updates
+  const prevStartingNodeId = useRef<string | null>(null);
+  const prevEndingNodeId = useRef<string | null>(null);
+  const prevIsEdit = useRef<boolean>(isEdit);
+  const isInitialMount = useRef(true);
   const supabase = createClient();
   
   // Fetch existing routes between selected nodes
@@ -55,16 +60,78 @@ export const useRouteGeneration = <T extends FieldValues>({
 
   // Auto-generate route name for new cables
   useEffect(() => {
-    if (isEdit || !startingNodeId || !endingNodeId || !nodesData) return;
+    // Skip if this is the initial mount and we're in edit mode
+    if (isInitialMount.current) {
+      if (isEdit) {
+        isInitialMount.current = false;
+        return;
+      }
+      isInitialMount.current = false;
+    }
 
-    const startingNodeName = nodesData.find(node => node.id === startingNodeId)?.name;
-    const endingNodeName = nodesData.find(node => node.id === endingNodeId)?.name;
+    // Skip if nothing has changed
+    if (
+      startingNodeId === prevStartingNodeId.current &&
+      endingNodeId === prevEndingNodeId.current &&
+      isEdit === prevIsEdit.current
+    ) {
+      return;
+    }
+
+    // Get current values before updating refs
+    const prevStart = prevStartingNodeId.current;
+    const prevEnd = prevEndingNodeId.current;
+    const prevEdit = prevIsEdit.current;
+    
+    // Update refs with current values
+    prevStartingNodeId.current = startingNodeId;
+    prevEndingNodeId.current = endingNodeId;
+    prevIsEdit.current = isEdit;
+
+    // Skip if we're in edit mode and the route name is already set
+    if (isEdit && startingNodeId && endingNodeId) {
+      return;
+    }
+
+    // Only proceed if we have both nodes selected and we're not in edit mode
+    if (!startingNodeId || !endingNodeId || isEdit) {
+      // Only clear if we're not in the middle of a node change
+      if ((!startingNodeId || !endingNodeId) && !existingRoutesLoading) {
+        setValue("route_name" as Path<T>, "" as PathValue<T, Path<T>>, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      return;
+    }
+
+    const startingNodeName = nodesData?.find(node => node.id === startingNodeId)?.name;
+    const endingNodeName = nodesData?.find(node => node.id === endingNodeId)?.name;
 
     if (startingNodeName && endingNodeName) {
-      const routeName = `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
-      setValue("route_name" as Path<T>, routeName as PathValue<T, Path<T>>);
-    }
-  }, [startingNodeId, endingNodeId, routeData.nextRouteNumber, isEdit, setValue, nodesData]);
+      // Only update if the nodes have actually changed
+      if (prevStart !== startingNodeId || prevEnd !== endingNodeId || prevEdit !== isEdit) {
+        const routeName = `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
+        setValue("route_name" as Path<T>, routeName as PathValue<T, Path<T>>, { 
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+    } else if (!existingRoutesLoading) {
+      setValue("route_name" as Path<T>, "" as PathValue<T, Path<T>>, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }  
+  }, [
+    startingNodeId, 
+    endingNodeId, 
+    routeData.nextRouteNumber, 
+    isEdit, 
+    setValue, 
+    nodesData, 
+    existingRoutesLoading
+  ]);
 
   return {
     ...routeData,

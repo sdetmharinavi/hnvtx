@@ -15,16 +15,11 @@ import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { useRouter } from 'next/navigation';
 
 import { DataTable } from '@/components/table/DataTable';
-import { Row } from '@/hooks/database';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
-import { OfcFilters } from '@/components/ofc/OfcFilters';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
-import { Json, TablesInsert, TablesUpdate } from '@/types/supabase-types';
-import {
-  OfcCablesFilters,
-  OfcCablesWithRelations,
-} from '@/components/ofc/ofc-types';
+import { Json, TablesInsert } from '@/types/supabase-types';
+import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { toast } from 'sonner';
 import {
@@ -153,6 +148,12 @@ const OfcPage = () => {
   };
 
   const { data: isSuperAdmin } = useIsSuperAdmin();
+  
+  // Memoize the record to prevent unnecessary re-renders
+  const memoizedOfcCable = useMemo(
+    () => editModal.record as OfcCablesWithRelations | null,
+    [editModal.record]
+  );
 
   // --- MUTATIONS ---
   const { mutate: insertOfcCable, isPending: isInserting } = useTableInsert(
@@ -348,7 +349,7 @@ const OfcPage = () => {
       <OfcForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        ofcCable={editModal.record as OfcCablesWithRelations | null}
+        ofcCable={memoizedOfcCable}
         onSubmit={handleSave}
         pageLoading={isMutating}
       />
