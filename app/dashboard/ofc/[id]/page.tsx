@@ -105,31 +105,43 @@ export default function OfcCableDetailsPage() {
     ofc_owner_id: '',
   });
 
-  const tableExcelDownload = useTableExcelDownload(supabase, 'ofc_connections');
-  const columnsForExcelExport = useDynamicColumnConfig('ofc_connections');
+  const tableExcelDownload = useTableExcelDownload(supabase, 'v_ofc_connections_complete');
+  
+  // Generate export columns without using useMemo to avoid conditional hook calls
+  const getExportColumns = () => {
+    return OfcDetailsTableColumns([]);
+  };
 
-  const handleExport = () => {
-    // Ensure we have a valid cable id before attempting export to satisfy Filters type
-    if (!cable?.id) {
-      return;
-    }
+  const handleExport = useCallback(() => {
+    if (!cable?.id) return;
+    
     const tableName = 'ofc_connections';
+    const exportColumns = getExportColumns();
+    
     const tableOptions = {
       fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${String(
-        tableName + '-' + cable?.route_name
+        tableName + '-' + (cable?.route_name || '')
       )}-export.xlsx`,
-      sheetName: String(tableName),
-      columns: columnsForExcelExport as Column<Row<typeof tableName>>[],
+      sheetName: 'OFC Connections',
+      columns: exportColumns as Column<Row<'v_ofc_connections_complete'>>[],
       filters: {
-        ofc_id: cable.id, // string (defined) — avoids undefined which Filters does not allow
+        ofc_id: cable.id,
       },
       orderBy: 'fiber_no_sn',
-      orderDir: 'asc',
-      maxRows: 1000,
-      customStyles: {},
+      orderDir: 'asc' as const,
+      maxRows: 10000,
+      customStyles: {
+        headerFont: { bold: true, color: { argb: 'FFFFFFFF' } },
+        headerFill: {
+          type: 'pattern' as const,
+          pattern: 'solid' as const,
+          fgColor: { argb: 'FF1E40AF' },
+        },
+      },
     };
+    
     tableExcelDownload.mutate(tableOptions);
-  };
+  }, [cable?.id, cable?.route_name, tableExcelDownload]);
 
   // Debounced search handler
   const debouncedSearch = useDebouncedCallback((value: string) => {

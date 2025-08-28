@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { useTableQuery, useTableWithRelations } from "./database/core-queries";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePagedOfcConnectionsComplete } from "./database";
-import { useSorting, SortDirection } from "@/hooks/useSorting";
 
 type OfcConnection = Database["public"]["Tables"]["ofc_connections"]["Insert"] & {
   id?: string;
@@ -20,37 +19,12 @@ interface UseOfcConnectionProps {
   orderDir?: "asc" | "desc";
   // optional server-side search query
   search?: string;
-  // NEW: Optional client-side sorting enhancement
-  enableClientSorting?: boolean;
 }
 
-// Define sortable keys for better type safety (optional)
-type OfcConnectionSortableKeys = 
-  | "fiber_no_sn"
-  | "connection_type" 
-  | "connection_category"
-  | "status"
-  | "destination_port"
-  | "source_port"
-  | "en_power_dbm"
-  | "sn_power_dbm"
-  | "route_loss_db"
-  | "created_at"
-  | "updated_at";
-
-export const useOfcConnection = ({ 
-  supabase, 
-  cableId, 
-  limit = 10, 
-  offset = 0, 
-  orderBy = "fiber_no_sn", 
-  orderDir = "asc", 
-  search,
-  enableClientSorting = false // Default to false to maintain existing behavior
-}: UseOfcConnectionProps) => {
+export const useOfcConnection = ({ supabase, cableId, limit = 10, offset = 0, orderBy = "fiber_no_sn", orderDir = "asc", search }: UseOfcConnectionProps) => {
   const queryClient = useQueryClient();
 
-  // Get cable details (unchanged)
+  // Get cable details
   type OfcCableWithJoins = Database["public"]["Tables"]["ofc_cables"]["Row"] & {
     maintenance_area: { id: string; name: string } | null;
     ofc_type: { id: string; name: string } | null;
@@ -67,7 +41,8 @@ export const useOfcConnection = ({
   });
 
   // Get existing connections for this cable with pagination
-  const { data: rawConnections = [], isLoading: isLoadingOfcConnections, refetch: refetchOfcConnections } = usePagedOfcConnectionsComplete(supabase, {
+  // Also retrieve Total Count of Connections, activeCount, inactiveCount from the view
+  const { data: existingConnections = [], isLoading: isLoadingOfcConnections, refetch: refetchOfcConnections } = usePagedOfcConnectionsComplete(supabase, {
     filters: { ofc_id: cableId, ...(search ? { search } : {}) },
     limit,
     offset,
@@ -75,57 +50,11 @@ export const useOfcConnection = ({
     orderDir,
   });
 
-  // Extract counts and debug info
-  const { totalCount, activeCount, inactiveCount } = useMemo(() => {
-    if (rawConnections && rawConnections.length > 0) {
-      // Debug log to inspect the raw data
-      console.log('Raw connections data sample:', JSON.stringify(rawConnections[0], null, 2));
-      console.log('fiber_no_sn type:', typeof rawConnections[0].fiber_no_sn);
-      console.log('fiber_no_sn value:', rawConnections[0].fiber_no_sn);
-      
-      return {
-        totalCount: rawConnections[0]?.total_count || 0,
-        activeCount: rawConnections[0]?.active_count || 0,
-        inactiveCount: rawConnections[0]?.inactive_count || 0
-      };
-    }
-    return { totalCount: 0, activeCount: 0, inactiveCount: 0 };
-  }, [rawConnections]);
+  const totalCount = existingConnections?.[0]?.total_count || 0;
+  const activeCount = existingConnections?.[0]?.active_count || 0;
+  const inactiveCount = existingConnections?.[0]?.inactive_count || 0;
 
-  // NEW: Optional client-side sorting (only used if enabled)
-  const {
-    sortedData: clientSortedConnections,
-    sortConfig,
-    handleSort,
-    resetSort,
-    isSorted,
-    getSortDirection
-  } = useSorting({
-    data: rawConnections || [], // Handle null case
-    defaultSortKey: orderBy,
-    defaultDirection: orderDir as SortDirection,
-    options: {
-      caseSensitive: false,
-      numericSort: true,
-    }
-  });
-
-  // Return the appropriate data based on sorting preference
-  const existingConnections = useMemo(() => {
-    const connections = rawConnections || [];
-    return enableClientSorting ? clientSortedConnections : connections;
-  }, [enableClientSorting, clientSortedConnections, rawConnections]);
-
-  // NEW: Enhanced sort handler (optional, only exposed if client sorting is enabled)
-  const handleSortColumn = useCallback((key: OfcConnectionSortableKeys) => {
-    if (!enableClientSorting) {
-      console.warn("Client-side sorting is disabled. Use server-side orderBy/orderDir props instead.");
-      return;
-    }
-    handleSort(key);
-  }, [enableClientSorting, handleSort]);
-
-  // Mutation for creating new connections (unchanged)
+  // Mutation for creating new connections
   const { mutateAsync: createConnections } = useMutation({
     mutationFn: async (newConnections: OfcConnection[]) => {
       const { data, error } = await supabase.from("ofc_connections").insert(newConnections);
@@ -139,7 +68,6 @@ export const useOfcConnection = ({
     },
   });
 
-  // createMissingConnections (unchanged)
   const createMissingConnections = useCallback(async (): Promise<void> => {
     if (!cable || !cable[0]) return;
 
@@ -199,7 +127,6 @@ export const useOfcConnection = ({
     }
   }, [cable, cableId, createConnections, supabase]);
 
-  // ensureConnectionsExist (unchanged)
   const ensureConnectionsExist = useCallback(async (): Promise<void> => {
     if (isLoadingCable || isLoadingOfcConnections) {
       console.log("Still loading data, skipping connection creation");
@@ -215,24 +142,13 @@ export const useOfcConnection = ({
   }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 
   return {
-    // EXISTING API (unchanged)
     cable: cable?.[0],
-    existingConnections, // Now optionally client-sorted, but maintains same structure
+    existingConnections,
     isLoading: isLoadingCable || isLoadingOfcConnections,
     ensureConnectionsExist,
     createMissingConnections,
     totalCount,
     activeCount,
     inactiveCount,
-    
-    // NEW: Optional sorting enhancements (only available if enableClientSorting is true)
-    ...(enableClientSorting && {
-      sortConfig,
-      handleSortColumn,
-      resetSort,
-      isSorted,
-      getSortDirection,
-      isClientSorting: true
-    })
   };
 };

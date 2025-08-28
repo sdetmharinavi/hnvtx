@@ -29,8 +29,26 @@ export const OfcDetailsTableColumns = (
       'system_name',
     ],
     overrides: {
-      fiber_no_sn: { title: 'End A Fiber', sortable: true, searchable: true },
-      fiber_no_en: { title: 'End B Fiber', sortable: true, searchable: true },
+      fiber_no_sn: { 
+        title: 'End A Fiber', 
+        sortable: true, 
+        searchable: true,
+        excelFormat: 'number',
+        render: (value) => {
+          if (value === null || value === undefined) return '';
+          return String(value);
+        }
+      },
+      fiber_no_en: { 
+        title: 'End B Fiber', 
+        sortable: true, 
+        searchable: true,
+        excelFormat: 'number',
+        render: (value) => {
+          if (value === null || value === undefined) return '';
+          return String(value);
+        }
+      },
       otdr_distance_sn_km: {
         title: 'End A OTDR Distance (km)',
         sortable: true,

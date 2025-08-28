@@ -112,12 +112,7 @@ export const formatCellValue = <T = unknown>(
 ): unknown => {
   if (value === null || value === undefined) return "";
   
-  // Handle number types first
-  if (typeof value === 'number') {
-    return value;
-  }
-  
-  // Handle object values
+  // Handle object values first
   if (typeof value === 'object' && value !== null) {
     // If it's a Date object
     if (value instanceof Date) {

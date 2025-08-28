@@ -55,14 +55,24 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
   const columnWidths = useMemo(() => {
     const widths: Record<string, number> = {};
     if (data.length > 0) {
+      const dateColumns = new Set([
+        'date_of_birth',
+        'last_sign_in_at',
+        'created_at',
+        'updated_at',
+        'auth_updated_at',
+        'email_confirmed_at',
+        'phone_confirmed_at'
+      ]);
+      
       for (const colName of Object.keys(data[0])) {
-        widths[colName] = inferDynamicColumnWidth(colName, data);
-        if (colName === "date_of_birth" || colName === "last_sign_in_at" || colName === "created_at" || colName === "updated_at" || colName === "auth_updated_at" || colName === "email_confirmed_at" || colName === "phone_confirmed_at") {
-          widths[colName] = 120;
+        widths[colName] = dateColumns.has(colName) 
+          ? 120 
+          : inferDynamicColumnWidth(colName, data);
       }
     }
     return widths;
-  }}, [data]); 
+  }, [data]); 
 
   const columns = useMemo(() => {
     const keysToUse = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[] | undefined;
