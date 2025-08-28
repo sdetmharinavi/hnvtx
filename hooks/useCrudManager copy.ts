@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState,  useCallback, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -18,8 +18,9 @@ import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
 
 // --- TYPE DEFINITIONS for the Hook's Interface ---
+// A generic type to ensure records passed to actions have an 'id' and optionally a 'name'
 export type RecordWithId = {
-  id: string | number | null;
+  id: string | number | null;  // Allow null to match database schema
   system_id?: string | number | null;
   system_connection_id?: string | number | null;
   name?: string | null;
@@ -28,6 +29,7 @@ export type RecordWithId = {
   [key: string]: unknown;
 };
 
+// Parameters that the manager will pass to the data fetching hook
 export interface DataQueryHookParams {
   currentPage: number;
   pageLimit: number;
@@ -47,30 +49,38 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
+// *** THE FIX IS HERE: `id` is now `string | null` to match your view's type. ***
 type BaseRecord = { id: string | null; [key: string]: unknown };
 
+// Options to configure the manager
+// *** THE FIX IS HERE: The constraint is now simpler and correct. ***
+// V only needs to be a base record with an `id`. T is still the TableName.
 export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: keyof V & string;
 }
 
+
 // --- THE HOOK ---
+
 export function useCrudManager<T extends TableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
 
-  // --- STATE MANAGEMENT ---
+  // The state for editing/viewing records should use the View type `V`
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
+  // ... (the rest of the state remains the same)
+  // --- STATE MANAGEMENT ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Filters>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false); // <-- NEW state for view modal
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
@@ -79,7 +89,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     setCurrentPage(1);
   }, [debouncedSearch, filters]);
 
-  // --- DATA FETCHING ---
+  // --- DATA FETCHING (Delegated to the injected hook) ---
   const { data, totalCount, activeCount, inactiveCount, isLoading, error, refetch } = dataQueryHook({
     currentPage,
     pageLimit,
@@ -87,7 +97,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     filters,
   });
 
-  // --- MUTATIONS ---
+  // --- MUTATIONS (Target the base table `T`) ---
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(
     supabase,
     tableName,
@@ -95,14 +105,10 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
       onSuccess: () => {
         refetch();
         closeModal();
-        toast.success("Record created successfully.");
-      },
-      onError: (error) => {
-        toast.error(`Failed to create record: ${error.message}`);
+        toast.success("Record created.");
       },
     }
   );
-
   const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(
     supabase,
     tableName,
@@ -110,57 +116,39 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
       onSuccess: () => {
         refetch();
         closeModal();
-        toast.success("Record updated successfully.");
-      },
-      onError: (error) => {
-        toast.error(`Failed to update record: ${error.message}`);
+        toast.success("Record updated.");
       },
     }
   );
-
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
-    onSuccess: () => {
-      refetch();
-      toast.success("Status updated successfully.");
-    },
-    onError: (error) => {
-      toast.error(`Failed to update status: ${error.message}`);
-    },
+    onSuccess: refetch,
   });
-
-  // Initialize delete manager
-  const deleteManager = useDeleteManager({ 
-    tableName, 
-    onSuccess: () => {
-      refetch();
-      handleClearSelection(); // Clear selection after successful delete
-    }
-  });
-
-  const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
+  const deleteManager = useDeleteManager({ tableName, onSuccess: refetch });
+  const { bulkDelete, bulkUpdate } = useTableBulkOperations(
+    supabase,
+    tableName
+  );
 
   const isMutating =
     isInserting ||
     isUpdating ||
     deleteManager.isPending ||
+    bulkDelete.isPending ||
     bulkUpdate.isPending;
 
-  // --- MODAL HANDLERS ---
+  // --- HANDLERS ---
   const openAddModal = useCallback(() => {
     setEditingRecord(null);
     setIsEditModalOpen(true);
   }, []);
-
   const openEditModal = useCallback((record: V) => {
     setEditingRecord(record);
     setIsEditModalOpen(true);
   }, []);
-
   const openViewModal = useCallback((record: V) => {
     setViewingRecord(record);
     setIsViewModalOpen(true);
   }, []);
-
   const closeModal = useCallback(() => {
     setIsEditModalOpen(false);
     setEditingRecord(null);
@@ -168,7 +156,6 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     setViewingRecord(null);
   }, []);
 
-  // --- SAVE HANDLER ---
   const handleSave = useCallback(
     (formData: TableInsertWithDates<T>) => {
       // Convert ISO date strings back to Date objects for the database
@@ -177,7 +164,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
       // Handle date fields - adjust these field names as needed
       const dateFields = [
         "employee_dob",
-        "employee_doj", 
+        "employee_doj",
         "created_at",
         "updated_at",
       ] as const;
@@ -204,41 +191,19 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     [editingRecord, insertItem, updateItem]
   );
 
-  // --- DELETE HANDLERS ---
   const handleDelete = useCallback(
     (record: RecordWithId) => {
-      if (!record.id) {
-        toast.error("Cannot delete record: Invalid ID");
-        return;
-      }
-
-      const displayName = getDisplayName(record);
       deleteManager.deleteSingle({
         id: String(record.id),
-        name: displayName,
+        name:
+          (record.name ? record.name : record.first_name) || String(record.id),
       });
     },
     [deleteManager]
   );
 
-  // --- UTILITY TO GET DISPLAY NAME ---
-  const getDisplayName = useCallback((record: RecordWithId): string => {
-    if (record.name) return String(record.name);
-    if (record.first_name && record.last_name) {
-      return `${record.first_name} ${record.last_name}`;
-    }
-    if (record.first_name) return String(record.first_name);
-    return String(record.id) || 'Unknown';
-  }, []);
-
-  // --- STATUS TOGGLE HANDLER ---
   const handleToggleStatus = useCallback(
     (record: RecordWithId & { status?: boolean | null }) => {
-      if (!record.id) {
-        toast.error("Cannot update status: Invalid record ID");
-        return;
-      }
-
       toggleStatus({
         id: String(record.id),
         status: !(record.status ?? false),
@@ -247,41 +212,37 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     [toggleStatus]
   );
 
-  // --- BULK SELECTION HANDLERS ---
+  // Bulk action handlers
   const handleRowSelect = useCallback(
     (rows: Array<V & { id?: string | number }>) => {
-      const validIds = rows
-        .map((r) => r.id)
-        .filter((id): id is NonNullable<typeof id> => id != null)
-        .map((id) => String(id));
-      setSelectedRowIds(validIds);
+      setSelectedRowIds(
+        rows.map((r) => r.id).filter((id): id is string => !!id)
+      );
     },
     []
   );
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedRowIds([]);
-  }, []);
-
-  // --- BULK DELETE HANDLER ---
+  const handleClearSelection = useCallback(() => setSelectedRowIds([]), []);
   const handleBulkDelete = useCallback(() => {
-    if (selectedRowIds.length === 0) {
-      toast.error("No records selected for deletion");
-      return;
+    if (selectedRowIds.length === 0) return;
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${selectedRowIds.length} selected records?`
+      )
+    ) {
+      bulkDelete.mutate(
+        { ids: selectedRowIds },
+        {
+          onSuccess: () => {
+            toast.success(`${selectedRowIds.length} records deleted.`);
+            setSelectedRowIds([]);
+            refetch();
+          },
+          onError: (err) => toast.error(`Bulk delete failed: ${err.message}`),
+        }
+      );
     }
+  }, [selectedRowIds, bulkDelete, refetch]);
 
-    // Convert selected IDs back to records for display names
-    const selectedRecords = data
-      .filter((record) => selectedRowIds.includes(String(record.id)))
-      .map((record) => ({
-        id: String(record.id),
-        name: getDisplayName(record as RecordWithId),
-      }));
-
-    deleteManager.deleteMultiple(selectedRecords);
-  }, [selectedRowIds, data, deleteManager, getDisplayName]);
-
-  // --- BULK STATUS UPDATE HANDLER ---
   const handleBulkUpdateStatus = useCallback(
     (status: "active" | "inactive") => {
       if (selectedRowIds.length === 0) return;
@@ -289,41 +250,24 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
         id,
         data: { status: status === "active" } as unknown as TableUpdate<T>,
       }));
-
       bulkUpdate.mutate(
         { updates },
         {
           onSuccess: () => {
-            toast.success(
-              `Successfully updated ${updates.length} records to ${status}`
-            );
+            toast.success(`${selectedRowIds.length} records updated.`);
             setSelectedRowIds([]);
             refetch();
           },
-          onError: (err) => {
-            toast.error(`Failed to update status: ${err.message}`);
-          },
+          onError: (err) =>
+            toast.error(`Bulk status update failed: ${err.message}`),
         }
       );
     },
     [selectedRowIds, bulkUpdate, refetch]
   );
 
-  // --- BULK DELETE BY FILTER ---
-  const handleBulkDeleteByFilter = useCallback(
-    (column: string, value: unknown, displayName: string) => {
-      deleteManager.deleteBulk({
-        column,
-        value,
-        displayName,
-      });
-    },
-    [deleteManager]
-  );
-
   // --- RETURN VALUE ---
   return {
-    // Data
     data: data || [],
     totalCount,
     activeCount,
@@ -332,70 +276,13 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     error,
     isMutating,
     refetch,
-
-    // Pagination
-    pagination: { 
-      currentPage, 
-      pageLimit, 
-      setCurrentPage, 
-      setPageLimit 
-    },
-
-    // Search & Filters  
-    search: { 
-      searchQuery, 
-      setSearchQuery 
-    },
-    filters: { 
-      filters, 
-      setFilters 
-    },
-
-    // Modals
-    editModal: { 
-      isOpen: isEditModalOpen, 
-      record: editingRecord, 
-      openAdd: openAddModal, 
-      openEdit: openEditModal, 
-      close: closeModal 
-    },
-    viewModal: { 
-      isOpen: isViewModalOpen, 
-      record: viewingRecord, 
-      open: openViewModal, 
-      close: closeModal 
-    },
-
-    // Actions
-    actions: { 
-      handleSave, 
-      handleDelete, 
-      handleToggleStatus 
-    },
-
-    // Bulk Actions
-    bulkActions: { 
-      selectedRowIds, 
-      selectedCount: selectedRowIds.length, 
-      handleBulkDelete, 
-      handleBulkDeleteByFilter,
-      handleBulkUpdateStatus, 
-      handleClearSelection, 
-      handleRowSelect 
-    },
-
-    // Delete Modal (for ConfirmModal component)
-    deleteModal: { 
-      isOpen: deleteManager.isConfirmModalOpen, 
-      message: deleteManager.confirmationMessage, 
-      onConfirm: deleteManager.handleConfirm, 
-      onCancel: deleteManager.handleCancel, 
-      loading: deleteManager.isPending 
-    },
-
-    // Utility functions
-    utils: {
-      getDisplayName,
-    },
+    pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
+    search: { searchQuery, setSearchQuery },
+    filters: { filters, setFilters },
+    editModal: { isOpen: isEditModalOpen, record: editingRecord, openAdd: openAddModal, openEdit: openEditModal, close: closeModal },
+    viewModal: { isOpen: isViewModalOpen, record: viewingRecord, open: openViewModal, close: closeModal },
+    actions: { handleSave, handleDelete, handleToggleStatus },
+    bulkActions: { selectedRowIds, selectedCount: selectedRowIds.length, handleBulkDelete, handleBulkUpdateStatus, handleClearSelection, handleRowSelect },
+    deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, confirm: deleteManager.handleConfirm, cancel: deleteManager.handleCancel, isLoading: deleteManager.isPending },
   };
 }

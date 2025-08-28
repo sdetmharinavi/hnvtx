@@ -59,18 +59,6 @@ const useOfcData = (
     return convertRichFiltersToSimpleJson(richFilters);
   }, [filters, searchQuery]);
 
-
-  // const { data, isLoading, error, refetch } = usePagedOfcCablesComplete(
-  //   supabase,
-  //   {
-  //     filters: {
-  //       ...filters,
-  //       ...(searchQuery ? { route_name: searchQuery } : {}),
-  //     },
-  //     limit: pageLimit,
-  //     offset: (currentPage - 1) * pageLimit,
-  //   }
-  // );
   const { data, isLoading, error, refetch } = usePagedOfcCablesComplete(
     supabase,
     {
@@ -152,17 +140,6 @@ const OfcPage = () => {
 
   const supabase = createClient();
   const router = useRouter();
-
-  // --- STATE MANAGEMENT (Mimicking useCrudPage) ---
-  // const [filters, setFilters] = useState<OfcCablesFilters>({
-  //   search: "",
-  //   ofc_type_id: "",
-  //   status: "",
-  //   maintenance_terminal_id: "",
-  // });
-  // const [editingRecord, setEditingRecord] =
-  //   useState<OfcCablesWithRelations | null>(null);
-  // const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const activeFilterCount = Object.values(crudFilters.filters).filter(
@@ -174,45 +151,7 @@ const OfcPage = () => {
     crudFilters.setFilters({});
     search.setSearchQuery('');
   };
-  // const [debouncedSearch] = useDebounce("", DEFAULTS.DEBOUNCE_DELAY);
 
-  // --- FILTERS ---
-  // const serverFilters = useMemo(() => {
-  //   const combinedFilters: Record<string, Json | string | boolean> = {};
-  //   if (debouncedSearch) combinedFilters.search = debouncedSearch; // RPC handles 'search' as a special ILIKE term
-  //   if (filters.ofc_type_id) combinedFilters.ofc_type_id = filters.ofc_type_id;
-  //   if (filters.status) combinedFilters.status = filters.status === "true";
-  //   if (filters.maintenance_terminal_id)
-  //     combinedFilters.maintenance_terminal_id = filters.maintenance_terminal_id;
-  //   return combinedFilters;
-  // }, [filters, debouncedSearch]);
-
-  // --- DATA FETCHING (Specialized Hooks) ---
-  // const {
-  //   data: pagedOfcData,
-  //   isLoading,
-  //   error,
-  //   refetch,
-  // } = usePagedOfcCablesComplete(supabase, {
-  //   limit: pageLimit,
-  //   offset: (currentPage - 1) * pageLimit,
-  //   filters: serverFilters,
-  // });
-
-  // const ofcData = useMemo(() => pagedOfcData || [], [pagedOfcData]);
-  // const totalCount = ofcData[0]?.total_count ?? 0;
-  // const activeCount =
-  //   ofcData[0]?.active_count ?? ofcData.filter((c) => c.status).length;
-  // const inactiveCount =
-  //   ofcData[0]?.inactive_count ?? ofcData.filter((c) => !c.status).length;
-
-  // const { data: ofcTypes = [] } = useTableQuery(supabase, "lookup_types", {
-  //   filters: { category: { operator: "eq", value: "OFC_TYPES" } },
-  // });
-  // const { data: maintenanceAreas = [] } = useTableQuery(
-  //   supabase,
-  //   "maintenance_areas"
-  // );
   const { data: isSuperAdmin } = useIsSuperAdmin();
 
   // --- MUTATIONS ---
@@ -261,47 +200,6 @@ const OfcPage = () => {
     }
   };
 
-  // const handleBulkDelete = useCallback(() => {
-  //   if (!window.confirm(`Delete ${selectedIds.length} selected cable(s)?`))
-  //     return;
-  //   if (isSuperAdmin) {
-  //     bulkDelete.mutate(
-  //       { ids: selectedIds },
-  //       {
-  //         onSuccess: () => {
-  //           setSelectedIds([]);
-  //           refetch();
-  //         toast.success(`${selectedIds.length} cables deleted.`);
-  //       },
-  //       onError: (err) => toast.error(`Bulk delete failed: ${err.message}`),
-  //     }
-  //   );
-  // } else {
-  //   toast.error("You do not have permission to delete cables.");
-  // }
-  // }, [selectedIds, isSuperAdmin, bulkDelete, refetch]);
-
-  // const handleBulkUpdateStatus = useCallback(
-  //   (status: "active" | "inactive") => {
-  //     const updates = selectedIds.map((id) => ({
-  //       id,
-  //       data: { status: status === "active" } as TablesUpdate<"ofc_cables">,
-  //     }));
-  //     bulkUpdate.mutate(
-  //       { updates },
-  //       {
-  //         onSuccess: () => {
-  //           setSelectedIds([]);
-  //           refetch();
-  //           toast.success(`${selectedIds.length} cables updated.`);
-  //         },
-  //         onError: (err) =>
-  //           toast.error(`Bulk status update failed: ${err.message}`),
-  //       }
-  //     );
-  //   },
-  //   [selectedIds, bulkUpdate, refetch]
-  // );
 
   // --- MEMOIZED VALUES ---
   const columns = useDynamicColumnConfig('v_ofc_cables_complete', {
@@ -378,7 +276,7 @@ const OfcPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="ofc cable"
         showStatusUpdate={true}
-        canDelete={() => isSuperAdmin === true}
+        canDelete={() => (isSuperAdmin === true) && (bulkActions.selectedCount > 0) }
       />
 
       <DataTable
@@ -457,12 +355,15 @@ const OfcPage = () => {
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.confirm}
-        onCancel={deleteModal.cancel}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
         title="Confirm Deletion"
         message={deleteModal.message}
         type="danger"
-        loading={deleteModal.isLoading}
+        loading={deleteModal.loading}
+        confirmText="Delete"
+        cancelText="Cancel"
+        showIcon={true}
       />
     </div>
   );

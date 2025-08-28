@@ -184,7 +184,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="z-[9999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
+      className="z-[999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
     >
       <div className="p-2 border-b border-gray-200 dark:border-gray-600">
         <div className="relative">

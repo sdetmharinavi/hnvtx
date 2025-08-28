@@ -417,7 +417,7 @@ export function DataTable<T extends AuthTableOrViewName>({
       )}
     >
       {/* Section 1: Toolbar and Filters (Non-scrolling) */}
-      <div className="flex-shrink-0 z-[9999]">
+      <div className="flex-shrink-0">
       <TableToolbar
         title={title}
         searchable={searchable}
