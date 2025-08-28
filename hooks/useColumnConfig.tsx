@@ -91,5 +91,10 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
       });
   }, [tableName, overrides, omit, columnWidths]);
 
+  const columnsKeys = columns.map((col) => col.key);
+
+  console.log("columns", columnsKeys);
+  
+
   return columns;
 }

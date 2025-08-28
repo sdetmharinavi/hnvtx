@@ -36,7 +36,8 @@ import {
 import { OfcCableRowsWithCount } from '@/types/view-row-types';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
-
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
@@ -101,13 +102,12 @@ const OfcPage = () => {
   } = useCrudManager<'ofc_cables', OfcCableRowsWithCount>({
     tableName: 'ofc_cables',
     dataQueryHook: useOfcData,
-    searchColumn: "route_name", // This can be considered the "primary" search field for display purposes
+    searchColumn: 'route_name', // This can be considered the "primary" search field for display purposes
   });
 
   // 3. Extract ring types from the rings data
   const ofcTypes = useMemo(() => {
     const uniqueOfcTypes = new Map();
-    console.log('ofcData', ofcData);
     ofcData.forEach((ofc) => {
       if (ofc.ofc_type_code) {
         uniqueOfcTypes.set(ofc.ofc_type_id, {
@@ -121,7 +121,6 @@ const OfcPage = () => {
 
   const maintenanceAreas = useMemo(() => {
     const uniqueMaintenanceAreas = new Map();
-    console.log('ofcData', ofcData);
     ofcData.forEach((ofc) => {
       if (ofc.maintenance_area_code) {
         uniqueMaintenanceAreas.set(ofc.maintenance_terminal_id, {
@@ -148,7 +147,7 @@ const OfcPage = () => {
   };
 
   const { data: isSuperAdmin } = useIsSuperAdmin();
-  
+
   // Memoize the record to prevent unnecessary re-renders
   const memoizedOfcCable = useMemo(
     () => editModal.record as OfcCablesWithRelations | null,
@@ -201,12 +200,23 @@ const OfcPage = () => {
     }
   };
 
-
   // --- MEMOIZED VALUES ---
-  const columns = useDynamicColumnConfig('v_ofc_cables_complete', {
-    /* ... your overrides ... */
-    data: ofcData,
-  });
+  const columns = OfcTableColumns(ofcData);
+
+  const desiredOrder = [
+    'route_name',
+    'capacity',
+    'ofc_type_code',
+    'transnet_id',
+    'transnet_rkm',
+    'current_rkm',
+    'ofc_owner_code',
+    'asset_no',
+    'maintenance_area_code',
+    'commissioned_on',
+    'remark',
+  ];
+  const orderedColumns = useOrderedColumns(columns, desiredOrder);
 
   const tableActions = useMemo(
     () =>
@@ -277,13 +287,13 @@ const OfcPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="ofc cable"
         showStatusUpdate={true}
-        canDelete={() => (isSuperAdmin === true) && (bulkActions.selectedCount > 0) }
+        canDelete={() => isSuperAdmin === true && bulkActions.selectedCount > 0}
       />
 
       <DataTable
         tableName="v_ofc_cables_complete"
         data={ofcData}
-        columns={columns}
+        columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
         selectable
