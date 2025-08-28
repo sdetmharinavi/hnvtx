@@ -1,9 +1,13 @@
-import { useMemo, ReactNode } from "react";
-import { TABLE_COLUMN_KEYS } from "@/config/table-column-keys";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { GenericRow, TableOrViewName } from "@/config/helper-types";
+import { useMemo, ReactNode } from 'react';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { GenericRow, TableOrViewName } from '@/config/helper-types';
 // import { inferColumnWidth } from "@/config/column-width";
-import { inferDynamicColumnWidth, inferExcelFormat, toTitleCase } from "@/config/helper-functions";
+import {
+  inferDynamicColumnWidth,
+  inferExcelFormat,
+  toTitleCase,
+} from '@/config/helper-functions';
 
 /**
  * This is the final, compatible Column Configuration type.
@@ -17,7 +21,7 @@ export interface ColumnConfig<T extends TableOrViewName> {
   /** The key for accessing data from a row object. We set it to be the same as `key`. */
   dataIndex: keyof GenericRow<T> & string;
   /** Optional: The data format for Excel exports. */
-  excelFormat?: "text" | "number" | "date" | "currency" | "percentage" | "json";
+  excelFormat?: 'text' | 'number' | 'date' | 'currency' | 'percentage' | 'json';
   /** Optional: Flag to hide the column in the UI. */
   hidden?: boolean;
   /** Optional: Column width for UI tables. Use "auto" to fit content width. */
@@ -31,10 +35,14 @@ export interface ColumnConfig<T extends TableOrViewName> {
   /** Optional: A custom render function for the cell. */
   render?: (value: unknown, record: GenericRow<T>, index: number) => ReactNode;
   // ... and any other properties from your master Column<T> type.
+  resizable?: boolean;
 }
 
 type ColumnOverrides<T extends TableOrViewName> = {
-  [K in keyof GenericRow<T>]?: Partial<Omit<Column<GenericRow<T>>, "key" | "dataIndex">>;
+  // [K in keyof GenericRow<T>]?: Partial<
+  //   Omit<Column<GenericRow<T>>, 'key' | 'dataIndex'>
+  // >;
+  [K in keyof GenericRow<T>]?: Partial<ColumnConfig<T>>;
 };
 
 interface UseDynamicColumnConfigOptions<T extends TableOrViewName> {
@@ -48,34 +56,43 @@ interface UseDynamicColumnConfigOptions<T extends TableOrViewName> {
  * that is fully compatible with the application's standard `Column<T>` interface.
  */
 // FIX: The hook is now fully generic for tables and views.
-export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, options: UseDynamicColumnConfigOptions<T> = {}): Column<GenericRow<T>>[] {
+export function useDynamicColumnConfig<T extends TableOrViewName>(
+  tableName: T,
+  options: UseDynamicColumnConfigOptions<T> = {}
+): Column<GenericRow<T>>[] {
   const { overrides = {}, omit = [], data = [] } = options;
 
-  // generate column widths dynamically
-  const columnWidths = useMemo(() => {
-    const widths: Record<string, number> = {};
-    if (data.length > 0) {
-      const dateColumns = new Set([
+  const dateColumns = useMemo(
+    () =>
+      new Set([
         'date_of_birth',
         'last_sign_in_at',
         'created_at',
         'updated_at',
         'auth_updated_at',
         'email_confirmed_at',
-        'phone_confirmed_at'
-      ]);
-      
-      for (const colName of Object.keys(data[0])) {
-        widths[colName] = dateColumns.has(colName) 
-          ? 120 
+        'phone_confirmed_at',
+      ]),
+    []
+  ); // Memoize once
+
+  // generate column widths dynamically
+  const columnWidths = useMemo(() => {
+    const widths: Record<string, number> = {};
+    if (data.length > 0) {
+      for (const colName of Object.keys(data[0] || {})) {
+        widths[colName] = dateColumns.has(colName)
+          ? 120
           : inferDynamicColumnWidth(colName, data);
       }
     }
     return widths;
-  }, [data]); 
+  }, [data, dateColumns]);
 
   const columns = useMemo(() => {
-    const keysToUse = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[] | undefined;
+    const keysToUse = TABLE_COLUMN_KEYS[tableName] as
+      | (keyof GenericRow<T> & string)[]
+      | undefined;
 
     if (!keysToUse) {
       console.warn(`No column keys found for table/view: ${tableName}`);
@@ -87,7 +104,9 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
     return (keysToUse as (keyof GenericRow<T> & string)[])
       .filter((key) => !omitSet.has(key))
       .map((key) => {
-        const columnOverride = (key in overrides ? overrides[key as keyof typeof overrides] : {}) || {};
+        const columnOverride =
+          (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
+          {};
         // console.log(key + ":" + columnWidths?.[key]);
         const defaultConfig: Column<GenericRow<T>> = {
           title: toTitleCase(key),
@@ -103,8 +122,7 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(tableName: T, 
 
   const columnsKeys = columns.map((col) => col.key);
 
-  console.log("columns", columnsKeys);
-  
+  console.log('columns', columnsKeys);
 
   return columns;
 }

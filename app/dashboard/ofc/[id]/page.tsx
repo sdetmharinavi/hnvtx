@@ -10,19 +10,17 @@ import {
   ButtonSpinner,
   PageSpinner,
 } from '@/components/common/ui/LoadingSpinner';
-import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { DataTable } from '@/components/table';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
-import { useDebouncedCallback } from 'use-debounce';
 import { Button } from '@/components/common/ui';
 import { OfcStats } from '@/components/ofc/OfcStats';
 import { DEFAULTS } from '@/config/constants';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { orderBy } from 'lodash';
+import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,30 +98,23 @@ export default function OfcCableDetailsPage() {
 
   // Download Configuration
   // Convert filters to server format
-  const [filters, setFilters] = useState<OfcConnectionFilters>({
-    search: '',
-    ofc_owner_id: '',
-  });
 
-  const tableExcelDownload = useTableExcelDownload(supabase, 'v_ofc_connections_complete');
+  const tableExcelDownload = useTableExcelDownload(supabase, 'ofc_connections');
   
   // Generate export columns without using useMemo to avoid conditional hook calls
-  const getExportColumns = () => {
-    return OfcDetailsTableColumns([]);
-  };
-
+  const exportColumns = useDynamicColumnConfig('ofc_connections', {data: []});
+  
   const handleExport = useCallback(() => {
     if (!cable?.id) return;
     
     const tableName = 'ofc_connections';
-    const exportColumns = getExportColumns();
     
     const tableOptions = {
       fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${String(
         tableName + '-' + (cable?.route_name || '')
       )}-export.xlsx`,
       sheetName: 'OFC Connections',
-      columns: exportColumns as Column<Row<'v_ofc_connections_complete'>>[],
+      columns: exportColumns as Column<Row<'ofc_connections'>>[],
       filters: {
         ofc_id: cable.id,
       },
@@ -141,23 +132,7 @@ export default function OfcCableDetailsPage() {
     };
     
     tableExcelDownload.mutate(tableOptions);
-  }, [cable?.id, cable?.route_name, tableExcelDownload]);
-
-  // Debounced search handler
-  const debouncedSearch = useDebouncedCallback((value: string) => {
-    setFilters((prev) => ({ ...prev, search: value }));
-  }, DEFAULTS.DEBOUNCE_DELAY);
-
-  // Define handleSearch before using it in customToolbar
-  const handleSearch = useCallback(
-    (value: string) => {
-      // Update the input value immediately for better UX
-      setFilters((prev) => ({ ...prev, search: value }));
-      // Debounce the actual search operation (safe even if immediate set happens)
-      debouncedSearch(value);
-    },
-    [debouncedSearch]
-  );
+  }, [cable?.id, cable?.route_name, tableExcelDownload, exportColumns]);
 
   const loading = isLoading;
 
@@ -310,11 +285,6 @@ export default function OfcCableDetailsPage() {
           loading={isLoading}
           selectable={true}
           searchable={true}
-          onSearchChange={(value) => {
-            // reset to first page and update debounced server-side search
-            setPagination((p) => ({ ...p, page: 1 }));
-            handleSearch(value);
-          }}
           filterable={false}
           pagination={{
             current: pagination.page,
