@@ -20,7 +20,6 @@ import { BulkActions } from '@/components/common/BulkActions';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import { Json, TablesInsert } from '@/types/supabase-types';
 import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
-import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { toast } from 'sonner';
 import {
   PageHeader,
@@ -50,7 +49,7 @@ const useOfcData = (
   const serverFilters = useMemo(() => {
     const richFilters: Filters = { ...filters };
     if (searchQuery) {
-      richFilters.or = `(route_name ILIKE '%${searchQuery}%' OR asset_no ILIKE '%${searchQuery}%')`;
+      richFilters.or = `(route_name ILIKE '%${searchQuery}%' OR asset_no ILIKE '%${searchQuery}%' OR transnet_id ILIKE '%${searchQuery}%')`;
     }
     return convertRichFiltersToSimpleJson(richFilters);
   }, [filters, searchQuery]);
@@ -322,7 +321,7 @@ const OfcPage = () => {
             onClearFilters={handleClearFilters}
             hasActiveFilters={hasActiveFilters}
             activeFilterCount={activeFilterCount}
-            searchPlaceholder="Search by Asset No or Route Name..."
+            searchPlaceholder="Search by Asset No or Route Name or Transnet ID..."
           >
             {/* THIS IS THE CLEANER, TYPE-SAFE WAY */}
             <SelectFilter

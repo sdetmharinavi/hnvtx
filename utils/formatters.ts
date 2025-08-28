@@ -459,8 +459,20 @@ export const formatDate = (
   } = options;
 
   try {
+    // Pre-validate string inputs before creating Date object
+    if (typeof date === 'string') {
+      const trimmed = date.trim();
+      if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
+        return 'No Date';
+      }
+    }
+
     const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
+    // Check for invalid dates (NaN) or suspicious Unix epoch dates
+    if (isNaN(dateObj.getTime()) || isSuspiciousUnixEpoch(date, dateObj)) {
+      return 'No Date';
+    }
 
     // Handle custom string formats
     if (typeof format === 'string') {
@@ -496,10 +508,61 @@ export const formatDate = (
     const formatter = getCachedFormatter('date', locale, mergedOptions);
     return formatter.format(dateObj);
   } catch {
-    return 'Invalid Date';
+    return 'No Date';
   }
 };
 
+/**
+ * Detects if we got Unix epoch from invalid input that was coerced
+ * This is very aggressive - assumes most Unix epoch dates are from invalid coercion
+ */
+function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: Date): boolean {
+  const time = dateObj.getTime();
+  const isUnixEpoch = time === 0; // January 1, 1970 00:00:00 UTC
+  
+  if (!isUnixEpoch) return false;
+  
+  // If input is a Date object that's already Unix epoch, it might be valid
+  if (originalInput instanceof Date) {
+    return false;
+  }
+  
+  // If input is exactly the number 0, it's intentional
+  if (originalInput === 0) {
+    return false;
+  }
+  
+  // For any other number, if it results in Unix epoch, it's suspicious
+  if (typeof originalInput === 'number') {
+    return true;
+  }
+  
+  // For strings - be VERY strict. Most Unix epoch results from strings are invalid
+  if (typeof originalInput === 'string') {
+    const trimmed = originalInput.trim();
+    
+    // Only these exact strings are considered valid Unix epoch
+    const validUnixEpochStrings = [
+      '0',
+      '1970-01-01',
+      '01/01/1970',
+      '1/1/1970', 
+      '01-01-1970',
+      '1970-01-01T00:00:00.000Z',
+      '1970-01-01T00:00:00Z'
+    ];
+    
+    // Exact match only - no partial matches
+    const isExactMatch = validUnixEpochStrings.includes(trimmed) || 
+                        validUnixEpochStrings.includes(trimmed.toLowerCase());
+    
+    // If it's not an exact match but resulted in Unix epoch, it's from invalid input
+    return !isExactMatch;
+  }
+  
+  // Default to suspicious for any other type
+  return true;
+}
 
 
 /**
@@ -548,7 +611,7 @@ export const formatRelativeTime = (
     // For older dates, return formatted date
     return formatDate(dateObj, { locale, dateStyle: 'medium' });
   } catch {
-    return 'Invalid Date';
+    return 'No Date';
   }
 };
 
