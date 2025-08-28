@@ -22,6 +22,7 @@ import { OfcStats } from '@/components/ofc/OfcStats';
 import { DEFAULTS } from '@/config/constants';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { orderBy } from 'lodash';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,8 @@ export default function OfcCableDetailsPage() {
       filters: {
         ofc_id: cable.id, // string (defined) — avoids undefined which Filters does not allow
       },
+      orderBy: 'fiber_no_sn',
+      orderDir: 'asc',
       maxRows: 1000,
       customStyles: {},
     };
