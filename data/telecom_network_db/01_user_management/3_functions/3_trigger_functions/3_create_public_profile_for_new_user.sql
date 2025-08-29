@@ -32,12 +32,12 @@ BEGIN
                     FROM regexp_split_to_table(split_part(NEW.email, '@', 1), '[^a-zA-Z]+') AS word
                     WHERE word ~ '^[a-zA-Z]+'
                     LIMIT 1
-                ), 'User'
+                ), 'Placeholder'
             ), 
             COALESCE(
                 NEW.raw_user_meta_data->>'last_name', 
                 SPLIT_PART(NEW.raw_user_meta_data->>'name', ' ', 2), 
-                ''
+                'User'
             ), 
             NEW.raw_user_meta_data->>'avatar_url', 
             NEW.raw_user_meta_data->>'phone_number', 

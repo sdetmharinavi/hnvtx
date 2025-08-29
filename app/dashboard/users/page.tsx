@@ -17,6 +17,7 @@ import { UserProfileFormData } from "@/schemas";
 import { UserProfileData } from "@/components/users/user-types";
 import { UserProfileColumns } from "@/config/table-columns/UsersTableColumns";
 import { UserDetailsModal } from "@/config/user-details-config";
+import { UserCreateModal } from "@/components/users/UserCreateModal";
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
@@ -47,7 +48,7 @@ const AdminUsersPage = () => {
   // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
-  const { bulkDelete, bulkUpdateRole, bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
+  const { createUser, deleteUsers: bulkDelete, updateUserRoles: bulkUpdateRole, updateUserStatus: bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
 
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
@@ -68,6 +69,7 @@ const AdminUsersPage = () => {
   } = useCrudManager<"user_profiles", UserProfileData>({
     tableName: "user_profiles",
     dataQueryHook: useUsersData,
+    
   });
 
   const columns = UserProfileColumns(users);
@@ -83,6 +85,15 @@ const AdminUsersPage = () => {
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleCreateUser = async (userData: any) => {
+    await createUser.mutateAsync({
+      ...userData,
+      status: 'active' // Default status for new users
+    });
+  };
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) return;
@@ -123,7 +134,7 @@ const AdminUsersPage = () => {
       await refetch();
       toast.success("Refreshed successfully!");
     },
-    // onAddNew: placeholder ToDo,
+    onAddNew: () => setIsCreateModalOpen(true),
     isLoading: isLoading,
     exportConfig: { tableName: "user_profiles" },
   });
@@ -228,8 +239,27 @@ const AdminUsersPage = () => {
         }}
       />
 
-      <UserDetailsModal isOpen={viewModal.isOpen} user={viewModal.record as UserProfileData} onClose={viewModal.close} />
-      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.confirm} onCancel={deleteModal.cancel} title='Confirm Deletion' message={deleteModal.message} loading={deleteModal.isLoading} type='danger' />
+      <UserDetailsModal 
+        isOpen={viewModal.isOpen} 
+        user={viewModal.record} 
+        onClose={viewModal.close} 
+      />
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen} 
+        onConfirm={deleteModal.onConfirm} 
+        onCancel={deleteModal.onCancel} 
+        title='Confirm Deletion' 
+        message={deleteModal.message} 
+        loading={deleteModal.loading} 
+        type='danger' 
+      />
+      
+      <UserCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateUser}
+        isLoading={createUser.isPending}
+      />
     </div>
   );
 };

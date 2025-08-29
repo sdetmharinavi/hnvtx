@@ -1,17 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { Database, Json } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { UserProfileData } from "@/components/users/user-types";
+import { createClient } from "@/utils/supabase/client";
 
-// Types (assuming these are imported from your database types file)
+type ErrorType = {
+  error: string;
+  message: string;
+  status?: number;
+};
+
+type Json = Record<string, any>;
+
+type UserCreateInput = {
+  id: string;  // This will be your custom UUID
+  email: string;
+  password: string;
+  email_confirm?: boolean;
+  first_name: string;
+  last_name: string;
+  role: string;
+};
+
+// Types
 type AdminGetAllUsers =
   Database["public"]["Functions"]["admin_get_all_users"]["Args"];
 
 type AdminGetAllUsersExtended =
   Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
 
-// type AdminGetUserByID = Database['public']['Functions']['admin_get_user_by_id']['Args']
+type AdminGetUserByID = Database['public']['Functions']['admin_get_user_by_id']['Args']
 
 type AdminBulkDeleteUsersFunction =
   Database["public"]["Functions"]["admin_bulk_delete_users"]["Args"];
@@ -46,7 +64,6 @@ export interface UserData {
 }
 
 
-const supabase = createClient();
 
 // Query Keys
 export const adminUserKeys = {
@@ -63,6 +80,7 @@ export const adminUserKeys = {
 
 // Hook to get all users with filtering and pagination
 export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
     queryFn: async (): Promise<UserData[]> => {
@@ -80,6 +98,7 @@ export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
 };
 
 export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {}) => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
     queryFn: async (): Promise<UserProfileData[]> => {
@@ -98,6 +117,7 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
 
 // Hook to get user by ID
 export const useAdminGetUserById = (userId: string, enabled = true) => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.detail(userId),
     queryFn: async (): Promise<UserProfileData | null> => {
@@ -118,6 +138,7 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
 
 // Hook to get current user's role
 export const useGetMyRole = () => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.role(),
     queryFn: async (): Promise<string> => {
@@ -135,6 +156,7 @@ export const useGetMyRole = () => {
 
 // Hook to get current user's details
 export const useGetMyUserDetails = () => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.userDetails(),
     queryFn: async () => {
@@ -152,6 +174,7 @@ export const useGetMyUserDetails = () => {
 
 // Hook to check if current user is super admin
 export const useIsSuperAdmin = () => {
+  const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.superAdmin(),
     queryFn: async (): Promise<boolean> => {
@@ -169,6 +192,7 @@ export const useIsSuperAdmin = () => {
 
 // Hook to update user profile
 export const useAdminUpdateUserProfile = () => {
+  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -201,6 +225,7 @@ export const useAdminUpdateUserProfile = () => {
 
 // Hook to bulk delete users
 export const useAdminBulkDeleteUsers = () => {
+  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -239,6 +264,7 @@ export const useAdminBulkDeleteUsers = () => {
 
 // Hook to bulk update user roles
 export const useAdminBulkUpdateUserRole = () => {
+  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -277,6 +303,7 @@ export const useAdminBulkUpdateUserRole = () => {
 
 // Hook to bulk update user status
 export const useAdminBulkUpdateUserStatus = () => {
+  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -313,22 +340,65 @@ export const useAdminBulkUpdateUserStatus = () => {
   });
 };
 
+// Hook to create a new user
+export const useAdminCreateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userData: UserCreateInput) => {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create user");
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      toast.success("User created successfully");
+    },
+    onError: (error: Error) => {
+      console.error("User creation error:", error);
+      toast.error(error.message || "Failed to create user");
+    },
+  });
+};
+
+
 // Combined hook for multiple operations
-export const useAdminUserOperations = () => {
-  const updateProfile = useAdminUpdateUserProfile();
-  const bulkDelete = useAdminBulkDeleteUsers();
-  const bulkUpdateRole = useAdminBulkUpdateUserRole();
-  const bulkUpdateStatus = useAdminBulkUpdateUserStatus();
+interface UserOperations {
+  createUser: ReturnType<typeof useAdminCreateUser>;
+  updateUser: ReturnType<typeof useAdminUpdateUserProfile>;
+  deleteUsers: ReturnType<typeof useAdminBulkDeleteUsers>;
+  updateUserRoles: ReturnType<typeof useAdminBulkUpdateUserRole>;
+  updateUserStatus: ReturnType<typeof useAdminBulkUpdateUserStatus>;
+  isLoading: boolean;
+}
+
+export const useAdminUserOperations = (): UserOperations => {
+  const createUser = useAdminCreateUser();
+  const updateUser = useAdminUpdateUserProfile();
+  const deleteUsers = useAdminBulkDeleteUsers();
+  const updateUserRoles = useAdminBulkUpdateUserRole();
+  const updateUserStatus = useAdminBulkUpdateUserStatus();
 
   return {
-    updateProfile,
-    bulkDelete,
-    bulkUpdateRole,
-    bulkUpdateStatus,
-    isLoading:
-      updateProfile.isPending ||
-      bulkDelete.isPending ||
-      bulkUpdateRole.isPending ||
-      bulkUpdateStatus.isPending,
+    createUser,
+    updateUser,
+    deleteUsers,
+    updateUserRoles,
+    updateUserStatus,
+    isLoading: createUser.isPending || 
+               updateUser.isPending || 
+               deleteUsers.isPending || 
+               updateUserRoles.isPending || 
+               updateUserStatus.isPending
   };
 };

@@ -209,140 +209,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
       >
         UPLOADED DIAGRAMS
       </h2>
-
-      {/* Search and Filter Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Folder Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search folders..."
-            value={folderSearchTerm}
-            onChange={(e) => setFolderSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-10 py-2 rounded border text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-          />
-          {folderSearchTerm && (
-            <button
-              onClick={clearFolderSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {/* View Mode Toggle */}
-        <div className="flex rounded border overflow-hidden">
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewMode("grid"); }}
-            className={`flex-1 px-3 py-2 text-sm transition-colors ${
-              viewMode === "grid"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <Grid className="h-4 w-4 mx-auto" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
-            className={`flex-1 px-3 py-2 text-sm transition-colors ${
-              viewMode === "list"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <List className="h-4 w-4 mx-auto" />
-          </button>
-        </div>
-      </div>
-
-      {/* File Type Filter */}
-      {files.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFileTypeFilter("all")}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              fileTypeFilter === "all"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            All Files ({files.length})
-          </button>
-          {getFileTypeOptions().map((option) => {
-            const count = files.filter(file => file.file_type.startsWith(option.value)).length;
-            // console.log(`File type: ${option.value}, Count: ${count}`, "label:", option.label);
-            
-            return (
-              <button
-                key={option.value}
-                onClick={() => setFileTypeFilter(option.value)}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
-                  fileTypeFilter === option.value
-                    ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                    : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {option.label === "Application" ? "Pdf" : option.label} ({count})
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Folder Selection */}
-      <div className="space-y-4">
-        <h3 className={`text-lg font-medium dark:text-white text-black`}>
-          Select Folder to View Files
-        </h3>
-        
-        {filteredFolders.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-            {filteredFolders.map((folder) => (
-              <div key={folder.id} className="group relative">
-                <button
-                  className={`w-full p-4 rounded border text-left transition-all hover:shadow-md ${
-                    selectedFolder === folder.id
-                      ? "dark:border-blue-500 dark:bg-blue-900 shadow-lg"
-                      : "dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50"
-                  } dark:text-white text-black`}
-                  onClick={() => setSelectedFolder(folder.id)}
-                  title={folder.name} // Show full name on hover
-                >
-                  <div className="flex items-center justify-between min-w-0">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-lg flex-shrink-0">📁</span>
-                      <span className="font-medium text-sm leading-tight break-words line-clamp-2 min-w-0">
-                        {folder.name}
-                      </span>
-                    </div>
-                    {selectedFolder === folder.id && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded flex-shrink-0 ml-2">
-                        Selected
-                      </span>
-                    )}
-                  </div>
-                </button>
-                
-                {/* Tooltip for long folder names */}
-                {folder.name.length > 25 && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
-                    {folder.name}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className={`text-center py-8 dark:text-gray-400 text-gray-500`}>
-            {folderSearchTerm ? "No folders found matching your search." : "No folders available."}
-          </div>
-        )}
-      </div>
-
       {/* Files Display */}
       {selectedFolder && (
         <div className="space-y-4">
@@ -534,6 +400,140 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           )}
         </div>
       )}
+      {/* Search and Filter Controls */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Folder Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search folders..."
+            value={folderSearchTerm}
+            onChange={(e) => setFolderSearchTerm(e.target.value)}
+            className={`w-full pl-10 pr-10 py-2 rounded border text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          />
+          {folderSearchTerm && (
+            <button
+              onClick={clearFolderSearch}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex rounded border overflow-hidden">
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewMode("grid"); }}
+            className={`flex-1 px-3 py-2 text-sm transition-colors ${
+              viewMode === "grid"
+                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
+                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <Grid className="h-4 w-4 mx-auto" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
+            className={`flex-1 px-3 py-2 text-sm transition-colors ${
+              viewMode === "list"
+                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
+                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <List className="h-4 w-4 mx-auto" />
+          </button>
+        </div>
+      </div>
+
+      {/* File Type Filter */}
+      {files.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setFileTypeFilter("all")}
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              fileTypeFilter === "all"
+                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
+                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            All Files ({files.length})
+          </button>
+          {getFileTypeOptions().map((option) => {
+            const count = files.filter(file => file.file_type.startsWith(option.value)).length;
+            // console.log(`File type: ${option.value}, Count: ${count}`, "label:", option.label);
+            
+            return (
+              <button
+                key={option.value}
+                onClick={() => setFileTypeFilter(option.value)}
+                className={`px-3 py-1 rounded text-sm transition-colors ${
+                  fileTypeFilter === option.value
+                    ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
+                    : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {option.label === "Application" ? "Pdf" : option.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Folder Selection */}
+      <div className="space-y-4">
+        <h3 className={`text-lg font-medium dark:text-white text-black`}>
+          Select Folder to View Files
+        </h3>
+        
+        {filteredFolders.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+            {filteredFolders.map((folder) => (
+              <div key={folder.id} className="group relative">
+                <button
+                  className={`w-full p-4 rounded border text-left transition-all hover:shadow-md ${
+                    selectedFolder === folder.id
+                      ? "dark:border-blue-500 dark:bg-blue-900 shadow-lg"
+                      : "dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50"
+                  } dark:text-white text-black`}
+                  onClick={() => setSelectedFolder(folder.id)}
+                  title={folder.name} // Show full name on hover
+                >
+                  <div className="flex items-center justify-between min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-lg flex-shrink-0">📁</span>
+                      <span className="font-medium text-sm leading-tight break-words line-clamp-2 min-w-0">
+                        {folder.name}
+                      </span>
+                    </div>
+                    {selectedFolder === folder.id && (
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded flex-shrink-0 ml-2">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                </button>
+                
+                {/* Tooltip for long folder names */}
+                {folder.name.length > 25 && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
+                    {folder.name}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`text-center py-8 dark:text-gray-400 text-gray-500`}>
+            {folderSearchTerm ? "No folders found matching your search." : "No folders available."}
+          </div>
+        )}
+      </div>
+
+
     </div>
   );
 }

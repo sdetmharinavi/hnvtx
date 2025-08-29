@@ -1,13 +1,13 @@
 // components/FileUploader.tsx
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { FileTable } from "./FileTable";
-import { useUppyUploader } from "./hooks/useUppyUploader";
-import { useFolders } from "./hooks/useFolders";
-import { useFileHandling } from "./hooks/useFileHandling";
-import { Toaster } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from 'react';
+import { FileTable } from './FileTable';
+import { useUppyUploader } from './hooks/useUppyUploader';
+import { useFolders } from './hooks/useFolders';
+import { useFileHandling } from './hooks/useFileHandling';
+import { Toaster } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
@@ -23,10 +23,10 @@ export default function FileUploader() {
     setNewFolderName,
     handleCreateFolder,
     isCreatingFolder,
-    isLoading: isLoadingFolders
+    isLoading: isLoadingFolders,
   } = useFolders({
     onError: setError,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
   });
 
   const handleUploadSuccess = useCallback(() => {
@@ -51,7 +51,7 @@ export default function FileUploader() {
     },
     setError: (error) => {
       setError(error);
-    }
+    },
   });
 
   const {
@@ -68,12 +68,12 @@ export default function FileUploader() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">
       <Toaster position="top-right" duration={4000} />
-      
+
       <button
         onClick={() => setShowUploadSection(!showUploadSection)}
         className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
       >
-        {showUploadSection ? "Hide Upload Section" : "Show Upload Section"}
+        {showUploadSection ? 'Hide Upload Section' : 'Show Upload Section'}
       </button>
 
       {showUploadSection && (
@@ -93,7 +93,7 @@ export default function FileUploader() {
               disabled={!newFolderName.trim() || isCreatingFolder}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
             >
-              {isCreatingFolder ? "Creating..." : "Create Folder"}
+              {isCreatingFolder ? 'Creating...' : 'Create Folder'}
             </button>
           </div>
 
@@ -111,14 +111,16 @@ export default function FileUploader() {
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               disabled={isUploading}
             >
-              {isUploading ? "Uploading..." : "Select Files"}
+              {isUploading ? 'Uploading...' : 'Select Files'}
             </button>
             <button
               onClick={handleStartUpload}
               disabled={selectedFiles.length === 0 || isUploading}
               className="ml-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
             >
-              {isUploading ? "Uploading..." : `Upload ${selectedFiles.length} Files`}
+              {isUploading
+                ? 'Uploading...'
+                : `Upload ${selectedFiles.length} Files`}
             </button>
           </div>
         </div>
@@ -126,7 +128,7 @@ export default function FileUploader() {
 
       {/* File Table */}
       <div className="mt-6">
-        <FileTable 
+        <FileTable
           folders={folders}
           onFileDelete={handleFileDeleted}
           folderId={folderId}
