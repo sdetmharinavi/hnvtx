@@ -1,34 +1,19 @@
 // components/FileUploader.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FileTable } from "./FileTable";
-
-// Import Uppy styles
-// import "@uppy/core/dist/style.min.css";
-import "@uppy/core"
-import "@uppy/dashboard"
-import "@uppy/drag-drop"
-import "@uppy/webcam"
-// import "@uppy/dashboard/dist/style.min.css";
-// import "@uppy/drag-drop/dist/style.min.css";
-// import "@uppy/webcam/dist/style.min.css";
-import FolderManagement from "./uploader-components/FolderManagement";
-import UploadModeToggle from "./uploader-components/UploadModeToggle";
-import ErrorDisplay from "./uploader-components/ErrorDisplay";
-import RecentlyUploaded from "./uploader-components/RecentlyUploaded";
-import SimpleUpload from "./uploader-components/SimpleUpload";
-import AdvancedUpload from "./uploader-components/AdvancedUpload";
-import { useFileHandling } from "./hooks/useFileHandling";
-import { useFolders } from "./hooks/useFolders";
 import { useUppyUploader } from "./hooks/useUppyUploader";
+import { useFolders } from "./hooks/useFolders";
+import { useFileHandling } from "./hooks/useFileHandling";
 import { Toaster } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function FileUploader() {
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [showUploadSection, setShowUploadSection] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   const {
     folders,
@@ -37,12 +22,16 @@ export default function FileUploader() {
     setFolderId,
     setNewFolderName,
     handleCreateFolder,
+    isCreatingFolder,
+    isLoading: isLoadingFolders
   } = useFolders({
-    refresh,
-    setRefresh,
-    error,
-    setError,
+    onError: setError,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] })
   });
+
+  const handleUploadSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['files'] });
+  }, [queryClient]);
 
   const {
     uppyRef,
@@ -56,9 +45,13 @@ export default function FileUploader() {
     isCameraActive,
     cameraError,
   } = useUppyUploader({
-    folderId,
-    setRefresh,
-    setError,
+    folderId: folderId || null,
+    setRefresh: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+    },
+    setError: (error) => {
+      setError(error);
+    }
   });
 
   const {
@@ -68,100 +61,79 @@ export default function FileUploader() {
     handleRemoveFile,
   } = useFileHandling(uppyRef);
 
+  const handleFileDeleted = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['files'] });
+  }, [queryClient]);
+
   return (
-    <div
-      className={`mx-auto max-w-4xl space-y-6 rounded-lg border p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white`}
-    >
-      <Toaster
-        position="top-right"
-        duration={10000}
-      />
+    <div className="mx-auto max-w-4xl space-y-6 p-4">
+      <Toaster position="top-right" duration={4000} />
+      
       <button
-        className={`mb-4 px-4 py-2 rounded-md text-sm font-medium dark:bg-gray-700 dark:text-white hover:bg-gray-600 dark:hover:bg-gray-600 ${
-          showUploadSection ? " animate-none" : " animate-pulse hover:animate-none duration-500 ease-linear"
-        }`}
-        type="button"
-        aria-label="Toggle Upload Section"
-        title="Toggle Upload Section"
         onClick={() => setShowUploadSection(!showUploadSection)}
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
       >
         {showUploadSection ? "Hide Upload Section" : "Show Upload Section"}
       </button>
+
       {showUploadSection && (
-        <>
-      {/* Create Folder */}
-      <FolderManagement
-        newFolderName={newFolderName}
-        setNewFolderName={setNewFolderName}
-        handleCreateFolder={handleCreateFolder}
-        folderId={folderId}
-        setFolderId={setFolderId}
-        folders={folders}
-      />
-
-      {/* Upload Mode Toggle */}
-      <UploadModeToggle
-        showDashboard={showDashboard}
-        setShowDashboard={setShowDashboard}
-        folderId={folderId}
-      />
-
-      {/* Error Messages */}
-      {error && (
-        <ErrorDisplay
-          error={error}
-          cameraError={cameraError}
-        />
-      )}
-
-      {/* Uppy Upload Interface */}
-      {folderId ? (
-        <div className="space-y-4">
-          {showDashboard ? (
-            // Advanced Dashboard with all features
-            <AdvancedUpload
-              uppyRef={uppyRef}
-              isCameraActive={isCameraActive}
-              toggleCameraActive={toggleCameraActive}
-              facingMode={facingMode}
-              toggleCamera={toggleCamera}
+        <div className="space-y-4 p-4 border rounded-lg bg-white dark:bg-gray-800">
+          {/* Folder Management */}
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="New folder name"
+              className="w-full p-2 border rounded"
+              disabled={isCreatingFolder}
             />
-          ) : (
-            // Simple drag-drop interface
-            <SimpleUpload
-              uppyRef={uppyRef}
-              fileInputRef={fileInputRef}
-              handleFileInputChange={handleFileInputChange}
-              triggerFileInput={triggerFileInput}
-              selectedFiles={selectedFiles}
-              handleRemoveFile={handleRemoveFile}
-              isUploading={isUploading}
-              handleStartUpload={handleStartUpload}
+            <button
+              onClick={handleCreateFolder}
+              disabled={!newFolderName.trim() || isCreatingFolder}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+            >
+              {isCreatingFolder ? "Creating..." : "Create Folder"}
+            </button>
+          </div>
+
+          {/* File Upload Area */}
+          <div className="mt-4">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              className="hidden"
+              multiple
             />
-          )}
+            <button
+              onClick={triggerFileInput}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              disabled={isUploading}
+            >
+              {isUploading ? "Uploading..." : "Select Files"}
+            </button>
+            <button
+              onClick={handleStartUpload}
+              disabled={selectedFiles.length === 0 || isUploading}
+              className="ml-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
+            >
+              {isUploading ? "Uploading..." : `Upload ${selectedFiles.length} Files`}
+            </button>
+          </div>
         </div>
-      ) : null}
-      {/* No folder selected message */}
-
-      {!folderId && (
-        <div
-          className={`py-8 text-center dark:text-gray-400 text-gray-500`}
-        >
-          Please select a folder to start uploading files.
-        </div>
-      )}
-
-      {/* Recently Uploaded Files Preview */}
-      {uploadedFiles.length > 0 && (
-        <RecentlyUploaded
-          uploadedFiles={uploadedFiles}
-        />
-      )}
-      </>
       )}
 
       {/* File Table */}
-      <FileTable folders={folders} />
+      <div className="mt-6">
+        <FileTable 
+          folders={folders}
+          onFileDelete={handleFileDeleted}
+          folderId={folderId}
+          onFolderSelect={setFolderId}
+          isLoading={isLoadingFolders}
+        />
+      </div>
     </div>
   );
 }

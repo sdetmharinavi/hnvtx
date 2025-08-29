@@ -1,19 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Eye, Download, Trash2, Search, Filter, Grid, List, X } from "lucide-react";
+import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
 import "../../app/customuppy.css"; // Custom styles for Uppy
 
+// Define file type for better type safety
+interface FileType {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_url: string;
+  uploaded_at: string;
+  [key: string]: any;
+}
+
 interface FileTableProps {
-  folders: any[];
+  folders: Array<{ id: string; name: string }>;
   onFileDelete?: () => void;
+  folderId?: string | null;
+  onFolderSelect?: (id: string | null) => void;
+  isLoading?: boolean;
 }
 
 export function FileTable({ folders, onFileDelete }: FileTableProps) {
-  const supabase = createClient();
-  
-  const [files, setFiles] = useState<any[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
@@ -21,15 +31,22 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [loading, setLoading] = useState(false);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
+  // Use React Query to fetch files
+  const { data: files = [], isLoading, refetch } = useFiles(selectedFolder || undefined);
+  const loading = isLoading; // Use loading state from React Query
+  const { mutate: deleteFile } = useDeleteFile();
+
   // Filter folders based on folder search term and sort alphabetically in ascending order
-  const filteredFolders = folders
-    .filter(folder =>
-      folder.name.toLowerCase().includes(folderSearchTerm.toLowerCase())
-    )
-    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  const filteredFolders = useMemo(() => 
+    folders
+      .filter(folder =>
+        folder.name.toLowerCase().includes(folderSearchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())),
+    [folders, folderSearchTerm]
+  );
 
   // Reset selected folder when it's not in filtered results
   useEffect(() => {
@@ -39,39 +56,36 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         setSelectedFolder(null);
       }
     }
-  }, [folderSearchTerm, selectedFolder, filteredFolders]);
+  }, [selectedFolder, folderSearchTerm, filteredFolders]);
 
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (!selectedFolder) {
-        setFiles([]);
-        return;
-      }
-      
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("files")
-          .select("*")
-          .eq("folder_id", selectedFolder)
-          .order("uploaded_at", { ascending: false });
 
-        if (error) {
-          console.error("Fetch files error:", error);
+  // Sort and filter files based on user preferences
+  const processedFiles = useMemo(() => {
+    return (files as FileType[])
+      .filter((file) => {
+        const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
+        const matchesType = fileTypeFilter === "all" || file.file_type?.includes(fileTypeFilter);
+        return matchesSearch && matchesType;
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+        
+        if (sortBy === "name") {
+          comparison = a.file_name.localeCompare(b.file_name);
+        } else if (sortBy === "type") {
+          comparison = (a.file_type || "").localeCompare(b.file_type || "");
         } else {
-          setFiles(data ?? []);
+          // Sort by date
+          const dateA = new Date(a.uploaded_at || 0).getTime();
+          const dateB = new Date(b.uploaded_at || 0).getTime();
+          comparison = dateA - dateB;
         }
-      } catch (error) {
-        console.error("Fetch files error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+        
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
 
-    fetchFiles();
-  }, [selectedFolder, supabase]);
-
-  const handleView = (file: any) => {
+  const handleView = (file: FileType) => {
     if (file.file_type === "application/pdf") {
       const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(file.file_url)}&embedded=true`;
       window.open(googleViewerUrl, '_blank');
@@ -80,41 +94,38 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     }
   };
 
-  const handleDelete = async (file: any) => {
+  const handleDelete = (file: FileType) => {
     if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
       return;
     }
 
     setDeletingFile(file.id);
-    try {
-      const { error } = await supabase
-        .from("files")
-        .delete()
-        .eq("id", file.id);
-
-      if (error) {
-        console.error("Delete error:", error);
-        alert("Failed to delete file");
-      } else {
-        setFiles(files.filter(f => f.id !== file.id));
-        onFileDelete?.();
+    deleteFile(
+      { id: file.id, folderId: selectedFolder },
+      {
+        onSuccess: () => {
+          onFileDelete?.();
+          refetch();
+        },
+        onError: (error) => {
+          console.error("Delete error:", error);
+          alert("Failed to delete file");
+        },
+        onSettled: () => {
+          setDeletingFile(null);
+        }
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("Failed to delete file");
-    } finally {
-      setDeletingFile(null);
-    }
+    );
   };
 
-  const getDownloadUrl = (file: any) => {
+  const getDownloadUrl = (file: FileType) => {
     if (file.file_type === "application/pdf") {
       return file.file_url.replace("/upload/", "/upload/fl_attachment/");
     }
     return file.file_url;
   };
 
-  const getFileIcon = (fileType: string) => {
+  const getFileIcon = (fileType: string = '') => {
     if (fileType.startsWith("image/")) return "🖼️";
     if (fileType === "application/pdf") return "📄";
     if (fileType.startsWith("video/")) return "🎥";
@@ -142,52 +153,52 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
   };
 
   // Clear search functions
-  const clearFolderSearch = () => {
+  const clearFolderSearch = useCallback(() => {
     setFolderSearchTerm("");
-  };
+  }, []);
 
-  const clearFileSearch = () => {
+  const clearFileSearch = useCallback(() => {
     setFileSearchTerm("");
-  };
+  }, []);
 
   // Filter and sort files
-  const filteredAndSortedFiles = files
-    .filter(file => {
-      const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
-      const matchesType = fileTypeFilter === "all" || file.file_type.startsWith(fileTypeFilter);
-      return matchesSearch && matchesType;
-    })
-    .sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case "name":
-          aValue = a.file_name.toLowerCase();
-          bValue = b.file_name.toLowerCase();
-          break;
-        case "type":
-          aValue = a.file_type;
-          bValue = b.file_type;
-          break;
-        case "date":
-        default:
-          aValue = new Date(a.uploaded_at || a.created_at);
-          bValue = new Date(b.uploaded_at || b.created_at);
-          break;
-      }
-      
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+  const filteredAndSortedFiles = useMemo(() => {
+    return (files as FileType[])
+      .filter((file) => {
+        const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
+        const matchesType = fileTypeFilter === "all" || file.file_type.startsWith(fileTypeFilter);
+        return matchesSearch && matchesType;
+      })
+      .sort((a, b) => {
+        let aValue: string | Date;
+        let bValue: string | Date;
+        
+        switch (sortBy) {
+          case "name":
+            aValue = a.file_name.toLowerCase();
+            bValue = b.file_name.toLowerCase();
+            break;
+          case "type":
+            aValue = a.file_type || '';
+            bValue = b.file_type || '';
+            break;
+          case "date":
+          default:
+            aValue = new Date(a.uploaded_at || 0);
+            bValue = new Date(b.uploaded_at || 0);
+            break;
+        }
+        
+        const comparison = aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
 
   const getFileTypeOptions = () => {
-    const types = [...new Set(files.map(file => file.file_type.split("/")[0]))];
+    const types = [...new Set((files as FileType[]).map(file => file.file_type.split("/")[0]))];
     return types.map(type => ({
       value: type,
-      label: type.charAt(0).toUpperCase() + type.slice(1),
+      label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Unknown',
     }));
   };
 
@@ -406,7 +417,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                         {file.file_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(file.uploaded_at || file.created_at)}
+                        {formatDate(file.uploaded_at)}
                       </p>
                     </div>
 
@@ -473,7 +484,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                           {file.file_type.split("/")[1] || "Unknown"}
                         </div>
                         <div className="col-span-2 text-xs text-gray-500">
-                          {formatDate(file.uploaded_at || file.created_at)}
+                          {formatDate(file.uploaded_at)}
                         </div>
                         <div className="col-span-1 flex gap-1">
                           <button

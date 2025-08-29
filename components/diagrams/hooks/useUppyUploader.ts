@@ -6,6 +6,7 @@ import Webcam from '@uppy/webcam';
 import { createClient } from "@/utils/supabase/client";
 import { createOptimizedUppy } from "@/utils/imageOptimization";
 import { smartCompress, convertToWebP, createProgressiveJPEG } from "@/utils/imageOptimization";
+import { useUploadFile } from "@/hooks/database/file-queries";
 
 
 interface UploadedFile {
@@ -48,6 +49,7 @@ export function useUppyUploader({
   setRefresh,
   setError,
 }: UseUppyUploaderProps): UseUppyUploaderReturn {
+  const { mutate: uploadFile } = useUploadFile();
   const supabase = createClient();
   const uppyRef = useRef<Uppy<any, Record<string, never>> | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
@@ -169,44 +171,32 @@ export function useUppyUploader({
           return;
         }
 
-        const { data: existingFile } = await supabase
-          .from("files")
-          .select("id")
-          .eq("file_route", response.body.public_id)
-          // .eq("user_id", userData.user.id)
-          .single();
-
-        if (existingFile) {
-          console.log("File already exists in database, skipping insert");
-          setUploadedFiles((prev) => [...prev, response.body]);
-          return;
+        if (!file.name) {
+          throw new Error("File name is required");
         }
 
         const fileData = {
           user_id: userData.user.id,
           file_name: file.name,
-          file_type: file.type,
-          file_size: file.size,
+          file_type: file.type || 'application/octet-stream',
+          file_size: file.size?.toString() || '0', // Convert to string
           file_route: response.body.public_id,
           file_url: response.body.secure_url || "",
-          folder_id: folderId,
+          folder_id: folderId || null,
         };
 
-        const { error: dbError } = await supabase
-          .from("files")
-          .insert(fileData);
-
-        if (dbError) {
-          console.error("Database error:", dbError);
-          setError(`Database error: ${dbError.message}`);
+        try {
+          await uploadFile(fileData);
+          setUploadedFiles((prev) => [...prev, response.body]);
+          setRefresh((prev) => !prev);
+        } catch (error) {
+          console.error("Error saving file to database:", error);
+          setError(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           setProcessedFiles((prev) => {
             const newSet = new Set(prev);
             newSet.delete(file.id);
             return newSet;
           });
-        } else {
-          setUploadedFiles((prev) => [...prev, response.body]);
-          setRefresh((prev) => !prev);
         }
       } catch (err: any) {
         console.error("Upload success handler error:", err);

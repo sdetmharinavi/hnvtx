@@ -1159,6 +1159,86 @@ export type Database = {
           },
         ]
       }
+      files: {
+        Row: {
+          file_name: string
+          file_route: string
+          file_size: string
+          file_type: string
+          file_url: string
+          folder_id: string | null
+          id: string
+          uploaded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          file_name: string
+          file_route: string
+          file_size: string
+          file_type: string
+          file_url: string
+          folder_id?: string | null
+          id?: string
+          uploaded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          file_name?: string
+          file_route?: string
+          file_size?: string
+          file_type?: string
+          file_url?: string
+          folder_id?: string | null
+          id?: string
+          uploaded_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       logical_fiber_paths: {
         Row: {
           bandwidth_gbps: number | null
