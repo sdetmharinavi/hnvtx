@@ -123,7 +123,7 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
   const columnsKeys = columns.map((col) => col.key);
 
   useEffect(() => {
-    console.log('columns', columnsKeys);
+    console.log(`columns for ${tableName}`, columnsKeys);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
