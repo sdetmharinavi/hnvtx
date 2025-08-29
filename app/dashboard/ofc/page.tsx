@@ -37,6 +37,7 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
+import { record } from 'zod';
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
@@ -129,6 +130,19 @@ const OfcPage = () => {
       }
     });
     return Array.from(uniqueMaintenanceAreas.values());
+  }, [ofcData]);
+
+  const ofcOwners = useMemo(() => {
+    const uniqueOwners = new Map();
+    ofcData.forEach((ofc) => {
+      if (ofc.ofc_owner_code) {
+        uniqueOwners.set(ofc.ofc_owner_id, {
+          id: ofc.ofc_owner_id,
+          ofc_owner_code: ofc.ofc_owner_code,
+        });
+      }
+    });
+    return Array.from(uniqueOwners.values());
   }, [ofcData]);
 
   const supabase = createClient();
@@ -340,6 +354,13 @@ const OfcPage = () => {
                 { value: 'true', label: 'Active' },
                 { value: 'false', label: 'Inactive' },
               ]}
+            />
+            <SelectFilter
+              label="ofc_owner"
+              filterKey="ofc_owner_id"
+              filters={crudFilters.filters}
+              setFilters={crudFilters.setFilters}
+              options={ofcOwners.map((t) => ({ value: t.id, label: t.ofc_owner_code }))}
             />
             <SelectFilter
               label="Maintenance Terminal"
