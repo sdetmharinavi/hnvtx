@@ -3007,6 +3007,7 @@ export type Database = {
       }
       v_ofc_connections_complete: {
         Row: {
+          active_count: number | null
           connection_category: string | null
           connection_type: string | null
           created_at: string | null
@@ -3018,6 +3019,7 @@ export type Database = {
           fiber_no_en: number | null
           fiber_no_sn: number | null
           id: string | null
+          inactive_count: number | null
           logical_path_id: string | null
           maintenance_area_name: string | null
           ofc_id: string | null
@@ -3036,6 +3038,7 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           system_name: string | null
+          total_count: number | null
           updated_at: string | null
         }
         Relationships: [
@@ -3252,6 +3255,7 @@ export type Database = {
       }
       v_system_connections_complete: {
         Row: {
+          active_count: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
           connected_system_name: string | null
@@ -3262,6 +3266,7 @@ export type Database = {
           en_name: string | null
           en_node_name: string | null
           id: string | null
+          inactive_count: number | null
           maan_bandwidth_allocated_mbps: number | null
           maan_customer_name: string | null
           maan_fiber_in: number | null
@@ -3286,6 +3291,7 @@ export type Database = {
           system_id: string | null
           system_name: string | null
           system_type_name: string | null
+          total_count: number | null
           updated_at: string | null
           vlan: string | null
           vmux_c_code: string | null
@@ -3312,9 +3318,11 @@ export type Database = {
       }
       v_systems_complete: {
         Row: {
+          active_count: number | null
           commissioned_on: string | null
           created_at: string | null
           id: string | null
+          inactive_count: number | null
           ip_address: unknown | null
           latitude: number | null
           longitude: number | null
@@ -3331,6 +3339,7 @@ export type Database = {
           system_name: string | null
           system_type_code: string | null
           system_type_name: string | null
+          total_count: number | null
           updated_at: string | null
           vmux_vm_id: string | null
         }
@@ -3872,16 +3881,17 @@ export type Database = {
           p_order_dir?: string
         }
         Returns: {
+          active_count: number
           commissioned_on: string
           created_at: string
           id: string
+          inactive_count: number
           ip_address: unknown
           latitude: number
           longitude: number
           maan_area: string
           maan_ring_no: string
           maintenance_area_name: string
-          node_ip: unknown
           node_name: string
           remark: string
           s_no: string

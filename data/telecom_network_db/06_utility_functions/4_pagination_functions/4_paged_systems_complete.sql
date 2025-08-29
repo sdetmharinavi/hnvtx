@@ -17,7 +17,6 @@ RETURNS TABLE(
     maan_area text,
     maan_ring_no text,
     maintenance_area_name text,
-    node_ip inet,
     node_name text,
     remark text,
     s_no text,
@@ -30,7 +29,9 @@ RETURNS TABLE(
     system_type_name text,
     updated_at text,
     vmux_vm_id text,
-    total_count bigint
+    total_count bigint,
+    active_count bigint,
+    inactive_count bigint
 ) 
 AS $$
 DECLARE 
@@ -64,7 +65,6 @@ BEGIN
       v.maan_area,
       v.maan_ring_no,
       v.maintenance_area_name,
-      v.node_ip,
       v.node_name,
       v.remark,
       v.s_no,
@@ -77,7 +77,9 @@ BEGIN
       v.system_type_name,
       v.updated_at::text,
       v.vmux_vm_id,
-      count(*) OVER() AS total_count
+      count(*) OVER() AS total_count,
+      sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count,
+      sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_systems_complete v
     WHERE 1 = 1 %s
     ORDER BY %I %s

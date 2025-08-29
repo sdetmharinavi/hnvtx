@@ -1,4 +1,5 @@
 -- System Connections with Lookup Details View (SECURITY INVOKER)
+drop view if exists v_system_connections_complete;
 create or replace view v_system_connections_complete with (security_invoker = true) as
 select 
   sc.id,
@@ -51,7 +52,10 @@ select
   vcs.subscriber as vmux_subscriber,
   vcs.c_code as vmux_c_code,
   vcs.channel as vmux_channel,
-  vcs.tk as vmux_tk
+  vcs.tk as vmux_tk,
+  count(*) OVER() AS total_count,
+  sum(case when sc.status = true then 1 else 0 end) over() as active_count,
+  sum(case when sc.status = false then 1 else 0 end) over() as inactive_count
 from system_connections sc
   join systems s on sc.system_id = s.id
   join lookup_types lt_system on s.system_type_id = lt_system.id

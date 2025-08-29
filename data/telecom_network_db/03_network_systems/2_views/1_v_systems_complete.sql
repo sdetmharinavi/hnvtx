@@ -1,4 +1,5 @@
 -- Complete System Information View (SECURITY INVOKER)
+drop view if exists v_systems_complete;
 create view v_systems_complete with (security_invoker = true) as
 select s.id,
   s.system_name,
@@ -20,7 +21,10 @@ select s.id,
   ms.area as maan_area,
   ss.gne as sdh_gne,
   ss.make as sdh_make,
-  vs.vm_id as vmux_vm_id
+  vs.vm_id as vmux_vm_id,
+  count(*) OVER() AS total_count,
+  sum(case when s.status = true then 1 else 0 end) over() as active_count,
+  sum(case when s.status = false then 1 else 0 end) over() as inactive_count
 from systems s
   join nodes n on s.node_id = n.id
   join lookup_types lt_system on s.system_type_id = lt_system.id

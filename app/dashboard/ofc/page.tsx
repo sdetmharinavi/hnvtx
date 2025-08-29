@@ -5,8 +5,6 @@ import { createClient } from '@/utils/supabase/client';
 import {
   useTableInsert,
   useTableUpdate,
-  useToggleStatus,
-  useTableBulkOperations,
   usePagedOfcCablesComplete,
   Filters,
   convertRichFiltersToSimpleJson,
@@ -189,21 +187,11 @@ const OfcPage = () => {
       },
     }
   );
-  const { mutate: toggleStatus } = useToggleStatus(supabase, 'ofc_cables', {
-    onSuccess: () => {
-      refetch();
-      toast.success('OFC Cable status toggled.');
-    },
-  });
-  const { bulkDelete, bulkUpdate } = useTableBulkOperations(
-    supabase,
-    'ofc_cables'
-  );
 
   // --- HANDLERS ---
   const closeModal = useCallback(() => {
     editModal.close();
-  }, []);
+  }, [editModal]);
   const handleSave = (data: TablesInsert<'ofc_cables'>) => {
     if (editModal.record) {
       updateOfcCable({ id: editModal.record.id!, data });
@@ -256,13 +244,15 @@ const OfcPage = () => {
     },
   ];
 
+  const loading = isLoading || isInserting || isUpdating;
+
   const headerActions = useStandardHeaderActions({
     onRefresh: async () => {
       await refetch();
       toast.success('Refreshed successfully!');
     },
     onAddNew: editModal.openAdd,
-    isLoading: isLoading,
+    isLoading: loading,
     exportConfig: {
       tableName: 'ofc_cables',
       filters: {
@@ -296,8 +286,8 @@ const OfcPage = () => {
         description="Manage OFC cables and their related information."
         icon={<AiFillMerge />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
-        isLoading={isLoading}
+        actions={headerActions}
+        isLoading={loading}
       />
       <BulkActions
         selectedCount={bulkActions.selectedCount}
@@ -314,7 +304,7 @@ const OfcPage = () => {
         tableName="v_ofc_cables_complete"
         data={ofcData}
         columns={orderedColumns}
-        loading={isLoading}
+        loading={loading}
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows: OfcCableRowsWithCount[]): void => {
