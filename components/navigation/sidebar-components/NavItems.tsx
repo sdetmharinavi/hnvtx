@@ -12,6 +12,7 @@ import {
   FiMapPin,
   FiList,
 } from "react-icons/fi";
+import { FaDiagramNext } from "react-icons/fa6";
 import { BsPeople } from "react-icons/bs";
 import { ImUserTie } from "react-icons/im";
 import { GiLinkedRings } from "react-icons/gi";
@@ -122,6 +123,13 @@ function NavItems() {
         label: "Systems",
         icon: <FiDatabase className="h-5 w-5" />,
         href: "/dashboard/systems",
+        roles: [UserRole.ADMIN],
+      },
+      {
+        id: "diagrams",
+        label: "Diagrams",
+        icon: <FaDiagramNext className="h-5 w-5" />,
+        href: "/dashboard/diagrams",
         roles: [UserRole.ADMIN],
       },
       {
