@@ -145,10 +145,6 @@ export type CpanConnectionRowsWithRelations = Row<'cpan_connections'> & {
       id: string;
       name: string;
     } | null;
-    ring?: {
-      id: string;
-      name: string;
-    } | null;
   };
   
   export type OfcCableRowsWithRelations = Row<'ofc_cables'> & {

@@ -167,7 +167,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
   const tableExcelDownload = useTableExcelDownload(
     supabase,
     exportConfig?.tableName as T,
-    { onSuccess: () => toast.success("Export successful!"), onError: (err) => toast.error(`Export failed: ${err.message}`) }
+    { onSuccess: () => toast.success("Export successful!"), onError: (err) => toast.error(`Export failed: ${err.message}`) },
   );
 
   const handleExport = useCallback(() => {
@@ -179,7 +179,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
       fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName}.xlsx`,
       sheetName: exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName,
       filters: exportConfig.filters,
-      columns: columns.filter(c => exportConfig.columns ? exportConfig.columns.includes(c.key as any) : true),
+      columns: columns.filter(c => exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true),
       maxRows: exportConfig.maxRows
     });
   }, [exportConfig, columns, tableExcelDownload]);

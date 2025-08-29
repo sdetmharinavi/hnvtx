@@ -37,7 +37,6 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
-import { record } from 'zod';
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
@@ -264,7 +263,15 @@ const OfcPage = () => {
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: 'ofc_cables' },
+    exportConfig: {
+      tableName: 'ofc_cables',
+      filters: {
+        ofc_owner_id: {
+          operator: 'neq',
+          value: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f',
+        },
+      },
+    },
   });
 
   if (error) {
@@ -360,7 +367,10 @@ const OfcPage = () => {
               filterKey="ofc_owner_id"
               filters={crudFilters.filters}
               setFilters={crudFilters.setFilters}
-              options={ofcOwners.map((t) => ({ value: t.id, label: t.ofc_owner_code }))}
+              options={ofcOwners.map((t) => ({
+                value: t.id,
+                label: t.ofc_owner_code,
+              }))}
             />
             <SelectFilter
               label="Maintenance Terminal"

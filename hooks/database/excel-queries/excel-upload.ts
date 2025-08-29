@@ -610,17 +610,82 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             const { error } = await query;
             
             if (error) {
-              console.error(`❌ Batch operation failed:`, error);
-              uploadResult.errorCount += batch.length;
-              uploadResult.errors.push({
-                rowIndex: i,
-                data: batch,
-                error: error.message,
-              });
-              if (showToasts) {
-                toast.error(
-                  `Error in batch starting at record ${i + 1}: ${error.message}`
-                );
+              // Handle foreign key constraint violation specifically
+              if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
+                // Type-safe access to sn_id
+                type RecordWithSnId = { sn_id?: unknown };
+                const getSnId = (record: unknown): string | undefined => {
+                  if (record && typeof record === 'object' && 'sn_id' in record) {
+                    const value = (record as RecordWithSnId).sn_id;
+                    return value !== null && value !== undefined ? String(value) : undefined;
+                  }
+                  return undefined;
+                };
+                
+                // Extract all unique sn_ids from the batch that caused the error
+                const invalidSnIds = [...new Set(
+                  batch.map(record => getSnId(record)).filter((id): id is string => Boolean(id))
+                )];
+                
+                // Log detailed error information
+                console.error('Foreign key violation details:', {
+                  table: tableName,
+                  constraint: 'ofc_cables_sn_id_fkey',
+                  invalidValues: invalidSnIds,
+                  error: error.message
+                });
+                
+                // Add validation errors for each affected row
+                batch.forEach((record, index) => {
+                  const snId = getSnId(record);
+                  if (snId) {
+                    uploadResult.validationErrors.push({
+                      rowIndex: i + index,
+                      column: 'sn_id',
+                      value: snId,
+                      error: `Foreign key violation: sn_id '${snId}' does not exist in the nodes table`,
+                      data: { column: 'sn_id', value: snId, constraint: 'ofc_cables_sn_id_fkey' }
+                    });
+                  }
+                });
+                
+                // Add a summary error to the upload result
+                const errorMessage = `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found in batch. ` +
+                  `Invalid values: ${invalidSnIds.join(', ')}`;
+                uploadResult.errorCount += batch.length;
+                uploadResult.errors.push({
+                  rowIndex: i,
+                  data: batch,
+                  error: errorMessage
+                });
+                
+                // Show user-friendly error message
+                if (showToasts) {
+                  toast.error(
+                    `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found. ` +
+                    'Check the console for details.',
+                    { duration: 10000 }
+                  );
+                }
+              } else {
+                // Handle other types of errors
+                const errorDetails: Record<string, unknown> = {};
+                if (error.code === '23503') {
+                  errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
+                  errorDetails.detail = error.message;
+                }
+                
+                uploadResult.errorCount += batch.length;
+                uploadResult.errors.push({
+                  rowIndex: i,
+                  data: batch,
+                  error: error.message,
+                  ...(Object.keys(errorDetails).length > 0 ? { details: errorDetails } : {})
+                });
+                
+                if (showToasts) {
+                  toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
+                }
               }
             } else {
               console.log(`✅ Batch operation successful for ${batch.length} records`);

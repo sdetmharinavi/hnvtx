@@ -1,5 +1,6 @@
--- Function: get_paged_nodes_complete
+-- Function: get_paged_nodes_complete (no ring relationship)
 DROP FUNCTION IF EXISTS public.get_paged_nodes_complete;
+
 CREATE OR REPLACE FUNCTION public.get_paged_nodes_complete(
     p_limit integer,
     p_offset integer,
@@ -10,10 +11,7 @@ CREATE OR REPLACE FUNCTION public.get_paged_nodes_complete(
 RETURNS TABLE(
     id text,
     name text,
-    builtup text,
     created_at text,
-    east_port text,
-    ip_address inet,
     latitude numeric,
     longitude numeric,
     maintenance_area_code text,
@@ -23,19 +21,9 @@ RETURNS TABLE(
     node_type_code text,
     node_type_id text,
     node_type_name text,
-    order_in_ring numeric,
     remark text,
-    ring_id text,
-    ring_name text,
-    ring_status text,
-    ring_type_code text,
-    ring_type_id text,
-    ring_type_name text,
-    site_id text,
     status boolean,
     updated_at text,
-    vlan text,
-    west_port text,
     total_count bigint,
     active_count bigint,
     inactive_count bigint
@@ -78,10 +66,7 @@ BEGIN
     SELECT 
       v.id::text,
       v.name::text,
-      v.builtup::text,
       v.created_at::text,
-      v.east_port::text,
-      v.ip_address,
       v.latitude::numeric,
       v.longitude::numeric,
       v.maintenance_area_code::text,
@@ -91,19 +76,9 @@ BEGIN
       v.node_type_code::text,
       v.node_type_id::text,
       v.node_type_name::text,
-      v.order_in_ring::numeric,
       v.remark::text,
-      v.ring_id::text,
-      v.ring_name::text,
-      v.ring_status::text,
-      v.ring_type_code::text,
-      v.ring_type_id::text,
-      v.ring_type_name::text,
-      v.site_id::text,
       v.status,
       v.updated_at::text,
-      v.vlan::text,
-      v.west_port::text,
       count(*) OVER() AS total_count,
       sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count,
       sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
@@ -124,5 +99,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION public.get_paged_nodes_complete(integer, integer, text, text, jsonb) TO authenticated;
+
 ALTER FUNCTION public.get_paged_nodes_complete(integer, integer, text, text, jsonb)
 SET search_path = public, auth, pg_temp;

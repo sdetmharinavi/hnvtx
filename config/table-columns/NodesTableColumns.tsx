@@ -8,9 +8,6 @@ export const NodesTableColumns = (data: Row<'v_nodes_complete'>[]) => {
   return useDynamicColumnConfig('v_nodes_complete', {
     data: data,
     omit: [
-      'ring_id',
-      'ring_type_id',
-      'ring_type_name',
       'node_type_id',
       'node_type_code',
       'maintenance_area_code',
@@ -30,15 +27,6 @@ export const NodesTableColumns = (data: Row<'v_nodes_complete'>[]) => {
               text={(value as string) ?? ''}
               className="font-semibold"
             />
-          );
-        },
-      },
-      ring_name: {
-        title: 'Ring',
-        render: (_value: unknown, record: NodeRowsWithCount) => {
-          const rel = record.ring_name;
-          return (
-            <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />
           );
         },
       },

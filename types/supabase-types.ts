@@ -1697,67 +1697,40 @@ export type Database = {
       }
       nodes: {
         Row: {
-          builtup: string | null
           created_at: string | null
-          east_port: string | null
           id: string
-          ip_address: unknown | null
           latitude: number | null
           longitude: number | null
           maintenance_terminal_id: string | null
           name: string
           node_type_id: string | null
-          order_in_ring: number | null
           remark: string | null
-          ring_id: string | null
-          ring_status: string | null
-          site_id: string | null
           status: boolean | null
           updated_at: string | null
-          vlan: string | null
-          west_port: string | null
         }
         Insert: {
-          builtup?: string | null
           created_at?: string | null
-          east_port?: string | null
           id?: string
-          ip_address?: unknown | null
           latitude?: number | null
           longitude?: number | null
           maintenance_terminal_id?: string | null
           name: string
           node_type_id?: string | null
-          order_in_ring?: number | null
           remark?: string | null
-          ring_id?: string | null
-          ring_status?: string | null
-          site_id?: string | null
           status?: boolean | null
           updated_at?: string | null
-          vlan?: string | null
-          west_port?: string | null
         }
         Update: {
-          builtup?: string | null
           created_at?: string | null
-          east_port?: string | null
           id?: string
-          ip_address?: unknown | null
           latitude?: number | null
           longitude?: number | null
           maintenance_terminal_id?: string | null
           name?: string
           node_type_id?: string | null
-          order_in_ring?: number | null
           remark?: string | null
-          ring_id?: string | null
-          ring_status?: string | null
-          site_id?: string | null
           status?: boolean | null
           updated_at?: string | null
-          vlan?: string | null
-          west_port?: string | null
         }
         Relationships: [
           {
@@ -1786,20 +1759,6 @@ export type Database = {
             columns: ["node_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nodes_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "rings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nodes_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
             referencedColumns: ["id"]
           },
         ]
@@ -2895,12 +2854,9 @@ export type Database = {
       v_nodes_complete: {
         Row: {
           active_count: number | null
-          builtup: string | null
           created_at: string | null
-          east_port: string | null
           id: string | null
           inactive_count: number | null
-          ip_address: unknown | null
           latitude: number | null
           longitude: number | null
           maintenance_area_code: string | null
@@ -2911,20 +2867,10 @@ export type Database = {
           node_type_code: string | null
           node_type_id: string | null
           node_type_name: string | null
-          order_in_ring: number | null
           remark: string | null
-          ring_id: string | null
-          ring_name: string | null
-          ring_status: string | null
-          ring_type_code: string | null
-          ring_type_id: string | null
-          ring_type_name: string | null
-          site_id: string | null
           status: boolean | null
           total_count: number | null
           updated_at: string | null
-          vlan: string | null
-          west_port: string | null
         }
         Relationships: [
           {
@@ -2951,34 +2897,6 @@ export type Database = {
           {
             foreignKeyName: "nodes_node_type_id_fkey"
             columns: ["node_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nodes_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "rings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nodes_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rings_ring_type_id_fkey"
-            columns: ["ring_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rings_ring_type_id_fkey"
-            columns: ["ring_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
             referencedColumns: ["id"]
@@ -3403,7 +3321,6 @@ export type Database = {
           maan_area: string | null
           maan_ring_no: string | null
           maintenance_area_name: string | null
-          node_ip: unknown | null
           node_name: string | null
           remark: string | null
           s_no: string | null
@@ -3761,12 +3678,9 @@ export type Database = {
         }
         Returns: {
           active_count: number
-          builtup: string
           created_at: string
-          east_port: string
           id: string
           inactive_count: number
-          ip_address: unknown
           latitude: number
           longitude: number
           maintenance_area_code: string
@@ -3777,20 +3691,10 @@ export type Database = {
           node_type_code: string
           node_type_id: string
           node_type_name: string
-          order_in_ring: number
           remark: string
-          ring_id: string
-          ring_name: string
-          ring_status: string
-          ring_type_code: string
-          ring_type_id: string
-          ring_type_name: string
-          site_id: string
           status: boolean
           total_count: number
           updated_at: string
-          vlan: string
-          west_port: string
         }[]
       }
       get_paged_ofc_cables_complete: {

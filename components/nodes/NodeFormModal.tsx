@@ -49,18 +49,9 @@ export function NodeFormModal({
     defaultValues: {
       name: "",
       node_type_id: null,
-      ip_address: null,
       latitude: 0.0,
       longitude: 0.0,
-      vlan: null,
-      site_id: null,
-      builtup: null,
       maintenance_terminal_id: null,
-      ring_id: null,
-      order_in_ring: null,
-      ring_status: "ACTIVE",
-      east_port: null,
-      west_port: null,
       remark: null,
       status: true,
     },
@@ -90,14 +81,6 @@ export function NodeFormModal({
       orderBy: [{ column: "name", ascending: true }],
     }
   );
-  const { data: rings = [] } = useTableQuery(
-    supabase,
-    "rings",
-    {
-      filters: { status: { operator: "eq", value: true } },
-      orderBy: [{ column: "name", ascending: true }],
-    }
-  );
   const { data: maintenanceAreas = [] } =
     useTableQuery(supabase, "maintenance_areas", {
       filters: { status: { operator: "eq", value: true } },
@@ -110,32 +93,9 @@ export function NodeFormModal({
       reset({
         name: editingNode.name ?? "",
         node_type_id: editingNode.node_type_id ?? null,
-        ip_address:
-          typeof editingNode.ip_address === "string"
-            ? editingNode.ip_address
-            : null,
         latitude: editingNode.latitude ?? 0.0,
         longitude: editingNode.longitude ?? 0.0,
-        vlan: typeof editingNode.vlan === "string" ? editingNode.vlan : null,
-        site_id:
-          typeof editingNode.site_id === "string" ? editingNode.site_id : null,
-        builtup:
-          typeof editingNode.builtup === "string" ? editingNode.builtup : null,
         maintenance_terminal_id: editingNode.maintenance_terminal_id ?? null,
-        ring_id: editingNode.ring_id ?? null,
-        order_in_ring: editingNode.order_in_ring ?? null,
-        ring_status:
-          typeof editingNode.ring_status === "string"
-            ? editingNode.ring_status
-            : "ACTIVE",
-        east_port:
-          typeof editingNode.east_port === "string"
-            ? editingNode.east_port
-            : null,
-        west_port:
-          typeof editingNode.west_port === "string"
-            ? editingNode.west_port
-            : null,
         remark:
           typeof editingNode.remark === "string" ? editingNode.remark : null,
         status: editingNode.status ?? true,
@@ -144,18 +104,9 @@ export function NodeFormModal({
       reset({
         name: "",
         node_type_id: null,
-        ip_address: null,
         latitude: 0.0,
         longitude: 0.0,
-        vlan: null,
-        site_id: null,
-        builtup: null,
         maintenance_terminal_id: null,
-        ring_id: null,
-        order_in_ring: null,
-        ring_status: "ACTIVE",
-        east_port: null,
-        west_port: null,
         remark: null,
         status: true,
       });
@@ -172,18 +123,9 @@ export function NodeFormModal({
       const submitData = {
         name: formData.name.trim(),
         node_type_id: formData.node_type_id,
-        ip_address: formData.ip_address,
         latitude: formData.latitude,
         longitude: formData.longitude,
-        vlan: formData.vlan,
-        site_id: formData.site_id,
-        builtup: formData.builtup,
         maintenance_terminal_id: formData.maintenance_terminal_id,
-        ring_id: formData.ring_id,
-        order_in_ring: formData.order_in_ring,
-        ring_status: formData.ring_status,
-        east_port: formData.east_port,
-        west_port: formData.west_port,
         remark: formData.remark,
         status: formData.status,
       };
@@ -237,32 +179,6 @@ export function NodeFormModal({
           className="dark:bg-gray-900 dark:text-gray-100"
         />
 
-        {/* IP Address */}
-        <FormInput
-          name="ip_address"
-          label="IP Address"
-          register={register}
-          error={errors.ip_address}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Ring ID */}
-        <FormSearchableSelect
-          name="ring_id"
-          label="Ring"
-          control={control}
-          options={rings.map(
-            (ring) =>
-              ({
-                value: ring.id,
-                label: ring.name,
-              } as Option)
-          )}
-          error={errors.ring_id}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
 
         {/* Node Type */}
         <FormSearchableSelect
@@ -298,30 +214,6 @@ export function NodeFormModal({
           className="dark:bg-gray-900 dark:text-gray-100"
         />
 
-        {/* Ring Status */}
-        <FormSearchableSelect
-          name="ring_status"
-          label="Ring Status"
-          control={control}
-          options={[
-            { value: "ACTIVE", label: "Active" },
-            { value: "INACTIVE", label: "Inactive" },
-            { value: "MAINTENANCE", label: "Maintenance" },
-          ]}
-          error={errors.ring_status}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Site */}
-        <FormInput
-          name="site_id"
-          label="Site"
-          register={register}
-          error={errors.site_id}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
 
         {/* Coordinates */}
         <FormInput
@@ -342,54 +234,6 @@ export function NodeFormModal({
           className="dark:bg-gray-900 dark:text-gray-100"
         />
 
-        {/* Order in Ring */}
-        <FormInput
-          name="order_in_ring"
-          label="Order in Ring"
-          register={register}
-          error={errors.order_in_ring}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* VLAN */}
-        <FormInput
-          name="vlan"
-          label="VLAN"
-          register={register}
-          error={errors.vlan}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Builtup */}
-        <FormTextarea
-          name="builtup"
-          label="Builtup Area"
-          control={control}
-          error={errors.builtup}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Ports */}
-        <FormInput
-          name="east_port"
-          label="East Port"
-          register={register}
-          error={errors.east_port}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        <FormInput
-          name="west_port"
-          label="West Port"
-          register={register}
-          error={errors.west_port}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
 
         {/* Remark */}
         <FormTextarea

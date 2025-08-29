@@ -1,7 +1,6 @@
 -- Core Infrastructure and Master Table Indexes
 
 -- Indexes for nodes
-create index idx_nodes_ring_id on nodes (ring_id);
 create index idx_nodes_type_id on nodes (node_type_id);
 create index idx_nodes_maintenance_area on nodes (maintenance_terminal_id);
 create index idx_nodes_coordinates on nodes (latitude, longitude);
