@@ -1,7 +1,6 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { FiX, FiServer, FiSave } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -24,8 +23,8 @@ import {
   FormSearchableSelect,
   FormSwitch,
   FormTextarea,
-} from '@/components/common/ui/form';
-import IPAddressInput from '@/components/common/ui/form/IPAddressInput';
+} from '@/components/common/form';
+import IPAddressInput from '@/components/common/form/IPAddressInput';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 
 interface AddSystemModalProps {
@@ -46,11 +45,16 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [ipv4Value, setIPv4Value] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch data for dropdowns
   const { data: systemTypes = [], isLoading: isLoadingSystemTypes } =
     useGetLookupTypesByCategory(supabase, 'SYSTEM_TYPES');
 
+  // Filter out DEFAULT system type
+  const filteredSystemTypes = useMemo(() => {
+    return systemTypes.filter(type => type.name !== 'DEFAULT');
+  }, [systemTypes]);
   const { data: nodes = [], isLoading: isLoadingNodes } = useTableQuery(
     supabase,
     'nodes',
@@ -71,8 +75,8 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
     );
 
   const systemTypesOptions: Option[] = useMemo(
-    () => systemTypes.map((t) => ({ value: t.id, label: t.code })),
-    [systemTypes]
+    () => filteredSystemTypes.map((t) => ({ value: t.id, label: t.code })),
+    [filteredSystemTypes]
   );
 
   const nodesOptions: Option[] = useMemo(
@@ -85,7 +89,6 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
     [maintenanceTerminals]
   );
 
-  // In add-system-modal.tsx, update the useForm hook to explicitly type the form data:
   const {
     register,
     handleSubmit,
@@ -130,14 +133,17 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
     };
   }
 
-  // Mutation to insert a new system
+  // Mutation to insert a new system - FIXED: Removed duplicate onSuccess callbacks
   const { mutate: addSystem, isPending: isAddingSystem } = useTableInsert(
     supabase,
     'systems',
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast.success('System added successfully!');
         queryClient.invalidateQueries({ queryKey: ['v_systems_complete'] });
+        // Parse the form data that was submitted
+        const parsedData = systemFormSchema.parse(data);
+        onCreated(parsedData);
         onClose();
       },
       onError: (error) => {
@@ -146,14 +152,17 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
     }
   );
 
-  // Mutation to update an existing system
+  // Mutation to update an existing system - FIXED: Removed duplicate onSuccess callbacks
   const { mutate: updateSystem, isPending: isUpdatingSystem } = useTableUpdate(
     supabase,
     'systems',
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast.success('System updated successfully!');
         queryClient.invalidateQueries({ queryKey: ['v_systems_complete'] });
+        // Parse the form data that was submitted
+        const parsedData = systemFormSchema.parse(data);
+        onUpdated(parsedData);
         onClose();
       },
       onError: (error) => {
@@ -162,42 +171,25 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
     }
   );
 
+  // FIXED: Simplified onValidSubmit - removed nested onSuccess callbacks
   const onValidSubmit = useCallback(
     async (formData: SystemFormData) => {
+      if (isProcessing) return; // Prevent multiple submissions
+    
+      setIsProcessing(true);
       try {
         // The form data is already validated by zod, but we need to ensure proper typing
         const transformedData = systemFormSchema.parse(formData);
 
         if (rowData) {
-          // For updates
-          await updateSystem(
-            {
-              id: rowData.id,
-              data: transformedData,
-            },
-            {
-              onSuccess: () => {
-                onUpdated(transformedData);
-                onClose();
-              },
-              onError: (error) => {
-                console.error('Update error:', error);
-                toast.error(`Failed to update system: ${error.message}`);
-              }
-            }
-          );
-        } else {
-          // For new records
-          await addSystem(transformedData, {
-            onSuccess: () => {
-              onCreated(transformedData);
-              onClose();
-            },
-            onError: (error) => {
-              console.error('Creation error:', error);
-              toast.error(`Failed to create system: ${error.message}`);
-            }
+          // For updates - just call the mutation, let the hook handle success/error
+          updateSystem({
+            id: rowData.id,
+            data: transformedData,
           });
+        } else {
+          // For new records - just call the mutation, let the hook handle success/error
+          addSystem(transformedData);
         }
       } catch (error) {
         console.error('Form validation error:', error);
@@ -206,12 +198,15 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
         } else {
           toast.error('An unexpected error occurred. Please try again.');
         }
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [rowData, updateSystem, onUpdated, onClose, addSystem, onCreated]
+    [isProcessing, rowData, updateSystem, addSystem]
   );
 
   const submitting = isAddingSystem || isUpdatingSystem || isSubmitting;
+  const isLoading = isLoadingSystemTypes || isLoadingNodes || isLoadingMaintenanceTerminals;
 
   if (!isOpen) {
     return null;
@@ -231,6 +226,8 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
         heightClass="min-h-calc(90vh - 200px)"
         title={rowData ? 'Edit System' : 'Add System'}
         onCancel={onClose}
+        isLoading={isLoading}
+        disableSubmit={submitting}
         standalone
       >
         <FormInput
@@ -265,24 +262,30 @@ export const AddSystemModal: FC<AddSystemModalProps> = ({
           control={control}
           error={errors.commissioned_on}
         />
-        {/* <FormInput
-          name="ip_address"
-          label="IP Address"
-          type="text"
-          required
-          register={register}
-          error={errors.ip_address}
-        /> */}
+
         <IPAddressInput
           value={ipv4Value}
+          label="IP Address"
           onChange={(value, validation) => {
-            setIPv4Value(value);
-            setValue('ip_address', value, { shouldValidate: true });
+            if (validation.isValid) {
+              setIPv4Value(value);
+              setValue('ip_address', value, { shouldValidate: true });
+            }
           }}
           placeholder="Enter IPv4 address (e.g., 192.168.1.1)"
           allowIPv4={true}
           allowIPv6={false}
         />
+
+        <FormInput
+          name="s_no"
+          label="Serial Number"
+          type="text"
+          required
+          register={register}
+          error={errors.s_no}
+        />
+        
         <FormSearchableSelect
           name="maintenance_terminal_id"
           label="Maintenance Terminal"

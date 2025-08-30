@@ -9,9 +9,9 @@ import Image from "next/image";
 import { useForm, Resolver, FieldErrors, Controller } from "react-hook-form";
 import { UserProfileFormData, userProfileFormSchema } from "@/schemas"; // Use the main schema and type
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormInput, FormDateInput } from "../common/ui/form/FormControls"; // Import your new controls
+import { FormInput, FormDateInput } from "../common/form/FormControls"; // Import your new controls
 import { Button, Input, Label, Modal } from "@/components/common/ui";
-import { FormCard } from "@/components/common/ui/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import { Theme } from "@/stores/themeStore";
 
 interface UserProfileEditProps {

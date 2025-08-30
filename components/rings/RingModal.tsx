@@ -9,13 +9,13 @@ import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { RingFormData, ringFormSchema } from "@/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/ui/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
   FormTextarea,
-} from "@/components/common/ui/form/FormControls";
+} from "@/components/common/form/FormControls";
 
 export type RingRow = Database["public"]["Tables"]["rings"]["Row"];
 export type RingInsert = TablesInsert<"rings">;

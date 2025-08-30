@@ -311,6 +311,12 @@ export function FormDateInput<T extends FieldValues>({
               dateFormat={(pickerProps as any)?.dateFormat ?? "yyyy-MM-dd"}
               // Show clear button by default; optional
               isClearable
+              // Enable year and month dropdowns
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select" // Makes dropdowns selectable instead of scrollable
+              // You can also set year range if needed
+              yearDropdownItemNumber={15} // Shows 15 years in dropdown
               // Render portal into Next.js root so it appears above modals/overflows
               portalId="__next"
               // Custom input so we fully control theme + icon

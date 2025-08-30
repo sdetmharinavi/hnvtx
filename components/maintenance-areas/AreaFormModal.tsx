@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
 import { MaintenanceAreaFormData, maintenanceAreaFormSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "../common/ui/form/FormCard";
-import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/ui/form/FormControls";
+import { FormCard } from "../common/form/FormCard";
+import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form/FormControls";
 import { useForm } from "react-hook-form";
 
 export function AreaFormModal({

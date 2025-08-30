@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
+import { Label } from '@/components/common/ui';
 
 interface ValidationState {
   isValid: boolean | null;
@@ -14,6 +15,7 @@ interface IPAddressInputProps {
   allowIPv4?: boolean;
   allowIPv6?: boolean;
   className?: string;
+  label?: string;
 }
 
 const IPAddressInput: React.FC<IPAddressInputProps> = ({ 
@@ -22,13 +24,14 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
   placeholder = 'Enter IP address',
   allowIPv4 = true,
   allowIPv6 = true,
-  className = ''
+  className = '',
+  label = '',
 }) => {
   const [inputValue, setInputValue] = useState<string>(value);
   const [validationState, setValidationState] = useState<ValidationState>({ isValid: null, type: null, error: null });
 
   // IPv4 validation
-  const isValidIPv4 = (ip: string): boolean => {
+  const isValidIPv4 = useCallback((ip: string): boolean => {
     const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
     const match = ip.match(ipv4Regex);
     if (!match) return false;
@@ -37,25 +40,11 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
       const num = parseInt(octet, 10);
       return num >= 0 && num <= 255 && octet === num.toString();
     });
-  };
+  }, []);
 
-  // IPv6 validation
-  const isValidIPv6 = (ip: string): boolean => {
-    // Handle IPv6 with embedded IPv4
-    const ipv6WithIPv4Regex = /^([0-9a-fA-F:]+):(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
-    if (ipv6WithIPv4Regex.test(ip)) {
-      const parts = ip.split(':');
-      const ipv4Part = parts[parts.length - 1];
-      const ipv6Part = parts.slice(0, -1).join(':') + ':';
-      return isValidIPv4(ipv4Part) && isValidIPv6Basic(ipv6Part.slice(0, -1));
-    }
-    
-    return isValidIPv6Basic(ip);
-  };
-
-  const isValidIPv6Basic = (ip: string): boolean => {
+  const isValidIPv6Basic = useCallback((ip: string): boolean => {
     // Normalize the IPv6 address
-    let normalized = ip.toLowerCase();
+    const normalized = ip.toLowerCase();
     
     // Handle :: compression
     if (normalized.includes('::')) {
@@ -79,7 +68,21 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
       if (group.length === 0 || group.length > 4) return false;
       return /^[0-9a-f]+$/i.test(group);
     });
-  };
+  }, []);
+
+   // IPv6 validation
+   const isValidIPv6 = useCallback((ip: string): boolean => {
+    // Handle IPv6 with embedded IPv4
+    const ipv6WithIPv4Regex = /^([0-9a-fA-F:]+):(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
+    if (ipv6WithIPv4Regex.test(ip)) {
+      const parts = ip.split(':');
+      const ipv4Part = parts[parts.length - 1];
+      const ipv6Part = parts.slice(0, -1).join(':') + ':';
+      return isValidIPv4(ipv4Part) && isValidIPv6Basic(ipv6Part.slice(0, -1));
+    }
+    
+    return isValidIPv6Basic(ip);
+  }, [isValidIPv4, isValidIPv6Basic]);
 
   const validateIP = useCallback((ip: string): ValidationState => {
     if (!ip.trim()) {
@@ -112,7 +115,7 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
       }
       return { isValid: false, type: null, error };
     }
-  }, [allowIPv4, allowIPv6]);
+  }, [allowIPv4, allowIPv6, isValidIPv4, isValidIPv6]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newValue = e.target.value;
@@ -146,11 +149,11 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     let baseClass = `w-full px-4 py-3 border rounded-lg transition-all duration-200 font-mono text-sm ${className}`;
     
     if (validationState.isValid === true) {
-      baseClass += ' border-green-500 bg-green-50 focus:border-green-600 focus:ring-2 focus:ring-green-200';
+      baseClass += ' border-green-500 bg-green-50 focus:border-green-600 focus:ring-2 focus:ring-green-200 dark:bg-green-900/20 dark:border-green-600 dark:focus:border-green-500 dark:focus:ring-green-500/20';
     } else if (validationState.isValid === false) {
-      baseClass += ' border-red-500 bg-red-50 focus:border-red-600 focus:ring-2 focus:ring-red-200';
+      baseClass += ' border-red-500 bg-red-50 focus:border-red-600 focus:ring-2 focus:ring-red-200 dark:bg-red-900/20 dark:border-red-600 dark:focus:border-red-500 dark:focus:ring-red-500/20';
     } else {
-      baseClass += ' border-gray-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200';
+      baseClass += ' border-gray-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400/20';
     }
     
     return baseClass;
@@ -159,6 +162,9 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
   return (
     <div className="w-full max-w-md">
       <div className="relative">
+        {label && (
+          <Label className="dark:text-gray-300">{label}</Label>
+        )}
         <input
           type="text"
           value={inputValue}
@@ -172,13 +178,13 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
         {/* Status icon */}
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
           {validationState.isValid === true && (
-            <CheckCircle2 className="w-5 h-5 text-green-500" />
+            <CheckCircle2 className="w-5 h-5 text-green-500 dark:text-green-400" />
           )}
           {validationState.isValid === false && (
-            <AlertCircle className="w-5 h-5 text-red-500" />
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
           )}
           {validationState.isValid === null && inputValue && (
-            <Globe className="w-5 h-5 text-gray-400" />
+            <Globe className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           )}
         </div>
       </div>
@@ -186,21 +192,21 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
       {/* Validation feedback */}
       <div className="mt-2 min-h-[1.5rem]">
         {validationState.isValid === true && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
+          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <CheckCircle2 className="w-4 h-4" />
             <span>Valid {validationState.type} address</span>
           </div>
         )}
         
         {validationState.isValid === false && (
-          <div className="flex items-center gap-2 text-sm text-red-600">
+          <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
             <AlertCircle className="w-4 h-4" />
             <span>{validationState.error}</span>
           </div>
         )}
         
         {validationState.isValid === true && validationState.type === 'IPv6' && (
-          <div className="mt-1 text-xs text-gray-500 font-mono break-all">
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 font-mono break-all">
             Expanded: {formatIPv6(inputValue)}
           </div>
         )}

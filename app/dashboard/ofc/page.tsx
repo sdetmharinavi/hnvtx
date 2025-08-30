@@ -255,12 +255,26 @@ const OfcPage = () => {
     isLoading: loading,
     exportConfig: {
       tableName: 'ofc_cables',
-      filters: {
-        ofc_owner_id: {
-          operator: 'neq',
-          value: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f',
+      filterOptions: [
+        {
+          label: 'BSNL',
+          filters: {
+            ofc_owner_id: {
+              operator: 'eq',
+              value: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f',
+            },
+          },
         },
-      },
+        {
+          label: 'BBNL',
+          filters: {
+            ofc_owner_id: {
+              operator: 'eq',
+              value: 'e40c2549-11ec-485d-a67a-8261fcaec68a',
+            },
+          },
+        },
+      ],
     },
   });
 

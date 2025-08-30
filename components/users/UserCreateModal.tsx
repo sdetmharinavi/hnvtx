@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/common/ui/select/Select';
 import { Modal } from '@/components/common/ui/Modal/Modal';
-import { FormCard, FormInput } from '@/components/common/ui/form';
+import { FormCard, FormInput } from '@/components/common/form';
 import { v4 as uuidv4 } from 'uuid';
 
 const userSchema = z.object({

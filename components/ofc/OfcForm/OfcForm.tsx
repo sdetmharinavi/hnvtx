@@ -6,7 +6,7 @@ import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
 import { usePagedNodesComplete, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal } from "@/components/common/ui";
-import { FormCard } from "@/components/common/ui/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import { useOfcFormData } from "./hooks/useOfcFormData";
 import { OFC_FORM_CONFIG } from "@/components/ofc/OfcForm/constants/ofcFormConfig";
 import { useRouteGeneration } from "@/components/ofc/OfcForm/hooks/useRouteGeneration";

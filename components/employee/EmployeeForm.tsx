@@ -9,9 +9,9 @@ import {
   FormInput,
   FormSearchableSelect,
   FormTextarea,
-} from "@/components/common/ui/form/FormControls";
+} from "@/components/common/form/FormControls";
 import { Modal } from "@/components/common/ui";
-import { FormCard } from "@/components/common/ui/form";
+import { FormCard } from "@/components/common/form";
 import { useEffect } from "react";
 
 interface EmployeeFormProps {

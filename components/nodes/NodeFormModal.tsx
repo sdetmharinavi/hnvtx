@@ -12,12 +12,12 @@ import {
 import { nodeFormSchema, type NodeFormData } from "@/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/ui/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import {
   FormInput,
   FormSearchableSelect,
   FormTextarea,
-} from "@/components/common/ui/form/FormControls";
+} from "@/components/common/form/FormControls";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
 
 export type NodeRow = Database["public"]["Tables"]["nodes"]["Row"];

@@ -2,7 +2,7 @@
 import React from "react";
 import { Zap } from "lucide-react";
 import { Control, FieldErrors } from "react-hook-form";
-import { FormSearchableSelect } from "@/components/common/ui/form/FormControls";
+import { FormSearchableSelect } from "@/components/common/form/FormControls";
 import { Label } from "@/components/common/ui/label/Label";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { OfcCableFormData } from "@/schemas";

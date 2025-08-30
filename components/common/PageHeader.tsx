@@ -1,7 +1,7 @@
 "use client";
 
-import React, { ReactNode, useCallback, useMemo } from "react";
-import { FiDownload, FiPlus, FiRefreshCw, FiTrendingUp } from "react-icons/fi";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import { FiDownload, FiPlus, FiRefreshCw, FiChevronDown } from "react-icons/fi";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { Filters, TableOrViewName, Row } from "@/hooks/database";
@@ -13,11 +13,19 @@ import { cn } from "@/lib/utils";
 
 // --- TYPE DEFINITIONS ---
 
+interface ExportFilterOption {
+  label: string;
+  filters?: Filters;
+  fileName?: string;
+}
+
 interface ExportConfig<T extends TableOrViewName> {
   tableName: T;
-  filters?: Filters;
   maxRows?: number;
   columns?: (keyof Row<T> & string)[]; // Allow specifying a subset of columns for export
+  filterOptions?: ExportFilterOption[]; // New: array of filter options
+  // Deprecated: keeping for backward compatibility
+  filters?: Filters;
   fileName?: string;
 }
 
@@ -26,6 +34,12 @@ export interface ActionButton extends ButtonProps {
   hideOnMobile?: boolean;
   hideTextOnMobile?: boolean;
   priority?: 'high' | 'medium' | 'low'; // For mobile button ordering
+  isDropdown?: boolean; // New: indicates if this is a dropdown button
+  dropdownOptions?: Array<{
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+  }>;
 }
 
 interface StatProps {
@@ -66,6 +80,60 @@ const StatCard: React.FC<StatProps> = ({ value, label, icon, color = 'default' }
     );
 };
 
+const DropdownButton: React.FC<ActionButton> = ({ 
+  label, 
+  dropdownOptions = [], 
+  disabled, 
+  variant = "outline",
+  leftIcon,
+  className,
+  ...props 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <Button
+        {...props}
+        variant={variant}
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn("flex items-center gap-2", className)}
+        leftIcon={leftIcon}
+        rightIcon={<FiChevronDown className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
+      >
+        {label}
+      </Button>
+      
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)}
+          />
+          {/* Dropdown Menu */}
+          <div className="absolute right-0 top-full z-20 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            {dropdownOptions.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  option.onClick();
+                  setIsOpen(false);
+                }}
+                disabled={option.disabled}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN COMPONENT ---
 
 export function PageHeader({
@@ -99,13 +167,21 @@ export function PageHeader({
         {/* Desktop Action Buttons */}
         <div className="hidden lg:flex items-center gap-2 flex-shrink-0 ml-4">
           {actions.map((action, index) => (
-            <Button
-              key={`desktop-action-${index}`}
-              {...action}
-              disabled={action.disabled || isLoading}
-            >
-              {action.label}
-            </Button>
+            action.isDropdown ? (
+              <DropdownButton
+                key={`desktop-dropdown-${index}`}
+                {...action}
+                disabled={action.disabled || isLoading}
+              />
+            ) : (
+              <Button
+                key={`desktop-action-${index}`}
+                {...action}
+                disabled={action.disabled || isLoading}
+              >
+                {action.label}
+              </Button>
+            )
           ))}
         </div>
       </div>
@@ -129,14 +205,23 @@ export function PageHeader({
         {/* Mobile/Tablet Action Buttons */}
         <div className="flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
           {actions.map((action, index) => (
-            <Button
-              key={`mobile-action-${index}`}
-              {...action}
-              className={`flex-1 sm:flex-none ${action.hideOnMobile ? 'hidden sm:flex' : ''}`}
-              disabled={action.disabled || isLoading}
-            >
-              {action.hideTextOnMobile ? '' : action.label}
-            </Button>
+            action.isDropdown ? (
+              <DropdownButton
+                key={`mobile-dropdown-${index}`}
+                {...action}
+                className={`flex-1 sm:flex-none ${action.hideOnMobile ? 'hidden sm:flex' : ''}`}
+                disabled={action.disabled || isLoading}
+              />
+            ) : (
+              <Button
+                key={`mobile-action-${index}`}
+                {...action}
+                className={`flex-1 sm:flex-none ${action.hideOnMobile ? 'hidden sm:flex' : ''}`}
+                disabled={action.disabled || isLoading}
+              >
+                {action.hideTextOnMobile ? '' : action.label}
+              </Button>
+            )
           ))}
         </div>
       </div>
@@ -162,24 +247,53 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
   data
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
-  const columns = useDynamicColumnConfig(exportConfig?.tableName as T,{data: data});
+  const columns = useDynamicColumnConfig(exportConfig?.tableName as T, { data: data });
 
   const tableExcelDownload = useTableExcelDownload(
     supabase,
     exportConfig?.tableName as T,
-    { onSuccess: () => toast.success("Export successful!"), onError: (err) => toast.error(`Export failed: ${err.message}`) },
+    { 
+      onSuccess: () => toast.success("Export successful!"), 
+      onError: (err) => toast.error(`Export failed: ${err.message}`) 
+    },
   );
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback((filterOption?: ExportFilterOption) => {
     if (!exportConfig?.tableName) {
       toast.error("Export failed: Table name not configured.");
       return;
     }
+
+    // Use filterOption filters if provided, otherwise fall back to exportConfig filters
+    const filters = filterOption?.filters || exportConfig.filters;
+    
+    // Determine the file and sheet name
+    let fileName: string;
+    let sheetName: string;
+    
+    if (filterOption) {
+      // If it's a filter option, use custom fileName or append label to table name
+      if (filterOption.fileName) {
+        fileName = filterOption.fileName;
+        sheetName = filterOption.fileName;
+      } else {
+        // Append filter label to table name
+        fileName = `${exportConfig.tableName}-${filterOption.label.toLowerCase().replace(/\s+/g, '-')}`;
+        sheetName = `${exportConfig.tableName}-${filterOption.label}`;
+      }
+    } else {
+      // No filter option - use default table name or custom fileName
+      fileName = exportConfig.fileName || exportConfig.tableName;
+      sheetName = exportConfig.fileName || exportConfig.tableName;
+    }
+
     tableExcelDownload.mutate({
-      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName}.xlsx`,
-      sheetName: exportConfig.fileName ? exportConfig.fileName : exportConfig.tableName,
-      filters: exportConfig.filters,
-      columns: columns.filter(c => exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true),
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${fileName}.xlsx`,
+      sheetName: sheetName,
+      filters: filters,
+      columns: columns.filter(c => 
+        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true
+      ),
       maxRows: exportConfig.maxRows
     });
   }, [exportConfig, columns, tableExcelDownload]);
@@ -198,13 +312,40 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
     }
 
     if (exportConfig) {
-      actions.push({
-        label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
-        onClick: handleExport,
-        variant: "outline",
-        leftIcon: <FiDownload />,
-        disabled: isLoading || tableExcelDownload.isPending,
-      });
+      // Check if we have multiple filter options
+      if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
+        // Create dropdown with filter options
+        const dropdownOptions = [
+          {
+            label: "Export All (No Filters)",
+            onClick: () => handleExport({ label: "All", filters: undefined, fileName: undefined }),
+            disabled: tableExcelDownload.isPending
+          },
+          ...exportConfig.filterOptions.map(option => ({
+            label: `Export ${option.label}`,
+            onClick: () => handleExport(option),
+            disabled: tableExcelDownload.isPending
+          }))
+        ];
+
+        actions.push({
+          label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
+          variant: "outline",
+          leftIcon: <FiDownload />,
+          disabled: isLoading || tableExcelDownload.isPending,
+          isDropdown: true,
+          dropdownOptions: dropdownOptions
+        });
+      } else {
+        // Single export button (backward compatibility)
+        actions.push({
+          label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
+          onClick: () => handleExport(),
+          variant: "outline",
+          leftIcon: <FiDownload />,
+          disabled: isLoading || tableExcelDownload.isPending,
+        });
+      }
     }
 
     if (onAddNew) {

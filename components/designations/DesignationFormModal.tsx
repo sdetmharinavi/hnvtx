@@ -4,8 +4,8 @@ import { useForm } from "react-hook-form";
 import { employeeDesignationSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FormCard } from "../common/ui/form/FormCard";
-import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/ui/form/FormControls";
+import { FormCard } from "../common/form/FormCard";
+import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form/FormControls";
 
 interface DesignationFormModalProps {
   isOpen: boolean;

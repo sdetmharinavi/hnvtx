@@ -12,7 +12,7 @@ import {
   FormInput,
   FormSearchableSelect,
   FormDateInput,
-} from '@/components/common/ui/form/FormControls';
+} from '@/components/common/form/FormControls';
 import { Switch } from '@/components/common/ui/switch/Switch';
 import { Label } from '@/components/common/ui/label/Label';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
