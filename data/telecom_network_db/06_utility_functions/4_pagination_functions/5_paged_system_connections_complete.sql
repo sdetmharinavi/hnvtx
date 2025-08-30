@@ -19,6 +19,8 @@ RETURNS TABLE(
     sn_interface text,
     sn_ip text,
     en_name text,
+    sn_node_name text, -- ADDED
+    en_node_name text, -- ADDED
     en_interface text,
     en_ip text,
     connected_system_name text,
@@ -91,6 +93,8 @@ BEGIN
       v.sn_interface::text,
       v.sn_ip::text,
       v.en_name::text,
+      v.sn_node_name::text, -- ADDED
+      v.en_node_name::text, -- ADDED
       v.en_interface::text,
       v.en_ip::text,
       v.connected_system_name::text,

@@ -53,12 +53,14 @@ export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: keyof V & string;
+  processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
 
 // --- THE HOOK ---
 export function useCrudManager<T extends TableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
+  processDataForSave,
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
 
@@ -172,25 +174,28 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   const handleSave = useCallback(
     (formData: TableInsertWithDates<T>) => {
       // Convert ISO date strings back to Date objects for the database
-      const processedData = { ...formData };
+      // const processedData = { ...formData };
 
       // Handle date fields - adjust these field names as needed
-      const dateFields = [
-        "employee_dob",
-        "employee_doj", 
-        "created_at",
-        "updated_at",
-      ] as const;
+      // const dateFields = [
+      //   "employee_dob",
+      //   "employee_doj", 
+      //   "created_at",
+      //   "updated_at",
+      // ] as const;
 
-      dateFields.forEach((field) => {
-        const fieldKey = field as keyof typeof processedData;
-        if (field in processedData && processedData[fieldKey]) {
-          const dateValue = processedData[fieldKey] as string | Date;
-          (processedData as TableInsertWithDates<T>)[fieldKey] = new Date(
-            dateValue
-          ) as unknown as TableInsertWithDates<T>[typeof fieldKey];
-        }
-      });
+      // dateFields.forEach((field) => {
+      //   const fieldKey = field as keyof typeof processedData;
+      //   if (field in processedData && processedData[fieldKey]) {
+      //     const dateValue = processedData[fieldKey] as string | Date;
+      //     (processedData as TableInsertWithDates<T>)[fieldKey] = new Date(
+      //       dateValue
+      //     ) as unknown as TableInsertWithDates<T>[typeof fieldKey];
+      //   }
+      // });
+      const processedData = processDataForSave 
+        ? processDataForSave(formData) 
+        : (formData as TableInsert<T>);
 
       if (editingRecord && "id" in editingRecord && editingRecord.id) {
         updateItem({

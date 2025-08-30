@@ -1,70 +1,40 @@
--- Attaching log trigger to User Profiles
-CREATE TRIGGER user_profiles_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.user_profiles
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
+-- REFACTORED: This script now automatically attaches the log_data_changes trigger
+-- to all tables in the public schema that have an 'id' column and are not logs themselves.
 
--- Attaching log trigger to Core Infrastructure Tables
-CREATE TRIGGER nodes_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.nodes
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
+DO $$
+DECLARE
+    table_rec RECORD;
+BEGIN
+    -- Loop through all user tables in the 'public' schema
+    FOR table_rec IN
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          -- Ensure it's a real table, not a view
+          AND table_type = 'BASE TABLE'
+          -- Exclude the log table itself to prevent infinite loops
+          AND table_name <> 'user_activity_logs'
+          -- Convention: Only audit tables that have a primary 'id' column
+          AND EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = table_rec.table_name
+                AND column_name = 'id'
+          )
+    LOOP
+        -- Drop the trigger if it exists, to make this script re-runnable
+        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;',
+                       table_rec.table_name || '_log_trigger',
+                       table_rec.table_name);
 
-CREATE TRIGGER rings_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.rings
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
+        -- Create the audit trigger
+        EXECUTE format('CREATE TRIGGER %I ' ||
+                       'AFTER INSERT OR UPDATE OR DELETE ON public.%I ' ||
+                       'FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();',
+                       table_rec.table_name || '_log_trigger',
+                       table_rec.table_name);
 
-CREATE TRIGGER systems_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.systems
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER ofc_cables_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.ofc_cables
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
--- Attaching log trigger to Connection Tables
-CREATE TRIGGER ofc_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.ofc_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER system_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
--- Attaching log trigger to Master Data
-CREATE TRIGGER maintenance_areas_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.maintenance_areas
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
--- Attaching log trigger to system specific Tables
-CREATE TRIGGER cpan_systems_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.cpan_systems
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER maan_systems_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.maan_systems
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-
-CREATE TRIGGER sdh_systems_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.sdh_systems
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER vmux_systems_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.vmux_systems
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER cpan_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.cpan_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER maan_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.maan_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-
-CREATE TRIGGER sdh_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.sdh_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
-
-CREATE TRIGGER vmux_connections_log_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.vmux_connections
-FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();
+        RAISE NOTICE 'Attached audit trigger to %.%', 'public', table_rec.table_name;
+    END LOOP;
+END;
+$$;

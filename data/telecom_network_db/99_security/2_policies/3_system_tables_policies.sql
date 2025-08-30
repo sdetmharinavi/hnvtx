@@ -1,736 +1,214 @@
--- Generic systems table RLS policies
-DO $$ 
-BEGIN 
-  -- Cleanup old policies
-  DROP POLICY IF EXISTS policy_select_systems ON public.systems;
-  DROP POLICY IF EXISTS policy_insert_systems ON public.systems;
-  DROP POLICY IF EXISTS policy_update_systems ON public.systems;
-  DROP POLICY IF EXISTS policy_delete_systems ON public.systems;
-  DROP POLICY IF EXISTS viewer_read_access ON public.systems;
-  DROP POLICY IF EXISTS allow_admin_select ON public.systems;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.systems;
-  DROP POLICY IF EXISTS allow_admin_update ON public.systems;
-  DROP POLICY IF EXISTS allow_admin_delete ON public.systems;
-  DROP POLICY IF EXISTS maan_admin_access ON public.systems;
-  DROP POLICY IF EXISTS sdh_admin_access ON public.systems;
-  DROP POLICY IF EXISTS vmux_admin_access ON public.systems;
-  DROP POLICY IF EXISTS mng_admin_access ON public.systems;
+-- REFACTORED: This script defines all security (Grants and RLS Policies) for the entire Network Systems module.
+-- It is structured to reduce boilerplate and improve maintainability.
 
-  -- SELECT POLICIES
-  CREATE POLICY viewer_read_access ON public.systems FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.systems FOR SELECT TO admin USING (true);
-  
-  CREATE POLICY maan_admin_access ON public.systems FOR SELECT TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-  );
-  
-  CREATE POLICY sdh_admin_access ON public.systems FOR SELECT TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-  );
-  
-  CREATE POLICY vmux_admin_access ON public.systems FOR SELECT TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-  );
-  
-  CREATE POLICY mng_admin_access ON public.systems FOR SELECT TO mng_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-  );
-
-  -- INSERT POLICIES
-  CREATE POLICY allow_admin_insert ON public.systems FOR INSERT TO admin WITH CHECK (true);
-  
-  CREATE POLICY maan_admin_insert ON public.systems FOR INSERT TO maan_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-  );
-  
-  CREATE POLICY sdh_admin_insert ON public.systems FOR INSERT TO sdh_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-  );
-  
-  CREATE POLICY vmux_admin_insert ON public.systems FOR INSERT TO vmux_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-  );
-  
-  CREATE POLICY mng_admin_insert ON public.systems FOR INSERT TO mng_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-  );
-
-  -- UPDATE POLICIES
-  CREATE POLICY allow_admin_update ON public.systems FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  
-  CREATE POLICY maan_admin_update ON public.systems FOR UPDATE TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-  );
-  
-  CREATE POLICY sdh_admin_update ON public.systems FOR UPDATE TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-  );
-  
-  CREATE POLICY vmux_admin_update ON public.systems FOR UPDATE TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-  );
-  
-  CREATE POLICY mng_admin_update ON public.systems FOR UPDATE TO mng_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-  );
-
-  -- DELETE POLICY (admin only)
-  CREATE POLICY allow_admin_delete ON public.systems FOR DELETE TO admin USING (true);
-END;
-$$;
-
--- Generic system_connections table RLS policies
-DO $$ 
-BEGIN 
-  -- Cleanup old policies
-  DROP POLICY IF EXISTS policy_select_system_connections ON public.system_connections;
-  DROP POLICY IF EXISTS policy_insert_system_connections ON public.system_connections;
-  DROP POLICY IF EXISTS policy_update_system_connections ON public.system_connections;
-  DROP POLICY IF EXISTS policy_delete_system_connections ON public.system_connections;
-  DROP POLICY IF EXISTS viewer_read_access ON public.system_connections;
-  DROP POLICY IF EXISTS allow_admin_select ON public.system_connections;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.system_connections;
-  DROP POLICY IF EXISTS allow_admin_update ON public.system_connections;
-  DROP POLICY IF EXISTS allow_admin_delete ON public.system_connections;
-  DROP POLICY IF EXISTS maan_admin_access ON public.system_connections;
-  DROP POLICY IF EXISTS sdh_admin_access ON public.system_connections;
-  DROP POLICY IF EXISTS vmux_admin_access ON public.system_connections;
-  DROP POLICY IF EXISTS mng_admin_access ON public.system_connections;
-
-  -- SELECT POLICIES
-  CREATE POLICY viewer_read_access ON public.system_connections FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.system_connections FOR SELECT TO admin USING (true);
-  
-  CREATE POLICY maan_admin_access ON public.system_connections FOR SELECT TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-    )
-  );
-  
-  CREATE POLICY sdh_admin_access ON public.system_connections FOR SELECT TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-    )
-  );
-  
-  CREATE POLICY vmux_admin_access ON public.system_connections FOR SELECT TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-    )
-  );
-  
-  CREATE POLICY mng_admin_access ON public.system_connections FOR SELECT TO mng_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-    )
-  );
-
-  -- INSERT POLICIES
-  CREATE POLICY allow_admin_insert ON public.system_connections FOR INSERT TO admin WITH CHECK (true);
-  
-  CREATE POLICY maan_admin_insert ON public.system_connections FOR INSERT TO maan_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-    )
-  );
-  
-  CREATE POLICY sdh_admin_insert ON public.system_connections FOR INSERT TO sdh_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-    )
-  );
-  
-  CREATE POLICY vmux_admin_insert ON public.system_connections FOR INSERT TO vmux_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-    )
-  );
-  
-  CREATE POLICY mng_admin_insert ON public.system_connections FOR INSERT TO mng_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-    )
-  );
-
-  -- UPDATE POLICIES
-  CREATE POLICY allow_admin_update ON public.system_connections FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  
-  CREATE POLICY maan_admin_update ON public.system_connections FOR UPDATE TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-    )
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
-    )
-  );
-  
-  CREATE POLICY sdh_admin_update ON public.system_connections FOR UPDATE TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-    )
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
-    )
-  );
-  
-  CREATE POLICY vmux_admin_update ON public.system_connections FOR UPDATE TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-    )
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
-    )
-  );
-  
-  CREATE POLICY mng_admin_update ON public.system_connections FOR UPDATE TO mng_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-    )
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'mng_admin' AND
-    EXISTS (
-      SELECT 1 FROM systems s 
-      WHERE s.id = system_connections.system_id AND
-      s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
-    )
-  );
-
-  -- DELETE POLICY (admin only)
-  CREATE POLICY allow_admin_delete ON public.system_connections FOR DELETE TO admin USING (true);
-END;
-$$;
-
--- CPAN systems RLS policies
-DO $$ 
-BEGIN 
-  -- Cleanup old policies
-  DROP POLICY IF EXISTS policy_select_cpan ON public.cpan_systems;
-  DROP POLICY IF EXISTS policy_insert_cpan ON public.cpan_systems;
-  DROP POLICY IF EXISTS policy_update_cpan ON public.cpan_systems;
-  DROP POLICY IF EXISTS allow_admin_select ON public.cpan_systems;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.cpan_systems;
-  DROP POLICY IF EXISTS allow_admin_update ON public.cpan_systems;
-  DROP POLICY IF EXISTS viewer_read_access ON public.cpan_systems;
-  DROP POLICY IF EXISTS cpan_admin_access ON public.cpan_systems;
-
-  -- SELECT policies
-  CREATE POLICY viewer_read_access ON public.cpan_systems FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.cpan_systems FOR SELECT TO admin USING (true);
-  CREATE POLICY cpan_admin_access ON public.cpan_systems FOR SELECT TO cpan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'cpan_admin'
-  );
-
-  -- INSERT policies
-  CREATE POLICY allow_admin_insert ON public.cpan_systems FOR INSERT TO admin WITH CHECK (true);
-  CREATE POLICY cpan_admin_insert ON public.cpan_systems FOR INSERT TO cpan_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'cpan_admin'
-  );
-
-  -- UPDATE policies
-  CREATE POLICY allow_admin_update ON public.cpan_systems FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  CREATE POLICY cpan_admin_update ON public.cpan_systems FOR UPDATE TO cpan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'cpan_admin'
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'cpan_admin'
-  );
-END;
-$$;
-
--- MAAN systems RLS policies
-DO $$ 
-BEGIN 
-  -- Cleanup old policies
-  DROP POLICY IF EXISTS policy_select_maan ON public.maan_systems;
-  DROP POLICY IF EXISTS policy_insert_maan ON public.maan_systems;
-  DROP POLICY IF EXISTS policy_update_maan ON public.maan_systems;
-  DROP POLICY IF EXISTS allow_admin_select ON public.maan_systems;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.maan_systems;
-  DROP POLICY IF EXISTS allow_admin_update ON public.maan_systems;
-  DROP POLICY IF EXISTS viewer_read_access ON public.maan_systems;
-  DROP POLICY IF EXISTS maan_admin_access ON public.maan_systems;
-
-  -- SELECT policies
-  CREATE POLICY viewer_read_access ON public.maan_systems FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.maan_systems FOR SELECT TO admin USING (true);
-  CREATE POLICY maan_admin_access ON public.maan_systems FOR SELECT TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin'
-  );
-
-  -- INSERT policies
-  CREATE POLICY allow_admin_insert ON public.maan_systems FOR INSERT TO admin WITH CHECK (true);
-  CREATE POLICY maan_admin_insert ON public.maan_systems FOR INSERT TO maan_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin'
-  );
-
-  -- UPDATE policies
-  CREATE POLICY allow_admin_update ON public.maan_systems FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  CREATE POLICY maan_admin_update ON public.maan_systems FOR UPDATE TO maan_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin'
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'maan_admin'
-  );
-END;
-$$;
-
--- SDH systems RLS policies
-DO $$ 
-BEGIN 
-  -- Cleanup old policies
-  DROP POLICY IF EXISTS policy_select_sdh ON public.sdh_systems;
-  DROP POLICY IF EXISTS policy_insert_sdh ON public.sdh_systems;
-  DROP POLICY IF EXISTS policy_update_sdh ON public.sdh_systems;
-  DROP POLICY IF EXISTS allow_admin_select ON public.sdh_systems;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.sdh_systems;
-  DROP POLICY IF EXISTS allow_admin_update ON public.sdh_systems;
-  DROP POLICY IF EXISTS viewer_read_access ON public.sdh_systems;
-  DROP POLICY IF EXISTS sdh_admin_access ON public.sdh_systems;
-
-  -- SELECT policies
-  CREATE POLICY viewer_read_access ON public.sdh_systems FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.sdh_systems FOR SELECT TO admin USING (true);
-  CREATE POLICY sdh_admin_access ON public.sdh_systems FOR SELECT TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin'
-  );
-
-  -- INSERT policies
-  CREATE POLICY allow_admin_insert ON public.sdh_systems FOR INSERT TO admin WITH CHECK (true);
-  CREATE POLICY sdh_admin_insert ON public.sdh_systems FOR INSERT TO sdh_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin'
-  );
-
-  -- UPDATE policies
-  CREATE POLICY allow_admin_update ON public.sdh_systems FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  CREATE POLICY sdh_admin_update ON public.sdh_systems FOR UPDATE TO sdh_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin'
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'sdh_admin'
-  );
-END;
-$$;
-
--- VMUX systems RLS policies
-DO $$ 
-BEGIN 
-  -- Drop old policies
-  DROP POLICY IF EXISTS policy_select_vmux ON public.vmux_systems;
-  DROP POLICY IF EXISTS policy_insert_vmux ON public.vmux_systems;
-  DROP POLICY IF EXISTS policy_update_vmux ON public.vmux_systems;
-  DROP POLICY IF EXISTS allow_admin_select ON public.vmux_systems;
-  DROP POLICY IF EXISTS allow_admin_insert ON public.vmux_systems;
-  DROP POLICY IF EXISTS allow_admin_update ON public.vmux_systems;
-  DROP POLICY IF EXISTS viewer_read_access ON public.vmux_systems;
-  DROP POLICY IF EXISTS vmux_admin_access ON public.vmux_systems;
-
-  -- SELECT policies
-  CREATE POLICY viewer_read_access ON public.vmux_systems FOR SELECT TO viewer USING (true);
-  CREATE POLICY allow_admin_select ON public.vmux_systems FOR SELECT TO admin USING (true);
-  CREATE POLICY vmux_admin_access ON public.vmux_systems FOR SELECT TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin'
-  );
-
-  -- INSERT policies
-  CREATE POLICY allow_admin_insert ON public.vmux_systems FOR INSERT TO admin WITH CHECK (true);
-  CREATE POLICY vmux_admin_insert ON public.vmux_systems FOR INSERT TO vmux_admin WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin'
-  );
-
-  -- UPDATE policies
-  CREATE POLICY allow_admin_update ON public.vmux_systems FOR UPDATE TO admin USING (true) WITH CHECK (true);
-  CREATE POLICY vmux_admin_update ON public.vmux_systems FOR UPDATE TO vmux_admin USING (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin'
-  ) WITH CHECK (
-    ((SELECT auth.jwt())->>'role') = 'vmux_admin'
-  );
-END;
-$$;
-
--- CPAN connections RLS policies
+-- =================================================================
+-- PART 1: GRANTS AND RLS SETUP FOR ALL SYSTEM TABLES
+-- =================================================================
 DO $$
-DECLARE 
-  tbl text;
-  role text;
-BEGIN 
-  -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY ['cpan_connections'] 
-  LOOP 
-    -- Drop viewer_read_access first (common)
-    EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
-    EXECUTE format($f$
-      CREATE POLICY viewer_read_access ON public.%I 
-      FOR SELECT TO viewer 
-      USING (((SELECT auth.jwt())->>'role') = 'viewer');
-    $f$, tbl);
-  END LOOP;
-
-  -- CPAN connections: admin + cpan_admin
-  FOREACH tbl IN ARRAY ARRAY ['cpan_connections'] 
-  LOOP 
-    FOREACH role IN ARRAY ARRAY ['admin', 'cpan_admin'] 
-    LOOP 
-      -- SELECT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_select ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_select ON public.%I 
-        FOR SELECT TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- INSERT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_insert ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_insert ON public.%I 
-        FOR INSERT TO %I 
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- UPDATE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_update ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_update ON public.%I 
-        FOR UPDATE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s')
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role, role);
-
-      -- DELETE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_delete ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_delete ON public.%I 
-        FOR DELETE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-    END LOOP;
-  END LOOP;
-END;
-$$;
-
--- MAAN connections RLS policies
-DO $$
-DECLARE 
-  tbl text;
-  role text;
-BEGIN 
-  -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY ['maan_connections'] 
-  LOOP 
-    -- Drop viewer_read_access first (common)
-    EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
-    EXECUTE format($f$
-      CREATE POLICY viewer_read_access ON public.%I 
-      FOR SELECT TO viewer 
-      USING (((SELECT auth.jwt())->>'role') = 'viewer');
-    $f$, tbl);
-  END LOOP;
-
-  -- Maan connections: admin + maan_admin
-  FOREACH tbl IN ARRAY ARRAY ['maan_connections'] 
-  LOOP 
-    FOREACH role IN ARRAY ARRAY ['admin', 'maan_admin'] 
-    LOOP 
-      -- SELECT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_select ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_select ON public.%I 
-        FOR SELECT TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- INSERT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_insert ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_insert ON public.%I 
-        FOR INSERT TO %I 
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- UPDATE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_update ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_update ON public.%I 
-        FOR UPDATE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s')
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role, role);
-
-      -- DELETE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_delete ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_delete ON public.%I 
-        FOR DELETE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-    END LOOP;
-  END LOOP;
-END;
-$$;
-
--- SDH connections RLS policies
-DO $$
-DECLARE 
-  tbl text;
-  role text;
-BEGIN 
-  -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY ['sdh_connections'] 
-  LOOP 
-    -- Drop viewer_read_access first (common)
-    EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
-    EXECUTE format($f$
-      CREATE POLICY viewer_read_access ON public.%I 
-      FOR SELECT TO viewer 
-      USING (((SELECT auth.jwt())->>'role') = 'viewer');
-    $f$, tbl);
-  END LOOP;
-
-  -- SDH connections: admin + sdh_admin
-  FOREACH tbl IN ARRAY ARRAY ['sdh_connections'] 
-  LOOP 
-    FOREACH role IN ARRAY ARRAY ['admin', 'sdh_admin'] 
-    LOOP 
-      -- SELECT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_select ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_select ON public.%I 
-        FOR SELECT TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- INSERT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_insert ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_insert ON public.%I 
-        FOR INSERT TO %I 
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- UPDATE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_update ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_update ON public.%I 
-        FOR UPDATE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s')
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role, role);
-
-      -- DELETE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_delete ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_delete ON public.%I 
-        FOR DELETE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-    END LOOP;
-  END LOOP;
-END;
-$$;
-
--- VMUX connections RLS policies
-DO $$
-DECLARE 
-  tbl text;
-  role text;
-BEGIN 
-  -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY ['vmux_connections'] 
-  LOOP 
-    -- Drop viewer_read_access first (common)
-    EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
-    EXECUTE format($f$
-      CREATE POLICY viewer_read_access ON public.%I 
-      FOR SELECT TO viewer 
-      USING (((SELECT auth.jwt())->>'role') = 'viewer');
-    $f$, tbl);
-  END LOOP;
-
-  -- VMUX connections: admin + vmux_admin
-  FOREACH tbl IN ARRAY ARRAY ['vmux_connections'] 
-  LOOP 
-    FOREACH role IN ARRAY ARRAY ['admin', 'vmux_admin'] 
-    LOOP 
-      -- SELECT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_select ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_select ON public.%I 
-        FOR SELECT TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- INSERT
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_insert ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_insert ON public.%I 
-        FOR INSERT TO %I 
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-
-      -- UPDATE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_update ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_update ON public.%I 
-        FOR UPDATE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s')
-        WITH CHECK (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role, role);
-
-      -- DELETE
-      EXECUTE format('DROP POLICY IF EXISTS allow_%s_delete ON public.%s;', role, tbl);
-      EXECUTE format($f$
-        CREATE POLICY allow_%s_delete ON public.%I 
-        FOR DELETE TO %I 
-        USING (((SELECT auth.jwt())->>'role') = '%s');
-      $f$, role, tbl, role, role);
-    END LOOP;
-  END LOOP;
-END;
-$$;
-
--- SDH node associations RLS policies
-DO $$
-DECLARE 
-  tbl text;
-  role text;
+DECLARE
+  tbl TEXT;
 BEGIN
-  -- Tables with extended access
-  FOREACH tbl IN ARRAY ARRAY['sdh_node_associations'] LOOP
-    -- Drop viewer_read_access first (common)
-    EXECUTE format(
-      'DROP POLICY IF EXISTS viewer_read_access ON public.%I;',
-      tbl
-    );
-    EXECUTE format(
-      $f$ CREATE POLICY viewer_read_access ON public.%I
-           FOR SELECT TO viewer
-           USING ((SELECT auth.jwt())->>'role' = 'viewer'); $f$,
-      tbl
-    );
+  -- List all tables related to network systems
+  FOREACH tbl IN ARRAY ARRAY[
+    'systems', 'system_connections', 'management_ports',
+    'ring_based_systems', 'sfp_based_connections',
+    'sdh_systems', 'sdh_connections', 'sdh_node_associations',
+    'vmux_systems', 'vmux_connections'
+  ]
+  LOOP
+    -- Step 1: Enable Row-Level Security on the table
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
+
+    -- Step 2: Set Table-Level Grants for all relevant roles
+    -- Admin has full power on all system tables
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
+    -- Viewer has read-only access on all system tables
+    EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
+    -- Grant permissions to system-specific admins. RLS will handle row access.
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin;', tbl);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO maan_admin;', tbl);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO sdh_admin;', tbl);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO vmux_admin;', tbl);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO mng_admin;', tbl);
   END LOOP;
+END;
+$$;
 
-  -- SDH Node Associations: only admin
-  FOREACH tbl IN ARRAY ARRAY['sdh_node_associations'] LOOP
-    FOREACH role IN ARRAY ARRAY['admin'] LOOP
-      
-      -- SELECT
-      EXECUTE format(
-        'DROP POLICY IF EXISTS allow_%s_select ON public.%I;',
-        role, tbl
-      );
-      EXECUTE format(
-        $f$ CREATE POLICY allow_%s_select ON public.%I
-             FOR SELECT TO %I
-             USING ((SELECT auth.jwt())->>'role' = %L); $f$,
-        role, tbl, role, role
-      );
 
-      -- INSERT
-      EXECUTE format(
-        'DROP POLICY IF EXISTS allow_%s_insert ON public.%I;',
-        role, tbl
-      );
-      EXECUTE format(
-        $f$ CREATE POLICY allow_%s_insert ON public.%I
-             FOR INSERT TO %I
-             WITH CHECK ((SELECT auth.jwt())->>'role' = %L); $f$,
-        role, tbl, role, role
-      );
+-- =================================================================
+-- PART 2: POLICIES FOR GENERIC TABLES (systems, system_connections)
+-- These have complex logic checking the system_type of related records.
+-- =================================================================
 
-      -- UPDATE
-      EXECUTE format(
-        'DROP POLICY IF EXISTS allow_%s_update ON public.%I;',
-        role, tbl
-      );
-      EXECUTE format(
-        $f$ CREATE POLICY allow_%s_update ON public.%I
-             FOR UPDATE TO %I
-             USING ((SELECT auth.jwt())->>'role' = %L)
-             WITH CHECK ((SELECT auth.jwt())->>'role' = %L); $f$,
-        role, tbl, role, role, role
-      );
+-- Policies for the 'systems' table
+DO $$
+BEGIN
+  -- Clean up old policies for idempotency
+  DROP POLICY IF EXISTS "Allow full access based on system type" ON public.systems;
+  DROP POLICY IF EXISTS "Allow viewer read-access" ON public.systems;
+  DROP POLICY IF EXISTS "Allow admin full access" ON public.systems;
 
-      -- DELETE
-      EXECUTE format(
-        'DROP POLICY IF EXISTS allow_%s_delete ON public.%I;',
-        role, tbl
-      );
-      EXECUTE format(
-        $f$ CREATE POLICY allow_%s_delete ON public.%I
-             FOR DELETE TO %I
-             USING ((SELECT auth.jwt())->>'role' = %L); $f$,
-        role, tbl, role, role
-      );
+  -- Viewer can see all systems
+  CREATE POLICY "Allow viewer read-access" ON public.systems FOR SELECT TO viewer USING (true);
 
+  -- Admin can do anything
+  CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (true) WITH CHECK (true);
+
+  -- System-specific admins can access rows matching their designated system type
+  CREATE POLICY "Allow full access based on system type" ON public.systems
+  FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
+  USING (
+    (
+      public.get_my_role() = 'cpan_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'CPAN')
+    ) OR (
+      public.get_my_role() = 'maan_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
+    ) OR (
+      public.get_my_role() = 'sdh_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
+    ) OR (
+      public.get_my_role() = 'vmux_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
+    ) OR (
+      public.get_my_role() = 'mng_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
+    )
+  )
+  WITH CHECK (
+    -- The WITH CHECK clause re-uses the same logic for INSERTs and UPDATEs
+    (
+      public.get_my_role() = 'cpan_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'CPAN')
+    ) OR (
+      public.get_my_role() = 'maan_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
+    ) OR (
+      public.get_my_role() = 'sdh_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
+    ) OR (
+      public.get_my_role() = 'vmux_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
+    ) OR (
+      public.get_my_role() = 'mng_admin' AND
+      system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
+    )
+  );
+END;
+$$;
+
+
+-- Policies for the 'system_connections' table
+DO $$
+BEGIN
+  -- Clean up old policies for idempotency
+  DROP POLICY IF EXISTS "Allow full access based on parent system type" ON public.system_connections;
+  DROP POLICY IF EXISTS "Allow viewer read-access" ON public.system_connections;
+  DROP POLICY IF EXISTS "Allow admin full access" ON public.system_connections;
+
+  CREATE POLICY "Allow viewer read-access" ON public.system_connections FOR SELECT TO viewer USING (true);
+  CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (true) WITH CHECK (true);
+
+  -- System-specific admins can access connections whose parent system matches their type.
+  CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
+  FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
+  USING (
+    EXISTS (
+      SELECT 1 FROM systems s WHERE s.id = system_connections.system_id AND (
+        (
+          public.get_my_role() = 'cpan_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'CPAN')
+        ) OR (
+          public.get_my_role() = 'maan_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
+        ) OR (
+          public.get_my_role() = 'sdh_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
+        ) OR (
+          public.get_my_role() = 'vmux_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
+        ) OR (
+          public.get_my_role() = 'mng_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
+        )
+      )
+    )
+  )
+  WITH CHECK ( -- Re-use the same logic for INSERTs and UPDATEs
+    EXISTS (
+      SELECT 1 FROM systems s WHERE s.id = system_connections.system_id AND (
+        (
+          public.get_my_role() = 'cpan_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'CPAN')
+        ) OR (
+          public.get_my_role() = 'maan_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MAAN')
+        ) OR (
+          public.get_my_role() = 'sdh_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'SDH')
+        ) OR (
+          public.get_my_role() = 'vmux_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'VMUX')
+        ) OR (
+          public.get_my_role() = 'mng_admin' AND
+          s.system_type_id = (SELECT id FROM lookup_types WHERE category = 'SYSTEM' AND name = 'MNGPAN')
+        )
+      )
+    )
+  );
+END;
+$$;
+
+
+-- =================================================================
+-- PART 3: AUTOMATED POLICIES FOR SYSTEM-SPECIFIC SUB-TABLES
+-- These tables follow a simpler pattern: full access for admin and the designated system admin.
+-- =================================================================
+DO $$
+DECLARE
+    -- Use a 2D array to map tables to their specific admin roles
+    -- Format: ARRAY['table_name', 'specific_admin_role']
+    mappings TEXT[][] := ARRAY[
+        ['ring_based_systems', 'cpan_admin'],
+        ['ring_based_systems', 'maan_admin'], -- Both roles can manage this consolidated table
+        ['sfp_based_connections', 'cpan_admin'],
+        ['sfp_based_connections', 'maan_admin'], -- Both roles can manage this consolidated table
+        ['sdh_systems', 'sdh_admin'],
+        ['sdh_connections', 'sdh_admin'],
+        ['sdh_node_associations', 'sdh_admin'],
+        ['vmux_systems', 'vmux_admin'],
+        ['vmux_connections', 'vmux_admin']
+        -- Add new mappings here in the future
+    ];
+    tbl TEXT;
+    specific_role TEXT;
+    i INT;
+BEGIN
+    FOR i IN 1..array_length(mappings, 1)
+    LOOP
+        tbl := mappings[i][1];
+        specific_role := mappings[i][2];
+
+        -- Clean up old policies for idempotency
+        EXECUTE format('DROP POLICY IF EXISTS "Allow viewer read-access" ON public.%I;', tbl);
+        EXECUTE format('DROP POLICY IF EXISTS "Allow admin full access" ON public.%I;', tbl);
+        EXECUTE format('DROP POLICY IF EXISTS "Allow %s full access" ON public.%I;', specific_role, tbl);
+
+        -- Policy 1: Viewer can read everything
+        EXECUTE format('CREATE POLICY "Allow viewer read-access" ON public.%I FOR SELECT TO viewer USING (true);', tbl);
+
+        -- Policy 2: Admin can do everything
+        EXECUTE format('CREATE POLICY "Allow admin full access" ON public.%I FOR ALL TO admin USING (true) WITH CHECK (true);', tbl);
+
+        -- Policy 3: The specific system admin can do everything
+        EXECUTE format($p$
+            CREATE POLICY "Allow %s full access" ON public.%I
+            FOR ALL TO %I
+            USING (public.get_my_role() = %L)
+            WITH CHECK (public.get_my_role() = %L);
+        $p$, specific_role, tbl, specific_role, specific_role, specific_role);
+
+        RAISE NOTICE 'Applied specific policies for role % on table %', specific_role, tbl;
     END LOOP;
-  END LOOP;
 END;
 $$;

@@ -1,57 +1,54 @@
--- Core tables RLS policies (lookup_types, maintenance_areas, rings, etc.)
+-- REFACTORED: This script now automatically applies standard policies and grants
+-- ONLY to the core infrastructure and master data tables.
+-- It explicitly EXCLUDES tables like 'systems' that have their own complex policies.
+
 DO $$
-DECLARE 
-  tbl text;
-BEGIN 
+DECLARE
+  tbl TEXT;
+  admin_role TEXT := 'admin';
+  viewer_role TEXT := 'viewer';
+BEGIN
+  -- List ONLY the tables that follow the simple admin/viewer security model.
   FOREACH tbl IN ARRAY ARRAY[
-    'lookup_types', 'maintenance_areas', 'rings', 
-    'employee_designations', 'employees', 'nodes', 
-    'ofc_cables', 'ofc_connections'
-  ] 
-  LOOP 
-    -- Cleanup old policies
-    EXECUTE format('DROP POLICY IF EXISTS policy_select_%s ON public.%s;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS policy_insert_%s ON public.%s;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS policy_update_%s ON public.%s;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS policy_delete_%s ON public.%s;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS policy_write_%s ON public.%s;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS viewer_read_access ON public.%s;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS allow_admin_select ON public.%s;', tbl);
+    -- Core Infrastructure & Master Data
+    'lookup_types', 'maintenance_areas', 'rings',
+    'employee_designations', 'employees', 'nodes',
+    'ofc_cables', 'ofc_connections',
 
-    -- SELECT policies
-    EXECUTE format($f$
-      CREATE POLICY viewer_read_access ON public.%I 
-      FOR SELECT TO viewer 
-      USING (((SELECT auth.jwt())->>'role') = 'viewer');
-    $f$, tbl);
+    -- Advanced OFC
+    'fiber_joints', 'logical_fiber_paths', 'fiber_joint_connections',
 
-    EXECUTE format($f$
-      CREATE POLICY allow_admin_select ON public.%I 
-      FOR SELECT TO admin 
-      USING (((SELECT auth.jwt())->>'role') = 'admin');
-    $f$, tbl);
+    -- File Management
+    'folders', 'files'
+  ]
+  LOOP
+    -- Step 1: Enable Row-Level Security
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
 
-    -- INSERT policy
-    EXECUTE format($f$
-      CREATE POLICY allow_admin_insert ON public.%I 
-      FOR INSERT TO admin 
-      WITH CHECK (((SELECT auth.jwt())->>'role') = 'admin');
-    $f$, tbl);
+    -- Step 2: Set Table-Level Grants
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO %I;', tbl, admin_role);
+    EXECUTE format('GRANT SELECT ON public.%I TO %I;', tbl, viewer_role);
 
-    -- UPDATE policy
-    EXECUTE format($f$
-      CREATE POLICY allow_admin_update ON public.%I 
-      FOR UPDATE TO admin 
-      USING (((SELECT auth.jwt())->>'role') = 'admin')
-      WITH CHECK (((SELECT auth.jwt())->>'role') = 'admin');
-    $f$, tbl);
+    -- Step 3: Create Row-Level Security Policies
+    EXECUTE format('DROP POLICY IF EXISTS "policy_admin_all_%s" ON public.%I;', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "policy_viewer_select_%s" ON public.%I;', tbl, tbl);
 
-    -- DELETE policy
-    EXECUTE format($f$
-      CREATE POLICY allow_admin_delete ON public.%I 
-      FOR DELETE TO admin 
-      USING (((SELECT auth.jwt())->>'role') = 'admin');
-    $f$, tbl);
+    -- Admin Policy: Full access for the 'admin' role
+    EXECUTE format($p$
+      CREATE POLICY "policy_admin_all_%s" ON public.%I
+      FOR ALL TO %I
+      USING (public.get_my_role() = %L)
+      WITH CHECK (public.get_my_role() = %L);
+    $p$, tbl, tbl, admin_role, admin_role, admin_role);
+
+    -- Viewer Policy: Read-only access for the 'viewer' role
+    EXECUTE format($p$
+      CREATE POLICY "policy_viewer_select_%s" ON public.%I
+      FOR SELECT TO %I
+      USING (public.get_my_role() = %L);
+    $p$, tbl, tbl, viewer_role, viewer_role);
+
+    RAISE NOTICE 'Applied baseline admin/viewer grants and policies to %', tbl;
   END LOOP;
 END;
 $$;

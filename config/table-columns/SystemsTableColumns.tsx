@@ -1,7 +1,6 @@
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { NodeRowsWithCount } from '@/types/view-row-types';
 import { StatusBadge } from '@/components/common/ui';
 import { FiMapPin } from 'react-icons/fi';
 import { formatDate } from '@/utils/formatters';

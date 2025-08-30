@@ -1,12 +1,12 @@
--- Apply timestamp triggers to all tables
-create trigger trigger_cpan_systems_updated_at before
-update on cpan_systems for each row execute function update_updated_at_column();
-create trigger trigger_cpan_connections_updated_at before
-update on cpan_connections for each row execute function update_updated_at_column();
-create trigger trigger_maan_systems_updated_at before
-update on maan_systems for each row execute function update_updated_at_column();
-create trigger trigger_maan_connections_updated_at before
-update on maan_connections for each row execute function update_updated_at_column();
+-- REFACTORED: Triggers now target the new consolidated tables.
+
+-- ADDED: Triggers for new consolidated tables
+create trigger trigger_ring_based_systems_updated_at before
+update on ring_based_systems for each row execute function update_updated_at_column();
+create trigger trigger_sfp_based_connections_updated_at before
+update on sfp_based_connections for each row execute function update_updated_at_column();
+
+-- Triggers for other tables (unchanged)
 create trigger trigger_sdh_systems_updated_at before
 update on sdh_systems for each row execute function update_updated_at_column();
 create trigger trigger_sdh_connections_updated_at before

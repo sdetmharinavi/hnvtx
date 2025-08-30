@@ -241,104 +241,104 @@ export type PagedOfcCablesCompleteResult =
   Array<Database["public"]["Functions"]["get_paged_ofc_cables_complete"]["Returns"][number]> | null;
 
 // FIX: Add the options type for the new hook we will create
-export type UsePagedOfcCablesCompleteOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedOfcCablesCompleteResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedOfcCablesCompleteOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedOfcCablesCompleteResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedNodesCompleteResult = Array<Database["public"]["Functions"]["get_paged_nodes_complete"]["Returns"][number]> | null;
 
-export type UsePagedNodesCompleteOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedNodesCompleteResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedNodesCompleteOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedNodesCompleteResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedOfcConnectionsCompleteResult = 
   Array<Database["public"]["Functions"]["get_paged_ofc_connections_complete"]["Returns"][number]> | null;
 
 // FIX: Add the options type for the new hook we will create
-export type UsePagedOfcConnectionsCompleteOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedOfcConnectionsCompleteResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedOfcConnectionsCompleteOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedOfcConnectionsCompleteResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedSystemConnectionsCompleteResult = Array<Database["public"]["Functions"]["get_paged_system_connections_complete"]["Returns"][number]> | null;
 
-export type UsePagedSystemConnectionsCompleteOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedSystemConnectionsCompleteResult>, "queryKey" | "queryFn">;
-};
+// export type UsePagedSystemConnectionsCompleteOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedSystemConnectionsCompleteResult>, "queryKey" | "queryFn">;
+// };
 
 export type PagedLookupTypesWithCountResult = Array<Database["public"]["Functions"]["get_paged_lookup_types_with_count"]["Returns"][number]> | null;
 
-export type UsePagedLookupTypesWithCountOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedLookupTypesWithCountResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedLookupTypesWithCountOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedLookupTypesWithCountResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedMaintenanceAreasWithCountResult = Array<Database["public"]["Functions"]["get_paged_maintenance_areas_with_count"]["Returns"][number]> | null;
 
-export type UsePagedMaintenanceAreasWithCountOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedMaintenanceAreasWithCountResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedMaintenanceAreasWithCountOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedMaintenanceAreasWithCountResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedEmployeeDesignationsWithCountResult = Array<Database["public"]["Functions"]["get_paged_employee_designations_with_count"]["Returns"][number]> | null;
 
-export type UsePagedEmployeeDesignationsWithCountOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedEmployeeDesignationsWithCountResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedEmployeeDesignationsWithCountOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedEmployeeDesignationsWithCountResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedEmployeesWithCountResult = Array<Database["public"]["Functions"]["get_paged_employees_with_count"]["Returns"][number]> | null;
 
-export type UsePagedEmployeesWithCountOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedEmployeesWithCountResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedEmployeesWithCountOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedEmployeesWithCountResult, Error>, "queryKey" | "queryFn">;
+// };
 
 export type PagedRingsWithCountResult = Array<Database["public"]["Functions"]["get_paged_rings_with_count"]["Returns"][number]> | null;
 
-export type UsePagedRingsWithCountOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedRingsWithCountResult, Error>, "queryKey" | "queryFn">;
-};
+// export type UsePagedRingsWithCountOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedRingsWithCountResult, Error>, "queryKey" | "queryFn">;
+// };
 
 // Define a type for the function's return data for full type safety
 export type DashboardOverviewData = {

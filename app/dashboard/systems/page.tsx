@@ -26,10 +26,7 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { AddSystemModal } from '@/components/systems/add-system-modal';
 import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
-import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { DataTable } from '@/components/table/DataTable';
-import { TableAction } from '@/components/table/datatable-types';
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
 import {
   PageSkeleton,
@@ -43,12 +40,12 @@ import {
 } from '@/hooks/useCrudManager';
 import { SystemRowsWithCount } from '@/types/view-row-types';
 import { Json } from '@/types/supabase-types';
-import { SystemsTableColumns } from '@/config/table-columns/SystemssTableColumns';
+import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { useStandardHeaderActions } from '@/components/common/PageHeader';
 import { ErrorDisplay } from '@/components/common/ui';
-import { SearchAndFilters } from '@/components/common/entity-management/SearchAndFilters';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 
 interface SystemStats {
@@ -130,20 +127,15 @@ export default function SystemsPage() {
   // --- State Management ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
-
-  // const {
-  //   data: paginatedSystems,
-  //   isLoading: isLoadingSystems,
-  //   isError: isErrorSystems,
-  //   error: systemsError,
-  //   refetch,
-  // } = usePagedSystemsComplete(supabase, {
-  //   filters: systemFilters,
-  //   orderBy: "system_name",
-  //   orderDir: "asc",
-  //   limit: DEFAULTS.PAGE_SIZE,
-  //   offset: (currentPage - 1) * DEFAULTS.PAGE_SIZE,
-  // });
+  const [showFilters, setShowFilters] = useState(false);
+  const handleClearFilters = () => {
+    crudFilters.setFilters({});
+    search.setSearchQuery('');
+  };
+  const activeFilterCount = Object.values(crudFilters.filters).filter(
+    Boolean
+  ).length;
+  const hasActiveFilters = activeFilterCount > 0 || !!search.searchQuery;
 
   const { data: systemTypes = [], isLoading: isLoadingSystemTypes } =
     useGetLookupTypesByCategory(supabase, 'SYSTEM_TYPES');
@@ -196,59 +188,6 @@ export default function SystemsPage() {
       color: 'danger' as const,
     },
   ];
-
-  // // --- Custom Toolbar ---
-  // const customToolbar = (
-  //   <div className="flex flex-wrap items-center gap-3 p-4">
-  //     {/* Search */}
-  //     <div className="relative min-w-64">
-  //       <FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-  //       <input
-  //         type="text"
-  //         placeholder="Search systems..."
-  //         value={searchQuery}
-  //         onChange={(e) => setSearchQuery(e.target.value)}
-  //         className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-  //         />
-  //     </div>
-
-  //     {/* System Type Filter */}
-  //     <select
-  //       value={selectedSystemType}
-  //       onChange={(e) => setSelectedSystemType(e.target.value)}
-  //       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-  //     >
-  //       <option value="">All Types</option>
-  //       {systemTypes.map((type) => (
-  //         <option key={type.id} value={type.name}>
-  //           {type.name}
-  //         </option>
-  //       ))}
-  //     </select>
-
-  //     {/* Status Filter */}
-  //     <select
-  //       value={selectedStatus}
-  //       onChange={(e) => setSelectedStatus(e.target.value)}
-  //       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-  //       >
-  //       <option value="">All Status</option>
-  //       <option value="active">Active</option>
-  //       <option value="inactive">Inactive</option>
-  //     </select>
-
-  //     {/* Clear Filters */}
-  //     {/* {hasActiveFilters && (
-  //       <button
-  //         onClick={clearFilters}
-  //         className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-  //       >
-  //       <FiX className="h-4 w-4" />
-  //       Clear
-  //       </button>
-  //       )} */}
-  //   </div>
-  // );
 
   const headerActions = useStandardHeaderActions({
     onRefresh: async () => {
@@ -406,10 +345,14 @@ export default function SystemsPage() {
               >
                 {/* THIS IS THE CLEANER, TYPE-SAFE WAY */}
                 <SelectFilter
-                  label="OFC Type"
-                  filterKey="ofc_type_id"
+                  label="System Type"
+                  filterKey="system_type_id"
                   filters={crudFilters.filters}
-                  onFilterChange={crudFilters.setFilters}
+                  setFilters={crudFilters.setFilters}
+                  options={systemTypes.map((t) => ({
+                    value: t.id,
+                    label: t.code,
+                  }))}
                 />
               </SearchAndFilters>
             }
