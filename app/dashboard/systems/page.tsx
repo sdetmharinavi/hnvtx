@@ -1,19 +1,8 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import {
-  FiEdit,
-  FiEye,
-  FiMapPin,
-  FiPlus,
-  FiSearch,
-  FiServer,
-  FiTrash2,
-  FiRefreshCw,
-  FiX,
-} from 'react-icons/fi';
+import { FiPlus, FiServer, FiRefreshCw, FiDatabase } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { useDebounce } from 'use-debounce';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -21,10 +10,8 @@ import {
   Filters,
   useGetLookupTypesByCategory,
   usePagedSystemsComplete,
-  useTableDelete,
 } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
-import { AddSystemModal } from '@/components/systems/add-system-modal';
 import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
 import { DataTable } from '@/components/table/DataTable';
 import { Row } from '@/hooks/database';
@@ -32,7 +19,6 @@ import {
   PageSkeleton,
   StatsCardsSkeleton,
 } from '@/components/common/ui/table/TableSkeleton';
-import { DEFAULTS } from '@/config/constants';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -43,18 +29,15 @@ import { Json } from '@/types/supabase-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
-import { useStandardHeaderActions } from '@/components/common/PageHeader';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/PageHeader';
 import { ErrorDisplay } from '@/components/common/ui';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SystemRowsWithRelations } from '@/types/relational-row-types';
-
-interface SystemStats {
-  total: number;
-  active: number;
-  inactive: number;
-  unknown: number;
-}
+import { SystemModal } from '@/components/systems/system-modal';
 
 // 1. ADAPTER HOOK: Makes `useSystemsData` compatible with `useCrudManager`
 const useSystemsData = (
@@ -87,11 +70,11 @@ const useSystemsData = (
   const inactiveCount = data?.[0]?.inactive_count || 0;
 
   return {
-    data: (data || []).map(item => ({
+    data: (data || []).map((item) => ({
       ...item,
       maintenance_terminal_id: null, // Add missing field
-      node_id: null,                // Add missing field
-      system_type_id: null,         // Add missing field
+      node_id: null, // Add missing field
+      system_type_id: null, // Add missing field
     })),
     totalCount,
     activeCount,
@@ -120,7 +103,7 @@ export default function SystemsPage() {
     search,
     filters: crudFilters,
     editModal,
-    // viewModal,
+    viewModal,
     bulkActions,
     deleteModal,
     actions: crudActions,
@@ -131,7 +114,6 @@ export default function SystemsPage() {
   });
 
   // --- State Management ---
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
   const [showFilters, setShowFilters] = useState(false);
   const handleClearFilters = () => {
@@ -169,20 +151,51 @@ export default function SystemsPage() {
   // --- Table Column Configuration ---
   const columns = SystemsTableColumns(paginatedSystems);
 
+  // const headerActions = useStandardHeaderActions({
+  //   onRefresh: async () => {
+  //     await refetch();
+  //     toast.success('Refreshed successfully!');
+  //   },
+  //   onAddNew: editModal.openAdd,
+  //   isLoading: isMutating,
+  //   exportConfig: {
+  //     tableName: 'systems',
+  //   },
+  // });
+
+  // --- tableActions ---
   const tableActions = useMemo(
     () =>
-      createStandardActions({
+      createStandardActions<SystemRowsWithCountWithRelations>({
         onEdit: editModal.openEdit,
-        onView: (record) => handleView(record),
+        onView: viewModal.open,
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
       }),
-    [crudActions, editModal.openEdit, router, isSuperAdmin]
+    [
+      editModal.openEdit,
+      viewModal.open,
+      crudActions.handleDelete,
+      crudActions.handleToggleStatus,
+      isSuperAdmin,
+    ]
   );
 
+  // --- Define header content using the hook ---
+  const headerActions = useStandardHeaderActions({
+    data: paginatedSystems as Row<'systems'>[],
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
+    },
+    onAddNew: editModal.openAdd,
+    isLoading: isLoading,
+    exportConfig: { tableName: 'systems' },
+  });
+
   const headerStats = [
-    { value: totalCount, label: 'Total Systems' },
+    { value: totalCount, label: 'Total Systems', color: 'primary' as const },
     {
       value: activeCount,
       label: 'Active',
@@ -193,25 +206,12 @@ export default function SystemsPage() {
       label: 'Inactive',
       color: 'danger' as const,
     },
+    {
+      value: systemTypes.length,
+      label: 'System Types',
+      color: 'default' as const,
+    }
   ];
-
-  const headerActions = useStandardHeaderActions({
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: isMutating,
-    exportConfig: {
-      tableName: 'systems',
-      // filters: {
-      //   system_type_id: {
-      //     operator: 'neq',
-      //     value: '',
-      //   },
-      // },
-    },
-  });
 
   // --- Loading State ---
   if (isLoading && !paginatedSystems.length) {
@@ -238,77 +238,14 @@ export default function SystemsPage() {
       <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
         <div className="mx-auto">
           {/* Header */}
-          <div className="mb-6">
-            <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-              <div>
-                <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
-                  <FiServer className="text-blue-600" /> Systems
-                </h1>
-                <p className="mt-1 text-gray-600 dark:text-gray-400">
-                  Manage and monitor all network systems across your
-                  infrastructure.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                >
-                  <FiRefreshCw
-                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                  />
-                  Refresh
-                </button>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
-                >
-                  <FiPlus /> Add System
-                </button>
-              </div>
-            </div>
-
-            {/* Stats */}
-            {isLoading && paginatedSystems.length === 0 ? (
-              <StatsCardsSkeleton count={4} />
-            ) : (
-              <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-2 md:grid-cols-4">
-                <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {totalCount.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Total Systems
-                  </div>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    {activeCount.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Active Systems
-                  </div>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                    {inactiveCount.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Inactive Systems
-                  </div>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {isLoading ? '...' : systemTypes?.length.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    System Types
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <PageHeader
+            title="System Management"
+            description="Manage network systems and their related information."
+            icon={<FiDatabase />}
+            stats={headerStats}
+            actions={headerActions}
+            isLoading={isLoading}
+          />
 
           <DataTable
             title="Systems"
@@ -367,18 +304,11 @@ export default function SystemsPage() {
       </div>
 
       {/* Modals */}
-      <AddSystemModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        rowData={editModal.record as SystemRowsWithRelations | null}
-        onCreated={(data) => {
-          // The data is already in the correct format (with string dates)
-          crudActions.handleSave(data);
-        }}
-        onUpdated={(data) => {
-          // The data is already in the correct format (with string dates)
-          crudActions.handleSave(data);
-        }}
+      <SystemModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        rowData={editModal.record as SystemRowsWithCountWithRelations | null}
+        refetch={refetch}
       />
 
       <ConfirmModal

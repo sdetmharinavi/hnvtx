@@ -3,6 +3,7 @@
       "builtup",
       "cleandev",
       "cpan",
+      "CPANADMIN",
       "datatable",
       "dedup",
       "defval",

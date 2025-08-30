@@ -17,7 +17,6 @@ import { BsPeople } from "react-icons/bs";
 import { ImUserTie } from "react-icons/im";
 import { GiLinkedRings } from "react-icons/gi";
 import { AiFillMerge } from "react-icons/ai";
-import { TbListDetails } from "react-icons/tb";
 
 function NavItems() {
   const items: NavItemType[] = useMemo(

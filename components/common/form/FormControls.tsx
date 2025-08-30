@@ -9,6 +9,7 @@ import { Label, Switch } from "@/components/common/ui";
 import { forwardRef } from "react";
 import DatePicker, { type DatePickerProps } from "react-datepicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select/Select";
+import IPAddressInput from "@/components/common/form/IPAddressInput";
 
 // --- TYPE DEFINITIONS for Generic Components ---
 
@@ -364,6 +365,49 @@ export function FormSwitch<T extends FieldValues>({ name, control, label, error,
         )}
       />
       {error && <p className='mt-1 text-sm text-red-500'>{typeof error?.message === 'string' ? error.message : null}</p>}
+    </div>
+  );
+}
+
+// --- FORM IP ADDRESS COMPONENT ---
+
+interface FormIPAddressInputProps<T extends FieldValues> extends BaseProps<T> {
+  control: Control<T>;
+  placeholder?: string;
+  allowIPv4?: boolean;
+  allowIPv6?: boolean;
+}
+
+export function FormIPAddressInput<T extends FieldValues>({
+  name,
+  control,
+  label,
+  error,
+  className,
+  labelClassName,
+  ...props
+}: FormIPAddressInputProps<T>) {
+  return (
+    <div className={className}>
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
+        {label}
+      </Label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <IPAddressInput
+            {...props} // Pass through placeholder, allowIPv4, etc.
+            value={field.value || ""} // Get value from react-hook-form
+            onChange={field.onChange} // Use react-hook-form's onChange
+          />
+        )}
+      />
+      {error && (
+        <p className='mt-1 text-sm text-red-500'>
+          {typeof error?.message === 'string' ? error.message : "Invalid input"}
+        </p>
+      )}
     </div>
   );
 }

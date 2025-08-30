@@ -93,7 +93,7 @@ const EmployeeForm = ({
         remark: null,
       });
     }
-  }, [employee]);
+  }, [employee, reset]);
 
   const designationOptions: Option[] = designations.map((d) => ({
     value: d.id,
@@ -113,6 +113,8 @@ const EmployeeForm = ({
     onSubmit(data);
   };
 
+  const loading = isLoading;
+
   return (
     <Modal
           isOpen={isOpen}
@@ -126,6 +128,8 @@ const EmployeeForm = ({
         title={employee ? "Edit Employee" : "Add New Employee"}
         onSubmit={handleSubmit(onValidFormSubmit)}
         onCancel={handleClose}
+        isLoading={loading}
+        disableSubmit={loading}
         standalone
       >
         <div className="space-y-4">
