@@ -26,3 +26,25 @@ export const optionalIpValidation = z.union([
 .optional()
 .nullable()
 .transform(val => val === "" ? null : val); // Transform empty string to null for the database
+
+//  Create a preprocessor for optional dates
+export const optionalDate = z.preprocess(
+  (val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    return new Date(val as string);
+  },
+  z.date().optional().nullable()
+);
+
+
+export const requiredDate = z.preprocess(
+  (val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    return new Date(val as string);
+  },
+  z.date({
+    error: (iss) => iss.input === undefined ? "This field is required" : "Not a valid date"
+  })
+);
+
+export const optionalDateString = z.iso.datetime().nullable().optional();

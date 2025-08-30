@@ -38,7 +38,7 @@ import {
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { SystemRowsWithCount } from '@/types/view-row-types';
+import { SystemRowsWithCountWithRelations } from '@/types/view-row-types';
 import { Json } from '@/types/supabase-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import { createStandardActions } from '@/components/table/action-helpers';
@@ -47,6 +47,7 @@ import { useStandardHeaderActions } from '@/components/common/PageHeader';
 import { ErrorDisplay } from '@/components/common/ui';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SystemRowsWithRelations } from '@/types/relational-row-types';
 
 interface SystemStats {
   total: number;
@@ -58,7 +59,7 @@ interface SystemStats {
 // 1. ADAPTER HOOK: Makes `useSystemsData` compatible with `useCrudManager`
 const useSystemsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<SystemRowsWithCount> => {
+): DataQueryHookReturn<SystemRowsWithCountWithRelations> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
   // Build the server filters object that the RPC function expects.
@@ -86,7 +87,12 @@ const useSystemsData = (
   const inactiveCount = data?.[0]?.inactive_count || 0;
 
   return {
-    data: data || [],
+    data: (data || []).map(item => ({
+      ...item,
+      maintenance_terminal_id: null, // Add missing field
+      node_id: null,                // Add missing field
+      system_type_id: null,         // Add missing field
+    })),
     totalCount,
     activeCount,
     inactiveCount,
@@ -118,7 +124,7 @@ export default function SystemsPage() {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'systems', SystemRowsWithCount>({
+  } = useCrudManager<'systems', SystemRowsWithCountWithRelations>({
     tableName: 'systems',
     dataQueryHook: useSystemsData,
     searchColumn: 'system_name', // This can be considered the "primary" search field for display purposes
@@ -364,6 +370,15 @@ export default function SystemsPage() {
       <AddSystemModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        rowData={editModal.record as SystemRowsWithRelations | null}
+        onCreated={(data) => {
+          // The data is already in the correct format (with string dates)
+          crudActions.handleSave(data);
+        }}
+        onUpdated={(data) => {
+          // The data is already in the correct format (with string dates)
+          crudActions.handleSave(data);
+        }}
       />
 
       <ConfirmModal

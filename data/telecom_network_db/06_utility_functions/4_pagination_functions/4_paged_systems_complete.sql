@@ -1,4 +1,6 @@
--- Function: get_paged_v_systems_complete
+-- REFACTORED: This function is now synchronized with the improved v_systems_complete view.
+-- It uses the new, more descriptive column names.
+
 DROP FUNCTION IF EXISTS get_paged_v_systems_complete;
 CREATE OR REPLACE FUNCTION get_paged_v_systems_complete(
     p_limit integer,
@@ -6,7 +8,7 @@ CREATE OR REPLACE FUNCTION get_paged_v_systems_complete(
     p_order_by text DEFAULT 'system_name',
     p_order_dir text DEFAULT 'asc',
     p_filters jsonb DEFAULT '{}'::jsonb
-) 
+)
 RETURNS TABLE(
     commissioned_on text,
     created_at text,
@@ -14,9 +16,15 @@ RETURNS TABLE(
     ip_address inet,
     latitude numeric,
     longitude numeric,
-    maan_area text,
-    maan_ring_no text,
-    maintenance_area_name text,
+    
+    -- UPDATED: Changed from 'maan_area' to the new, clearer alias.
+    ring_logical_area_name text,
+    -- UPDATED: Changed from 'maan_ring_no' to the actual UUID field.
+    ring_id text,
+    
+    -- RENAMED: For clarity and consistency.
+    system_maintenance_terminal_name text,
+    
     node_name text,
     remark text,
     s_no text,
@@ -32,18 +40,19 @@ RETURNS TABLE(
     total_count bigint,
     active_count bigint,
     inactive_count bigint
-) 
+)
 AS $$
-DECLARE 
+DECLARE
   sql_query text;
   where_clause text := '';
   filter_key text;
   filter_value jsonb;
-BEGIN 
-  IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' THEN 
-    FOR filter_key, filter_value IN SELECT * FROM jsonb_each(p_filters) 
-    LOOP 
-      IF filter_value IS NOT NULL AND filter_value::text != '""' THEN 
+BEGIN
+  -- The filter building logic remains unchanged
+  IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' THEN
+    FOR filter_key, filter_value IN SELECT * FROM jsonb_each(p_filters)
+    LOOP
+      IF filter_value IS NOT NULL AND filter_value::text != '""' THEN
         where_clause := where_clause || format(
           ' AND %I::text ILIKE %L',
           filter_key,
@@ -53,18 +62,22 @@ BEGIN
     END LOOP;
   END IF;
 
+  -- The main query is updated to select the new column names
   sql_query := format(
     $query$
-    SELECT 
+    SELECT
       v.commissioned_on::text,
       v.created_at::text,
       v.id::text,
       v.ip_address,
       v.latitude::numeric,
       v.longitude::numeric,
-      v.maan_area,
-      v.maan_ring_no,
-      v.maintenance_area_name,
+      
+      -- UPDATED: Selecting the new, correct column names from the view
+      v.ring_logical_area_name::text,
+      v.ring_id::text,
+      v.system_maintenance_terminal_name::text,
+      
       v.node_name,
       v.remark,
       v.s_no,
@@ -83,7 +96,7 @@ BEGIN
     FROM public.v_systems_complete v
     WHERE 1 = 1 %s
     ORDER BY %I %s
-    LIMIT %L OFFSET %L 
+    LIMIT %L OFFSET %L
     $query$,
     where_clause,
     p_order_by,

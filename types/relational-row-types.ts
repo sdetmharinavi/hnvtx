@@ -10,22 +10,6 @@ export type RingRowsWithRelations = Row<'rings'> & {
     name: string;
   } | null;
 };
-
-export type CpanConnectionRowsWithRelations = Row<'cpan_connections'> & {
-    sfp_type?: {
-      id: string;
-      code: string;
-    } | null;
-    system_connection?: {
-      id: string;
-    } | null;
-  };
-  
-  export type CpanSystemRowsWithRelations = Row<'cpan_systems'> & {
-    system?: {
-      id: string;
-    } | null;
-  };
   
   export type EmployeeDesignationRowsWithRelations = Row<'employee_designations'> & {
     parent?: {
@@ -98,21 +82,6 @@ export type CpanConnectionRowsWithRelations = Row<'cpan_connections'> & {
     } | null;
   };
   
-  export type MaanConnectionRowsWithRelations = Row<'maan_connections'> & {
-    sfp_type?: {
-      id: string;
-      code: string;
-    } | null;
-    system_connection?: {
-      id: string;
-    } | null;
-  };
-  
-  export type MaanSystemRowsWithRelations = Row<'maan_systems'> & {
-    system?: {
-      id: string;
-    } | null;
-  };
   
   export type MaintenanceAreaRowsWithRelations = Row<'maintenance_areas'> & {
     area_type?: {
@@ -234,20 +203,26 @@ export type CpanConnectionRowsWithRelations = Row<'cpan_connections'> & {
     } | null;
   };
   
-  export type SystemRowsWithRelations = Row<'systems'> & {
-    maintenance_terminal?: {
-      id: string;
-      name: string;
-    } | null;
-    node?: {
-      id: string;
-      name: string;
-    } | null;
-    system_type?: {
-      id: string;
-      name: string;
-    } | null;
-  };
+  // In your types file, update the SystemRowsWithRelations type:
+export type SystemRowsWithRelations = Row<'systems'> & {
+  maintenance_terminal?: {
+    id: string;
+    name: string;
+  } | null;
+  node?: {
+    id: string;
+    name: string;
+  } | null;
+  system_type?: {
+    id: string;
+    name: string;
+  } | null;
+  // Add this to make commissioned_on required
+  commissioned_on: Date | null;
+} & {
+  // This makes all fields from the base Row type required
+  [K in keyof Row<'systems'>]: Row<'systems'>[K];
+};
   
   export type UserActivityLogRowsWithRelations = Row<'user_activity_logs'> & {
     user_profile_extended?: {

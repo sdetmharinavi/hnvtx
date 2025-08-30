@@ -12,6 +12,7 @@ import {
 } from "@/components/common/ui/form/FormControls";
 import { Modal } from "@/components/common/ui";
 import { FormCard } from "@/components/common/ui/form";
+import { useEffect } from "react";
 
 interface EmployeeFormProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ const EmployeeForm = ({
     handleSubmit,
     register,
     formState: { errors },
+    reset
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
@@ -57,6 +59,41 @@ const EmployeeForm = ({
       remark: employee?.remark || null,
     },
   });
+
+  useEffect(() => {
+    if (employee) {
+        const defaultValues = {
+          employee_name: employee?.employee_name || "",
+          employee_pers_no: employee?.employee_pers_no || null,
+          employee_designation_id: employee?.employee_designation_id || null,
+          employee_contact: employee?.employee_contact || null,
+          employee_email: employee?.employee_email || "",
+          employee_dob: employee?.employee_dob
+            ? new Date(employee.employee_dob)
+            : null,
+          employee_doj: employee?.employee_doj
+            ? new Date(employee.employee_doj)
+            : null,
+          employee_addr: employee?.employee_addr || null,
+          maintenance_terminal_id: employee?.maintenance_terminal_id || null,
+          remark: employee?.remark || null,
+      };
+      reset(defaultValues);
+    } else {
+      reset({
+        employee_name: "",
+        employee_pers_no: null,
+        employee_designation_id: null,
+        employee_contact: null,
+        employee_email: "",
+        employee_dob: null,
+        employee_doj: null,
+        employee_addr: null,
+        maintenance_terminal_id: null,
+        remark: null,
+      });
+    }
+  }, [employee]);
 
   const designationOptions: Option[] = designations.map((d) => ({
     value: d.id,

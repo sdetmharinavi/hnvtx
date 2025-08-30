@@ -226,15 +226,15 @@ const RingsPage = () => {
       {/* Render the confirmation modal, driven by the hook's state */}
       <ConfirmModal
         isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.confirm}
-        onCancel={deleteModal.cancel}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
         title="Confirm Deletion"
         message={deleteModal.message}
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
         showIcon
-        loading={deleteModal.isLoading}
+        loading={deleteModal.loading}
       />
     </div>
   );

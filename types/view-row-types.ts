@@ -11,3 +11,19 @@ export type LookupTypeRowsWithCount = Row<'v_lookup_types_with_count'>
 export type EmployeeDesignationRowsWithCount = Row<'v_employee_designations_with_count'>
 export type MaintenanceAreaRowsWithCount = Row<'v_maintenance_areas_with_count'>
 export type EmployeeRowsWithCount = Row<'v_employees_with_count'>
+
+export type  SystemRowsWithCountWithRelations = Row<'v_systems_complete'> & {
+    system_type?: {
+        id: string;
+        name: string;
+    } | null;
+    node?: {
+        id: string;
+        name: string;
+    } | null;
+    maintenance_terminal?: {
+        id: string;
+        name: string;
+    } | null;
+};
+    

@@ -718,104 +718,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      cpan_connections: {
-        Row: {
-          bandwidth_allocated_mbps: number | null
-          customer_name: string | null
-          fiber_in: number | null
-          fiber_out: number | null
-          sfp_capacity: string | null
-          sfp_port: string | null
-          sfp_serial_no: string | null
-          sfp_type_id: string | null
-          system_connection_id: string
-        }
-        Insert: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id: string
-        }
-        Update: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cpan_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cpan_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cpan_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cpan_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cpan_systems: {
-        Row: {
-          area: string | null
-          ring_no: string | null
-          system_id: string
-        }
-        Insert: {
-          area?: string | null
-          ring_no?: string | null
-          system_id: string
-        }
-        Update: {
-          area?: string | null
-          ring_no?: string | null
-          system_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cpan_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cpan_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       employee_designations: {
         Row: {
           created_at: string | null
@@ -1449,104 +1351,6 @@ export type Database = {
         }
         Relationships: []
       }
-      maan_connections: {
-        Row: {
-          bandwidth_allocated_mbps: number | null
-          customer_name: string | null
-          fiber_in: number | null
-          fiber_out: number | null
-          sfp_capacity: string | null
-          sfp_port: string | null
-          sfp_serial_no: string | null
-          sfp_type_id: string | null
-          system_connection_id: string
-        }
-        Insert: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id: string
-        }
-        Update: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "maan_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maan_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maan_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maan_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      maan_systems: {
-        Row: {
-          area: string | null
-          ring_no: string | null
-          system_id: string
-        }
-        Insert: {
-          area?: string | null
-          ring_no?: string | null
-          system_id: string
-        }
-        Update: {
-          area?: string | null
-          ring_no?: string | null
-          system_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "maan_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maan_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       maintenance_areas: {
         Row: {
           address: string | null
@@ -2057,6 +1861,67 @@ export type Database = {
           },
         ]
       }
+      ring_based_systems: {
+        Row: {
+          maintenance_area_id: string | null
+          ring_id: string | null
+          system_id: string
+        }
+        Insert: {
+          maintenance_area_id?: string | null
+          ring_id?: string | null
+          system_id: string
+        }
+        Update: {
+          maintenance_area_id?: string | null
+          ring_id?: string | null
+          system_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ring_based_systems_maintenance_area_id_fkey"
+            columns: ["maintenance_area_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_maintenance_area_id_fkey"
+            columns: ["maintenance_area_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_rings_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: true
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: true
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rings: {
         Row: {
           created_at: string | null
@@ -2242,6 +2107,71 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: true
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sfp_based_connections: {
+        Row: {
+          bandwidth_allocated_mbps: number | null
+          customer_name: string | null
+          fiber_in: number | null
+          fiber_out: number | null
+          sfp_capacity: string | null
+          sfp_port: string | null
+          sfp_serial_no: string | null
+          sfp_type_id: string | null
+          system_connection_id: string
+        }
+        Insert: {
+          bandwidth_allocated_mbps?: number | null
+          customer_name?: string | null
+          fiber_in?: number | null
+          fiber_out?: number | null
+          sfp_capacity?: string | null
+          sfp_port?: string | null
+          sfp_serial_no?: string | null
+          sfp_type_id?: string | null
+          system_connection_id: string
+        }
+        Update: {
+          bandwidth_allocated_mbps?: number | null
+          customer_name?: string | null
+          fiber_in?: number | null
+          fiber_out?: number | null
+          sfp_capacity?: string | null
+          sfp_port?: string | null
+          sfp_serial_no?: string | null
+          sfp_type_id?: string | null
+          system_connection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
+            columns: ["sfp_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
+            columns: ["sfp_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sfp_based_connections_system_connection_id_fkey"
+            columns: ["system_connection_id"]
+            isOneToOne: true
+            referencedRelation: "system_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sfp_based_connections_system_connection_id_fkey"
+            columns: ["system_connection_id"]
+            isOneToOne: true
+            referencedRelation: "v_system_connections_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -3277,11 +3207,6 @@ export type Database = {
           maan_sfp_type_name: string | null
           media_type_name: string | null
           remark: string | null
-          sdh_a_customer: string | null
-          sdh_a_slot: string | null
-          sdh_b_customer: string | null
-          sdh_b_slot: string | null
-          sdh_carrier: string | null
           sdh_stm_no: string | null
           sn_interface: string | null
           sn_ip: unknown | null
@@ -3294,9 +3219,6 @@ export type Database = {
           total_count: number | null
           updated_at: string | null
           vlan: string | null
-          vmux_c_code: string | null
-          vmux_channel: string | null
-          vmux_subscriber: string | null
           vmux_tk: string | null
         }
         Relationships: [
@@ -3326,24 +3248,84 @@ export type Database = {
           ip_address: unknown | null
           latitude: number | null
           longitude: number | null
-          maan_area: string | null
-          maan_ring_no: string | null
-          maintenance_area_name: string | null
+          maintenance_terminal_id: string | null
+          node_id: string | null
           node_name: string | null
           remark: string | null
+          ring_id: string | null
+          ring_logical_area_name: string | null
           s_no: string | null
           sdh_gne: string | null
           sdh_make: string | null
           status: boolean | null
           system_category: string | null
+          system_maintenance_terminal_name: string | null
           system_name: string | null
           system_type_code: string | null
+          system_type_id: string | null
           system_type_name: string | null
           total_count: number | null
           updated_at: string | null
           vmux_vm_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_rings_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_maintenance_terminal_id_fkey"
+            columns: ["maintenance_terminal_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_maintenance_terminal_id_fkey"
+            columns: ["maintenance_terminal_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas_with_count"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_system_type_id_fkey"
+            columns: ["system_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_system_type_id_fkey"
+            columns: ["system_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types_with_count"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_user_profiles_extended: {
         Row: {
@@ -3528,6 +3510,14 @@ export type Database = {
       get_dashboard_overview: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_entity_counts: {
+        Args: { p_entity_name: string; p_filters?: Json }
+        Returns: {
+          active_count: number
+          inactive_count: number
+          total_count: number
+        }[]
       }
       get_lookup_type_id: {
         Args: { p_category: string; p_name: string }
@@ -3838,6 +3828,7 @@ export type Database = {
           en_interface: string
           en_ip: string
           en_name: string
+          en_node_name: string
           id: string
           inactive_count: number
           maan_bandwidth_allocated_mbps: number
@@ -3859,6 +3850,7 @@ export type Database = {
           sn_interface: string
           sn_ip: string
           sn_name: string
+          sn_node_name: string
           status: boolean
           system_id: string
           system_name: string
@@ -3889,16 +3881,16 @@ export type Database = {
           ip_address: unknown
           latitude: number
           longitude: number
-          maan_area: string
-          maan_ring_no: string
-          maintenance_area_name: string
           node_name: string
           remark: string
+          ring_id: string
+          ring_logical_area_name: string
           s_no: string
           sdh_gne: string
           sdh_make: string
           status: boolean
           system_category: string
+          system_maintenance_terminal_name: string
           system_name: string
           system_type_code: string
           system_type_name: string
