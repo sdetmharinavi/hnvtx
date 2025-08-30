@@ -132,7 +132,7 @@ export function AreaFormModal({
           title={area ? "Edit Area" : "Add New Area"} 
           onCancel={onClose}
           isLoading={isLoading}
-          hightClass="max-h-[calc(90vh-140px)]"
+          heightClass="max-h-[calc(90vh-140px)]"
         >
           {/* Name Field */}
           <FormInput

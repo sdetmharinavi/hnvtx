@@ -17,6 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user_id ON public.user_activit
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_action_type ON public.user_activity_logs(action_type);
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_table_name ON public.user_activity_logs(table_name);
 -- Enable RLS
+ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Create Policy to give access to admin role || isSuperAdmin only
 DROP POLICY IF EXISTS allow_admin_select ON public.user_activity_logs;

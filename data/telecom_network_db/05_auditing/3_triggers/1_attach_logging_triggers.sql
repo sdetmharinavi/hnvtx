@@ -4,37 +4,45 @@
 DO $$
 DECLARE
     table_rec RECORD;
+    trigger_name text;
 BEGIN
     -- Loop through all user tables in the 'public' schema
     FOR table_rec IN
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-          -- Ensure it's a real table, not a view
-          AND table_type = 'BASE TABLE'
-          -- Exclude the log table itself to prevent infinite loops
-          AND table_name <> 'user_activity_logs'
-          -- Convention: Only audit tables that have a primary 'id' column
+        SELECT t.table_name
+        FROM information_schema.tables t
+        WHERE t.table_schema = 'public'
+          AND t.table_type = 'BASE TABLE'
+          AND t.table_name <> 'user_activity_logs'
           AND EXISTS (
-              SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public'
-                AND table_name = table_rec.table_name
-                AND column_name = 'id'
+              SELECT 1
+              FROM information_schema.columns c
+              WHERE c.table_schema = 'public'
+                AND c.table_name = t.table_name
+                AND c.column_name = 'id'
           )
     LOOP
-        -- Drop the trigger if it exists, to make this script re-runnable
-        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;',
-                       table_rec.table_name || '_log_trigger',
-                       table_rec.table_name);
+        trigger_name := table_rec.table_name || '_log_trigger';
 
-        -- Create the audit trigger
-        EXECUTE format('CREATE TRIGGER %I ' ||
-                       'AFTER INSERT OR UPDATE OR DELETE ON public.%I ' ||
-                       'FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();',
-                       table_rec.table_name || '_log_trigger',
-                       table_rec.table_name);
+        -- Only create the trigger if it does not already exist
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_trigger trg
+            JOIN pg_class cls ON trg.tgrelid = cls.oid
+            JOIN pg_namespace nsp ON cls.relnamespace = nsp.oid
+            WHERE trg.tgname = trigger_name
+              AND nsp.nspname = 'public'
+              AND cls.relname = table_rec.table_name
+        ) THEN
+            EXECUTE format('CREATE TRIGGER %I ' ||
+                           'AFTER INSERT OR UPDATE OR DELETE ON public.%I ' ||
+                           'FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();',
+                           trigger_name,
+                           table_rec.table_name);
 
-        RAISE NOTICE 'Attached audit trigger to %.%', 'public', table_rec.table_name;
+            RAISE NOTICE 'Created audit trigger on %.%', 'public', table_rec.table_name;
+        ELSE
+            RAISE NOTICE 'Trigger already exists on %.%, skipping.', 'public', table_rec.table_name;
+        END IF;
     END LOOP;
 END;
 $$;

@@ -267,6 +267,8 @@ const EmployeesPage = () => {
       />
 
       <EmployeeForm
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
         employee={editModal.record as EmployeeWithRelations | null}
         onSubmit={crudActions.handleSave}
         onCancel={editModal.close}

@@ -85,7 +85,7 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
             ×
           </button>
         </div>
-        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose} hightClass="h-[calc(90vh-140px)]">
+        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose} heightClass="h-[calc(90vh-140px)]">
           <FormInput name='name' label='Designation Name' register={register} error={errors.name} required />
           <FormSearchableSelect name='parent_id' label='Parent Designation' control={control} error={errors.parent_id} required options={availableParents.map((d) => ({ value: d.id, label: d.name }))} />
           <FormSwitch name='status' label='Status' control={control} error={errors.status} className="mt-4" />

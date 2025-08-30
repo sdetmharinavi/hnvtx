@@ -5,6 +5,7 @@ DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profil
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
 DROP POLICY IF EXISTS "Users can delete their own profile" ON public.user_profiles;
 
+
 -- Allow super admins full access to all rows
 CREATE POLICY "Super admins have full access to user_profiles" 
 ON user_profiles 
@@ -36,3 +37,4 @@ CREATE POLICY "Users can delete their own profile"
 ON user_profiles 
 FOR DELETE 
 USING (auth.uid() = id);
+

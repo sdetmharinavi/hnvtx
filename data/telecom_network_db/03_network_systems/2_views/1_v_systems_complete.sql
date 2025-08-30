@@ -38,4 +38,4 @@ from systems s
   left join maintenance_areas ring_area on rbs.maintenance_area_id = ring_area.id
   
   left join sdh_systems ss on s.id = ss.system_id
-  left join vmux_systems vs on s.id = vs.system_id;```
+  left join vmux_systems vs on s.id = vs.system_id;

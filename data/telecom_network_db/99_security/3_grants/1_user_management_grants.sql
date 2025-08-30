@@ -18,6 +18,9 @@ GRANT EXECUTE ON FUNCTION public.admin_bulk_update_status(uuid[], text) TO authe
 GRANT EXECUTE ON FUNCTION public.admin_bulk_update_role(uuid[], text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_bulk_delete_users(uuid[]) TO authenticated;
 
--- Table grants
-GRANT ALL ON public.user_profiles TO admin;
+-- Enable RLS
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Grant Table Permissions
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin;
 GRANT SELECT ON public.user_profiles TO viewer;

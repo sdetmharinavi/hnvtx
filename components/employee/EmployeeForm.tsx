@@ -10,22 +10,29 @@ import {
   FormSearchableSelect,
   FormTextarea,
 } from "@/components/common/ui/form/FormControls";
+import { Modal } from "@/components/common/ui";
+import { FormCard } from "@/components/common/ui/form";
 
-const EmployeeForm = ({
-  employee,
-  onSubmit,
-  onCancel,
-  isLoading,
-  designations,
-  maintenanceAreas,
-}: {
+interface EmployeeFormProps {
+  isOpen: boolean;
+  onClose: () => void;
   employee?: EmployeeWithRelations | null;
   onSubmit: (data: EmployeeFormData) => void;
   onCancel: () => void;
   isLoading: boolean;
   designations: Tables<"employee_designations">[];
   maintenanceAreas: Tables<"maintenance_areas">[];
-}) => {
+}
+
+const EmployeeForm = ({
+  isOpen,
+  onClose,
+  employee,
+  onSubmit,
+  isLoading,
+  designations,
+  maintenanceAreas,
+}: EmployeeFormProps) => {
   const {
     control,
     handleSubmit,
@@ -61,20 +68,29 @@ const EmployeeForm = ({
     label: `${area.name}${area.code ? ` (${area.code})` : ""}`,
   }));
 
+  const handleClose = () => {
+    onClose();
+  };
+
   const onValidFormSubmit = (data: EmployeeFormData) => {
     onSubmit(data);
   };
 
   return (
-    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <form
+    <Modal
+          isOpen={isOpen}
+          onClose={handleClose}
+          title={""}
+          size="full"
+          visible={false}
+          className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+        >
+      <FormCard
+        title={employee ? "Edit Employee" : "Add New Employee"}
         onSubmit={handleSubmit(onValidFormSubmit)}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800"
+        onCancel={handleClose}
+        standalone
       >
-        <h2 className="mb-4 text-xl font-semibold dark:text-white">
-          {employee ? "Edit Employee" : "Add New Employee"}
-        </h2>
-
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormInput
@@ -96,7 +112,6 @@ const EmployeeForm = ({
             />
             <FormSearchableSelect
               name="employee_designation_id"
-              id="employee_designation_id"
               label="Designation"
               control={control}
               options={designationOptions}
@@ -141,7 +156,6 @@ const EmployeeForm = ({
             <FormSearchableSelect
               name="maintenance_terminal_id"
               label="Maintenance Area"
-              id="maintenance_terminal_id"
               control={control}
               options={maintenanceAreaOptions}
               error={errors.maintenance_terminal_id}
@@ -170,25 +184,8 @@ const EmployeeForm = ({
             placeholder="Enter remarks"
           />
         </div>
-
-        <div className="flex justify-end space-x-3 border-t pt-4 mt-6 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md bg-gray-100 px-4 py-2 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
-          >
-            {isLoading ? "Saving..." : employee ? "Update" : "Create"}
-          </button>
-        </div>
-      </form>
-    </div>
+      </FormCard>
+    </Modal>
   );
 };
 
