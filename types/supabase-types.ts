@@ -840,109 +840,6 @@ export type Database = {
           },
         ]
       }
-      fiber_joint_connections: {
-        Row: {
-          created_at: string | null
-          id: string
-          input_fiber_no: number
-          input_ofc_id: string
-          joint_id: string
-          logical_path_id: string | null
-          output_fiber_no: number
-          output_ofc_id: string
-          splice_loss_db: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          input_fiber_no: number
-          input_ofc_id: string
-          joint_id: string
-          logical_path_id?: string | null
-          output_fiber_no: number
-          output_ofc_id: string
-          splice_loss_db?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          input_fiber_no?: number
-          input_ofc_id?: string
-          joint_id?: string
-          logical_path_id?: string | null
-          output_fiber_no?: number
-          output_ofc_id?: string
-          splice_loss_db?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
-            columns: ["input_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "ofc_cables"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
-            columns: ["input_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "v_cable_utilization"
-            referencedColumns: ["cable_id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_input_ofc_id_fkey"
-            columns: ["input_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "v_ofc_cables_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_joint_id_fkey"
-            columns: ["joint_id"]
-            isOneToOne: false
-            referencedRelation: "fiber_joints"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_logical_path_id_fkey"
-            columns: ["logical_path_id"]
-            isOneToOne: false
-            referencedRelation: "logical_fiber_paths"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_logical_path_id_fkey"
-            columns: ["logical_path_id"]
-            isOneToOne: false
-            referencedRelation: "v_end_to_end_paths"
-            referencedColumns: ["path_id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
-            columns: ["output_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "ofc_cables"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
-            columns: ["output_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "v_cable_utilization"
-            referencedColumns: ["cable_id"]
-          },
-          {
-            foreignKeyName: "fiber_joint_connections_output_ofc_id_fkey"
-            columns: ["output_ofc_id"]
-            isOneToOne: false
-            referencedRelation: "v_ofc_cables_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       fiber_joints: {
         Row: {
           created_at: string | null
@@ -1207,6 +1104,34 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_operational_status"
             columns: ["operational_status_category", "operational_status"]
             isOneToOne: false
@@ -1308,6 +1233,76 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logical_path_segments: {
+        Row: {
+          created_at: string | null
+          fiber_joint_id: string | null
+          id: string
+          logical_path_id: string
+          ofc_cable_id: string | null
+          path_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          fiber_joint_id?: string | null
+          id?: string
+          logical_path_id: string
+          ofc_cable_id?: string | null
+          path_order: number
+        }
+        Update: {
+          created_at?: string | null
+          fiber_joint_id?: string | null
+          id?: string
+          logical_path_id?: string
+          ofc_cable_id?: string | null
+          path_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logical_path_segments_fiber_joint_id_fkey"
+            columns: ["fiber_joint_id"]
+            isOneToOne: false
+            referencedRelation: "fiber_joints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "logical_fiber_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "v_end_to_end_paths"
+            referencedColumns: ["path_id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -2675,6 +2670,34 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
             columns: ["destination_system_id"]
             isOneToOne: false
@@ -3186,28 +3209,33 @@ export type Database = {
       v_system_connections_complete: {
         Row: {
           active_count: number | null
+          bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
+          customer_name: string | null
           en_interface: string | null
           en_ip: unknown | null
           en_name: string | null
           en_node_name: string | null
+          fiber_in: number | null
+          fiber_out: number | null
           id: string | null
           inactive_count: number | null
-          maan_bandwidth_allocated_mbps: number | null
-          maan_customer_name: string | null
-          maan_fiber_in: number | null
-          maan_fiber_out: number | null
-          maan_sfp_capacity: string | null
-          maan_sfp_port: string | null
-          maan_sfp_serial_no: string | null
-          maan_sfp_type_name: string | null
           media_type_name: string | null
           remark: string | null
+          sdh_a_customer: string | null
+          sdh_a_slot: string | null
+          sdh_b_customer: string | null
+          sdh_b_slot: string | null
+          sdh_carrier: string | null
           sdh_stm_no: string | null
+          sfp_capacity: string | null
+          sfp_port: string | null
+          sfp_serial_no: string | null
+          sfp_type_name: string | null
           sn_interface: string | null
           sn_ip: unknown | null
           sn_name: string | null
@@ -3219,6 +3247,9 @@ export type Database = {
           total_count: number | null
           updated_at: string | null
           vlan: string | null
+          vmux_c_code: string | null
+          vmux_channel: string | null
+          vmux_subscriber: string | null
           vmux_tk: string | null
         }
         Relationships: [
@@ -3234,6 +3265,115 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_system_ring_paths_detailed: {
+        Row: {
+          created_at: string | null
+          end_node_id: string | null
+          end_node_name: string | null
+          id: string | null
+          logical_path_id: string | null
+          ofc_cable_id: string | null
+          path_name: string | null
+          path_order: number | null
+          route_name: string | null
+          source_system_id: string | null
+          start_node_id: string | null
+          start_node_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "logical_fiber_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "v_end_to_end_paths"
+            referencedColumns: ["path_id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
           },
         ]

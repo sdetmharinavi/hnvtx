@@ -16,7 +16,7 @@ BEGIN
     'ofc_cables', 'ofc_connections',
 
     -- Advanced OFC
-    'fiber_joints', 'logical_fiber_paths', 'fiber_joint_connections',
+    'fiber_joints', 'logical_fiber_paths', 'logical_path_segments',
 
     -- File Management
     'folders', 'files'

@@ -121,8 +121,7 @@ export default function OfcCableDetailsPage() {
       filters: {
         ofc_id: cable.id,
       },
-      orderBy: 'fiber_no_sn',
-      orderDir: 'asc' as const,
+      orderBy: [{ column: 'fiber_no_sn', ascending: true }],
       maxRows: 10000,
       customStyles: {
         headerFont: { bold: true, color: { argb: 'FFFFFFFF' } },

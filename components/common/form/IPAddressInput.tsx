@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
-import { Label } from '@/components/common/ui';
+// import { Label } from '@/components/common/ui';
 
 // The ValidationState type remains useful for internal logic
 interface ValidationState {
@@ -131,23 +131,23 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     [allowIPv4, allowIPv6, isValidIPv4, isValidIPv6]
   );
 
-  const formatIPv6 = (ip: string): string => {
-    // Basic IPv6 formatting - expand compressed notation for display
-    if (!ip.includes('::')) return ip;
+  // const formatIPv6 = (ip: string): string => {
+  //   // Basic IPv6 formatting - expand compressed notation for display
+  //   if (!ip.includes('::')) return ip;
 
-    const parts = ip.split('::');
-    const leftParts = parts[0] ? parts[0].split(':') : [];
-    const rightParts = parts[1] ? parts[1].split(':') : [];
-    const missingParts = 8 - leftParts.length - rightParts.length;
+  //   const parts = ip.split('::');
+  //   const leftParts = parts[0] ? parts[0].split(':') : [];
+  //   const rightParts = parts[1] ? parts[1].split(':') : [];
+  //   const missingParts = 8 - leftParts.length - rightParts.length;
 
-    const expanded = [
-      ...leftParts,
-      ...Array(missingParts).fill('0000'),
-      ...rightParts,
-    ];
+  //   const expanded = [
+  //     ...leftParts,
+  //     ...Array(missingParts).fill('0000'),
+  //     ...rightParts,
+  //   ];
 
-    return expanded.map((part) => part.padStart(4, '0')).join(':');
-  };
+  //   return expanded.map((part) => part.padStart(4, '0')).join(':');
+  // };
 
   // Update validation state whenever the prop value changes from the outside (e.g., from react-hook-form)
   useEffect(() => {
@@ -216,97 +216,3 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
 };
 
 export default IPAddressInput;
-
-// // Demo component showing usage examples
-// const IPAddressDemo = () => {
-//   const [ipv4Value, setIPv4Value] = useState('');
-//   const [ipv6Value, setIPv6Value] = useState('');
-//   const [anyValue, setAnyValue] = useState('');
-
-//   const handleIPChange = (value: string, validation: ValidationState, setter: (value: string) => void): void => {
-//     setter(value);
-//     console.log('IP changed:', { value, validation });
-//   };
-
-//   return (
-//     <div className="p-6 bg-gray-50 min-h-screen">
-//       <div className="max-w-2xl mx-auto space-y-8">
-//         <div className="text-center">
-//           <h1 className="text-3xl font-bold text-gray-900 mb-2">IP Address Input Component</h1>
-//           <p className="text-gray-600">Supports IPv4 and IPv6 with real-time validation</p>
-//         </div>
-
-//         <div className="space-y-6">
-//           {/* IPv4 Only */}
-//           <div className="bg-white p-6 rounded-lg shadow-sm border">
-//             <h2 className="text-lg font-semibold text-gray-800 mb-3">IPv4 Only</h2>
-//             <IPAddressInput
-//               value={ipv4Value}
-//               onChange={(value, validation) => handleIPChange(value, validation, setIPv4Value)}
-//               placeholder="Enter IPv4 address (e.g., 192.168.1.1)"
-//               allowIPv4={true}
-//               allowIPv6={false}
-//             />
-//             <div className="mt-2 text-sm text-gray-500">
-//               Current value: <code className="bg-gray-100 px-1 rounded">{ipv4Value || 'empty'}</code>
-//             </div>
-//           </div>
-
-//           {/* IPv6 Only */}
-//           <div className="bg-white p-6 rounded-lg shadow-sm border">
-//             <h2 className="text-lg font-semibold text-gray-800 mb-3">IPv6 Only</h2>
-//             <IPAddressInput
-//               value={ipv6Value}
-//               onChange={(value, validation) => handleIPChange(value, validation, setIPv6Value)}
-//               placeholder="Enter IPv6 address (e.g., 2001:db8::1)"
-//               allowIPv4={false}
-//               allowIPv6={true}
-//             />
-//             <div className="mt-2 text-sm text-gray-500">
-//               Current value: <code className="bg-gray-100 px-1 rounded">{ipv6Value || 'empty'}</code>
-//             </div>
-//           </div>
-
-//           {/* Both IPv4 and IPv6 */}
-//           <div className="bg-white p-6 rounded-lg shadow-sm border">
-//             <h2 className="text-lg font-semibold text-gray-800 mb-3">IPv4 or IPv6</h2>
-//             <IPAddressInput
-//               value={anyValue}
-//               onChange={(value, validation) => handleIPChange(value, validation, setAnyValue)}
-//               placeholder="Enter any IP address"
-//               allowIPv4={true}
-//               allowIPv6={true}
-//             />
-//             <div className="mt-2 text-sm text-gray-500">
-//               Current value: <code className="bg-gray-100 px-1 rounded">{anyValue || 'empty'}</code>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Example values for testing */}
-//         <div className="bg-white p-6 rounded-lg shadow-sm border">
-//           <h3 className="text-lg font-semibold text-gray-800 mb-3">Test Examples</h3>
-//           <div className="space-y-2 text-sm">
-//             <div>
-//               <strong>Valid IPv4:</strong>
-//               <ul className="ml-4 mt-1 space-y-1 text-gray-600">
-//                 <li><code className="bg-gray-100 px-1 rounded">192.168.1.1</code></li>
-//                 <li><code className="bg-gray-100 px-1 rounded">10.0.0.1</code></li>
-//                 <li><code className="bg-gray-100 px-1 rounded">127.0.0.1</code></li>
-//               </ul>
-//             </div>
-//             <div>
-//               <strong>Valid IPv6:</strong>
-//               <ul className="ml-4 mt-1 space-y-1 text-gray-600">
-//                 <li><code className="bg-gray-100 px-1 rounded">2001:db8::1</code></li>
-//                 <li><code className="bg-gray-100 px-1 rounded">::1</code></li>
-//                 <li><code className="bg-gray-100 px-1 rounded">fe80::1%lo0</code> (with zone ID)</li>
-//                 <li><code className="bg-gray-100 px-1 rounded">2001:db8:85a3::8a2e:370:7334</code></li>
-//               </ul>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };

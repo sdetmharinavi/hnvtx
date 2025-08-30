@@ -36,7 +36,6 @@ import {
 import { ErrorDisplay } from '@/components/common/ui';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SystemRowsWithRelations } from '@/types/relational-row-types';
 import { SystemModal } from '@/components/systems/system-modal';
 
 // 1. ADAPTER HOOK: Makes `useSystemsData` compatible with `useCrudManager`
@@ -131,7 +130,7 @@ export default function SystemsPage() {
   // --- Action Handlers ---
   const handleView = useCallback(
     (system: Row<'v_systems_complete'>) => {
-      router.push(`/systems/${system.id}`);
+      router.push(`/dashboard/systems/${system.id}`);
     },
     [router]
   );
@@ -151,35 +150,17 @@ export default function SystemsPage() {
   // --- Table Column Configuration ---
   const columns = SystemsTableColumns(paginatedSystems);
 
-  // const headerActions = useStandardHeaderActions({
-  //   onRefresh: async () => {
-  //     await refetch();
-  //     toast.success('Refreshed successfully!');
-  //   },
-  //   onAddNew: editModal.openAdd,
-  //   isLoading: isMutating,
-  //   exportConfig: {
-  //     tableName: 'systems',
-  //   },
-  // });
-
   // --- tableActions ---
   const tableActions = useMemo(
     () =>
       createStandardActions<SystemRowsWithCountWithRelations>({
         onEdit: editModal.openEdit,
-        onView: viewModal.open,
+        onView: handleView ,
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
       }),
-    [
-      editModal.openEdit,
-      viewModal.open,
-      crudActions.handleDelete,
-      crudActions.handleToggleStatus,
-      isSuperAdmin,
-    ]
+    [editModal.openEdit, handleView, crudActions.handleDelete, crudActions.handleToggleStatus, isSuperAdmin]
   );
 
   // --- Define header content using the hook ---

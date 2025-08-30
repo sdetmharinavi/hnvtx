@@ -15,3 +15,4 @@ create trigger trigger_ofc_cables_updated_at before
 update on ofc_cables for each row execute function update_updated_at_column();
 create trigger trigger_ofc_connections_updated_at before
 update on ofc_connections for each row execute function update_updated_at_column();
+

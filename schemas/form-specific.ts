@@ -32,6 +32,7 @@ import {
 } from '@/schemas/system-specific';
 import { userProfileSchema } from '@/schemas/user';
 import { optionalDate } from '@/schemas/helpers';
+import { logicalFiberPathSchema, logicalPathSegmentSchema } from '@/schemas/advanced';
 
 // =================================================================
 // TYPE EXPORTS
@@ -127,3 +128,6 @@ export const ofcConnectionFormSchema = ofcConnectionSchema.omit({
   updated_at: true,
 });
 export type OfcConnectionFormData = z.infer<typeof ofcConnectionFormSchema>;
+
+export type LogicalFiberPath = z.infer<typeof logicalFiberPathSchema>;
+export type LogicalPathSegment = z.infer<typeof logicalPathSegmentSchema>;

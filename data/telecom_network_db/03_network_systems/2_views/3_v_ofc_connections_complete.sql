@@ -1,16 +1,10 @@
--- moved from 02_core_infrastructure to 03_network_systems to prevent circular dependencies
--- OFC Connections View (SECURITY INVOKER)
 drop view if exists v_ofc_connections_complete;
 create view v_ofc_connections_complete with (security_invoker = true) as
 select oc.*,
   ofc.route_name as ofc_route_name,
   ma.name as maintenance_area_name,
-  ofc.sn_id,
-  ofc.en_id,
-  ofc_type.name as ofc_type_name,
-  na.name as sn_name,
-  s.system_name as system_name,
-  nb.name as en_name,
+  ofc.sn_id, ofc.en_id, ofc_type.name as ofc_type_name,
+  na.name as sn_name, s.system_name as system_name, nb.name as en_name,
   count(*) OVER() AS total_count,
   sum(case when oc.status = true then 1 else 0 end) over() as active_count,
   sum(case when oc.status = false then 1 else 0 end) over() as inactive_count
