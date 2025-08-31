@@ -1,7 +1,12 @@
 {
     "cSpell.words": [
+      "gbps",
       "hoverable",
-      "refreshable"
+      "isdistinct",
+      "maan",
+      "pers",
+      "refreshable",
+      "VARCHAR"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative"

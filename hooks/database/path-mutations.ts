@@ -47,3 +47,61 @@ export function useReorderPathSegments() {
     onError: (err) => toast.error(`Failed to reorder path: ${err.message}`),
   });
 }
+
+// ... (keep existing hooks)
+
+/**
+ * Hook to call the RPC function for provisioning a fiber onto a path.
+ */
+export function useProvisionFiber() {
+  const queryClient = useQueryClient();
+  return useMutation({
+      mutationFn: async ({ pathId, fiberNo }: { pathId: string, fiberNo: number }) => {
+          const { error } = await supabase.rpc('provision_fiber_on_path', {
+              p_path_id: pathId,
+              p_fiber_no: fiberNo
+          });
+          if (error) throw error;
+      },
+      onSuccess: (_, { pathId }) => {
+          toast.success("Fiber provisioned successfully!");
+          // Refetch everything related to paths and connections to update the UI state
+          queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
+          queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] }); 
+          queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      },
+      onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
+  });
+}
+
+export function useProvisionRingPath() {
+  const queryClient = useQueryClient();
+  return useMutation({
+      mutationFn: async (variables: { 
+          systemId: string;
+          pathName: string;
+          workingFiber: number;
+          protectionFiber: number;
+          physicalPathId: string; 
+      }) => {
+          const { error } = await supabase.rpc('provision_ring_path', {
+              p_system_id: variables.systemId,
+              p_path_name: variables.pathName,
+              p_working_fiber_no: variables.workingFiber,
+              p_protection_fiber_no: variables.protectionFiber,
+              p_physical_path_id: variables.physicalPathId
+          });
+          if (error) throw error;
+      },
+      onSuccess: (_, variables) => {
+          toast.success("Ring path provisioned successfully!");
+          // Invalidate all related queries to refresh the UI state completely
+          queryClient.invalidateQueries({ queryKey: ['system-path', variables.physicalPathId] });
+          queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.physicalPathId] }); 
+          queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
+          queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+          queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
+      },
+      onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
+  });
+}

@@ -3,12 +3,18 @@ import z from "zod";
 export const logicalFiberPathSchema = z.object({
     id: z.uuid().optional(),
     path_name: z.string().min(1, "Path name is required."),
-    path_type_id: z.uuid().optional().nullable(),
+    
+    // This now matches the corrected SQL schema
+    path_type_id: z.uuid({ message: "Path type is required." }).nullable(),
+  
     source_system_id: z.uuid(),
     destination_system_id: z.uuid().optional().nullable(),
     source_port: z.string().optional().nullable(),
     destination_port: z.string().optional().nullable(),
-    operational_status: z.string().default('planning'),
+    
+    // CORRECTED: This should be operational_status_id, not a free text field.
+    operational_status_id: z.uuid({ message: "Operational status is required." }).nullable(),
+  
     total_distance_km: z.number().optional().nullable(),
     remark: z.string().optional().nullable(),
   });

@@ -1,0 +1,1 @@
+UPDATE auth.users SET role = 'viewer' WHERE id = '39109e64-540b-4d81-901d-d4453a07b7f3';

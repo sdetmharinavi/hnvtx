@@ -63,7 +63,7 @@ export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["
 
 // --- ADVANCED TYPES FOR HOOK OPTIONS ---
 
-export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
+export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
 
 export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
 

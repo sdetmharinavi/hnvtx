@@ -18,7 +18,9 @@ create table ofc_connections (
   route_loss_db DECIMAL(10, 3),
   
   -- Logical path information
-  logical_path_id UUID, -- IMPORTANT: Foreign key is added in module 04_advanced_ofc
+  logical_path_id UUID,
+  -- NEW: Define the fiber's role within the logical path
+  fiber_role TEXT CHECK (fiber_role IN ('working', 'protection')),
   path_segment_order INTEGER DEFAULT 1, -- Order in multi-segment paths
   source_port TEXT,
   destination_port TEXT,

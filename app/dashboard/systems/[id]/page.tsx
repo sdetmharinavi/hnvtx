@@ -7,12 +7,22 @@ import { PageSpinner } from "@/components/common/ui/LoadingSpinner";
 import { ErrorDisplay } from "@/components/common/ui/error/ErrorDisplay";
 import { SystemRingPath } from "@/components/systems/SystemRingPath";
 
+import { Row } from "@/hooks/database";
+
+type SystemWithNode = Row<'systems'> & {
+  ring_no: string | null;
+  node: {
+    id: string;
+    name: string;
+  } | null;
+};
+
 export default function SystemDetailsPage() {
   const params = useParams();
   const id = params.id as string;
   const supabase = createClient();
 
-  const { data: system, isLoading, isError, error, refetch } = useTableRecord(
+  const { data: system, isLoading, isError, error, refetch } = useTableRecord<'systems', SystemWithNode>(
     supabase,
     "systems",
     id,
@@ -36,7 +46,7 @@ export default function SystemDetailsPage() {
         {/* You can add other system detail cards here in the future */}
         
         {/* The new Ring Path Management Component */}
-        <SystemRingPath system={system} />
+        <SystemRingPath system={system as Row<'systems'> & { node: Row<'nodes'> | null }} />
       </main>
     </div>
   );

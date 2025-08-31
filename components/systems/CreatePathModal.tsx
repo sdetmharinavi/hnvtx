@@ -34,8 +34,10 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
     resolver: zodResolver(createPathFormSchema),
   });
 
-  const { data: pathTypes } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'PATH_TYPES' } });
+  const { data: fetchedPathTypes } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'OFC_PATH_TYPE'} });
+  const pathTypes = fetchedPathTypes?.filter(pt => pt.name !== "DEFAULT");
   const { data: systems } = useTableQuery(supabase, 'systems', { filters: { id: { operator: 'neq', value: system.id } } });
+console.log(pathTypes);
 
   const { mutate: createPath } = useTableInsert(supabase, 'logical_fiber_paths', {
     onSuccess: () => {

@@ -1,0 +1,12 @@
+CREATE ROLE admin;
+GRANT admin TO authenticator;
+CREATE ROLE cpan_admin;
+GRANT cpan_admin TO authenticator;
+CREATE ROLE maan_admin;
+GRANT maan_admin TO authenticator;
+CREATE ROLE sdh_admin;
+GRANT sdh_admin TO authenticator;
+CREATE ROLE vmux_admin;
+GRANT vmux_admin TO authenticator;
+CREATE ROLE viewer;
+GRANT viewer TO authenticator;

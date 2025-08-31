@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/common/ui/label/Label";
 import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiX, FiSearch } from "react-icons/fi";
@@ -29,6 +30,7 @@ interface SearchableSelectProps {
   required?: boolean;
   error?: boolean;
   sortOptions?: boolean;
+  label?: string;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -46,6 +48,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   required = false,
   error = false,
   sortOptions = true,
+  label = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -62,7 +65,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   // Memoized filtering and sorting logic (no changes needed here)
   const filteredOptions = useMemo(() => {
-    let processedOptions = [...options];
+    const processedOptions = [...options];
     if (sortOptions) {
       processedOptions.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
     }
@@ -233,6 +236,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div ref={triggerRef} className={`relative ${className}`}>
       {/* The trigger element remains in its original position */}
+      <Label>{label}</Label>
       <div
         className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`}
         onClick={toggleDropdown}

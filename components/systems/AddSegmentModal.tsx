@@ -3,6 +3,7 @@
 import { useAvailablePathSegments } from "@/hooks/database/path-queries";
 import { Modal } from "../common/ui/Modal";
 import { useState } from "react";
+
 import { Button } from "../common/ui/Button";
 import { useTableInsert } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
@@ -23,6 +24,8 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, sourceNodeId, 
   const supabase = createClient();
   
   const { data: availableCables, isLoading } = useAvailablePathSegments(sourceNodeId, currentSegments);
+
+  console.log(availableCables);
 
   const { mutate: addSegment, isPending } = useTableInsert(supabase, 'logical_path_segments', {
     onSuccess: () => {
@@ -62,9 +65,9 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, sourceNodeId, 
                 onChange={(e) => setSelectedCableId(e.target.value)}
             >
                 <option value="" disabled>Select a cable...</option>
-                {availableCables.map((cable: any) => (
+                {availableCables?.map((cable) => (
                     <option key={cable.id} value={cable.id}>
-                        {cable.route_name} ({cable.sn.name} → {cable.en.name})
+                        {cable.route_name} ({cable.sn?.name || 'N/A'} → {cable.en?.name || 'N/A'})
                     </option>
                 ))}
             </select>

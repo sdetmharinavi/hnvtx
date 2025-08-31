@@ -35,7 +35,7 @@ export interface ActionButton extends ButtonProps {
   hideOnMobile?: boolean;
   hideTextOnMobile?: boolean;
   priority?: 'high' | 'medium' | 'low'; // For mobile button ordering
-  isDropdown?: boolean; // New: indicates if this is a dropdown button
+  is_dropdown?: boolean; // New: indicates if this is a dropdown button
   dropdownOptions?: Array<{
     label: string;
     onClick: () => void;
@@ -194,7 +194,7 @@ export function PageHeader({
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center gap-2 flex-shrink-0 ml-4">
               {actions.map((action, index) =>
-                action.isDropdown ? (
+                action.is_dropdown ? (
                   <DropdownButton
                     key={`desktop-dropdown-${index}`}
                     {...action}
@@ -233,7 +233,7 @@ export function PageHeader({
             {/* Mobile/Tablet Action Buttons */}
             <div className="flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
               {actions.map((action, index) =>
-                action.isDropdown ? (
+                action.is_dropdown ? (
                   <DropdownButton
                     key={`mobile-dropdown-${index}`}
                     {...action}

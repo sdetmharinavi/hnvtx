@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.4"
   }
   auth: {
     Tables: {
@@ -545,18 +545,21 @@ export type Database = {
       sso_providers: {
         Row: {
           created_at: string | null
+          disabled: boolean | null
           id: string
           resource_id: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          disabled?: boolean | null
           id: string
           resource_id?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          disabled?: boolean | null
           id?: string
           resource_id?: string | null
           updated_at?: string | null
@@ -1046,11 +1049,9 @@ export type Database = {
           destination_port: string | null
           destination_system_id: string | null
           id: string
-          operational_status: string
-          operational_status_category: string
-          path_category: string
+          operational_status_id: string | null
           path_name: string | null
-          path_type: string
+          path_type_id: string | null
           remark: string | null
           service_type: string | null
           source_port: string | null
@@ -1067,11 +1068,9 @@ export type Database = {
           destination_port?: string | null
           destination_system_id?: string | null
           id?: string
-          operational_status?: string
-          operational_status_category?: string
-          path_category?: string
+          operational_status_id?: string | null
           path_name?: string | null
-          path_type?: string
+          path_type_id?: string | null
           remark?: string | null
           service_type?: string | null
           source_port?: string | null
@@ -1088,11 +1087,9 @@ export type Database = {
           destination_port?: string | null
           destination_system_id?: string | null
           id?: string
-          operational_status?: string
-          operational_status_category?: string
-          path_category?: string
+          operational_status_id?: string | null
           path_name?: string | null
-          path_type?: string
+          path_type_id?: string | null
           remark?: string | null
           service_type?: string | null
           source_port?: string | null
@@ -1132,107 +1129,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_operational_status"
-            columns: ["operational_status_category", "operational_status"]
+            foreignKeyName: "logical_fiber_paths_operational_status_id_fkey"
+            columns: ["operational_status_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
-            referencedColumns: ["category", "name"]
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_operational_status"
-            columns: ["operational_status_category", "operational_status"]
+            foreignKeyName: "logical_fiber_paths_operational_status_id_fkey"
+            columns: ["operational_status_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["category", "name"]
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_operational_status"
-            columns: ["operational_status_category", "operational_status"]
-            isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
-            referencedColumns: [
-              "maintenance_area_type_category",
-              "maintenance_area_type_name",
-            ]
-          },
-          {
-            foreignKeyName: "fk_operational_status"
-            columns: ["operational_status_category", "operational_status"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
-            referencedColumns: ["ring_type_category", "ring_type_name"]
-          },
-          {
-            foreignKeyName: "fk_operational_status"
-            columns: ["operational_status_category", "operational_status"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["system_category", "system_type_name"]
-          },
-          {
-            foreignKeyName: "fk_path_type"
-            columns: ["path_category", "path_type"]
+            foreignKeyName: "logical_fiber_paths_path_type_id_fkey"
+            columns: ["path_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
-            referencedColumns: ["category", "name"]
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_path_type"
-            columns: ["path_category", "path_type"]
+            foreignKeyName: "logical_fiber_paths_path_type_id_fkey"
+            columns: ["path_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["category", "name"]
-          },
-          {
-            foreignKeyName: "fk_path_type"
-            columns: ["path_category", "path_type"]
-            isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
-            referencedColumns: [
-              "maintenance_area_type_category",
-              "maintenance_area_type_name",
-            ]
-          },
-          {
-            foreignKeyName: "fk_path_type"
-            columns: ["path_category", "path_type"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
-            referencedColumns: ["ring_type_category", "ring_type_name"]
-          },
-          {
-            foreignKeyName: "fk_path_type"
-            columns: ["path_category", "path_type"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["system_category", "system_type_name"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
-            columns: ["destination_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
-            columns: ["destination_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -2697,34 +2618,6 @@ export type Database = {
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
-            columns: ["destination_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_destination_system_id_fkey"
-            columns: ["destination_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
         ]
       }
       v_lookup_types_with_count: {
@@ -3294,20 +3187,6 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_lfp_source_system"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_fiber_paths_source_system_id_fkey"
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"

@@ -35,42 +35,84 @@ export const createRpcQueryKey = (functionName: string, args?: Record<string, un
 
 export const createUniqueValuesKey = (tableName: string, column: string, filters?: Filters, orderBy?: OrderBy[]): QueryKey => ["unique", tableName, column, { filters, orderBy }];
 
+// export function applyFilters(query: any, filters: Filters): any {
+//   let modifiedQuery = query;
+//   Object.entries(filters).forEach(([key, value]) => {
+//     if (value === undefined || value === null) return;
+
+//     // Support raw OR conditions: pass a prebuilt PostgREST or() string
+//     if (key === "$or") {
+//       if (typeof value === "string" && typeof modifiedQuery.or === "function") {
+//         modifiedQuery = modifiedQuery.or(value);
+//       } else if (
+//         typeof value === "object" && !Array.isArray(value) && "operator" in value && (value as any).operator === "or"
+//       ) {
+//         const v = (value as any).value;
+//         if (typeof v === "string" && typeof modifiedQuery.or === "function") {
+//           modifiedQuery = modifiedQuery.or(v);
+//         } else {
+//           console.warn("$or filter value must be a string representing PostgREST conditions");
+//         }
+//       } else {
+//         console.warn("Unsupported $or filter format; expected string or { operator: 'or', value: string }");
+//       }
+//       return;
+//     }
+
+//     if (typeof value === "object" && !Array.isArray(value) && "operator" in value) {
+//       const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
+//       if (operator === "or" && typeof filterValue === "string" && typeof modifiedQuery.or === "function") {
+//         modifiedQuery = modifiedQuery.or(filterValue as string);
+//       } else if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
+//         modifiedQuery = modifiedQuery[operator](key, filterValue);
+//       } else {
+//         console.warn(`Unsupported or dynamic operator used: ${operator}`);
+//       }
+//     } else if (Array.isArray(value)) {
+//       modifiedQuery = modifiedQuery.in(key, value);
+//     } else {
+//       modifiedQuery = modifiedQuery.eq(key, value);
+//     }
+//   });
+//   return modifiedQuery;
+// }
+
 export function applyFilters(query: any, filters: Filters): any {
   let modifiedQuery = query;
   Object.entries(filters).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
 
-    // Support raw OR conditions: pass a prebuilt PostgREST or() string
     if (key === "$or") {
-      if (typeof value === "string" && typeof modifiedQuery.or === "function") {
+      if (typeof value === "string") {
         modifiedQuery = modifiedQuery.or(value);
-      } else if (
-        typeof value === "object" && !Array.isArray(value) && "operator" in value && (value as any).operator === "or"
-      ) {
-        const v = (value as any).value;
-        if (typeof v === "string" && typeof modifiedQuery.or === "function") {
-          modifiedQuery = modifiedQuery.or(v);
-        } else {
-          console.warn("$or filter value must be a string representing PostgREST conditions");
-        }
       } else {
-        console.warn("Unsupported $or filter format; expected string or { operator: 'or', value: string }");
+        console.warn("Unsupported $or filter format; expected a raw string.");
       }
       return;
     }
 
     if (typeof value === "object" && !Array.isArray(value) && "operator" in value) {
       const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
-      if (operator === "or" && typeof filterValue === "string" && typeof modifiedQuery.or === "function") {
-        modifiedQuery = modifiedQuery.or(filterValue as string);
-      } else if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
+      
+      // --- START OF THE FIX ---
+      // For operators like 'in' and 'not.in', the Supabase client expects the
+      // value to be a single string in the format '(item1,item2,...)'.
+      // We no longer need a complex switch statement.
+
+      if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
+        // This now works for operators like 'eq', 'gt', 'ilike', etc.
+        // AND it works for 'in' and 'not.in' because we pass the pre-formatted string directly.
         modifiedQuery = modifiedQuery[operator](key, filterValue);
       } else {
         console.warn(`Unsupported or dynamic operator used: ${operator}`);
       }
+      // --- END OF THE FIX ---
+
     } else if (Array.isArray(value)) {
+      // This handles cases where the filter value is already an array, which is also valid for .in()
       modifiedQuery = modifiedQuery.in(key, value);
     } else {
+      // Default to exact match
       modifiedQuery = modifiedQuery.eq(key, value);
     }
   });

@@ -1,5 +1,6 @@
 // src/components/common/Button/Button.tsx
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { FiChevronDown } from 'react-icons/fi';
 import { cn } from '@/utils/classNames';
 import { ButtonSpinner } from '../LoadingSpinner';
 
@@ -12,6 +13,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'full';
+  isDropdown?: boolean;
 }
 
 const variants = {
@@ -52,6 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       fullWidth = false,
       rounded = 'md',
       disabled,
+      isDropdown,
       children,
       className,
       ...props
@@ -101,10 +104,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           {loading && loadingText ? loadingText : children}
         </span>
 
-        {/* Right icon */}
-        {!loading && rightIcon && (
+        {/* Right icon or dropdown indicator */}
+        {!loading && (rightIcon || isDropdown) && (
           <span className="ml-2 flex items-center">
-            {rightIcon}
+            {rightIcon || <FiChevronDown className="h-4 w-4" />}
           </span>
         )}
       </button>

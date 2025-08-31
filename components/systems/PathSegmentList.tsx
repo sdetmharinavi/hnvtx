@@ -13,7 +13,7 @@ interface SortableItemProps {
 }
 
 function SortableSegmentItem({ segment, onDelete }: SortableItemProps) {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: segment.id });
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: segment.id || '' });
     const style = { transform: CSS.Transform.toString(transform), transition };
 
     return (
@@ -54,13 +54,13 @@ export function PathSegmentList({ segments, onDragEnd, onDelete }: ListProps) {
 
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={segments.map(s => s.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={segments.map(s => s.id || '')} strategy={verticalListSortingStrategy}>
                 <ol className="relative border-l border-gray-200 dark:border-gray-700 ml-4">
                     {segments.map(segment => (
                         <SortableSegmentItem
                             key={segment.id}
                             segment={segment}
-                            onDelete={() => onDelete(segment.id)}
+                            onDelete={() => onDelete(segment.id || '')}
                         />
                     ))}
                 </ol>

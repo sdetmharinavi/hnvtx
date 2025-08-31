@@ -20,25 +20,30 @@ CREATE TABLE fiber_joints (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Logical Fiber Paths Table
+-- 2. Logical Fiber Paths Table (This is the SOURCE OF TRUTH)
 CREATE TABLE logical_fiber_paths (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   path_name TEXT,
-  source_system_id UUID REFERENCES systems (id) ON DELETE SET NULL, -- Deferred, see constraints module
+  
+  -- NEW: Link a protection path back to its working path
+  working_path_id UUID REFERENCES logical_fiber_paths(id) ON DELETE SET NULL,
+  path_role TEXT NOT NULL DEFAULT 'working' CHECK (path_role IN ('working', 'protection')),
+  
+  -- CORRECTED: Use a single UUID to reference the lookup_types table.
+  path_type_id UUID REFERENCES lookup_types(id) ON DELETE SET NULL,
+  
+  source_system_id UUID, -- Foreign key is deferred to a later script
+  destination_system_id UUID, -- Foreign key is deferred
+  operational_status_id UUID REFERENCES lookup_types(id) ON DELETE SET NULL,
+  
+  -- ... (rest of the columns: source_port, total_distance_km, etc.)
   source_port TEXT,
-  destination_system_id UUID REFERENCES systems (id) ON DELETE SET NULL, -- Deferred
   destination_port TEXT,
   total_distance_km DECIMAL(10, 3),
   total_loss_db DECIMAL(10, 3),
-  path_category TEXT NOT NULL DEFAULT 'OFC_PATH_TYPES',
-  path_type TEXT NOT NULL DEFAULT 'Point-to-Point',
-  CONSTRAINT fk_path_type FOREIGN KEY (path_category, path_type) REFERENCES lookup_types(category, name),
   service_type TEXT,
   bandwidth_gbps INTEGER,
   wavelength_nm INTEGER,
-  operational_status_category TEXT NOT NULL DEFAULT 'OFC_PATH_STATUSES',
-  operational_status TEXT NOT NULL DEFAULT 'planned',
-  CONSTRAINT fk_operational_status FOREIGN KEY (operational_status_category, operational_status) REFERENCES lookup_types(category, name),
   commissioned_date DATE,
   remark TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
