@@ -76,6 +76,15 @@ export type OrderBy = {
   foreignTable?: string;
 };
 
+export // Updated OrderBy interface to support optional type hints
+interface EnhancedOrderBy {
+  column: string;
+  ascending?: boolean;
+  nullsFirst?: boolean;
+  foreignTable?: string;
+  dataType?: 'text' | 'numeric' | 'date' | 'timestamp' | 'boolean' | 'json';
+}
+
 export type DeduplicationOptions = {
   columns: string[];
   orderBy?: OrderBy[];

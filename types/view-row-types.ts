@@ -26,4 +26,24 @@ export type  SystemRowsWithCountWithRelations = Row<'v_systems_complete'> & {
         name: string;
     } | null;
 };
+
+export type OfcConnectionRowsWithCountWithRelations = Row<'v_ofc_connections_complete'> & {
+    connection_type_lookup?: {
+        category: string;
+        name: string;
+    } | null;
+    logical_fiber_path?: {
+        id: string;
+        path_name: string;
+    } | null;
+    system?: {
+        id: string;
+        system_name: string;
+    } | null;
+    ofc_cable?: {
+        id: string;
+        route_name: string;
+    } | null;
+};
+
     

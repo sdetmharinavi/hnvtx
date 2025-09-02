@@ -3,7 +3,7 @@ create table ofc_connections (
   id UUID primary key default gen_random_uuid(),
   ofc_id UUID references ofc_cables (id) not null,
   fiber_no_sn INTEGER NOT NULL, -- Physical fiber number in the cable
-  fiber_no_en INTEGER,
+  fiber_no_en INTEGER NOT NULL,
   
   -- Technical measurements
   otdr_distance_sn_km DECIMAL(10, 3),

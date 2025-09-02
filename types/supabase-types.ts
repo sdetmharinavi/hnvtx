@@ -274,6 +274,51 @@ export type Database = {
           },
         ]
       }
+      oauth_clients: {
+        Row: {
+          client_id: string
+          client_name: string | null
+          client_secret_hash: string
+          client_uri: string | null
+          created_at: string
+          deleted_at: string | null
+          grant_types: string
+          id: string
+          logo_uri: string | null
+          redirect_uris: string
+          registration_type: Database["auth"]["Enums"]["oauth_registration_type"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          client_name?: string | null
+          client_secret_hash: string
+          client_uri?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          grant_types: string
+          id: string
+          logo_uri?: string | null
+          redirect_uris: string
+          registration_type: Database["auth"]["Enums"]["oauth_registration_type"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          client_name?: string | null
+          client_secret_hash?: string
+          client_uri?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          grant_types?: string
+          id?: string
+          logo_uri?: string | null
+          redirect_uris?: string
+          registration_type?: Database["auth"]["Enums"]["oauth_registration_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       one_time_tokens: {
         Row: {
           created_at: string
@@ -707,6 +752,7 @@ export type Database = {
       code_challenge_method: "s256" | "plain"
       factor_status: "unverified" | "verified"
       factor_type: "totp" | "webauthn" | "phone"
+      oauth_registration_type: "dynamic" | "manual"
       one_time_token_type:
         | "confirmation_token"
         | "reauthentication_token"
@@ -1051,6 +1097,7 @@ export type Database = {
           id: string
           operational_status_id: string | null
           path_name: string | null
+          path_role: string
           path_type_id: string | null
           remark: string | null
           service_type: string | null
@@ -1060,6 +1107,7 @@ export type Database = {
           total_loss_db: number | null
           updated_at: string | null
           wavelength_nm: number | null
+          working_path_id: string | null
         }
         Insert: {
           bandwidth_gbps?: number | null
@@ -1070,6 +1118,7 @@ export type Database = {
           id?: string
           operational_status_id?: string | null
           path_name?: string | null
+          path_role?: string
           path_type_id?: string | null
           remark?: string | null
           service_type?: string | null
@@ -1079,6 +1128,7 @@ export type Database = {
           total_loss_db?: number | null
           updated_at?: string | null
           wavelength_nm?: number | null
+          working_path_id?: string | null
         }
         Update: {
           bandwidth_gbps?: number | null
@@ -1089,6 +1139,7 @@ export type Database = {
           id?: string
           operational_status_id?: string | null
           path_name?: string | null
+          path_role?: string
           path_type_id?: string | null
           remark?: string | null
           service_type?: string | null
@@ -1098,6 +1149,7 @@ export type Database = {
           total_loss_db?: number | null
           updated_at?: string | null
           wavelength_nm?: number | null
+          working_path_id?: string | null
         }
         Relationships: [
           {
@@ -1155,6 +1207,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_working_path_id_fkey"
+            columns: ["working_path_id"]
+            isOneToOne: false
+            referencedRelation: "logical_fiber_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_fiber_paths_working_path_id_fkey"
+            columns: ["working_path_id"]
+            isOneToOne: false
+            referencedRelation: "v_end_to_end_paths"
+            referencedColumns: ["path_id"]
           },
         ]
       }
@@ -1622,8 +1688,9 @@ export type Database = {
           destination_port: string | null
           en_dom: string | null
           en_power_dbm: number | null
-          fiber_no_en: number | null
+          fiber_no_en: number
           fiber_no_sn: number
+          fiber_role: string | null
           id: string
           logical_path_id: string | null
           ofc_id: string
@@ -1646,8 +1713,9 @@ export type Database = {
           destination_port?: string | null
           en_dom?: string | null
           en_power_dbm?: number | null
-          fiber_no_en?: number | null
+          fiber_no_en: number
           fiber_no_sn: number
+          fiber_role?: string | null
           id?: string
           logical_path_id?: string | null
           ofc_id: string
@@ -1670,8 +1738,9 @@ export type Database = {
           destination_port?: string | null
           en_dom?: string | null
           en_power_dbm?: number | null
-          fiber_no_en?: number | null
+          fiber_no_en?: number
           fiber_no_sn?: number
+          fiber_role?: string | null
           id?: string
           logical_path_id?: string | null
           ofc_id?: string
@@ -2864,6 +2933,7 @@ export type Database = {
           en_power_dbm: number | null
           fiber_no_en: number | null
           fiber_no_sn: number | null
+          fiber_role: string | null
           id: string | null
           inactive_count: number | null
           logical_path_id: string | null
@@ -3526,6 +3596,12 @@ export type Database = {
         Args: { sql_query: string }
         Returns: Json
       }
+      get_continuous_available_fibers: {
+        Args: { p_path_id: string }
+        Returns: {
+          fiber_no: number
+        }[]
+      }
       get_dashboard_overview: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -3762,25 +3838,36 @@ export type Database = {
         }
         Returns: {
           active_count: number
+          connection_category: string
+          connection_type: string
           created_at: string
+          destination_port: string
           en_dom: string
           en_id: string
           en_name: string
+          en_power_dbm: number
           fiber_no_en: number
           fiber_no_sn: number
+          fiber_role: string
           id: string
           inactive_count: number
+          logical_path_id: string
           maintenance_area_name: string
           ofc_id: string
           ofc_route_name: string
           ofc_type_name: string
           otdr_distance_en_km: number
           otdr_distance_sn_km: number
+          path_segment_order: number
           remark: string
+          route_loss_db: number
           sn_dom: string
           sn_id: string
           sn_name: string
+          sn_power_dbm: number
+          source_port: string
           status: boolean
+          system_id: string
           system_name: string
           total_count: number
           updated_at: string
@@ -3918,6 +4005,23 @@ export type Database = {
           vmux_vm_id: string
         }[]
       }
+      get_system_path_details: {
+        Args: { p_path_id: string }
+        Returns: {
+          created_at: string | null
+          end_node_id: string | null
+          end_node_name: string | null
+          id: string | null
+          logical_path_id: string | null
+          ofc_cable_id: string | null
+          path_name: string | null
+          path_order: number | null
+          route_name: string | null
+          source_system_id: string | null
+          start_node_id: string | null
+          start_node_name: string | null
+        }[]
+      }
       get_unique_values: {
         Args: {
           column_name: string
@@ -3944,6 +4048,19 @@ export type Database = {
           p_table_name?: string
         }
         Returns: undefined
+      }
+      provision_ring_path: {
+        Args: {
+          p_path_name: string
+          p_physical_path_id: string
+          p_protection_fiber_no: number
+          p_system_id: string
+          p_working_fiber_no: number
+        }
+        Returns: {
+          protection_path_id: string
+          working_path_id: string
+        }[]
       }
     }
     Enums: {
@@ -4079,6 +4196,7 @@ export const Constants = {
       code_challenge_method: ["s256", "plain"],
       factor_status: ["unverified", "verified"],
       factor_type: ["totp", "webauthn", "phone"],
+      oauth_registration_type: ["dynamic", "manual"],
       one_time_token_type: [
         "confirmation_token",
         "reauthentication_token",

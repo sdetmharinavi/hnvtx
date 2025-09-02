@@ -115,7 +115,7 @@ export const usePagedOfcConnectionsComplete =
   createPagedRpcHook<PagedOfcConnectionsCompleteResult>(
     'get_paged_ofc_connections_complete',
     'v_ofc_connections_complete',
-    'ofc_route_name'
+    'fiber_no_sn'
   );
 
 export const usePagedNodesComplete =

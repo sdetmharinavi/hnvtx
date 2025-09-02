@@ -5,14 +5,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { useOfcConnection } from '@/hooks/useOfcConnection';
-import {PageSpinner,
-} from '@/components/common/ui/LoadingSpinner';
+import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
+import { PageSpinner } from '@/components/common/ui/LoadingSpinner';
 import { DataTable } from '@/components/table';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { Row } from '@/hooks/database';
+import {
+  Row,
+  usePagedOfcConnectionsComplete,
+} from '@/hooks/database';
 import { Button } from '@/components/common/ui';
 import { OfcStats } from '@/components/ofc/OfcStats';
 import { DEFAULTS } from '@/config/constants';
@@ -21,6 +23,17 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from '@/hooks/useCrudManager';
+import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
+import { Json } from '@/types/supabase-types';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
+import { OfcConnection } from '@/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,33 +42,94 @@ export type OfcConnectionFilters = {
   ofc_owner_id: string;
 };
 
+// 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
+const useOfcConnectionsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+  const supabase = createClient();
+  const { id } = useParams();
+  const cableId = id as string;
+
+  const { data, isLoading, error, refetch } = usePagedOfcConnectionsComplete(
+    supabase,
+    {
+      filters: { ofc_id: cableId, ...(searchQuery ? { searchQuery } : {}) },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+    }
+  );
+
+  console.log('Data structure:', data ? Object.keys(data[0] || {}) : 'No data');
+
+  // Calculate counts from the full dataset
+  const totalCount = data?.[0]?.total_count || 0;
+  const activeCount = data?.[0]?.active_count || 0;
+  const inactiveCount = data?.[0]?.inactive_count || 0;
+
+  return {
+    data: data || [],
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
 export default function OfcCableDetailsPage() {
+  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  const {
+    data: cableConnectionsData,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isMutating,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters: crudFilters,
+    editModal,
+    // viewModal,
+    bulkActions,
+    deleteModal,
+    actions: crudActions,
+  } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({
+    tableName: 'ofc_connections',
+    dataQueryHook: useOfcConnectionsData,
+  });
+
   const router = useRouter();
   const params = useParams();
   const { id } = params;
   const supabase = createClient();
-  const [pagination, setPagination] = useState({
-    page: 1,
-    pageLimit: DEFAULTS.PAGE_SIZE,
-  });
   const [isBackClicked, setIsBackClicked] = useState(false);
-
-  const {
-    cable,
-    existingConnections,
-    isLoading,
-    ensureConnectionsExist,
-    totalCount,
-    activeCount,
-    inactiveCount,
-  } = useOfcConnection({
-    supabase,
-    cableId: id as string,
-    limit: pagination.pageLimit,
-    offset: (pagination.page - 1) * pagination.pageLimit,
-    orderBy: 'fiber_no_sn',
-    orderDir: 'asc',
-  });
+  const { existingConnections, ensureConnectionsExist, isLoadingOfc, cable } =
+    useCreateOfcConnection({
+      supabase,
+      cableId: id as string,
+      rawConnections: (cableConnectionsData || []).map((conn) => ({
+        ...conn,
+        id: conn.id ?? '',
+        ofc_id: conn.ofc_id ?? id ?? '',
+        connection_category: conn.connection_category ?? '',
+        connection_type: conn.connection_type ?? '',
+        fiber_no_en: conn.fiber_no_en ?? 0,
+        fiber_no_sn: conn.fiber_no_sn ?? 0,
+        en_power_dbm: conn.en_power_dbm ?? null,
+        sn_power_dbm: conn.sn_power_dbm ?? null,
+        created_at: conn.created_at ?? null,
+        updated_at: conn.updated_at ?? null,
+        destination_port: conn.destination_port ?? null,
+        en_dom: conn.en_dom ?? null,
+        sn_dom: conn.sn_dom ?? null,
+      })),
+      refetchOfcConnections: refetch,
+      isLoadingOfcConnections: isLoading,
+    });
 
   // Automatically ensure connections exist when component mounts
   useEffect(() => {
@@ -64,54 +138,26 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, ensureConnectionsExist]);
 
-  // Prepare data for DataTable: strip aggregate fields returned by RPC
-  const tableData = useMemo(() => {
-    const rows = existingConnections ?? [];
-    return rows.map(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ({ active_count, inactive_count, total_count, ...rest }) => rest
-    );
-  }, [existingConnections]);
-
-  console.log('tableData', tableData);
-
   // DataTable Configuration
-  const columns = OfcDetailsTableColumns(
-    tableData as Row<'v_ofc_connections_complete'>[]
+  const columns = OfcDetailsTableColumns(cableConnectionsData);
+  const orderedColumns = useOrderedColumns(
+    columns,
+    TABLE_COLUMN_KEYS.v_ofc_connections_complete
   );
-
-  const desiredOrder = [
-    'ofc_route_name',
-    'ofc_type_name',
-    'fiber_no_sn',
-    'otdr_distance_sn_km',
-    'sn_dom',
-    'sn_power_dbm',
-    'fiber_no_en',
-    'otdr_distance_en_km',
-    'en_dom',
-    'en_power_dbm',
-    'route_loss_db',
-    'status',
-    'remark',
-    'maintenance_area_name',
-  ];
-
-  const orderedColumns = useOrderedColumns(columns, desiredOrder);
 
   // Download Configuration
   // Convert filters to server format
 
   const tableExcelDownload = useTableExcelDownload(supabase, 'ofc_connections');
-  
+
   // Generate export columns without using useMemo to avoid conditional hook calls
-  const exportColumns = useDynamicColumnConfig('ofc_connections', {data: []});
-  
+  const exportColumns = useDynamicColumnConfig('ofc_connections', { data: [] });
+
   const handleExport = useCallback(() => {
     if (!cable?.id) return;
-    
+
     const tableName = 'ofc_connections';
-    
+
     const tableOptions = {
       fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${String(
         tableName + '-' + (cable?.route_name || '')
@@ -132,7 +178,7 @@ export default function OfcCableDetailsPage() {
         },
       },
     };
-    
+
     tableExcelDownload.mutate(tableOptions);
   }, [cable?.id, cable?.route_name, tableExcelDownload, exportColumns]);
 
@@ -143,14 +189,32 @@ export default function OfcCableDetailsPage() {
     router.back();
   };
 
+  const {data:isSuperAdmin} = useIsSuperAdmin();
+  const tableActions = useMemo(
+      () =>
+        createStandardActions({
+          onEdit: editModal.openEdit,
+          onView: (record) => {},
+          onDelete: crudActions.handleDelete,
+          onToggleStatus: crudActions.handleToggleStatus,
+          canDelete: () => isSuperAdmin === true,
+        }),
+      [crudActions, editModal.openEdit, router, isSuperAdmin]
+    );
+
   if (loading) {
     return <PageSpinner />;
   }
 
   if (!cable) {
-    return <CableNotFound id={id as string} handleBackToOfcList={handleBackToOfcList} isBackClicked={isBackClicked} />
+    return (
+      <CableNotFound
+        id={id as string}
+        handleBackToOfcList={handleBackToOfcList}
+        isBackClicked={isBackClicked}
+      />
+    );
   }
-
 
   return (
     <div className="mx-auto space-y-6 p-4 md:p-6">
@@ -165,9 +229,7 @@ export default function OfcCableDetailsPage() {
               : 'No Entry in Transnet'
           }`}</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">{`${
-            cable?.asset_no
-              ? ''
-              : 'No Asset no. available'
+            cable?.asset_no ? '' : 'No Asset no. available'
           }`}</p>
         </div>
         <div>
@@ -187,26 +249,31 @@ export default function OfcCableDetailsPage() {
         active={activeCount}
         inactive={inactiveCount}
       />
-      <OfcDetailsHeader cable={cable as unknown as Row<'v_ofc_cables_complete'>} />
+      <OfcDetailsHeader
+        cable={cable as unknown as Row<'v_ofc_cables_complete'>}
+      />
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <DataTable<'v_ofc_connections_complete'>
           tableName="v_ofc_connections_complete"
-          data={tableData as Row<'v_ofc_connections_complete'>[]}
+          data={cableConnectionsData}
           columns={
             orderedColumns as Column<Row<'v_ofc_connections_complete'>>[]
           }
           loading={isLoading}
+          actions={tableActions}
           selectable={true}
           searchable={true}
           filterable={false}
           pagination={{
-            current: pagination.page,
+            current: pagination.currentPage,
             pageSize: pagination.pageLimit,
             total: totalCount,
             showSizeChanger: true,
-            pageSizeOptions: DEFAULTS.PAGE_SIZE_OPTIONS,
-            onChange: (page, pageLimit) => setPagination({ page, pageLimit }),
+            onChange: (page, limit) => {
+              pagination.setCurrentPage(page);
+              pagination.setPageLimit(limit);
+            },
           }}
         />
       </div>

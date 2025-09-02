@@ -7,6 +7,7 @@ import {
   import { SupabaseClient } from "@supabase/supabase-js";
   import { Database, Json } from "@/types/supabase-types";
   import { RpcFunctionName } from "./queries-type-helpers";
+import { DEFAULTS } from "@/config/constants";
   
   // --- START OF FIX ---
   
@@ -43,7 +44,7 @@ import {
       options: PagedRpcHookOptions<TResult>
     ): UseQueryResult<PagedRpcQueryResult<TResult>, Error> { // The hook's return type also includes `null`
       const {
-        limit = 10,
+        limit = DEFAULTS.PAGE_SIZE,
         offset = 0,
         orderBy = defaultOrderBy,
         orderDir = "asc",

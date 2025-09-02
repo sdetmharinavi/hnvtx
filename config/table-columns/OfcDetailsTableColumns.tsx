@@ -16,7 +16,7 @@ export const OfcDetailsTableColumns = (
       'sn_id',
       'en_id',
       'connection_category',
-      'connection_type',
+      // 'connection_type',
       'destination_port',
       'en_name',
       'logical_path_id',
@@ -25,6 +25,8 @@ export const OfcDetailsTableColumns = (
       'source_port',
       'system_id',
       'system_name',
+      'ofc_type_name',
+      'ofc_route_name',
     ],
     overrides: {
       fiber_no_sn: { 
@@ -32,20 +34,20 @@ export const OfcDetailsTableColumns = (
         sortable: true, 
         searchable: true,
         excelFormat: 'number',
-        render: (value) => {
-          if (value === null || value === undefined) return '';
-          return String(value);
-        }
+        // render: (value) => {
+        //   if (value === null || value === undefined) return '';
+        //   return String(value);
+        // }
       },
       fiber_no_en: { 
         title: 'End B Fiber', 
         sortable: true, 
         searchable: true,
         excelFormat: 'number',
-        render: (value) => {
-          if (value === null || value === undefined) return '';
-          return String(value);
-        }
+        // render: (value) => {
+        //   if (value === null || value === undefined) return '';
+        //   return String(value);
+        // }
       },
       otdr_distance_sn_km: {
         title: 'End A OTDR Distance (km)',

@@ -34572,7 +34572,7 @@ export interface ActionButton extends ButtonProps {
   hideTextOnMobile?: boolean;
   priority?: 'high' | 'medium' | 'low'; // For mobile button ordering
   isDropdown?: boolean; // New: indicates if this is a dropdown button
-  dropdownOptions?: Array<{
+  dropdownoptions?: Array<{
     label: string;
     onClick: () => void;
     disabled?: boolean;
@@ -34628,7 +34628,7 @@ const StatCard: React.FC<StatProps> = ({
 
 const DropdownButton: React.FC<ActionButton> = ({
   label,
-  dropdownOptions = [],
+  dropdownoptions = [],
   disabled,
   variant = 'outline',
   leftIcon,
@@ -34664,7 +34664,7 @@ const DropdownButton: React.FC<ActionButton> = ({
           />
           {/* Dropdown Menu */}
           <div className="absolute right-0 top-full z-20 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            {dropdownOptions.map((option, index) => (
+            {dropdownoptions.map((option, index) => (
               <button
                 key={index}
                 onClick={() => {
@@ -34896,7 +34896,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
       // Check if we have multiple filter options
       if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
         // Create dropdown with filter options
-        const dropdownOptions = [
+        const dropdownoptions = [
           {
             label: 'Export All (No Filters)',
             onClick: () =>
@@ -34920,7 +34920,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
           leftIcon: <FiDownload />,
           disabled: isLoading || tableExcelDownload.isPending,
           isDropdown: true,
-          dropdownOptions: dropdownOptions,
+          dropdownoptions: dropdownoptions,
         });
       } else {
         // Single export button (backward compatibility)

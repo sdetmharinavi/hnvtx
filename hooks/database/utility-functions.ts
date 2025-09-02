@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from "@tanstack/react-query";
-import { AggregationOptions, DeduplicationOptions, FilterOperator, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
+import { AggregationOptions, DeduplicationOptions, EnhancedOrderBy, FilterOperator, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
 import { Json } from "@/types/supabase-types";
 
 // --- UTILITY FUNCTIONS ---
@@ -9,13 +9,23 @@ export const createQueryKey = (
   filters?: Filters,
   columns?: string,
   orderBy?: OrderBy[],
+  enhancedOrderBy?: EnhancedOrderBy[], // Fixed: renamed from EnhancedOrderBy to enhancedOrderBy
   deduplication?: DeduplicationOptions,
   aggregation?: AggregationOptions,
   limit?: number,
   offset?: number
 ): QueryKey => {
   const key: unknown[] = ["table", tableName];
-  const params: Record<string, unknown> = { filters, columns, orderBy, deduplication, aggregation, limit, offset };
+  const params: Record<string, unknown> = { 
+    filters, 
+    columns, 
+    orderBy, 
+    enhancedOrderBy, // Fixed: use correct parameter name
+    deduplication, 
+    aggregation, 
+    limit, 
+    offset 
+  };
   const cleanParams = Object.fromEntries(
     Object.entries(params).filter(([, value]) => value !== undefined && value !== null)
   );
@@ -33,49 +43,18 @@ export const createRpcQueryKey = (functionName: string, args?: Record<string, un
   return key;
 };
 
-export const createUniqueValuesKey = (tableName: string, column: string, filters?: Filters, orderBy?: OrderBy[]): QueryKey => ["unique", tableName, column, { filters, orderBy }];
-
-// export function applyFilters(query: any, filters: Filters): any {
-//   let modifiedQuery = query;
-//   Object.entries(filters).forEach(([key, value]) => {
-//     if (value === undefined || value === null) return;
-
-//     // Support raw OR conditions: pass a prebuilt PostgREST or() string
-//     if (key === "$or") {
-//       if (typeof value === "string" && typeof modifiedQuery.or === "function") {
-//         modifiedQuery = modifiedQuery.or(value);
-//       } else if (
-//         typeof value === "object" && !Array.isArray(value) && "operator" in value && (value as any).operator === "or"
-//       ) {
-//         const v = (value as any).value;
-//         if (typeof v === "string" && typeof modifiedQuery.or === "function") {
-//           modifiedQuery = modifiedQuery.or(v);
-//         } else {
-//           console.warn("$or filter value must be a string representing PostgREST conditions");
-//         }
-//       } else {
-//         console.warn("Unsupported $or filter format; expected string or { operator: 'or', value: string }");
-//       }
-//       return;
-//     }
-
-//     if (typeof value === "object" && !Array.isArray(value) && "operator" in value) {
-//       const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
-//       if (operator === "or" && typeof filterValue === "string" && typeof modifiedQuery.or === "function") {
-//         modifiedQuery = modifiedQuery.or(filterValue as string);
-//       } else if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
-//         modifiedQuery = modifiedQuery[operator](key, filterValue);
-//       } else {
-//         console.warn(`Unsupported or dynamic operator used: ${operator}`);
-//       }
-//     } else if (Array.isArray(value)) {
-//       modifiedQuery = modifiedQuery.in(key, value);
-//     } else {
-//       modifiedQuery = modifiedQuery.eq(key, value);
-//     }
-//   });
-//   return modifiedQuery;
-// }
+export const createUniqueValuesKey = (
+  tableName: string, 
+  column: string, 
+  filters?: Filters, 
+  orderBy?: OrderBy[], 
+  enhancedOrderBy?: EnhancedOrderBy[] // Fixed: added missing parameter and use correct naming
+): QueryKey => [
+  "unique", 
+  tableName, 
+  column, 
+  { filters, orderBy, enhancedOrderBy } // Fixed: include enhancedOrderBy in the key
+];
 
 export function applyFilters(query: any, filters: Filters): any {
   let modifiedQuery = query;
@@ -94,39 +73,95 @@ export function applyFilters(query: any, filters: Filters): any {
     if (typeof value === "object" && !Array.isArray(value) && "operator" in value) {
       const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
       
-      // --- START OF THE FIX ---
-      // For operators like 'in' and 'not.in', the Supabase client expects the
-      // value to be a single string in the format '(item1,item2,...)'.
-      // We no longer need a complex switch statement.
-
       if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
-        // This now works for operators like 'eq', 'gt', 'ilike', etc.
-        // AND it works for 'in' and 'not.in' because we pass the pre-formatted string directly.
         modifiedQuery = modifiedQuery[operator](key, filterValue);
       } else {
         console.warn(`Unsupported or dynamic operator used: ${operator}`);
       }
-      // --- END OF THE FIX ---
-
     } else if (Array.isArray(value)) {
-      // This handles cases where the filter value is already an array, which is also valid for .in()
       modifiedQuery = modifiedQuery.in(key, value);
     } else {
-      // Default to exact match
       modifiedQuery = modifiedQuery.eq(key, value);
     }
   });
   return modifiedQuery;
 }
 
+// Enhanced version with better type safety and validation
 export function applyOrdering(query: any, orderBy: OrderBy[]): any {
   let modifiedQuery = query;
+  
   orderBy.forEach(({ column, ascending = true, nullsFirst, foreignTable }) => {
+    // Validate column name to prevent injection
+    if (!column || typeof column !== 'string') {
+      console.warn(`Invalid column name: ${column}`);
+      return;
+    }
+    
+    // Build the column reference
     const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
+    
+    // Build options object
     const options: { ascending: boolean; nullsFirst?: boolean } = { ascending };
-    if (nullsFirst !== undefined) options.nullsFirst = nullsFirst;
-    modifiedQuery = modifiedQuery.order(orderColumn, options);
+    if (nullsFirst !== undefined) {
+      options.nullsFirst = nullsFirst;
+    }
+    
+    try {
+      modifiedQuery = modifiedQuery.order(orderColumn, options);
+    } catch (error) {
+      console.error(`Error applying order by ${orderColumn}:`, error);
+      // Continue with other orderings even if one fails
+    }
   });
+  
+  return modifiedQuery;
+}
+
+// Alternative version with more explicit type handling for EnhancedOrderBy
+export function applyEnhancedOrdering(query: any, orderBy: EnhancedOrderBy[]): any {
+  let modifiedQuery = query;
+  
+  orderBy.forEach(({ column, ascending = true, nullsFirst, foreignTable, dataType }) => {
+    // Validate column name to prevent injection
+    if (!column || typeof column !== 'string') {
+      console.warn(`Invalid column name: ${column}`);
+      return;
+    }
+    
+    const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
+    
+    const options: any = { ascending };
+    if (nullsFirst !== undefined) {
+      options.nullsFirst = nullsFirst;
+    }
+    
+    // Optional: Add type-specific handling
+    if (dataType) {
+      switch (dataType) {
+        case 'numeric':
+          // Supabase handles numeric sorting automatically
+          break;
+        case 'text':
+          // For case-insensitive text sorting, you'd need custom SQL
+          // This is handled at the PostgreSQL level
+          break;
+        case 'date':
+        case 'timestamp':
+          // Date sorting is handled well by default
+          break;
+        default:
+          break;
+      }
+    }
+    
+    try {
+      modifiedQuery = modifiedQuery.order(orderColumn, options);
+    } catch (error) {
+      console.error(`Error applying enhanced order by ${orderColumn}:`, error);
+    }
+  });
+  
   return modifiedQuery;
 }
 
@@ -148,9 +183,8 @@ export function buildDeduplicationQuery(tableName: string, deduplication: Dedupl
   let whereClause = '';
   if (filters && Object.keys(filters).length > 0) {
     const conditions = Object.entries(filters)
-      .filter(([, value]) => value !== undefined && value !== null) // FIX: Ensure value is not null
+      .filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => {
-        // FIX: Added check for null on value before accessing properties
         if (value && typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
           const filterValue = typeof value.value === 'string' ? `'${value.value.toString().replace(/'/g, "''")}'` : value.value;
           return `${key} = ${filterValue}`;

@@ -35,6 +35,7 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
@@ -203,20 +204,7 @@ const OfcPage = () => {
   // --- MEMOIZED VALUES ---
   const columns = OfcTableColumns(ofcData);
 
-  const desiredOrder = [
-    'route_name',
-    'capacity',
-    'ofc_type_code',
-    'transnet_id',
-    'transnet_rkm',
-    'current_rkm',
-    'ofc_owner_code',
-    'asset_no',
-    'maintenance_area_code',
-    'commissioned_on',
-    'remark',
-  ];
-  const orderedColumns = useOrderedColumns(columns, desiredOrder);
+  const orderedColumns = useOrderedColumns(columns, TABLE_COLUMN_KEYS.ofc_cables);
 
   const tableActions = useMemo(
     () =>

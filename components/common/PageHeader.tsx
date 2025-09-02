@@ -30,13 +30,13 @@ interface ExportConfig<T extends TableOrViewName> {
   fileName?: string;
 }
 
-export interface ActionButton extends ButtonProps {
+export interface ActionButton extends Omit<ButtonProps, 'is_dropdown'> {
   label: string;
   hideOnMobile?: boolean;
   hideTextOnMobile?: boolean;
   priority?: 'high' | 'medium' | 'low'; // For mobile button ordering
-  is_dropdown?: boolean; // New: indicates if this is a dropdown button
-  dropdownOptions?: Array<{
+  'data-dropdown'?: boolean; // Using data attribute instead of custom prop
+  dropdownoptions?: Array<{
     label: string;
     onClick: () => void;
     disabled?: boolean;
@@ -92,7 +92,7 @@ const StatCard: React.FC<StatProps> = ({
 
 const DropdownButton: React.FC<ActionButton> = ({
   label,
-  dropdownOptions = [],
+  dropdownoptions = [],
   disabled,
   variant = 'outline',
   leftIcon,
@@ -102,12 +102,15 @@ const DropdownButton: React.FC<ActionButton> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative" style={{ zIndex: 50 }}>
       <Button
         {...props}
         variant={variant}
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          console.log('Dropdown button clicked, isOpen:', !isOpen);
+          setIsOpen(!isOpen);
+        }}
         className={cn('flex items-center gap-2', className)}
         leftIcon={leftIcon}
         rightIcon={
@@ -122,13 +125,36 @@ const DropdownButton: React.FC<ActionButton> = ({
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
+          {/* <div
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => {
+              console.log('Backdrop clicked');
+              setIsOpen(false);
+            }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 40,
+              backgroundColor: 'rgba(0,0,0,0.2)'
+            }}
+          /> */}
           {/* Dropdown Menu */}
-          <div className="absolute right-0 top-full z-20 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            {dropdownOptions.map((option, index) => (
+          <div 
+            className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-md border-2 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: '100%',
+              zIndex: 50,
+              minWidth: '200px',
+              backgroundColor: 'white',
+              borderRadius: '0.375rem',
+              padding: '0.25rem 0',
+              marginTop: '0.25rem',
+              boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
+            }}
+          >
+            {dropdownoptions.map((option, index) => (
               <button
                 key={index}
                 onClick={() => {
@@ -194,12 +220,13 @@ export function PageHeader({
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center gap-2 flex-shrink-0 ml-4">
               {actions.map((action, index) =>
-                action.is_dropdown ? (
-                  <DropdownButton
-                    key={`desktop-dropdown-${index}`}
-                    {...action}
-                    disabled={action.disabled || isLoading}
-                  />
+                action['data-dropdown'] ? (
+                  <div key={`desktop-dropdown-${index}`} data-dropdown="true">
+                    <DropdownButton
+                      {...action}
+                      disabled={action.disabled || isLoading}
+                    />
+                  </div>
                 ) : (
                   <Button
                     key={`desktop-action-${index}`}
@@ -233,7 +260,7 @@ export function PageHeader({
             {/* Mobile/Tablet Action Buttons */}
             <div className="flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
               {actions.map((action, index) =>
-                action.is_dropdown ? (
+                action['data-dropdown'] ? (
                   <DropdownButton
                     key={`mobile-dropdown-${index}`}
                     {...action}
@@ -360,7 +387,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
       // Check if we have multiple filter options
       if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
         // Create dropdown with filter options
-        const dropdownOptions = [
+        const dropdownoptions = [
           {
             label: 'Export All (No Filters)',
             onClick: () =>
@@ -371,20 +398,22 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
               }),
             disabled: tableExcelDownload.isPending,
           },
-          ...exportConfig.filterOptions.map((option) => ({
+        ];
+        exportConfig.filterOptions.forEach((option) => {
+          dropdownoptions.push({
             label: `Export ${option.label}`,
             onClick: () => handleExport(option),
             disabled: tableExcelDownload.isPending,
-          })),
-        ];
+          });
+        });
 
         actions.push({
-          label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
+          label: 'Export',
           variant: 'outline',
           leftIcon: <FiDownload />,
-          disabled: isLoading || tableExcelDownload.isPending,
-          isDropdown: true,
-          dropdownOptions: dropdownOptions,
+          disabled: tableExcelDownload.isPending,
+          'data-dropdown': true,
+          dropdownoptions,
         });
       } else {
         // Single export button (backward compatibility)

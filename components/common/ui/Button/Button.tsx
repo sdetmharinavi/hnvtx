@@ -13,7 +13,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'full';
-  isDropdown?: boolean;
+  isdropdown?: boolean;
 }
 
 const variants = {
@@ -54,7 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       fullWidth = false,
       rounded = 'md',
       disabled,
-      isDropdown,
+      isdropdown,
       children,
       className,
       ...props
@@ -105,7 +105,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         </span>
 
         {/* Right icon or dropdown indicator */}
-        {!loading && (rightIcon || isDropdown) && (
+        {!loading && (rightIcon || isdropdown) && (
           <span className="ml-2 flex items-center">
             {rightIcon || <FiChevronDown className="h-4 w-4" />}
           </span>
