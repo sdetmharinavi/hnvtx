@@ -104,46 +104,39 @@ export const systemSchema = z.object({
 });
 
 export const ofcConnectionSchema = z.object({
-  // Primary key and foreign keys
   id: z.uuid().optional(),
-  ofc_id: z.uuid({ message: 'OFC Cable is required.' }),
+  ofc_id: z.uuid({ message: "OFC Cable is required." }),
   logical_path_id: z.uuid().optional().nullable(),
   system_id: z.uuid().optional().nullable(),
 
-  // Fiber connection details
-  fiber_no_sn: z.number().int({ message: 'Start Node Fiber No. is required.' }),
-  fiber_no_en: z.number().int().optional().nullable(),
+  fiber_role: z.string().optional().nullable(),
 
-  // Fields for logical path ordering and type
+  fiber_no_sn: z.number().int({ message: "Start Node Fiber No. is required." }),
+  fiber_no_en: z.number().int({ message: "End Node Fiber No. is required." }),
+
   path_segment_order: z.number().int().optional().nullable(),
-  connection_category: z.string({
-    message: 'Connection Category is required.',
-  }),
-  connection_type: z.string({ message: 'Connection Type is required.' }),
+  connection_category: z.string({ message: "Connection Category is required." }),
+  connection_type: z.string({ message: "Connection Type is required." }),
 
-  // Port names
   source_port: z.string().optional().nullable(),
   destination_port: z.string().optional().nullable(),
 
-  // Start Node (sn) side measurements
   sn_dom: optionalDate,
   otdr_distance_sn_km: emptyStringToNumber,
   sn_power_dbm: emptyStringToNumber,
 
-  // End Node (en) side measurements
   en_dom: optionalDate,
   otdr_distance_en_km: emptyStringToNumber,
   en_power_dbm: emptyStringToNumber,
 
-  // Overall measurements and status
   route_loss_db: emptyStringToNumber,
-  status: z.boolean().optional().nullable(), // Corrected to allow null
+  status: z.boolean().optional().nullable(),
   remark: z.string().optional().nullable(),
 
-  // Timestamps are usually handled by the database
   created_at: optionalDate,
   updated_at: optionalDate,
 });
+
 
 export const systemConnectionSchema = z.object({
   id: z.uuid().optional(),

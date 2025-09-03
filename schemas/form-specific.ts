@@ -31,7 +31,7 @@ import {
   vmuxSystemSchema,
 } from '@/schemas/system-specific';
 import { userProfileSchema } from '@/schemas/user';
-import { optionalDate } from '@/schemas/helpers';
+import { emptyStringToNumber, optionalDate } from '@/schemas/helpers';
 import { logicalFiberPathSchema, logicalPathSegmentSchema } from '@/schemas/advanced';
 
 // =================================================================
@@ -122,11 +122,21 @@ export const systemFormSchema = systemSchema
 export type SystemFormData = z.input<typeof systemFormSchema>; // What form expects (Date)
 export type SystemFormOutput = z.output<typeof systemFormSchema>; // What database gets (string)
 
-export const ofcConnectionFormSchema = ofcConnectionSchema.omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-});
+export const ofcConnectionFormSchema = ofcConnectionSchema
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    route_loss_db: z.union([z.number(), z.string()]).optional().nullable(),
+    sn_dom: optionalDate.optional().nullable(),
+    en_dom: optionalDate.optional().nullable(),
+    otdr_distance_sn_km: emptyStringToNumber.optional().nullable(),
+    sn_power_dbm: emptyStringToNumber.optional().nullable(),
+    otdr_distance_en_km: emptyStringToNumber.optional().nullable(),
+    en_power_dbm: emptyStringToNumber.optional().nullable(),
+  });
 export type OfcConnectionFormData = z.infer<typeof ofcConnectionFormSchema>;
 
 export type LogicalFiberPath = z.infer<typeof logicalFiberPathSchema>;

@@ -11,11 +11,8 @@ import { DataTable } from '@/components/table';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import {
-  Row,
-  usePagedOfcConnectionsComplete,
-} from '@/hooks/database';
-import { Button } from '@/components/common/ui';
+import { Row, usePagedOfcConnectionsComplete } from '@/hooks/database';
+import { Button, ConfirmModal } from '@/components/common/ui';
 import { OfcStats } from '@/components/ofc/OfcStats';
 import { DEFAULTS } from '@/config/constants';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -34,6 +31,7 @@ import { Json } from '@/types/supabase-types';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { OfcConnection } from '@/schemas';
+import { OfcConnectionsFormModal, OfcConnectionsRow } from '@/components/ofc-details/OfcConnectionsFormModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,29 +105,33 @@ export default function OfcCableDetailsPage() {
   const { id } = params;
   const supabase = createClient();
   const [isBackClicked, setIsBackClicked] = useState(false);
-  const { existingConnections, ensureConnectionsExist, isLoadingOfc, cable } =
-    useCreateOfcConnection({
-      supabase,
-      cableId: id as string,
-      rawConnections: (cableConnectionsData || []).map((conn) => ({
-        ...conn,
-        id: conn.id ?? '',
-        ofc_id: conn.ofc_id ?? id ?? '',
-        connection_category: conn.connection_category ?? '',
-        connection_type: conn.connection_type ?? '',
-        fiber_no_en: conn.fiber_no_en ?? 0,
-        fiber_no_sn: conn.fiber_no_sn ?? 0,
-        en_power_dbm: conn.en_power_dbm ?? null,
-        sn_power_dbm: conn.sn_power_dbm ?? null,
-        created_at: conn.created_at ?? null,
-        updated_at: conn.updated_at ?? null,
-        destination_port: conn.destination_port ?? null,
-        en_dom: conn.en_dom ?? null,
-        sn_dom: conn.sn_dom ?? null,
-      })),
-      refetchOfcConnections: refetch,
-      isLoadingOfcConnections: isLoading,
-    });
+  const { ensureConnectionsExist, cable } = useCreateOfcConnection({
+    supabase,
+    cableId: id as string,
+    rawConnections: (cableConnectionsData || []).map((conn) => ({
+      ...conn,
+      id: conn.id ?? '',
+      ofc_id:
+        typeof conn.ofc_id === 'string'
+          ? conn.ofc_id
+          : typeof conn.ofc_id === 'object'
+          ? JSON.stringify(conn.ofc_id) // or handle object differently
+          : '',
+      connection_category: conn.connection_category ?? '',
+      connection_type: conn.connection_type ?? '',
+      fiber_no_en: conn.fiber_no_en ?? 0,
+      fiber_no_sn: conn.fiber_no_sn ?? 0,
+      en_power_dbm: conn.en_power_dbm ?? null,
+      sn_power_dbm: conn.sn_power_dbm ?? null,
+      created_at: conn.created_at ?? null,
+      updated_at: conn.updated_at ?? null,
+      destination_port: conn.destination_port ?? null,
+      en_dom: conn.en_dom ?? null,
+      sn_dom: conn.sn_dom ?? null,
+    })),
+    refetchOfcConnections: refetch,
+    isLoadingOfcConnections: isLoading,
+  });
 
   // Automatically ensure connections exist when component mounts
   useEffect(() => {
@@ -189,18 +191,18 @@ export default function OfcCableDetailsPage() {
     router.back();
   };
 
-  const {data:isSuperAdmin} = useIsSuperAdmin();
+  const { data: isSuperAdmin } = useIsSuperAdmin();
   const tableActions = useMemo(
-      () =>
-        createStandardActions({
-          onEdit: editModal.openEdit,
-          onView: (record) => {},
-          onDelete: crudActions.handleDelete,
-          onToggleStatus: crudActions.handleToggleStatus,
-          canDelete: () => isSuperAdmin === true,
-        }),
-      [crudActions, editModal.openEdit, router, isSuperAdmin]
-    );
+    () =>
+      createStandardActions({
+        onEdit: editModal.openEdit,
+        onView: (record) => {},
+        onDelete: crudActions.handleDelete,
+        onToggleStatus: crudActions.handleToggleStatus,
+        canDelete: () => isSuperAdmin === true,
+      }),
+    [crudActions, editModal.openEdit, router, isSuperAdmin]
+  );
 
   if (loading) {
     return <PageSpinner />;
@@ -277,6 +279,23 @@ export default function OfcCableDetailsPage() {
           }}
         />
       </div>
+      <OfcConnectionsFormModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        editingOfcConnections={editModal.record as OfcConnectionsRow}
+      />
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        type="danger"
+        loading={deleteModal.loading}
+        confirmText="Delete"
+        cancelText="Cancel"
+        showIcon={true}
+      />
     </div>
   );
 }
