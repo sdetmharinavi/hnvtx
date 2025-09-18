@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 
+import { UserRole } from "@/types/user-roles";
+
 // ============= TABLE SCHEMAS =============
 
 export const authAudit_log_entriesRowSchema = z.object({
@@ -515,7 +517,7 @@ export const authSso_providersUpdateSchema = z.object({
 });
 
 export const authUsersRowSchema = z.object({
-  aud: z.string().nullable(),
+  aud: z.string().min(1).nullable(),
   banned_until: z.string().nullable(),
   confirmation_sent_at: z.iso.datetime().nullable(),
   confirmation_token: z.jwt().nullable(),
@@ -554,12 +556,12 @@ export const authUsersRowSchema = z.object({
   reauthentication_token: z.jwt().nullable(),
   recovery_sent_at: z.iso.datetime().nullable(),
   recovery_token: z.jwt().nullable(),
-  role: z.string().nullable(),
+  role: z.enum(UserRole).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const authUsersInsertSchema = z.object({
-  aud: z.string().nullable().optional(),
+  aud: z.string().min(1).nullable().optional(),
   banned_until: z.string().nullable().optional(),
   confirmation_sent_at: z.iso.datetime().nullable().optional(),
   confirmation_token: z.jwt().nullable().optional(),
@@ -598,12 +600,12 @@ export const authUsersInsertSchema = z.object({
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
   recovery_token: z.jwt().nullable().optional(),
-  role: z.string().nullable().optional(),
+  role: z.enum(UserRole).nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const authUsersUpdateSchema = z.object({
-  aud: z.string().nullable().optional(),
+  aud: z.string().min(1).nullable().optional(),
   banned_until: z.string().nullable().optional(),
   confirmation_sent_at: z.iso.datetime().nullable().optional(),
   confirmation_token: z.jwt().nullable().optional(),
@@ -642,7 +644,7 @@ export const authUsersUpdateSchema = z.object({
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
   recovery_token: z.jwt().nullable().optional(),
-  role: z.string().nullable().optional(),
+  role: z.enum(UserRole).nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1548,7 +1550,7 @@ export const user_profilesRowSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   preferences: z.any().nullable(),
-  role: z.string().nullable(),
+  role: z.enum(UserRole).nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1564,7 +1566,7 @@ export const user_profilesInsertSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   preferences: z.any().nullable().optional(),
-  role: z.string().nullable().optional(),
+  role: z.enum(UserRole).nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1580,7 +1582,7 @@ export const user_profilesUpdateSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   preferences: z.any().nullable().optional(),
-  role: z.string().nullable().optional(),
+  role: z.enum(UserRole).nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1960,7 +1962,7 @@ export const v_user_profiles_extendedRowSchema = z.object({
   preferences: z.any().nullable(),
   raw_app_meta_data: z.any().nullable(),
   raw_user_meta_data: z.any().nullable(),
-  role: z.string().nullable(),
+  role: z.enum(UserRole).nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
 });

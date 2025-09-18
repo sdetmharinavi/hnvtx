@@ -157,7 +157,8 @@ class TypeScriptToZodConverter {
   private typeToZodSchema(
     type: string,
     isNullable: boolean,
-    fieldName?: string
+    fieldName?: string,
+    tableName?: string
   ): string {
     // Handle literal types (enums)
     if (type.includes('"') && type.includes('|')) {
@@ -176,10 +177,10 @@ class TypeScriptToZodConverter {
     let zodType: string;
     switch (type) {
       case 'string':
-        zodType = this.getSmartStringValidation(fieldName || '');
+        zodType = this.getSmartStringValidation(fieldName || '', tableName);
         break;
       case 'number':
-        zodType = this.getSmartNumberValidation(fieldName || '');
+        zodType = this.getSmartNumberValidation(fieldName || '', tableName);
         break;
       case 'boolean':
         zodType = 'z.boolean()';
@@ -218,7 +219,7 @@ class TypeScriptToZodConverter {
     const customRule = this.config.customRules.find(
       (rule) =>
         rule.fieldName === fieldName &&
-        (!rule.tableName || rule.tableName === tableName)
+        this.matchesTableName(rule.tableName, tableName)
     );
     if (customRule) {
       return customRule.validation;
@@ -246,7 +247,7 @@ class TypeScriptToZodConverter {
     const customRule = this.config.customRules.find(
       (rule) =>
         rule.fieldName === fieldName &&
-        (!rule.tableName || rule.tableName === tableName)
+        this.matchesTableName(rule.tableName, tableName)
     );
     if (customRule) {
       return customRule.validation;
@@ -264,6 +265,23 @@ class TypeScriptToZodConverter {
 
     // Default number validation
     return 'z.number()';
+  }
+
+  private matchesTableName(
+    ruleTableName?: string,
+    actualTableName?: string
+  ): boolean {
+    if (!ruleTableName || !actualTableName) {
+      return !ruleTableName; // If no rule table name specified, it matches any table
+    }
+
+    // Convert both to lowercase for case-insensitive matching
+    const ruleLower = ruleTableName.toLowerCase();
+    const actualLower = actualTableName.toLowerCase();
+
+    // Check if the actual table name contains the rule table name
+    // This allows "user_profiles" to match with "user"
+    return actualLower.includes(ruleLower);
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {
@@ -291,6 +309,7 @@ class TypeScriptToZodConverter {
   generateZodSchemas(types: TypeInfo[]): string {
     let output = '// Auto-generated Zod schemas from flattened-types.ts\n\n';
     output += 'import { z } from "zod";\n\n';
+    output += 'import { UserRole } from "@/types/user-roles";\n\n';
 
     // Group types by category
     const tableTypes = types.filter(
@@ -299,9 +318,12 @@ class TypeScriptToZodConverter {
         t.name.endsWith('Insert') ||
         t.name.endsWith('Update')
     );
+    // const viewTypes = types.filter(
+    //   (t) =>
+    //     t.name.endsWith('Row') && !tableTypes.some((tt) => tt.name === t.name)
+    // );
     const viewTypes = types.filter(
-      (t) =>
-        t.name.endsWith('Row') && !tableTypes.some((tt) => tt.name === t.name)
+      (t) => t.name.includes('v_') // or whatever your view naming convention is
     );
     const enumTypes = types.filter(
       (t) =>
@@ -376,6 +398,9 @@ class TypeScriptToZodConverter {
       return '';
     }
 
+    // ✅ derive real table name from the type alias
+    const baseTableName = type.name.replace(/(Row|Insert|Update)$/, ''); // strip suffixes like "Row"
+
     const schemaName = `${type.name.charAt(0).toLowerCase()}${type.name.slice(
       1
     )}Schema`;
@@ -385,7 +410,8 @@ class TypeScriptToZodConverter {
       const zodType = this.typeToZodSchema(
         prop.type,
         prop.isNullable,
-        prop.name
+        prop.name,
+        baseTableName // pass table name
       );
       const finalType = prop.isOptional ? `${zodType}.optional()` : zodType;
       output += `  ${prop.name}: ${finalType},\n`;
@@ -419,6 +445,10 @@ async function main() {
 
     const zodSchemas = converter.generateZodSchemas(types);
     const outputPath = path.join(process.cwd(), 'schemas/zod-schemas.ts');
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
 
     fs.writeFileSync(outputPath, zodSchemas, 'utf-8');
 

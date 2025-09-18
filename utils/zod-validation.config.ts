@@ -19,7 +19,7 @@ export interface NumberValidationRule {
 
 export interface CustomValidationRule {
   fieldName: string; // Exact field name
-  tableName?: string; // Optional: specific table
+  tableName?: string; // Supports partial matching (e.g., "user" matches "user_profiles")
   validation: string;
   description?: string;
 }
@@ -150,15 +150,15 @@ export const defaultValidationConfig: ValidationConfig = {
   customRules: [
     {
       fieldName: 'aud',
-      tableName: 'users',
+      tableName: 'user', // Will match "user_profiles", "users", etc.
       validation: 'z.string().min(1)',
       description: 'Supabase auth audience field',
     },
     {
       fieldName: 'role',
-      tableName: 'users',
-      validation: 'z.string().min(1)',
-      description: 'User role field',
+      tableName: 'user', // Will match "user_profiles", "users", etc.
+      validation: 'z.enum(UserRole)',
+      description: 'User role field using native enum',
     },
   ],
 };
