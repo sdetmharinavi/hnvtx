@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { authUsersRowSchema } from '@/schemas/zod-schemas';
 import z from 'zod';
 
-const loginSchema = authUsersRowSchema.pick({
+export const loginSchema = authUsersRowSchema.pick({
   email: true,
   encrypted_password: true,
 });

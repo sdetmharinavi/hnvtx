@@ -1,29 +1,40 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
-import { Filters, useDeduplicated, useTableQuery } from "@/hooks/database";
-import { useDeleteManager } from "@/hooks/useDeleteManager";
-import { CategoriesTable } from "@/components/categories/CategoriesTable";
-import { CategorySearch } from "@/components/categories/CategorySearch";
-import { CategoryModal } from "@/components/categories/CategoryModal";
-import { ConfirmModal } from "@/components/common/ui/Modal";
-import { EmptyState } from "@/components/categories/EmptyState";
-import { LoadingState } from "@/components/categories/LoadingState";
-import { Categories, CategoryInfo, GroupedLookupsByCategory } from "@/components/categories/categories-types";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
-import { FiLayers, FiPlus, FiRefreshCw } from "react-icons/fi";
-import { useDelete } from "@/hooks/useDelete";
-import { formatCategoryName } from "@/components/categories/utils";
-import { ErrorDisplay } from "@/components/common/ui";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { createClient } from '@/utils/supabase/client';
+import { Filters, useDeduplicated, useTableQuery } from '@/hooks/database';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { CategoriesTable } from '@/components/categories/CategoriesTable';
+import { CategorySearch } from '@/components/categories/CategorySearch';
+import { CategoryModal } from '@/components/categories/CategoryModal';
+import { ConfirmModal } from '@/components/common/ui/Modal';
+import { EmptyState } from '@/components/categories/EmptyState';
+import { LoadingState } from '@/components/categories/LoadingState';
+import {
+  Categories,
+  CategoryInfo,
+  GroupedLookupsByCategory,
+} from '@/components/categories/categories-types';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/PageHeader';
+import { FiLayers } from 'react-icons/fi';
+import { useDelete } from '@/hooks/useDelete';
+import { formatCategoryName } from '@/components/categories/utils';
+import { ErrorDisplay } from '@/components/common/ui';
 
 export default function CategoriesPage() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryLookupCounts, setCategoryLookupCounts] = useState<Record<string, CategoryInfo>>({});
-  const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
+  const [categoryLookupCounts, setCategoryLookupCounts] = useState<
+    Record<string, CategoryInfo>
+  >({});
+  const [selectedDesignationId, setSelectedDesignationId] = useState<
+    string | null
+  >(null);
 
   const supabase = createClient();
 
@@ -32,9 +43,9 @@ export default function CategoriesPage() {
     isLoading: dedupLoading,
     error: dedupError,
     refetch: refetchCategories,
-  } = useDeduplicated(supabase, "lookup_types", {
-    columns: ["category"],
-    orderBy: [{ column: "created_at", ascending: true }],
+  } = useDeduplicated(supabase, 'lookup_types', {
+    columns: ['category'],
+    orderBy: [{ column: 'created_at', ascending: true }],
   });
 
   const {
@@ -42,7 +53,7 @@ export default function CategoriesPage() {
     isLoading: groupedLookupsByCategoryLoading,
     error: groupedLookupsByCategoryError,
     refetch: refetchGroupedLookupsByCategory,
-  } = useTableQuery(supabase, "lookup_types", {
+  } = useTableQuery(supabase, 'lookup_types', {
     select: (allLookups): GroupedLookupsByCategory => {
       if (!allLookups) return {};
       return allLookups.reduce((accumulator, currentLookup) => {
@@ -57,7 +68,7 @@ export default function CategoriesPage() {
   });
 
   const deleteManager = useDelete({
-    tableName: "lookup_types",
+    tableName: 'lookup_types',
     onSuccess: () => {
       if (selectedDesignationId === deleteManager.itemToDelete?.id) {
         setSelectedDesignationId(null);
@@ -66,16 +77,20 @@ export default function CategoriesPage() {
     },
   });
 
-  const isLoading = dedupLoading || groupedLookupsByCategoryLoading || deleteManager.isPending;
+  const isLoading =
+    dedupLoading || groupedLookupsByCategoryLoading || deleteManager.isPending;
 
   const refreshCategoryInfo = useCallback(() => {
     const counts: Record<string, CategoryInfo> = {};
     for (const category of categoriesDeduplicated) {
-      const categoryLookups = groupedLookupsByCategory?.[category.category] || [];
+      const categoryLookups =
+        groupedLookupsByCategory?.[category.category] || [];
       counts[category.category] = {
         name: category.category,
         lookupCount: categoryLookups.length,
-        hasSystemDefaults: categoryLookups.some((lookup) => lookup.is_system_default),
+        hasSystemDefaults: categoryLookups.some(
+          (lookup) => lookup.is_system_default
+        ),
       };
     }
     setCategoryLookupCounts(counts);
@@ -85,16 +100,24 @@ export default function CategoriesPage() {
     if (!isLoading) {
       refreshCategoryInfo();
     }
-  }, [categoriesDeduplicated, groupedLookupsByCategory, isLoading, refreshCategoryInfo]);
+  }, [
+    categoriesDeduplicated,
+    groupedLookupsByCategory,
+    isLoading,
+    refreshCategoryInfo,
+  ]);
 
   async function handleRefresh() {
     try {
-      await Promise.all([refetchCategories(), refetchGroupedLookupsByCategory()]);
+      await Promise.all([
+        refetchCategories(),
+        refetchGroupedLookupsByCategory(),
+      ]);
       if (!isModalOpen) {
-        toast.success("Data refreshed successfully");
+        toast.success('Data refreshed successfully');
       }
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      console.error('Error refreshing data:', error);
     }
   }
 
@@ -111,7 +134,7 @@ export default function CategoriesPage() {
   };
 
   const bulkDeleteManager = useDeleteManager({
-    tableName: "lookup_types",
+    tableName: 'lookup_types',
     onSuccess: () => {
       if (selectedDesignationId === deleteManager.itemToDelete?.id) {
         setSelectedDesignationId(null);
@@ -121,7 +144,7 @@ export default function CategoriesPage() {
   });
   const handleDeleteCategory = (categoryToDelete: string) => {
     bulkDeleteManager.deleteBulk({
-      column: "category",
+      column: 'category',
       value: categoryToDelete,
       displayName: categoryToDelete,
     });
@@ -139,7 +162,8 @@ export default function CategoriesPage() {
 
   const filteredCategories = (categoriesDeduplicated as Categories[])?.filter(
     (category) =>
-      (category.category && category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (category.category &&
+        category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
       formatCategoryName(category as Categories)
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
@@ -150,8 +174,8 @@ export default function CategoriesPage() {
     const f: Filters = {
       // Filter to download only categories with name not equal to "DEFAULT"
       name: {
-        operator: "eq",
-        value: "DEFAULT",
+        operator: 'eq',
+        value: 'DEFAULT',
       },
     };
     return f;
@@ -160,45 +184,65 @@ export default function CategoriesPage() {
     data: categoriesDeduplicated,
     onRefresh: async () => {
       await refetchCategories();
-      toast.success("Refreshed successfully!");
+      toast.success('Refreshed successfully!');
     },
     onAddNew: openCreateModal,
     isLoading: isLoading,
-    exportConfig: { tableName: "lookup_types", fileName: "Categories", filters: serverFilters },
+    exportConfig: {
+      tableName: 'lookup_types',
+      fileName: 'Categories',
+      filters: serverFilters,
+    },
   });
 
-  const activeCategories = categoriesDeduplicated.filter((category) => category.status);
-  const inactiveCategories = categoriesDeduplicated.filter((category) => !category.status);
+  const activeCategories = categoriesDeduplicated.filter(
+    (category) => category.status
+  );
+  const inactiveCategories = categoriesDeduplicated.filter(
+    (category) => !category.status
+  );
 
   const headerStats = [
-    { value: categoriesDeduplicated.length, label: "Total Categories" },
+    { value: categoriesDeduplicated.length, label: 'Total Categories' },
     {
       value: activeCategories.length,
-      label: "Active",
-      color: "success" as const,
+      label: 'Active',
+      color: 'success' as const,
     },
     {
       value: inactiveCategories.length,
-      label: "Inactive",
-      color: "danger" as const,
+      label: 'Inactive',
+      color: 'danger' as const,
     },
   ];
 
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[
-      {
-        label: "Retry",
-        onClick: refetchCategories,
-        variant: "primary",
-      },
-    ]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[
+          {
+            label: 'Retry',
+            onClick: refetchCategories,
+            variant: 'primary',
+          },
+        ]}
+      />
+    );
   }
 
   return (
-    <div className='space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100'>
-      <PageHeader title='Categories' description='Manage categories and their related information.' icon={<FiLayers />} stats={headerStats} actions={headerActions} isLoading={isLoading} />
+    <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
+      <PageHeader
+        title="Categories"
+        description="Manage categories and their related information."
+        icon={<FiLayers />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading}
+      />
 
       <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
@@ -216,29 +260,34 @@ export default function CategoriesPage() {
         />
       )}
 
-      {categoriesDeduplicated.length === 0 && !isLoading && !dedupError && <EmptyState onCreate={openCreateModal} />}
+      {categoriesDeduplicated.length === 0 && !isLoading && !dedupError && (
+        <EmptyState onCreate={openCreateModal} />
+      )}
 
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteManager.confirmationMessage}
-        confirmText='Delete'
-        cancelText='Cancel'
-        type='danger'
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
         showIcon
         closeOnBackdrop
         closeOnEscape
         loading={deleteManager.isPending}
-        size='md'
+        size="md"
       />
 
-      <CategoryModal isOpen={isModalOpen} onClose={handleModalClose} onCategoryCreated={handleCategoryCreated} editingCategory={editingCategory || ""} categories={categoriesDeduplicated} lookupsByCategory={groupedLookupsByCategory} />
+      <CategoryModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onCategoryCreated={handleCategoryCreated}
+        editingCategory={editingCategory || ''}
+        categories={categoriesDeduplicated}
+        lookupsByCategory={groupedLookupsByCategory}
+      />
     </div>
   );
 }
-
-
-
-
