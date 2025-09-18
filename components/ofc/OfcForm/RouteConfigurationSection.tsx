@@ -22,7 +22,14 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
   startingNodeOptions,
   endingNodeOptions,
   routeName,
-}) => (
+}) => {
+  console.log("startingNodeOptions",startingNodeOptions);
+  console.log("endingNodeOptions",endingNodeOptions);
+  console.log("control", control);
+  
+  
+  
+  return (
   <FormSection title="Route Configuration" icon={Zap} iconColor="text-blue-600">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <FormSearchableSelect
@@ -68,5 +75,6 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
     )}
   </FormSection>
 );
+}
 
 export default RouteConfigurationSection;

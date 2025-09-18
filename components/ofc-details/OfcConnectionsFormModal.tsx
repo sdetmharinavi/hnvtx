@@ -7,7 +7,6 @@ import { Database, TablesInsert } from "@/types/supabase-types";
 import {
   useTableInsert,
   useTableUpdate,
-  useTableQuery,
 } from "@/hooks/database";
 import { ofcConnectionFormSchema, type OfcConnectionFormData } from "@/schemas";
 import { useForm } from "react-hook-form";
@@ -15,12 +14,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import {
   FormInput,
-  FormSearchableSelect,
   FormTextarea,
   FormSwitch,
 } from "@/components/common/form/FormControls";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import z from "zod";
 
 export type OfcConnectionsRow = Database["public"]["Tables"]["ofc_connections"]["Row"];
 export type OfcConnectionsInsert = TablesInsert<"ofc_connections">;

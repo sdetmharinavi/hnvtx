@@ -6,9 +6,17 @@
       "isdistinct",
       "isdropdown",
       "maan",
+      "mbps",
+      "otdr",
       "pers",
+      "reauthentication",
       "refreshable",
-      "VARCHAR"
+      "supabase",
+      "totp",
+      "transnet",
+      "VARCHAR",
+      "vmux",
+      "webauthn"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative"

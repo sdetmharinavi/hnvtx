@@ -117,6 +117,8 @@ export function FormSearchableSelect<T extends FieldValues>({
   labelClassName,
   ...props
 }: FormSearchableSelectProps<T>) {
+  console.log("options",options);
+  
   return (
     <div className={className}>
       <Label htmlFor={name} required={props.required} className={labelClassName}>{label}</Label>

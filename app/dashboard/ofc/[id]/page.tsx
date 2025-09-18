@@ -14,7 +14,6 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, usePagedOfcConnectionsComplete } from '@/hooks/database';
 import { Button, ConfirmModal } from '@/components/common/ui';
 import { OfcStats } from '@/components/ofc/OfcStats';
-import { DEFAULTS } from '@/config/constants';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -27,11 +26,12 @@ import {
   useCrudManager,
 } from '@/hooks/useCrudManager';
 import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
-import { Json } from '@/types/supabase-types';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
-import { OfcConnection } from '@/schemas';
-import { OfcConnectionsFormModal, OfcConnectionsRow } from '@/components/ofc-details/OfcConnectionsFormModal';
+import {
+  OfcConnectionsFormModal,
+  OfcConnectionsRow,
+} from '@/components/ofc-details/OfcConnectionsFormModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +44,7 @@ export type OfcConnectionFilters = {
 const useOfcConnectionsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
+  const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
   const { id } = useParams();
   const cableId = id as string;
@@ -84,15 +84,15 @@ export default function OfcCableDetailsPage() {
     activeCount,
     inactiveCount,
     isLoading,
-    isMutating,
-    error,
+    // isMutating,
+    // error,
     refetch,
     pagination,
-    search,
-    filters: crudFilters,
+    // search,
+    // filters: crudFilters,
     editModal,
     // viewModal,
-    bulkActions,
+    // bulkActions,
     deleteModal,
     actions: crudActions,
   } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({

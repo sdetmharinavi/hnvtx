@@ -12,6 +12,9 @@
     "find-unused": "node data/scripts/find-unused-files.js",
     "supabase": "supabase",
     "gen:types": "supabase gen types typescript --project-id mnnttnrgafkymejqpjhw --schema public,auth > types/supabase-types.ts",
+    "gen:flattened": "tsx scripts/generate-flattened-types.ts",
+    "gen:zod": "tsx scripts/generate-zod-schemas.ts",
+    "gen:all": "npm run gen:types && npm run gen:flattened && npm run gen:zod",
     "push:all": "dotenv -e .env node data/scripts/push-sql.js",
     "push:folder": "dotenv -e .env node data/scripts/push-sql.js",
     "debug:script": "dotenv -e .env node data/scripts/debug-connection.js"
@@ -82,6 +85,7 @@
     "prism-react-renderer": "^2.4.1",
     "supabase": "^2.39.2",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5.9.2"
   }
