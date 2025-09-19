@@ -3,13 +3,15 @@
 import React, { useMemo, useState } from 'react';
 import { FiDownload, FiPlus } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
-import { useCrudPage } from '@/hooks/useCrudPage';
-import { TableInsert, usePagedEmployeesWithCount, useTableQuery } from '@/hooks/database';
+import {
+  TableInsert,
+  usePagedEmployeesWithCount,
+  useTableQuery,
+} from '@/hooks/database';
 import { DataTable } from '@/components/table/DataTable';
 import { Row } from '@/hooks/database';
 import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
-// import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
 import { getEmployeeTableActions } from '@/components/employee/EmployeeTableActions';
@@ -26,6 +28,7 @@ import {
   useCrudManager,
 } from '@/hooks/useCrudManager';
 import { EmployeeRowsWithCount } from '@/types/view-row-types';
+import { EmployeesRowSchema } from '@/schemas/zod-schemas';
 
 // 1. ADAPTER HOOK
 const useEmployeesData = (
@@ -40,7 +43,7 @@ const useEmployeesData = (
     {
       filters: {
         ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
+        ...(searchQuery ? { employee_name: searchQuery } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
@@ -92,7 +95,7 @@ const EmployeesPage = () => {
       if (data.employee_dob) data.employee_dob = new Date(data.employee_dob);
       if (data.employee_doj) data.employee_doj = new Date(data.employee_doj);
       return data as TableInsert<'employees'>;
-      }
+    },
   });
 
   const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(
@@ -141,7 +144,7 @@ const EmployeesPage = () => {
 
   // Download Configurations
   const exportColumns = useDynamicColumnConfig('employees', {
-    data: employeesData as Row<'employees'>[],
+    data: employeesData as EmployeesRowSchema[],
   });
   const tableExcelDownload = useTableExcelDownload(supabase, 'employees', {
     onSuccess: () => {
@@ -211,17 +214,21 @@ const EmployeesPage = () => {
 
       <DataTable
         tableName="employees"
-        data={employeesData as Row<'employees'>[]}
+        data={employeesData as EmployeesRowSchema[]}
         columns={columns}
         loading={isLoading}
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows) => {
           // Filter out any rows where id is null
-          const validRows = selectedRows.filter((row): row is EmployeeRowsWithCount & { 
-            id: string;
-            employee_name: string;  // Ensure employee_name is not null
-          } => row.id !== null && row.employee_name !== null);
+          const validRows = selectedRows.filter(
+            (
+              row
+            ): row is EmployeeRowsWithCount & {
+              id: string;
+              employee_name: string; // Ensure employee_name is not null
+            } => row.id !== null && row.employee_name !== null
+          );
           bulkActions.handleRowSelect(validRows);
         }}
         searchable={false} // Turn off internal search
@@ -259,8 +266,8 @@ const EmployeesPage = () => {
                 maintenance_terminal_id: value,
               }))
             }
-            designations={designations as Row<'employee_designations'>[]}
-            maintenanceAreas={maintenanceAreas as Row<'maintenance_areas'>[]}
+            designations={designations}
+            maintenanceAreas={maintenanceAreas}
           />
         }
       />
@@ -272,21 +279,9 @@ const EmployeesPage = () => {
         onSubmit={crudActions.handleSave}
         onCancel={editModal.close}
         isLoading={isLoading}
-        designations={designations as Row<'employee_designations'>[]}
-        maintenanceAreas={maintenanceAreas as Row<'maintenance_areas'>[]}
+        designations={designations}
+        maintenanceAreas={maintenanceAreas}
       />
-
-      {/* {viewingEmployeeId && (
-        <EmployeeDetailsModal
-          employeeId={viewingEmployeeId}
-          onClose={() => setViewingEmployeeId(null)}
-          onEdit={() => {
-            const emp = employeesData.find((e) => e.id === viewingEmployeeId);
-            if (emp) modal.openEditModal(emp);
-            setViewingEmployeeId(null);
-          }}
-        />
-      )} */}
       <EmployeeDetailsModal
         employee={employeesData.find((e) => e.id === viewingEmployeeId)}
         onClose={() => setViewingEmployeeId(null)}
@@ -294,13 +289,13 @@ const EmployeesPage = () => {
       />
 
       <ConfirmModal
-         isOpen={deleteModal.isOpen}
-         onConfirm={deleteModal.onConfirm}
-         onCancel={deleteModal.onCancel}
-         title="Confirm Deletion"
-         message={deleteModal.message}
-         loading={deleteModal.loading}
-         type="danger"
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type="danger"
       />
     </div>
   );

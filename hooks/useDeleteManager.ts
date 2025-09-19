@@ -159,8 +159,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     return 'Are you sure you want to delete? This cannot be undone.';
   }, [deleteConfig]);
 
-  console.log('Delete Config:', deleteConfig);
-  console.log('isConfirmModalOpen:', isConfirmModalOpen);
+  // console.log('Delete Config:', deleteConfig);
+  // console.log('isConfirmModalOpen:', isConfirmModalOpen);
   
   
 

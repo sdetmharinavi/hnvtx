@@ -1,28 +1,32 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { EmployeeFormData, employeeFormSchema } from "@/schemas";
-import { Tables } from "@/types/supabase-types";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { EmployeeWithRelations } from "./employee-types";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { EmployeeWithRelations } from './employee-types';
 import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
   FormTextarea,
-} from "@/components/common/form/FormControls";
-import { Modal } from "@/components/common/ui";
-import { FormCard } from "@/components/common/form";
-import { useEffect } from "react";
+} from '@/components/common/form/FormControls';
+import { Modal } from '@/components/common/ui';
+import { FormCard } from '@/components/common/form';
+import { useEffect } from 'react';
+import {
+  Employee_designationsRowSchema,
+  employeesInsertSchema,
+  EmployeesInsertSchema,
+  Maintenance_areasRowSchema,
+} from '@/schemas/zod-schemas';
 
 interface EmployeeFormProps {
   isOpen: boolean;
   onClose: () => void;
   employee?: EmployeeWithRelations | null;
-  onSubmit: (data: EmployeeFormData) => void;
+  onSubmit: (data: EmployeesInsertSchema) => void;
   onCancel: () => void;
   isLoading: boolean;
-  designations: Tables<"employee_designations">[];
-  maintenanceAreas: Tables<"maintenance_areas">[];
+  designations: Employee_designationsRowSchema[];
+  maintenanceAreas: Maintenance_areasRowSchema[];
 }
 
 const EmployeeForm = ({
@@ -39,53 +43,45 @@ const EmployeeForm = ({
     handleSubmit,
     register,
     formState: { errors },
-    reset
-  } = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeFormSchema),
+    reset,
+  } = useForm<EmployeesInsertSchema>({
+    resolver: zodResolver(employeesInsertSchema),
     defaultValues: {
-      employee_name: employee?.employee_name || "",
-      employee_pers_no: employee?.employee_pers_no || null,
-      employee_designation_id: employee?.employee_designation_id || null,
-      employee_contact: employee?.employee_contact || null,
-      employee_email: employee?.employee_email || "",
-      employee_dob: employee?.employee_dob
-        ? new Date(employee.employee_dob)
-        : null,
-      employee_doj: employee?.employee_doj
-        ? new Date(employee.employee_doj)
-        : null,
-      employee_addr: employee?.employee_addr || null,
-      maintenance_terminal_id: employee?.maintenance_terminal_id || null,
-      remark: employee?.remark || null,
+      employee_name: employee?.employee_name,
+      employee_pers_no: employee?.employee_pers_no,
+      employee_designation_id: employee?.employee_designation_id,
+      employee_contact: employee?.employee_contact,
+      employee_email: employee?.employee_email,
+      employee_dob: employee?.employee_dob,
+      employee_doj: employee?.employee_doj,
+      employee_addr: employee?.employee_addr,
+      maintenance_terminal_id: employee?.maintenance_terminal_id,
+      remark: employee?.remark,
     },
   });
 
   useEffect(() => {
     if (employee) {
-        const defaultValues = {
-          employee_name: employee?.employee_name || "",
-          employee_pers_no: employee?.employee_pers_no || null,
-          employee_designation_id: employee?.employee_designation_id || null,
-          employee_contact: employee?.employee_contact || null,
-          employee_email: employee?.employee_email || "",
-          employee_dob: employee?.employee_dob
-            ? new Date(employee.employee_dob)
-            : null,
-          employee_doj: employee?.employee_doj
-            ? new Date(employee.employee_doj)
-            : null,
-          employee_addr: employee?.employee_addr || null,
-          maintenance_terminal_id: employee?.maintenance_terminal_id || null,
-          remark: employee?.remark || null,
+      const defaultValues = {
+        employee_name: employee?.employee_name,
+        employee_pers_no: employee?.employee_pers_no,
+        employee_designation_id: employee?.employee_designation_id,
+        employee_contact: employee?.employee_contact,
+        employee_email: employee?.employee_email,
+        employee_dob: employee?.employee_dob,
+        employee_doj: employee?.employee_doj,
+        employee_addr: employee?.employee_addr,
+        maintenance_terminal_id: employee?.maintenance_terminal_id,
+        remark: employee?.remark,
       };
       reset(defaultValues);
     } else {
       reset({
-        employee_name: "",
+        employee_name: '',
         employee_pers_no: null,
         employee_designation_id: null,
         employee_contact: null,
-        employee_email: "",
+        employee_email: null,
         employee_dob: null,
         employee_doj: null,
         employee_addr: null,
@@ -102,14 +98,14 @@ const EmployeeForm = ({
 
   const maintenanceAreaOptions: Option[] = maintenanceAreas.map((area) => ({
     value: area.id,
-    label: `${area.name}${area.code ? ` (${area.code})` : ""}`,
+    label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
   }));
 
   const handleClose = () => {
     onClose();
   };
 
-  const onValidFormSubmit = (data: EmployeeFormData) => {
+  const onValidFormSubmit = (data: EmployeesInsertSchema) => {
     onSubmit(data);
   };
 
@@ -117,15 +113,15 @@ const EmployeeForm = ({
 
   return (
     <Modal
-          isOpen={isOpen}
-          onClose={handleClose}
-          title={""}
-          size="full"
-          visible={false}
-          className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
-        >
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={''}
+      size="full"
+      visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+    >
       <FormCard
-        title={employee ? "Edit Employee" : "Add New Employee"}
+        title={employee ? 'Edit Employee' : 'Add New Employee'}
         onSubmit={handleSubmit(onValidFormSubmit)}
         onCancel={handleClose}
         isLoading={loading}
@@ -183,7 +179,6 @@ const EmployeeForm = ({
               label="Date of Birth"
               control={control}
               error={errors.employee_dob}
-              required
               placeholder="Select date of birth"
             />
             <FormDateInput
@@ -191,7 +186,6 @@ const EmployeeForm = ({
               label="Date of Joining"
               control={control}
               error={errors.employee_doj}
-              required
               placeholder="Select date of joining"
             />
             <FormSearchableSelect
@@ -209,7 +203,7 @@ const EmployeeForm = ({
             name="employee_addr"
             label="Address"
             id="employee_addr"
-            register={register}
+            control={control}
             error={errors.employee_addr}
             rows={3}
             placeholder="Enter address"
@@ -219,7 +213,7 @@ const EmployeeForm = ({
             name="remark"
             label="Remarks"
             id="remark"
-            register={register}
+            control={control}
             error={errors.remark}
             rows={2}
             placeholder="Enter remarks"

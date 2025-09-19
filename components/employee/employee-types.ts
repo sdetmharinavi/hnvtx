@@ -1,15 +1,11 @@
 // app/dashboard/employees/types.ts
-import { Tables } from "@/types/supabase-types";
+import {
+  Employee_designationsInsertSchema,
+  EmployeesInsertSchema,
+  Maintenance_areasInsertSchema,
+} from '@/schemas/zod-schemas';
 
-export type EmployeeWithRelations = Tables<"employees"> & {
-  maintenance_areas: Tables<"maintenance_areas"> | null;
-  employee_designations: Tables<"employee_designations"> | null;
+export type EmployeeWithRelations = EmployeesInsertSchema & {
+  maintenance_areas: Maintenance_areasInsertSchema | null;
+  employee_designations: Employee_designationsInsertSchema | null;
 };
-
-// export type EmployeeFilters = {
-//   search: string;
-//   designation: string;
-//   status: "true" | "false" | "";
-//   maintenanceTerminal: string;
-// };
-

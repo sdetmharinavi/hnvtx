@@ -69,6 +69,11 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'ISO datetime string validation',
     },
     {
+      fieldPatterns: ['.*dob.*', '.*doj.*'],
+      validation: 'z.iso.date()',
+      description: 'ISO date string validation (e.g., YYYY-MM-DD)',
+    },
+    {
       fieldPatterns: ['token', 'jwt'],
       validation: 'z.jwt()',
       description: 'Token presence validation',
