@@ -2,13 +2,13 @@
 
 import { Button } from "@/components/common/ui/Button";
 import { FiEdit2, FiTrash2, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import { type LookupType } from "@/schemas";
 import { useMemo } from "react";
 import { SortDirection } from "@/hooks/useSorting";
+import { Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 
 interface LookupTypesTableProps {
-  lookups: LookupType[];
-  onEdit: (lookup: LookupType) => void;
+  lookups: Lookup_typesRowSchema[];
+  onEdit: (lookup: Lookup_typesRowSchema) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, currentStatus: boolean) => void;
   selectedCategory: string;

@@ -12,11 +12,6 @@ import { ConfirmModal } from '@/components/common/ui/Modal';
 import { EmptyState } from '@/components/categories/EmptyState';
 import { LoadingState } from '@/components/categories/LoadingState';
 import {
-  Categories,
-  CategoryInfo,
-  GroupedLookupsByCategory,
-} from '@/components/categories/categories-types';
-import {
   PageHeader,
   useStandardHeaderActions,
 } from '@/components/common/PageHeader';
@@ -24,6 +19,14 @@ import { FiLayers } from 'react-icons/fi';
 import { useDelete } from '@/hooks/useDelete';
 import { formatCategoryName } from '@/components/categories/utils';
 import { ErrorDisplay } from '@/components/common/ui';
+import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+
+type GroupedLookupsByCategory = Record<string, Lookup_typesRowSchema[]>;
+export interface CategoryInfo {
+  name: string;
+  lookupCount: number;
+  hasSystemDefaults: boolean;
+}
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,9 +35,9 @@ export default function CategoriesPage() {
   const [categoryLookupCounts, setCategoryLookupCounts] = useState<
     Record<string, CategoryInfo>
   >({});
-  const [selectedCategoryId, setSelectedCategoryId] = useState<
-    string | null
-  >(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null
+  );
 
   const supabase = createClient();
 
@@ -160,11 +163,13 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   };
 
-  const filteredCategories = (categoriesDeduplicated as Categories[])?.filter(
+  const filteredCategories = (
+    categoriesDeduplicated as Lookup_typesRowSchema[]
+  )?.filter(
     (category) =>
       (category.category &&
         category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      formatCategoryName(category as Categories)
+      formatCategoryName(category as Lookup_typesRowSchema)
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
   );
@@ -215,7 +220,11 @@ export default function CategoriesPage() {
       color: 'danger' as const,
     },
   ];
-console.log(`Rendering ConfirmModal with isOpen: ${JSON.stringify(bulkDeleteManager.isConfirmModalOpen)}`);
+  console.log(
+    `Rendering ConfirmModal with isOpen: ${JSON.stringify(
+      bulkDeleteManager.isConfirmModalOpen
+    )}`
+  );
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {
@@ -263,8 +272,6 @@ console.log(`Rendering ConfirmModal with isOpen: ${JSON.stringify(bulkDeleteMana
       {categoriesDeduplicated.length === 0 && !isLoading && !dedupError && (
         <EmptyState onCreate={openCreateModal} />
       )}
-
-
 
       <ConfirmModal
         isOpen={bulkDeleteManager.isConfirmModalOpen}

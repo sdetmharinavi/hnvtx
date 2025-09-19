@@ -4,8 +4,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { type LookupType, lookupTypeSchema } from "@/schemas";
-import { Database } from "@/types/supabase-types";
+import { lookup_typesInsertSchema, Lookup_typesInsertSchema, Lookup_typesRowSchema, Lookup_typesUpdateSchema } from "@/schemas/zod-schemas";
 import { snakeToTitleCase } from "@/utils/formatters";
 import { createClient } from "@/utils/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,20 +13,18 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 
-type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];
-
 interface LookupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLookupCreated?: (lookupData: LookupType) => void;
-  onLookupUpdated?: (lookupData: LookupType) => void;
-  editingLookup?: LookupType | null;
+  onLookupCreated?: (lookupData: Lookup_typesInsertSchema) => void;
+  onLookupUpdated?: (lookupData: Lookup_typesUpdateSchema) => void;
+  editingLookup?: Lookup_typesUpdateSchema | null;
   category?: string;
-  categories?: Categories[];
+  categories?: Lookup_typesRowSchema[];
 }
 
 // Add this function to extract unique categories
-const getUniqueCategories = (data?: Categories[]) => {
+const getUniqueCategories = (data?: Lookup_typesRowSchema[]) => {
   if (!data) return [];
 
   const categoriesSet = new Set<string>();
@@ -63,7 +60,7 @@ export function LookupModal({
   // console.log("uniqueCategories", uniqueCategories);
 
   // Create a form-specific schema
-  const lookupTypeFormSchema = lookupTypeSchema.pick({
+  const lookupTypeFormSchema = lookup_typesInsertSchema.pick({
     category: true,
     code: true,
     description: true,
@@ -132,8 +129,7 @@ export function LookupModal({
             },
             {
               onSuccess: (updatedData) => {
-                toast.success("Lookup type updated successfully");
-                onLookupUpdated?.(updatedData as unknown as LookupType);
+                onLookupUpdated?.(updatedData as Lookup_typesUpdateSchema);
                 onClose();
               },
               onError: (error) => {
@@ -146,8 +142,7 @@ export function LookupModal({
           // Create new lookup
           createLookup(submissionData, {
             onSuccess: (createdData) => {
-              toast.success("Lookup type created successfully");
-              onLookupCreated?.(createdData as unknown as LookupType);
+              onLookupCreated?.(createdData as unknown as Lookup_typesInsertSchema);
               onClose();
             },
             onError: (error) => {
@@ -190,8 +185,8 @@ export function LookupModal({
   const watchedName = watch("name");
   const watchedCode = watch("code");
 
-  console.log("category prop:", category);
-  console.log("editingLookup:", editingLookup);
+  // console.log("category prop:", category);
+  // console.log("editingLookup:", editingLookup);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>

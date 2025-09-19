@@ -1,5 +1,6 @@
 "use client";
 
+import { GroupedLookupsByCategory } from "@/components/categories/categories-types";
 import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
@@ -14,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 
-type GroupedLookupsByCategory = Record<string, Lookup_typesRowSchema[]>;
+
 
 interface CategoryModalProps {
   isOpen: boolean;

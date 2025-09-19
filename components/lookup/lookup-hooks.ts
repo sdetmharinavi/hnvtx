@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useDeduplicated, useTableDelete, useTableQuery, useToggleStatus } from "@/hooks/database";
-import { type LookupType } from "@/schemas";
+import { Lookup_typesUpdateSchema } from "@/schemas/zod-schemas";
 
 export function useLookupTypes(initialCategory = "") {
   const router = useRouter();
@@ -11,7 +11,7 @@ export function useLookupTypes(initialCategory = "") {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || searchParams.get("category") || "");
   const [isLookupModalOpen, setIsLookupModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [editingLookup, setEditingLookup] = useState<LookupType | null>(null);
+  const [editingLookup, setEditingLookup] = useState<Lookup_typesUpdateSchema | null>(null);
 
   const supabase = createClient();
 
@@ -82,7 +82,7 @@ export function useLookupTypes(initialCategory = "") {
     setIsLookupModalOpen(true);
   }, [hasSelectedCategory]);
 
-  const handleEdit = useCallback((lookup: LookupType) => {
+  const handleEdit = useCallback((lookup: Lookup_typesUpdateSchema) => {
     setEditingLookup(lookup);
     setIsLookupModalOpen(true);
   }, []);
