@@ -4,7 +4,7 @@ import {
   defaultFormatters, 
   type HeaderConfig, 
   type SectionConfig 
-} from '@/components/common/ui/Modal/DtailsModal';
+} from '@/components/common/ui/Modal/DetailsModal';
 import { 
   FiCpu,
   FiCalendar, 
@@ -16,15 +16,15 @@ import {
   FiInfo
 } from "react-icons/fi";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
-import { NodeRowsWithCount } from '@/types/view-row-types';
+import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 
 // Node details modal configuration
 export const nodeDetailsConfig = {
   header: {
-    title: (node: NodeRowsWithCount) => node.name || "Unnamed Node",
+    title: (node: V_nodes_completeRowSchema) => node.name || "Unnamed Node",
     avatar: {
       urlKey: '', // nodes probably don’t have avatars
-      fallbackText: (node: NodeRowsWithCount) => (node.name?.charAt(0)?.toUpperCase() || "?")
+      fallbackText: (node: V_nodes_completeRowSchema) => (node.name?.charAt(0)?.toUpperCase() || "?")
     },
     badges: [
       {
@@ -82,7 +82,7 @@ export const nodeDetailsConfig = {
   ] as SectionConfig[]
 };
 
-export const NodeDetailsModal = ({ node, onClose, isOpen }: { node: NodeRowsWithCount, onClose: () => void, isOpen: boolean }) => {
+export const NodeDetailsModal = ({ node, onClose, isOpen }: { node: V_nodes_completeRowSchema, onClose: () => void, isOpen: boolean }) => {
   return (
     <DetailsModal
       data={node}

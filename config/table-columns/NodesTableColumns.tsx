@@ -1,10 +1,9 @@
-import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { NodeRowsWithCount } from '@/types/view-row-types';
 import { StatusBadge } from '@/components/common/ui';
+import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 
-export const NodesTableColumns = (data: Row<'v_nodes_complete'>[]) => {
+export const NodesTableColumns = (data: V_nodes_completeRowSchema[]) => {
   return useDynamicColumnConfig('v_nodes_complete', {
     data: data,
     omit: [
@@ -32,7 +31,7 @@ export const NodesTableColumns = (data: Row<'v_nodes_complete'>[]) => {
       },
       maintenance_area_name: {
         title: 'Maintenance Area',
-        render: (_value: unknown, record: NodeRowsWithCount) => {
+        render: (_value: unknown, record: V_nodes_completeRowSchema) => {
           const rel = record.maintenance_area_name;
           return (
             <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />

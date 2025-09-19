@@ -1,34 +1,36 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useMemo } from "react";
-import { Modal } from "@/components/common/ui/Modal";
-import { createClient } from "@/utils/supabase/client";
-import { Database, TablesInsert } from "@/types/supabase-types";
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { Modal } from '@/components/common/ui/Modal';
+import { createClient } from '@/utils/supabase/client';
 import {
   useTableInsert,
   useTableUpdate,
   useTableQuery,
-} from "@/hooks/database";
-import { nodeFormSchema, type NodeFormData } from "@/schemas";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/form/FormCard";
+} from '@/hooks/database';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormCard } from '@/components/common/form/FormCard';
 import {
   FormInput,
   FormSearchableSelect,
+  FormSwitch,
   FormTextarea,
-} from "@/components/common/form/FormControls";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-
-export type NodeRow = Database["public"]["Tables"]["nodes"]["Row"];
-export type NodeInsert = TablesInsert<"nodes">;
+} from '@/components/common/form/FormControls';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import {
+  NodesInsertSchema,
+  nodesInsertSchema,
+  NodesRowSchema,
+  NodesUpdateSchema,
+} from '@/schemas/zod-schemas';
 
 interface NodeFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingNode?: NodeRow | null;
-  onCreated?: (node: NodeRow) => void;
-  onUpdated?: (node: NodeRow) => void;
+  editingNode?: NodesRowSchema | null;
+  onCreated?: (node: NodesRowSchema) => void;
+  onUpdated?: (node: NodesRowSchema) => void;
 }
 
 export function NodeFormModal({
@@ -45,12 +47,12 @@ export function NodeFormModal({
     reset,
     control,
   } = useForm({
-    resolver: zodResolver(nodeFormSchema),
+    resolver: zodResolver(nodesInsertSchema),
     defaultValues: {
-      name: "",
+      name: '',
       node_type_id: null,
-      latitude: 0.0,
-      longitude: 0.0,
+      latitude: null,
+      longitude: null,
       maintenance_terminal_id: null,
       remark: null,
       status: true,
@@ -60,52 +62,51 @@ export function NodeFormModal({
   const supabase = createClient();
   const { mutate: insertNode, isPending: creating } = useTableInsert(
     supabase,
-    "nodes"
+    'nodes'
   );
   const { mutate: updateNode, isPending: updating } = useTableUpdate(
     supabase,
-    "nodes"
+    'nodes'
   );
 
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
   // Fetch node types, rings, and maintenance areas
-  const { data: nodeTypes = [] } = useTableQuery(
+  const { data: nodeTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+    filters: {
+      category: { operator: 'eq', value: 'NODE_TYPES' },
+      name: { operator: 'neq', value: 'DEFAULT' },
+    },
+    orderBy: [{ column: 'name', ascending: true }],
+  });
+  const { data: maintenanceAreas = [] } = useTableQuery(
     supabase,
-    "lookup_types",
+    'maintenance_areas',
     {
-      filters: {
-        category: { operator: "eq", value: "NODE_TYPES" },
-        name: { operator: "neq", value: "DEFAULT" },
-      },
-      orderBy: [{ column: "name", ascending: true }],
+      filters: { status: { operator: 'eq', value: true } },
+      orderBy: [{ column: 'name', ascending: true }],
     }
   );
-  const { data: maintenanceAreas = [] } =
-    useTableQuery(supabase, "maintenance_areas", {
-      filters: { status: { operator: "eq", value: true } },
-      orderBy: [{ column: "name", ascending: true }],
-    });
 
   useEffect(() => {
     if (!isOpen) return;
     if (editingNode) {
       reset({
-        name: editingNode.name ?? "",
+        name: editingNode.name ?? '',
         node_type_id: editingNode.node_type_id ?? null,
-        latitude: editingNode.latitude ?? 0.0,
-        longitude: editingNode.longitude ?? 0.0,
+        latitude: editingNode.latitude,
+        longitude: editingNode.longitude,
         maintenance_terminal_id: editingNode.maintenance_terminal_id ?? null,
         remark:
-          typeof editingNode.remark === "string" ? editingNode.remark : null,
+          typeof editingNode.remark === 'string' ? editingNode.remark : null,
         status: editingNode.status ?? true,
       });
     } else {
       reset({
-        name: "",
+        name: '',
         node_type_id: null,
-        latitude: 0.0,
-        longitude: 0.0,
+        latitude: null,
+        longitude: null,
         maintenance_terminal_id: null,
         remark: null,
         status: true,
@@ -119,12 +120,15 @@ export function NodeFormModal({
   }, [creating, updating, onClose]);
 
   const onValidSubmit = useCallback(
-    (formData: NodeFormData) => {
+    (formData: NodesInsertSchema) => {
+      const cleanNumber = (val: unknown) =>
+        typeof val === 'number' && !Number.isNaN(val) ? val : null;
+
       const submitData = {
         name: formData.name.trim(),
         node_type_id: formData.node_type_id,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
+        latitude: cleanNumber(formData.latitude),
+        longitude: cleanNumber(formData.longitude),
         maintenance_terminal_id: formData.maintenance_terminal_id,
         remark: formData.remark,
         status: formData.status,
@@ -132,7 +136,10 @@ export function NodeFormModal({
 
       if (isEdit && editingNode) {
         updateNode(
-          { id: editingNode.id, data: submitData as Partial<NodeInsert> },
+          {
+            id: editingNode.id,
+            data: submitData as Partial<NodesUpdateSchema>,
+          },
           {
             onSuccess: (data: unknown) => {
               onUpdated?.(Array.isArray(data) ? data[0] : data);
@@ -141,7 +148,7 @@ export function NodeFormModal({
           }
         );
       } else {
-        insertNode(submitData as NodeInsert, {
+        insertNode(submitData as NodesInsertSchema, {
           onSuccess: (data: unknown) => {
             onCreated?.(Array.isArray(data) ? data[0] : data);
             onClose();
@@ -158,13 +165,13 @@ export function NodeFormModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={""}
+      title={''}
       size="full"
       visible={false}
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
     >
       <FormCard
-        title={isEdit ? "Edit Node" : "Add Node"}
+        title={isEdit ? 'Edit Node' : 'Add Node'}
         onSubmit={handleSubmit(onValidSubmit)}
         onCancel={handleClose}
         standalone
@@ -178,7 +185,6 @@ export function NodeFormModal({
           disabled={submitting}
           className="dark:bg-gray-900 dark:text-gray-100"
         />
-
 
         {/* Node Type */}
         <FormSearchableSelect
@@ -214,7 +220,6 @@ export function NodeFormModal({
           className="dark:bg-gray-900 dark:text-gray-100"
         />
 
-
         {/* Coordinates */}
         <FormInput
           name="latitude"
@@ -222,6 +227,7 @@ export function NodeFormModal({
           register={register}
           error={errors.latitude}
           disabled={submitting}
+          type="number"
           className="dark:bg-gray-900 dark:text-gray-100"
         />
 
@@ -231,9 +237,9 @@ export function NodeFormModal({
           register={register}
           error={errors.longitude}
           disabled={submitting}
+          type="number"
           className="dark:bg-gray-900 dark:text-gray-100"
         />
-
 
         {/* Remark */}
         <FormTextarea
@@ -246,12 +252,11 @@ export function NodeFormModal({
         />
 
         {/* Status */}
-        <FormInput
+        <FormSwitch
           name="status"
           label="Status"
-          register={register}
+          control={control}
           error={errors.status}
-          disabled={submitting}
           className="dark:bg-gray-900 dark:text-gray-100"
         />
       </FormCard>

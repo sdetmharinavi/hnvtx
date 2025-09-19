@@ -4,7 +4,7 @@ import {
     defaultFormatters, 
     type HeaderConfig, 
     type SectionConfig 
-  } from '@/components/common/ui/Modal/DtailsModal';
+  } from '@/components/common/ui/Modal/DetailsModal';
   import { 
     FiUser, 
     FiPhone, 

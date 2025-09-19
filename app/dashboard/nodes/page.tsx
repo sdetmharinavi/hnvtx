@@ -6,10 +6,7 @@ import { NodesFilters } from '@/components/nodes/NodesFilters';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import {
-  Row,
-  usePagedNodesComplete,
-} from '@/hooks/database';
+import { usePagedNodesComplete } from '@/hooks/database';
 import { FiCpu } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import {
@@ -25,8 +22,19 @@ import {
 import { toast } from 'sonner';
 import { NodeRowsWithCount } from '@/types/view-row-types';
 import { NodeDetailsModal } from '@/config/node-details-config';
-import { NodeRowsWithRelations } from '@/types/relational-row-types';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { NodesRowSchema } from '@/schemas/zod-schemas';
+
+ export type NodeRowsWithRelations = NodesRowSchema & {
+    maintenance_terminal?: {
+      id: string;
+      name: string;
+    } | null;
+    node_type?: {
+      id: string;
+      name: string;
+    } | null;
+  };
 
 // 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (
@@ -121,7 +129,7 @@ const NodesPage = () => {
     'total_count',
     'active_count',
     'inactive_count',
-  ]
+  ];
 
   const orderedColumns = useOrderedColumns(columns, desiredColumns);
 
@@ -137,7 +145,7 @@ const NodesPage = () => {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
-    data: nodes as Row<'nodes'>[],
+    data: nodes as NodesRowSchema[],
     onAddNew: () => {
       editModal.openAdd();
     },
