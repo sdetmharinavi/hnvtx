@@ -4,9 +4,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { lookupTypeSchema } from "@/schemas";
 import { Lookup_typesInsertSchema, lookup_typesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
-import { Database } from "@/types/supabase-types";
 import { snakeToTitleCase } from "@/utils/formatters";
 import { createClient } from "@/utils/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,8 +14,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 
-type CategoryFormData = Database["public"]["Tables"]["lookup_types"]["Insert"];
-type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];
 type GroupedLookupsByCategory = Record<string, Lookup_typesRowSchema[]>;
 
 interface CategoryModalProps {
