@@ -4,6 +4,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Card } from "@/components/common/ui/Card";
 import { formatCategoryName } from "@/components/categories/utils";
 import { Categories, CategoryInfo } from "./categories-types";
+import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
 
 interface CategoriesTableProps {
   categories: Categories[];
@@ -24,6 +25,8 @@ export function CategoriesTable({
   isDeleting,
   searchTerm,
 }: CategoriesTableProps) {
+
+  const {data: isSuperAdmin} = useIsSuperAdmin();
   return (
     <Card className="overflow-hidden dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">
@@ -109,7 +112,7 @@ export function CategoriesTable({
                           variant="outline"
                           onClick={() => onDelete(category.category)}
                           className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 dark:border-gray-600 dark:hover:bg-gray-700"
-                          disabled={isDeleting || categoryInfo?.hasSystemDefaults}
+                          disabled={!isSuperAdmin && (isDeleting || categoryInfo?.hasSystemDefaults)}
                           title={
                             isDeleting
                               ? "Deleting..."

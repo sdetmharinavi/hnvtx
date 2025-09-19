@@ -26,7 +26,6 @@ import {
   useCrudManager,
 } from '@/hooks/useCrudManager';
 import { EmployeeRowsWithCount } from '@/types/view-row-types';
-import { EmployeeRowsWithRelations } from '@/types/relational-row-types';
 
 // 1. ADAPTER HOOK
 const useEmployeesData = (

@@ -33,7 +33,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const supabase = createClient();
   const { mutate: deleteRowsById, isPending } = useTableDelete(supabase, tableName);
-
   
   
   // Single item deletion
@@ -62,6 +61,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     });
     setIsConfirmModalOpen(true);
   }, []);
+  
 
   const handleConfirm = useCallback(async () => {
     if (!deleteConfig) return;
@@ -158,6 +158,11 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
     return 'Are you sure you want to delete? This cannot be undone.';
   }, [deleteConfig]);
+
+  console.log('Delete Config:', deleteConfig);
+  console.log('isConfirmModalOpen:', isConfirmModalOpen);
+  
+  
 
   return {
     // Actions

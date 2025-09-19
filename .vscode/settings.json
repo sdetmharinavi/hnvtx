@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+      "dedup",
       "dropdownoptions",
       "gbps",
       "hoverable",
@@ -9,6 +10,7 @@
       "mbps",
       "otdr",
       "pers",
+      "postgrest",
       "reauthentication",
       "refreshable",
       "supabase",

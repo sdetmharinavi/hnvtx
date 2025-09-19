@@ -5,6 +5,7 @@ import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { lookupTypeSchema } from "@/schemas";
+import { Lookup_typesInsertSchema, lookup_typesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { Database } from "@/types/supabase-types";
 import { snakeToTitleCase } from "@/utils/formatters";
 import { createClient } from "@/utils/supabase/client";
@@ -17,16 +18,18 @@ import z from "zod";
 
 type CategoryFormData = Database["public"]["Tables"]["lookup_types"]["Insert"];
 type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];
-type GroupedLookupsByCategory = Record<string, Categories[]>;
+type GroupedLookupsByCategory = Record<string, Lookup_typesRowSchema[]>;
 
 interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCategoryCreated?: (categoryData: CategoryFormData) => void;
+  onCategoryCreated?: (categoryData: Lookup_typesInsertSchema) => void;
   editingCategory?: string;
-  categories?: Categories[];
+  categories?: Lookup_typesRowSchema[];
   lookupsByCategory?: GroupedLookupsByCategory;
 }
+
+
 
 export function CategoryModal({
   isOpen,
@@ -36,16 +39,17 @@ export function CategoryModal({
   categories,
   lookupsByCategory,
 }: CategoryModalProps) {
-  const categoryFormSchema = lookupTypeSchema.pick({
-    category: true,
-    code: true,
-    description: true,
-    name: true,
-    sort_order: true,
-    is_system_default: true,
-    status: true,
-  });
-  type CategoryForm = z.infer<typeof categoryFormSchema>;
+
+  const categoryFormSchema = lookup_typesRowSchema.pick({
+  category: true,
+  code: true,
+  description: true,
+  name: true,
+  sort_order: true,
+  is_system_default: true,
+  status: true,
+});
+type CategoryForm = z.infer<typeof categoryFormSchema>;
 
   const {
     register,

@@ -92,6 +92,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  
 
   // Handle modal opening/closing
   useEffect(() => {

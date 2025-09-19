@@ -32,7 +32,7 @@ export default function CategoriesPage() {
   const [categoryLookupCounts, setCategoryLookupCounts] = useState<
     Record<string, CategoryInfo>
   >({});
-  const [selectedDesignationId, setSelectedDesignationId] = useState<
+  const [selectedCategoryId, setSelectedCategoryId] = useState<
     string | null
   >(null);
 
@@ -70,8 +70,8 @@ export default function CategoriesPage() {
   const deleteManager = useDelete({
     tableName: 'lookup_types',
     onSuccess: () => {
-      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
-        setSelectedDesignationId(null);
+      if (selectedCategoryId === deleteManager.itemToDelete?.id) {
+        setSelectedCategoryId(null);
       }
       refetchCategories();
     },
@@ -136,8 +136,8 @@ export default function CategoriesPage() {
   const bulkDeleteManager = useDeleteManager({
     tableName: 'lookup_types',
     onSuccess: () => {
-      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
-        setSelectedDesignationId(null);
+      if (selectedCategoryId === deleteManager.itemToDelete?.id) {
+        setSelectedCategoryId(null);
       }
       refetchCategories();
     },
@@ -215,7 +215,7 @@ export default function CategoriesPage() {
       color: 'danger' as const,
     },
   ];
-
+console.log(`Rendering ConfirmModal with isOpen: ${JSON.stringify(bulkDeleteManager.isConfirmModalOpen)}`);
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {
@@ -264,19 +264,21 @@ export default function CategoriesPage() {
         <EmptyState onCreate={openCreateModal} />
       )}
 
+
+
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
+        isOpen={bulkDeleteManager.isConfirmModalOpen}
+        onConfirm={bulkDeleteManager.handleConfirm}
+        onCancel={bulkDeleteManager.handleCancel}
         title="Confirm Deletion"
-        message={deleteManager.confirmationMessage}
+        message={bulkDeleteManager.confirmationMessage}
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
         showIcon
         closeOnBackdrop
         closeOnEscape
-        loading={deleteManager.isPending}
+        loading={bulkDeleteManager.isPending}
         size="md"
       />
 
