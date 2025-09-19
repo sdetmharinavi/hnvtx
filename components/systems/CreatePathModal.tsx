@@ -56,7 +56,8 @@ console.log(pathTypes);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Logical Path">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New Logical Path" visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Path Name*</label>

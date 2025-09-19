@@ -51,7 +51,8 @@ export const ChangePasswordModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit} className="p-6">
         <div className="flex items-start justify-between">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">

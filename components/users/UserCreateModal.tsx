@@ -78,7 +78,8 @@ export function UserCreateModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New User" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New User" visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
         title="Create New User"
         onCancel={onClose}

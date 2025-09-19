@@ -189,7 +189,8 @@ export function LookupModal({
   // console.log("editingLookup:", editingLookup);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">

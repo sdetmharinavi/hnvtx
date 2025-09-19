@@ -147,7 +147,8 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
 
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="full" visible={false}
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit)}
         isLoading={isSubmitting}
