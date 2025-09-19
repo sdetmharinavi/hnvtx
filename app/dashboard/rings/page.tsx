@@ -22,13 +22,23 @@ import {
   DataQueryHookReturn,
   useCrudManager,
 } from "@/hooks/useCrudManager";
-import { RingRowsWithRelations } from "@/types/relational-row-types";
-import { RingTypeRowsWithCount } from "@/types/view-row-types";
+import { RingsRowSchema, V_rings_with_countRowSchema } from "@/schemas/zod-schemas";
+
+export type RingRowsWithRelations = RingsRowSchema & {
+  ring_type?: {
+    id: string;
+    code: string;
+  } | null;
+  maintenance_terminal?: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 // 1. ADAPTER HOOK: Makes `useRingsData` compatible with `useCrudManager`
 const useRingsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<RingTypeRowsWithCount> => {
+): DataQueryHookReturn<V_rings_with_countRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -87,7 +97,7 @@ const RingsPage = () => {
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"rings", RingTypeRowsWithCount>({
+  } = useCrudManager<"rings", V_rings_with_countRowSchema>({
     tableName: "rings",
     dataQueryHook: useRingsData,
   });
@@ -95,7 +105,7 @@ const RingsPage = () => {
   // 3. Extract ring types from the rings data
   const ringTypes = useMemo(() => {
     const uniqueRingTypes = new Map();
-    console.log("rings", rings);
+    // console.log("rings", rings);
     rings.forEach((ring) => {
       if (ring.ring_type_code) {
         uniqueRingTypes.set(ring.ring_type_id, {
@@ -134,7 +144,7 @@ const RingsPage = () => {
   // --- tableActions ---
   const tableActions = useMemo(
     () =>
-      createStandardActions<RingTypeRowsWithCount>({
+      createStandardActions<V_rings_with_countRowSchema>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -152,7 +162,7 @@ const RingsPage = () => {
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
-    data: rings as Row<"rings">[],
+    data: rings as RingsRowSchema[],
     onRefresh: async () => {
       await refetch();
       toast.success("Refreshed successfully!");

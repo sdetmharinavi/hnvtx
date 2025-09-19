@@ -4,9 +4,7 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
 import { createClient } from "@/utils/supabase/client";
-import { Database, TablesInsert } from "@/types/supabase-types";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { RingFormData, ringFormSchema } from "@/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
@@ -16,16 +14,15 @@ import {
   FormSwitch,
   FormTextarea,
 } from "@/components/common/form/FormControls";
+import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema, RingsUpdateSchema } from "@/schemas/zod-schemas";
 
-export type RingRow = Database["public"]["Tables"]["rings"]["Row"];
-export type RingInsert = TablesInsert<"rings">;
 
 interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingRing?: RingRow | null;
-  onCreated?: (ring: RingRow) => void;
-  onUpdated?: (ring: RingRow) => void;
+  editingRing?: RingsRowSchema | null;
+  onCreated?: (ring: RingsRowSchema) => void;
+  onUpdated?: (ring: RingsRowSchema) => void;
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
@@ -45,8 +42,8 @@ export function RingModal({
     formState: { errors, isSubmitting },
     reset,
     control,
-  } = useForm<RingFormData>({
-    resolver: zodResolver(ringFormSchema),
+  } = useForm<RingsInsertSchema>({
+    resolver: zodResolver(ringsInsertSchema),
     defaultValues: {
       name: "",
       description: null,
@@ -120,7 +117,7 @@ export function RingModal({
   }, [creating, updating, onClose]);
 
   const onValidSubmit = useCallback(
-    (formData: RingFormData) => {
+    (formData: RingsInsertSchema) => {
       const submitData = {
         name: formData.name.trim(),
         description: formData.description,
@@ -131,7 +128,7 @@ export function RingModal({
 
       if (isEdit && editingRing) {
         updateRing(
-          { id: editingRing.id, data: submitData as Partial<RingInsert> },
+          { id: editingRing.id, data: submitData as Partial<RingsUpdateSchema> },
           {
             onSuccess: (data: unknown) => {
               onUpdated?.(Array.isArray(data) ? data[0] : data);
@@ -140,7 +137,7 @@ export function RingModal({
           }
         );
       } else {
-        insertRing(submitData as RingInsert, {
+        insertRing(submitData as RingsInsertSchema, {
           onSuccess: (data: unknown) => {
             onCreated?.(Array.isArray(data) ? data[0] : data);
             onClose();
