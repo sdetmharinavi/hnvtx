@@ -34,7 +34,7 @@ export default function OnboardingPage() {
 
       {/* Centered Form */}
       <div className="flex flex-1 items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className="w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <OnboardingFormEnhanced />
         </div>
       </div>

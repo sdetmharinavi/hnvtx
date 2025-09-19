@@ -6,6 +6,8 @@ import { Database, Json } from "@/types/supabase-types";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { useGetMyUserDetails, useTableUpdate } from "@/hooks/database";
+import { useRouter } from "next/navigation";
+
 
 type ProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"];
 
@@ -60,6 +62,8 @@ export default function OnboardingFormEnhanced() {
   const [formData, setFormData] = useState<ProfileFormData>(createInitialFormData);
   const [localError, setLocalError] = useState<Error | null>(null);
   const [isUpdateSuccess, setIsUpdateSuccess] = useState(false);
+
+  const router = useRouter();
   
   
   const { data: profiles, isLoading: profileLoading, error: profileError } = useGetMyUserDetails(supabase);
@@ -233,7 +237,7 @@ export default function OnboardingFormEnhanced() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className='space-y-6'>
+    <form onSubmit={handleSubmit} className='space-y-6 w-full max-w-3xl mx-auto p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm'>
       {/* Status Messages */}
       {localError && (
         <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 flex justify-between items-start'>
@@ -470,6 +474,9 @@ export default function OnboardingFormEnhanced() {
       <div className='flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700'>
         <div className='text-sm text-gray-500 dark:text-gray-400'>{isDirty && <span className='text-orange-600 dark:text-orange-400'>● Unsaved changes</span>}</div>
         <div className='flex space-x-3'>
+          <button onClick={() => router.back()} className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
+            Close
+          </button>
           <button
             type='button'
             onClick={resetForm}
