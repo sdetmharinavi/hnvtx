@@ -48,9 +48,9 @@ export const useRouteGeneration = <T extends FieldValues>({
       staleTime: 30000, // 30 seconds cache
     });
 
-  console.log('Existing Routes:', existingRoutes);
-  console.log('Starting Node ID:', startingNodeId);
-  console.log('Ending Node ID:', endingNodeId);
+  // console.log('Existing Routes:', existingRoutes);
+  // console.log('Starting Node ID:', startingNodeId);
+  // console.log('Ending Node ID:', endingNodeId);
 
   const routeData = useMemo(() => {
     const routes = existingRoutes || [];
