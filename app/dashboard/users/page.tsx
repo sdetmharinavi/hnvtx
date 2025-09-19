@@ -1,27 +1,40 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo, useCallback } from "react";
-import { FiUsers } from "react-icons/fi";
-import { useAdminGetAllUsersExtended, useIsSuperAdmin, useAdminUserOperations } from "@/hooks/useAdminUsers";
-import { DataTable } from "@/components/table/DataTable";
-import { Row } from "@/hooks/database";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { UserFilters } from "@/components/users/UserFilters";
-import { BulkActions } from "@/components/users/BulkActions";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
-import { toast } from "sonner";
-import { createStandardActions } from "@/components/table/action-helpers";
-import UserProfileEditModal from "@/components/users/UserProfileEditModal";
-import { UserProfileFormData } from "@/schemas";
-import { UserProfileData } from "@/components/users/user-types";
-import { UserProfileColumns } from "@/config/table-columns/UsersTableColumns";
-import { UserDetailsModal } from "@/config/user-details-config";
-import { UserCreateModal } from "@/components/users/UserCreateModal";
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { DataTable } from '@/components/table/DataTable';
+import { BulkActions } from '@/components/users/BulkActions';
+import { UserProfileData } from '@/components/users/user-types';
+import { UserCreateModal } from '@/components/users/UserCreateModal';
+import { UserFilters } from '@/components/users/UserFilters';
+import UserProfileEditModal from '@/components/users/UserProfileEditModal';
+import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
+import { UserDetailsModal } from '@/config/user-details-config';
+import { Row } from '@/hooks/database';
+import {
+  useAdminGetAllUsersExtended,
+  useAdminUserOperations,
+  useIsSuperAdmin,
+} from '@/hooks/useAdminUsers';
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from '@/hooks/useCrudManager';
+import { UserProfileFormData } from '@/schemas';
+import { useCallback, useMemo, useState } from 'react';
+import { FiUsers } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
-const useUsersData = (params: DataQueryHookParams): DataQueryHookReturn<UserProfileData> => {
+const useUsersData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<UserProfileData> => {
   const { currentPage, pageLimit, searchQuery, filters } = params;
 
   const { data, isLoading, error, refetch } = useAdminGetAllUsersExtended({
@@ -48,7 +61,13 @@ const AdminUsersPage = () => {
   // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
   const { data: isSuperAdmin } = useIsSuperAdmin();
-  const { createUser, deleteUsers: bulkDelete, updateUserRoles: bulkUpdateRole, updateUserStatus: bulkUpdateStatus, isLoading: isOperationLoading } = useAdminUserOperations();
+  const {
+    createUser,
+    deleteUsers: bulkDelete,
+    updateUserRoles: bulkUpdateRole,
+    updateUserStatus: bulkUpdateStatus,
+    isLoading: isOperationLoading,
+  } = useAdminUserOperations();
 
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
@@ -66,10 +85,9 @@ const AdminUsersPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"user_profiles", UserProfileData>({
-    tableName: "user_profiles",
+  } = useCrudManager<'user_profiles', UserProfileData>({
+    tableName: 'user_profiles',
     dataQueryHook: useUsersData,
-    
   });
 
   const columns = UserProfileColumns(users);
@@ -91,13 +109,18 @@ const AdminUsersPage = () => {
   const handleCreateUser = async (userData: any) => {
     await createUser.mutateAsync({
       ...userData,
-      status: 'active' // Default status for new users
+      status: 'active', // Default status for new users
     });
   };
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`)) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`
+      )
+    )
+      return;
 
     await bulkDelete.mutateAsync({ user_ids: selectedRowIds });
     handleClearSelection();
@@ -128,28 +151,28 @@ const AdminUsersPage = () => {
   );
 
   // --- Define header content using the hook ---
-  const headerActions = useStandardHeaderActions<"user_profiles">({
-    data: users as Row<"user_profiles">[],
+  const headerActions = useStandardHeaderActions<'user_profiles'>({
+    data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
       await refetch();
-      toast.success("Refreshed successfully!");
+      toast.success('Refreshed successfully!');
     },
     onAddNew: () => setIsCreateModalOpen(true),
     isLoading: isLoading,
-    exportConfig: { tableName: "user_profiles" },
+    exportConfig: { tableName: 'user_profiles' },
   });
 
   const headerStats = [
-    { value: totalCount, label: "Total Users" },
+    { value: totalCount, label: 'Total Users' },
     {
       value: users.filter((r) => r.status).length,
-      label: "Active",
-      color: "success" as const,
+      label: 'Active',
+      color: 'success' as const,
     },
     {
       value: users.filter((r) => !r.status).length,
-      label: "Inactive",
-      color: "danger" as const,
+      label: 'Inactive',
+      color: 'danger' as const,
     },
   ];
 
@@ -159,9 +182,9 @@ const AdminUsersPage = () => {
         error={error.message}
         actions={[
           {
-            label: "Retry",
+            label: 'Retry',
             onClick: refetch,
-            variant: "primary",
+            variant: 'primary',
           },
         ]}
       />
@@ -169,10 +192,10 @@ const AdminUsersPage = () => {
   }
 
   return (
-    <div className='p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6'>
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <PageHeader
-        title='User Management'
-        description='Manage network users and their related information.'
+        title="User Management"
+        description="Manage network users and their related information."
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions} // <-- Pass the generated actions
@@ -188,15 +211,17 @@ const AdminUsersPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
       />
       <DataTable
-        tableName='v_user_profiles_extended'
-        data={users as unknown as Row<"v_user_profiles_extended">[]}
+        tableName="v_user_profiles_extended"
+        data={users as unknown as Row<'v_user_profiles_extended'>[]}
         columns={columns}
         loading={isLoading || isOperationLoading}
         actions={tableActions}
         selectable
         onRowSelect={(rows) => {
           // Filter out any rows where id is null
-          const validRows = rows.filter((row): row is UserProfileData & { id: string } => row.id !== null);
+          const validRows = rows.filter(
+            (row): row is UserProfileData & { id: string } => row.id !== null
+          );
           bulkActions.handleRowSelect(validRows);
         }}
         searchable={false}
@@ -215,17 +240,21 @@ const AdminUsersPage = () => {
           <UserFilters
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
-            roleFilter={(filters.filters.role as string) || ""}
-            onRoleFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, role: value }))}
-            statusFilter={(filters.filters.status as string) || ""}
-            onStatusFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, status: value }))}
-            emailVerificationFilter={""} // This filter is not implemented in the hook yet
+            roleFilter={(filters.filters.role as string) || ''}
+            onRoleFilterChange={(value) =>
+              filters.setFilters((prev) => ({ ...prev, role: value }))
+            }
+            statusFilter={(filters.filters.status as string) || ''}
+            onStatusFilterChange={(value) =>
+              filters.setFilters((prev) => ({ ...prev, status: value }))
+            }
+            emailVerificationFilter={''} // This filter is not implemented in the hook yet
             onEmailVerificationFilterChange={() => {}}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
             onClearFilters={() => {
-              search.setSearchQuery("");
-              filters.setFilters((prev) => ({ ...prev, role: "", status: "" }));
+              search.setSearchQuery('');
+              filters.setFilters((prev) => ({ ...prev, role: '', status: '' }));
             }}
           />
         }
@@ -239,21 +268,21 @@ const AdminUsersPage = () => {
         }}
       />
 
-      <UserDetailsModal 
-        isOpen={viewModal.isOpen} 
-        user={viewModal.record} 
-        onClose={viewModal.close} 
+      <UserDetailsModal
+        isOpen={viewModal.isOpen}
+        user={viewModal.record}
+        onClose={viewModal.close}
       />
-      <ConfirmModal 
-        isOpen={deleteModal.isOpen} 
-        onConfirm={deleteModal.onConfirm} 
-        onCancel={deleteModal.onCancel} 
-        title='Confirm Deletion' 
-        message={deleteModal.message} 
-        loading={deleteModal.loading} 
-        type='danger' 
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type="danger"
       />
-      
+
       <UserCreateModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

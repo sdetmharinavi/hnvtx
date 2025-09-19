@@ -1,75 +1,81 @@
-"use client"
-
 // components/ofc/OfcForm/hooks/useOfcFormData.ts
-import { useEffect, useMemo, useRef } from "react";
-import { useForm, type Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { OfcCableFormData, ofcCableFormSchema } from "@/schemas";
-import { OfcCablesWithRelations } from "@/components/ofc/ofc-types";
-import isEqual from "lodash.isequal";
+'use client';
 
-export const useOfcFormData = (ofcCable?: OfcCablesWithRelations | null) => {
+import { useEffect, useMemo, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import isEqual from 'lodash.isequal';
+import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
+import {
+  Ofc_cablesInsertSchema,
+  ofc_cablesInsertSchema,
+} from '@/schemas/zod-schemas';
+
+export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
   const isEdit = Boolean(ofcCable);
-  
-  const defaultValues = useMemo(() => ({
-    sn_id: undefined,
-    en_id: undefined,
-    route_name: "",
-    ofc_type_id: "",
-    capacity: 0,
-    current_rkm: 0,
-    transnet_rkm: 0,
-    transnet_id: "",
-    asset_no: "",
-    maintenance_terminal_id: "",
-    remark: "",
-    status: true,
-  }), []);
 
-  const form = useForm<OfcCableFormData>({
-    resolver: zodResolver(ofcCableFormSchema) as Resolver<OfcCableFormData>,
-    mode: "onChange",
+  const defaultValues = useMemo(
+    () => ({
+      sn_id: '',
+      en_id: '',
+      route_name: '',
+      ofc_type_id: '',
+      capacity: 0,
+      current_rkm: null,
+      transnet_rkm: null,
+      transnet_id: null,
+      asset_no: null,
+      maintenance_terminal_id: null,
+      remark: null,
+      status: true,
+    }),
+    []
+  );
+
+  const form = useForm<Ofc_cablesInsertSchema>({
+    resolver: zodResolver(ofc_cablesInsertSchema),
+    mode: 'onChange',
     defaultValues,
   });
 
   // Reset form when ofcCable changes or when switching from edit to create mode
-useEffect(() => {
-  if (isEdit && ofcCable) {
-    form.reset({
-      sn_id: ofcCable.sn_id ? String(ofcCable.sn_id) : undefined,
-      en_id: ofcCable.en_id ? String(ofcCable.en_id) : undefined,
-      route_name: ofcCable.route_name || "",
-      ofc_type_id: ofcCable.ofc_type_id || "",
-      capacity: ofcCable.capacity || 0,
-      current_rkm: ofcCable.current_rkm || 0,
-      transnet_rkm: ofcCable.transnet_rkm || 0,
-      transnet_id: ofcCable.transnet_id || "",
-      asset_no: ofcCable.asset_no || "",
-      maintenance_terminal_id: ofcCable.maintenance_terminal_id || "",
-      remark: ofcCable.remark || "",
-      status: ofcCable.status ?? true,
-    });
-  } else if (!isEdit) {
-    // Reset to default values when not in edit mode
-    form.reset(defaultValues);
-  }
-}, [isEdit, ofcCable, form, defaultValues]);
+  useEffect(() => {
+    if (isEdit && ofcCable) {
+      form.reset({
+        sn_id: ofcCable.sn_id || '',
+        en_id: ofcCable.en_id || '',
+        route_name: ofcCable.route_name || '',
+        ofc_type_id: ofcCable.ofc_type_id || '',
+        capacity: ofcCable.capacity || 0,
+        current_rkm: ofcCable.current_rkm || 0,
+        transnet_rkm: ofcCable.transnet_rkm || 0,
+        transnet_id: ofcCable.transnet_id || '',
+        asset_no: ofcCable.asset_no || '',
+        maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
+        remark: ofcCable.remark || '',
+        status: ofcCable.status ?? true,
+      });
+    } else if (!isEdit) {
+      // Reset to default values when not in edit mode
+      form.reset(defaultValues);
+    }
+  }, [isEdit, ofcCable, form, defaultValues]);
 
   // Create a stable reference to the ofcCable data
   const ofcCableData = useMemo(() => {
     if (!isEdit || !ofcCable) return null;
     const data = {
-      sn_id: ofcCable.sn_id ? String(ofcCable.sn_id) : undefined,
-      en_id: ofcCable.en_id ? String(ofcCable.en_id) : undefined,
-      route_name: ofcCable.route_name || "",
-      ofc_type_id: ofcCable.ofc_type_id || "",
+      sn_id: ofcCable.sn_id || '',
+      en_id: ofcCable.en_id || '',
+      route_name: ofcCable.route_name || '',
+      ofc_type_id: ofcCable.ofc_type_id || '',
       capacity: ofcCable.capacity || 0,
       current_rkm: ofcCable.current_rkm || 0,
       transnet_rkm: ofcCable.transnet_rkm || 0,
-      transnet_id: ofcCable.transnet_id || "",
-      asset_no: ofcCable.asset_no || "",
-      maintenance_terminal_id: ofcCable.maintenance_terminal_id || "",
-      remark: ofcCable.remark || "",
+      transnet_id: ofcCable.transnet_id || '',
+      asset_no: ofcCable.asset_no || '',
+      maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
+      remark: ofcCable.remark || '',
       status: ofcCable.status ?? true,
     };
     return data;
@@ -89,8 +95,10 @@ useEffect(() => {
     }
 
     // Skip if nothing has changed
-    if (isEqual(prevOfcCableData.current, ofcCableData) && 
-        isEqual(prevDefaultValues.current, defaultValues)) {
+    if (
+      isEqual(prevOfcCableData.current, ofcCableData) &&
+      isEqual(prevDefaultValues.current, defaultValues)
+    ) {
       return;
     }
 
@@ -100,22 +108,28 @@ useEffect(() => {
 
     if (ofcCableData) {
       // In edit mode, use the existing data
-      form.reset({
-        ...ofcCableData,
-        route_name: ofcCable?.route_name || ""
-      }, {
-        keepDirty: true,
-        keepErrors: true,
-      });
+      form.reset(
+        {
+          ...ofcCableData,
+          route_name: ofcCable?.route_name || '',
+        },
+        {
+          keepDirty: true,
+          keepErrors: true,
+        }
+      );
     } else {
       // In add mode, use default values
-      form.reset({
-        ...defaultValues,
-        route_name: ""
-      }, {
-        keepDirty: true,
-        keepErrors: true,
-      });
+      form.reset(
+        {
+          ...defaultValues,
+          route_name: '',
+        },
+        {
+          keepDirty: true,
+          keepErrors: true,
+        }
+      );
     }
   }, [ofcCableData, form, defaultValues, ofcCable?.route_name, isEdit]);
 

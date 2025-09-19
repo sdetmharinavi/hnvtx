@@ -16,16 +16,16 @@ import {
 import { Switch } from '@/components/common/ui/switch/Switch';
 import { Label } from '@/components/common/ui/label/Label';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { OfcCableFormData } from '@/schemas';
 import { OFC_FORM_CONFIG } from '@/components/ofc/OfcForm/constants/ofcFormConfig';
 import FormSection from './FormSection';
+import { Ofc_cablesInsertSchema } from '@/schemas/zod-schemas';
 
 interface CableSpecificationsSectionProps {
-  control: Control<OfcCableFormData>;
-  register: UseFormRegister<OfcCableFormData>;
-  errors: FieldErrors<OfcCableFormData>;
-  setValue: UseFormSetValue<OfcCableFormData>;
-  watch: UseFormWatch<OfcCableFormData>;
+  control: Control<Ofc_cablesInsertSchema>;
+  register: UseFormRegister<Ofc_cablesInsertSchema>;
+  errors: FieldErrors<Ofc_cablesInsertSchema>;
+  setValue: UseFormSetValue<Ofc_cablesInsertSchema>;
+  watch: UseFormWatch<Ofc_cablesInsertSchema>;
   ofcTypeOptions: Option[];
   isCapacityLocked: boolean;
 }

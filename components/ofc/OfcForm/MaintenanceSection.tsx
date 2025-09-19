@@ -1,15 +1,18 @@
 // components/OfcForm/MaintenanceSection.tsx
-import React from "react";
-import { Settings } from "lucide-react";
-import { Control, FieldErrors } from "react-hook-form";
-import { FormSearchableSelect, FormTextarea } from "@/components/common/form/FormControls";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { OfcCableFormData } from "@/schemas";
-import FormSection from "./FormSection";
+import React from 'react';
+import { Settings } from 'lucide-react';
+import { Control, FieldErrors } from 'react-hook-form';
+import {
+  FormSearchableSelect,
+  FormTextarea,
+} from '@/components/common/form/FormControls';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import FormSection from './FormSection';
+import { Ofc_cablesInsertSchema } from '@/schemas/zod-schemas';
 
 interface MaintenanceSectionProps {
-  control: Control<OfcCableFormData>;
-  errors: FieldErrors<OfcCableFormData>;
+  control: Control<Ofc_cablesInsertSchema>;
+  errors: FieldErrors<Ofc_cablesInsertSchema>;
   maintenanceTerminalOptions: Option[];
 }
 
@@ -18,7 +21,11 @@ const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({
   errors,
   maintenanceTerminalOptions,
 }) => (
-  <FormSection title="Maintenance Information" icon={Settings} iconColor="text-orange-600">
+  <FormSection
+    title="Maintenance Information"
+    icon={Settings}
+    iconColor="text-orange-600"
+  >
     <div className="grid grid-cols-1 gap-6">
       <FormSearchableSelect
         name="maintenance_terminal_id"

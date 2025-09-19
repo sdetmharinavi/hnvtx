@@ -1,23 +1,26 @@
-"use client";
+'use client';
 
-import { Card } from "@/components/common/ui/Card";
-import { LookupModal } from "@/components/lookup/LookupModal";
-import { useLookupTypes } from "@/components/lookup/lookup-hooks";
-import { LookupTypesFilters } from "@/components/lookup/LookupTypesFilters";
-import { LookupTypesTable } from "@/components/lookup/LookupTypesTable";
-import { useSorting } from "@/hooks/useSorting";
 import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { Card } from '@/components/common/ui/Card';
+import { useLookupTypes } from '@/components/lookup/lookup-hooks';
+import { LookupModal } from '@/components/lookup/LookupModal';
+import {
+  ErrorState,
+  LoadingState,
   NoCategoriesState,
   SelectCategoryPrompt,
-  LoadingState,
-  ErrorState,
-} from "@/components/lookup/LookupTypesEmptyStates";
-import { useMemo } from "react";
-import { FiList } from "react-icons/fi";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
-import { toast } from "sonner";
-import { Filters } from "@/hooks/database";
-import { ErrorDisplay } from "@/components/common/ui";
+} from '@/components/lookup/LookupTypesEmptyStates';
+import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
+import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
+import { Filters } from '@/hooks/database';
+import { useSorting } from '@/hooks/useSorting';
+import { useMemo } from 'react';
+import { FiList } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 export default function LookupTypesPage() {
   const {
@@ -55,8 +58,8 @@ export default function LookupTypesPage() {
     getSortDirection,
   } = useSorting({
     data: lookupTypes,
-    defaultSortKey: "name",
-    defaultDirection: "asc",
+    defaultSortKey: 'name',
+    defaultDirection: 'asc',
     options: {
       caseSensitive: false,
       numericSort: true,
@@ -76,52 +79,56 @@ export default function LookupTypesPage() {
     );
   }, [sortedLookupTypes, searchTerm]);
 
-    // --- Define header content using the hook ---
-      const serverFilters = useMemo(() => {
-        const f: Filters = {
-          // Filter to download only categories with name not equal to "DEFAULT"
-          name: {
-            operator: "neq",
-            value: "DEFAULT",
-          },
-        };
-        return f;
-      }, []);
-    const headerActions = useStandardHeaderActions({
-      data: lookupTypes,
-      onRefresh: async () => {
-        await handleRefresh();
-        toast.success("Refreshed successfully!");
+  // --- Define header content using the hook ---
+  const serverFilters = useMemo(() => {
+    const f: Filters = {
+      // Filter to download only categories with name not equal to "DEFAULT"
+      name: {
+        operator: 'neq',
+        value: 'DEFAULT',
       },
-      onAddNew: handleAddNew,
-      isLoading: isLoading,
-      exportConfig: { tableName: "lookup_types", filters: serverFilters },
-    });
+    };
+    return f;
+  }, []);
+  const headerActions = useStandardHeaderActions({
+    data: lookupTypes,
+    onRefresh: async () => {
+      await handleRefresh();
+      toast.success('Refreshed successfully!');
+    },
+    onAddNew: handleAddNew,
+    isLoading: isLoading,
+    exportConfig: { tableName: 'lookup_types', filters: serverFilters },
+  });
 
-    // --- Define header stats ---
-    const activeLookups = lookupTypes.filter((lookup) => lookup.status);
-    const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
-    const headerStats = [
-      { value: lookupTypes.length, label: "Total Lookup Types" },
-      { value: activeLookups.length, label: "Active", color: "success" as const },
-      { value: inactiveLookups.length, label: "Inactive", color: "danger" as const },
-    ];
+  // --- Define header stats ---
+  const activeLookups = lookupTypes.filter((lookup) => lookup.status);
+  const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
+  const headerStats = [
+    { value: lookupTypes.length, label: 'Total Lookup Types' },
+    { value: activeLookups.length, label: 'Active', color: 'success' as const },
+    {
+      value: inactiveLookups.length,
+      label: 'Inactive',
+      color: 'danger' as const,
+    },
+  ];
 
-    // Error handling
-    if (lookupError) {
-      return (
-        <ErrorDisplay
-          error={lookupError.message}
-          actions={[
-            {
-              label: "Retry",
-              onClick: handleRefresh,
-              variant: "primary",
-            },
-          ]}
-        />
-      );
-    }
+  // Error handling
+  if (lookupError) {
+    return (
+      <ErrorDisplay
+        error={lookupError.message}
+        actions={[
+          {
+            label: 'Retry',
+            onClick: handleRefresh,
+            variant: 'primary',
+          },
+        ]}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -164,8 +171,8 @@ export default function LookupTypesPage() {
         <Card className="overflow-hidden">
           <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredAndSortedLookupTypes.length} of{" "}
-              {lookupTypes.length} lookup types for category:{" "}
+              Showing {filteredAndSortedLookupTypes.length} of{' '}
+              {lookupTypes.length} lookup types for category:{' '}
               <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
               {searchTerm && (
                 <span className="ml-2">

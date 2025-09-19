@@ -1,46 +1,57 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import {
-  useTableInsert,
-  useTableUpdate,
-  usePagedOfcCablesComplete,
   Filters,
   convertRichFiltersToSimpleJson,
+  usePagedOfcCablesComplete,
+  useTableInsert,
+  useTableUpdate,
 } from '@/hooks/database';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
 
-import { DataTable } from '@/components/table/DataTable';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
+import { DataTable } from '@/components/table/DataTable';
 import { Json, TablesInsert } from '@/types/supabase-types';
-import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
-import { toast } from 'sonner';
+// import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import {
   PageHeader,
   useStandardHeaderActions,
-} from '@/components/common/PageHeader';
-import { AiFillMerge } from 'react-icons/ai';
+} from '@/components/common/page-header';
 import { createStandardActions } from '@/components/table/action-helpers';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { OfcCableRowsWithCount } from '@/types/view-row-types';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
-import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { AiFillMerge } from 'react-icons/ai';
+import { toast } from 'sonner';
+
+export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
+  ofc_type: {
+    id: string;
+    name: string;
+  } | null;
+  maintenance_area: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<OfcCableRowsWithCount> => {
+): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -97,7 +108,7 @@ const OfcPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'ofc_cables', OfcCableRowsWithCount>({
+  } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
     dataQueryHook: useOfcData,
     searchColumn: 'route_name', // This can be considered the "primary" search field for display purposes
@@ -161,7 +172,7 @@ const OfcPage = () => {
 
   // Memoize the record to prevent unnecessary re-renders
   const memoizedOfcCable = useMemo(
-    () => editModal.record as OfcCablesWithRelations | null,
+    () => editModal.record as OfcCablesWithRelations,
     [editModal.record]
   );
 
@@ -204,7 +215,10 @@ const OfcPage = () => {
   // --- MEMOIZED VALUES ---
   const columns = OfcTableColumns(ofcData);
 
-  const orderedColumns = useOrderedColumns(columns, TABLE_COLUMN_KEYS.ofc_cables);
+  const orderedColumns = useOrderedColumns(
+    columns,
+    TABLE_COLUMN_KEYS.ofc_cables
+  );
 
   const tableActions = useMemo(
     () =>
@@ -309,7 +323,7 @@ const OfcPage = () => {
         loading={loading}
         actions={tableActions}
         selectable
-        onRowSelect={(selectedRows: OfcCableRowsWithCount[]): void => {
+        onRowSelect={(selectedRows: V_ofc_cables_completeRowSchema[]): void => {
           // Update selection with new row IDs
           bulkActions.handleRowSelect(selectedRows as never);
         }}

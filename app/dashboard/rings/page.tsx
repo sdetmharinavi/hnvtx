@@ -1,28 +1,31 @@
 // app/dashboard/rings/page.tsx
-"use client";
+'use client';
 
-import React, { useMemo } from "react";
-import { DataTable } from "@/components/table/DataTable";
-import { Row, usePagedRingsWithCount } from "@/hooks/database";
-import { RingsFilters } from "@/components/rings/RingsFilters";
-import { RingModal } from "@/components/rings/RingModal";
-import { ConfirmModal } from "@/components/common/ui";
-import { createStandardActions } from "@/components/table/action-helpers";
 import {
   PageHeader,
   useStandardHeaderActions,
-} from "@/components/common/PageHeader";
-import { GiLinkedRings } from "react-icons/gi";
-import { toast } from "sonner";
-import { RingsColumns } from "@/config/table-columns/RingsTableColumns";
-import { createClient } from "@/utils/supabase/client";
-import { desiredRingColumnOrder } from "@/config/column-orders";
+} from '@/components/common/page-header';
+import { ConfirmModal } from '@/components/common/ui';
+import { RingModal } from '@/components/rings/RingModal';
+import { RingsFilters } from '@/components/rings/RingsFilters';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { DataTable } from '@/components/table/DataTable';
+import { desiredRingColumnOrder } from '@/config/column-orders';
+import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
+import { usePagedRingsWithCount } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
-} from "@/hooks/useCrudManager";
-import { RingsRowSchema, V_rings_with_countRowSchema } from "@/schemas/zod-schemas";
+} from '@/hooks/useCrudManager';
+import {
+  RingsRowSchema,
+  V_rings_with_countRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useMemo } from 'react';
+import { GiLinkedRings } from 'react-icons/gi';
+import { toast } from 'sonner';
 
 export type RingRowsWithRelations = RingsRowSchema & {
   ring_type?: {
@@ -42,25 +45,22 @@ const useRingsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedRingsWithCount(
-    supabase,
-    {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
-      },
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-      // queryOptions: {
-      //   enabled: true,
-      //   refetchOnWindowFocus: false,
-      //   refetchOnMount: true,
-      //   refetchInterval: 0,
-      //   refetchIntervalInBackground: false,
-      //   staleTime: 3 * 60 * 1000,
-      // }
-    }
-  );
+  const { data, isLoading, error, refetch } = usePagedRingsWithCount(supabase, {
+    filters: {
+      ...filters,
+      ...(searchQuery ? { name: searchQuery } : {}),
+    },
+    limit: pageLimit,
+    offset: (currentPage - 1) * pageLimit,
+    // queryOptions: {
+    //   enabled: true,
+    //   refetchOnWindowFocus: false,
+    //   refetchOnMount: true,
+    //   refetchInterval: 0,
+    //   refetchIntervalInBackground: false,
+    //   staleTime: 3 * 60 * 1000,
+    // }
+  });
 
   // Calculate counts from the full dataset
   const totalCount = data?.[0]?.total_count || 0;
@@ -97,8 +97,8 @@ const RingsPage = () => {
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"rings", V_rings_with_countRowSchema>({
-    tableName: "rings",
+  } = useCrudManager<'rings', V_rings_with_countRowSchema>({
+    tableName: 'rings',
     dataQueryHook: useRingsData,
   });
 
@@ -151,38 +151,32 @@ const RingsPage = () => {
         // You can also add custom logic, for example:
         // canDelete: (record) => record.name !== 'CRITICAL_RING',
       }),
-    [
-      editModal.openEdit,
-      viewModal.open,
-      crudActions.handleDelete,
-    ]
+    [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
-
-  
 
   // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
     onRefresh: async () => {
       await refetch();
-      toast.success("Refreshed successfully!");
+      toast.success('Refreshed successfully!');
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: "rings" },
+    exportConfig: { tableName: 'rings' },
   });
 
   const headerStats = [
-    { value: totalCount, label: "Total Rings" },
+    { value: totalCount, label: 'Total Rings' },
     {
       value: activeCount,
-      label: "Active",
-      color: "success" as const,
+      label: 'Active',
+      color: 'success' as const,
     },
     {
       value: inactiveCount,
-      label: "Inactive",
-      color: "danger" as const,
+      label: 'Inactive',
+      color: 'danger' as const,
     },
   ];
 

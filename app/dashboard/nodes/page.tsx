@@ -1,40 +1,40 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { DataTable } from '@/components/table/DataTable';
-import { NodesFilters } from '@/components/nodes/NodesFilters';
-import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { NodeFormModal } from '@/components/nodes/NodeFormModal';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { NodeFormModal } from '@/components/nodes/NodeFormModal';
+import { NodesFilters } from '@/components/nodes/NodesFilters';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { DataTable } from '@/components/table/DataTable';
+import { NodeDetailsModal } from '@/config/node-details-config';
+import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import { usePagedNodesComplete } from '@/hooks/database';
-import { FiCpu } from 'react-icons/fi';
-import { createClient } from '@/utils/supabase/client';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { createStandardActions } from '@/components/table/action-helpers';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/PageHeader';
-import { toast } from 'sonner';
-import { NodeRowsWithCount } from '@/types/view-row-types';
-import { NodeDetailsModal } from '@/config/node-details-config';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema } from '@/schemas/zod-schemas';
+import { NodeRowsWithCount } from '@/types/view-row-types';
+import { createClient } from '@/utils/supabase/client';
+import { useMemo } from 'react';
+import { FiCpu } from 'react-icons/fi';
+import { toast } from 'sonner';
 
- export type NodeRowsWithRelations = NodesRowSchema & {
-    maintenance_terminal?: {
-      id: string;
-      name: string;
-    } | null;
-    node_type?: {
-      id: string;
-      name: string;
-    } | null;
-  };
+export type NodeRowsWithRelations = NodesRowSchema & {
+  maintenance_terminal?: {
+    id: string;
+    name: string;
+  } | null;
+  node_type?: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 // 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (

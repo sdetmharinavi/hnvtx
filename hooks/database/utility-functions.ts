@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { QueryKey } from "@tanstack/react-query";
-import { AggregationOptions, DeduplicationOptions, EnhancedOrderBy, FilterOperator, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
-import { Json } from "@/types/supabase-types";
+import { QueryKey } from '@tanstack/react-query';
+import {
+  AggregationOptions,
+  DeduplicationOptions,
+  EnhancedOrderBy,
+  FilterOperator,
+  Filters,
+  OrderBy,
+  PerformanceOptions,
+} from './queries-type-helpers';
+import { Json } from '@/types/supabase-types';
 
 // --- UTILITY FUNCTIONS ---
 export const createQueryKey = (
@@ -10,50 +18,58 @@ export const createQueryKey = (
   columns?: string,
   orderBy?: OrderBy[],
   enhancedOrderBy?: EnhancedOrderBy[], // Fixed: renamed from EnhancedOrderBy to enhancedOrderBy
-  deduplication?: DeduplicationOptions,
+  deduplication?: DeduplicationOptions | undefined,
   aggregation?: AggregationOptions,
   limit?: number,
   offset?: number
 ): QueryKey => {
-  const key: unknown[] = ["table", tableName];
-  const params: Record<string, unknown> = { 
-    filters, 
-    columns, 
-    orderBy, 
+  const key: unknown[] = ['table', tableName];
+  const params: Record<string, unknown> = {
+    filters,
+    columns,
+    orderBy,
     enhancedOrderBy, // Fixed: use correct parameter name
-    deduplication, 
-    aggregation, 
-    limit, 
-    offset 
+    deduplication,
+    aggregation,
+    limit,
+    offset,
   };
   const cleanParams = Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null)
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null
+    )
   );
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
 
-export const createRpcQueryKey = (functionName: string, args?: Record<string, unknown>, performance?: PerformanceOptions): QueryKey => {
-  const key: unknown[] = ["rpc", functionName];
+export const createRpcQueryKey = (
+  functionName: string,
+  args?: Record<string, unknown>,
+  performance?: PerformanceOptions
+): QueryKey => {
+  const key: unknown[] = ['rpc', functionName];
   const params = { args, performance };
   const cleanParams = Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null)
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null
+    )
   );
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
 
 export const createUniqueValuesKey = (
-  tableName: string, 
-  column: string, 
-  filters?: Filters, 
-  orderBy?: OrderBy[], 
+  tableName: string,
+  column: string,
+  filters?: Filters,
+  orderBy?: OrderBy[],
   enhancedOrderBy?: EnhancedOrderBy[] // Fixed: added missing parameter and use correct naming
 ): QueryKey => [
-  "unique", 
-  tableName, 
-  column, 
-  { filters, orderBy, enhancedOrderBy } // Fixed: include enhancedOrderBy in the key
+  'unique',
+  tableName,
+  column,
+  { filters, orderBy, enhancedOrderBy }, // Fixed: include enhancedOrderBy in the key
 ];
 
 export function applyFilters(query: any, filters: Filters): any {
@@ -61,19 +77,29 @@ export function applyFilters(query: any, filters: Filters): any {
   Object.entries(filters).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
 
-    if (key === "$or") {
-      if (typeof value === "string") {
+    if (key === '$or' || key === 'or') {
+      if (typeof value === 'string') {
         modifiedQuery = modifiedQuery.or(value);
       } else {
-        console.warn("Unsupported $or filter format; expected a raw string.");
+        console.warn('Unsupported $or filter format; expected a raw string.');
       }
       return;
     }
 
-    if (typeof value === "object" && !Array.isArray(value) && "operator" in value) {
-      const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
-      
-      if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
+    if (
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      'operator' in value
+    ) {
+      const { operator, value: filterValue } = value as {
+        operator: FilterOperator;
+        value: unknown;
+      };
+
+      if (
+        operator in modifiedQuery &&
+        typeof (modifiedQuery as any)[operator] === 'function'
+      ) {
         modifiedQuery = modifiedQuery[operator](key, filterValue);
       } else {
         console.warn(`Unsupported or dynamic operator used: ${operator}`);
@@ -90,23 +116,23 @@ export function applyFilters(query: any, filters: Filters): any {
 // Enhanced version with better type safety and validation
 export function applyOrdering(query: any, orderBy: OrderBy[]): any {
   let modifiedQuery = query;
-  
+
   orderBy.forEach(({ column, ascending = true, nullsFirst, foreignTable }) => {
     // Validate column name to prevent injection
     if (!column || typeof column !== 'string') {
       console.warn(`Invalid column name: ${column}`);
       return;
     }
-    
+
     // Build the column reference
     const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
-    
+
     // Build options object
     const options: { ascending: boolean; nullsFirst?: boolean } = { ascending };
     if (nullsFirst !== undefined) {
       options.nullsFirst = nullsFirst;
     }
-    
+
     try {
       modifiedQuery = modifiedQuery.order(orderColumn, options);
     } catch (error) {
@@ -114,68 +140,90 @@ export function applyOrdering(query: any, orderBy: OrderBy[]): any {
       // Continue with other orderings even if one fails
     }
   });
-  
+
   return modifiedQuery;
 }
 
 // Alternative version with more explicit type handling for EnhancedOrderBy
-export function applyEnhancedOrdering(query: any, orderBy: EnhancedOrderBy[]): any {
+export function applyEnhancedOrdering(
+  query: any,
+  orderBy: EnhancedOrderBy[]
+): any {
   let modifiedQuery = query;
-  
-  orderBy.forEach(({ column, ascending = true, nullsFirst, foreignTable, dataType }) => {
-    // Validate column name to prevent injection
-    if (!column || typeof column !== 'string') {
-      console.warn(`Invalid column name: ${column}`);
-      return;
-    }
-    
-    const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
-    
-    const options: any = { ascending };
-    if (nullsFirst !== undefined) {
-      options.nullsFirst = nullsFirst;
-    }
-    
-    // Optional: Add type-specific handling
-    if (dataType) {
-      switch (dataType) {
-        case 'numeric':
-          // Supabase handles numeric sorting automatically
-          break;
-        case 'text':
-          // For case-insensitive text sorting, you'd need custom SQL
-          // This is handled at the PostgreSQL level
-          break;
-        case 'date':
-        case 'timestamp':
-          // Date sorting is handled well by default
-          break;
-        default:
-          break;
+
+  orderBy.forEach(
+    ({ column, ascending = true, nullsFirst, foreignTable, dataType }) => {
+      // Validate column name to prevent injection
+      if (!column || typeof column !== 'string') {
+        console.warn(`Invalid column name: ${column}`);
+        return;
+      }
+
+      const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
+
+      const options: any = { ascending };
+      if (nullsFirst !== undefined) {
+        options.nullsFirst = nullsFirst;
+      }
+
+      // Optional: Add type-specific handling
+      if (dataType) {
+        switch (dataType) {
+          case 'numeric':
+            // Supabase handles numeric sorting automatically
+            break;
+          case 'text':
+            // For case-insensitive text sorting, you'd need custom SQL
+            // This is handled at the PostgreSQL level
+            break;
+          case 'date':
+          case 'timestamp':
+            // Date sorting is handled well by default
+            break;
+          default:
+            break;
+        }
+      }
+
+      try {
+        modifiedQuery = modifiedQuery.order(orderColumn, options);
+      } catch (error) {
+        console.error(
+          `Error applying enhanced order by ${orderColumn}:`,
+          error
+        );
       }
     }
-    
-    try {
-      modifiedQuery = modifiedQuery.order(orderColumn, options);
-    } catch (error) {
-      console.error(`Error applying enhanced order by ${orderColumn}:`, error);
-    }
-  });
-  
+  );
+
   return modifiedQuery;
 }
 
-export function buildDeduplicationQuery(tableName: string, deduplication: DeduplicationOptions, filters?: Filters, orderBy?: OrderBy[]): string {
+export function buildDeduplicationQuery(
+  tableName: string,
+  deduplication: DeduplicationOptions,
+  filters?: Filters,
+  orderBy?: OrderBy[]
+): string {
   const { columns, orderBy: dedupOrderBy } = deduplication;
   const partitionBy = columns.join(', ');
   const rowNumberOrder = dedupOrderBy?.length
-    ? dedupOrderBy.map(o => `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}`).join(', ')
+    ? dedupOrderBy
+        .map((o) => `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}`)
+        .join(', ')
     : 'id ASC';
 
   let finalOrderClause = '';
   if (orderBy && orderBy.length > 0) {
-    const orderParts = orderBy.map(o =>
-      `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}${o.nullsFirst !== undefined ? (o.nullsFirst ? ' NULLS FIRST' : ' NULLS LAST') : ''}`
+    const orderParts = orderBy.map(
+      (o) =>
+        `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}${
+          o.nullsFirst !== undefined
+            ? o.nullsFirst
+              ? ' NULLS FIRST'
+              : ' NULLS LAST'
+            : ''
+        }`
     );
     finalOrderClause = `ORDER BY ${orderParts.join(', ')}`;
   }
@@ -185,19 +233,33 @@ export function buildDeduplicationQuery(tableName: string, deduplication: Dedupl
     const conditions = Object.entries(filters)
       .filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => {
-        if (value && typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
-          const filterValue = typeof value.value === 'string' ? `'${value.value.toString().replace(/'/g, "''")}'` : value.value;
+        if (
+          value &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          'operator' in value
+        ) {
+          const filterValue =
+            typeof value.value === 'string'
+              ? `'${value.value.toString().replace(/'/g, "''")}'`
+              : value.value;
           return `${key} = ${filterValue}`;
         }
         if (Array.isArray(value)) {
-          const arrayValues = value.map(v => typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v).join(',');
+          const arrayValues = value
+            .map((v) =>
+              typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v
+            )
+            .join(',');
           return `${key} IN (${arrayValues})`;
         }
-        const filterValue = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
+        const filterValue =
+          typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
         return `${key} = ${filterValue}`;
       });
 
-    if (conditions.length > 0) whereClause = `WHERE ${conditions.join(' AND ')}`;
+    if (conditions.length > 0)
+      whereClause = `WHERE ${conditions.join(' AND ')}`;
   }
 
   return `
@@ -240,7 +302,7 @@ export function convertRichFiltersToSimpleJson(filters: Filters): Json {
     }
     // You can also handle simple arrays if your RPCs support the 'IN' operator
     else if (Array.isArray(filterValue)) {
-        simpleFilters[key] = filterValue;
+      simpleFilters[key] = filterValue;
     }
     // We explicitly IGNORE complex objects like { operator: 'neq', value: '...' }
     // because the RPC function doesn't know how to handle them.

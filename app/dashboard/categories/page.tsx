@@ -1,25 +1,25 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
-import { Filters, useDeduplicated, useTableQuery } from '@/hooks/database';
-import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { CategoriesTable } from '@/components/categories/CategoriesTable';
-import { CategorySearch } from '@/components/categories/CategorySearch';
 import { CategoryModal } from '@/components/categories/CategoryModal';
-import { ConfirmModal } from '@/components/common/ui/Modal';
+import { CategorySearch } from '@/components/categories/CategorySearch';
 import { EmptyState } from '@/components/categories/EmptyState';
 import { LoadingState } from '@/components/categories/LoadingState';
+import { formatCategoryName } from '@/components/categories/utils';
 import {
   PageHeader,
   useStandardHeaderActions,
-} from '@/components/common/PageHeader';
-import { FiLayers } from 'react-icons/fi';
-import { useDelete } from '@/hooks/useDelete';
-import { formatCategoryName } from '@/components/categories/utils';
+} from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal } from '@/components/common/ui/Modal';
+import { Filters, useDeduplicated, useTableQuery } from '@/hooks/database';
+import { useDelete } from '@/hooks/useDelete';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiLayers } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 type GroupedLookupsByCategory = Record<string, Lookup_typesRowSchema[]>;
 export interface CategoryInfo {

@@ -1,18 +1,18 @@
-"use client"
+'use client';
 
 // components/ofc/OfcForm/hooks/useCapacityInference.ts
-import { useEffect, useRef, useState } from "react";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { UseFormSetValue, Path, PathValue } from "react-hook-form";
-import { OfcCableFormData } from "@/schemas";
+import { useEffect, useRef, useState } from 'react';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { UseFormSetValue, Path, PathValue } from 'react-hook-form';
+import { Ofc_cablesInsertSchema } from '@/schemas/zod-schemas';
 
-interface UseCapacityInferenceProps<T extends OfcCableFormData> {
+interface UseCapacityInferenceProps<T extends Ofc_cablesInsertSchema> {
   currentOfcTypeId: string;
   ofcTypeOptions: Option[];
   setValue: UseFormSetValue<T>;
 }
 
-export const useCapacityInference = <T extends OfcCableFormData>({
+export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
   currentOfcTypeId,
   ofcTypeOptions,
   setValue,
@@ -32,7 +32,9 @@ export const useCapacityInference = <T extends OfcCableFormData>({
       return;
     }
 
-    const selectedOption = ofcTypeOptions.find(opt => opt.value === currentOfcTypeId);
+    const selectedOption = ofcTypeOptions.find(
+      (opt) => opt.value === currentOfcTypeId
+    );
     if (!selectedOption) {
       setIsCapacityLocked(false);
       lastProcessedTypeId.current = null;
@@ -43,11 +45,15 @@ export const useCapacityInference = <T extends OfcCableFormData>({
     if (match) {
       const inferredCapacity = parseInt(match[1], 10);
       // Only update if the value has changed
-      setValue("capacity" as Path<T>, inferredCapacity as unknown as PathValue<T, Path<T>>, { 
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true
-      });
+      setValue(
+        'capacity' as Path<T>,
+        inferredCapacity as unknown as PathValue<T, Path<T>>,
+        {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        }
+      );
       setIsCapacityLocked(true);
       lastProcessedTypeId.current = currentOfcTypeId;
     } else {

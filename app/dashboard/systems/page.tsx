@@ -1,42 +1,39 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { FiPlus, FiServer, FiRefreshCw, FiDatabase } from 'react-icons/fi';
-import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
+import { FiDatabase } from 'react-icons/fi';
+import { toast } from 'sonner';
 
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
+import { PageSkeleton } from '@/components/common/ui/table/TableSkeleton';
+import { SystemModal } from '@/components/systems/system-modal';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { DataTable } from '@/components/table/DataTable';
+import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import {
   convertRichFiltersToSimpleJson,
   Filters,
+  Row,
   useGetLookupTypesByCategory,
   usePagedSystemsComplete,
 } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
-import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
-import { DataTable } from '@/components/table/DataTable';
-import { Row } from '@/hooks/database';
-import {
-  PageSkeleton,
-  StatsCardsSkeleton,
-} from '@/components/common/ui/table/TableSkeleton';
+import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { SystemRowsWithCountWithRelations } from '@/types/view-row-types';
 import { Json } from '@/types/supabase-types';
-import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/PageHeader';
-import { ErrorDisplay } from '@/components/common/ui';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SystemModal } from '@/components/systems/system-modal';
+import { SystemRowsWithCountWithRelations } from '@/types/view-row-types';
+import { createClient } from '@/utils/supabase/client';
 
 // 1. ADAPTER HOOK: Makes `useSystemsData` compatible with `useCrudManager`
 const useSystemsData = (
@@ -155,12 +152,18 @@ export default function SystemsPage() {
     () =>
       createStandardActions<SystemRowsWithCountWithRelations>({
         onEdit: editModal.openEdit,
-        onView: handleView ,
+        onView: handleView,
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
       }),
-    [editModal.openEdit, handleView, crudActions.handleDelete, crudActions.handleToggleStatus, isSuperAdmin]
+    [
+      editModal.openEdit,
+      handleView,
+      crudActions.handleDelete,
+      crudActions.handleToggleStatus,
+      isSuperAdmin,
+    ]
   );
 
   // --- Define header content using the hook ---
@@ -191,7 +194,7 @@ export default function SystemsPage() {
       value: systemTypes.length,
       label: 'System Types',
       color: 'default' as const,
-    }
+    },
   ];
 
   // --- Loading State ---

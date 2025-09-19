@@ -1,59 +1,83 @@
 // components/maintenance-areas/MaintenanceAreasPage.tsx
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { useTableWithRelations, useTableQuery, Filters } from "@/hooks/database";
-import { AreaFormModal } from "@/components/maintenance-areas/AreaFormModal";
-import { ConfirmModal } from "@/components/common/ui/Modal";
-import { useMaintenanceAreasMutations } from "@/components/maintenance-areas/useMaintenanceAreasMutations";
-import { FiMapPin } from "react-icons/fi";
-import { toast } from "sonner";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/PageHeader";
-import { ErrorDisplay } from "@/components/common/ui";
-import { EntityManagementComponent } from "@/components/common/entity-management/EntityManagementComponent";
-import { areaConfig, MaintenanceAreaWithRelations } from "@/config/areas";
-import { useDelete } from "@/hooks/useDelete";
-import { Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
+import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal } from '@/components/common/ui/Modal';
+import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
+import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
+import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
+import {
+  Filters,
+  useTableQuery,
+  useTableWithRelations,
+} from '@/hooks/database';
+import { useDelete } from '@/hooks/useDelete';
+import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useMemo, useState } from 'react';
+import { FiMapPin } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
   // State management
-  const [filters, setFilters] = useState<{ status?: string; areaType?: string }>({});
+  const [filters, setFilters] = useState<{
+    status?: string;
+    areaType?: string;
+  }>({});
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
+  const [editingArea, setEditingArea] =
+    useState<MaintenanceAreaWithRelations | null>(null);
 
   // Data queries
   const serverFilters = useMemo(() => {
     const f: Filters = {};
-    if (filters.status) f.status = filters.status === "true";
+    if (filters.status) f.status = filters.status === 'true';
     if (filters.areaType) f.area_type_id = filters.areaType;
     return f;
   }, [filters]);
 
-  const areasQuery = useTableWithRelations(supabase, "maintenance_areas", ["area_type:area_type_id(id, name)", "parent_area:parent_id(id, name, code)"], {
-    filters: serverFilters,
-    orderBy: [{ column: "name", ascending: true }],
-  });
+  const areasQuery = useTableWithRelations(
+    supabase,
+    'maintenance_areas',
+    [
+      'area_type:area_type_id(id, name)',
+      'parent_area:parent_id(id, name, code)',
+    ],
+    {
+      filters: serverFilters,
+      orderBy: [{ column: 'name', ascending: true }],
+    }
+  );
 
   const { isLoading, error, refetch } = areasQuery;
 
-  const { data: areaTypes = [] } = useTableQuery(supabase, "lookup_types", {
-    filters: { category: { operator: "eq", value: "MAINTENANCE_AREA_TYPES" } },
-    orderBy: [{ column: "name", ascending: true }],
+  const { data: areaTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+    filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
+    orderBy: [{ column: 'name', ascending: true }],
   });
 
   // Data mutations
-  const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } = useMaintenanceAreasMutations(supabase, () => {
+  const {
+    createAreaMutation,
+    updateAreaMutation,
+    toggleStatusMutation,
+    handleFormSubmit,
+  } = useMaintenanceAreasMutations(supabase, () => {
     areasQuery.refetch();
     setFormOpen(false);
     setEditingArea(null);
   });
 
   const deleteManager = useDelete({
-    tableName: "maintenance_areas",
+    tableName: 'maintenance_areas',
     onSuccess: () => {
       if (selectedAreaId === deleteManager.itemToDelete?.id) {
         setSelectedAreaId(null);
@@ -63,8 +87,14 @@ export default function MaintenanceAreasPage() {
   });
 
   // Derived state
-  const allAreas = useMemo(() => (areasQuery.data as MaintenanceAreaWithRelations[]) || [], [areasQuery.data]);
-  const selectedArea = useMemo(() => allAreas.find((area) => area.id === selectedAreaId) || null, [selectedAreaId, allAreas]);
+  const allAreas = useMemo(
+    () => (areasQuery.data as MaintenanceAreaWithRelations[]) || [],
+    [areasQuery.data]
+  );
+  const selectedArea = useMemo(
+    () => allAreas.find((area) => area.id === selectedAreaId) || null,
+    [selectedAreaId, allAreas]
+  );
 
   // Event handlers
   const handleOpenCreateForm = () => {
@@ -82,24 +112,24 @@ export default function MaintenanceAreasPage() {
     data: allAreas,
     onRefresh: async () => {
       await refetch();
-      toast.success("Refreshed successfully!");
+      toast.success('Refreshed successfully!');
     },
     // onAddNew: handleOpenCreateForm,
     isLoading: areasQuery.isLoading,
-    exportConfig: { tableName: "maintenance_areas" },
+    exportConfig: { tableName: 'maintenance_areas' },
   });
 
   const headerStats = [
-    { value: allAreas.length, label: "Total Areas" },
+    { value: allAreas.length, label: 'Total Areas' },
     {
       value: allAreas.filter((r) => r.status).length,
-      label: "Active",
-      color: "success" as const,
+      label: 'Active',
+      color: 'success' as const,
     },
     {
       value: allAreas.filter((r) => !r.status).length,
-      label: "Inactive",
-      color: "danger" as const,
+      label: 'Inactive',
+      color: 'danger' as const,
     },
   ];
 
@@ -109,9 +139,9 @@ export default function MaintenanceAreasPage() {
         error={error.message}
         actions={[
           {
-            label: "Retry",
+            label: 'Retry',
             onClick: refetch,
-            variant: "primary",
+            variant: 'primary',
           },
         ]}
       />
@@ -119,8 +149,16 @@ export default function MaintenanceAreasPage() {
   }
 
   return (
-    <div className='p-4 md:p-6 dark:bg-gray-900 min-h-screen'>
-      <PageHeader title='Maintenance Areas' description='Manage maintenance areas, zones, and terminals.' icon={<FiMapPin />} stats={headerStats} actions={headerActions} isLoading={isLoading} className='mb-4' />
+    <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
+      <PageHeader
+        title="Maintenance Areas"
+        description="Manage maintenance areas, zones, and terminals."
+        icon={<FiMapPin />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading}
+        className="mb-4"
+      />
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
@@ -135,11 +173,15 @@ export default function MaintenanceAreasPage() {
         <AreaFormModal
           isOpen={isFormOpen}
           onClose={() => setFormOpen(false)}
-          onSubmit={(data: Maintenance_areasInsertSchema) => handleFormSubmit(data, editingArea)}
+          onSubmit={(data: Maintenance_areasInsertSchema) =>
+            handleFormSubmit(data, editingArea)
+          }
           area={editingArea}
           allAreas={allAreas}
           areaTypes={areaTypes}
-          isLoading={createAreaMutation.isPending || updateAreaMutation.isPending}
+          isLoading={
+            createAreaMutation.isPending || updateAreaMutation.isPending
+          }
         />
       )}
 
@@ -147,16 +189,16 @@ export default function MaintenanceAreasPage() {
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteManager.confirmationMessage}
-        confirmText='Delete'
-        cancelText='Cancel'
-        type='danger'
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
         showIcon
         closeOnBackdrop
         closeOnEscape
         loading={deleteManager.isPending}
-        size='md'
+        size="md"
       />
     </div>
   );
