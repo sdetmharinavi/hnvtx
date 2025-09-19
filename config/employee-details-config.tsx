@@ -98,7 +98,7 @@ import {
         icon: <FiMapPin size={20} />,
         condition: (emp: any) => !!emp.employee_addr,
         renderCustom: (emp: any) => (
-          <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div className=" bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
             <p className="text-gray-900 dark:text-white font-medium text-lg leading-relaxed">
               {emp.employee_addr}
             </p>

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { FiX, FiMail, FiPhone, FiUser, FiBriefcase, FiCalendar, FiEdit3 } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
 import { useTableRecord } from "@/hooks/database";
-import { Row } from "@/hooks/database";
+import { Employee_designationsRowSchema, EmployeesRowSchema } from "@/schemas/zod-schemas";
 
 type Props = {
   employeeId: string;
@@ -141,11 +141,11 @@ const EmployeeDetailsModal = ({ employeeId, onClose, onEdit }: Props) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Designation</label>
-                <div className="text-gray-900 dark:text-gray-100">{(employee as Row<'employees'> & { employee_designations: Row<'employee_designations'> })?.employee_designations?.name || "Not set"}</div>
+                <div className="text-gray-900 dark:text-gray-100">{(employee as EmployeesRowSchema & { employee_designations: Employee_designationsRowSchema })?.employee_designations?.name || "Not set"}</div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Maintenance Area</label>
-                <div className="text-gray-900 dark:text-gray-100">{(employee as Row<'employees'> & { maintenance_areas: Row<'maintenance_areas'> })?.maintenance_areas?.name || "Not set"}</div>
+                <div className="text-gray-900 dark:text-gray-100">{(employee as  EmployeesRowSchema & { maintenance_areas: Employee_designationsRowSchema })?.maintenance_areas?.name || "Not set"}</div>
               </div>
             </div>
           </div>
