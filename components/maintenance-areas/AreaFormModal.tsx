@@ -3,11 +3,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
-import { MaintenanceAreaFormData, maintenanceAreaFormSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "../common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form/FormControls";
 import { useForm } from "react-hook-form";
+import { maintenance_areasInsertSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
 
 export function AreaFormModal({
   isOpen,
@@ -25,17 +25,17 @@ export function AreaFormModal({
     formState: { errors },
     reset,
     control,
-  } = useForm<MaintenanceAreaFormData>({
-    resolver: zodResolver(maintenanceAreaFormSchema),
+  } = useForm<Maintenance_areasInsertSchema>({
+    resolver: zodResolver(maintenance_areasInsertSchema),
     defaultValues: {
       name: "",
       code: "",
-      area_type_id: "",
+      area_type_id: null,
       parent_id: null,
-      contact_person: "",
-      contact_number: "",
-      email: "",
-      address: "",
+      contact_person: null,
+      contact_number: null,
+      email: null,
+      address: null,
       latitude: null,
       longitude: null,
       status: true
@@ -49,28 +49,28 @@ export function AreaFormModal({
     if (isOpen && !isInitialized) {
       if (area) {
         reset({
-          name: area.name || "",
-          code: area.code || "",
-          area_type_id: area.area_type_id || "",
-          parent_id: area.parent_id || null,
-          contact_person: area.contact_person || "",
-          contact_number: area.contact_number || "",
-          email: area.email || "",
-          address: area.address || "",
-          latitude: area.latitude || null,
-          longitude: area.longitude || null,
+          name: area.name,
+          code: area.code,
+          area_type_id: area.area_type_id,
+          parent_id: area.parent_id,
+          contact_person: area.contact_person,
+          contact_number: area.contact_number,
+          email: area.email,
+          address: area.address,
+          latitude: area.latitude,
+          longitude: area.longitude,
           status: area.status ?? true
         });
       } else {
         reset({
           name: "",
           code: "",
-          area_type_id: "",
+          area_type_id: null,
           parent_id: null,
-          contact_person: "",
-          contact_number: "",
-          email: "",
-          address: "",
+          contact_person: null,
+          contact_number: null,
+          email: null,
+          address: null,
           latitude: null,
           longitude: null,
           status: true
@@ -104,7 +104,7 @@ export function AreaFormModal({
     return allAreas.filter(a => !excludeIds.has(a.id));
   }, [area, allAreas]);
 
-  const onValidSubmit = (data: MaintenanceAreaFormData) => {
+  const onValidSubmit = (data: Maintenance_areasInsertSchema) => {
     onSubmit(data);
   };
 

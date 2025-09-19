@@ -14,7 +14,7 @@ import { ErrorDisplay } from "@/components/common/ui";
 import { EntityManagementComponent } from "@/components/common/entity-management/EntityManagementComponent";
 import { areaConfig, MaintenanceAreaWithRelations } from "@/config/areas";
 import { useDelete } from "@/hooks/useDelete";
-import { TablesInsert } from "@/types/supabase-types";
+import { Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
@@ -135,7 +135,7 @@ export default function MaintenanceAreasPage() {
         <AreaFormModal
           isOpen={isFormOpen}
           onClose={() => setFormOpen(false)}
-          onSubmit={(data: TablesInsert<'maintenance_areas'>) => handleFormSubmit(data, editingArea)}
+          onSubmit={(data: Maintenance_areasInsertSchema) => handleFormSubmit(data, editingArea)}
           area={editingArea}
           allAreas={allAreas}
           areaTypes={areaTypes}
