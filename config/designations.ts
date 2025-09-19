@@ -1,16 +1,9 @@
 // config/designations.ts
 
+import { DesignationWithRelations } from "@/app/dashboard/designations/page";
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
-import { Tables } from "@/types/supabase-types";
 
-// --- TYPE DEFINITIONS ---
-export type EmployeeDesignation = Tables<"employee_designations">;
-
-export interface DesignationWithRelations extends EmployeeDesignation {
-  parent_designation: EmployeeDesignation | null;
-  child_designations: DesignationWithRelations[];
-}
 
 export const designationConfig: EntityConfig<DesignationWithRelations> = {
   entityName: 'designation',

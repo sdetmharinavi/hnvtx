@@ -1,25 +1,27 @@
 import { useEffect, useMemo } from "react";
-import { EmployeeDesignation, DesignationWithRelations } from "@/config/designations";
 import { useForm } from "react-hook-form";
-import { employeeDesignationSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FormCard } from "../common/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form/FormControls";
+import { employee_designationsInsertSchema, Employee_designationsInsertSchema, Employee_designationsRowSchema } from "@/schemas/zod-schemas";
+import { DesignationWithRelations } from "@/app/dashboard/designations/page";
+
+
 
 interface DesignationFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: EmployeeDesignation) => void;
+  onSubmit: (data: Employee_designationsInsertSchema) => void;
   designation: DesignationWithRelations | null;
-  allDesignations: EmployeeDesignation[];
+  allDesignations: Employee_designationsRowSchema[];
   isLoading: boolean;
 }
 
 export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, allDesignations, isLoading }: DesignationFormModalProps) {
   // === React Hook Form Setup ===
   // Create a form-specific schema that excludes timestamp fields to avoid Date vs string/null mismatches
-  const designationFormSchema = employeeDesignationSchema.pick({ id: true, name: true, parent_id: true, status: true });
+  const designationFormSchema = employee_designationsInsertSchema.pick({ id: true, name: true, parent_id: true, status: true });
   type DesignationForm = z.infer<typeof designationFormSchema>;
 
   const {
@@ -38,12 +40,13 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
   });
 
   const availableParents = useMemo(() => {
-    if (!designation) return allDesignations;
+    if (!designation || !designation.id) return allDesignations;
 
-    const getDescendantIds = (designationId: string, designations: EmployeeDesignation[]): Set<string> => {
+    const getDescendantIds = (designationId: string, designations: Employee_designationsInsertSchema[]): Set<string> => {
       const descendants = new Set<string>([designationId]);
       const children = designations.filter((d) => d.parent_id === designationId);
       children.forEach((child) => {
+        if (!child.id) return;
         const childDescendants = getDescendantIds(child.id, designations);
         childDescendants.forEach((id) => descendants.add(id));
       });
@@ -51,7 +54,7 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
     };
 
     const excludeIds = getDescendantIds(designation.id, allDesignations);
-    return allDesignations.filter((d) => !excludeIds.has(d.id));
+    return allDesignations.filter((d) => !d.id || !excludeIds.has(d.id));
   }, [designation, allDesignations]);
 
   // Reset form when designation changes (to pre-fill the form when editing)
@@ -71,14 +74,14 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
     const parsedData = {
       ...data,
     };
-    onSubmit(parsedData as unknown as EmployeeDesignation);
+    onSubmit(parsedData);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
-      <div className='max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 dark:bg-gray-800'>
+      <div className='max-h-[90vh] w-full overflow-y-auto rounded-lg bg-white p-6 dark:bg-gray-800'>
         <div className='mb-4 flex items-center justify-between'>
           <h2 className='text-lg font-semibold text-gray-900 dark:text-white'>{designation ? "Edit Designation" : "Add New Designation"}</h2>
           <button onClick={onClose} className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'>
