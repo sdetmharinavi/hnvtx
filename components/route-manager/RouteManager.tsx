@@ -22,6 +22,49 @@ import AddJcForm from '@/components/route-manager/ui/AddJcForm';
 import RouteVisualization from '@/components/route-manager/ui/RouteVisualization';
 import CommitView from '@/components/route-manager/ui/CommitView';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from '@/hooks/useCrudManager';
+import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
+import { createClient } from '@/utils/supabase/client';
+import { useParams } from 'next/navigation';
+import { usePagedOfcConnectionsComplete } from '@/hooks/database';
+
+// 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
+const useOfcConnectionsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
+  const { currentPage, pageLimit, searchQuery } = params;
+  const supabase = createClient();
+  const { id } = useParams();
+  const cableId = id as string;
+
+  const { data, isLoading, error, refetch } = usePagedOfcConnectionsComplete(
+    supabase,
+    {
+      filters: { ofc_id: cableId, ...(searchQuery ? { searchQuery } : {}) },
+      limit: 300,
+      offset: (currentPage - 1) * pageLimit,
+    }
+  );
+
+  // Calculate counts from the full dataset
+  const totalCount = data?.[0]?.total_count || 0;
+  const activeCount = data?.[0]?.active_count || 0;
+  const inactiveCount = data?.[0]?.inactive_count || 0;
+
+  return {
+    data: data || [],
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    error,
+    refetch,
+  };
+};
 
 // --- Client-Side API Functions ---
 const fetchRouteDetails = async (
@@ -67,9 +110,40 @@ export default function RouteManager({
 
   console.log(initialRoutes);
 
+  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  const {
+    data: cableConnectionsData,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading: isRouteDetailsLoading,
+    // isMutating,
+    // error,
+    refetch,
+    pagination,
+    // search,
+    // filters: crudFilters,
+    editModal,
+    // viewModal,
+    // bulkActions,
+    deleteModal,
+    actions: crudActions,
+  } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({
+    tableName: 'ofc_connections',
+    dataQueryHook: useOfcConnectionsData,
+  });
+
   // Local UI state for JCs the user is planning to add
   const [plannedJCs, setPlannedJCs] = useState<Equipment[]>([]);
   const [branchConfig, setBranchConfig] = useState<BranchConfigMap>({});
+
+  console.log('cableConnectionsData', cableConnectionsData);
+  console.log('plannedJCs', plannedJCs);
+  console.log('branchConfig', branchConfig);
+  console.log('selectedRouteId', selectedRouteId);
+  console.log('selectedRoute', selectedRoute);
+  console.log('evolutionMode', evolutionMode);
+  console.log('isRouteDetailsLoading', isRouteDetailsLoading);
 
   const queryClient = useQueryClient();
 
@@ -191,8 +265,10 @@ export default function RouteManager({
       ) : (
         <>
           {/* Route Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 gap-4 mb-8">
             <SearchableSelect
+              className="w-full"
+              clearable={true}
               options={initialRoutes.map((r) => ({
                 value: r.id,
                 label: r.route_name,
@@ -209,14 +285,16 @@ export default function RouteManager({
 
           {selectedRouteId && (
             <div
-            onClick={() => console.log("placeholder for fetching route connection")}
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-all border-gray-200 dark:border-gray-600 hover:border-blue-300`}
-          >
-            <div className="font-medium">{selectedRoute}</div>
-            {/* <span className={`px-2 py-1 rounded text-xs mt-2 inline-block ${getStatusColor(route.evolution_status)}`}>
+              onClick={() =>
+                console.log('placeholder for fetching route connection')
+              }
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all border-gray-200 dark:border-gray-600 hover:border-blue-300`}
+            >
+              <div className="font-medium">{selectedRoute}</div>
+              {/* <span className={`px-2 py-1 rounded text-xs mt-2 inline-block ${getStatusColor(route.evolution_status)}`}>
               {route.evolution_status.replace('_', ' ')}
             </span> */}
-          </div>
+            </div>
           )}
 
           {isLoading && <p>Loading route details...</p>}
@@ -438,7 +516,8 @@ export default function RouteManager({
               {/* Middle and Right Panels */}
               <div className="xl:col-span-2 space-y-6">
                 <RouteVisualization
-                  route={routeDetails.route}
+                  routeConnections={cableConnectionsData}
+                  isLoading={isRouteDetailsLoading}
                   equipment={allEquipmentOnRoute}
                   onRemoveJc={handleRemoveJc}
                 />

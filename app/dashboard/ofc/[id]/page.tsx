@@ -58,8 +58,6 @@ const useOfcConnectionsData = (
     }
   );
 
-  console.log('Data structure:', data ? Object.keys(data[0] || {}) : 'No data');
-
   // Calculate counts from the full dataset
   const totalCount = data?.[0]?.total_count || 0;
   const activeCount = data?.[0]?.active_count || 0;
