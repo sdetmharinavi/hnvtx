@@ -10,7 +10,7 @@ export default async function EvolveRoutePage() {
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Route Evolution Manager
+          Route Manager
         </h1>
       </div>
       {/* The interactive client component receives server-fetched data as a prop */}
