@@ -1,4 +1,4 @@
-// components/ofcadv/schemas.ts
+// components/route-manager/schemas.ts
 // Lightweight runtime validators (type guards) to avoid extra deps.
 
 import { RouteDetailsPayload, EvolutionCommitPayload, Equipment, CableSegment, FiberSplice, Site } from './types';

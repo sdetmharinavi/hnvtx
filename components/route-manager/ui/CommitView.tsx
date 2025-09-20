@@ -1,7 +1,7 @@
-// app/evolve/ui/CommitView.tsx
+// components/route-manager/ui/CommitView.tsx
 "use client";
 
-import { Equipment, CableSegment, FiberSplice } from '@/components/ofcadv/types';
+import { Equipment, CableSegment, FiberSplice } from '@/components/route-manager/types';
 
 interface Props {
   equipment: Equipment[];

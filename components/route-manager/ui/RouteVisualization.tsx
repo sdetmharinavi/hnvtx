@@ -1,7 +1,7 @@
-// app/evolve/ui/RouteVisualization.tsx
+// components/route-manager/ui/RouteVisualization.tsx
 "use client";
 
-import { Equipment, RouteDetailsPayload } from '@/components/ofcadv/types';
+import { Equipment, RouteDetailsPayload } from '@/components/route-manager/types';
 
 interface Props {
   route: RouteDetailsPayload['route'];

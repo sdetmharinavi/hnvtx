@@ -1,7 +1,7 @@
 // app/api/evolve/[routeId]/route.ts
 import { NextResponse } from 'next/server';
-import { RouteDetailsPayload, EvolutionCommitPayload } from '@/components/ofcadv/types';
-import { isEvolutionCommitPayload } from '@/components/ofcadv/schemas';
+import { RouteDetailsPayload, EvolutionCommitPayload } from '@/components/route-manager/types';
+import { isEvolutionCommitPayload } from '@/components/route-manager/schemas';
 
 // GET handler for fetching detailed data for a selected route
 export async function GET(

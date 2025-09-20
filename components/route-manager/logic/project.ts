@@ -1,4 +1,5 @@
-// components/ofcadv/logic/project.ts
+// components/route-manager/logic/project.ts
+
 import { CableSegment, Equipment, FiberSplice, RouteDetailsPayload } from '../types';
 
 export type BranchConfig = {

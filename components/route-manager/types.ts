@@ -1,4 +1,4 @@
-// lib/types.ts
+// components/route-manager/types.ts
 
 // The high-level route object, fetched on the server for initial selection
 export interface RouteForSelection {

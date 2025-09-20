@@ -16,6 +16,7 @@
       "postgrest",
       "reauthentication",
       "refreshable",
+      "segs",
       "supabase",
       "totp",
       "transnet",

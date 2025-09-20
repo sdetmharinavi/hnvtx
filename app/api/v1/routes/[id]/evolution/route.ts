@@ -1,6 +1,6 @@
 // app/api/v1/routes/[id]/evolution/route.ts
 import { NextResponse } from 'next/server';
-import { RouteDetailsPayload } from '@/components/ofcadv/types';
+import { RouteDetailsPayload } from '@/components/route-manager/types';
 
 export async function GET(
   request: Request,

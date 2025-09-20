@@ -1,12 +1,12 @@
-// app/evolve/RouteEvolutionManager.tsx
+// components/route-manager/RouteManager.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/components/ofcadv/queryKeys';
-import { projectSegments, projectDefaultSplices } from '@/components/ofcadv/logic/project';
-import type { BranchConfigMap } from '@/components/ofcadv/logic/project';
-import { isRouteDetailsPayload } from '@/components/ofcadv/schemas';
+import { queryKeys } from '@/components/route-manager/queryKeys';
+import { projectSegments, projectDefaultSplices } from '@/components/route-manager/logic/project';
+import type { BranchConfigMap } from '@/components/route-manager/logic/project';
+import { isRouteDetailsPayload } from '@/components/route-manager/schemas';
 import {
   RouteForSelection,
   RouteDetailsPayload,
@@ -14,10 +14,10 @@ import {
   CableSegment,
   FiberSplice,
   EvolutionCommitPayload,
-} from '@/components/ofcadv/types';
-import AddJcForm from '@/components/ofcadv/ui/AddJcForm';
-import RouteVisualization from '@/components/ofcadv/ui/RouteVisualization';
-import CommitView from '@/components/ofcadv/ui/CommitView';
+} from '@/components/route-manager/types';
+import AddJcForm from '@/components/route-manager/ui/AddJcForm';
+import RouteVisualization from '@/components/route-manager/ui/RouteVisualization';
+import CommitView from '@/components/route-manager/ui/CommitView';
 
 // --- Client-Side API Functions ---
 const fetchRouteDetails = async (routeId: string): Promise<RouteDetailsPayload> => {
