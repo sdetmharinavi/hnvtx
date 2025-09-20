@@ -1,4 +1,4 @@
-// app/api/evolve/[routeId]/route.ts
+// app/api/route/[routeId]/route.ts
 import { NextResponse } from 'next/server';
 import { RouteDetailsPayload, EvolutionCommitPayload } from '@/components/route-manager/types';
 import { isEvolutionCommitPayload } from '@/components/route-manager/schemas';

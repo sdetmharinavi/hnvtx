@@ -3658,9 +3658,9 @@ export default PrivacyPage;
 
 ```
 
-<!-- path: hnvtx/app/api/evolve/[routeId]/route.ts -->
+<!-- path: hnvtx/app/api/route/[routeId]/route.ts -->
 ```typescript
-// app/api/evolve/[routeId]/route.ts
+// app/api/route/[routeId]/route.ts
 import { NextResponse } from 'next/server';
 import { RouteDetailsPayload, EvolutionCommitPayload } from '@/components/ofcadv/types';
 import { isEvolutionCommitPayload } from '@/components/ofcadv/schemas';
@@ -47099,7 +47099,7 @@ import CommitView from '@/components/ofcadv/ui/CommitView';
 
 // --- Client-Side API Functions ---
 const fetchRouteDetails = async (routeId: string): Promise<RouteDetailsPayload> => {
-  const res = await fetch(`/api/evolve/${routeId}`);
+  const res = await fetch(`/api/route/${routeId}`);
   if (!res.ok) throw new Error('Failed to fetch route details');
   const data = await res.json();
   if (!isRouteDetailsPayload(data)) {
@@ -47109,7 +47109,7 @@ const fetchRouteDetails = async (routeId: string): Promise<RouteDetailsPayload> 
 };
 
 const commitEvolution = async (vars: { routeId: string; payload: EvolutionCommitPayload }) => {
-  const res = await fetch(`/api/evolve/${vars.routeId}`, {
+  const res = await fetch(`/api/route/${vars.routeId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(vars.payload),
@@ -59363,7 +59363,7 @@ These suggestions ensure your data remains consistent and reliable as users inte
 
 #### **Suggestion 3.2: Versioning Your API**
 
-*   **Observation:** Your API routes are at `app/api/evolve/...`. As you add more complex features, you might need to change the request or response shapes of these APIs.
+*   **Observation:** Your API routes are at `app/api/route/...`. As you add more complex features, you might need to change the request or response shapes of these APIs.
 *   **Improvement:** Introduce versioning into your API paths from the start. Your existing routes `app/api/v1/...` are perfect. Standardize on this pattern for all new API endpoints.
     *   New Route: `app/api/v1/systems/[id]/paths`
 *   **Benefit:** Allows you to evolve your backend API without breaking older versions of the client application. It's a fundamental practice for building stable, long-lasting applications.
