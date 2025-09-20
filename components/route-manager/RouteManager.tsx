@@ -60,6 +60,7 @@ export default function RouteManager({
   isRouteLoading: boolean;
 }) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [evolutionMode, setEvolutionMode] = useState<
     'view' | 'add_jc' | 'commit'
   >('view');
@@ -196,10 +197,27 @@ export default function RouteManager({
                 value: r.id,
                 label: r.route_name,
               }))}
-              onChange={(val) => setSelectedRouteId(val)}
+              onChange={(val) => {
+                setSelectedRouteId(val);
+
+                const found = initialRoutes.find((r) => r.id === val);
+                setSelectedRoute(found ? found.route_name : null);
+              }}
               placeholder="Select a route..."
             />
           </div>
+
+          {selectedRouteId && (
+            <div
+            onClick={() => console.log("placeholder for fetching route connection")}
+            className={`p-4 border-2 rounded-lg cursor-pointer transition-all border-gray-200 dark:border-gray-600 hover:border-blue-300`}
+          >
+            <div className="font-medium">{selectedRoute}</div>
+            {/* <span className={`px-2 py-1 rounded text-xs mt-2 inline-block ${getStatusColor(route.evolution_status)}`}>
+              {route.evolution_status.replace('_', ' ')}
+            </span> */}
+          </div>
+          )}
 
           {isLoading && <p>Loading route details...</p>}
           {isError && <p className="text-red-500">Error: {error?.message}</p>}
