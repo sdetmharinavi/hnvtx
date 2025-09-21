@@ -1,20 +1,19 @@
-// components/route-manager/types.ts
+// path: components/route-manager/types.ts
 
-// The high-level route object, fetched for the selection dropdown
 export interface OfcForSelection {
   id: string;
   route_name: string;
+  capacity?: number;
 }
 
-// Type for a Junction Closure as it relates to a route
 export interface JunctionClosure {
   id: string;
   name: string;
   position_km: number | null;
-  // Add other JC properties as needed for the visualizer
+  ofc_cable_id?: string;
+  capacity?: number;
 }
 
-// The detailed data payload for a selected route, including its JCs
 export interface RouteDetailsPayload {
   route: {
     id: string;
@@ -29,8 +28,8 @@ export interface RouteDetailsPayload {
 
 export interface FiberInfo {
   fiber_no: number;
-  status: 'available' | 'used_as_incoming' | 'used_as_outgoing';
-  splice_id: string | null; // <--- ADD THIS LINE
+  status: 'available' | 'used_as_incoming' | 'used_as_outgoing' | 'terminated';
+  splice_id: string | null; 
   connected_to_cable: string | null;
   connected_to_fiber: number | null;
 }
@@ -47,6 +46,37 @@ export interface CableInJc {
 export interface JcSplicingDetails {
   jc_details: JunctionClosure;
   cables: CableInJc[];
+}
+
+export interface SpliceConnection {
+    splice_id: string;
+    jc_id: string;
+    jc_name: string;
+    jc_position_km: number | null;
+    incoming_cable_id: string;
+    incoming_fiber_no: number;
+    outgoing_cable_id: string | null;
+    outgoing_fiber_no: number | null;
+    otdr_length_km: number | null;
+    loss_db: number | null;
+}
+
+// *** THE CORRECTED TYPE ***
+// This type is simpler and more directly matches the visual elements we need.
+export interface FiberTraceNode {
+  type: 'NODE' | 'JC';
+  id: string;
+  name: string;
+  children: {
+    cable: {
+      id: string;
+      name: string;
+      distance_km: number | null;
+      is_otdr: boolean;
+      fiber_no: number;
+    };
+    downstreamNode: FiberTraceNode | null; // Can be another NODE or JC
+  }[];
 }
 
 // ========================================================================================================================

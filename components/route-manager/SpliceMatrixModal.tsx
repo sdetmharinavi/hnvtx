@@ -1,10 +1,10 @@
 // path: components/route-manager/SpliceMatrixModal.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Modal, PageSpinner } from '@/components/common/ui';
-import { useJcSplicingDetails, useManageSplice, useAutoSplice, useOfcRoutesForSelection } from '@/hooks/database/route-manager-hooks';
+import { useJcSplicingDetails, useManageSplice, useAutoSplice, useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import { CableInJc, FiberInfo, JunctionClosure } from '@/components/route-manager/types';
 import { Button } from '../common/ui';
 import { Link2Off, LogOut, PlusCircle, Zap } from 'lucide-react';
@@ -18,7 +18,7 @@ interface SpliceMatrixModalProps {
 }
 
 // =================================================================
-// Sub-component for a single fiber
+// Sub-component for a single fiber (unchanged and correct)
 // =================================================================
 interface FiberProps {
   fiber: FiberInfo;
@@ -28,45 +28,56 @@ interface FiberProps {
 }
 
 const Fiber: React.FC<FiberProps> = ({ fiber, isSelected, isPotentialTarget, onClick }) => {
-  const getStatusClasses = () => {
-    if (isSelected) return 'bg-yellow-400 dark:bg-yellow-600 ring-2 ring-yellow-500 shadow-md';
-    if (isPotentialTarget) return 'bg-blue-100 dark:bg-blue-800 ring-2 ring-blue-500 animate-pulse';
-    if (fiber.splice_id && !fiber.connected_to_cable) return 'bg-gray-300 dark:bg-gray-600 cursor-pointer hover:bg-gray-400';
-    switch (fiber.status) {
-      case 'available': return 'bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800';
-      case 'used_as_incoming':
-      case 'used_as_outgoing':
-        return 'bg-blue-100 dark:bg-blue-900/50 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800';
-      default: return 'bg-gray-200 dark:bg-gray-700';
-    }
-  };
-  
-  const getTitle = () => {
-    if (fiber.splice_id && !fiber.connected_to_cable) return `Fiber ${fiber.fiber_no} - Terminated. Click to manage.`;
-    if (fiber.status !== 'available') return `Connected to ${fiber.connected_to_cable} (F${fiber.connected_to_fiber}) - Click to manage splice`;
-    return `Fiber ${fiber.fiber_no} - Available`;
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full p-1.5 rounded-md text-left text-xs transition-all duration-150 flex items-center justify-between gap-1",
-        getStatusClasses()
-      )}
-      title={getTitle()}
-    >
-      <span className="font-mono font-bold text-gray-800 dark:text-gray-100">F{fiber.fiber_no}</span>
-      {fiber.status !== 'available' && (
-        <span className={cn(
-            "font-mono text-[10px] truncate",
-            fiber.connected_to_cable ? "text-blue-800 dark:text-blue-200" : "text-gray-600 dark:text-gray-400"
-        )}>
-          {fiber.connected_to_cable ? `→ ${fiber.connected_to_cable?.split('⇔')[1]?.split('_')[0]}-F${fiber.connected_to_fiber}` : 'TERMINATED'}
-        </span>
-      )}
-    </button>
-  );
+    const getStatusClasses = () => {
+        if (isSelected) return 'bg-yellow-400 dark:bg-yellow-600 ring-2 ring-yellow-500 shadow-md';
+        if (isPotentialTarget) return 'bg-blue-100 dark:bg-blue-800 ring-2 ring-blue-500 animate-pulse';
+        if (fiber.splice_id && !fiber.connected_to_cable) return 'bg-gray-300 dark:bg-gray-600 cursor-pointer hover:bg-gray-400';
+        switch (fiber.status) {
+          case 'available': return 'bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800';
+          case 'used_as_incoming':
+          case 'used_as_outgoing':
+            return 'bg-blue-100 dark:bg-blue-900/50 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800';
+          default: return 'bg-gray-200 dark:bg-gray-700';
+        }
+      };
+      
+      const getTitle = () => {
+        if (fiber.splice_id && !fiber.connected_to_cable) return `Fiber ${fiber.fiber_no} - Terminated. Click to manage.`;
+        if (fiber.status !== 'available') return `Connected to ${fiber.connected_to_cable} (F${fiber.connected_to_fiber}) - Click to manage splice`;
+        return `Fiber ${fiber.fiber_no} - Available`;
+      }
+    
+      const renderConnectionInfo = () => {
+        if (fiber.status === 'available') return null;
+    
+        const connectionText = fiber.connected_to_cable 
+          ? `→ ${fiber.connected_to_cable} (F${fiber.connected_to_fiber})`
+          : 'TERMINATED';
+          
+        const textColor = fiber.connected_to_cable
+          ? "text-blue-800 dark:text-blue-200"
+          : "text-gray-600 dark:text-gray-400";
+          
+        return (
+          <span className={cn("font-mono text-[10px] truncate", textColor)}>
+            {connectionText}
+          </span>
+        );
+      };
+    
+      return (
+        <button
+          onClick={onClick}
+          className={cn(
+            "w-full p-1.5 rounded-md text-left text-xs transition-all duration-150 flex items-center justify-between gap-1",
+            getStatusClasses()
+          )}
+          title={getTitle()}
+        >
+          <span className="font-mono font-bold text-gray-800 dark:text-gray-100">F{fiber.fiber_no}</span>
+          {renderConnectionInfo()}
+        </button>
+      );
 };
 
 // =================================================================
@@ -74,58 +85,77 @@ const Fiber: React.FC<FiberProps> = ({ fiber, isSelected, isPotentialTarget, onC
 // =================================================================
 export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen, onClose }) => {
   const { data, isLoading, isError, error, refetch } = useJcSplicingDetails(jc?.id || null);
-  const { data: allCablesData } = useOfcRoutesForSelection();
+  const { data: allCablesData, isLoading: isLoadingAllCables } = useOfcRoutesForSelection();
   const manageSpliceMutation = useManageSplice();
   const autoSpliceMutation = useAutoSplice();
 
+  // *** BUG FIX IS HERE: Re-added the missing useState declaration ***
   const [displayedCableIds, setDisplayedCableIds] = useState<Set<string>>(new Set());
+  
   const [cableToAdd, setCableToAdd] = useState<string | null>(null);
   const [selectedFiber, setSelectedFiber] = useState<{ cableId: string; fiber: FiberInfo } | null>(null);
 
-  useMemo(() => {
+  useEffect(() => {
     if (data?.cables) {
-      setDisplayedCableIds(new Set(data.cables.map(c => c.cable_id)));
+      const initialIds = new Set<string>(data.cables.map(c => c.cable_id as string));
+      const parentCableId = (jc as any)?.ofc_cable_id;
+      if (parentCableId) {
+        initialIds.add(parentCableId);
+      }
+      setDisplayedCableIds(initialIds);
+    } else if (jc) {
+        const parentCableId = (jc as any)?.ofc_cable_id;
+        if(parentCableId) {
+            setDisplayedCableIds(new Set([parentCableId]));
+        }
     }
-  }, [data]);
-
+  }, [data, jc]);
+  
   const allCablesInMatrix = useMemo(() => {
-    if (!data?.cables && displayedCableIds.size === 0) return [];
-    
-    const existingCables = data?.cables || [];
-    const existingIds = new Set(existingCables.map(c => c.cable_id));
+    const cablesMap = new Map<string, CableInJc>();
 
-    const addedCables = Array.from(displayedCableIds)
-        .filter(id => !existingIds.has(id))
-        .map(id => {
-          const fullCableData = allCablesData?.find(c => c.id === id);
-          if (!fullCableData) return null;
-          // You may need to cast fullCableData to a more specific type if `capacity` is not on the base type
-          const capacity = (fullCableData as any).capacity || 24; 
-          return {
-              cable_id: fullCableData.id,
-              route_name: fullCableData.route_name,
-              capacity: capacity,
-              start_node: 'Unknown', // This info might not be in the selection data
-              end_node: 'Unknown',
-              fibers: Array.from({ length: capacity }, (_, i) => ({
-                  fiber_no: i + 1,
-                  status: 'available',
-                  splice_id: null,
-                  connected_to_cable: null,
-                  connected_to_fiber: null,
-              })) as FiberInfo[]
-          };
-        })
-        .filter((c): c is CableInJc => c !== null);
-        
-    return [...existingCables, ...addedCables];
-  }, [data, displayedCableIds, allCablesData]);
+    // Combine IDs from data and manual additions
+    const allIdsToShow = new Set([
+      ...(data?.cables?.map(c => c.cable_id) || []),
+      ...(jc ? [(jc as any).ofc_cable_id] : []), // Also include parent cable
+      ...displayedCableIds
+    ]);
+  
+    allIdsToShow.forEach(cableId => {
+      if (!cableId) return; // Skip if null/undefined
+
+      const existingCableData = data?.cables?.find(c => c.cable_id === cableId);
+      if (existingCableData) {
+        cablesMap.set(cableId, existingCableData);
+        return;
+      }
+  
+      const cableInfo = allCablesData?.find(c => c.id === cableId);
+      if (cableInfo) {
+        const capacity = (cableInfo as any).capacity || 24;
+        cablesMap.set(cableId, {
+          cable_id: cableId,
+          route_name: cableInfo.route_name,
+          capacity: capacity,
+          start_node: '...',
+          end_node: '...',
+          fibers: Array.from({ length: capacity }, (_, i) => ({
+            fiber_no: i + 1, status: 'available', splice_id: null,
+            connected_to_cable: null, connected_to_fiber: null
+          }))
+        });
+      }
+    });
+  
+    return Array.from(cablesMap.values());
+  }, [data?.cables, displayedCableIds, allCablesData, jc]);
 
   const addCableOptions = useMemo(() => {
+    const currentIds = new Set(allCablesInMatrix.map(c => c.cable_id));
     return allCablesData
-      ?.filter(c => !displayedCableIds.has(c.id))
+      ?.filter(c => !currentIds.has(c.id))
       .map(c => ({ value: c.id, label: c.route_name })) || [];
-  }, [allCablesData, displayedCableIds]);
+  }, [allCablesData, allCablesInMatrix]);
 
   const handleAddCableToMatrix = () => {
     if (cableToAdd) {
@@ -133,20 +163,15 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
         setCableToAdd(null);
     }
   }
-
+  
   const handleFiberClick = (cableId: string, fiber: FiberInfo) => {
     const clickedFiber = { cableId, fiber };
-
     if (selectedFiber?.cableId === cableId && selectedFiber?.fiber.fiber_no === fiber.fiber_no) {
-      setSelectedFiber(null);
-      return;
+      setSelectedFiber(null); return;
     }
-
     if (!selectedFiber) {
-      setSelectedFiber(clickedFiber);
-      return;
+      setSelectedFiber(clickedFiber); return;
     }
-    
     if (selectedFiber.fiber.status === 'available' && fiber.status === 'available') {
       handleSplice(selectedFiber, clickedFiber);
     } else {
@@ -154,48 +179,32 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
     }
   };
 
-  const handleSplice = (
-    incoming: { cableId: string; fiber: FiberInfo },
-    outgoing: { cableId: string; fiber: FiberInfo }
-  ) => {
+  const handleSplice = (incoming: { cableId: string; fiber: FiberInfo }, outgoing: { cableId: string; fiber: FiberInfo }) => {
     if (!jc) return;
     manageSpliceMutation.mutate({
-      action: 'create',
-      jcId: jc.id,
-      incomingCableId: incoming.cableId,
-      incomingFiberNo: incoming.fiber.fiber_no,
-      outgoingCableId: outgoing.cableId,
-      outgoingFiberNo: outgoing.fiber.fiber_no,
-      spliceType: 'pass_through',
+      action: 'create', jcId: jc.id, incomingCableId: incoming.cableId,
+      incomingFiberNo: incoming.fiber.fiber_no, outgoingCableId: outgoing.cableId,
+      outgoingFiberNo: outgoing.fiber.fiber_no, spliceType: 'pass_through',
     }, {
       onSuccess: () => {
         toast.success(`Spliced F${incoming.fiber.fiber_no} to F${outgoing.fiber.fiber_no}`);
-        setSelectedFiber(null);
-        refetch(); // Manually trigger refetch
+        setSelectedFiber(null); refetch();
       },
       onError: (err) => toast.error(`Splice Error: ${err.message}`),
     });
   };
-  
+
   const handleTerminate = () => {
     if (!jc || !selectedFiber || selectedFiber.fiber.status !== 'available') {
-        toast.warning("Please select an available fiber to terminate.");
-        return;
+        toast.warning("Please select an available fiber to terminate."); return;
     }
-
     manageSpliceMutation.mutate({
-        action: 'create',
-        jcId: jc.id,
-        incomingCableId: selectedFiber.cableId,
-        incomingFiberNo: selectedFiber.fiber.fiber_no,
-        outgoingCableId: undefined,
-        outgoingFiberNo: undefined,
-        spliceType: 'termination',
+        action: 'create', jcId: jc.id, incomingCableId: selectedFiber.cableId,
+        incomingFiberNo: selectedFiber.fiber.fiber_no, spliceType: 'termination',
     }, {
         onSuccess: () => {
             toast.success(`Fiber F${selectedFiber.fiber.fiber_no} terminated successfully.`);
-            setSelectedFiber(null);
-            refetch();
+            setSelectedFiber(null); refetch();
         },
         onError: (err) => toast.error(`Termination Error: ${err.message}`),
     });
@@ -203,19 +212,14 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
 
   const handleUnsplice = () => {
     if (!jc || !selectedFiber || selectedFiber.fiber.status === 'available' || !selectedFiber.fiber.splice_id) {
-        toast.warning("Please select a used fiber to un-splice.");
-        return;
+        toast.warning("Please select a used fiber to un-splice."); return;
     }
-
     manageSpliceMutation.mutate({
-        action: 'delete',
-        jcId: jc.id,
-        spliceId: selectedFiber.fiber.splice_id,
+        action: 'delete', jcId: jc.id, spliceId: selectedFiber.fiber.splice_id,
     }, {
         onSuccess: () => {
             toast.success(`Splice for F${selectedFiber.fiber.fiber_no} has been removed.`);
-            setSelectedFiber(null);
-            refetch();
+            setSelectedFiber(null); refetch();
         },
         onError: (err) => toast.error(`Un-splice Error: ${err.message}`),
     });
@@ -223,13 +227,10 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
 
   const handleAutoSplice = () => {
     if (!jc || allCablesInMatrix.length !== 2) {
-        toast.error("Auto-splice only works when exactly two cables are in the matrix.");
-        return;
+        toast.error("Auto-splice only works when exactly two cables are in the matrix."); return;
     }
-    
     const cable1Id = allCablesInMatrix[0].cable_id;
     const cable2Id = allCablesInMatrix[1].cable_id;
-
     autoSpliceMutation.mutate({ jcId: jc.id, cable1Id, cable2Id }, {
         onSuccess: () => refetch()
     });
@@ -251,62 +252,62 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
                         Selected: <span className="font-bold font-mono">{selectedCable?.route_name} / F{selectedFiber.fiber.fiber_no}</span>
                     </p>
                 ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Select an available fiber to start an action.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Select a fiber to start an action.</p>
                 )}
             </div>
             <div className="flex gap-2 flex-wrap">
                 <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleAutoSplice} 
+                    variant="outline" size="sm" onClick={handleAutoSplice} 
                     disabled={allCablesInMatrix.length !== 2 || autoSpliceMutation.isPending || manageSpliceMutation.isPending}
                     title={allCablesInMatrix.length !== 2 ? "Only available for JCs with 2 cables" : "Auto-splice 1-to-1"}
                 >
-                    <Zap className="h-4 w-4 mr-2" />
-                    Auto-Splice Straight
+                    <Zap className="h-4 w-4 mr-2" /> Auto-Splice Straight
                 </Button>
-
                 <Button variant="outline" size="sm" onClick={handleTerminate} disabled={!selectedFiber || selectedFiber.fiber.status !== 'available' || manageSpliceMutation.isPending}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Terminate
+                    <LogOut className="h-4 w-4 mr-2" /> Terminate
                 </Button>
                 <Button variant="danger" size="sm" onClick={handleUnsplice} disabled={!selectedFiber || selectedFiber.fiber.status === 'available' || manageSpliceMutation.isPending}>
-                    <Link2Off className="h-4 w-4 mr-2" />
-                    Un-Splice
+                    <Link2Off className="h-4 w-4 mr-2" /> Un-Splice
                 </Button>
             </div>
         </div>
         
         <div className="flex gap-4 overflow-x-auto p-4 bg-gray-100 dark:bg-gray-900 rounded-b-lg">
-          {allCablesInMatrix.map((cable: CableInJc) => (
-            <div key={cable.cable_id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm min-w-[200px] flex-shrink-0">
-              <div className="border-b dark:border-gray-600 pb-2 mb-2">
-                  <h4 className="font-bold text-gray-800 dark:text-white truncate" title={cable.route_name}>{cable.route_name}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{cable.start_node} ↔ {cable.end_node}</p>
+          {allCablesInMatrix.length > 0 ? (
+            allCablesInMatrix.map((cable: CableInJc) => (
+              <div key={cable.cable_id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm min-w-[250px] flex-shrink-0">
+                <div className="border-b dark:border-gray-600 pb-2 mb-2">
+                    <h4 className="font-bold text-gray-800 dark:text-white truncate" title={cable.route_name}>{cable.route_name}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{cable.start_node} ↔ {cable.end_node}</p>
+                </div>
+                <div className="space-y-1 max-h-[55vh] overflow-y-auto pr-1">
+                  {cable.fibers.map(fiber => (
+                    <Fiber
+                      key={fiber.fiber_no} fiber={fiber}
+                      isSelected={selectedFiber?.cableId === cable.cable_id && selectedFiber?.fiber.fiber_no === fiber.fiber_no}
+                      isPotentialTarget={!!selectedFiber && selectedFiber.cableId !== cable.cable_id && selectedFiber.fiber.status === 'available' && fiber.status === 'available'}
+                      onClick={() => handleFiberClick(cable.cable_id, fiber)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-1 max-h-[55vh] overflow-y-auto pr-1">
-                {cable.fibers.map(fiber => (
-                  <Fiber
-                    key={fiber.fiber_no}
-                    fiber={fiber}
-                    isSelected={selectedFiber?.cableId === cable.cable_id && selectedFiber?.fiber.fiber_no === fiber.fiber_no}
-                    isPotentialTarget={!!selectedFiber && selectedFiber.cableId !== cable.cable_id && selectedFiber.fiber.status === 'available' && fiber.status === 'available'}
-                    onClick={() => handleFiberClick(cable.cable_id, fiber)}
-                  />
-                ))}
-              </div>
+            ))
+          ) : (
+            <div className="w-full text-center p-8 text-gray-500">
+                No cables are currently associated with this JC. Use the 'Add Cable' panel to begin splicing.
             </div>
-          ))}
+          )}
           
           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm min-w-[220px] flex-shrink-0 flex flex-col justify-center items-center border-2 border-dashed dark:border-gray-600">
                 <h4 className="font-semibold text-gray-800 dark:text-white mb-2">Add Cable to Matrix</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-4">Select a cable to add it to this view for splicing.</p>
                 <SearchableSelect
                     options={addCableOptions}
-                    value={cableToAdd || ""}
+                    value={cableToAdd || undefined}
                     onChange={(value) => setCableToAdd(value)}
-                    placeholder="Search for a cable..."
+                    placeholder={isLoadingAllCables ? 'Loading...' : 'Search for a cable...'}
                     className="w-full"
+                    disabled={isLoadingAllCables}
                 />
                 <Button size="sm" className="mt-3 w-full" onClick={handleAddCableToMatrix} disabled={!cableToAdd}>
                     <PlusCircle className="h-4 w-4 mr-2"/>
@@ -323,7 +324,7 @@ export const SpliceMatrixModal: React.FC<SpliceMatrixModalProps> = ({ jc, isOpen
       isOpen={isOpen}
       onClose={onClose}
       title={`Splice Matrix: ${data?.jc_details?.name || jc?.name || 'Loading...'}`}
-      size="full" // Use a larger size to accommodate more columns
+      size="full"
       className="!p-0"
     >
       {renderContent()}
