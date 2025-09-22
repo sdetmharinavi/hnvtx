@@ -757,6 +757,54 @@ export type Fiber_jointsUpdate = {
     updated_at?: string | null;
 };
 
+export type Fiber_splicesRow = {
+    created_at: string | null;
+    id: string;
+    incoming_cable_id: string;
+    incoming_fiber_no: number;
+    jc_id: string;
+    logical_path_id: string | null;
+    loss_db: number | null;
+    otdr_length_km: number | null;
+    outgoing_cable_id: string | null;
+    outgoing_fiber_no: number | null;
+    splice_type: string;
+    status: string;
+    updated_at: string | null;
+};
+
+export type Fiber_splicesInsert = {
+    created_at?: string | null;
+    id?: string;
+    incoming_cable_id: string;
+    incoming_fiber_no: number;
+    jc_id: string;
+    logical_path_id?: string | null;
+    loss_db?: number | null;
+    otdr_length_km?: number | null;
+    outgoing_cable_id?: string | null;
+    outgoing_fiber_no?: number | null;
+    splice_type?: string;
+    status?: string;
+    updated_at?: string | null;
+};
+
+export type Fiber_splicesUpdate = {
+    created_at?: string | null;
+    id?: string;
+    incoming_cable_id?: string;
+    incoming_fiber_no?: number;
+    jc_id?: string;
+    logical_path_id?: string | null;
+    loss_db?: number | null;
+    otdr_length_km?: number | null;
+    outgoing_cable_id?: string | null;
+    outgoing_fiber_no?: number | null;
+    splice_type?: string;
+    status?: string;
+    updated_at?: string | null;
+};
+
 export type FilesRow = {
     file_name: string;
     file_route: string;
@@ -812,6 +860,39 @@ export type FoldersUpdate = {
     id?: string;
     name?: string;
     user_id?: string;
+};
+
+export type Junction_closuresRow = {
+    created_at: string | null;
+    id: string;
+    latitude: number | null;
+    longitude: number | null;
+    name: string;
+    ofc_cable_id: string | null;
+    position_km: number | null;
+    updated_at: string | null;
+};
+
+export type Junction_closuresInsert = {
+    created_at?: string | null;
+    id?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    name: string;
+    ofc_cable_id?: string | null;
+    position_km?: number | null;
+    updated_at?: string | null;
+};
+
+export type Junction_closuresUpdate = {
+    created_at?: string | null;
+    id?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    name?: string;
+    ofc_cable_id?: string | null;
+    position_km?: number | null;
+    updated_at?: string | null;
 };
 
 export type Logical_fiber_pathsRow = {
@@ -1735,6 +1816,7 @@ export type V_ofc_cables_completeRow = {
     created_at: string | null;
     current_rkm: number | null;
     en_id: string | null;
+    en_name: string | null;
     id: string | null;
     inactive_count: number | null;
     maintenance_area_code: string | null;
@@ -1749,6 +1831,7 @@ export type V_ofc_cables_completeRow = {
     remark: string | null;
     route_name: string | null;
     sn_id: string | null;
+    sn_name: string | null;
     status: boolean | null;
     total_count: number | null;
     transnet_id: string | null;

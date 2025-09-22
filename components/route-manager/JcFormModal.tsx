@@ -1,41 +1,18 @@
 // path: components/route-manager/JcFormModal.tsx
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormInput, FormSearchableSelect } from '@/components/common/form';
-import { useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { JunctionClosure } from './types';
-import { Button } from '../common/ui';
 import { toast } from 'sonner';
+import { Junction_closuresInsertSchema, junction_closuresInsertSchema } from '@/schemas/zod-schemas';
+import { Filters, useTableQuery } from '@/hooks/database';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
 
-// Define the Zod schema for the form
-const jcFormSchema = z.object({
-  name: z.string().min(3, 'Name must be at least 3 characters long.'),
-  jc_type_id: z.string().uuid('Please select a valid JC type.'),
-  capacity: z.preprocess(
-    (val) => parseInt(String(val), 10),
-    z.number().int().positive('Capacity must be a positive number.')
-  ),
-  latitude: z.preprocess(
-    (val) => parseFloat(String(val)),
-    z.number().min(-90).max(90, 'Invalid latitude.')
-  ).optional().nullable(),
-  longitude: z.preprocess(
-    (val) => parseFloat(String(val)),
-    z.number().min(-180).max(180, 'Invalid longitude.')
-  ).optional().nullable(),
-  position_km: z.preprocess(
-    (val) => parseFloat(String(val)),
-    z.number().min(0, 'Position must be a positive number.')
-  ).optional().nullable(),
-});
-
-type JcFormData = z.infer<typeof jcFormSchema>;
 
 interface JcFormModalProps {
   isOpen: boolean;
@@ -43,61 +20,85 @@ interface JcFormModalProps {
   onSave: () => void; // Callback to trigger a refetch
   routeId: string | null;
   editingJc: JunctionClosure | null;
+  rkm: number | null;
 }
 
-export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSave, routeId, editingJc }) => {
+export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSave, routeId, editingJc, rkm }) => {
   const supabase = createClient();
   const isEditMode = !!editingJc;
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+
+  // Get the JC Lists
+  const serverFilters = useMemo(() => {
+      const f: Filters = {
+        // Filter to download only categories with name not equal to "DEFAULT" and NODE_TYPES equal to "Joint / Splice Point"
+        node_type_code: { operator: 'eq', value: 'BJC' },
+        name: { operator: 'neq', value: 'DEFAULT' },
+      };
+      return f;
+    }, []);
+  const { data: jcLists } = useTableQuery(supabase, 'v_nodes_complete', { filters: serverFilters, columns: 'id, name, latitude, longitude' });
 
   const {
     register,
     handleSubmit,
-    control,
     reset,
+    control,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<JcFormData>({
-    resolver: zodResolver(jcFormSchema),
+  } = useForm<Junction_closuresInsertSchema>({
+    resolver: zodResolver(junction_closuresInsertSchema),
   });
-
-  // Fetch JC types for the dropdown
-  const { data: jcTypesData, isLoading: isLoadingTypes } = useTableQuery(supabase, 'lookup_types', {
-    filters: { category: 'JC_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
-    orderBy: [{ column: 'name' }],
-  });
-
-  const jcTypeOptions = useMemo(() =>
-    jcTypesData?.map(type => ({ value: type.id, label: type.name })) || [],
-    [jcTypesData]
-  );
 
   useEffect(() => {
     if (isOpen) {
       if (editingJc) {
         reset({
           name: editingJc.name,
-          // Find the corresponding jc_type_id from the fetched types
-          jc_type_id: jcTypesData?.find(t => t.id === (editingJc as any).jc_type_id)?.id || '',
-          capacity: (editingJc as any).capacity || 24,
-          latitude: (editingJc as any).latitude || null,
-          longitude: (editingJc as any).longitude || null,
+          latitude: editingJc.latitude,
+          longitude: editingJc.longitude,
           position_km: editingJc.position_km || null,
         });
       } else {
         reset({
           name: '',
-          jc_type_id: '',
-          capacity: 24,
-          latitude: null,
-          longitude: null,
+          latitude: latitude,
+          longitude: longitude,
           position_km: null,
         });
       }
     }
-  }, [isOpen, editingJc, reset, jcTypesData]);
+  }, [isOpen, editingJc, reset, jcLists, latitude, longitude]);
 
-  const handleValidSubmit = async (formData: JcFormData) => {
+  const jcOptions: Option[] = (jcLists || [])
+  .filter(d => d.id != null && d.name != null)
+  .map((d) => ({
+    value: d.id as string,    // We've filtered out nulls, so it's safe to assert
+    label: d.name as string,
+  }));
+
+  // When JC name changes, update lat/long automatically
+  const jcName = watch("name");
+
+useEffect(() => {
+  if (!jcName) return;
+  const selected = jcLists?.find((jc) => jc.id === jcName);
+  if (selected) {
+    setValue("latitude", selected.latitude ?? null);
+    setValue("longitude", selected.longitude ?? null);
+  }
+}, [jcName, jcLists, setValue]);
+
+  const handleValidSubmit = async (formData: Junction_closuresInsertSchema) => {
     if (!routeId) {
       toast.error("No route selected to add the JC to.");
+      return;
+    }
+
+    if (formData.position_km && rkm && Number(formData.position_km) > Number(rkm)) {
+      toast.error("Position on route (km) cannot be greater than Cable length.");
       return;
     }
 
@@ -131,31 +132,14 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         heightClass="max-h-[80vh]"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput
+          <FormSearchableSelect
             name="name"
             label="JC Name"
-            register={register}
+            control={control}
+            options={jcOptions || []}
             error={errors.name}
             required
             placeholder="e.g., JC-Main-01"
-          />
-          <FormSearchableSelect
-            name="jc_type_id"
-            label="JC Type"
-            control={control}
-            options={jcTypeOptions}
-            error={errors.jc_type_id}
-            required
-            placeholder={isLoadingTypes ? 'Loading types...' : 'Select a type'}
-            disabled={isLoadingTypes}
-          />
-          <FormInput
-            name="capacity"
-            label="Splice Capacity"
-            type="number"
-            register={register}
-            error={errors.capacity}
-            required
           />
           <FormInput
             name="position_km"

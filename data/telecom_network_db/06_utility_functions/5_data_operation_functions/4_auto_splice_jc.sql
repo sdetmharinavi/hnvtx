@@ -1,5 +1,4 @@
--- path: functions/auto_splice_jc.sql
-
+-- This function automatically creates 1-to-1 "straight" splices for available fibers between two cables.
 CREATE OR REPLACE FUNCTION auto_splice_straight(
     p_jc_id UUID,
     p_cable1_id UUID,
@@ -12,26 +11,21 @@ AS $$
 DECLARE
     cable1_capacity INT;
     cable2_capacity INT;
-    min_capacity INT;
     i INT;
     splice_count INT := 0;
     available_fibers_c1 INT[];
     available_fibers_c2 INT[];
 BEGIN
-    -- Security Check
     IF auth.uid() IS NULL THEN
         RAISE EXCEPTION 'Authentication required';
     END IF;
 
-    -- Get capacities
     SELECT capacity INTO cable1_capacity FROM public.ofc_cables WHERE id = p_cable1_id;
     SELECT capacity INTO cable2_capacity FROM public.ofc_cables WHERE id = p_cable2_id;
 
     IF cable1_capacity IS NULL OR cable2_capacity IS NULL THEN
         RAISE EXCEPTION 'One or both cables not found.';
     END IF;
-    
-    min_capacity := LEAST(cable1_capacity, cable2_capacity);
 
     -- Find available fibers for Cable 1
     SELECT array_agg(s.i) INTO available_fibers_c1
@@ -68,6 +62,3 @@ BEGIN
     RETURN jsonb_build_object('status', 'success', 'splices_created', splice_count);
 END;
 $$;
-
--- Grant permissions on the new function
-GRANT EXECUTE ON FUNCTION public.auto_splice_straight(UUID, UUID, UUID) TO authenticated;

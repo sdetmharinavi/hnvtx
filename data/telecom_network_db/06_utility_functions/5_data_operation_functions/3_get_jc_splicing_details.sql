@@ -1,9 +1,4 @@
--- =================================================================
--- Step 2.1: Function to get all data needed for the Splice Matrix UI
--- This function is the primary data source for our new Route Manager UI.
--- =================================================================
--- path: functions/get_jc_splicing_details_v2.sql
-
+-- This function gets all the data needed for the Splice Matrix UI for a specific JC.
 CREATE OR REPLACE FUNCTION get_jc_splicing_details(p_jc_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -23,7 +18,7 @@ BEGIN
             UNION
             SELECT outgoing_cable_id as cable_id FROM public.fiber_splices WHERE jc_id = p_jc_id AND outgoing_cable_id IS NOT NULL
             UNION
-            -- 2. KEY CHANGE: Always include the JC's parent cable, even if no splices exist yet
+            -- 2. Always include the JC's parent cable, even if no splices exist yet
             SELECT ofc_cable_id as cable_id FROM public.junction_closures WHERE id = p_jc_id AND ofc_cable_id IS NOT NULL
         ) AS cables
     ),
@@ -81,5 +76,3 @@ BEGIN
     RETURN result;
 END;
 $$;
-
-

@@ -1,19 +1,25 @@
 // path: components/route-manager/types.ts
 
+// The high-level route object, fetched for the selection dropdown
 export interface OfcForSelection {
   id: string;
   route_name: string;
-  capacity?: number;
+  capacity?: number; // FIXED: Added capacity as it's selected in the hook
 }
 
+// Represents the physical JC box, now matching the database table
 export interface JunctionClosure {
   id: string;
   name: string;
-  position_km: number | null;
-  ofc_cable_id?: string;
+  ofc_cable_id?: string | null; // The parent cable it sits on
+  jc_type_id?: string | null;   // Foreign key to lookup_types
   capacity?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  position_km: number | null;
 }
 
+// Detailed data for a selected route, fetched on the client
 export interface RouteDetailsPayload {
   route: {
     id: string;
@@ -26,14 +32,16 @@ export interface RouteDetailsPayload {
   junction_closures: JunctionClosure[];
 }
 
+// Information for a single fiber within the Splice Matrix
 export interface FiberInfo {
   fiber_no: number;
   status: 'available' | 'used_as_incoming' | 'used_as_outgoing' | 'terminated';
-  splice_id: string | null; 
+  splice_id: string | null;
   connected_to_cable: string | null;
   connected_to_fiber: number | null;
 }
 
+// Represents a cable column within the Splice Matrix
 export interface CableInJc {
   cable_id: string;
   route_name: string;
@@ -43,11 +51,13 @@ export interface CableInJc {
   fibers: FiberInfo[];
 }
 
+// The full data payload returned by the get_jc_splicing_details RPC function
 export interface JcSplicingDetails {
   jc_details: JunctionClosure;
   cables: CableInJc[];
 }
 
+// Represents a single row from the fiber_splices table
 export interface SpliceConnection {
     splice_id: string;
     jc_id: string;
@@ -61,8 +71,7 @@ export interface SpliceConnection {
     loss_db: number | null;
 }
 
-// *** THE CORRECTED TYPE ***
-// This type is simpler and more directly matches the visual elements we need.
+// Represents the tree structure for the fiber trace visualization
 export interface FiberTraceNode {
   type: 'NODE' | 'JC';
   id: string;
@@ -75,8 +84,20 @@ export interface FiberTraceNode {
       is_otdr: boolean;
       fiber_no: number;
     };
-    downstreamNode: FiberTraceNode | null; // Can be another NODE or JC
+    downstreamNode: FiberTraceNode | null;
   }[];
+}
+
+// NEW: Props for the SpliceMatrixModal component
+export interface SpliceMatrixModalProps {
+  jc: JunctionClosure | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+// NEW: Type for the return value of the auto-splice RPC
+export interface AutoSpliceResult {
+  splices_created: number;
 }
 
 // ========================================================================================================================
@@ -129,20 +150,6 @@ export interface RouteForSelection {
     outgoing_fiber_number: number;
     splice_type: 'through' | 'tap' | 'split';
     status: 'active' | 'spare' | 'faulty';
-  }
-
-  // The complete data payload returned by the client-side API call
-  export interface RouteDetailsPayload {
-    route: {
-      id: string;
-      name: string;
-      start_site: Site;
-      end_site: Site;
-      capacity: number;
-      distance_km: number;
-      evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
-    };
-    equipment: Equipment[];
   }
 
   // Payload for the POST request to commit changes

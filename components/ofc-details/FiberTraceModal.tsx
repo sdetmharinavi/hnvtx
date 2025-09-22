@@ -1,52 +1,33 @@
 // path: components/ofc-details/FiberTraceModal.tsx
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
 import { Modal, PageSpinner } from '@/components/common/ui';
-import { OfcForSelection, RouteDetailsPayload, SpliceConnection } from '@/components/route-manager/types';
+import { OfcForSelection, RouteDetailsPayload, FiberTraceNode } from '@/components/route-manager/types';
 import { FiberTraceDiagram } from './FiberTraceDiagram';
+import { useFiberTrace } from '@/hooks/database/path-queries'; // Import our new hook
 
 interface FiberTraceModalProps {
   isOpen: boolean;
   onClose: () => void;
   cableId: string | null;
   fiberNo: number | null;
-  allCables: OfcForSelection[] | undefined;
-  routeDetails: RouteDetailsPayload | null;
+  allCables: OfcForSelection[] | undefined; // Keep this for getting the start cable name
 }
 
-// Hook to fetch ALL splices once.
-const useAllSplices = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ['all-splices'],
-    queryFn: async (): Promise<SpliceConnection[]> => {
-      const { data, error } = await supabase.rpc('get_all_splices');
-      if (error) throw error;
-      return data as SpliceConnection[];
-    },
-    staleTime: 60 * 1000,
-  });
-};
-
-export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, cableId, fiberNo, allCables, routeDetails }) => {
-  const { data: allSplices, isLoading, isError, error } = useAllSplices();
+export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, cableId, fiberNo, allCables }) => {
+  // Use the new hook to get the pre-built trace tree
+  const { data: traceTree, isLoading, isError, error } = useFiberTrace(cableId, fiberNo);
 
   const startingCableName = allCables?.find(c => c.id === cableId)?.route_name || '';
 
   const renderContent = () => {
-    if (isLoading) return <PageSpinner text="Loading network splice data..." />;
-    if (isError) return <div className="p-4 text-red-500">Error loading data: {error.message}</div>;
-    if (!cableId || !fiberNo || !routeDetails) return <div className="p-4 text-gray-500">Missing trace information.</div>;
-    
+    if (isLoading) return <PageSpinner text="Tracing fiber path..." />;
+    if (isError) return <div className="p-4 text-red-500">Error tracing path: {error.message}</div>;
+    if (!traceTree) return <div className="p-4 text-gray-500">Path could not be traced. This fiber may be terminated or un-spliced.</div>;
+
     return (
       <FiberTraceDiagram
-        startCableId={cableId}
-        startFiberNo={fiberNo}
-        allSplices={allSplices || []}
-        allCables={allCables || []}
-        routeDetails={routeDetails}
+        startNode={traceTree}
       />
     );
   };

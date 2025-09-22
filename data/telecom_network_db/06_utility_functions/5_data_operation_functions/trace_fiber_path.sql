@@ -1,5 +1,5 @@
--- path: functions/trace_fiber_path_v21_final_server_logic.sql
-
+-- This powerful recursive function traces a fiber's path from a starting point.
+-- VERSION 2: Corrected to remove the invalid reference to jc.node_id.
 CREATE OR REPLACE FUNCTION trace_fiber_path(
     p_start_cable_id UUID,
     p_start_fiber_no INT
@@ -26,9 +26,7 @@ BEGIN
             1::BIGINT AS segment_order,
             p_start_cable_id AS current_cable_id,
             p_start_fiber_no AS current_fiber_no,
-            0::NUMERIC AS last_position_km,
-            (SELECT sn_id FROM ofc_cables WHERE id = p_start_cable_id) AS from_node_id,
-            (SELECT en_id FROM ofc_cables WHERE id = p_start_cable_id) AS to_node_id
+            0::NUMERIC AS last_position_km
 
         UNION ALL
 
@@ -37,24 +35,15 @@ BEGIN
             p.segment_order + 1,
             s.outgoing_cable_id,
             s.outgoing_fiber_no,
-            jc.position_km,
-            -- Determine the next 'from' and 'to' nodes for the new cable
-            CASE
-                WHEN next_cable.sn_id = jc.node_id THEN jc.node_id
-                ELSE next_cable.en_id
-            END,
-            CASE
-                WHEN next_cable.sn_id = jc.node_id THEN next_cable.en_id
-                ELSE next_cable.sn_id
-            END
+            jc.position_km
         FROM path_traversal p
         JOIN public.fiber_splices s ON p.current_cable_id = s.incoming_cable_id AND p.current_fiber_no = s.incoming_fiber_no
         JOIN public.junction_closures jc ON s.jc_id = jc.id
-        JOIN public.ofc_cables next_cable ON s.outgoing_cable_id = next_cable.id
+        -- Continue only if there is an outgoing connection
         WHERE s.outgoing_cable_id IS NOT NULL
-        AND p.segment_order < 50 -- Safety break
+          AND p.segment_order < 50 -- Safety break to prevent infinite loops
     )
-    -- This final SELECT statement builds the full visual output from the traversal path.
+    -- FINAL SELECT: This part builds the human-readable output from the traversal path.
     SELECT
         ROW_NUMBER() OVER (ORDER BY pt.segment_order, z.type_order) AS final_segment_order,
         z.path_type, z.element_id, z.element_name, z.details, z.fiber_no, z.distance_km, z.loss_db
@@ -63,20 +52,24 @@ BEGIN
         -- Row for the CABLE segment
         SELECT
             1 as type_order,
-            'CABLE'::TEXT,
-            pt.current_cable_id,
-            c.route_name,
-            (sn.name || ' → ' || en.name)::TEXT,
-            pt.current_fiber_no,
+            'CABLE'::TEXT AS path_type,
+            pt.current_cable_id AS element_id,
+            c.route_name AS element_name,
+            (sn.name || ' → ' || en.name)::TEXT AS details,
+            pt.current_fiber_no AS fiber_no,
             -- Calculate segment distance accurately
-            COALESCE(
-                (SELECT s_next.otdr_length_km FROM fiber_splices s_next WHERE s_next.incoming_cable_id = pt.current_cable_id AND s_next.incoming_fiber_no = pt.current_fiber_no),
-                ABS(
-                    (SELECT jc_next.position_km FROM junction_closures jc_next JOIN fiber_splices s_next ON jc_next.id = s_next.jc_id WHERE s_next.incoming_cable_id = pt.current_cable_id AND s_next.incoming_fiber_no = pt.current_fiber_no)
-                    - pt.last_position_km
-                )
-            ),
-            NULL::NUMERIC
+            ABS(
+                COALESCE(
+                    (SELECT jc_next.position_km
+                     FROM junction_closures jc_next
+                     JOIN fiber_splices s_next ON jc_next.id = s_next.jc_id
+                     WHERE s_next.incoming_cable_id = pt.current_cable_id
+                       AND s_next.incoming_fiber_no = pt.current_fiber_no
+                     LIMIT 1),
+                    c.current_rkm
+                ) - pt.last_position_km
+            ) AS distance_km,
+            NULL::NUMERIC AS loss_db
         FROM public.ofc_cables c
         JOIN public.nodes sn ON c.sn_id = sn.id
         JOIN public.nodes en ON c.en_id = en.id
@@ -84,7 +77,7 @@ BEGIN
 
         UNION ALL
 
-        -- Row for the JC (if it exists)
+        -- Row for the JUNCTION CLOSURE (if it exists)
         SELECT
             2 as type_order,
             'JC'::TEXT,
@@ -96,7 +89,8 @@ BEGIN
             s.loss_db
         FROM public.fiber_splices s
         JOIN public.junction_closures jc ON s.jc_id = jc.id
-        WHERE s.incoming_cable_id = pt.current_cable_id AND s.incoming_fiber_no = pt.current_fiber_no
+        WHERE s.incoming_cable_id = pt.current_cable_id
+          AND s.incoming_fiber_no = pt.current_fiber_no
 
     ) AS z
     WHERE z.element_id IS NOT NULL

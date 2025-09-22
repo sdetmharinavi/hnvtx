@@ -1007,6 +1007,118 @@ export type Database = {
           },
         ]
       }
+      fiber_splices: {
+        Row: {
+          created_at: string | null
+          id: string
+          incoming_cable_id: string
+          incoming_fiber_no: number
+          jc_id: string
+          logical_path_id: string | null
+          loss_db: number | null
+          otdr_length_km: number | null
+          outgoing_cable_id: string | null
+          outgoing_fiber_no: number | null
+          splice_type: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          incoming_cable_id: string
+          incoming_fiber_no: number
+          jc_id: string
+          logical_path_id?: string | null
+          loss_db?: number | null
+          otdr_length_km?: number | null
+          outgoing_cable_id?: string | null
+          outgoing_fiber_no?: number | null
+          splice_type?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          incoming_cable_id?: string
+          incoming_fiber_no?: number
+          jc_id?: string
+          logical_path_id?: string | null
+          loss_db?: number | null
+          otdr_length_km?: number | null
+          outgoing_cable_id?: string | null
+          outgoing_fiber_no?: number | null
+          splice_type?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiber_splices_incoming_cable_id_fkey"
+            columns: ["incoming_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_incoming_cable_id_fkey"
+            columns: ["incoming_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_incoming_cable_id_fkey"
+            columns: ["incoming_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_jc_id_fkey"
+            columns: ["jc_id"]
+            isOneToOne: false
+            referencedRelation: "junction_closures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "logical_fiber_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_logical_path_id_fkey"
+            columns: ["logical_path_id"]
+            isOneToOne: false
+            referencedRelation: "v_end_to_end_paths"
+            referencedColumns: ["path_id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_outgoing_cable_id_fkey"
+            columns: ["outgoing_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_outgoing_cable_id_fkey"
+            columns: ["outgoing_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_outgoing_cable_id_fkey"
+            columns: ["outgoing_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
           file_name: string
@@ -1083,6 +1195,61 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      junction_closures: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          ofc_cable_id: string | null
+          position_km: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          ofc_cable_id?: string | null
+          position_km?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          ofc_cable_id?: string | null
+          position_km?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -2827,6 +2994,7 @@ export type Database = {
           created_at: string | null
           current_rkm: number | null
           en_id: string | null
+          en_name: string | null
           id: string | null
           inactive_count: number | null
           maintenance_area_code: string | null
@@ -2841,6 +3009,7 @@ export type Database = {
           remark: string | null
           route_name: string | null
           sn_id: string | null
+          sn_name: string | null
           status: boolean | null
           total_count: number | null
           transnet_id: string | null
@@ -3588,13 +3757,44 @@ export type Database = {
           result: Json
         }[]
       }
+      auto_splice_straight: {
+        Args: { p_cable1_id: string; p_cable2_id: string; p_jc_id: string }
+        Returns: Json
+      }
       bulk_update: {
         Args: { batch_size?: number; table_name: string; updates: Json }
         Returns: Json
       }
+      evolve_cable_with_jc: {
+        Args: { p_cable_id: string; p_jc_id: string }
+        Returns: string
+      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json
+      }
+      get_all_splices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          incoming_cable_id: string
+          incoming_fiber_no: number
+          jc_id: string
+          jc_name: string
+          jc_position_km: number
+          loss_db: number
+          otdr_length_km: number
+          outgoing_cable_id: string
+          outgoing_fiber_no: number
+          splice_id: string
+        }[]
+      }
+      get_cables_at_jc: {
+        Args: { p_jc_id: string }
+        Returns: {
+          capacity: number
+          id: string
+          route_name: string
+        }[]
       }
       get_continuous_available_fibers: {
         Args: { p_path_id: string }
@@ -3613,6 +3813,10 @@ export type Database = {
           inactive_count: number
           total_count: number
         }[]
+      }
+      get_jc_splicing_details: {
+        Args: { p_jc_id: string }
+        Returns: Json
       }
       get_lookup_type_id: {
         Args: { p_category: string; p_name: string }
@@ -4049,6 +4253,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      manage_splice: {
+        Args:
+          | {
+              p_action: string
+              p_incoming_cable_id?: string
+              p_incoming_fiber_no?: number
+              p_jc_id: string
+              p_otdr_length_km?: number
+              p_outgoing_cable_id?: string
+              p_outgoing_fiber_no?: number
+              p_splice_id?: string
+              p_splice_type?: string
+            }
+          | {
+              p_action: string
+              p_incoming_cable_id?: string
+              p_incoming_fiber_no?: number
+              p_jc_id: string
+              p_outgoing_cable_id?: string
+              p_outgoing_fiber_no?: number
+              p_splice_id?: string
+              p_splice_type?: string
+            }
+        Returns: Record<string, unknown>
+      }
       provision_ring_path: {
         Args: {
           p_path_name: string
@@ -4062,12 +4291,36 @@ export type Database = {
           working_path_id: string
         }[]
       }
+      trace_fiber_path: {
+        Args: { p_start_cable_id: string; p_start_fiber_no: number }
+        Returns: {
+          details: string
+          distance_km: number
+          element_id: string
+          element_name: string
+          fiber_no: number
+          loss_db: number
+          path_type: string
+          segment_order: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      splice_connection: {
+        splice_id: string | null
+        jc_id: string | null
+        jc_name: string | null
+        jc_position_km: number | null
+        incoming_cable_id: string | null
+        incoming_fiber_no: number | null
+        outgoing_cable_id: string | null
+        outgoing_fiber_no: number | null
+        otdr_length_km: number | null
+        loss_db: number | null
+      }
     }
   }
 }

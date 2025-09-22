@@ -1,24 +1,16 @@
 // path: app/dashboard/ofc/[id]/page.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
 import { PageSpinner } from '@/components/common/ui/LoadingSpinner';
 import { DataTable } from '@/components/table';
-import { useTableExcelDownload } from '@/hooks/database/excel-queries';
-import { formatDate } from '@/utils/formatters';
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, usePagedOfcConnectionsComplete } from '@/hooks/database';
 import { Button, ConfirmModal } from '@/components/common/ui';
-import { OfcStats } from '@/components/ofc/OfcStats';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
-import CableNotFound from '@/components/ofc-details/CableNotFound';
-import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
 import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
@@ -26,139 +18,72 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { OfcConnectionsFormModal, OfcConnectionsRow } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit } from 'lucide-react'; // <--- THIS IS THE FIX
+import { GitCommit } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
+import CableNotFound from '@/components/ofc-details/CableNotFound';
+import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
+import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
+import { useEffect } from 'react';
+
 
 export const dynamic = 'force-dynamic';
 
-export type OfcConnectionFilters = {
-  search: string;
-  ofc_owner_id: string;
-};
-
-// 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
-const useOfcConnectionsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
+const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
   const { id } = useParams();
   const cableId = id as string;
 
-  const { data, isLoading, error, refetch } = usePagedOfcConnectionsComplete(
-    supabase,
-    {
-      filters: { ofc_id: cableId, ...(searchQuery ? { searchQuery } : {}) },
+  const { data, isLoading, error, refetch } = usePagedOfcConnectionsComplete(supabase, {
+      filters: { ofc_id: cableId, ...(searchQuery ? { or: `system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%` } : {}) },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
   );
 
-  // Calculate counts from the full dataset
   const totalCount = data?.[0]?.total_count || 0;
   const activeCount = data?.[0]?.active_count || 0;
   const inactiveCount = data?.[0]?.inactive_count || 0;
 
-  return {
-    data: data || [],
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    error,
-    refetch,
-  };
+  return { data: data || [], totalCount, activeCount, inactiveCount, isLoading, error, refetch };
 };
 
 export default function OfcCableDetailsPage() {
   const {
-    data: cableConnectionsData,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    refetch,
-    pagination,
-    editModal,
-    deleteModal,
-    actions: crudActions,
+    data: cableConnectionsData, totalCount, activeCount, inactiveCount,
+    isLoading, refetch, pagination, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({
     tableName: 'ofc_connections',
     dataQueryHook: useOfcConnectionsData,
   });
 
   const { id: cableId } = useParams();
-
   const router = useRouter();
-  const params = useParams();
-  const { id } = params;
   const supabase = createClient();
-  const [isBackClicked, setIsBackClicked] = useState(false);
-  const { ensureConnectionsExist, cable } = useCreateOfcConnection({
+
+  const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(cableId as string);
+  const { data: allCablesData } = useOfcRoutesForSelection();
+  const [tracingFiber, setTracingFiber] = useState<{ cableId: string; fiberNo: number } | null>(null);
+
+  const { ensureConnectionsExist } = useCreateOfcConnection({
     supabase,
-    cableId: id as string,
-    rawConnections: (cableConnectionsData || []).map((conn) => ({
-      ...conn,
-      id: conn.id ?? '',
-      ofc_id: typeof conn.ofc_id === 'string' ? conn.ofc_id : '',
-      connection_category: conn.connection_category ?? '',
-      connection_type: conn.connection_type ?? '',
-      fiber_no_en: conn.fiber_no_en ?? 0,
-      fiber_no_sn: conn.fiber_no_sn ?? 0,
-    })),
+    cableId: cableId as string,
+    rawConnections: cableConnectionsData,
     refetchOfcConnections: refetch,
     isLoadingOfcConnections: isLoading,
   });
 
-  // NEW: State for the fiber trace modal
-  const [tracingFiber, setTracingFiber] = useState<{ cableId: string; fiberNo: number } | null>(null);
-
-    // *** NEW: Fetch all cables for name lookups ***
-    const { data: allCablesData } = useOfcRoutesForSelection();
-    const { data: routeDetails } = useRouteDetails(id as string);
-
   useEffect(() => {
-    if (!isLoading) {
-      ensureConnectionsExist();
+    if (!isLoading && routeDetails?.route) {
+        ensureConnectionsExist();
     }
-  }, [isLoading, ensureConnectionsExist]);
+  }, [isLoading, routeDetails, ensureConnectionsExist]);
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
-  const orderedColumns = useOrderedColumns(
-    columns,
-    TABLE_COLUMN_KEYS.v_ofc_connections_complete
-  );
-
-  const tableExcelDownload = useTableExcelDownload(supabase, 'ofc_connections');
-  const exportColumns = useDynamicColumnConfig('ofc_connections', { data: [] });
-
-  const handleExport = useCallback(() => {
-    if (!cable?.id) return;
-    const tableName = 'ofc_connections';
-    const tableOptions = {
-      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${String(tableName + '-' + (cable?.route_name || ''))}-export.xlsx`,
-      sheetName: 'OFC Connections',
-      columns: exportColumns as Column<Row<'ofc_connections'>>[],
-      filters: { ofc_id: cable.id },
-      orderBy: [{ column: 'fiber_no_sn', ascending: true }],
-      maxRows: 10000,
-      customStyles: {
-        headerFont: { bold: true, color: { argb: 'FFFFFFFF' } },
-        headerFill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1E40AF' } },
-      },
-    };
-    tableExcelDownload.mutate(tableOptions);
-  }, [cable?.id, cable?.route_name, tableExcelDownload, exportColumns]);
-
-  const loading = isLoading;
-
-  const handleBackToOfcList = () => {
-    setIsBackClicked(true);
-    router.back();
-  };
+  const orderedColumns = useOrderedColumns(columns, TABLE_COLUMN_KEYS.v_ofc_connections_complete);
 
   const { data: isSuperAdmin } = useIsSuperAdmin();
-  
+
   const tableActions = useMemo(
     () => [
         {
@@ -166,7 +91,9 @@ export default function OfcCableDetailsPage() {
             label: 'Trace Fiber Path',
             icon: <GitCommit className="h-4 w-4" />,
             onClick: (record: OfcConnectionRowsWithCount) => {
-                setTracingFiber({ cableId: cableId as string, fiberNo: record.fiber_no_sn! });
+                if (record.fiber_no_sn) {
+                  setTracingFiber({ cableId: cableId as string, fiberNo: record.fiber_no_sn });
+                }
             },
             variant: 'secondary' as const
         },
@@ -179,13 +106,13 @@ export default function OfcCableDetailsPage() {
     ],
     [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, isSuperAdmin, cableId]
   );
-  
-  if (loading) {
+
+  if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
   }
 
-  if (!cable) {
-    return <CableNotFound id={id as string} handleBackToOfcList={handleBackToOfcList} isBackClicked={isBackClicked} />;
+  if (!routeDetails?.route) {
+    return <CableNotFound id={cableId as string} handleBackToOfcList={() => router.push('/dashboard/ofc')} isBackClicked={false} />;
   }
 
   return (
@@ -193,40 +120,30 @@ export default function OfcCableDetailsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">OFC Cable Details</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{`${cable?.transnet_id ? 'Transnet ID: ' + cable?.transnet_id : 'No Entry in Transnet'}`}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{`${cable?.asset_no ? '' : 'No Asset no. available'}`}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{`Route: ${routeDetails.route.route_name}`}</p>
         </div>
         <div>
-          <Link href="/dashboard/ofc" className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50">Back to List</Link>
-          <Button onClick={handleExport} variant="outline" className="ml-2">Export</Button>
+          <Link href="/dashboard/ofc" className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Back to List</Link>
         </div>
       </div>
-      <OfcStats total={totalCount} active={activeCount} inactive={inactiveCount} />
-      <OfcDetailsHeader cable={cable as unknown as Row<'v_ofc_cables_complete'>} />
+      <OfcDetailsHeader cable={routeDetails.route as unknown as Row<'v_ofc_cables_complete'>} />
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <DataTable<'v_ofc_connections_complete'>
           tableName="v_ofc_connections_complete"
-          data={cableConnectionsData}
-          columns={orderedColumns as Column<Row<'v_ofc_connections_complete'>>[]}
+          data={cableConnectionsData as unknown as Row<'v_ofc_connections_complete'>[]}
+          columns={orderedColumns}
           loading={isLoading}
           actions={tableActions}
           selectable={true}
           searchable={true}
-          filterable={false}
           pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (page, limit) => {
-              pagination.setCurrentPage(page);
-              pagination.setPageLimit(limit);
-            },
+            current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount,
+            showSizeChanger: true, onChange: (page, limit) => { pagination.setCurrentPage(page); pagination.setPageLimit(limit); },
           }}
         />
       </div>
-      <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as OfcConnectionsRow} />
+      <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as OfcConnectionsRow | null} />
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -235,9 +152,6 @@ export default function OfcCableDetailsPage() {
         message={deleteModal.message}
         type="danger"
         loading={deleteModal.loading}
-        confirmText="Delete"
-        cancelText="Cancel"
-        showIcon={true}
       />
        <FiberTraceModal
         isOpen={!!tracingFiber}
@@ -245,7 +159,6 @@ export default function OfcCableDetailsPage() {
         cableId={tracingFiber?.cableId || null}
         fiberNo={tracingFiber?.fiberNo || null}
         allCables={allCablesData}
-        routeDetails={routeDetails || null}
       />
     </div>
   );

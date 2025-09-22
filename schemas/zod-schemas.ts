@@ -777,6 +777,54 @@ export const fiber_jointsUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const fiber_splicesRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
+  incoming_cable_id: z.uuid(),
+  incoming_fiber_no: z.number(),
+  jc_id: z.uuid(),
+  logical_path_id: z.uuid().nullable(),
+  loss_db: z.number().nullable(),
+  otdr_length_km: z.number().nullable(),
+  outgoing_cable_id: z.uuid().nullable(),
+  outgoing_fiber_no: z.number().nullable(),
+  splice_type: z.string(),
+  status: z.string().min(1, "Status cannot be empty"),
+  updated_at: z.iso.datetime().nullable(),
+});
+
+export const fiber_splicesInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  incoming_cable_id: z.uuid(),
+  incoming_fiber_no: z.number(),
+  jc_id: z.uuid(),
+  logical_path_id: z.uuid().nullable().optional(),
+  loss_db: z.number().nullable().optional(),
+  otdr_length_km: z.number().nullable().optional(),
+  outgoing_cable_id: z.uuid().nullable().optional(),
+  outgoing_fiber_no: z.number().nullable().optional(),
+  splice_type: z.string().optional(),
+  status: z.string().min(1, "Status cannot be empty").optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const fiber_splicesUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  incoming_cable_id: z.uuid().optional(),
+  incoming_fiber_no: z.number().optional(),
+  jc_id: z.uuid().optional(),
+  logical_path_id: z.uuid().nullable().optional(),
+  loss_db: z.number().nullable().optional(),
+  otdr_length_km: z.number().nullable().optional(),
+  outgoing_cable_id: z.uuid().nullable().optional(),
+  outgoing_fiber_no: z.number().nullable().optional(),
+  splice_type: z.string().optional(),
+  status: z.string().min(1, "Status cannot be empty").optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
 export const filesRowSchema = z.object({
   file_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   file_route: z.string(),
@@ -832,6 +880,39 @@ export const foldersUpdateSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   user_id: z.uuid().optional(),
+});
+
+export const junction_closuresRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ofc_cable_id: z.uuid().nullable(),
+  position_km: z.number().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+});
+
+export const junction_closuresInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ofc_cable_id: z.uuid().nullable().optional(),
+  position_km: z.number().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const junction_closuresUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  ofc_cable_id: z.uuid().nullable().optional(),
+  position_km: z.number().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const logical_fiber_pathsRowSchema = z.object({
@@ -1753,6 +1834,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   current_rkm: z.number().nullable(),
   en_id: z.uuid().nullable(),
+  en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_code: z.string().nullable(),
@@ -1767,6 +1849,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   remark: z.string().nullable(),
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_id: z.uuid().nullable(),
+  sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
   transnet_id: z.uuid().nullable(),
@@ -2030,12 +2113,18 @@ export const schemas = {
   fiber_jointsRowSchema,
   fiber_jointsInsertSchema,
   fiber_jointsUpdateSchema,
+  fiber_splicesRowSchema,
+  fiber_splicesInsertSchema,
+  fiber_splicesUpdateSchema,
   filesRowSchema,
   filesInsertSchema,
   filesUpdateSchema,
   foldersRowSchema,
   foldersInsertSchema,
   foldersUpdateSchema,
+  junction_closuresRowSchema,
+  junction_closuresInsertSchema,
+  junction_closuresUpdateSchema,
   logical_fiber_pathsRowSchema,
   logical_fiber_pathsInsertSchema,
   logical_fiber_pathsUpdateSchema,
@@ -2174,12 +2263,18 @@ export type EmployeesUpdateSchema = z.infer<typeof employeesUpdateSchema>;
 export type Fiber_jointsRowSchema = z.infer<typeof fiber_jointsRowSchema>;
 export type Fiber_jointsInsertSchema = z.infer<typeof fiber_jointsInsertSchema>;
 export type Fiber_jointsUpdateSchema = z.infer<typeof fiber_jointsUpdateSchema>;
+export type Fiber_splicesRowSchema = z.infer<typeof fiber_splicesRowSchema>;
+export type Fiber_splicesInsertSchema = z.infer<typeof fiber_splicesInsertSchema>;
+export type Fiber_splicesUpdateSchema = z.infer<typeof fiber_splicesUpdateSchema>;
 export type FilesRowSchema = z.infer<typeof filesRowSchema>;
 export type FilesInsertSchema = z.infer<typeof filesInsertSchema>;
 export type FilesUpdateSchema = z.infer<typeof filesUpdateSchema>;
 export type FoldersRowSchema = z.infer<typeof foldersRowSchema>;
 export type FoldersInsertSchema = z.infer<typeof foldersInsertSchema>;
 export type FoldersUpdateSchema = z.infer<typeof foldersUpdateSchema>;
+export type Junction_closuresRowSchema = z.infer<typeof junction_closuresRowSchema>;
+export type Junction_closuresInsertSchema = z.infer<typeof junction_closuresInsertSchema>;
+export type Junction_closuresUpdateSchema = z.infer<typeof junction_closuresUpdateSchema>;
 export type Logical_fiber_pathsRowSchema = z.infer<typeof logical_fiber_pathsRowSchema>;
 export type Logical_fiber_pathsInsertSchema = z.infer<typeof logical_fiber_pathsInsertSchema>;
 export type Logical_fiber_pathsUpdateSchema = z.infer<typeof logical_fiber_pathsUpdateSchema>;
