@@ -20,6 +20,7 @@
       "supabase",
       "totp",
       "transnet",
+      "unspliced",
       "VARCHAR",
       "vmux",
       "webauthn"
