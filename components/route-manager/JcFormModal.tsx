@@ -26,8 +26,6 @@ interface JcFormModalProps {
 export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSave, routeId, editingJc, rkm }) => {
   const supabase = createClient();
   const isEditMode = !!editingJc;
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
 
   // Get the JC Lists
   const serverFilters = useMemo(() => {
@@ -64,13 +62,13 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       } else {
         reset({
           name: '',
-          latitude: latitude,
-          longitude: longitude,
+          latitude: null,
+          longitude: null,
           position_km: null,
         });
       }
     }
-  }, [isOpen, editingJc, reset, jcLists, latitude, longitude]);
+  }, [isOpen, editingJc, reset, jcLists]);
 
   const jcOptions: Option[] = (jcLists || [])
   .filter(d => d.id != null && d.name != null)
@@ -123,13 +121,14 @@ useEffect(() => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >
       <FormCard
         title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
         onSubmit={handleSubmit(handleValidSubmit)}
         onCancel={onClose}
         isLoading={isSubmitting}
         heightClass="max-h-[80vh]"
+        standalone
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormSearchableSelect

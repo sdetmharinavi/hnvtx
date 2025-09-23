@@ -131,7 +131,7 @@ Now if JC is added in-between, then fibers(ofc connections) will breaks at that 
 
 ![JC1](JC1.png)
 
-## Now lets see cases of splicing
+- Now lets see cases of splicing
 
 - Case 1: Straight joint to all fibers at JC. This will result in no change in sn,en and Fiber numbers of the ofc_connections as shown below
 
