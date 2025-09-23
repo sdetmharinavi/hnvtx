@@ -1,8 +1,8 @@
 // Auto-generated Zod schemas from flattened-types.ts
 
-import { z } from "zod";
+import { z } from 'zod';
 
-import { UserRole } from "@/types/user-roles";
+import { UserRole } from '@/types/user-roles';
 
 // ============= TABLE SCHEMAS =============
 
@@ -10,7 +10,7 @@ export const authAudit_log_entriesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   instance_id: z.uuid().nullable(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500),
+  ip_address: z.string().min(5, 'Address must be at least 5 characters').max(500),
   payload: z.any().nullable(),
 });
 
@@ -18,7 +18,7 @@ export const authAudit_log_entriesInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid(),
   instance_id: z.uuid().nullable().optional(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
+  ip_address: z.string().min(5, 'Address must be at least 5 characters').max(500).optional(),
   payload: z.any().nullable().optional(),
 });
 
@@ -26,7 +26,7 @@ export const authAudit_log_entriesUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   instance_id: z.uuid().nullable().optional(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
+  ip_address: z.string().min(5, 'Address must be at least 5 characters').max(500).optional(),
   payload: z.any().nullable().optional(),
 });
 
@@ -192,10 +192,13 @@ export const authMfa_challengesUpdateSchema = z.object({
 export const authMfa_factorsRowSchema = z.object({
   created_at: z.iso.datetime(),
   factor_type: z.string(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  friendly_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   id: z.uuid(),
   last_challenged_at: z.iso.datetime().nullable(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
   secret: z.string().nullable(),
   status: z.string(),
   updated_at: z.iso.datetime(),
@@ -207,10 +210,19 @@ export const authMfa_factorsRowSchema = z.object({
 export const authMfa_factorsInsertSchema = z.object({
   created_at: z.iso.datetime(),
   factor_type: z.string(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  friendly_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   id: z.uuid(),
   last_challenged_at: z.iso.datetime().nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   secret: z.string().nullable().optional(),
   status: z.string(),
   updated_at: z.iso.datetime(),
@@ -222,10 +234,19 @@ export const authMfa_factorsInsertSchema = z.object({
 export const authMfa_factorsUpdateSchema = z.object({
   created_at: z.iso.datetime().optional(),
   factor_type: z.string().optional(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  friendly_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   id: z.uuid().optional(),
   last_challenged_at: z.iso.datetime().nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   secret: z.string().nullable().optional(),
   status: z.string().optional(),
   updated_at: z.iso.datetime().optional(),
@@ -236,7 +257,7 @@ export const authMfa_factorsUpdateSchema = z.object({
 
 export const authOauth_clientsRowSchema = z.object({
   client_id: z.uuid(),
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  client_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   client_secret_hash: z.string(),
   client_uri: z.string().nullable(),
   created_at: z.iso.datetime(),
@@ -251,7 +272,12 @@ export const authOauth_clientsRowSchema = z.object({
 
 export const authOauth_clientsInsertSchema = z.object({
   client_id: z.uuid(),
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  client_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   client_secret_hash: z.string(),
   client_uri: z.string().nullable().optional(),
   created_at: z.iso.datetime().optional(),
@@ -266,7 +292,12 @@ export const authOauth_clientsInsertSchema = z.object({
 
 export const authOauth_clientsUpdateSchema = z.object({
   client_id: z.uuid().optional(),
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  client_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   client_secret_hash: z.string().optional(),
   client_uri: z.string().nullable().optional(),
   created_at: z.iso.datetime().optional(),
@@ -531,13 +562,15 @@ export const authUsersRowSchema = z.object({
   email_change_token_current: z.email().nullable(),
   email_change_token_new: z.email().nullable(),
   email_confirmed_at: z.email().nullable(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable(),
+  encrypted_password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters long')
+    .max(50, 'Password must not exceed 50 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+    )
+    .nullable(),
   id: z.uuid(),
   instance_id: z.uuid().nullable(),
   invited_at: z.iso.datetime().nullable(),
@@ -545,11 +578,26 @@ export const authUsersRowSchema = z.object({
   is_sso_user: z.boolean(),
   is_super_admin: z.boolean().nullable(),
   last_sign_in_at: z.iso.datetime().nullable(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  phone_change: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
+  phone_change: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
+  phone_change_sent_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
+  phone_change_token: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
+  phone_confirmed_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
   raw_app_meta_data: z.any().nullable(),
   raw_user_meta_data: z.any().nullable(),
   reauthentication_sent_at: z.iso.datetime().nullable(),
@@ -575,13 +623,16 @@ export const authUsersInsertSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable().optional(),
+  encrypted_password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters long')
+    .max(50, 'Password must not exceed 50 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+    )
+    .nullable()
+    .optional(),
   id: z.uuid(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),
@@ -589,11 +640,31 @@ export const authUsersInsertSchema = z.object({
   is_sso_user: z.boolean().optional(),
   is_super_admin: z.boolean().nullable().optional(),
   last_sign_in_at: z.iso.datetime().nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change_sent_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change_token: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_confirmed_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   raw_app_meta_data: z.any().nullable().optional(),
   raw_user_meta_data: z.any().nullable().optional(),
   reauthentication_sent_at: z.iso.datetime().nullable().optional(),
@@ -619,13 +690,16 @@ export const authUsersUpdateSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable().optional(),
+  encrypted_password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters long')
+    .max(50, 'Password must not exceed 50 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+    )
+    .nullable()
+    .optional(),
   id: z.uuid().optional(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),
@@ -633,11 +707,31 @@ export const authUsersUpdateSchema = z.object({
   is_sso_user: z.boolean().optional(),
   is_super_admin: z.boolean().nullable().optional(),
   last_sign_in_at: z.iso.datetime().nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  phone: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change_sent_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_change_token: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
+  phone_confirmed_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   raw_app_meta_data: z.any().nullable().optional(),
   raw_user_meta_data: z.any().nullable().optional(),
   reauthentication_sent_at: z.iso.datetime().nullable().optional(),
@@ -651,7 +745,7 @@ export const authUsersUpdateSchema = z.object({
 export const employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -660,7 +754,7 @@ export const employee_designationsRowSchema = z.object({
 export const employee_designationsInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   parent_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -669,7 +763,7 @@ export const employee_designationsInsertSchema = z.object({
 export const employee_designationsUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   parent_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -677,13 +771,13 @@ export const employee_designationsUpdateSchema = z.object({
 
 export const employeesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
-  employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
+  employee_addr: z.string().min(5, 'Address must be at least 5 characters').max(500).nullable(),
   employee_contact: z.string().nullable(),
   employee_designation_id: z.uuid().nullable(),
   employee_dob: z.iso.date().nullable(),
   employee_doj: z.iso.date().nullable(),
   employee_email: z.email().nullable(),
-  employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  employee_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   employee_pers_no: z.string().nullable(),
   id: z.uuid(),
   maintenance_terminal_id: z.uuid().nullable(),
@@ -694,13 +788,18 @@ export const employeesRowSchema = z.object({
 
 export const employeesInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
-  employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable().optional(),
+  employee_addr: z
+    .string()
+    .min(5, 'Address must be at least 5 characters')
+    .max(500)
+    .nullable()
+    .optional(),
   employee_contact: z.string().nullable().optional(),
   employee_designation_id: z.uuid().nullable().optional(),
   employee_dob: z.iso.date().nullable().optional(),
   employee_doj: z.iso.date().nullable().optional(),
   employee_email: z.email().nullable().optional(),
-  employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  employee_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   employee_pers_no: z.string().nullable().optional(),
   id: z.uuid().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
@@ -711,13 +810,18 @@ export const employeesInsertSchema = z.object({
 
 export const employeesUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
-  employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable().optional(),
+  employee_addr: z
+    .string()
+    .min(5, 'Address must be at least 5 characters')
+    .max(500)
+    .nullable()
+    .optional(),
   employee_contact: z.string().nullable().optional(),
   employee_designation_id: z.uuid().nullable().optional(),
   employee_dob: z.iso.date().nullable().optional(),
   employee_doj: z.iso.date().nullable().optional(),
   employee_email: z.email().nullable().optional(),
-  employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  employee_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   employee_pers_no: z.string().nullable().optional(),
   id: z.uuid().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
@@ -726,107 +830,8 @@ export const employeesUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const fiber_jointsRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  installed_date: z.iso.datetime().nullable(),
-  joint_category: z.string(),
-  joint_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  joint_type: z.string(),
-  latitude: z.number().nullable(),
-  location_description: z.string().max(10000, "Text is too long").nullable(),
-  longitude: z.number().nullable(),
-  maintenance_area_id: z.uuid().nullable(),
-  node_id: z.uuid().nullable(),
-  remark: z.string().nullable(),
-  status: z.boolean().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const fiber_jointsInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  installed_date: z.iso.datetime().nullable().optional(),
-  joint_category: z.string().optional(),
-  joint_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  joint_type: z.string().optional(),
-  latitude: z.number().nullable().optional(),
-  location_description: z.string().max(10000, "Text is too long").nullable().optional(),
-  longitude: z.number().nullable().optional(),
-  maintenance_area_id: z.uuid().nullable().optional(),
-  node_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
-  status: z.boolean().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const fiber_jointsUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  installed_date: z.iso.datetime().nullable().optional(),
-  joint_category: z.string().optional(),
-  joint_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
-  joint_type: z.string().optional(),
-  latitude: z.number().nullable().optional(),
-  location_description: z.string().max(10000, "Text is too long").nullable().optional(),
-  longitude: z.number().nullable().optional(),
-  maintenance_area_id: z.uuid().nullable().optional(),
-  node_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
-  status: z.boolean().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const fiber_splicesRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  incoming_cable_id: z.uuid(),
-  incoming_fiber_no: z.number(),
-  jc_id: z.uuid(),
-  logical_path_id: z.uuid().nullable(),
-  loss_db: z.number().nullable(),
-  otdr_length_km: z.number().nullable(),
-  outgoing_cable_id: z.uuid().nullable(),
-  outgoing_fiber_no: z.number().nullable(),
-  splice_type: z.string(),
-  status: z.string().min(1, "Status cannot be empty"),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const fiber_splicesInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  incoming_cable_id: z.uuid(),
-  incoming_fiber_no: z.number(),
-  jc_id: z.uuid(),
-  logical_path_id: z.uuid().nullable().optional(),
-  loss_db: z.number().nullable().optional(),
-  otdr_length_km: z.number().nullable().optional(),
-  outgoing_cable_id: z.uuid().nullable().optional(),
-  outgoing_fiber_no: z.number().nullable().optional(),
-  splice_type: z.string().optional(),
-  status: z.string().min(1, "Status cannot be empty").optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const fiber_splicesUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  incoming_cable_id: z.uuid().optional(),
-  incoming_fiber_no: z.number().optional(),
-  jc_id: z.uuid().optional(),
-  logical_path_id: z.uuid().nullable().optional(),
-  loss_db: z.number().nullable().optional(),
-  otdr_length_km: z.number().nullable().optional(),
-  outgoing_cable_id: z.uuid().nullable().optional(),
-  outgoing_fiber_no: z.number().nullable().optional(),
-  splice_type: z.string().optional(),
-  status: z.string().min(1, "Status cannot be empty").optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
 export const filesRowSchema = z.object({
-  file_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  file_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   file_route: z.string(),
   file_size: z.string(),
   file_type: z.string(),
@@ -838,7 +843,7 @@ export const filesRowSchema = z.object({
 });
 
 export const filesInsertSchema = z.object({
-  file_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  file_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   file_route: z.string(),
   file_size: z.string(),
   file_type: z.string(),
@@ -850,7 +855,7 @@ export const filesInsertSchema = z.object({
 });
 
 export const filesUpdateSchema = z.object({
-  file_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  file_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   file_route: z.string().optional(),
   file_size: z.string().optional(),
   file_type: z.string().optional(),
@@ -864,21 +869,21 @@ export const filesUpdateSchema = z.object({
 export const foldersRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   user_id: z.uuid(),
 });
 
 export const foldersInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   user_id: z.uuid(),
 });
 
 export const foldersUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   user_id: z.uuid().optional(),
 });
 
@@ -887,7 +892,7 @@ export const junction_closuresRowSchema = z.object({
   id: z.uuid(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   ofc_cable_id: z.uuid().nullable(),
   position_km: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -898,7 +903,7 @@ export const junction_closuresInsertSchema = z.object({
   id: z.uuid().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   ofc_cable_id: z.uuid().nullable().optional(),
   position_km: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -909,113 +914,20 @@ export const junction_closuresUpdateSchema = z.object({
   id: z.uuid().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   ofc_cable_id: z.uuid().nullable().optional(),
   position_km: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const logical_fiber_pathsRowSchema = z.object({
-  bandwidth_gbps: z.number().nullable(),
-  commissioned_date: z.iso.datetime().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  destination_port: z.string().nullable(),
-  destination_system_id: z.uuid().nullable(),
-  id: z.uuid(),
-  operational_status_id: z.uuid().nullable(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  path_role: z.string(),
-  path_type_id: z.uuid().nullable(),
-  remark: z.string().nullable(),
-  service_type: z.string().nullable(),
-  source_port: z.string().nullable(),
-  source_system_id: z.uuid().nullable(),
-  total_distance_km: z.number().nullable(),
-  total_loss_db: z.number().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  wavelength_nm: z.number().nullable(),
-  working_path_id: z.uuid().nullable(),
-});
-
-export const logical_fiber_pathsInsertSchema = z.object({
-  bandwidth_gbps: z.number().nullable().optional(),
-  commissioned_date: z.iso.datetime().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  destination_port: z.string().nullable().optional(),
-  destination_system_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  operational_status_id: z.uuid().nullable().optional(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  path_role: z.string().optional(),
-  path_type_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
-  service_type: z.string().nullable().optional(),
-  source_port: z.string().nullable().optional(),
-  source_system_id: z.uuid().nullable().optional(),
-  total_distance_km: z.number().nullable().optional(),
-  total_loss_db: z.number().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  wavelength_nm: z.number().nullable().optional(),
-  working_path_id: z.uuid().nullable().optional(),
-});
-
-export const logical_fiber_pathsUpdateSchema = z.object({
-  bandwidth_gbps: z.number().nullable().optional(),
-  commissioned_date: z.iso.datetime().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  destination_port: z.string().nullable().optional(),
-  destination_system_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  operational_status_id: z.uuid().nullable().optional(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  path_role: z.string().optional(),
-  path_type_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
-  service_type: z.string().nullable().optional(),
-  source_port: z.string().nullable().optional(),
-  source_system_id: z.uuid().nullable().optional(),
-  total_distance_km: z.number().nullable().optional(),
-  total_loss_db: z.number().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  wavelength_nm: z.number().nullable().optional(),
-  working_path_id: z.uuid().nullable().optional(),
-});
-
-export const logical_path_segmentsRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  fiber_joint_id: z.uuid().nullable(),
-  id: z.uuid(),
-  logical_path_id: z.uuid(),
-  ofc_cable_id: z.uuid().nullable(),
-  path_order: z.number(),
-});
-
-export const logical_path_segmentsInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  fiber_joint_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  logical_path_id: z.uuid(),
-  ofc_cable_id: z.uuid().nullable().optional(),
-  path_order: z.number(),
-});
-
-export const logical_path_segmentsUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  fiber_joint_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  logical_path_id: z.uuid().optional(),
-  ofc_cable_id: z.uuid().nullable().optional(),
-  path_order: z.number().optional(),
 });
 
 export const lookup_typesRowSchema = z.object({
   category: z.string(),
   code: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
+  description: z.string().max(10000, 'Text is too long').nullable(),
   id: z.uuid(),
   is_system_default: z.boolean().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   sort_order: z.number().nullable(),
   status: z.boolean().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -1025,10 +937,10 @@ export const lookup_typesInsertSchema = z.object({
   category: z.string(),
   code: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  description: z.string().max(10000, 'Text is too long').nullable().optional(),
   id: z.uuid().optional(),
   is_system_default: z.boolean().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   sort_order: z.number().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1038,17 +950,17 @@ export const lookup_typesUpdateSchema = z.object({
   category: z.string().optional(),
   code: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  description: z.string().max(10000, 'Text is too long').nullable().optional(),
   id: z.uuid().optional(),
   is_system_default: z.boolean().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   sort_order: z.number().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const maintenance_areasRowSchema = z.object({
-  address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
+  address: z.string().min(5, 'Address must be at least 5 characters').max(500).nullable(),
   area_type_id: z.uuid().nullable(),
   code: z.string().nullable(),
   contact_number: z.string().nullable(),
@@ -1058,14 +970,19 @@ export const maintenance_areasRowSchema = z.object({
   id: z.uuid(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const maintenance_areasInsertSchema = z.object({
-  address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable().optional(),
+  address: z
+    .string()
+    .min(5, 'Address must be at least 5 characters')
+    .max(500)
+    .nullable()
+    .optional(),
   area_type_id: z.uuid().nullable().optional(),
   code: z.string().nullable().optional(),
   contact_number: z.string().nullable().optional(),
@@ -1075,14 +992,19 @@ export const maintenance_areasInsertSchema = z.object({
   id: z.uuid().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   parent_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const maintenance_areasUpdateSchema = z.object({
-  address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable().optional(),
+  address: z
+    .string()
+    .min(5, 'Address must be at least 5 characters')
+    .max(500)
+    .nullable()
+    .optional(),
   area_type_id: z.uuid().nullable().optional(),
   code: z.string().nullable().optional(),
   contact_number: z.string().nullable().optional(),
@@ -1092,7 +1014,7 @@ export const maintenance_areasUpdateSchema = z.object({
   id: z.uuid().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   parent_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1102,7 +1024,7 @@ export const management_portsRowSchema = z.object({
   commissioned_on: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   node_id: z.uuid().nullable(),
   port_no: z.string(),
   remark: z.string().nullable(),
@@ -1115,7 +1037,12 @@ export const management_portsInsertSchema = z.object({
   commissioned_on: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   node_id: z.uuid().nullable().optional(),
   port_no: z.string(),
   remark: z.string().nullable().optional(),
@@ -1128,7 +1055,12 @@ export const management_portsUpdateSchema = z.object({
   commissioned_on: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   node_id: z.uuid().nullable().optional(),
   port_no: z.string().optional(),
   remark: z.string().nullable().optional(),
@@ -1143,7 +1075,7 @@ export const nodesRowSchema = z.object({
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   node_type_id: z.uuid().nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
@@ -1156,7 +1088,7 @@ export const nodesInsertSchema = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   node_type_id: z.uuid().nullable().optional(),
   remark: z.string().nullable().optional(),
   status: z.boolean().nullable().optional(),
@@ -1169,7 +1101,7 @@ export const nodesUpdateSchema = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   node_type_id: z.uuid().nullable().optional(),
   remark: z.string().nullable().optional(),
   status: z.boolean().nullable().optional(),
@@ -1188,7 +1120,7 @@ export const ofc_cablesRowSchema = z.object({
   ofc_owner_id: z.uuid(),
   ofc_type_id: z.uuid(),
   remark: z.string().nullable(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  route_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   sn_id: z.uuid(),
   status: z.boolean().nullable(),
   transnet_id: z.uuid().nullable(),
@@ -1208,7 +1140,7 @@ export const ofc_cablesInsertSchema = z.object({
   ofc_owner_id: z.uuid(),
   ofc_type_id: z.uuid(),
   remark: z.string().nullable().optional(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  route_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   sn_id: z.uuid(),
   status: z.boolean().nullable().optional(),
   transnet_id: z.uuid().nullable().optional(),
@@ -1228,7 +1160,7 @@ export const ofc_cablesUpdateSchema = z.object({
   ofc_owner_id: z.uuid().optional(),
   ofc_type_id: z.uuid().optional(),
   remark: z.string().nullable().optional(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  route_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   sn_id: z.uuid().optional(),
   status: z.boolean().nullable().optional(),
   transnet_id: z.uuid().nullable().optional(),
@@ -1334,10 +1266,10 @@ export const ring_based_systemsUpdateSchema = z.object({
 
 export const ringsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
+  description: z.string().max(10000, 'Text is too long').nullable(),
   id: z.uuid(),
   maintenance_terminal_id: z.uuid().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   ring_type_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
   total_nodes: z.number().nullable(),
@@ -1346,10 +1278,10 @@ export const ringsRowSchema = z.object({
 
 export const ringsInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  description: z.string().max(10000, 'Text is too long').nullable().optional(),
   id: z.uuid().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   ring_type_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   total_nodes: z.number().nullable().optional(),
@@ -1358,10 +1290,10 @@ export const ringsInsertSchema = z.object({
 
 export const ringsUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  description: z.string().max(10000, 'Text is too long').nullable().optional(),
   id: z.uuid().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   ring_type_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
   total_nodes: z.number().nullable().optional(),
@@ -1442,7 +1374,7 @@ export const sdh_systemsUpdateSchema = z.object({
 
 export const sfp_based_connectionsRowSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  customer_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   sfp_capacity: z.string().nullable(),
@@ -1454,7 +1386,12 @@ export const sfp_based_connectionsRowSchema = z.object({
 
 export const sfp_based_connectionsInsertSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  customer_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
   sfp_capacity: z.string().nullable().optional(),
@@ -1466,7 +1403,12 @@ export const sfp_based_connectionsInsertSchema = z.object({
 
 export const sfp_based_connectionsUpdateSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  customer_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
   sfp_capacity: z.string().nullable().optional(),
@@ -1546,7 +1488,7 @@ export const systemsRowSchema = z.object({
   remark: z.string().nullable(),
   s_no: z.string().nullable(),
   status: z.boolean().nullable(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   system_type_id: z.uuid(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1561,7 +1503,12 @@ export const systemsInsertSchema = z.object({
   remark: z.string().nullable().optional(),
   s_no: z.string().nullable().optional(),
   status: z.boolean().nullable().optional(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  system_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   system_type_id: z.uuid(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1576,48 +1523,14 @@ export const systemsUpdateSchema = z.object({
   remark: z.string().nullable().optional(),
   s_no: z.string().nullable().optional(),
   status: z.boolean().nullable().optional(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  system_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable()
+    .optional(),
   system_type_id: z.uuid().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const user_activity_logsRowSchema = z.object({
-  action_type: z.string(),
-  created_at: z.iso.datetime().nullable(),
-  details: z.string().nullable(),
-  id: z.number().int().positive(),
-  new_data: z.any().nullable(),
-  old_data: z.any().nullable(),
-  record_id: z.uuid().nullable(),
-  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  user_id: z.uuid().nullable(),
-  user_role: z.string().nullable(),
-});
-
-export const user_activity_logsInsertSchema = z.object({
-  action_type: z.string(),
-  created_at: z.iso.datetime().nullable().optional(),
-  details: z.string().nullable().optional(),
-  id: z.number().int().positive().optional(),
-  new_data: z.any().nullable().optional(),
-  old_data: z.any().nullable().optional(),
-  record_id: z.uuid().nullable().optional(),
-  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-  user_role: z.string().nullable().optional(),
-});
-
-export const user_activity_logsUpdateSchema = z.object({
-  action_type: z.string().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  details: z.string().nullable().optional(),
-  id: z.number().int().positive().optional(),
-  new_data: z.any().nullable().optional(),
-  old_data: z.any().nullable().optional(),
-  record_id: z.uuid().nullable().optional(),
-  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-  user_role: z.string().nullable().optional(),
 });
 
 export const user_profilesRowSchema = z.object({
@@ -1626,13 +1539,16 @@ export const user_profilesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   date_of_birth: z.iso.datetime().nullable(),
   designation: z.string().nullable(),
-  first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  first_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   id: z.uuid(),
-  last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
+  last_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
+  phone_number: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
   preferences: z.any().nullable(),
   role: z.enum(UserRole).nullable(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
+  status: z.string().min(1, 'Status cannot be empty').nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -1642,13 +1558,17 @@ export const user_profilesInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   date_of_birth: z.iso.datetime().nullable().optional(),
   designation: z.string().nullable().optional(),
-  first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  first_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
   id: z.uuid(),
-  last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  last_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long'),
+  phone_number: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   preferences: z.any().nullable().optional(),
   role: z.enum(UserRole).nullable().optional(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
+  status: z.string().min(1, 'Status cannot be empty').nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1658,13 +1578,17 @@ export const user_profilesUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   date_of_birth: z.iso.datetime().nullable().optional(),
   designation: z.string().nullable().optional(),
-  first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  first_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
   id: z.uuid().optional(),
-  last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
-  phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
+  last_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').optional(),
+  phone_number: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable()
+    .optional(),
   preferences: z.any().nullable().optional(),
   role: z.enum(UserRole).nullable().optional(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
+  status: z.string().min(1, 'Status cannot be empty').nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1707,21 +1631,12 @@ export const vmux_systemsUpdateSchema = z.object({
   vm_id: z.uuid().nullable().optional(),
 });
 
-export const v_cable_utilizationRowSchema = z.object({
-  available_fibers: z.number().nullable(),
-  cable_id: z.uuid().nullable(),
-  capacity: z.number().nullable(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  used_fibers: z.number().nullable(),
-  utilization_percent: z.number().min(0).max(100).nullable(),
-});
-
 export const v_employee_designations_with_countRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
@@ -1731,14 +1646,18 @@ export const v_employee_designations_with_countRowSchema = z.object({
 export const v_employees_with_countRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
-  employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
+  employee_addr: z.string().min(5, 'Address must be at least 5 characters').max(500).nullable(),
   employee_contact: z.string().nullable(),
   employee_designation_id: z.uuid().nullable(),
-  employee_designation_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  employee_designation_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   employee_dob: z.iso.date().nullable(),
   employee_doj: z.iso.date().nullable(),
   employee_email: z.email().nullable(),
-  employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  employee_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   employee_pers_no: z.string().nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
@@ -1749,28 +1668,16 @@ export const v_employees_with_countRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
-export const v_end_to_end_pathsRowSchema = z.object({
-  destination_system_id: z.uuid().nullable(),
-  operational_status: z.string().min(1, "Status cannot be empty").nullable(),
-  path_id: z.uuid().nullable(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  route_names: z.string().nullable(),
-  segment_count: z.number().int().min(0).nullable(),
-  source_system_id: z.uuid().nullable(),
-  total_distance_km: z.number().nullable(),
-  total_loss_db: z.number().nullable(),
-});
-
 export const v_lookup_types_with_countRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   category: z.string().nullable(),
   code: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
+  description: z.string().max(10000, 'Text is too long').nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
   is_system_default: z.boolean().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   sort_order: z.number().nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
@@ -1779,7 +1686,7 @@ export const v_lookup_types_with_countRowSchema = z.object({
 
 export const v_maintenance_areas_with_countRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
-  address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
+  address: z.string().min(5, 'Address must be at least 5 characters').max(500).nullable(),
   area_type_id: z.uuid().nullable(),
   code: z.string().nullable(),
   contact_number: z.string().nullable(),
@@ -1794,11 +1701,15 @@ export const v_maintenance_areas_with_countRowSchema = z.object({
   maintenance_area_type_code: z.string().nullable(),
   maintenance_area_type_created_at: z.iso.datetime().nullable(),
   maintenance_area_type_is_system_default: z.boolean().nullable(),
-  maintenance_area_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  maintenance_area_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   maintenance_area_type_sort_order: z.number().nullable(),
   maintenance_area_type_status: z.boolean().nullable(),
   maintenance_area_type_updated_at: z.iso.datetime().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
@@ -1813,13 +1724,21 @@ export const v_nodes_completeRowSchema = z.object({
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_area_code: z.string().nullable(),
-  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  maintenance_area_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  maintenance_area_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
+  maintenance_area_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   node_type_code: z.string().nullable(),
   node_type_id: z.uuid().nullable(),
-  node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_type_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
@@ -1834,22 +1753,26 @@ export const v_ofc_cables_completeRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   current_rkm: z.number().nullable(),
   en_id: z.uuid().nullable(),
-  en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  en_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_code: z.string().nullable(),
-  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  maintenance_area_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   ofc_owner_code: z.string().nullable(),
   ofc_owner_id: z.uuid().nullable(),
-  ofc_owner_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ofc_owner_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   ofc_type_code: z.string().nullable(),
   ofc_type_id: z.uuid().nullable(),
-  ofc_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ofc_type_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   remark: z.string().nullable(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  route_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   sn_id: z.uuid().nullable(),
-  sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  sn_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   status: z.boolean().nullable(),
   total_count: z.number().int().min(0).nullable(),
   transnet_id: z.uuid().nullable(),
@@ -1865,7 +1788,7 @@ export const v_ofc_connections_completeRowSchema = z.object({
   destination_port: z.string().nullable(),
   en_dom: z.string().nullable(),
   en_id: z.uuid().nullable(),
-  en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  en_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   en_power_dbm: z.number().nullable(),
   fiber_no_en: z.number().nullable(),
   fiber_no_sn: z.number().nullable(),
@@ -1873,10 +1796,14 @@ export const v_ofc_connections_completeRowSchema = z.object({
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
   logical_path_id: z.uuid().nullable(),
-  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  maintenance_area_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   ofc_id: z.uuid().nullable(),
-  ofc_route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  ofc_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ofc_route_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
+  ofc_type_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   otdr_distance_en_km: z.number().nullable(),
   otdr_distance_sn_km: z.number().nullable(),
   path_segment_order: z.number().nullable(),
@@ -1884,12 +1811,12 @@ export const v_ofc_connections_completeRowSchema = z.object({
   route_loss_db: z.number().nullable(),
   sn_dom: z.string().nullable(),
   sn_id: z.uuid().nullable(),
-  sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  sn_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   sn_power_dbm: z.number().nullable(),
   source_port: z.string().nullable(),
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1897,7 +1824,7 @@ export const v_ofc_connections_completeRowSchema = z.object({
 export const v_rings_with_countRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
+  description: z.string().max(10000, 'Text is too long').nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_area_type_id: z.uuid().nullable(),
@@ -1908,18 +1835,22 @@ export const v_rings_with_countRowSchema = z.object({
   maintenance_area_email: z.email().nullable(),
   maintenance_area_latitude: z.number().nullable(),
   maintenance_area_longitude: z.number().nullable(),
-  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  maintenance_area_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   maintenance_area_parent_id: z.uuid().nullable(),
   maintenance_area_status: z.boolean().nullable(),
   maintenance_area_updated_at: z.iso.datetime().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   ring_type_category: z.string().nullable(),
   ring_type_code: z.string().nullable(),
   ring_type_created_at: z.iso.datetime().nullable(),
   ring_type_id: z.uuid().nullable(),
   ring_type_is_system_default: z.boolean().nullable(),
-  ring_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ring_type_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   ring_type_sort_order: z.number().nullable(),
   ring_type_status: z.boolean().nullable(),
   ring_type_updated_at: z.iso.datetime().nullable(),
@@ -1934,19 +1865,31 @@ export const v_system_connections_completeRowSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.string().nullable(),
-  connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  connected_system_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
+  connected_system_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   created_at: z.iso.datetime().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  customer_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.string().nullable(),
-  en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  en_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  en_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
+  en_node_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),
-  media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  media_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   remark: z.string().nullable(),
   sdh_a_customer: z.string().nullable(),
   sdh_a_slot: z.string().nullable(),
@@ -1957,15 +1900,19 @@ export const v_system_connections_completeRowSchema = z.object({
   sfp_capacity: z.string().nullable(),
   sfp_port: z.string().nullable(),
   sfp_serial_no: z.string().nullable(),
-  sfp_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  sfp_type_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.string().nullable(),
-  sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  sn_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  sn_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
+  sn_node_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
+  system_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
@@ -1973,21 +1920,6 @@ export const v_system_connections_completeRowSchema = z.object({
   vmux_channel: z.string().nullable(),
   vmux_subscriber: z.string().nullable(),
   vmux_tk: z.string().nullable(),
-});
-
-export const v_system_ring_paths_detailedRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  end_node_id: z.uuid().nullable(),
-  end_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  id: z.uuid().nullable(),
-  logical_path_id: z.uuid().nullable(),
-  ofc_cable_id: z.uuid().nullable(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  path_order: z.number().nullable(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  source_system_id: z.uuid().nullable(),
-  start_node_id: z.uuid().nullable(),
-  start_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
 });
 
 export const v_systems_completeRowSchema = z.object({
@@ -2001,20 +1933,32 @@ export const v_systems_completeRowSchema = z.object({
   longitude: z.number().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   node_id: z.uuid().nullable(),
-  node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   remark: z.string().nullable(),
   ring_id: z.uuid().nullable(),
-  ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ring_logical_area_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   s_no: z.string().nullable(),
   sdh_gne: z.string().nullable(),
   sdh_make: z.string().nullable(),
   status: z.boolean().nullable(),
   system_category: z.string().nullable(),
-  system_maintenance_terminal_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_maintenance_terminal_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
+  system_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   system_type_code: z.string().nullable(),
   system_type_id: z.uuid().nullable(),
-  system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_type_name: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name is too long')
+    .nullable(),
   total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vmux_vm_id: z.uuid().nullable(),
@@ -2025,28 +1969,34 @@ export const v_user_profiles_extendedRowSchema = z.object({
   address: z.any().nullable(),
   auth_updated_at: z.iso.datetime().nullable(),
   avatar_url: z.url().nullable(),
-  computed_status: z.string().min(1, "Status cannot be empty").nullable(),
+  computed_status: z.string().min(1, 'Status cannot be empty').nullable(),
   created_at: z.iso.datetime().nullable(),
   date_of_birth: z.iso.datetime().nullable(),
   designation: z.string().nullable(),
   email: z.email().nullable(),
   email_confirmed_at: z.email().nullable(),
-  first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  full_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  first_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
+  full_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   id: z.uuid().nullable(),
   is_email_verified: z.boolean().nullable(),
   is_phone_verified: z.boolean().nullable(),
   is_super_admin: z.boolean().nullable(),
   last_activity_period: z.string().nullable(),
-  last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  last_name: z.string().min(1, 'Name cannot be empty').max(255, 'Name is too long').nullable(),
   last_sign_in_at: z.iso.datetime().nullable(),
-  phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
+  phone_confirmed_at: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
+  phone_number: z
+    .string()
+    .regex(/^[+]?[1-9]?[0-9]{7,15}$/, 'Invalid phone number')
+    .nullable(),
   preferences: z.any().nullable(),
   raw_app_meta_data: z.any().nullable(),
   raw_user_meta_data: z.any().nullable(),
   role: z.enum(UserRole).nullable(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
+  status: z.string().min(1, 'Status cannot be empty').nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -2110,12 +2060,6 @@ export const schemas = {
   employeesRowSchema,
   employeesInsertSchema,
   employeesUpdateSchema,
-  fiber_jointsRowSchema,
-  fiber_jointsInsertSchema,
-  fiber_jointsUpdateSchema,
-  fiber_splicesRowSchema,
-  fiber_splicesInsertSchema,
-  fiber_splicesUpdateSchema,
   filesRowSchema,
   filesInsertSchema,
   filesUpdateSchema,
@@ -2125,12 +2069,6 @@ export const schemas = {
   junction_closuresRowSchema,
   junction_closuresInsertSchema,
   junction_closuresUpdateSchema,
-  logical_fiber_pathsRowSchema,
-  logical_fiber_pathsInsertSchema,
-  logical_fiber_pathsUpdateSchema,
-  logical_path_segmentsRowSchema,
-  logical_path_segmentsInsertSchema,
-  logical_path_segmentsUpdateSchema,
   lookup_typesRowSchema,
   lookup_typesInsertSchema,
   lookup_typesUpdateSchema,
@@ -2173,9 +2111,6 @@ export const schemas = {
   systemsRowSchema,
   systemsInsertSchema,
   systemsUpdateSchema,
-  user_activity_logsRowSchema,
-  user_activity_logsInsertSchema,
-  user_activity_logsUpdateSchema,
   user_profilesRowSchema,
   user_profilesInsertSchema,
   user_profilesUpdateSchema,
@@ -2185,10 +2120,8 @@ export const schemas = {
   vmux_systemsRowSchema,
   vmux_systemsInsertSchema,
   vmux_systemsUpdateSchema,
-  v_cable_utilizationRowSchema,
   v_employee_designations_with_countRowSchema,
   v_employees_with_countRowSchema,
-  v_end_to_end_pathsRowSchema,
   v_lookup_types_with_countRowSchema,
   v_maintenance_areas_with_countRowSchema,
   v_nodes_completeRowSchema,
@@ -2196,7 +2129,6 @@ export const schemas = {
   v_ofc_connections_completeRowSchema,
   v_rings_with_countRowSchema,
   v_system_connections_completeRowSchema,
-  v_system_ring_paths_detailedRowSchema,
   v_systems_completeRowSchema,
   v_user_profiles_extendedRowSchema,
 } as const;
@@ -2260,12 +2192,6 @@ export type Employee_designationsUpdateSchema = z.infer<typeof employee_designat
 export type EmployeesRowSchema = z.infer<typeof employeesRowSchema>;
 export type EmployeesInsertSchema = z.infer<typeof employeesInsertSchema>;
 export type EmployeesUpdateSchema = z.infer<typeof employeesUpdateSchema>;
-export type Fiber_jointsRowSchema = z.infer<typeof fiber_jointsRowSchema>;
-export type Fiber_jointsInsertSchema = z.infer<typeof fiber_jointsInsertSchema>;
-export type Fiber_jointsUpdateSchema = z.infer<typeof fiber_jointsUpdateSchema>;
-export type Fiber_splicesRowSchema = z.infer<typeof fiber_splicesRowSchema>;
-export type Fiber_splicesInsertSchema = z.infer<typeof fiber_splicesInsertSchema>;
-export type Fiber_splicesUpdateSchema = z.infer<typeof fiber_splicesUpdateSchema>;
 export type FilesRowSchema = z.infer<typeof filesRowSchema>;
 export type FilesInsertSchema = z.infer<typeof filesInsertSchema>;
 export type FilesUpdateSchema = z.infer<typeof filesUpdateSchema>;
@@ -2275,12 +2201,6 @@ export type FoldersUpdateSchema = z.infer<typeof foldersUpdateSchema>;
 export type Junction_closuresRowSchema = z.infer<typeof junction_closuresRowSchema>;
 export type Junction_closuresInsertSchema = z.infer<typeof junction_closuresInsertSchema>;
 export type Junction_closuresUpdateSchema = z.infer<typeof junction_closuresUpdateSchema>;
-export type Logical_fiber_pathsRowSchema = z.infer<typeof logical_fiber_pathsRowSchema>;
-export type Logical_fiber_pathsInsertSchema = z.infer<typeof logical_fiber_pathsInsertSchema>;
-export type Logical_fiber_pathsUpdateSchema = z.infer<typeof logical_fiber_pathsUpdateSchema>;
-export type Logical_path_segmentsRowSchema = z.infer<typeof logical_path_segmentsRowSchema>;
-export type Logical_path_segmentsInsertSchema = z.infer<typeof logical_path_segmentsInsertSchema>;
-export type Logical_path_segmentsUpdateSchema = z.infer<typeof logical_path_segmentsUpdateSchema>;
 export type Lookup_typesRowSchema = z.infer<typeof lookup_typesRowSchema>;
 export type Lookup_typesInsertSchema = z.infer<typeof lookup_typesInsertSchema>;
 export type Lookup_typesUpdateSchema = z.infer<typeof lookup_typesUpdateSchema>;
@@ -2323,9 +2243,6 @@ export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUp
 export type SystemsRowSchema = z.infer<typeof systemsRowSchema>;
 export type SystemsInsertSchema = z.infer<typeof systemsInsertSchema>;
 export type SystemsUpdateSchema = z.infer<typeof systemsUpdateSchema>;
-export type User_activity_logsRowSchema = z.infer<typeof user_activity_logsRowSchema>;
-export type User_activity_logsInsertSchema = z.infer<typeof user_activity_logsInsertSchema>;
-export type User_activity_logsUpdateSchema = z.infer<typeof user_activity_logsUpdateSchema>;
 export type User_profilesRowSchema = z.infer<typeof user_profilesRowSchema>;
 export type User_profilesInsertSchema = z.infer<typeof user_profilesInsertSchema>;
 export type User_profilesUpdateSchema = z.infer<typeof user_profilesUpdateSchema>;
@@ -2335,17 +2252,22 @@ export type Vmux_connectionsUpdateSchema = z.infer<typeof vmux_connectionsUpdate
 export type Vmux_systemsRowSchema = z.infer<typeof vmux_systemsRowSchema>;
 export type Vmux_systemsInsertSchema = z.infer<typeof vmux_systemsInsertSchema>;
 export type Vmux_systemsUpdateSchema = z.infer<typeof vmux_systemsUpdateSchema>;
-export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
-export type V_employee_designations_with_countRowSchema = z.infer<typeof v_employee_designations_with_countRowSchema>;
+export type V_employee_designations_with_countRowSchema = z.infer<
+  typeof v_employee_designations_with_countRowSchema
+>;
 export type V_employees_with_countRowSchema = z.infer<typeof v_employees_with_countRowSchema>;
-export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
 export type V_lookup_types_with_countRowSchema = z.infer<typeof v_lookup_types_with_countRowSchema>;
-export type V_maintenance_areas_with_countRowSchema = z.infer<typeof v_maintenance_areas_with_countRowSchema>;
+export type V_maintenance_areas_with_countRowSchema = z.infer<
+  typeof v_maintenance_areas_with_countRowSchema
+>;
 export type V_nodes_completeRowSchema = z.infer<typeof v_nodes_completeRowSchema>;
 export type V_ofc_cables_completeRowSchema = z.infer<typeof v_ofc_cables_completeRowSchema>;
-export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connections_completeRowSchema>;
+export type V_ofc_connections_completeRowSchema = z.infer<
+  typeof v_ofc_connections_completeRowSchema
+>;
 export type V_rings_with_countRowSchema = z.infer<typeof v_rings_with_countRowSchema>;
-export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
-export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
+export type V_system_connections_completeRowSchema = z.infer<
+  typeof v_system_connections_completeRowSchema
+>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;
 export type V_user_profiles_extendedRowSchema = z.infer<typeof v_user_profiles_extendedRowSchema>;

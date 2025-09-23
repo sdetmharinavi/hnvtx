@@ -1,11 +1,16 @@
 // path: components/route-manager/types.ts
 
+import { Ofc_cablesRowSchema } from "@/schemas/zod-schemas";
+
 // The high-level route object, fetched for the selection dropdown
-export interface OfcForSelection {
-  id: string;
-  route_name: string;
-  capacity?: number; // FIXED: Added capacity as it's selected in the hook
-}
+// export interface OfcForSelection {
+//   id: string;
+//   route_name: string;
+//   capacity?: number; // FIXED: Added capacity as it's selected in the hook
+// }
+
+// Create a new schema with only the fields we want
+export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
 // Represents the physical JC box, now matching the database table
 export interface JunctionClosure {

@@ -969,6 +969,54 @@ export type Database = {
           },
         ]
       }
+      junction_closures: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          ofc_cable_id: string | null
+          position_km: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          ofc_cable_id?: string | null
+          position_km?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          ofc_cable_id?: string | null
+          position_km?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lookup_types: {
         Row: {
           category: string

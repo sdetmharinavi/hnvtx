@@ -2,8 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { JunctionClosure, RouteDetailsPayload, OfcForSelection, JcSplicingDetails, AutoSpliceResult } from '@/components/route-manager/types';
+import { JunctionClosure, RouteDetailsPayload, JcSplicingDetails, AutoSpliceResult } from '@/components/route-manager/types';
 import { toast } from 'sonner';
+import { Ofc_cablesRowSchema } from '@/schemas/zod-schemas';
+
+export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
 const supabase = createClient();
 
@@ -14,10 +17,15 @@ export function useOfcRoutesForSelection() {
     queryFn: async (): Promise<OfcForSelection[]> => {
       const { data, error } = await supabase
         .from('ofc_cables')
-        .select('id, route_name, capacity')
+        // Only include cables that have at least one related row in ofc_connections
+        // Using PostgREST's inner join filter syntax: related_table!inner()
+        .select('id, route_name, capacity, ofc_connections!inner(id)')
         .order('route_name');
       if (error) throw error;
-      return data || [];
+      // Ensure we only return the fields required by OfcForSelection
+      type Row = { id: string; route_name: string; capacity: number; ofc_connections: { id: string }[] };
+      const rows = (data || []) as Row[];
+      return rows.map((row) => ({ id: row.id, route_name: row.route_name, capacity: row.capacity }));
     },
     staleTime: 5 * 60 * 1000,
   });

@@ -706,105 +706,6 @@ export type EmployeesUpdate = {
     updated_at?: string | null;
 };
 
-export type Fiber_jointsRow = {
-    created_at: string | null;
-    id: string;
-    installed_date: string | null;
-    joint_category: string;
-    joint_name: string;
-    joint_type: string;
-    latitude: number | null;
-    location_description: string | null;
-    longitude: number | null;
-    maintenance_area_id: string | null;
-    node_id: string | null;
-    remark: string | null;
-    status: boolean | null;
-    updated_at: string | null;
-};
-
-export type Fiber_jointsInsert = {
-    created_at?: string | null;
-    id?: string;
-    installed_date?: string | null;
-    joint_category?: string;
-    joint_name: string;
-    joint_type?: string;
-    latitude?: number | null;
-    location_description?: string | null;
-    longitude?: number | null;
-    maintenance_area_id?: string | null;
-    node_id?: string | null;
-    remark?: string | null;
-    status?: boolean | null;
-    updated_at?: string | null;
-};
-
-export type Fiber_jointsUpdate = {
-    created_at?: string | null;
-    id?: string;
-    installed_date?: string | null;
-    joint_category?: string;
-    joint_name?: string;
-    joint_type?: string;
-    latitude?: number | null;
-    location_description?: string | null;
-    longitude?: number | null;
-    maintenance_area_id?: string | null;
-    node_id?: string | null;
-    remark?: string | null;
-    status?: boolean | null;
-    updated_at?: string | null;
-};
-
-export type Fiber_splicesRow = {
-    created_at: string | null;
-    id: string;
-    incoming_cable_id: string;
-    incoming_fiber_no: number;
-    jc_id: string;
-    logical_path_id: string | null;
-    loss_db: number | null;
-    otdr_length_km: number | null;
-    outgoing_cable_id: string | null;
-    outgoing_fiber_no: number | null;
-    splice_type: string;
-    status: string;
-    updated_at: string | null;
-};
-
-export type Fiber_splicesInsert = {
-    created_at?: string | null;
-    id?: string;
-    incoming_cable_id: string;
-    incoming_fiber_no: number;
-    jc_id: string;
-    logical_path_id?: string | null;
-    loss_db?: number | null;
-    otdr_length_km?: number | null;
-    outgoing_cable_id?: string | null;
-    outgoing_fiber_no?: number | null;
-    splice_type?: string;
-    status?: string;
-    updated_at?: string | null;
-};
-
-export type Fiber_splicesUpdate = {
-    created_at?: string | null;
-    id?: string;
-    incoming_cable_id?: string;
-    incoming_fiber_no?: number;
-    jc_id?: string;
-    logical_path_id?: string | null;
-    loss_db?: number | null;
-    otdr_length_km?: number | null;
-    outgoing_cable_id?: string | null;
-    outgoing_fiber_no?: number | null;
-    splice_type?: string;
-    status?: string;
-    updated_at?: string | null;
-};
-
 export type FilesRow = {
     file_name: string;
     file_route: string;
@@ -893,99 +794,6 @@ export type Junction_closuresUpdate = {
     ofc_cable_id?: string | null;
     position_km?: number | null;
     updated_at?: string | null;
-};
-
-export type Logical_fiber_pathsRow = {
-    bandwidth_gbps: number | null;
-    commissioned_date: string | null;
-    created_at: string | null;
-    destination_port: string | null;
-    destination_system_id: string | null;
-    id: string;
-    operational_status_id: string | null;
-    path_name: string | null;
-    path_role: string;
-    path_type_id: string | null;
-    remark: string | null;
-    service_type: string | null;
-    source_port: string | null;
-    source_system_id: string | null;
-    total_distance_km: number | null;
-    total_loss_db: number | null;
-    updated_at: string | null;
-    wavelength_nm: number | null;
-    working_path_id: string | null;
-};
-
-export type Logical_fiber_pathsInsert = {
-    bandwidth_gbps?: number | null;
-    commissioned_date?: string | null;
-    created_at?: string | null;
-    destination_port?: string | null;
-    destination_system_id?: string | null;
-    id?: string;
-    operational_status_id?: string | null;
-    path_name?: string | null;
-    path_role?: string;
-    path_type_id?: string | null;
-    remark?: string | null;
-    service_type?: string | null;
-    source_port?: string | null;
-    source_system_id?: string | null;
-    total_distance_km?: number | null;
-    total_loss_db?: number | null;
-    updated_at?: string | null;
-    wavelength_nm?: number | null;
-    working_path_id?: string | null;
-};
-
-export type Logical_fiber_pathsUpdate = {
-    bandwidth_gbps?: number | null;
-    commissioned_date?: string | null;
-    created_at?: string | null;
-    destination_port?: string | null;
-    destination_system_id?: string | null;
-    id?: string;
-    operational_status_id?: string | null;
-    path_name?: string | null;
-    path_role?: string;
-    path_type_id?: string | null;
-    remark?: string | null;
-    service_type?: string | null;
-    source_port?: string | null;
-    source_system_id?: string | null;
-    total_distance_km?: number | null;
-    total_loss_db?: number | null;
-    updated_at?: string | null;
-    wavelength_nm?: number | null;
-    working_path_id?: string | null;
-};
-
-export type Logical_path_segmentsRow = {
-    created_at: string | null;
-    fiber_joint_id: string | null;
-    id: string;
-    logical_path_id: string;
-    ofc_cable_id: string | null;
-    path_order: number;
-};
-
-export type Logical_path_segmentsInsert = {
-    created_at?: string | null;
-    fiber_joint_id?: string | null;
-    id?: string;
-    logical_path_id: string;
-    ofc_cable_id?: string | null;
-    path_order: number;
-};
-
-export type Logical_path_segmentsUpdate = {
-    created_at?: string | null;
-    fiber_joint_id?: string | null;
-    id?: string;
-    logical_path_id?: string;
-    ofc_cable_id?: string | null;
-    path_order?: number;
 };
 
 export type Lookup_typesRow = {
@@ -1561,45 +1369,6 @@ export type SystemsUpdate = {
     updated_at?: string | null;
 };
 
-export type User_activity_logsRow = {
-    action_type: string;
-    created_at: string | null;
-    details: string | null;
-    id: number;
-    new_data: Json | null;
-    old_data: Json | null;
-    record_id: string | null;
-    table_name: string | null;
-    user_id: string | null;
-    user_role: string | null;
-};
-
-export type User_activity_logsInsert = {
-    action_type: string;
-    created_at?: string | null;
-    details?: string | null;
-    id?: number;
-    new_data?: Json | null;
-    old_data?: Json | null;
-    record_id?: string | null;
-    table_name?: string | null;
-    user_id?: string | null;
-    user_role?: string | null;
-};
-
-export type User_activity_logsUpdate = {
-    action_type?: string;
-    created_at?: string | null;
-    details?: string | null;
-    id?: number;
-    new_data?: Json | null;
-    old_data?: Json | null;
-    record_id?: string | null;
-    table_name?: string | null;
-    user_id?: string | null;
-    user_role?: string | null;
-};
-
 export type User_profilesRow = {
     address: Json | null;
     avatar_url: string | null;
@@ -1689,15 +1458,6 @@ export type Vmux_systemsUpdate = {
 
 // ============= VIEWS =============
 
-export type V_cable_utilizationRow = {
-    available_fibers: number | null;
-    cable_id: string | null;
-    capacity: number | null;
-    route_name: string | null;
-    used_fibers: number | null;
-    utilization_percent: number | null;
-};
-
 export type V_employee_designations_with_countRow = {
     active_count: number | null;
     created_at: string | null;
@@ -1729,18 +1489,6 @@ export type V_employees_with_countRow = {
     status: boolean | null;
     total_count: number | null;
     updated_at: string | null;
-};
-
-export type V_end_to_end_pathsRow = {
-    destination_system_id: string | null;
-    operational_status: string | null;
-    path_id: string | null;
-    path_name: string | null;
-    route_names: string | null;
-    segment_count: number | null;
-    source_system_id: string | null;
-    total_distance_km: number | null;
-    total_loss_db: number | null;
 };
 
 export type V_lookup_types_with_countRow = {
@@ -1955,21 +1703,6 @@ export type V_system_connections_completeRow = {
     vmux_channel: string | null;
     vmux_subscriber: string | null;
     vmux_tk: string | null;
-};
-
-export type V_system_ring_paths_detailedRow = {
-    created_at: string | null;
-    end_node_id: string | null;
-    end_node_name: string | null;
-    id: string | null;
-    logical_path_id: string | null;
-    ofc_cable_id: string | null;
-    path_name: string | null;
-    path_order: number | null;
-    route_name: string | null;
-    source_system_id: string | null;
-    start_node_id: string | null;
-    start_node_name: string | null;
 };
 
 export type V_systems_completeRow = {
