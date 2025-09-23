@@ -1,4 +1,4 @@
--- Path: supabase/migrations/04_advanced_ofc/03_indexes.sql
+-- Path: migrations/04_advanced_ofc/03_indexes.sql
 -- Description: Creates indexes for the Advanced OFC module tables.
 
 CREATE INDEX IF NOT EXISTS idx_fiber_joints_node_id ON public.fiber_joints (node_id);

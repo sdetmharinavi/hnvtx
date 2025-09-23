@@ -17,9 +17,9 @@ export const createQueryKey = (
   filters?: Filters,
   columns?: string,
   orderBy?: OrderBy[],
-  enhancedOrderBy?: EnhancedOrderBy[], // Fixed: renamed from EnhancedOrderBy to enhancedOrderBy
-  deduplication?: DeduplicationOptions | undefined,
+  deduplication?: DeduplicationOptions,
   aggregation?: AggregationOptions,
+  enhancedOrderBy?: EnhancedOrderBy[],
   limit?: number,
   offset?: number
 ): QueryKey => {
@@ -28,9 +28,9 @@ export const createQueryKey = (
     filters,
     columns,
     orderBy,
-    enhancedOrderBy, // Fixed: use correct parameter name
     deduplication,
-    aggregation,
+    aggregation,  
+    enhancedOrderBy,
     limit,
     offset,
   };
@@ -64,12 +64,12 @@ export const createUniqueValuesKey = (
   column: string,
   filters?: Filters,
   orderBy?: OrderBy[],
-  enhancedOrderBy?: EnhancedOrderBy[] // Fixed: added missing parameter and use correct naming
+  enhancedOrderBy?: EnhancedOrderBy[]
 ): QueryKey => [
   'unique',
   tableName,
   column,
-  { filters, orderBy, enhancedOrderBy }, // Fixed: include enhancedOrderBy in the key
+  { filters, orderBy, enhancedOrderBy }
 ];
 
 export function applyFilters(query: any, filters: Filters): any {

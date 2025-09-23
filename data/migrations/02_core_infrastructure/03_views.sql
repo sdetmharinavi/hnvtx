@@ -2,7 +2,7 @@
 -- Description: Defines denormalized views for the Core Infrastructure module.
 
 -- View for lookup_types with aggregate counts
-CREATE OR REPLACE VIEW public.v_lookup_types_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_lookup_types_with_count WITH (security_barrier = true) AS
 SELECT
   lt.*,
   count(*) OVER() AS total_count,
@@ -11,7 +11,7 @@ SELECT
 FROM public.lookup_types lt;
 
 -- View for maintenance_areas with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_maintenance_areas_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_maintenance_areas_with_count WITH (security_barrier = true) AS
 SELECT
   ma.*,
   lt_ma.name AS maintenance_area_type_name,
@@ -29,7 +29,7 @@ FROM public.maintenance_areas ma
 LEFT JOIN public.lookup_types lt_ma ON ma.area_type_id = lt_ma.id;
 
 -- View for employee_designations with aggregate counts
-CREATE OR REPLACE VIEW public.v_employee_designations_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_employee_designations_with_count WITH (security_barrier = true) AS
 SELECT
   ed.*,
   count(*) OVER() AS total_count,
@@ -38,7 +38,7 @@ SELECT
 FROM public.employee_designations ed;
 
 -- View for employees with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_employees_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_employees_with_count WITH (security_barrier = true) AS
 SELECT
   e.*,
   ed.name AS employee_designation_name,
@@ -49,7 +49,7 @@ FROM public.employees e
 LEFT JOIN public.employee_designations ed ON e.employee_designation_id = ed.id;
 
 -- View for rings with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_rings_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_rings_with_count WITH (security_barrier = true) AS
 SELECT
   r.*,
   lt_ring.name AS ring_type_name,
@@ -80,7 +80,7 @@ LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
 
 -- View for nodes with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_barrier = true) AS
 SELECT
   n.*,
   lt_node.name AS node_type_name,
@@ -97,7 +97,7 @@ LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt_ma ON ma.area_type_id = lt_ma.id;
 
 -- View for ofc_cables with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_ofc_cables_complete WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_ofc_cables_complete WITH (security_barrier = true) AS
 SELECT
   ofc.id,
   ofc.route_name,

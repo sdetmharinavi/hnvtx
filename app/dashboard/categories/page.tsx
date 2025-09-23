@@ -103,12 +103,7 @@ export default function CategoriesPage() {
     if (!isLoading) {
       refreshCategoryInfo();
     }
-  }, [
-    categoriesDeduplicated,
-    groupedLookupsByCategory,
-    isLoading,
-    refreshCategoryInfo,
-  ]);
+  }, [isLoading]);
 
   async function handleRefresh() {
     try {

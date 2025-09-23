@@ -1,4 +1,4 @@
--- Path: supabase/migrations/02_core_infrastructure/05_triggers.sql
+-- Path: migrations/02_core_infrastructure/05_triggers.sql
 -- Description: Attaches all triggers for the Core Infrastructure module.
 
 -- Apply the generic 'update_updated_at_column' trigger to all relevant tables.

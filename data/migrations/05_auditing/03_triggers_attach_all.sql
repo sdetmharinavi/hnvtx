@@ -1,4 +1,4 @@
--- Path: supabase/migrations/05_auditing/03_triggers_attach_all.sql
+-- Path: migrations/05_auditing/03_triggers_attach_all.sql
 -- Description: Dynamically attaches the log_data_changes trigger to all relevant tables.
 -- This script is idempotent and can be re-run safely.
 

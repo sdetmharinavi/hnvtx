@@ -1,4 +1,4 @@
--- Path: supabase/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql
+-- Path: migrations/04_advanced_ofc/01_tables_advanced_ofc.sql
 -- Description: Defines tables for advanced OFC path and splice management.
 
 -- Represents a physical junction closure (splice box) along an OFC route.

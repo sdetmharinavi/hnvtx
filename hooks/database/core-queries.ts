@@ -56,11 +56,11 @@ export function useTableQuery<
       filters,
       columns,
       orderBy,
-      undefined,
-      deduplication,
-      aggregation,
-      limit,
-      offset
+      deduplication, // 5th argument
+      aggregation,   // 6th argument
+      undefined,     // 7th argument (enhancedOrderBy not used here)
+      limit,         // 8th argument
+      offset         // 9th argument
     ),
     queryFn: async (): Promise<QueryFnData> => {
       if (deduplication) {
@@ -235,11 +235,11 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
     queryKey: createUniqueValuesKey(tableName, column, filters, orderBy),
     queryFn: async (): Promise<unknown[]> => {
       const { data, error } = await supabase.rpc('get_unique_values', {
-        table_name: tableName,
-        column_name: column,
-        filters: (filters || {}) as unknown as Json,
-        order_by: (orderBy || []) as unknown as Json,
-        limit_count: limit,
+        p_table_name: tableName,
+        p_column_name: column,
+        p_filters: (filters || {}) as unknown as Json,
+        p_order_by: (orderBy || []) as unknown as Json,
+        p_limit_count: limit,
       });
       if (error) {
         console.error(

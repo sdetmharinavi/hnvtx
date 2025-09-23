@@ -2,7 +2,7 @@
 -- Description: Defines views for the User Management module.
 
 -- Extended view combining auth.users and public.user_profiles
-CREATE OR REPLACE VIEW v_user_profiles_extended WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW v_user_profiles_extended WITH (security_barrier = true) AS
 SELECT
     u.id,
     u.email::text AS email,

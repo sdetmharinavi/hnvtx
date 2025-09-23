@@ -1,4 +1,4 @@
--- Path: supabase/migrations/05_auditing/02_functions.sql
+-- Path: migrations/05_auditing/02_functions.sql
 -- Description: Core functions for the auditing system.
 
 -- Function 1: log_user_activity()

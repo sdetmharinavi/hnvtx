@@ -1,4 +1,4 @@
--- Path: supabase/migrations/05_auditing/01_table_user_activity_logs.sql
+-- Path: migrations/05_auditing/01_table_user_activity_logs.sql
 -- Description: Defines the table for storing all user activity and data change logs.
 
 CREATE TABLE IF NOT EXISTS public.user_activity_logs (

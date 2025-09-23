@@ -1,4 +1,4 @@
--- Path: supabase/migrations/99_finalization/01_cross_module_constraints.sql
+-- Path: migrations/99_finalization/01_cross_module_constraints.sql
 -- Description: Adds all cross-module foreign key constraints after all tables have been created.
 -- This script is essential for maintaining referential integrity between different domains.
 

@@ -1,4 +1,4 @@
--- Path: supabase/migrations/03_network_systems/05_rls_and_grants.sql
+-- Path: migrations/03_network_systems/05_rls_and_grants.sql
 -- Description: Defines all RLS policies and Grants for the Network Systems module.
 
 -- =================================================================
@@ -161,5 +161,19 @@ BEGIN
 
         RAISE NOTICE 'Applied specific policies for role % on table %', specific_role, tbl;
     END LOOP;
+END;
+$$;
+
+-- =================================================================
+-- Section 4: View-Level Grants
+-- =================================================================
+DO $$
+BEGIN
+  GRANT SELECT ON public.v_systems_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_system_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  -- v_ofc_connections_complete is also defined here and needs grants
+  GRANT SELECT ON public.v_ofc_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+
+  RAISE NOTICE 'Applied SELECT grants on network system views.';
 END;
 $$;

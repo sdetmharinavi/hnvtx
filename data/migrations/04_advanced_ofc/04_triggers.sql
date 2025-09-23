@@ -1,4 +1,4 @@
--- Path: supabase/migrations/04_advanced_ofc/04_triggers.sql
+-- Path: migrations/04_advanced_ofc/04_triggers.sql
 -- Description: Attaches 'updated_at' triggers for the Advanced OFC module.
 
 CREATE OR REPLACE TRIGGER trigger_junction_closures_updated_at BEFORE UPDATE ON public.junction_closures FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

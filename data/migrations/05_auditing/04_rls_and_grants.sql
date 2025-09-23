@@ -1,4 +1,4 @@
--- Path: supabase/migrations/05_auditing/04_rls_and_grants.sql
+-- Path: migrations/05_auditing/04_rls_and_grants.sql
 -- Description: Secures the user_activity_logs table, allowing access only to admins.
 
 -- Enable Row Level Security on the log table

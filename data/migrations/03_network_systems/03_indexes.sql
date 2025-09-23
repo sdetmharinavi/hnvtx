@@ -1,4 +1,4 @@
--- Path: supabase/migrations/03_network_systems/03_indexes.sql
+-- Path: migrations/03_network_systems/03_indexes.sql
 -- Description: Creates B-tree and GIN (FTS) indexes for the Network Systems module.
 
 -- =================================================================

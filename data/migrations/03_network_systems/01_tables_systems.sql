@@ -1,4 +1,4 @@
--- Path: supabase/migrations/03_network_systems/01_tables_systems.sql
+-- Path: migrations/03_network_systems/01_tables_systems.sql
 -- Description: Defines tables for generic and specific network systems.
 
 -- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH, VMUX)

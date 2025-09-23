@@ -1,4 +1,4 @@
--- Path: supabase/migrations/04_advanced_ofc/05_rls_and_grants.sql
+-- Path: migrations/04_advanced_ofc/05_rls_and_grants.sql
 -- Description: RLS policies and Grants for the Advanced OFC (Route Manager) module.
 
 -- =================================================================
@@ -78,3 +78,16 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(p_jc_id UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manage_splice(p_action TEXT, p_jc_id UUID, p_splice_id UUID, p_incoming_cable_id UUID, p_incoming_fiber_no INT, p_outgoing_cable_id UUID, p_outgoing_fiber_no INT, p_splice_type TEXT) TO authenticated;
+
+-- =================================================================
+-- Section 4: View-Level Grants
+-- =================================================================
+DO $$
+BEGIN
+  GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer;
+  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer;
+  GRANT SELECT ON public.v_cable_utilization TO admin, viewer;
+
+  RAISE NOTICE 'Applied SELECT grants on advanced OFC views.';
+END;
+$$;

@@ -1,4 +1,4 @@
--- Path: supabase/migrations/03_network_systems/04_triggers.sql
+-- Path: migrations/03_network_systems/04_triggers.sql
 -- Description: Attaches 'updated_at' triggers to all tables in the Network Systems module.
 
 CREATE OR REPLACE TRIGGER trigger_systems_updated_at BEFORE UPDATE ON public.systems FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
