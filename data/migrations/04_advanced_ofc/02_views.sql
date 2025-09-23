@@ -1,8 +1,21 @@
 -- Path: migrations/04_advanced_ofc/02_views.sql
 -- Description: Defines views for analyzing OFC paths and utilization.
 
+-- View showing complete information for a junction closure.
+CREATE OR REPLACE VIEW public.v_junction_closures_complete WITH (security_invoker = true) AS
+SELECT
+  jc.node_id,
+  jc.ofc_cable_id,
+  jc.position_km,
+  n.name,
+  n.latitude,
+  n.longitude
+FROM public.junction_closures jc
+JOIN public.nodes n ON jc.node_id = n.id;
+
+
 -- View showing end-to-end logical path summaries.
-CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_invoker = true) AS
 SELECT
   lfp.id AS path_id,
   lfp.path_name,
@@ -23,7 +36,7 @@ GROUP BY
 
 
 -- View showing detailed segments for a given logical path.
-CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_invoker = true) AS
 SELECT
   srp.id,
   srp.logical_path_id,
@@ -48,7 +61,7 @@ ORDER BY
 
 
 -- View for calculating fiber utilization per cable.
-CREATE OR REPLACE VIEW public.v_cable_utilization WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_cable_utilization WITH (security_invoker = true) AS
 SELECT
   oc.id AS cable_id,
   oc.route_name,

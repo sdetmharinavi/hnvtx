@@ -1,5 +1,5 @@
 // path: hooks/database/rpc-queries.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import {
@@ -19,8 +19,9 @@ import {
   PagedRingsWithCountResult,
   PagedOfcCablesCompleteResult
 } from './queries-type-helpers';
-import { createRpcQueryKey } from './utility-functions';
+import { buildRpcFilters, createRpcQueryKey, RpcFilters } from './utility-functions';
 import { createPagedRpcHook } from './rpc-hook-factory';
+import { DEFAULTS } from '@/config/constants';
 
 // =================================================================
 // Section 1: Generated Hooks for Paginated Views
@@ -119,14 +120,14 @@ export function useRpcMutation<T extends RpcFunctionName>(
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, context, mutation) => {
       if (invalidateQueries) {
         // A generic mutation should invalidate all table and rpc data
         // as we don't know what it changed.
         queryClient.invalidateQueries({ queryKey: ['table'] });
         queryClient.invalidateQueries({ queryKey: ['rpc'] });
       }
-      options?.onSuccess?.(data, variables, context);
+      options?.onSuccess?.(data, variables, context, mutation);
     },
     ...mutationOptions,
   });
@@ -139,4 +140,105 @@ export function useDashboardOverview(
 ) {
   // Note: The third argument (args) is an empty object because this RPC takes no parameters.
   return useRpcQuery(supabase, 'get_dashboard_overview', {}, options);
+}
+
+// Define the shape of the JSONB object returned by the new SQL function
+export interface PagedDataResult<T> {
+  data: T[];
+  total_count: number;
+  active_count: number;
+  inactive_count: number;
+}
+
+// Hook options
+interface UsePagedDataOptions {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDir?: 'asc' | 'desc';
+  filters?: RpcFilters;
+}
+
+// A helper function to safely check if the RPC response is valid.
+// This is a "type guard" in TypeScript.
+function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    Array.isArray(o['data']) &&
+    typeof o['total_count'] === 'number' &&
+    typeof o['active_count'] === 'number' &&
+    typeof o['inactive_count'] === 'number'
+  );
+}
+
+/**
+ * A generic hook to fetch paginated data from any view using the 'get_paged_data' RPC.
+ * @param viewName The name of the table or view to query.
+ * @param hookOptions Pagination, ordering, and filtering options.
+ * @param queryOptions Standard TanStack Query options.
+ */
+export function usePagedData<T>(
+  supabase: SupabaseClient<Database>,
+  viewName: string | null,
+  hookOptions: UsePagedDataOptions = {},
+  queryOptions: Omit<UseQueryOptions<PagedDataResult<T>, Error>, 'queryKey' | 'queryFn'> = {}
+) {
+  const {
+    limit = DEFAULTS.PAGE_SIZE,
+    offset = 0,
+    orderBy = 'name',
+    orderDir = 'asc',
+    filters = {},
+  } = hookOptions;
+
+  const rpcFilters = buildRpcFilters(filters);
+  const queryKey = ['paged-data', viewName, { limit, offset, orderBy, orderDir, filters: rpcFilters }];
+
+  const queryFn = async (): Promise<PagedDataResult<T>> => {
+    // Define a safe default value that matches the expected return type.
+    const defaultValue: PagedDataResult<T> = {
+      data: [],
+      total_count: 0,
+      active_count: 0,
+      inactive_count: 0,
+    };
+
+    if (!viewName) {
+      return defaultValue;
+    }
+
+    const { data, error } = await supabase.rpc('get_paged_data', {
+      p_view_name: viewName,
+      p_limit: limit,
+      p_offset: offset,
+      p_order_by: orderBy,
+      p_order_dir: orderDir,
+      p_filters: rpcFilters,
+    });
+
+    if (error) {
+      console.error(`Error fetching paginated data for '${viewName}':`, error);
+      throw new Error(error.message);
+    }
+
+    // --- START OF FIX ---
+    // Use the type guard to validate the shape of the response.
+    if (isPagedDataResult<T>(data)) {
+      // If the check passes, TypeScript now knows 'data' is of type PagedDataResult<T>.
+      return data;
+    } else {
+      // If the response is not what we expected, log a warning and return the safe default.
+      console.warn(`Unexpected response structure for 'get_paged_data' on view '${viewName}'.`, data);
+      return defaultValue;
+    }
+    // --- END OF FIX ---
+  };
+
+  return useQuery<PagedDataResult<T>, Error>({
+    queryKey,
+    queryFn,
+    enabled: !!viewName && (queryOptions.enabled ?? true),
+    ...queryOptions,
+  });
 }

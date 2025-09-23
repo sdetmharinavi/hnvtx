@@ -1,7 +1,8 @@
 // path: components/route-manager/JcFormModal.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Modal } from '@/components/common/ui';
@@ -38,32 +39,39 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     }, []);
   const { data: jcLists } = useTableQuery(supabase, 'v_nodes_complete', { filters: serverFilters, columns: 'id, name, latitude, longitude' });
 
+  // Local form schema: only validate the fields this form actually collects
+  const junction_closuresFormSchema = junction_closuresInsertSchema.pick({
+    node_id: true,
+    position_km: true,
+  });
+  type JcFormValues = z.infer<typeof junction_closuresFormSchema>;
+
   const {
     register,
     handleSubmit,
     reset,
     control,
     watch,
-    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<Junction_closuresInsertSchema>({
-    resolver: zodResolver(junction_closuresInsertSchema),
+  } = useForm<JcFormValues>({
+    resolver: zodResolver(junction_closuresFormSchema),
+    defaultValues: {
+      node_id: '',
+      position_km: null,
+    },
   });
 
   useEffect(() => {
     if (isOpen) {
       if (editingJc) {
         reset({
-          name: editingJc.name,
-          latitude: editingJc.latitude,
-          longitude: editingJc.longitude,
+          node_id: editingJc.node_id ?? '',
           position_km: editingJc.position_km || null,
         });
       } else {
+        // Start with no selection for node; leave node_id undefined
         reset({
-          name: '',
-          latitude: null,
-          longitude: null,
+          node_id: '',
           position_km: null,
         });
       }
@@ -77,19 +85,17 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     label: d.name as string,
   }));
 
-  // When JC name changes, update lat/long automatically
-  const jcName = watch("name");
+  // Watch selected JC (node) id
+  const selectedNodeId = watch("node_id");
 
-useEffect(() => {
-  if (!jcName) return;
-  const selected = jcLists?.find((jc) => jc.id === jcName);
-  if (selected) {
-    setValue("latitude", selected.latitude ?? null);
-    setValue("longitude", selected.longitude ?? null);
-  }
-}, [jcName, jcLists, setValue]);
+  // If needed, you can derive latitude/longitude from selectedNodeId for display purposes
+  // but they are not part of the form schema, so we do not set them in form state.
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    // Placeholder for any side effects when node changes
+  }, [selectedNodeId]);
 
-  const handleValidSubmit = async (formData: Junction_closuresInsertSchema) => {
+  const handleValidSubmit = async (formData: JcFormValues) => {
     if (!routeId) {
       toast.error("No route selected to add the JC to.");
       return;
@@ -106,7 +112,11 @@ useEffect(() => {
     };
 
     const query = isEditMode
-      ? supabase.from('junction_closures').update(payload).eq('id', editingJc.id)
+      ? supabase
+          .from('junction_closures')
+          .update(payload)
+          .eq('node_id', editingJc.node_id)
+          .eq('ofc_cable_id', routeId)
       : supabase.from('junction_closures').insert(payload);
 
     const { error } = await query;
@@ -114,8 +124,8 @@ useEffect(() => {
     if (error) {
       toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`);
     } else {
-      toast.success(`Junction Closure ${isEditMode ? 'updated' : 'created'} successfully!`);
       onSave(); // Trigger refetch on the parent page
+      toast.success(`Junction Closure ${isEditMode ? 'updated' : 'created'} successfully!`);
       onClose();
     }
   };
@@ -124,7 +134,10 @@ useEffect(() => {
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >
       <FormCard
         title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
-        onSubmit={handleSubmit(handleValidSubmit)}
+        onSubmit={handleSubmit(
+          handleValidSubmit,
+          () => toast.error('Please fix the highlighted fields')
+        )}
         onCancel={onClose}
         isLoading={isSubmitting}
         heightClass="max-h-[80vh]"
@@ -132,13 +145,13 @@ useEffect(() => {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormSearchableSelect
-            name="name"
-            label="JC Name"
+            name="node_id"
+            label="Junction Closure"
             control={control}
             options={jcOptions || []}
-            error={errors.name}
+            error={errors.node_id}
             required
-            placeholder="e.g., JC-Main-01"
+            placeholder="Select a Junction Closure"
           />
           <FormInput
             name="position_km"
@@ -148,24 +161,6 @@ useEffect(() => {
             register={register}
             error={errors.position_km}
             placeholder="e.g., 12.5"
-          />
-          <FormInput
-            name="latitude"
-            label="Latitude"
-            type="number"
-            step="any"
-            register={register}
-            error={errors.latitude}
-            placeholder="e.g., 22.5726"
-          />
-          <FormInput
-            name="longitude"
-            label="Longitude"
-            type="number"
-            step="any"
-            register={register}
-            error={errors.longitude}
-            placeholder="e.g., 88.3639"
           />
         </div>
       </FormCard>

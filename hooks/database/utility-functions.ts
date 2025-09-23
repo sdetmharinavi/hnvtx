@@ -10,6 +10,45 @@ import {
   PerformanceOptions,
 } from './queries-type-helpers';
 import { Json } from '@/types/supabase-types';
+// The rich 'Filters' type is no longer needed for the RPCs.
+// We'll define a simpler type.
+export type RpcFilters = Record<string, string | number | boolean | string[] | null>;
+
+/**
+ * Converts a filter object from the UI into a simple JSON object
+ * suitable for our generic RPC functions.
+ *
+ * @param filters The filter object from the UI state.
+ * @returns A Json-compatible object.
+ */
+export function buildRpcFilters(filters: RpcFilters): Json {
+  const rpcFilters: { [key: string]: Json | undefined } = {};
+
+  for (const key in filters) {
+    const filterValue = filters[key];
+
+    // Only include filters that have a meaningful value
+    if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
+      rpcFilters[key] = filterValue as Json;
+    }
+  }
+
+  // Special handling for the 'or' filter, which should be a string
+  if (filters.or && typeof filters.or === 'string') {
+    rpcFilters.or = filters.or;
+  }
+
+  return rpcFilters;
+}
+
+// // Usage example:
+// const myFilters: RpcFilters = {
+//   status: true,
+//   name: 'Central', // For ILIKE
+//   node_type_id: ['uuid1', 'uuid2'], // For IN
+//   // For a complex OR, you would construct the PostgREST string
+//   or: '(maintenance_area_name.ilike.*North*,code.eq.NRT)'
+// };
 
 // --- UTILITY FUNCTIONS ---
 export const createQueryKey = (

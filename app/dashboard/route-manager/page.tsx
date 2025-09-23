@@ -12,6 +12,8 @@ import { SpliceMatrixModal } from '@/components/route-manager/SpliceMatrixModal'
 import { FiPlus } from 'react-icons/fi';
 import { JcFormModal } from '@/components/route-manager/JcFormModal';
 import { RouteVisualizer } from '@/components/route-manager/RouteVisualizer';
+import { usePagedData } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
 
 
 // =================================================================
@@ -24,10 +26,26 @@ export default function RouteManagerPage() {
   const [isSpliceModalOpen, setIsSpliceModalOpen] = useState(false);
   const [isJcFormModalOpen, setIsJcFormModalOpen] = useState(false); // <--- State for JC form modal
 
+  const supabase = createClient();
+
   // Data fetching and mutation hooks
   const { data: routesForSelection, isLoading: isLoadingRoutes } = useOfcRoutesForSelection();
-  const { data: routeDetails, isLoading: isLoadingDetails, isError, error, refetch: refetchRouteDetails } = useRouteDetails(selectedRouteId);
+  const { data: jcData, isLoading: isLoadingJc, isError: isErrorJc } = usePagedData<JunctionClosure>(
+    supabase,
+    'v_junction_closures_complete', // Just pass the view name as a string
+    {
+      limit: 20,
+      offset: 0,
+      orderBy: 'name',
+      filters: { status: true }
+    }
+  );
+  const { data: routeDetails, isLoading: isLoadingDetails, isError: isErrorRouteDetails, error: errorRouteDetails, refetch: refetchRouteDetails } = useRouteDetails(selectedRouteId);
   const deleteJcMutation = useDeleteJc();
+
+  console.log("jcData",jcData);
+
+  
 
   const handleJcClick = (jc: JunctionClosure) => {
     setSelectedJc(jc);
@@ -44,11 +62,11 @@ export default function RouteManagerPage() {
     setIsJcFormModalOpen(true);
   };
 
-  const handleDeleteJc = (jc: JunctionClosure) => {
-      if (window.confirm(`Are you sure you want to delete the junction closure "${jc.name}"? This action cannot be undone.`)) {
-          deleteJcMutation.mutate(jc.id);
-      }
-  };
+  // const handleDeleteJc = (jc: JunctionClosure) => {
+  //     if (window.confirm(`Are you sure you want to delete the junction closure "${jc.name}"? This action cannot be undone.`)) {
+  //         deleteJcMutation.mutate(jc.id);
+  //     }
+  // };
 
   const routeOptions = routesForSelection?.map(r => ({ value: r.id, label: r.route_name })) || [];
 
@@ -86,18 +104,19 @@ export default function RouteManagerPage() {
 
       {isLoadingDetails && <PageSpinner text="Loading route details..." />}
 
-      {isError && (
+      {/* {isError && (
         <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">
           Error loading route details: {error.message}
         </div>
-      )}
+      )} */}
 
       {routeDetails && (
         <RouteVisualizer
           routeDetails={routeDetails}
           onJcClick={handleJcClick}
           onEditJc={handleOpenEditJcModal}
-          onDeleteJc={handleDeleteJc}
+          // onDeleteJc={handleDeleteJc}
+          onDeleteJc={() => {}}
         />
       )}
 

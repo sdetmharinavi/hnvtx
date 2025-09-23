@@ -1,6 +1,6 @@
 // path: components/route-manager/types.ts
 
-import { Ofc_cablesRowSchema } from "@/schemas/zod-schemas";
+import { Ofc_cablesRowSchema, V_junction_closures_completeRowSchema, V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
 // The high-level route object, fetched for the selection dropdown
 // export interface OfcForSelection {
@@ -12,28 +12,14 @@ import { Ofc_cablesRowSchema } from "@/schemas/zod-schemas";
 // Create a new schema with only the fields we want
 export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
-// Represents the physical JC box, now matching the database table
-export interface JunctionClosure {
-  id: string;
-  name: string;
-  ofc_cable_id?: string | null; // The parent cable it sits on
-  jc_type_id?: string | null;   // Foreign key to lookup_types
-  capacity?: number;
-  latitude?: number | null;
-  longitude?: number | null;
-  position_km: number | null;
-}
+export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
+
+export type CableRoute = Pick<V_ofc_cables_completeRowSchema, 'id' | 'route_name' | 'capacity' | 'sn_id' | 'sn_name' | 'en_id' | 'en_name'>;
+
 
 // Detailed data for a selected route, fetched on the client
 export interface RouteDetailsPayload {
-  route: {
-    id: string;
-    route_name: string;
-    start_node: { id: string; name: string };
-    end_node: { id: string; name: string };
-    capacity: number;
-    current_rkm: number | null;
-  };
+  route: CableRoute;
   junction_closures: JunctionClosure[];
 }
 

@@ -21,7 +21,15 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
 
     const points = [
       { type: 'node' as const, id: route.start_node.id, name: route.start_node.name, position: 0 },
-      ...[...junction_closures].sort((a, b) => (a.position_km || 0) - (b.position_km || 0)).map(jc => ({ type: 'jc' as const, ...jc, position: jc.position_km || 0 })),
+      ...[...junction_closures]
+        .sort((a, b) => (a.position_km || 0) - (b.position_km || 0))
+        .map((jc, idx) => ({
+          type: 'jc' as const,
+          ...jc,
+          // Ensure an id exists for JC points for keys/segment ids
+          id: jc.node_id ?? `${route.id}-${jc.position_km ?? idx}`,
+          position: jc.position_km || 0,
+        })),
       { type: 'node' as const, id: route.end_node.id, name: route.end_node.name, position: route.current_rkm || 1 },
     ];
   
@@ -86,7 +94,7 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
                       <span className="text-white font-bold text-sm">{point.type === 'node' ? 'N' : 'JC'}</span>
                     </div>
                     <div className="absolute top-12 text-center w-28">
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={point.name}>{point.name}</p>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={point.name || ''}>{point.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{point.position} km</p>
                     </div>
                     {point.type === 'jc' && (

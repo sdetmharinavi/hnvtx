@@ -972,35 +972,40 @@ export type Database = {
       junction_closures: {
         Row: {
           created_at: string | null
-          id: string
-          latitude: number | null
-          longitude: number | null
-          name: string
-          ofc_cable_id: string | null
+          node_id: string
+          ofc_cable_id: string
           position_km: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          id?: string
-          latitude?: number | null
-          longitude?: number | null
-          name: string
-          ofc_cable_id?: string | null
+          node_id: string
+          ofc_cable_id: string
           position_km?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          id?: string
-          latitude?: number | null
-          longitude?: number | null
-          name?: string
-          ofc_cable_id?: string | null
+          node_id?: string
+          ofc_cable_id?: string
           position_km?: number | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: true
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: true
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "junction_closures_ofc_cable_id_fkey"
             columns: ["ofc_cable_id"]
@@ -2276,6 +2281,46 @@ export type Database = {
           },
         ]
       }
+      v_junction_closures_complete: {
+        Row: {
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          node_id: string | null
+          ofc_cable_id: string | null
+          position_km: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: true
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: true
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junction_closures_ofc_cable_id_fkey"
+            columns: ["ofc_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_lookup_types_with_count: {
         Row: {
           active_count: number | null
@@ -3109,6 +3154,17 @@ export type Database = {
           role: string
           updated_at: string
         }[]
+      }
+      get_paged_data: {
+        Args: {
+          p_filters?: Json
+          p_limit: number
+          p_offset: number
+          p_order_by?: string
+          p_order_dir?: string
+          p_view_name: string
+        }
+        Returns: Json
       }
       get_paged_employee_designations_with_count: {
         Args: {

@@ -2,7 +2,7 @@
 -- Description: Defines denormalized views for the Network Systems module.
 
 -- View for a complete picture of a system and its specific details.
-CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
   n.name AS node_name,
@@ -31,7 +31,7 @@ FROM public.systems s
 
 
 -- View for a complete picture of a system connection and its specific details.
-CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT
   sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
@@ -67,7 +67,7 @@ FROM public.system_connections sc
 
 
 -- View for OFC Connections, now including system details from this module.
-CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_barrier = true) AS
+CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS
 SELECT
   oc.id::uuid,
   oc.ofc_id::uuid,

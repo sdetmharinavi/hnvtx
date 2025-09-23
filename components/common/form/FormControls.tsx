@@ -73,7 +73,12 @@ export function FormInput<T extends FieldValues>({
         error={typeof error?.message === 'string' ? error.message : undefined}
         {...props}
         {...register(name, {
-          ...(type === 'number' && { valueAsNumber: true }),
+          // For number inputs, treat empty string as null and otherwise coerce to Number
+          ...(type === 'number' && {
+            setValueAs: (v) =>
+              v === '' || v === null || typeof v === 'undefined' ? null : Number(v),
+          }),
+          // For date inputs, map empty to null and non-empty to Date object
           ...(type === 'date' && {
             setValueAs: (v) => (v ? new Date(v) : null),
           }),
@@ -185,7 +190,7 @@ export function FormSearchableSelect<T extends FieldValues>({
           <SearchableSelect
             {...props}
             value={(field.value as string) ?? ''}
-            onChange={(value) => field.onChange(value === '' ? null : value)}
+            onChange={(value) => field.onChange(value === '' ? '' : value)}
             options={options}
             error={!!error}
           />

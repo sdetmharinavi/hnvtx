@@ -765,33 +765,24 @@ export type FoldersUpdate = {
 
 export type Junction_closuresRow = {
     created_at: string | null;
-    id: string;
-    latitude: number | null;
-    longitude: number | null;
-    name: string;
-    ofc_cable_id: string | null;
+    node_id: string;
+    ofc_cable_id: string;
     position_km: number | null;
     updated_at: string | null;
 };
 
 export type Junction_closuresInsert = {
     created_at?: string | null;
-    id?: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    name: string;
-    ofc_cable_id?: string | null;
+    node_id: string;
+    ofc_cable_id: string;
     position_km?: number | null;
     updated_at?: string | null;
 };
 
 export type Junction_closuresUpdate = {
     created_at?: string | null;
-    id?: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    name?: string;
-    ofc_cable_id?: string | null;
+    node_id?: string;
+    ofc_cable_id?: string;
     position_km?: number | null;
     updated_at?: string | null;
 };
@@ -1489,6 +1480,15 @@ export type V_employees_with_countRow = {
     status: boolean | null;
     total_count: number | null;
     updated_at: string | null;
+};
+
+export type V_junction_closures_completeRow = {
+    latitude: number | null;
+    longitude: number | null;
+    name: string | null;
+    node_id: string | null;
+    ofc_cable_id: string | null;
+    position_km: number | null;
 };
 
 export type V_lookup_types_with_countRow = {

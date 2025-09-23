@@ -3,18 +3,38 @@
 
 -- Represents a physical junction closure (splice box) along an OFC route.
 CREATE TABLE IF NOT EXISTS public.junction_closures (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    latitude NUMERIC(10, 8),
-    longitude NUMERIC(11, 8),
-    ofc_cable_id UUID REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
-    position_km NUMERIC(10, 3),
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ
+  node_id UUID PRIMARY KEY REFERENCES public.nodes(id) ON DELETE CASCADE,
+  ofc_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
+  position_km NUMERIC(10,3),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 COMMENT ON TABLE public.junction_closures IS 'Physical junction closures (splice boxes) along OFC routes.';
 COMMENT ON COLUMN public.junction_closures.ofc_cable_id IS 'The primary OFC cable this JC is physically located on.';
 COMMENT ON COLUMN public.junction_closures.position_km IS 'The distance in kilometers from the start node of the ofc_cable.';
+
+-- Tracks every single fiber connection (splice) inside a Junction Closure.
+CREATE TABLE IF NOT EXISTS public.fiber_splices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    jc_id UUID NOT NULL REFERENCES public.junction_closures(id) ON DELETE CASCADE,
+    incoming_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
+    incoming_fiber_no INT NOT NULL,
+    outgoing_cable_id UUID REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
+    outgoing_fiber_no INT,
+    splice_type TEXT NOT NULL DEFAULT 'pass_through' CHECK (splice_type IN ('pass_through', 'branch', 'termination')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'faulty', 'reserved')),
+    logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
+    loss_db NUMERIC(5, 2),
+    otdr_length_km NUMERIC(10, 3),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT unique_incoming_fiber_in_jc UNIQUE (jc_id, incoming_cable_id, incoming_fiber_no),
+    CONSTRAINT unique_outgoing_fiber_in_jc UNIQUE (jc_id, outgoing_cable_id, outgoing_fiber_no),
+    CONSTRAINT check_no_self_splice CHECK (incoming_cable_id <> outgoing_cable_id OR incoming_fiber_no <> outgoing_fiber_no)
+);
+COMMENT ON TABLE public.fiber_splices IS 'Tracks individual fiber connections (splices) within a junction closure.';
+COMMENT ON COLUMN public.fiber_splices.splice_type IS 'Type of splice: pass_through, branch, or termination (if outgoing is NULL).';
+COMMENT ON COLUMN public.fiber_splices.otdr_length_km IS 'The measured OTDR distance in kilometers for the incoming fiber arriving at this splice.';
 
 -- Represents abstract fiber joints not tied to a specific cable's distance.
 CREATE TABLE IF NOT EXISTS public.fiber_joints (
@@ -70,25 +90,3 @@ CREATE TABLE IF NOT EXISTS public.logical_path_segments (
   UNIQUE (logical_path_id, path_order)
 );
 
--- Tracks every single fiber connection (splice) inside a Junction Closure.
-CREATE TABLE IF NOT EXISTS public.fiber_splices (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    jc_id UUID NOT NULL REFERENCES public.junction_closures(id) ON DELETE CASCADE,
-    incoming_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
-    incoming_fiber_no INT NOT NULL,
-    outgoing_cable_id UUID REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
-    outgoing_fiber_no INT,
-    splice_type TEXT NOT NULL DEFAULT 'pass_through' CHECK (splice_type IN ('pass_through', 'branch', 'termination')),
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'faulty', 'reserved')),
-    logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
-    loss_db NUMERIC(5, 2),
-    otdr_length_km NUMERIC(10, 3),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    CONSTRAINT unique_incoming_fiber_in_jc UNIQUE (jc_id, incoming_cable_id, incoming_fiber_no),
-    CONSTRAINT unique_outgoing_fiber_in_jc UNIQUE (jc_id, outgoing_cable_id, outgoing_fiber_no),
-    CONSTRAINT check_no_self_splice CHECK (incoming_cable_id <> outgoing_cable_id OR incoming_fiber_no <> outgoing_fiber_no)
-);
-COMMENT ON TABLE public.fiber_splices IS 'Tracks individual fiber connections (splices) within a junction closure.';
-COMMENT ON COLUMN public.fiber_splices.splice_type IS 'Type of splice: pass_through, branch, or termination (if outgoing is NULL).';
-COMMENT ON COLUMN public.fiber_splices.otdr_length_km IS 'The measured OTDR distance in kilometers for the incoming fiber arriving at this splice.';

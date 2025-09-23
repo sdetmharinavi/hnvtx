@@ -24,6 +24,7 @@ GRANT SELECT ON public.logical_path_segments TO viewer;
 GRANT SELECT ON public.v_system_ring_paths_detailed TO viewer, admin;
 GRANT SELECT ON public.v_cable_utilization TO viewer, admin;
 GRANT SELECT ON public.v_end_to_end_paths TO viewer, admin;
+GRANT SELECT ON public.v_junction_closures_complete TO viewer, admin;
 
 -- Grant select on dependent tables from other modules for views to work
 GRANT SELECT ON public.ofc_cables TO viewer;
