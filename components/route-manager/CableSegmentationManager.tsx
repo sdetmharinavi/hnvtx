@@ -1,7 +1,7 @@
 // components/ofc/CableSegmentationManager.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/common/ui';
 import { Card, CardHeader, CardBody } from '@/components/common/ui';
 import { useCableSegmentation, JunctionClosure, CableSegment, SpliceConfiguration } from '@/hooks/ofc/useCableSegmentation';
@@ -37,42 +37,14 @@ export const CableSegmentationManager = ({
     updateFiberConnections,
   } = useCableSegmentation();
 
-  // Don't render if no cable is selected
-  if (!cableId || cableId === '') {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">Cable Segmentation Management</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Please select a cable first
-            </p>
-          </CardHeader>
-          <CardBody>
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">
-                Select an OFC route above to manage its cable segmentation.
-              </p>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-    );
-  }
-
-  // Load existing junction closures and segments
-  useEffect(() => {
-    loadExistingData();
-  }, [cableId]);
-
-  const loadExistingData = async () => {
+  const loadExistingData = useCallback(async () => {
     // Don't load if no cable is selected
     if (!cableId || cableId === '') {
       setJunctionClosures([]);
       setCableSegments([]);
       return;
     }
-
+  
     try {
       // Load junction closures
       const { data: jcData, error: jcError } = await supabase
@@ -80,23 +52,36 @@ export const CableSegmentationManager = ({
         .select('*')
         .eq('ofc_cable_id', cableId)
         .order('position_km');
-
+  
       if (jcError) throw jcError;
       setJunctionClosures(jcData || []);
-
+  
       // Load cable segments
       const { data: segmentData, error: segmentError } = await supabase
         .from('cable_segments')
         .select('*')
         .eq('original_cable_id', cableId)
         .order('segment_order');
-
+  
       if (segmentError) throw segmentError;
       setCableSegments(segmentData || []);
-    } catch (err: any) {
-      toast.error(`Failed to load data: ${err.message}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(`Failed to load data: ${err.message}`);
+      } else {
+        toast.error(`Failed to load data: Unknown error`);
+      }
     }
-  };
+  }, [cableId, supabase]);
+
+
+
+  // Load existing junction closures and segments
+  useEffect(() => {
+    loadExistingData();
+  }, [cableId, loadExistingData]);
+
+
 
   const handleAddJunctionClosure = async () => {
     if (!newJCData.name || newJCData.position_km <= 0) {
@@ -159,6 +144,29 @@ export const CableSegmentationManager = ({
 
     toast.success('Splice configuration applied successfully');
   };
+
+    // Don't render if no cable is selected
+    if (!cableId || cableId === '') {
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-semibold">Cable Segmentation Management</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Please select a cable first
+              </p>
+            </CardHeader>
+            <CardBody>
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Select an OFC route above to manage its cable segmentation.
+                </p>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      );
+    }
 
   return (
     <div className="space-y-6">

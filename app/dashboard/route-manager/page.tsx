@@ -143,6 +143,7 @@ export default function RouteManagerPage() {
               junctionClosureId={selectedJc?.id || ""}
               junctionClosureName={selectedJc?.name || ""}
               onSpliceComplete={() => refetchRouteDetails()}
+              capacity={routeDetails.route.capacity ?? undefined}
             />
           )}
 

@@ -1,7 +1,7 @@
 // components/ofc/FiberSpliceManager.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/common/ui';
 import { Card, CardHeader, CardBody } from '@/components/common/ui';
 import { createClient } from '@/utils/supabase/client';
@@ -33,12 +33,14 @@ interface FiberSpliceManagerProps {
   junctionClosureId: string;
   junctionClosureName: string;
   onSpliceComplete?: () => void;
+  capacity?: number;
 }
 
 export const FiberSpliceManager = ({
   junctionClosureId,
   junctionClosureName,
-  onSpliceComplete
+  onSpliceComplete,
+  capacity
 }: FiberSpliceManagerProps) => {
   const [fiberSplices, setFiberSplices] = useState<FiberSplice[]>([]);
   const [spliceConfigurations, setSpliceConfigurations] = useState<SpliceConfiguration[]>([]);
@@ -47,11 +49,7 @@ export const FiberSpliceManager = ({
 
   const supabase = createClient();
 
-  useEffect(() => {
-    loadFiberSplices();
-  }, [junctionClosureId]);
-
-  const loadFiberSplices = async () => {
+  const loadFiberSplices = useCallback(async () => {
     // Don't load if no junction closure is selected
     if (!junctionClosureId || junctionClosureId === '') {
       setFiberSplices([]);
@@ -59,19 +57,60 @@ export const FiberSpliceManager = ({
     }
 
     try {
+      // Step 1: Find the node_id of the selected JC
+      const { data: jcRow, error: jcFetchError } = await supabase
+        .from('junction_closures')
+        .select('node_id')
+        .eq('id', junctionClosureId)
+        .maybeSingle();
+
+      if (jcFetchError) throw jcFetchError;
+
+      // If we cannot find the node_id, fallback to the original single-JC behavior
+      if (!jcRow?.node_id) {
+        const { data, error: spliceError } = await supabase
+          .from('fiber_splices')
+          .select('*')
+          .eq('jc_id', junctionClosureId)
+          .order('incoming_fiber_no');
+
+        if (spliceError) throw spliceError;
+        setFiberSplices(data || []);
+        return;
+      }
+
+      // Step 2: Get all JC IDs that share this node_id (i.e., the same physical JC across cables)
+      const { data: relatedJcs, error: relatedJcsError } = await supabase
+        .from('junction_closures')
+        .select('id')
+        .eq('node_id', jcRow.node_id);
+
+      if (relatedJcsError) throw relatedJcsError;
+
+      const jcIds = (relatedJcs || []).map(r => r.id).filter(Boolean);
+
+      // Safety: if for some reason we didn't get a list, fallback to current JC only
+      const targetJcIds = jcIds.length > 0 ? jcIds : [junctionClosureId];
+
+      // Step 3: Fetch all fiber_splices for any of those JC IDs
       const { data, error: spliceError } = await supabase
         .from('fiber_splices')
         .select('*')
-        .eq('jc_id', junctionClosureId)
+        .in('jc_id', targetJcIds)
         .order('incoming_fiber_no');
 
       if (spliceError) throw spliceError;
       setFiberSplices(data || []);
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to load fiber splices: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+      toast.error(`Failed to load fiber splices: ${message}`);
     }
-  };
+  }, [junctionClosureId, supabase]);
+
+  useEffect(() => {
+    loadFiberSplices();
+  }, [loadFiberSplices]);
 
   const handleSpliceTypeChange = (fiberNo: number, spliceType: 'straight' | 'cross') => {
     setSpliceConfigurations(prev => {
@@ -148,9 +187,10 @@ export const FiberSpliceManager = ({
       toast.success('Splice configuration applied successfully');
       await loadFiberSplices();
       onSpliceComplete?.();
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to apply splice configuration: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+      toast.error(`Failed to apply splice configuration: ${message}`);
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +202,7 @@ export const FiberSpliceManager = ({
     return Math.max(maxIncoming, maxOutgoing, 2); // Minimum 2 fibers
   };
 
-  const maxFibers = getMaxFiberCount();
+  const maxFibers = capacity && capacity > 0 ? capacity : getMaxFiberCount();
 
   // Don't render if no junction closure is selected
   if (!junctionClosureId || junctionClosureId === '') {
