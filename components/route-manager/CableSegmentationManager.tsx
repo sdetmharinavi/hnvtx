@@ -37,20 +37,44 @@ export const CableSegmentationManager = ({
     updateFiberConnections,
   } = useCableSegmentation();
 
+  // Don't render if no cable is selected
+  if (!cableId || cableId === '') {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Cable Segmentation Management</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Please select a cable first
+            </p>
+          </CardHeader>
+          <CardBody>
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">
+                Select an OFC route above to manage its cable segmentation.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
   // Load existing junction closures and segments
   useEffect(() => {
     loadExistingData();
   }, [cableId]);
 
   const loadExistingData = async () => {
+    // Don't load if no cable is selected
+    if (!cableId || cableId === '') {
+      setJunctionClosures([]);
+      setCableSegments([]);
+      return;
+    }
+
     try {
       // Load junction closures
-      const { data, error: insertError } = await supabase
-        .rpc('add_junction_closure', {
-          p_ofc_cable_id: cableId,
-          p_position_km: newJCData.position_km,
-          p_name: newJCData.name
-        });
       const { data: jcData, error: jcError } = await supabase
         .from('junction_closures')
         .select('*')

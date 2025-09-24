@@ -26,7 +26,6 @@ DROP FUNCTION IF EXISTS public.add_lookup_type(TEXT, TEXT, TEXT, TEXT, INTEGER);
 DROP FUNCTION IF EXISTS public.get_lookup_types_by_category(TEXT);
 DROP FUNCTION IF EXISTS public.bulk_update(TEXT, JSONB, INTEGER);
 DROP FUNCTION IF EXISTS public.provision_ring_path(UUID, TEXT, INT, INT, UUID);
-DROP FUNCTION IF EXISTS public.get_jc_splicing_details(UUID);
 DROP FUNCTION IF EXISTS public.auto_splice_straight(UUID, UUID, UUID);
 DROP FUNCTION IF EXISTS public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, TEXT, NUMERIC);
 DROP FUNCTION IF EXISTS public.get_cables_at_jc(UUID);

@@ -2,27 +2,15 @@
 // Sub-component for visualizing the route topology
 
 import { Button } from "@/components/common/ui";
-import { JunctionClosure } from "@/components/route-manager/types";
+import { Equipment, JunctionClosure } from "@/components/route-manager/types";
 import { useRouteDetails } from "@/hooks/database/route-manager-hooks";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 
 interface RouteVisualizerProps {
   routeDetails: NonNullable<ReturnType<typeof useRouteDetails>['data']>;
-  onJcClick: (jc: JunctionClosure) => void;
-  onEditJc: (jc: JunctionClosure) => void; // <--- ADDED for editing
-  onDeleteJc: (jc: JunctionClosure) => void; // <--- ADDED for deleting
-}
-
-interface Point {
-  type: 'node' | 'jc';
-  id: string;
-  name: string | null;
-  position: number;
-  originalJc?: JunctionClosure;
-  latitude?: number | null;
-  longitude?: number | null;
-  node_id?: string | null;
-  ofc_cable_id?: string | null;
+  onJcClick: (jc: Equipment) => void;
+  onEditJc: (jc: Equipment) => void; // <--- ADDED for editing
+  onDeleteJc: (jc: Equipment) => void; // <--- ADDED for deleting
 }
 
 interface Point {
@@ -36,6 +24,7 @@ interface Point {
   node_id?: string | null;
   ofc_cable_id?: string | null;
   position_km?: number | null;
+  equipmentData?: Equipment;
 }
 
 export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, onJcClick, onEditJc, onDeleteJc }) => {
@@ -47,20 +36,38 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
       { type: 'node' as const, id: route.start_node.id || 'start-node', name: route.start_node.name, position: 0 },
       ...[...junction_closures]
         .sort((a, b) => (a.position_km || 0) - (b.position_km || 0))
-        .map((jc, idx) => ({
-          type: 'jc' as const,
-          // Keep the original junction closure data intact for delete operations
-          originalJc: jc,
-          // Ensure an id exists for JC points for keys/segment ids
-          id: jc.node_id ?? `${route.id}-${jc.position_km ?? idx}`,
-          name: jc.name,
-          position: jc.position_km || 0,
-          latitude: jc.latitude,
-          longitude: jc.longitude,
-          node_id: jc.node_id,
-          ofc_cable_id: jc.ofc_cable_id,
-          position_km: jc.position_km,
-        })),
+        .map((jc, idx) => {
+          // Convert JunctionClosure to Equipment for compatibility with handlers
+          const equipmentJc: Equipment = {
+            id: jc.id || `jc-${idx}`,
+            name: jc.name || 'Unnamed JC',
+            equipment_type: 'junction_closure',
+            latitude: jc.latitude || 0,
+            longitude: jc.longitude || 0,
+            status: 'existing',
+            attributes: {
+              jc_type: 'inline', // Default type, could be determined from other data
+              capacity: 48, // Default capacity, could be determined from other data
+              position_on_route: ((jc.position_km || 0) / (route.current_rkm || 1)) * 100
+            }
+          };
+
+          return {
+            type: 'jc' as const,
+            // Keep the original junction closure data intact for delete operations
+            originalJc: jc,
+            // Ensure an id exists for JC points for keys/segment ids
+            id: jc.node_id ?? `${route.id}-${jc.position_km ?? idx}`,
+            name: jc.name,
+            position: jc.position_km || 0,
+            latitude: jc.latitude,
+            longitude: jc.longitude,
+            node_id: jc.node_id,
+            ofc_cable_id: jc.ofc_cable_id,
+            position_km: jc.position_km,
+            equipmentData: equipmentJc, // Store converted Equipment for handlers
+          };
+        }),
       { type: 'node' as const, id: route.end_node.id || 'end-node', name: route.end_node.name, position: route.current_rkm || 1 },
     ];
   
@@ -120,7 +127,7 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
                           ? 'bg-blue-600 border-white dark:border-gray-800'
                           : 'bg-green-500 border-white dark:border-gray-800 cursor-pointer hover:scale-110 transition-transform'
                         }`}
-                      onClick={() => point.type === 'jc' && point.originalJc && onJcClick(point.originalJc)}
+                      onClick={() => point.type === 'jc' && point.equipmentData && onJcClick(point.equipmentData)}
                     >
                       <span className="text-white font-bold text-sm">{point.type === 'node' ? 'N' : 'JC'}</span>
                     </div>
@@ -130,10 +137,10 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
                     </div>
                     {point.type === 'jc' && (
                       <div className="absolute -top-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <Button size="xs" variant="outline" onClick={() => point.originalJc && onEditJc(point.originalJc)} title="Edit JC">
+                          <Button size="xs" variant="outline" onClick={() => point.equipmentData && onEditJc(point.equipmentData)} title="Edit JC">
                               <FiEdit className="h-3 w-3" />
                           </Button>
-                          <Button size="xs" variant="danger" onClick={() => point.originalJc && onDeleteJc(point.originalJc)} title="Delete JC">
+                          <Button size="xs" variant="danger" onClick={() => point.equipmentData && onDeleteJc(point.equipmentData)} title="Delete JC">
                               <FiTrash2 className="h-3 w-3" />
                           </Button>
                       </div>

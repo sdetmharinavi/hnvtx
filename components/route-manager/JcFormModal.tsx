@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormInput, FormSearchableSelect } from '@/components/common/form';
 import { createClient } from '@/utils/supabase/client';
-import { JunctionClosure } from './types';
+import { Equipment } from './types';
 import { toast } from 'sonner';
 import { Junction_closuresInsertSchema, junction_closuresInsertSchema } from '@/schemas/zod-schemas';
 import { Filters, useTableQuery } from '@/hooks/database';
@@ -20,7 +20,7 @@ interface JcFormModalProps {
   onClose: () => void;
   onSave: () => void; // Callback to trigger a refetch
   routeId: string | null;
-  editingJc: JunctionClosure | null;
+  editingJc: Equipment | null;
   rkm: number | null;
 }
 
@@ -64,9 +64,13 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
   useEffect(() => {
     if (isOpen) {
       if (editingJc) {
+        // For planned equipment, we need to map the fields appropriately
+        // Since Equipment doesn't have node_id, we'll need to handle this differently
         reset({
-          node_id: editingJc.node_id ?? '',
-          position_km: editingJc.position_km || null,
+          node_id: '', // Planned equipment doesn't have a node_id yet
+          position_km: editingJc.attributes.position_on_route
+            ? (editingJc.attributes.position_on_route / 100) * (rkm || 0)
+            : null,
         });
       } else {
         // Start with no selection for node; leave node_id undefined
@@ -76,7 +80,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         });
       }
     }
-  }, [isOpen, editingJc, reset, jcLists]);
+  }, [isOpen, editingJc, reset, jcLists, rkm]);
 
   const jcOptions: Option[] = (jcLists || [])
   .filter(d => d.id != null && d.name != null)

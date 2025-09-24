@@ -748,6 +748,54 @@ export type EmployeesUpdate = {
     updated_at?: string | null;
 };
 
+export type Fiber_splicesRow = {
+    created_at: string | null;
+    id: string;
+    incoming_cable_id: string;
+    incoming_fiber_no: number;
+    jc_id: string;
+    logical_path_id: string | null;
+    loss_db: number | null;
+    otdr_length_km: number | null;
+    outgoing_cable_id: string | null;
+    outgoing_fiber_no: number | null;
+    splice_type: string;
+    status: string;
+    updated_at: string | null;
+};
+
+export type Fiber_splicesInsert = {
+    created_at?: string | null;
+    id?: string;
+    incoming_cable_id: string;
+    incoming_fiber_no: number;
+    jc_id: string;
+    logical_path_id?: string | null;
+    loss_db?: number | null;
+    otdr_length_km?: number | null;
+    outgoing_cable_id?: string | null;
+    outgoing_fiber_no?: number | null;
+    splice_type?: string;
+    status?: string;
+    updated_at?: string | null;
+};
+
+export type Fiber_splicesUpdate = {
+    created_at?: string | null;
+    id?: string;
+    incoming_cable_id?: string;
+    incoming_fiber_no?: number;
+    jc_id?: string;
+    logical_path_id?: string | null;
+    loss_db?: number | null;
+    otdr_length_km?: number | null;
+    outgoing_cable_id?: string | null;
+    outgoing_fiber_no?: number | null;
+    splice_type?: string;
+    status?: string;
+    updated_at?: string | null;
+};
+
 export type FilesRow = {
     file_name: string;
     file_route: string;
@@ -830,6 +878,72 @@ export type Junction_closuresUpdate = {
     ofc_cable_id?: string;
     position_km?: number | null;
     updated_at?: string | null;
+};
+
+export type Logical_fiber_pathsRow = {
+    bandwidth_gbps: number | null;
+    commissioned_date: string | null;
+    created_at: string | null;
+    destination_port: string | null;
+    destination_system_id: string | null;
+    id: string;
+    operational_status_id: string | null;
+    path_name: string | null;
+    path_role: string;
+    path_type_id: string | null;
+    remark: string | null;
+    service_type: string | null;
+    source_port: string | null;
+    source_system_id: string | null;
+    total_distance_km: number | null;
+    total_loss_db: number | null;
+    updated_at: string | null;
+    wavelength_nm: number | null;
+    working_path_id: string | null;
+};
+
+export type Logical_fiber_pathsInsert = {
+    bandwidth_gbps?: number | null;
+    commissioned_date?: string | null;
+    created_at?: string | null;
+    destination_port?: string | null;
+    destination_system_id?: string | null;
+    id?: string;
+    operational_status_id?: string | null;
+    path_name?: string | null;
+    path_role?: string;
+    path_type_id?: string | null;
+    remark?: string | null;
+    service_type?: string | null;
+    source_port?: string | null;
+    source_system_id?: string | null;
+    total_distance_km?: number | null;
+    total_loss_db?: number | null;
+    updated_at?: string | null;
+    wavelength_nm?: number | null;
+    working_path_id?: string | null;
+};
+
+export type Logical_fiber_pathsUpdate = {
+    bandwidth_gbps?: number | null;
+    commissioned_date?: string | null;
+    created_at?: string | null;
+    destination_port?: string | null;
+    destination_system_id?: string | null;
+    id?: string;
+    operational_status_id?: string | null;
+    path_name?: string | null;
+    path_role?: string;
+    path_type_id?: string | null;
+    remark?: string | null;
+    service_type?: string | null;
+    source_port?: string | null;
+    source_system_id?: string | null;
+    total_distance_km?: number | null;
+    total_loss_db?: number | null;
+    updated_at?: string | null;
+    wavelength_nm?: number | null;
+    working_path_id?: string | null;
 };
 
 export type Lookup_typesRow = {

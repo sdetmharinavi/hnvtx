@@ -14,13 +14,14 @@ export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'c
 
 export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'id' | 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
 
-export type CableRoute = Pick<V_ofc_cables_completeRowSchema, 'id' | 'route_name' | 'capacity' | 'sn_id' | 'sn_name' | 'en_id' | 'en_name'>;
+export type CableRoute = Pick<V_ofc_cables_completeRowSchema, 'id' | 'route_name' | 'capacity' | 'sn_id' | 'sn_name' | 'en_id' | 'en_name' | 'current_rkm'>;
 
 
 // Detailed data for a selected route, fetched on the client
 export interface RouteDetailsPayload {
   route: CableRoute;
   junction_closures: JunctionClosure[];
+  equipment: Equipment[];
 }
 
 // Information for a single fiber within the Splice Matrix
@@ -42,11 +43,7 @@ export interface CableInJc {
   fibers: FiberInfo[];
 }
 
-// The full data payload returned by the get_jc_splicing_details RPC function
-export interface JcSplicingDetails {
-  jc_details: JunctionClosure;
-  cables: CableInJc[];
-}
+
 
 // Represents a single row from the fiber_splices table
 export interface SpliceConnection {
@@ -134,13 +131,18 @@ export interface RouteForSelection {
 
   export interface FiberSplice {
     id: string;
-    equipment_id: string; // The JC equipment ID
-    incoming_segment_id: string;
-    incoming_fiber_number: number;
-    outgoing_segment_id: string;
-    outgoing_fiber_number: number;
-    splice_type: 'through' | 'tap' | 'split';
-    status: 'active' | 'spare' | 'faulty';
+    jc_id: string; // Junction closure ID
+    incoming_cable_id: string; // Incoming cable ID
+    incoming_fiber_no: number; // Incoming fiber number
+    outgoing_cable_id: string | null; // Outgoing cable ID (nullable for termination)
+    outgoing_fiber_no: number | null; // Outgoing fiber number (nullable for termination)
+    splice_type: 'pass_through' | 'branch' | 'termination'; // Match SQL constraints
+    status: 'active' | 'faulty' | 'reserved'; // Match SQL constraints
+    logical_path_id?: string | null; // Optional logical path reference
+    loss_db?: number | null; // Optional loss measurement
+    otdr_length_km?: number | null; // Optional OTDR measurement
+    created_at?: string; // Optional timestamps
+    updated_at?: string;
   }
 
   // Payload for the POST request to commit changes

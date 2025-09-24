@@ -1,6 +1,3 @@
-// components/route-manager/RouteManager.tsx
-'use client';
-
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/components/route-manager/queryKeys';
@@ -21,7 +18,9 @@ import {
 import AddJcForm from '@/components/route-manager/ui/AddJcForm';
 import RouteVisualization from '@/components/route-manager/ui/RouteVisualization';
 import CommitView from '@/components/route-manager/ui/CommitView';
+import { FiberSpliceManager } from '@/components/route-manager/FiberSpliceManager';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { JcFormModal } from '@/components/route-manager/JcFormModal';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -63,7 +62,7 @@ const useOfcConnectionsData = (
     isLoading,
     error,
     refetch,
-  };
+  } as unknown as DataQueryHookReturn<OfcConnectionRowsWithCount>;
 };
 
 // --- Client-Side API Functions ---
@@ -136,8 +135,10 @@ export default function RouteManager({
   // Local UI state for JCs the user is planning to add
   const [plannedJCs, setPlannedJCs] = useState<Equipment[]>([]);
   const [branchConfig, setBranchConfig] = useState<BranchConfigMap>({});
-
-  console.log('cableConnectionsData', cableConnectionsData);
+  const [selectedJcForSplice, setSelectedJcForSplice] = useState<Equipment | null>(null);
+  const [showJcModal, setShowJcModal] = useState(false);
+  const [editingJc, setEditingJc] = useState<Equipment | null>(null);
+  const [activeTab, setActiveTab] = useState<'visualization' | 'fiber-splice' | 'commit'>('visualization');
   console.log('plannedJCs', plannedJCs);
   console.log('branchConfig', branchConfig);
   console.log('selectedRouteId', selectedRouteId);
@@ -175,9 +176,11 @@ export default function RouteManager({
     onSuccess: (data) => {
       alert(data.message);
       // Invalidate queries to refetch fresh server state
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.routeDetails(selectedRouteId),
-      });
+      if (selectedRouteId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.routeDetails(selectedRouteId),
+        });
+      }
       // You might also want to refetch the initial list if statuses change
       queryClient.invalidateQueries({ queryKey: queryKeys.routes });
       setSelectedRouteId(null); // Deselect route
@@ -254,6 +257,29 @@ export default function RouteManager({
     commitMutation({ routeId: selectedRouteId, payload });
   };
 
+  const handleJcClick = (jc: Equipment) => {
+    setSelectedJcForSplice(jc);
+  };
+
+  const handleEditJc = (jc: Equipment) => {
+    setEditingJc(jc);
+    setShowJcModal(true);
+  };
+
+  const handleDeleteJc = (jc: Equipment) => {
+    handleRemoveJc(jc.id);
+  };
+
+  const handleCloseJcModal = () => {
+    setShowJcModal(false);
+    setEditingJc(null);
+  };
+
+  const handleSpliceComplete = () => {
+    // Refresh data after splice configuration
+    refetch();
+  };
+
   const getStatusColor = (status: string) => {
     // ... your getEvolutionStatusColor logic
   };
@@ -273,7 +299,7 @@ export default function RouteManager({
                 value: r.id,
                 label: r.route_name,
               }))}
-              onChange={(val) => {
+              onChange={(val: string | null) => {
                 setSelectedRouteId(val);
 
                 const found = initialRoutes.find((r) => r.id === val);
@@ -375,7 +401,7 @@ export default function RouteManager({
                                 <span className="text-xs text-gray-500">
                                   @{' '}
                                   {(
-                                    (routeDetails.route.distance_km *
+                                    ((routeDetails.route.current_rkm || 0) *
                                       jc.attributes.position_on_route) /
                                     100
                                   ).toFixed(1)}{' '}
@@ -391,16 +417,16 @@ export default function RouteManager({
                                     className="w-full border rounded px-2 py-1 bg-white dark:bg-gray-900"
                                     value={
                                       cfg?.target_id ??
-                                      routeDetails.route.end_site.id
+                                      (routeDetails.route.en_id || '')
                                     }
                                     onChange={(e) =>
                                       setBranchForJc(jc.id, (prev) => ({
                                         target_id: e.target.value,
                                         target_type:
                                           e.target.value ===
-                                            routeDetails.route.start_site.id ||
+                                            (routeDetails.route.sn_id || '') ||
                                           e.target.value ===
-                                            routeDetails.route.end_site.id
+                                            (routeDetails.route.en_id || '')
                                             ? 'site'
                                             : prev?.target_type ?? 'site',
                                         distance_km:
@@ -409,7 +435,7 @@ export default function RouteManager({
                                             2,
                                             Math.max(
                                               0.2,
-                                              routeDetails.route.distance_km *
+                                              (routeDetails.route.current_rkm || 0) *
                                                 0.1
                                             )
                                           ),
@@ -418,16 +444,16 @@ export default function RouteManager({
                                     }
                                   >
                                     <option
-                                      value={routeDetails.route.start_site.id}
+                                      value={routeDetails.route.sn_id || ''}
                                     >
                                       Start site:{' '}
-                                      {routeDetails.route.start_site.name}
+                                      {routeDetails.route.sn_name || 'Unknown'}
                                     </option>
                                     <option
-                                      value={routeDetails.route.end_site.id}
+                                      value={routeDetails.route.en_id || ''}
                                     >
                                       End site:{' '}
-                                      {routeDetails.route.end_site.name}
+                                      {routeDetails.route.en_name || 'Unknown'}
                                     </option>
                                   </select>
                                 </label>
@@ -446,7 +472,7 @@ export default function RouteManager({
                                         2,
                                         Math.max(
                                           0.2,
-                                          routeDetails.route.distance_km * 0.1
+                                          (routeDetails.route.current_rkm || 0) * 0.1
                                         )
                                       )
                                     }
@@ -454,7 +480,7 @@ export default function RouteManager({
                                       setBranchForJc(jc.id, (prev) => ({
                                         target_id:
                                           prev?.target_id ??
-                                          routeDetails.route.end_site.id,
+                                          (routeDetails.route.en_id || ''),
                                         target_type:
                                           prev?.target_type ?? 'site',
                                         distance_km: Math.max(
@@ -473,14 +499,14 @@ export default function RouteManager({
                                   <input
                                     type="number"
                                     min={1}
-                                    max={routeDetails.route.capacity}
+                                    max={routeDetails.route.capacity || 100}
                                     className="w-full border rounded px-2 py-1 bg-white dark:bg-gray-900"
                                     value={cfg?.tap_fibers ?? 2}
                                     onChange={(e) =>
                                       setBranchForJc(jc.id, (prev) => ({
                                         target_id:
                                           prev?.target_id ??
-                                          routeDetails.route.end_site.id,
+                                          (routeDetails.route.en_id || ''),
                                         target_type:
                                           prev?.target_type ?? 'site',
                                         distance_km:
@@ -489,12 +515,12 @@ export default function RouteManager({
                                             2,
                                             Math.max(
                                               0.2,
-                                              routeDetails.route.distance_km *
+                                              (routeDetails.route.current_rkm || 0) *
                                                 0.1
                                             )
                                           ),
                                         tap_fibers: Math.min(
-                                          routeDetails.route.capacity,
+                                          routeDetails.route.capacity || 100,
                                           Math.max(
                                             1,
                                             Number(e.target.value || 1)
@@ -515,14 +541,61 @@ export default function RouteManager({
 
               {/* Middle and Right Panels */}
               <div className="xl:col-span-2 space-y-6">
-                <RouteVisualization
-                  routeConnections={cableConnectionsData}
-                  isLoading={isRouteDetailsLoading}
-                  equipment={allEquipmentOnRoute}
-                  onRemoveJc={handleRemoveJc}
-                />
+                {/* Tab Navigation */}
+                <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                  <button
+                    onClick={() => setActiveTab('visualization')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'visualization'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Route Visualization
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('fiber-splice')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'fiber-splice'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    disabled={!selectedJcForSplice}
+                  >
+                    Fiber Splice Manager
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('commit')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'commit'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    disabled={plannedJCs.length === 0}
+                  >
+                    Review & Commit
+                  </button>
+                </div>
 
-                {evolutionMode === 'commit' && (
+                {/* Tab Content */}
+                {activeTab === 'visualization' && routeDetails && (
+                  <RouteVisualization
+                    routeDetails={routeDetails}
+                    onJcClick={handleJcClick}
+                    onEditJc={handleEditJc}
+                    onDeleteJc={handleDeleteJc}
+                  />
+                )}
+
+                {activeTab === 'fiber-splice' && selectedJcForSplice && (
+                  <FiberSpliceManager
+                    junctionClosureId={selectedJcForSplice.id}
+                    junctionClosureName={selectedJcForSplice.name}
+                    onSpliceComplete={handleSpliceComplete}
+                  />
+                )}
+
+                {activeTab === 'commit' && (
                   <CommitView
                     equipment={plannedJCs}
                     segments={projectedSegments}
@@ -536,6 +609,14 @@ export default function RouteManager({
           )}
         </>
       )}
+      <JcFormModal
+        isOpen={showJcModal}
+        onClose={handleCloseJcModal}
+        onSave={() => refetch()}
+        routeId={selectedRouteId}
+        editingJc={editingJc}
+        rkm={routeDetails?.route.current_rkm ?? null}
+      />
     </>
   );
 }

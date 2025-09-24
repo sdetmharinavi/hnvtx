@@ -12,10 +12,15 @@ interface FiberSplice {
   jc_id: string;
   incoming_cable_id: string;
   incoming_fiber_no: number;
-  outgoing_cable_id: string;
-  outgoing_fiber_no: number;
-  splice_type: string;
-  status: string;
+  outgoing_cable_id: string | null;
+  outgoing_fiber_no: number | null;
+  splice_type: 'pass_through' | 'branch' | 'termination';
+  status: 'active' | 'faulty' | 'reserved';
+  logical_path_id?: string | null;
+  loss_db?: number | null;
+  otdr_length_km?: number | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SpliceConfiguration {
@@ -47,6 +52,12 @@ export const FiberSpliceManager = ({
   }, [junctionClosureId]);
 
   const loadFiberSplices = async () => {
+    // Don't load if no junction closure is selected
+    if (!junctionClosureId || junctionClosureId === '') {
+      setFiberSplices([]);
+      return;
+    }
+
     try {
       const { data, error: spliceError } = await supabase
         .from('fiber_splices')
@@ -124,7 +135,7 @@ export const FiberSpliceManager = ({
               jc_id: junctionClosureId,
               incoming_cable_id: fiberSplices[0]?.incoming_cable_id || '',
               incoming_fiber_no: config.incoming_fiber_no,
-              outgoing_cable_id: fiberSplices[0]?.outgoing_cable_id || '',
+              outgoing_cable_id: fiberSplices[0]?.outgoing_cable_id || null,
               outgoing_fiber_no: config.outgoing_fiber_no,
               splice_type: config.splice_type === 'straight' ? 'pass_through' : 'branch',
               status: 'active'
@@ -147,11 +158,34 @@ export const FiberSpliceManager = ({
 
   const getMaxFiberCount = () => {
     const maxIncoming = Math.max(...fiberSplices.map(s => s.incoming_fiber_no), 0);
-    const maxOutgoing = Math.max(...fiberSplices.map(s => s.outgoing_fiber_no), 0);
-    return Math.max(maxIncoming, maxOutgoing, 4); // Minimum 4 fibers
+    const maxOutgoing = Math.max(...fiberSplices.map(s => s.outgoing_fiber_no || 0), 0);
+    return Math.max(maxIncoming, maxOutgoing, 2); // Minimum 2 fibers
   };
 
   const maxFibers = getMaxFiberCount();
+
+  // Don't render if no junction closure is selected
+  if (!junctionClosureId || junctionClosureId === '') {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Fiber Splice Configuration</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Please select a junction closure first
+            </p>
+          </CardHeader>
+          <CardBody>
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">
+                Click on a junction closure (JC) in the Route Visualizer tab to manage its fiber splices.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -195,7 +229,7 @@ export const FiberSpliceManager = ({
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           <select
-                            value={config?.splice_type || (splice?.splice_type === 'pass_through' ? 'straight' : 'cross')}
+                            value={config?.splice_type || (splice?.splice_type === 'pass_through' ? 'straight' : splice?.splice_type === 'branch' ? 'cross' : 'straight')}
                             onChange={(e) => handleSpliceTypeChange(fiberNo, e.target.value as 'straight' | 'cross')}
                             className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1 text-xs"
                           >

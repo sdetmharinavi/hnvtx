@@ -79,7 +79,6 @@ $$;
 -- This allows any logged-in user to CALL the function.
 -- Security inside the function and RLS on tables will enforce permissions.
 
-GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(p_jc_id UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manage_splice(p_action TEXT, p_jc_id UUID, p_splice_id UUID, p_incoming_cable_id UUID, p_incoming_fiber_no INT, p_outgoing_cable_id UUID, p_outgoing_fiber_no INT, p_splice_type TEXT) TO authenticated;
 
 -- =================================================================
