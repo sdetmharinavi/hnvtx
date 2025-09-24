@@ -27,10 +27,14 @@ GRANT SELECT ON public.v_junction_closures_complete TO viewer, admin;
 GRANT SELECT ON public.v_system_ring_paths_detailed TO viewer, admin;
 GRANT SELECT ON public.v_cable_utilization TO viewer, admin;
 GRANT SELECT ON public.v_end_to_end_paths TO viewer, admin;
+GRANT SELECT ON public.v_cable_segments_at_node TO viewer, admin, authenticated;
 
 -- Grant select on dependent tables from other modules for views to work
-GRANT SELECT ON public.ofc_cables TO viewer;
+GRANT SELECT ON public.ofc_cables TO viewer, authenticated;
 GRANT SELECT ON public.nodes TO viewer;
+GRANT SELECT ON public.junction_closures TO authenticated;
+GRANT SELECT ON public.v_cable_segments_at_node TO viewer, authenticated;
+GRANT SELECT ON public.cable_segments TO authenticated;
 
 
 -- =================================================================
@@ -66,12 +70,26 @@ BEGIN
     -- Viewer Policy
     EXECUTE format($p$
       CREATE POLICY "policy_viewer_select_%s" ON public.%I FOR SELECT TO viewer
-      USING (get_my_role() = 'viewer');
+      USING (get_my_role() = 'viewer' OR is_super_admin() OR get_my_role() = 'admin');
     $p$, tbl, tbl);
+
   END LOOP;
 END;
 $$;
 
+-- Additional policy: allow authenticated clients to read cable_segments (required for view with security_invoker)
+DROP POLICY IF EXISTS policy_authenticated_select_cable_segments ON public.cable_segments;
+CREATE POLICY policy_authenticated_select_cable_segments ON public.cable_segments
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Additional policy: allow authenticated clients to read junction_closures (required for view join)
+DROP POLICY IF EXISTS policy_authenticated_select_junction_closures ON public.junction_closures;
+CREATE POLICY policy_authenticated_select_junction_closures ON public.junction_closures
+FOR SELECT
+TO authenticated
+USING (true);
 
 -- =================================================================
 -- Step 3: Grant EXECUTE on RPC Functions

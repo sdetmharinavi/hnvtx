@@ -14,6 +14,51 @@ SELECT
 FROM public.junction_closures jc
 JOIN public.nodes n ON jc.node_id = n.id;
 
+CREATE OR REPLACE VIEW public.v_cable_segments_at_jc WITH (security_invoker = true) AS
+-- Normalize START endpoint: expose jc_id as the node_id of the matched junction_closure
+SELECT
+  cs.id,
+  cs.original_cable_id,
+  cs.segment_order,
+  cs.fiber_count,
+  cs.start_node_id,
+  cs.end_node_id,
+  cs.start_node_type,
+  cs.end_node_type,
+  cs.created_at,
+  cs.updated_at,
+  jcs.node_id AS jc_id,
+  'start'::text AS jc_position
+FROM public.cable_segments cs
+JOIN public.junction_closures jcs
+  ON cs.start_node_type = 'jc'
+ AND (
+       jcs.id = cs.start_node_id  -- proper schema
+    OR jcs.node_id = cs.start_node_id -- legacy data stored node_id in start_node_id
+     )
+UNION ALL
+-- Normalize END endpoint: expose jc_id as the node_id of the matched junction_closure
+SELECT
+  cs.id,
+  cs.original_cable_id,
+  cs.segment_order,
+  cs.fiber_count,
+  cs.start_node_id,
+  cs.end_node_id,
+  cs.start_node_type,
+  cs.end_node_type,
+  cs.created_at,
+  cs.updated_at,
+  jce.node_id AS jc_id,
+  'end'::text AS jc_position
+FROM public.cable_segments cs
+JOIN public.junction_closures jce
+  ON cs.end_node_type = 'jc'
+ AND (
+       jce.id = cs.end_node_id    -- proper schema
+    OR jce.node_id = cs.end_node_id -- legacy data stored node_id in end_node_id
+     );
+
 
 -- View showing end-to-end logical path summaries.
 CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_invoker = true) AS
