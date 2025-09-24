@@ -27,6 +27,7 @@ interface SpliceConfiguration {
   incoming_fiber_no: number;
   outgoing_fiber_no: number;
   splice_type: 'straight' | 'cross';
+  outgoing_cable_id?: string | null;
 }
 
 interface FiberSpliceManagerProps {
@@ -46,6 +47,8 @@ export const FiberSpliceManager = ({
   const [spliceConfigurations, setSpliceConfigurations] = useState<SpliceConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cableOptions, setCableOptions] = useState<{ id: string; label: string }[]>([]);
+  const [incomingCableId, setIncomingCableId] = useState<string>('');
 
   const supabase = createClient();
 
@@ -82,12 +85,13 @@ export const FiberSpliceManager = ({
       // Step 2: Get all JC IDs that share this node_id (i.e., the same physical JC across cables)
       const { data: relatedJcs, error: relatedJcsError } = await supabase
         .from('junction_closures')
-        .select('id')
+        .select('id, ofc_cable_id')
         .eq('node_id', jcRow.node_id);
 
       if (relatedJcsError) throw relatedJcsError;
 
       const jcIds = (relatedJcs || []).map(r => r.id).filter(Boolean);
+      const jcCableIds = Array.from(new Set(((relatedJcs || []).map(r => r.ofc_cable_id).filter(Boolean)) as string[]));
 
       // Safety: if for some reason we didn't get a list, fallback to current JC only
       const targetJcIds = jcIds.length > 0 ? jcIds : [junctionClosureId];
@@ -101,6 +105,51 @@ export const FiberSpliceManager = ({
 
       if (spliceError) throw spliceError;
       setFiberSplices(data || []);
+      // Discover connected cables across all related JCs
+      const { data: segStart, error: segStartErr } = await supabase
+        .from('cable_segments')
+        .select('original_cable_id')
+        .eq('start_node_type', 'jc')
+        .in('start_node_id', targetJcIds);
+      if (segStartErr) throw segStartErr;
+      const { data: segEnd, error: segEndErr } = await supabase
+        .from('cable_segments')
+        .select('original_cable_id')
+        .eq('end_node_type', 'jc')
+        .in('end_node_id', targetJcIds);
+      if (segEndErr) throw segEndErr;
+      const allSegs = [
+        ...((segStart as { original_cable_id: string }[] | null) || []),
+        ...((segEnd as { original_cable_id: string }[] | null) || []),
+      ];
+      const cableIds = Array.from(
+        new Set(
+          allSegs
+            .map((s) => s.original_cable_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      // Ensure we include cables directly on the JC rows as well
+      for (const id of jcCableIds) {
+        if (!cableIds.includes(id)) cableIds.push(id);
+      }
+
+      let options: { id: string; label: string }[] = cableIds.map((id) => ({ id, label: id }));
+      if (cableIds.length > 0) {
+        const { data: cables, error: cablesErr } = await supabase
+          .from('ofc_cables')
+          .select('id, route_name')
+          .in('id', cableIds);
+        if (!cablesErr && cables) {
+          const map = new Map(
+            (cables as { id: string; route_name: string | null }[]).map((c) => [c.id, c.route_name || c.id])
+          );
+          options = cableIds.map((id) => ({ id, label: map.get(id) || id }));
+        }
+      }
+      setCableOptions(options);
+      const existingIncoming = (data || []).find(s => s.incoming_cable_id)?.incoming_cable_id as string | undefined;
+      setIncomingCableId(existingIncoming || options[0]?.id || '');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
@@ -131,6 +180,16 @@ export const FiberSpliceManager = ({
     });
   };
 
+  const handleOutgoingCableChange = (fiberNo: number, outgoingCableId: string) => {
+    setSpliceConfigurations(prev => {
+      const existing = prev.find(s => s.incoming_fiber_no === fiberNo);
+      if (existing) {
+        return prev.map(s => s.incoming_fiber_no === fiberNo ? { ...s, outgoing_cable_id: outgoingCableId } : s);
+      }
+      return [...prev, { incoming_fiber_no: fiberNo, outgoing_fiber_no: fiberNo, splice_type: 'straight', outgoing_cable_id: outgoingCableId }];
+    });
+  };
+
   const handleOutgoingFiberChange = (fiberNo: number, outgoingFiberNo: number) => {
     setSpliceConfigurations(prev =>
       prev.map(s =>
@@ -153,7 +212,7 @@ export const FiberSpliceManager = ({
     try {
       // Update fiber splices in database
       for (const config of spliceConfigurations) {
-        const existingSplice = fiberSplices.find(s => s.incoming_fiber_no === config.incoming_fiber_no);
+        const existingSplice = fiberSplices.find(s => s.incoming_fiber_no === config.incoming_fiber_no && (!incomingCableId || s.incoming_cable_id === incomingCableId));
 
         if (existingSplice) {
           const { error: updateError } = await supabase
@@ -161,6 +220,7 @@ export const FiberSpliceManager = ({
             .update({
               outgoing_fiber_no: config.outgoing_fiber_no,
               splice_type: config.splice_type === 'straight' ? 'pass_through' : 'branch',
+              outgoing_cable_id: config.outgoing_cable_id ?? existingSplice.outgoing_cable_id,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingSplice.id);
@@ -172,9 +232,9 @@ export const FiberSpliceManager = ({
             .from('fiber_splices')
             .insert({
               jc_id: junctionClosureId,
-              incoming_cable_id: fiberSplices[0]?.incoming_cable_id || '',
+              incoming_cable_id: incomingCableId || fiberSplices[0]?.incoming_cable_id || '',
               incoming_fiber_no: config.incoming_fiber_no,
-              outgoing_cable_id: fiberSplices[0]?.outgoing_cable_id || null,
+              outgoing_cable_id: config.outgoing_cable_id ?? (fiberSplices[0]?.outgoing_cable_id || null),
               outgoing_fiber_no: config.outgoing_fiber_no,
               splice_type: config.splice_type === 'straight' ? 'pass_through' : 'branch',
               status: 'active'
@@ -238,6 +298,20 @@ export const FiberSpliceManager = ({
         </CardHeader>
         <CardBody>
           <div className="space-y-4">
+            {cableOptions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700 dark:text-gray-300">Incoming Cable</label>
+                <select
+                  value={incomingCableId}
+                  onChange={(e) => setIncomingCableId(e.target.value)}
+                  className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1 text-sm"
+                >
+                  {cableOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {/* Splice Configuration Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -250,6 +324,9 @@ export const FiberSpliceManager = ({
                       Splice Type
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Outgoing Cable
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Outgoing Fiber
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -259,8 +336,12 @@ export const FiberSpliceManager = ({
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {Array.from({ length: maxFibers }, (_, i) => i + 1).map(fiberNo => {
-                    const splice = fiberSplices.find(s => s.incoming_fiber_no === fiberNo);
+                    const splice = fiberSplices.find(s => s.incoming_fiber_no === fiberNo && (!incomingCableId || s.incoming_cable_id === incomingCableId));
                     const config = spliceConfigurations.find(s => s.incoming_fiber_no === fiberNo);
+                    const nonIncoming = cableOptions.filter(opt => opt.id !== incomingCableId);
+                    const outgoingOptions = nonIncoming.length > 0 ? nonIncoming : cableOptions;
+                    const defaultOutgoingCable = outgoingOptions[0]?.id || incomingCableId || '';
+                    const currentOutgoingCable = (config?.outgoing_cable_id ?? splice?.outgoing_cable_id ?? defaultOutgoingCable) as string;
 
                     return (
                       <tr key={fiberNo} className="hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -275,6 +356,17 @@ export const FiberSpliceManager = ({
                           >
                             <option value="straight">Straight</option>
                             <option value="cross">Cross</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <select
+                            value={currentOutgoingCable}
+                            onChange={(e) => handleOutgoingCableChange(fiberNo, e.target.value)}
+                            className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1 text-xs"
+                          >
+                            {outgoingOptions.map(opt => (
+                              <option key={opt.id} value={opt.id}>{opt.label}</option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
