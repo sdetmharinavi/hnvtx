@@ -1,5 +1,4 @@
 
-
 - **Now, Let us see what we want to implement/achieve.**
 
 Suppose We are having a cable A-B of capacity 4 fiber and distance 2.4 Km. Then its ofc connections can be as in below picture.
@@ -38,7 +37,6 @@ Lets assume that splicing is as below:
 
 ![JC1_spliced_two_cables](JC1_spliced_two_cables.png)
 
-
 so, here will be end to end fiber numbers in ofc_connections tables
 
 ofc connections table for X-Y
@@ -60,31 +58,64 @@ ofc connections table for A-B
 |  Y |  2 |  B |  1 |
 |  X |  2 |  B |  2 |
 
-
- 
 I have shown only on JC, there can be many JCs with different situations.
 
 ![many_JCs](many_JCs.png)
 
+Planned change (concise)
 
+Segment discovery at JC
+Query all cable_segments where start_node_type = 'jc' AND start_node_id IN (related JC ids) OR end_node_type = 'jc' AND end_node_id IN (related JC ids).
+Build segmentOptions = [{id, label: <cable name> • Seg <segment_order>, fiber_count}].
+UI
+Two dropdowns: Incoming Segment, Outgoing Segment.
+Rows = min(incomingSegment.fiber_count, outgoingSegment.fiber_count). Capacity checks use the selected segments.
+For each row: Splice Type (straight/cross) + Outgoing Fiber number.
+Remove cable-level controls (keep only as fallback when segments are not discoverable).
+Save logic
+Use existing RPC already in your code: update_fiber_connections(jcId, incomingSegmentId, outgoingSegmentId, spliceConfig[]) from 
+useCableSegmentation
+.
+Build spliceConfig[] from table rows: {incoming_fiber_no, outgoing_fiber_no, splice_type}.
+Validation
+Clamp outgoing fiber number to outgoing segment’s fiber_count.
+Prevent duplicate outgoing fiber mappings within the same JC + outgoing segment.
+What this changes in code
 
+components/route-manager/FiberSpliceManager.tsx
+Replace cable-based selectors with segment-based selectors.
+Compute maxFibers from selected segments.
+On Apply, call updateFiberConnections(junctionClosureId, incomingSegmentId, outgoingSegmentId, spliceConfig).
+No DB migration required (we’re reusing your stored procedure and cable_segments).
 
+Splicing should be defined between cable segments meeting at a JC, not between whole cables. I will refactor FiberSpliceManager to be segment-based. Because the change is broader, I’ll implement it in small, safe steps to avoid timeouts.
 
+Planned refactor (segment-based splicing)
 
+Data
+Build segment options at the selected JC:
+Query cable_segments where:
+start_node_type = 'jc' AND start_node_id IN related JC ids
+OR end_node_type = 'jc' AND end_node_id IN related JC ids
+Produce segmentOptions: [{ id, label: " • Seg <segment_order>", fiber_count, original_cable_id }]
+UI
+Add two dropdowns:
+Incoming Segment
+Outgoing Segment
+Rows = min(incoming.fiber_count, outgoing.fiber_count)
+Per-row:
+Splice type: straight/cross
+Outgoing fiber number
+Validation:
+Clamp outgoing fiber to outgoing segment’s fiber_count
+Prevent duplicate outgoing fiber reuse on same JC + outgoing segment
+Save
+Use existing RPC from useCableSegmentation: update_fiber_connections(jcId, incomingSegmentId, outgoingSegmentId, spliceConfig[])
+spliceConfig[] = per-row {incoming_fiber_no, outgoing_fiber_no, splice_type}
+Next steps I’ll take now
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Add segment discovery and segment selectors in FiberSpliceManager.tsx
+Compute rows from selected segments
+Wire “Apply” to update_fiber_connections
+Keep the UI simple and focused on segments (remove the cable pickers you’ve seen earlier)
 
