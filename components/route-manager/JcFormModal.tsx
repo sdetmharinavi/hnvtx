@@ -173,9 +173,18 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       onSave(); // Trigger refetch on the parent page
       toast.success(`Junction Closure ${isEditMode ? 'updated' : 'created'} successfully!`);
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in handleValidSubmit:', error);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`);
+    
+      if (error instanceof Error) {
+        toast.error(
+          `Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`
+        );
+      } else {
+        toast.error(
+          `Failed to ${isEditMode ? 'update' : 'create'} JC: Unknown error`
+        );
+      }
     }
   };
 
