@@ -272,12 +272,12 @@ SECURITY DEFINER
 SET search_path = public, pg_catalog
 AS $$
 DECLARE
-  v_splice_record RECORD;
+  v_splice_record JSONB;
   v_updated_count INTEGER := 0;
 BEGIN
   -- Process each splice in the configuration
   FOR v_splice_record IN
-    SELECT * FROM jsonb_array_elements(p_splice_config) AS splice
+    SELECT jsonb_array_elements(p_splice_config)
   LOOP
     -- Update the fiber connections based on splice configuration
     UPDATE ofc_connections
@@ -467,7 +467,7 @@ SECURITY DEFINER
 SET search_path = public, pg_catalog
 AS $$
 DECLARE
-  v_mapping_record RECORD;
+  v_mapping_record JSONB;
   v_incoming_segment RECORD;
   v_outgoing_segment RECORD;
   v_updated_count INTEGER := 0;
@@ -487,7 +487,7 @@ BEGIN
 
   -- Process each fiber mapping
   FOR v_mapping_record IN
-    SELECT * FROM jsonb_array_elements(p_fiber_mapping) AS mapping
+    SELECT jsonb_array_elements(p_fiber_mapping)
   LOOP
     -- Create or update fiber splice
     INSERT INTO fiber_splices (
