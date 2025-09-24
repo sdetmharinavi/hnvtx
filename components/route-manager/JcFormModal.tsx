@@ -106,29 +106,79 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       return;
     }
 
+    console.log('=== JC FORM SUBMIT DEBUG ===');
+    console.log('routeId:', routeId);
+    console.log('formData:', formData);
+    console.log('isEditMode:', isEditMode);
+
     const payload = {
       ...formData,
       ofc_cable_id: routeId,
     };
 
-    const query = isEditMode
-      ? supabase
+    try {
+      let jcData, insertError;
+
+      if (isEditMode && editingJc) {
+        // UPDATE existing junction closure
+        console.log('Updating existing JC with ID:', editingJc.id);
+        const { data, error } = await supabase
           .from('junction_closures')
-          .update(payload)
-          .eq('node_id', editingJc.node_id)
-          .eq('ofc_cable_id', routeId)
-      : supabase.from('junction_closures').insert(payload);
+          .update({
+            node_id: payload.node_id,
+            position_km: payload.position_km,
+          })
+          .eq('id', editingJc.id)
+          .select();
 
-    const { error } = await query;
+        jcData = data;
+        insertError = error;
+      } else {
+        // CREATE new junction closure using the RPC function
+        console.log('Creating new JC');
+        const result = await supabase
+          .rpc('add_junction_closure', {
+            p_node_id: payload.node_id,
+            p_ofc_cable_id: payload.ofc_cable_id,
+            p_position_km: payload.position_km
+          });
 
-    if (error) {
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`);
-    } else {
+        jcData = result.data;
+        insertError = result.error;
+      }
+
+      console.log('Function result:', { jcData, insertError });
+
+      if (insertError) {
+        console.error('Database error:', insertError);
+        toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${insertError.message}`);
+        return;
+      }
+
+      // If this is a new junction closure (not an edit), cable segments will be created automatically by database trigger
+      if (!isEditMode && jcData) {
+        // jcData is returned as an array from the database function
+        const dataArray = Array.isArray(jcData) ? jcData : [jcData];
+        if (dataArray && dataArray.length > 0) {
+          const newJc = dataArray[0];
+        } else {
+          console.error('No JC data returned from database function');
+        }
+      }
+
       onSave(); // Trigger refetch on the parent page
       toast.success(`Junction Closure ${isEditMode ? 'updated' : 'created'} successfully!`);
       onClose();
+    } catch (error: any) {
+      console.error('Error in handleValidSubmit:', error);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`);
     }
   };
+
+  console.log('=== JcFormModal RENDERED ===');
+  console.log('isOpen:', isOpen);
+  console.log('routeId:', routeId);
+  console.log('editingJc:', editingJc);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >

@@ -628,6 +628,48 @@ export type AuthUsersUpdate = {
     updated_at?: string | null;
 };
 
+export type Cable_segmentsRow = {
+    created_at: string | null;
+    distance_km: number;
+    end_node_id: string;
+    end_node_type: string;
+    fiber_count: number;
+    id: string;
+    original_cable_id: string;
+    segment_order: number;
+    start_node_id: string;
+    start_node_type: string;
+    updated_at: string | null;
+};
+
+export type Cable_segmentsInsert = {
+    created_at?: string | null;
+    distance_km: number;
+    end_node_id: string;
+    end_node_type: string;
+    fiber_count: number;
+    id?: string;
+    original_cable_id: string;
+    segment_order: number;
+    start_node_id: string;
+    start_node_type: string;
+    updated_at?: string | null;
+};
+
+export type Cable_segmentsUpdate = {
+    created_at?: string | null;
+    distance_km?: number;
+    end_node_id?: string;
+    end_node_type?: string;
+    fiber_count?: number;
+    id?: string;
+    original_cable_id?: string;
+    segment_order?: number;
+    start_node_id?: string;
+    start_node_type?: string;
+    updated_at?: string | null;
+};
+
 export type Employee_designationsRow = {
     created_at: string | null;
     id: string;
@@ -765,6 +807,7 @@ export type FoldersUpdate = {
 
 export type Junction_closuresRow = {
     created_at: string | null;
+    id: string;
     node_id: string;
     ofc_cable_id: string;
     position_km: number | null;
@@ -773,6 +816,7 @@ export type Junction_closuresRow = {
 
 export type Junction_closuresInsert = {
     created_at?: string | null;
+    id?: string;
     node_id: string;
     ofc_cable_id: string;
     position_km?: number | null;
@@ -781,6 +825,7 @@ export type Junction_closuresInsert = {
 
 export type Junction_closuresUpdate = {
     created_at?: string | null;
+    id?: string;
     node_id?: string;
     ofc_cable_id?: string;
     position_km?: number | null;
@@ -1483,6 +1528,7 @@ export type V_employees_with_countRow = {
 };
 
 export type V_junction_closures_completeRow = {
+    id: string | null;
     latitude: number | null;
     longitude: number | null;
     name: string | null;

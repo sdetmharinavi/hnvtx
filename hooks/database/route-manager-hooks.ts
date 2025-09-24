@@ -12,7 +12,7 @@ import {
 
 export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
-export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
+export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'id' | 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
 
 export type CableRoute = {
   id: V_ofc_cables_completeRowSchema['id'];
@@ -99,8 +99,6 @@ export function useRouteDetails(routeId: string | null) {
         capacity: routeData.capacity!,
         current_rkm: routeData.current_rkm,
       };
-      console.log("route",route);
-      console.log("jcData",jcData);
 
       return { route, junction_closures: jcData as JunctionClosure[] };
     },

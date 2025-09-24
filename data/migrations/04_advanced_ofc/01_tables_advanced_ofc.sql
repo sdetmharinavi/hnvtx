@@ -3,7 +3,8 @@
 
 -- Represents a physical junction closure (splice box) along an OFC route.
 CREATE TABLE IF NOT EXISTS public.junction_closures (
-  node_id UUID PRIMARY KEY REFERENCES public.nodes(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_id UUID NOT NULL REFERENCES public.nodes(id) ON DELETE CASCADE,
   ofc_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
   position_km NUMERIC(10,3),
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -12,6 +13,26 @@ CREATE TABLE IF NOT EXISTS public.junction_closures (
 COMMENT ON TABLE public.junction_closures IS 'Physical junction closures (splice boxes) along OFC routes.';
 COMMENT ON COLUMN public.junction_closures.ofc_cable_id IS 'The primary OFC cable this JC is physically located on.';
 COMMENT ON COLUMN public.junction_closures.position_km IS 'The distance in kilometers from the start node of the ofc_cable.';
+
+-- Cable segments created when JCs are added to cables
+CREATE TABLE IF NOT EXISTS public.cable_segments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  original_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
+  segment_order INTEGER NOT NULL,
+  start_node_id UUID NOT NULL,
+  end_node_id UUID NOT NULL,
+  start_node_type TEXT NOT NULL CHECK (start_node_type IN ('node', 'jc')),
+  end_node_type TEXT NOT NULL CHECK (end_node_type IN ('node', 'jc')),
+  distance_km DECIMAL(10,3) NOT NULL,
+  fiber_count INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (original_cable_id, segment_order)
+);
+COMMENT ON TABLE public.cable_segments IS 'Cable segments created when junction closures are added to cables.';
+COMMENT ON COLUMN public.cable_segments.start_node_type IS 'Whether the start point is a node or junction closure.';
+COMMENT ON COLUMN public.cable_segments.end_node_type IS 'Whether the end point is a node or junction closure.';
+
 
 -- Tracks every single fiber connection (splice) inside a Junction Closure.
 CREATE TABLE IF NOT EXISTS public.fiber_splices (

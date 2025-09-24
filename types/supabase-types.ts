@@ -767,6 +767,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      cable_segments: {
+        Row: {
+          created_at: string | null
+          distance_km: number
+          end_node_id: string
+          end_node_type: string
+          fiber_count: number
+          id: string
+          original_cable_id: string
+          segment_order: number
+          start_node_id: string
+          start_node_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          distance_km: number
+          end_node_id: string
+          end_node_type: string
+          fiber_count: number
+          id?: string
+          original_cable_id: string
+          segment_order: number
+          start_node_id: string
+          start_node_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          distance_km?: number
+          end_node_id?: string
+          end_node_type?: string
+          fiber_count?: number
+          id?: string
+          original_cable_id?: string
+          segment_order?: number
+          start_node_id?: string
+          start_node_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cable_segments_original_cable_id_fkey"
+            columns: ["original_cable_id"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cable_segments_original_cable_id_fkey"
+            columns: ["original_cable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_designations: {
         Row: {
           created_at: string | null
@@ -972,6 +1029,7 @@ export type Database = {
       junction_closures: {
         Row: {
           created_at: string | null
+          id: string
           node_id: string
           ofc_cable_id: string
           position_km: number | null
@@ -979,6 +1037,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          id?: string
           node_id: string
           ofc_cable_id: string
           position_km?: number | null
@@ -986,6 +1045,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          id?: string
           node_id?: string
           ofc_cable_id?: string
           position_km?: number | null
@@ -995,14 +1055,14 @@ export type Database = {
           {
             foreignKeyName: "junction_closures_node_id_fkey"
             columns: ["node_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
             columns: ["node_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
           },
@@ -2283,6 +2343,7 @@ export type Database = {
       }
       v_junction_closures_complete: {
         Row: {
+          id: string | null
           latitude: number | null
           longitude: number | null
           name: string | null
@@ -2294,14 +2355,14 @@ export type Database = {
           {
             foreignKeyName: "junction_closures_node_id_fkey"
             columns: ["node_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
             columns: ["node_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
           },
@@ -2954,6 +3015,18 @@ export type Database = {
       }
     }
     Functions: {
+      add_junction_closure: {
+        Args:
+          | { p_name: string; p_ofc_cable_id: string; p_position_km: number }
+          | { p_node_id: string; p_ofc_cable_id: string; p_position_km: number }
+        Returns: {
+          created_at: string
+          id: string
+          node_id: string
+          ofc_cable_id: string
+          position_km: number
+        }[]
+      }
       add_lookup_type: {
         Args: {
           p_category: string
@@ -3092,13 +3165,53 @@ export type Database = {
           result: Json
         }[]
       }
+      apply_cross_joint_splicing: {
+        Args: {
+          p_fiber_mapping: Json
+          p_incoming_segment_id: string
+          p_jc_id: string
+          p_outgoing_segment_id: string
+        }
+        Returns: number
+      }
+      apply_straight_joint_splicing: {
+        Args: {
+          p_incoming_segment_id: string
+          p_jc_id: string
+          p_outgoing_segment_id: string
+        }
+        Returns: number
+      }
       build_where_clause: {
-        Args: { p_alias?: string; p_filters: Json }
+        Args: { p_alias?: string; p_filters: Json; p_view_name: string }
         Returns: string
       }
       bulk_update: {
         Args: { p_table_name: string; p_updates: Json }
         Returns: Json
+      }
+      column_exists: {
+        Args: {
+          p_column_name: string
+          p_schema_name: string
+          p_table_name: string
+        }
+        Returns: boolean
+      }
+      create_cable_segments_on_jc_add: {
+        Args: { p_jc_id: string; p_ofc_cable_id: string }
+        Returns: {
+          distance_km: number
+          end_node_id: string
+          fiber_count: number
+          segment_id: string
+          segment_order: number
+          start_node_id: string
+        }[]
+      }
+      create_initial_fiber_connections: {
+        Args: { p_segment_id: string }
+        Returns: number
       }
       execute_sql: {
         Args: { sql_query: string }
@@ -3114,6 +3227,23 @@ export type Database = {
           active_count: number
           inactive_count: number
           total_count: number
+        }[]
+      }
+      get_fiber_path: {
+        Args: {
+          p_end_node_id: string
+          p_fiber_number: number
+          p_start_node_id: string
+        }
+        Returns: {
+          connection_type: string
+          distance_km: number
+          end_node_id: string
+          fiber_no_en: number
+          fiber_no_sn: number
+          segment_id: string
+          segment_order: number
+          start_node_id: string
         }[]
       }
       get_lookup_type_id: {
@@ -3410,6 +3540,15 @@ export type Database = {
           p_table_name?: string
         }
         Returns: undefined
+      }
+      update_fiber_connections_on_splice: {
+        Args: {
+          p_incoming_segment_id: string
+          p_jc_id: string
+          p_outgoing_segment_id: string
+          p_splice_config: Json
+        }
+        Returns: number
       }
     }
     Enums: {

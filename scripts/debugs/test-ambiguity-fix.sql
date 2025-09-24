@@ -1,0 +1,73 @@
+#!/bin/bash
+# Test the complete column ambiguity fix
+
+echo "=== Testing Column Ambiguity Fix ==="
+echo ""
+
+echo "Fixed all instances of 'column reference ambiguous' by:"
+echo "1. Using unique table aliases (jc_info, created_jc, cable_jc, fiber_jc, remaining_jc)"
+echo "2. Using local variables in trigger functions"
+echo "3. Avoiding direct column references that could be ambiguous"
+echo ""
+
+echo "=== SQL COMMANDS TO TEST ==="
+echo ""
+
+echo "-- Test 1: Check if all functions compile without errors"
+echo "SELECT proname, pg_get_function_identity_arguments(oid) as args"
+echo "FROM pg_proc"
+echo "WHERE proname LIKE '%trigger%' OR proname LIKE '%create_cable_segments%' OR proname = 'add_junction_closure'"
+echo "ORDER BY proname;"
+echo ""
+
+echo "-- Test 2: Test the main function that was causing issues"
+echo "SELECT add_junction_closure('test-node-uuid', 'test-cable-uuid', 5.0);"
+echo ""
+
+echo "-- Test 3: Test the trigger functions directly"
+echo "SELECT trigger_create_cable_segments_on_jc();"
+echo "SELECT trigger_recreate_cable_segments_on_jc_delete();"
+echo ""
+
+echo "-- Test 4: Check if triggers are properly attached"
+echo "SELECT trigger_name, event_manipulation, action_timing"
+echo "FROM information_schema.triggers"
+echo "WHERE event_object_table = 'junction_closures'"
+echo "ORDER BY trigger_name;"
+echo ""
+
+echo "=== WHAT SHOULD HAPPEN ==="
+echo ""
+echo "✅ No 'column reference ambiguous' errors"
+echo "✅ All functions compile and execute without syntax errors"
+echo "✅ Triggers are properly attached to junction_closures table"
+echo "✅ Both INSERT and DELETE triggers are active"
+echo "✅ No PostgreSQL ambiguity warnings"
+echo ""
+
+echo "=== NEXT STEPS ==="
+echo ""
+echo "1. Deploy the fixes:"
+echo "   npx supabase db push"
+echo ""
+echo "2. Test JC creation in your app"
+echo "3. Check database logs for successful trigger execution"
+echo ""
+
+echo "=== FIXED LOCATIONS ==="
+echo ""
+echo "🔸 Line 51: jc.id → created_jc.id (add_junction_closure function)"
+echo "🔸 Line 92: jc.id → jc_info.id (create_cable_segments_on_jc_add function)"
+echo "🔸 Line 133: jc.id → cable_jc.id (create_cable_segments_on_jc_add function)"
+echo "🔸 Line 353: jc.id → fiber_jc.id (get_fiber_path function)"
+echo "🔸 Line 596: jc.id → remaining_jc.id (trigger_recreate_cable_segments_on_jc_delete)"
+echo "🔸 Trigger functions: Use local variables instead of NEW/OLD.column"
+echo ""
+
+echo "=== DEBUGGING ==="
+echo ""
+echo "If you still get errors:"
+echo "1. Check function compilation: SELECT * FROM pg_proc WHERE proname = 'add_junction_closure';"
+echo "2. Test function directly: SELECT add_junction_closure('uuid', 'uuid', 5.0);"
+echo "3. Look for specific error messages in Supabase dashboard"
+echo "4. Check if all table aliases are unique"

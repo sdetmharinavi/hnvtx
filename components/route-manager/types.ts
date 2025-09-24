@@ -12,7 +12,7 @@ import { Ofc_cablesRowSchema, V_junction_closures_completeRowSchema, V_ofc_cable
 // Create a new schema with only the fields we want
 export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
-export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
+export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'id' | 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
 
 export type CableRoute = Pick<V_ofc_cables_completeRowSchema, 'id' | 'route_name' | 'capacity' | 'sn_id' | 'sn_name' | 'en_id' | 'en_name'>;
 

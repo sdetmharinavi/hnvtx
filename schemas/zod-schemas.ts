@@ -648,6 +648,48 @@ export const authUsersUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const cable_segmentsRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
+  distance_km: z.number(),
+  end_node_id: z.uuid(),
+  end_node_type: z.string(),
+  fiber_count: z.number().int().min(0),
+  id: z.uuid(),
+  original_cable_id: z.uuid(),
+  segment_order: z.number(),
+  start_node_id: z.uuid(),
+  start_node_type: z.string(),
+  updated_at: z.iso.datetime().nullable(),
+});
+
+export const cable_segmentsInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  distance_km: z.number(),
+  end_node_id: z.uuid(),
+  end_node_type: z.string(),
+  fiber_count: z.number().int().min(0),
+  id: z.uuid().optional(),
+  original_cable_id: z.uuid(),
+  segment_order: z.number(),
+  start_node_id: z.uuid(),
+  start_node_type: z.string(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const cable_segmentsUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  distance_km: z.number().optional(),
+  end_node_id: z.uuid().optional(),
+  end_node_type: z.string().optional(),
+  fiber_count: z.number().int().min(0).optional(),
+  id: z.uuid().optional(),
+  original_cable_id: z.uuid().optional(),
+  segment_order: z.number().optional(),
+  start_node_id: z.uuid().optional(),
+  start_node_type: z.string().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
 export const employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -785,6 +827,7 @@ export const foldersUpdateSchema = z.object({
 
 export const junction_closuresRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
   node_id: z.uuid(),
   ofc_cable_id: z.uuid(),
   position_km: z.number().nullable(),
@@ -793,6 +836,7 @@ export const junction_closuresRowSchema = z.object({
 
 export const junction_closuresInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
   node_id: z.uuid(),
   ofc_cable_id: z.uuid(),
   position_km: z.number().nullable().optional(),
@@ -801,6 +845,7 @@ export const junction_closuresInsertSchema = z.object({
 
 export const junction_closuresUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
   node_id: z.uuid().optional(),
   ofc_cable_id: z.uuid().optional(),
   position_km: z.number().nullable().optional(),
@@ -1501,6 +1546,7 @@ export const v_employees_with_countRowSchema = z.object({
 });
 
 export const v_junction_closures_completeRowSchema = z.object({
+  id: z.uuid().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1837,6 +1883,9 @@ export const schemas = {
   authUsersRowSchema,
   authUsersInsertSchema,
   authUsersUpdateSchema,
+  cable_segmentsRowSchema,
+  cable_segmentsInsertSchema,
+  cable_segmentsUpdateSchema,
   employee_designationsRowSchema,
   employee_designationsInsertSchema,
   employee_designationsUpdateSchema,
@@ -1970,6 +2019,9 @@ export type AuthSso_providersUpdateSchema = z.infer<typeof authSso_providersUpda
 export type AuthUsersRowSchema = z.infer<typeof authUsersRowSchema>;
 export type AuthUsersInsertSchema = z.infer<typeof authUsersInsertSchema>;
 export type AuthUsersUpdateSchema = z.infer<typeof authUsersUpdateSchema>;
+export type Cable_segmentsRowSchema = z.infer<typeof cable_segmentsRowSchema>;
+export type Cable_segmentsInsertSchema = z.infer<typeof cable_segmentsInsertSchema>;
+export type Cable_segmentsUpdateSchema = z.infer<typeof cable_segmentsUpdateSchema>;
 export type Employee_designationsRowSchema = z.infer<typeof employee_designationsRowSchema>;
 export type Employee_designationsInsertSchema = z.infer<typeof employee_designationsInsertSchema>;
 export type Employee_designationsUpdateSchema = z.infer<typeof employee_designationsUpdateSchema>;

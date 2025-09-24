@@ -4,6 +4,7 @@
 -- View showing complete information for a junction closure.
 CREATE OR REPLACE VIEW public.v_junction_closures_complete WITH (security_invoker = true) AS
 SELECT
+  jc.id,
   jc.node_id,
   jc.ofc_cable_id,
   jc.position_km,

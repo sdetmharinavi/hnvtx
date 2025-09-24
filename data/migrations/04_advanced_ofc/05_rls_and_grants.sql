@@ -7,6 +7,7 @@
 
 -- Admin gets full control over all tables.
 GRANT ALL ON public.junction_closures TO admin;
+GRANT ALL ON public.cable_segments TO admin;
 GRANT ALL ON public.fiber_splices TO admin;
 GRANT ALL ON public.fiber_joints TO admin;
 GRANT ALL ON public.logical_fiber_paths TO admin;
@@ -15,16 +16,17 @@ GRANT ALL ON public.logical_path_segments TO admin;
 
 -- Viewer gets read-only access to all tables and views.
 GRANT SELECT ON public.junction_closures TO viewer;
+GRANT SELECT ON public.cable_segments TO viewer;
 GRANT SELECT ON public.fiber_splices TO viewer;
 GRANT SELECT ON public.fiber_joints TO viewer;
 GRANT SELECT ON public.logical_fiber_paths TO viewer;
 GRANT SELECT ON public.logical_path_segments TO viewer;
 
 -- View grants for this module's features
+GRANT SELECT ON public.v_junction_closures_complete TO viewer, admin;
 GRANT SELECT ON public.v_system_ring_paths_detailed TO viewer, admin;
 GRANT SELECT ON public.v_cable_utilization TO viewer, admin;
 GRANT SELECT ON public.v_end_to_end_paths TO viewer, admin;
-GRANT SELECT ON public.v_junction_closures_complete TO viewer, admin;
 
 -- Grant select on dependent tables from other modules for views to work
 GRANT SELECT ON public.ofc_cables TO viewer;
@@ -43,7 +45,7 @@ DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'junction_closures', 'fiber_splices', 'fiber_joints',
+    'junction_closures', 'cable_segments', 'fiber_splices', 'fiber_joints',
     'logical_fiber_paths', 'logical_path_segments'
   ]
   LOOP

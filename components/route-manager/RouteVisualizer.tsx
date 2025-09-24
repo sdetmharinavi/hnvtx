@@ -6,7 +6,6 @@ import { JunctionClosure } from "@/components/route-manager/types";
 import { useRouteDetails } from "@/hooks/database/route-manager-hooks";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 
-// =================================================================
 interface RouteVisualizerProps {
   routeDetails: NonNullable<ReturnType<typeof useRouteDetails>['data']>;
   onJcClick: (jc: JunctionClosure) => void;
@@ -14,23 +13,55 @@ interface RouteVisualizerProps {
   onDeleteJc: (jc: JunctionClosure) => void; // <--- ADDED for deleting
 }
 
+interface Point {
+  type: 'node' | 'jc';
+  id: string;
+  name: string | null;
+  position: number;
+  originalJc?: JunctionClosure;
+  latitude?: number | null;
+  longitude?: number | null;
+  node_id?: string | null;
+  ofc_cable_id?: string | null;
+}
+
+interface Point {
+  type: 'node' | 'jc';
+  id: string;
+  name: string | null;
+  position: number;
+  originalJc?: JunctionClosure;
+  latitude?: number | null;
+  longitude?: number | null;
+  node_id?: string | null;
+  ofc_cable_id?: string | null;
+  position_km?: number | null;
+}
+
 export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, onJcClick, onEditJc, onDeleteJc }) => {
     // ... (The content of this component remains exactly the same, but now it receives onEditJc and onDeleteJc)
     const { route, junction_closures } = routeDetails;
     const sortedJCs = [...junction_closures].sort((a, b) => (a.position_km || 0) - (b.position_km || 0));
 
-    const points = [
-      { type: 'node' as const, id: route.start_node.id, name: route.start_node.name, position: 0 },
+    const points: Point[] = [
+      { type: 'node' as const, id: route.start_node.id || 'start-node', name: route.start_node.name, position: 0 },
       ...[...junction_closures]
         .sort((a, b) => (a.position_km || 0) - (b.position_km || 0))
         .map((jc, idx) => ({
           type: 'jc' as const,
-          ...jc,
+          // Keep the original junction closure data intact for delete operations
+          originalJc: jc,
           // Ensure an id exists for JC points for keys/segment ids
           id: jc.node_id ?? `${route.id}-${jc.position_km ?? idx}`,
+          name: jc.name,
           position: jc.position_km || 0,
+          latitude: jc.latitude,
+          longitude: jc.longitude,
+          node_id: jc.node_id,
+          ofc_cable_id: jc.ofc_cable_id,
+          position_km: jc.position_km,
         })),
-      { type: 'node' as const, id: route.end_node.id, name: route.end_node.name, position: route.current_rkm || 1 },
+      { type: 'node' as const, id: route.end_node.id || 'end-node', name: route.end_node.name, position: route.current_rkm || 1 },
     ];
   
     // 2. Create segments between each consecutive point
@@ -89,7 +120,7 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
                           ? 'bg-blue-600 border-white dark:border-gray-800'
                           : 'bg-green-500 border-white dark:border-gray-800 cursor-pointer hover:scale-110 transition-transform'
                         }`}
-                      onClick={() => point.type === 'jc' && onJcClick(point as JunctionClosure)}
+                      onClick={() => point.type === 'jc' && point.originalJc && onJcClick(point.originalJc)}
                     >
                       <span className="text-white font-bold text-sm">{point.type === 'node' ? 'N' : 'JC'}</span>
                     </div>
@@ -99,10 +130,10 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
                     </div>
                     {point.type === 'jc' && (
                       <div className="absolute -top-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <Button size="xs" variant="outline" onClick={() => onEditJc(point as JunctionClosure)} title="Edit JC">
+                          <Button size="xs" variant="outline" onClick={() => point.originalJc && onEditJc(point.originalJc)} title="Edit JC">
                               <FiEdit className="h-3 w-3" />
                           </Button>
-                          <Button size="xs" variant="danger" onClick={() => onDeleteJc(point as JunctionClosure)} title="Delete JC">
+                          <Button size="xs" variant="danger" onClick={() => point.originalJc && onDeleteJc(point.originalJc)} title="Delete JC">
                               <FiTrash2 className="h-3 w-3" />
                           </Button>
                       </div>
