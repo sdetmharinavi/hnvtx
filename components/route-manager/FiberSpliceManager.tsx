@@ -47,7 +47,7 @@ export const FiberSpliceManager = ({
   const [spliceConfigurations, setSpliceConfigurations] = useState<SpliceConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cableOptions, setCableOptions] = useState<{ id: string; label: string }[]>([]);
+  const [cableOptions, setCableOptions] = useState<{ id: string; label: string; capacity: number | null }[]>([]);
   const [incomingCableId, setIncomingCableId] = useState<string>('');
 
   const supabase = createClient();
@@ -134,17 +134,23 @@ export const FiberSpliceManager = ({
         if (!cableIds.includes(id)) cableIds.push(id);
       }
 
-      let options: { id: string; label: string }[] = cableIds.map((id) => ({ id, label: id }));
+      let options: { id: string; label: string; capacity: number | null }[] = cableIds.map((id) => ({ id, label: id, capacity: null }));
       if (cableIds.length > 0) {
         const { data: cables, error: cablesErr } = await supabase
           .from('ofc_cables')
-          .select('id, route_name')
+          .select('id, route_name, capacity')
           .in('id', cableIds);
         if (!cablesErr && cables) {
-          const map = new Map(
-            (cables as { id: string; route_name: string | null }[]).map((c) => [c.id, c.route_name || c.id])
+          const m = new Map(
+            (cables as { id: string; route_name: string | null; capacity: number | null }[])
+              .map((c) => [c.id, { name: c.route_name || c.id, capacity: c.capacity ?? null }])
           );
-          options = cableIds.map((id) => ({ id, label: map.get(id) || id }));
+          options = cableIds.map((id) => {
+            const info = m.get(id);
+            const base = info?.name || id;
+            const cap = info?.capacity ?? null;
+            return { id, label: cap ? `${base} (${cap}F)` : base, capacity: cap };
+          });
         }
       }
       setCableOptions(options);
@@ -190,11 +196,29 @@ export const FiberSpliceManager = ({
     });
   };
 
-  const handleOutgoingFiberChange = (fiberNo: number, outgoingFiberNo: number) => {
+  const handleOutgoingFiberChange = (fiberNo: number, outgoingFiberNo: number, currentOutgoingCableId: string) => {
+    // Enforce capacity bounds for selected outgoing cable
+    const capMap = new Map(cableOptions.map(o => [o.id, o.capacity]));
+    const cap = capMap.get(currentOutgoingCableId) || null;
+    const safeMax = cap && cap > 0 ? cap : maxFibers;
+    const clamped = Math.max(1, Math.min(outgoingFiberNo, safeMax));
+
+    // Prevent duplicate mapping to same outgoing cable:fiber
+    const takenKeys = new Set(
+      fiberSplices
+        .filter(s => s.outgoing_cable_id && s.outgoing_fiber_no != null)
+        .map(s => `${s.outgoing_cable_id}:${s.outgoing_fiber_no}`)
+    );
+    const candidateKey = `${currentOutgoingCableId}:${clamped}`;
+    if (takenKeys.has(candidateKey)) {
+      toast.error('This outgoing fiber is already mapped at this JC');
+      return;
+    }
+
     setSpliceConfigurations(prev =>
       prev.map(s =>
         s.incoming_fiber_no === fiberNo
-          ? { ...s, outgoing_fiber_no: outgoingFiberNo }
+          ? { ...s, outgoing_fiber_no: clamped }
           : s
       )
     );
@@ -375,7 +399,7 @@ export const FiberSpliceManager = ({
                             min="1"
                             max={maxFibers}
                             value={config?.outgoing_fiber_no || splice?.outgoing_fiber_no || fiberNo}
-                            onChange={(e) => handleOutgoingFiberChange(fiberNo, parseInt(e.target.value) || fiberNo)}
+                            onChange={(e) => handleOutgoingFiberChange(fiberNo, parseInt(e.target.value) || fiberNo, currentOutgoingCable)}
                             className="w-16 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-1 text-xs"
                           />
                         </td>
