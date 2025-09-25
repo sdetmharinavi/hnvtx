@@ -1,7 +1,6 @@
 "use client"
-"use client"
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { 
   Cable, 
@@ -12,26 +11,21 @@ import {
   AlertTriangle, 
   CheckCircle, 
   Plus,
-  Edit,
-  Trash2,
   Search,
   Filter,
   Download,
   Upload,
   GitBranch,
-  Layers,
   Route,
-  Zap,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
-  MoreHorizontal,
   RefreshCw,
   X
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import NewAllocationModal, { mockData } from '@/components/bsnl/NewAllocationModal';
+import { mockData } from '@/components/bsnl/NewAllocationModal';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 
 // Enhanced Types (keeping all existing types)
@@ -507,9 +501,9 @@ function PaginatedTable<T>({
 }
 
 // Optimized map component with layer management
-function OptimizedNetworkMap({ 
-  nodes, 
-  cables, 
+function OptimizedNetworkMap({
+  nodes,
+  cables,
   selectedSystem,
   visibleLayers = { nodes: true, cables: true, systems: true }
 }: {
@@ -521,10 +515,10 @@ function OptimizedNetworkMap({
   // Calculate map bounds
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
-    
+
     const lats = nodes.map(n => n.position[0]);
     const lngs = nodes.map(n => n.position[1]);
-    
+
     return [
       [Math.min(...lats), Math.min(...lngs)],
       [Math.max(...lats), Math.max(...lngs)]
@@ -534,13 +528,13 @@ function OptimizedNetworkMap({
   // Filter visible items based on zoom level and performance
   const [zoom, setZoom] = useState(13);
   const [bounds2, setBounds2] = useState<any>(null);
-  
+
   const visibleNodes = useMemo(() => {
     if (!bounds2 || !visibleLayers.nodes) return [];
-    
+
     // Show fewer items at lower zoom levels for performance
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
-    
+
     return nodes.slice(0, maxItems).filter(node => {
       const [lat, lng] = node.position;
       return lat >= bounds2.getSouth() && lat <= bounds2.getNorth() &&
@@ -550,9 +544,9 @@ function OptimizedNetworkMap({
 
   const visibleCables = useMemo(() => {
     if (!bounds2 || !visibleLayers.cables) return [];
-    
+
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 200 : 50;
-    
+
     return cables.slice(0, maxItems).filter(cable => {
       return cable.path.some(([lat, lng]) => {
         return lat >= bounds2.getSouth() && lat <= bounds2.getNorth() &&
@@ -567,58 +561,81 @@ function OptimizedNetworkMap({
     <MapContainer
       bounds={bounds}
       className="h-full w-full rounded-lg"
-      whenReady={(map) => {
-        const mapInstance = map.target;
-        setBounds2(mapInstance.getBounds());
-        setZoom(mapInstance.getZoom());
-        
-        mapInstance.on('zoomend moveend', () => {
-          setBounds2(mapInstance.getBounds());
-          setZoom(mapInstance.getZoom());
-        });
-      }}
     >
+      <MapEventHandler setBounds2={setBounds2} setZoom={setZoom} />
       <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; OpenStreetMap contributors'
+      {...({ url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: '&copy; OpenStreetMap contributors' } as any)}
       />
-      
       {/* Render cables */}
-      {visibleCables.map((cable) => (
-        <Polyline
-          key={cable.id}
-          positions={cable.path}
-          color={selectedSystem ? '#8b5cf6' : cable.status === 'operational' ? '#10b981' : '#ef4444'}
-          weight={selectedSystem ? 6 : 3}
-          opacity={0.7}
-        >
-          <Popup>
-            <div className="w-48">
-              <h3 className="font-semibold">{cable.name}</h3>
-              <p className="text-sm">Type: {cable.type}</p>
-              <p className="text-sm">Fibers: {cable.fiberCount}</p>
-              <p className="text-sm">Status: {cable.status}</p>
-              <p className="text-sm">Region: {cable.region}</p>
-            </div>
-          </Popup>
-        </Polyline>
+      {visibleCables.map((cable: OFCCable) => (
+      <Polyline
+        key={cable.id}
+        positions={cable.path}
+        pathOptions={{
+        color: selectedSystem ? '#8b5cf6' : cable.status === 'operational' ? '#10b981' : '#ef4444',
+        weight: selectedSystem ? 6 : 3,
+        opacity: 0.7
+        }}
+      >
+        <Popup>
+        <div className="w-48">
+          <h3 className="font-semibold">{cable.name}</h3>
+          <p className="text-sm">Type: {cable.type}</p>
+          <p className="text-sm">Fibers: {cable.fiberCount}</p>
+          <p className="text-sm">Status: {cable.status}</p>
+          <p className="text-sm">Region: {cable.region}</p>
+        </div>
+        </Popup>
+      </Polyline>
       ))}
       
       {/* Render nodes */}
-      {visibleNodes.map((node) => (
-        <Marker key={node.id} position={node.position}>
-          <Popup>
-            <div className="w-48">
-              <h3 className="font-semibold">{node.name}</h3>
-              <p className="text-sm">Type: {node.type}</p>
-              <p className="text-sm">Status: {node.status}</p>
-              <p className="text-sm">Region: {node.region}</p>
-            </div>
-          </Popup>
-        </Marker>
+      {visibleNodes.map((node: FiberNode) => (
+      <Marker key={node.id} position={node.position}>
+        <Popup>
+        <div className="w-48">
+          <h3 className="font-semibold">{node.name}</h3>
+          <p className="text-sm">Type: {node.type}</p>
+          <p className="text-sm">Status: {node.status}</p>
+          <p className="text-sm">Region: {node.region}</p>
+        </div>
+        </Popup>
+      </Marker>
       ))}
     </MapContainer>
   );
+}
+
+// Component to handle map events using useMap hook
+function MapEventHandler({
+  setBounds2,
+  setZoom
+}: {
+  setBounds2: (bounds: any) => void;
+  setZoom: (zoom: number) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Set initial bounds and zoom
+    setBounds2(map.getBounds());
+    setZoom(map.getZoom());
+
+    // Set up event listeners
+    const handleMapEvent = () => {
+      setBounds2(map.getBounds());
+      setZoom(map.getZoom());
+    };
+
+    map.on('zoomend moveend', handleMapEvent);
+
+    // Cleanup event listeners on unmount
+    return () => {
+      map.off('zoomend moveend', handleMapEvent);
+    };
+  }, [map, setBounds2, setZoom]);
+
+  return null;
 }
 
 // Main dashboard component with scalability improvements

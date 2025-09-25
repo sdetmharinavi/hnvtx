@@ -1,6 +1,6 @@
 import { FiPlus } from "react-icons/fi";
 import { Button } from "@/components/common/ui/Button";
-import { Card } from "@/components/common/ui/Card";
+import { Card } from "@/components/common/ui/card";
 
 interface EmptyStateProps {
   onCreate: () => void;

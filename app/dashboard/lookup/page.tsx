@@ -5,7 +5,7 @@ import {
   useStandardHeaderActions,
 } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
-import { Card } from '@/components/common/ui/Card';
+import { Card } from '@/components/common/ui/card';
 import { useLookupTypes } from '@/components/lookup/lookup-hooks';
 import { LookupModal } from '@/components/lookup/LookupModal';
 import {
@@ -185,15 +185,15 @@ export default function LookupTypesPage() {
           <LookupTypesTable
             lookups={filteredAndSortedLookupTypes.map((lookup) => ({
               ...lookup,
-              sort_order: lookup.sort_order ?? 0,
+              sort_order: lookup.sort_order ?? null,
               created_at: lookup.created_at
-                ? new Date(lookup.created_at)
-                : undefined,
+                ? new Date(lookup.created_at).toISOString()
+                : null,
               updated_at: lookup.updated_at
-                ? new Date(lookup.updated_at)
-                : undefined,
-              is_system_default: lookup.is_system_default ?? false,
-              status: lookup.status ?? true,
+                ? new Date(lookup.updated_at).toISOString()
+                : null,
+              is_system_default: lookup.is_system_default ?? null,
+              status: lookup.status ?? null,
             }))}
             onEdit={handleEdit}
             onDelete={handleDelete}

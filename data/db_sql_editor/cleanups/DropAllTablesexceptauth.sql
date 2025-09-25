@@ -1,249 +1,258 @@
--- 1️⃣ Drop all views
-DROP VIEW IF EXISTS 
-    v_nodes_complete,
-    v_systems_complete,
-    v_ofc_cables_complete,
-    v_ofc_connections_complete,
-    v_system_connections_complete,
-    v_user_profiles_extended
-CASCADE;
+-- =============================================================================
+-- MASTER DATABASE CLEANUP SCRIPT for telecom_network_db
+-- =============================================================================
+-- This script is designed to be run to reset the 'public' schema while
+-- preserving essential user management objects.
+--
+-- PRESERVED OBJECTS:
+-- - Table: user_profiles
+-- - View: v_user_profiles_extended
+-- - Functions: is_super_admin, get_my_role, get_my_user_details, 
+--              admin_get_all_users, admin_get_all_users_extended, 
+--              admin_get_user_by_id, admin_update_user_profile,
+--              admin_bulk_update_status, admin_bulk_update_role,
+--              admin_bulk_delete_users, update_user_profile_timestamp,
+--              sync_user_role_to_auth, create_public_profile_for_new_user
+-- - Triggers: on_auth_user_created, update_user_profile_updated_at,
+--             sync_user_role_trigger, sync_user_role_insert_trigger
+-- - RLS Policies and Grants for user_profiles
+-- =============================================================================
 
--- 2️⃣ Drop all triggers
--- Drop triggers from "nodes"
+DO $$ BEGIN RAISE NOTICE 'Starting database cleanup (preserving user management objects)...';
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 1️⃣ Drop All Views in the 'public' schema (except v_user_profiles_extended)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN RAISE NOTICE 'Dropping all views (except v_user_profiles_extended)...';
+FOR r IN (
+    SELECT viewname
+    FROM pg_views
+    WHERE schemaname = 'public'
+    AND viewname != 'v_user_profiles_extended'
+) LOOP EXECUTE 'DROP VIEW IF EXISTS public.' || quote_ident(r.viewname) || ' CASCADE;';
+RAISE NOTICE 'Dropped view: %',
+r.viewname;
+END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 2️⃣ Drop All RLS Policies on tables in the 'public' schema 
+--    (except those for user_profiles)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN RAISE NOTICE 'Dropping all RLS policies (except user_profiles policies)...';
+FOR r IN (
+    SELECT tablename,
+        policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+    AND tablename != 'user_profiles'
+) LOOP EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.' || quote_ident(r.tablename) || ';';
+RAISE NOTICE 'Dropped policy: % ON %',
+r.policyname,
+r.tablename;
+END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 3️⃣ Drop All Triggers on tables in the 'public' schema
+--    (except the specified user management triggers)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN RAISE NOTICE 'Dropping all triggers (except user management triggers)...';
+FOR r IN (
+    SELECT tgname,
+        relname
+    FROM pg_trigger
+        JOIN pg_class ON tgrelid = pg_class.oid
+        JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+    WHERE nspname = 'public'
+        AND NOT tgisinternal
+        AND tgname NOT IN (
+            'on_auth_user_created',
+            'update_user_profile_updated_at', 
+            'sync_user_role_trigger',
+            'sync_user_role_insert_trigger'
+        )
+) LOOP EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(r.tgname) || ' ON public.' || quote_ident(r.relname) || ' CASCADE;';
+RAISE NOTICE 'Dropped trigger: % ON %',
+r.tgname,
+r.relname;
+END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 4️⃣ Drop All Functions in the 'public' schema (except specified functions)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN RAISE NOTICE 'Dropping all functions (except user management functions)...';
+FOR r IN (
+    SELECT p.oid::regprocedure::text as func_signature
+    FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+    AND p.proname NOT IN (
+        'is_super_admin',
+        'get_my_role',
+        'get_my_user_details',
+        'admin_get_all_users',
+        'admin_get_all_users_extended',
+        'admin_get_user_by_id',
+        'admin_update_user_profile',
+        'admin_bulk_update_status',
+        'admin_bulk_update_role',
+        'admin_bulk_delete_users',
+        'update_user_profile_timestamp',
+        'sync_user_role_to_auth',
+        'create_public_profile_for_new_user'
+    )
+) LOOP EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
+RAISE NOTICE 'Dropped function: %',
+r.func_signature;
+END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 5️⃣ Drop All Tables in the 'public' schema (except user_profiles)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN RAISE NOTICE 'Dropping all tables (except user_profiles)...';
+FOR r IN (
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
+    AND tablename != 'user_profiles'
+) LOOP EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE;';
+RAISE NOTICE 'Dropped table: %',
+r.tablename;
+END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 6️⃣ Verify preserved objects are still intact
+-- -----------------------------------------------------------------------------
 DO $$
 BEGIN
-    IF to_regclass('public.nodes') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_update_ring_node_count ON nodes CASCADE';
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_nodes_updated_at ON nodes CASCADE';
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_update_dom_on_otdr_change ON nodes CASCADE';
+    RAISE NOTICE 'Verifying preserved objects...';
+    
+    -- Check if user_profiles table exists
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_profiles') THEN
+        RAISE NOTICE '✓ user_profiles table preserved';
+    ELSE
+        RAISE NOTICE '✗ user_profiles table NOT found!';
     END IF;
-END
-$$;
-
--- Drop triggers from "lookup_types"
-DO $$
-BEGIN
-    IF to_regclass('public.lookup_types') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_lookup_types_updated_at ON lookup_types CASCADE';
+    
+    -- Check if view exists
+    IF EXISTS (SELECT 1 FROM pg_views WHERE schemaname = 'public' AND viewname = 'v_user_profiles_extended') THEN
+        RAISE NOTICE '✓ v_user_profiles_extended view preserved';
+    ELSE
+        RAISE NOTICE '✗ v_user_profiles_extended view NOT found!';
     END IF;
-END
-$$;
-
--- Drop triggers from "maintenance_areas"
-DO $$
-BEGIN
-    IF to_regclass('public.maintenance_areas') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_maintenance_areas_updated_at ON maintenance_areas CASCADE';
+    
+    -- Check if key functions exist
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'is_super_admin' AND pronamespace = 'public'::regnamespace) THEN
+        RAISE NOTICE '✓ is_super_admin function preserved';
+    ELSE
+        RAISE NOTICE '✗ is_super_admin function NOT found!';
     END IF;
-END
-$$;
-
--- Drop triggers from "rings"
-DO $$
-BEGIN
-    IF to_regclass('public.rings') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_rings_updated_at ON rings CASCADE';
+    
+    -- Check if triggers exist
+    IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created') THEN
+        RAISE NOTICE '✓ on_auth_user_created trigger preserved';
+    ELSE
+        RAISE NOTICE '✗ on_auth_user_created trigger NOT found!';
     END IF;
-END
-$$;
+    
+    RAISE NOTICE 'Preserved objects verification completed.';
+END $$;
 
--- Drop triggers from "employees"
-DO $$
-BEGIN
-    IF to_regclass('public.employees') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_employees_updated_at ON employees CASCADE';
-    END IF;
-END
-$$;
+DO $$ BEGIN RAISE NOTICE 'Database cleanup finished successfully (user management objects preserved).';
+END $$;
 
--- Drop triggers from "ofc_cables"
-DO $$
-BEGIN
-    IF to_regclass('public.ofc_cables') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_ofc_cables_updated_at ON ofc_cables CASCADE';
-    END IF;
-END
-$$;
+-- =============================================================================
+-- RECREATE RLS POLICIES AND GRANTS for user_profiles
+-- =============================================================================
+-- Use this script if you need to recreate the RLS policies and grants
+-- that were preserved during the cleanup.
+-- =============================================================================
 
--- Drop triggers from "systems"
-DO $$
-BEGIN
-    IF to_regclass('public.systems') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_systems_updated_at ON systems CASCADE';
-    END IF;
-END
-$$;
+DO $$ BEGIN RAISE NOTICE 'Recreating RLS policies and grants for user_profiles...';
+END $$;
 
--- Drop triggers from "maan_systems"
-DO $$
-BEGIN
-    IF to_regclass('public.maan_systems') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_maan_systems_updated_at ON maan_systems CASCADE';
-    END IF;
-END
-$$;
+-- =================================================================
+-- Section 1: Grants
+-- =================================================================
 
--- Drop triggers from "sdh_systems"
-DO $$
-BEGIN
-    IF to_regclass('public.sdh_systems') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_sdh_systems_updated_at ON sdh_systems CASCADE';
-    END IF;
-END
-$$;
+-- Grants for utility functions
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_user_details() TO authenticated;
 
--- Drop triggers from "vmux_systems"
-DO $$
-BEGIN
-    IF to_regclass('public.vmux_systems') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_vmux_systems_updated_at ON vmux_systems CASCADE';
-    END IF;
-END
-$$;
+-- Grants for admin functions
+GRANT EXECUTE ON FUNCTION public.admin_get_all_users(text, text, text, timestamptz, timestamptz, integer, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_get_all_users_extended(text, text, text, text, timestamptz, timestamptz, integer, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_get_user_by_id(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_update_user_profile(uuid, text, text, text, text, date, jsonb, jsonb, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_bulk_update_status(uuid[], text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_bulk_update_role(uuid[], text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_bulk_delete_users(uuid[]) TO authenticated;
 
--- Drop triggers from "ofc_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.ofc_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_ofc_connections_updated_at ON ofc_connections CASCADE';
-    END IF;
-END
-$$;
+-- Grant Table Permissions
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin;
+GRANT SELECT ON public.user_profiles TO viewer;
 
--- Drop triggers from "system_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.system_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_system_connections_updated_at ON system_connections CASCADE';
-    END IF;
-END
-$$;
+-- =================================================================
+-- Section 2: RLS Policies for user_profiles
+-- =================================================================
 
--- Drop triggers from "maan_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.maan_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_maan_connections_updated_at ON maan_connections CASCADE';
-    END IF;
-END
-$$;
+-- Enable RLS on the table (if not already enabled)
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
--- Drop triggers from "sdh_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.sdh_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_sdh_connections_updated_at ON sdh_connections CASCADE';
-    END IF;
-END
-$$;
+-- Drop existing policies for idempotency
+DROP POLICY IF EXISTS "Super admins have full access to user_profiles" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.user_profiles;
 
--- Drop triggers from "vmux_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.vmux_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_vmux_connections_updated_at ON vmux_connections CASCADE';
-    END IF;
-END
-$$;
+-- Allow super admins full access to all rows
+CREATE POLICY "Super admins have full access to user_profiles"
+ON public.user_profiles
+FOR ALL
+USING (public.is_super_admin())
+WITH CHECK (public.is_super_admin());
 
--- Drop triggers from "management_ports"
-DO $$
-BEGIN
-    IF to_regclass('public.management_ports') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_management_ports_updated_at ON management_ports CASCADE';
-    END IF;
-END
-$$;
+-- Allow users to read their own profile
+CREATE POLICY "Users can view their own profile"
+ON public.user_profiles
+FOR SELECT
+USING ((select auth.uid()) = id);
 
--- Drop triggers from "sdh_node_associations"
-DO $$
-BEGIN
-    IF to_regclass('public.sdh_node_associations') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_sdh_node_associations_updated_at ON sdh_node_associations CASCADE';
-    END IF;
-END
-$$;
+-- Allow users to update their own profile
+CREATE POLICY "Users can update their own profile"
+ON public.user_profiles
+FOR UPDATE
+USING ((select auth.uid()) = id)
+WITH CHECK ((select auth.uid()) = id);
 
--- Drop triggers from "employee_designations"
-DO $$
-BEGIN
-    IF to_regclass('public.employee_designations') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_employee_designations_updated_at ON employee_designations CASCADE';
-    END IF;
-END
-$$;
+-- Allow users to insert their own profile
+CREATE POLICY "Users can insert their own profile"
+ON public.user_profiles
+FOR INSERT
+WITH CHECK ((select auth.uid()) = id);
 
--- Drop triggers from "user_profiles"
-DO $$
-BEGIN
-    IF to_regclass('public.user_profiles') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_user_profiles_updated_at ON user_profiles CASCADE';
-    END IF;
-END
-$$;
+-- Allow users to delete their own profile
+CREATE POLICY "Users can delete their own profile"
+ON public.user_profiles
+FOR DELETE
+USING ((select auth.uid()) = id);
 
--- Drop triggers from "cpan_systems"
-DO $$
-BEGIN
-    IF to_regclass('public.cpan_systems') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_cpan_systems_updated_at ON cpan_systems CASCADE';
-    END IF;
-END
-$$;
-
--- Drop triggers from "cpan_connections"
-DO $$
-BEGIN
-    IF to_regclass('public.cpan_connections') IS NOT NULL THEN
-        EXECUTE 'DROP TRIGGER IF EXISTS trigger_cpan_connections_updated_at ON cpan_connections CASCADE';
-    END IF;
-END
-$$;
-
-
--- 3️⃣ Drop all functions
-DROP FUNCTION IF EXISTS 
-    update_ring_node_count,
-    update_updated_at_column,
-    get_lookup_type_id,
-    add_lookup_type,
-    get_lookup_types_by_category,
-    update_dom_on_otdr_change,
-
-CASCADE;
-
--- 4️⃣ Drop all tables
-DROP TABLE IF EXISTS 
-    maan_connections,
-    sdh_connections,
-    vmux_connections,
-    management_ports,
-    sdh_node_associations,
-    maan_systems,
-    sdh_systems,
-    vmux_systems,
-    ofc_connections,
-    system_connections,
-    systems,
-    ofc_cables,
-    nodes,
-    employees,
-    rings,
-    maintenance_areas,
-    lookup_types,
-    employee_designations,
-    user_profiles,
-    cpan_systems,
-    cpan_connections,
-CASCADE;
-
--- 5️⃣ Drop any remaining indexes (should auto-remove with table drops, but to be sure)
-DROP INDEX IF EXISTS 
-    idx_employees_remark_fts,
-    idx_nodes_remark_fts,
-    idx_ofc_cables_remark_fts,
-    idx_systems_remark_fts,
-    idx_ofc_connections_remark_fts,
-    idx_system_connections_remark_fts,
-    idx_management_ports_remark_fts
-CASCADE;
+DO $$ BEGIN RAISE NOTICE 'RLS policies and grants recreated successfully.';
+END $$;

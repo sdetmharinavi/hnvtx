@@ -63,19 +63,19 @@ const useRingsData = (
   });
 
   // Calculate counts from the full dataset
-  const totalCount = data?.[0]?.total_count || 0;
-  const activeCount = data?.[0]?.active_count || 0;
-  const inactiveCount = data?.[0]?.inactive_count || 0;
-
-  return {
-    data: data || [],
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    error,
-    refetch,
-  };
+    const totalCount = data?.[0]?.total_count || 0;
+    const activeCount = data?.[0]?.active_count || 0;
+    const inactiveCount = data?.[0]?.inactive_count || 0;
+  
+    return {
+      data: (data || []) as unknown as V_rings_with_countRowSchema[],
+      totalCount,
+      activeCount,
+      inactiveCount,
+      isLoading,
+      error,
+      refetch,
+    };
 };
 
 const RingsPage = () => {

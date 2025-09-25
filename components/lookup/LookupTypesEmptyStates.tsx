@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@/components/common/ui/Card";
+import { Card } from "@/components/common/ui/card";
 import { Button } from "@/components/common/ui/Button";
 import { FiPlus } from "react-icons/fi";
 import { useRouter } from "next/navigation";

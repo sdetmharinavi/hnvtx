@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Route, GitBranch, Plus, Trash2, Network, Shield, ChevronsRight, CornerDownRight, Circle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, GitBranch, Plus, Trash2 } from 'lucide-react';
 
 // --- 1. TYPE DEFINITIONS ---
 interface FiberNode { id: string; name: string; type: 'OFC' | 'JC' | 'END_POINT'; }
@@ -58,7 +58,8 @@ function PathBuilder({ path, onPathChange, startNodeId, nodes, cables, allAlloca
     if (path.length === 0) return startNodeId;
     const lastStep = path[path.length - 1];
     const lastCable = cables.find(c => c.id === lastStep.ofcId);
-    return lastCable?.startNode === lastStep.nodeId ? lastCable.endNode : lastCable.startNode;
+    if (!lastCable) return lastStep.nodeId;
+    return lastCable.startNode === lastStep.nodeId ? lastCable.endNode : lastCable.startNode;
   }, [path, startNodeId, cables]);
 
   const availableCables = useMemo(() => cables.filter(c => c.startNode === lastNodeIdInPath || c.endNode === lastNodeIdInPath), [cables, lastNodeIdInPath]);
@@ -159,10 +160,3 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
 }
 
 export default AdvancedAllocationModal;
-
-// // --- 5. EXAMPLE PARENT COMPONENT TO DEMONSTRATE USAGE ---
-// export default function AdvancedFiberAllocationPage() {
-//   const [isModalOpen, setIsModalOpen] = useState(false);
-//   const handleSaveAllocation = (data: any) => { console.log("New Allocation to be Saved:", data); alert(`Allocation for system "${data.systemId}" prepared. See console for details.`); };
-//   return (<div className="min-h-screen bg-gray-100 p-8"><header className="bg-white shadow rounded-lg mb-8"><div className="max-w-7xl mx-auto p-4 sm:px-6 lg:px-8 flex justify-between items-center"><div className="flex items-center"><Network className="h-8 w-8 text-blue-600 mr-3" /><div><h1 className="text-xl font-bold text-gray-900">Advanced Fiber Allocation</h1><p className="text-sm text-gray-500">Create Point-to-Point, Ring, and Protected fiber routes.</p></div></div><button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center shadow-sm"><Plus className="h-4 w-4 mr-2" />New Allocation</button></div></header><main className="text-center bg-white p-10 rounded-lg shadow"><h2 className="text-lg font-medium text-gray-700">Dashboard Content</h2><p className="mt-2 text-gray-500">Click the "New Allocation" button to launch the multi-topology wizard.</p></main><AdvancedAllocationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveAllocation} {...mockData} /></div>);
-// }

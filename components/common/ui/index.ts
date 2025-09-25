@@ -1,8 +1,8 @@
 export { Button } from './Button';
-export { Card } from './Card';
-export { CardHeader } from './Card';
-export { CardBody } from './Card';
-export { CardFooter } from './Card';
+export { Card } from './card';
+export { CardHeader } from './card';
+export { CardBody } from './card';
+export { CardFooter } from './card';
 export { Input } from './Input';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ProgressBar } from './ProgressBar';

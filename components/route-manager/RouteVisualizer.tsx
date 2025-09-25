@@ -1,11 +1,13 @@
-// =================================================================
-// Sub-component for visualizing the route topology
+// components/route-manager/RouteVisualizer.tsx
+"use client";
 
+import { useMemo } from "react";
+import { Equipment, JunctionClosure, RouteDetailsPayload } from "@/components/route-manager/types";
 import { Button } from "@/components/common/ui";
-import { Equipment, JunctionClosure } from "@/components/route-manager/types";
+import { FiEdit, FiTrash2 } from 'react-icons/fi';
 import { useRouteDetails } from "@/hooks/database/route-manager-hooks";
-import { FiEdit, FiTrash2 } from "react-icons/fi";
 
+// This is the prop interface for your component
 interface RouteVisualizerProps {
   routeDetails: NonNullable<ReturnType<typeof useRouteDetails>['data']>;
   onJcClick: (jc: Equipment) => void;
@@ -13,18 +15,20 @@ interface RouteVisualizerProps {
   onDeleteJc: (jc: Equipment) => void; // <--- ADDED for deleting
 }
 
+// Define the shape of the points you'll use for rendering
 interface Point {
   type: 'node' | 'jc';
   id: string;
   name: string | null;
   position: number;
+  // Make originalJc optional since nodes don't have it
   originalJc?: JunctionClosure;
   latitude?: number | null;
   longitude?: number | null;
   node_id?: string | null;
   ofc_cable_id?: string | null;
   position_km?: number | null;
-  equipmentData?: Equipment;
+  equipmentData?: Equipment; // <-- Make this optional
 }
 
 export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, onJcClick, onEditJc, onDeleteJc }) => {
@@ -153,4 +157,3 @@ export const RouteVisualizer: React.FC<RouteVisualizerProps> = ({ routeDetails, 
       </div>
     );
   };
-  

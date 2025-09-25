@@ -3,9 +3,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { FiberTrace, FiberTraceNode } from "@/components/route-manager/types"; // Import updated types
+import { FiberTraceSegment, FiberTraceNode } from "@/components/route-manager/types";
 import { toast } from "sonner";
-import { useRpcQuery } from "./rpc-queries"; // Use our generic RPC hook
+import { useRpcQuery } from "./rpc-queries";
+import { buildTraceTree } from "@/components/ofc-details/trace-helper";
 
 const supabase = createClient();
 
@@ -35,15 +36,18 @@ export function useAvailableFibers(pathId: string | null) {
 
 /**
  * Hook to trace a fiber's complete path using the recursive RPC function.
+ * This now transforms the flat data into a nested tree structure.
+ * FIX: Updated to use the correct RPC parameter names (p_start_segment_id).
  */
-export function useFiberTrace(cableId: string | null, fiberNo: number | null) {
+export function useFiberTrace(startSegmentId: string | null, fiberNo: number | null) {
   return useQuery({
-    queryKey: ['fiber-trace', cableId, fiberNo],
-    queryFn: async (): Promise<FiberTrace[] | null> => {
-      if (!cableId || fiberNo === null) return null;
+    queryKey: ['fiber-trace', startSegmentId, fiberNo],
+    queryFn: async (): Promise<FiberTraceNode | null> => {
+      if (!startSegmentId || fiberNo === null) return null;
 
       const { data, error } = await supabase.rpc('trace_fiber_path', {
-        p_start_cable_id: cableId,
+        // FIX: The parameter names now match the corrected SQL function signature.
+        p_start_segment_id: startSegmentId,
         p_start_fiber_no: fiberNo
       });
 
@@ -52,8 +56,8 @@ export function useFiberTrace(cableId: string | null, fiberNo: number | null) {
         throw error;
       }
 
-      return data as FiberTrace[] || [];
+      return buildTraceTree(data as FiberTraceSegment[] || []);
     },
-    enabled: !!cableId && fiberNo !== null,
+    enabled: !!startSegmentId && fiberNo !== null,
   });
 }

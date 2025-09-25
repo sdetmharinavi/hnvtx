@@ -5,10 +5,15 @@ import { FiberTraceNode } from '@/components/route-manager/types';
 import { Box, Network, GitBranch } from 'lucide-react';
 
 interface TraceNodeProps {
-  node: FiberTraceNode;
+  node: FiberTraceNode | null; // <-- FIX: Allow node to be null
 }
 
 const TraceNode: React.FC<TraceNodeProps> = ({ node }) => {
+    // --- FIX: Add a guard clause here ---
+    if (!node) {
+        return null;
+    }
+
     return (
         <div className="flex items-center">
             <div className="flex flex-col items-center flex-shrink-0">
@@ -17,6 +22,7 @@ const TraceNode: React.FC<TraceNodeProps> = ({ node }) => {
                 </div>
                 <p className="mt-2 text-xs font-semibold text-center w-20 truncate" title={node.name}>{node.name}</p>
             </div>
+            {/* This check is now safe because we guarded against a null node above */}
             {node.children.length > 0 && (
                 <div className="flex items-start ml-2">
                     <div className="w-4 h-1 mt-6 bg-gray-300 dark:bg-gray-600"></div>
@@ -50,10 +56,15 @@ const TraceNode: React.FC<TraceNodeProps> = ({ node }) => {
 };
 
 interface FiberTraceDiagramProps {
-  startNode: FiberTraceNode;
+  startNode: FiberTraceNode | null; // <-- FIX: Allow startNode to be null
 }
 
 export const FiberTraceDiagram: React.FC<FiberTraceDiagramProps> = ({ startNode }) => {
+  // --- FIX: Add a guard for the startNode as well ---
+  if (!startNode) {
+    return <div className="p-4 text-gray-500">Trace data is unavailable.</div>;
+  }
+
   return (
     <div className="p-4 font-sans">
       <div className="flex items-center space-x-2 overflow-x-auto pb-4">

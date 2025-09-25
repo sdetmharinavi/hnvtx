@@ -1,34 +1,33 @@
 // path: app/dashboard/ofc/[id]/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner } from '@/components/common/ui/LoadingSpinner';
 import { DataTable } from '@/components/table';
-import { Row, usePagedOfcConnectionsComplete } from '@/hooks/database';
-import { Button, ConfirmModal } from '@/components/common/ui';
+import { Row, usePagedOfcConnectionsComplete, useTableQuery } from '@/hooks/database';
+import { ConfirmModal } from '@/components/common/ui';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
-import { OfcConnectionsFormModal, OfcConnectionsRow } from '@/components/ofc-details/OfcConnectionsFormModal';
+import { OfcConnectionsFormModal} from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { GitCommit } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
 import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
-import { useEffect } from 'react';
-
+import { toast } from 'sonner';
+import { Ofc_connectionsRowSchema, V_ofc_cables_completeRowSchema, V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 
 export const dynamic = 'force-dynamic';
 
-const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
+const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
   const { id } = useParams();
@@ -45,14 +44,17 @@ const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn
   const activeCount = data?.[0]?.active_count || 0;
   const inactiveCount = data?.[0]?.inactive_count || 0;
 
-  return { data: data || [], totalCount, activeCount, inactiveCount, isLoading, error, refetch };
+  // normalize/cast the raw paged result to the expected return row schema
+  const normalizedData = (data || []) as unknown as V_ofc_connections_completeRowSchema[];
+
+  return { data: normalizedData, totalCount, activeCount, inactiveCount, isLoading, error, refetch };
 };
 
 export default function OfcCableDetailsPage() {
   const {
-    data: cableConnectionsData, totalCount, activeCount, inactiveCount,
+    data: cableConnectionsData, totalCount,
     isLoading, refetch, pagination, editModal, deleteModal, actions: crudActions,
-  } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({
+  } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
     dataQueryHook: useOfcConnectionsData,
   });
@@ -63,12 +65,20 @@ export default function OfcCableDetailsPage() {
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
-  const [tracingFiber, setTracingFiber] = useState<{ cableId: string; fiberNo: number } | null>(null);
+  
+  // FIX: This state now stores the STARTING SEGMENT ID and fiber number.
+  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number } | null>(null);
+
+  // FIX: Fetch the segments for the current cable to find the starting point for a trace.
+  const { data: cableSegments } = useTableQuery(supabase, 'cable_segments', {
+    filters: { original_cable_id: cableId as string },
+    orderBy: [{ column: 'segment_order', ascending: true }]
+  });
 
   const { ensureConnectionsExist } = useCreateOfcConnection({
     supabase,
     cableId: cableId as string,
-    rawConnections: cableConnectionsData,
+    rawConnections: cableConnectionsData as Ofc_connectionsRowSchema[],
     refetchOfcConnections: refetch,
     isLoadingOfcConnections: isLoading,
   });
@@ -90,9 +100,13 @@ export default function OfcCableDetailsPage() {
             key: 'trace',
             label: 'Trace Fiber Path',
             icon: <GitCommit className="h-4 w-4" />,
-            onClick: (record: OfcConnectionRowsWithCount) => {
-                if (record.fiber_no_sn) {
-                  setTracingFiber({ cableId: cableId as string, fiberNo: record.fiber_no_sn });
+            onClick: (record: V_ofc_connections_completeRowSchema) => {
+                if (record.fiber_no_sn && cableSegments && cableSegments.length > 0) {
+                  // FIX: Find the first segment of this cable to start the trace from.
+                  const firstSegment = cableSegments[0];
+                  setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn });
+                } else {
+                  toast.error("Cannot trace fiber: No cable segments found for this route.");
                 }
             },
             variant: 'secondary' as const
@@ -104,7 +118,7 @@ export default function OfcCableDetailsPage() {
         canDelete: () => isSuperAdmin === true,
       }),
     ],
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, isSuperAdmin, cableId]
+    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, isSuperAdmin, cableSegments]
   );
 
   if (isLoading || isLoadingRouteDetails) {
@@ -120,13 +134,13 @@ export default function OfcCableDetailsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">OFC Cable Details</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{`Route: ${routeDetails.route.route_name}`}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{`Route: ${routeDetails.route.name}`}</p>
         </div>
         <div>
           <Link href="/dashboard/ofc" className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Back to List</Link>
         </div>
       </div>
-      <OfcDetailsHeader cable={routeDetails.route as unknown as Row<'v_ofc_cables_complete'>} />
+      <OfcDetailsHeader cable={routeDetails.route as unknown as V_ofc_cables_completeRowSchema} />
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <DataTable<'v_ofc_connections_complete'>
@@ -143,7 +157,7 @@ export default function OfcCableDetailsPage() {
           }}
         />
       </div>
-      <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as OfcConnectionsRow | null} />
+      <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null} />
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -156,7 +170,7 @@ export default function OfcCableDetailsPage() {
        <FiberTraceModal
         isOpen={!!tracingFiber}
         onClose={() => setTracingFiber(null)}
-        cableId={tracingFiber?.cableId || null}
+        startSegmentId={tracingFiber?.startSegmentId || null}
         fiberNo={tracingFiber?.fiberNo || null}
         allCables={allCablesData}
       />

@@ -3,8 +3,8 @@
 
 
 
-CREATE OR REPLACE TRIGGER trigger_joint_chambers_updated_at BEFORE UPDATE ON public.joint_chambers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-CREATE OR REPLACE TRIGGER trigger_fiber_joints_updated_at BEFORE UPDATE ON public.fiber_joints FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE OR REPLACE TRIGGER trigger_junction_closures_updated_at BEFORE UPDATE ON public.junction_closures FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE OR REPLACE TRIGGER trigger_logical_fiber_paths_updated_at BEFORE UPDATE ON public.logical_fiber_paths FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+-- FIX: Added the trigger for the now-existing logical_path_segments table.
 CREATE OR REPLACE TRIGGER trigger_logical_path_segments_updated_at BEFORE UPDATE ON public.logical_path_segments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE OR REPLACE TRIGGER trigger_fiber_splices_updated_at BEFORE UPDATE ON public.fiber_splices FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

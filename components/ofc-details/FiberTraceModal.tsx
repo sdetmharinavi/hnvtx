@@ -2,23 +2,25 @@
 'use client';
 
 import { Modal, PageSpinner } from '@/components/common/ui';
-import { OfcForSelection, RouteDetailsPayload, FiberTraceNode } from '@/components/route-manager/types';
+import { OfcForSelection, FiberTraceNode } from '@/components/route-manager/types';
 import { FiberTraceDiagram } from './FiberTraceDiagram';
-import { useFiberTrace } from '@/hooks/database/path-queries'; // Import our new hook
+import { useFiberTrace } from '@/hooks/database/path-queries';
 
 interface FiberTraceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  cableId: string | null;
+  // FIX: Changed prop name for clarity and correctness
+  startSegmentId: string | null; 
   fiberNo: number | null;
-  allCables: OfcForSelection[] | undefined; // Keep this for getting the start cable name
+  allCables: OfcForSelection[] | undefined;
 }
 
-export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, cableId, fiberNo, allCables }) => {
-  // Use the new hook to get the pre-built trace tree
-  const { data: traceTree, isLoading, isError, error } = useFiberTrace(cableId, fiberNo);
+export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, startSegmentId, fiberNo, allCables }) => {
+  // FIX: Pass the correct props to the hook
+  const { data: traceTree, isLoading, isError, error } = useFiberTrace(startSegmentId, fiberNo);
 
-  const startingCableName = allCables?.find(c => c.id === cableId)?.route_name || '';
+  // This part of the logic remains the same
+  const startingCableName = allCables?.find(c => c.id === startSegmentId)?.route_name || 'Selected Route';
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Tracing fiber path..." />;
