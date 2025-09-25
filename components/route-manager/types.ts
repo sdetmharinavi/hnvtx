@@ -2,13 +2,6 @@
 
 import { Ofc_cablesRowSchema, V_junction_closures_completeRowSchema, V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
-// The high-level route object, fetched for the selection dropdown
-// export interface OfcForSelection {
-//   id: string;
-//   route_name: string;
-//   capacity?: number; // FIXED: Added capacity as it's selected in the hook
-// }
-
 // Create a new schema with only the fields we want
 export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
@@ -43,7 +36,14 @@ export interface CableInJc {
   fibers: FiberInfo[];
 }
 
-
+// Represents the data returned by the get_jc_splicing_details RPC
+export interface JcSplicingDetails {
+  junction_closure: {
+    id: string;
+    name: string;
+  };
+  cables_at_jc: CableInJc[];
+}
 
 // Represents a single row from the fiber_splices table
 export interface SpliceConnection {
@@ -58,6 +58,18 @@ export interface SpliceConnection {
     otdr_length_km: number | null;
     loss_db: number | null;
 }
+
+export interface FiberTraceSegment {
+    segment_order: number;
+    path_type: 'CABLE' | 'JC';
+    element_id: string;
+    element_name: string;
+    details: string;
+    fiber_no: number;
+    distance_km: number | null;
+    loss_db: number | null;
+}
+
 
 // Represents the tree structure for the fiber trace visualization
 export interface FiberTraceNode {

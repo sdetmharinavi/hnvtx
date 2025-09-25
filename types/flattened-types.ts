@@ -751,14 +751,14 @@ export type EmployeesUpdate = {
 export type Fiber_splicesRow = {
     created_at: string | null;
     id: string;
-    incoming_cable_id: string;
     incoming_fiber_no: number;
+    incoming_segment_id: string;
     jc_id: string;
     logical_path_id: string | null;
     loss_db: number | null;
     otdr_length_km: number | null;
-    outgoing_cable_id: string | null;
     outgoing_fiber_no: number | null;
+    outgoing_segment_id: string | null;
     splice_type: string;
     status: string;
     updated_at: string | null;
@@ -767,14 +767,14 @@ export type Fiber_splicesRow = {
 export type Fiber_splicesInsert = {
     created_at?: string | null;
     id?: string;
-    incoming_cable_id: string;
     incoming_fiber_no: number;
+    incoming_segment_id: string;
     jc_id: string;
     logical_path_id?: string | null;
     loss_db?: number | null;
     otdr_length_km?: number | null;
-    outgoing_cable_id?: string | null;
     outgoing_fiber_no?: number | null;
+    outgoing_segment_id?: string | null;
     splice_type?: string;
     status?: string;
     updated_at?: string | null;
@@ -783,14 +783,14 @@ export type Fiber_splicesInsert = {
 export type Fiber_splicesUpdate = {
     created_at?: string | null;
     id?: string;
-    incoming_cable_id?: string;
     incoming_fiber_no?: number;
+    incoming_segment_id?: string;
     jc_id?: string;
     logical_path_id?: string | null;
     loss_db?: number | null;
     otdr_length_km?: number | null;
-    outgoing_cable_id?: string | null;
     outgoing_fiber_no?: number | null;
+    outgoing_segment_id?: string | null;
     splice_type?: string;
     status?: string;
     updated_at?: string | null;
@@ -944,6 +944,33 @@ export type Logical_fiber_pathsUpdate = {
     updated_at?: string | null;
     wavelength_nm?: number | null;
     working_path_id?: string | null;
+};
+
+export type Logical_path_segmentsRow = {
+    created_at: string | null;
+    id: string;
+    logical_path_id: string;
+    ofc_cable_id: string | null;
+    path_order: number;
+    updated_at: string | null;
+};
+
+export type Logical_path_segmentsInsert = {
+    created_at?: string | null;
+    id?: string;
+    logical_path_id: string;
+    ofc_cable_id?: string | null;
+    path_order: number;
+    updated_at?: string | null;
+};
+
+export type Logical_path_segmentsUpdate = {
+    created_at?: string | null;
+    id?: string;
+    logical_path_id?: string;
+    ofc_cable_id?: string | null;
+    path_order?: number;
+    updated_at?: string | null;
 };
 
 export type Lookup_typesRow = {
@@ -1608,6 +1635,25 @@ export type Vmux_systemsUpdate = {
 
 // ============= VIEWS =============
 
+export type V_cable_segments_at_jcRow = {
+    end_node_id: string | null;
+    fiber_count: number | null;
+    id: string | null;
+    jc_node_id: string | null;
+    original_cable_id: string | null;
+    segment_order: number | null;
+    start_node_id: string | null;
+};
+
+export type V_cable_utilizationRow = {
+    available_fibers: number | null;
+    cable_id: string | null;
+    capacity: number | null;
+    route_name: string | null;
+    used_fibers: number | null;
+    utilization_percent: number | null;
+};
+
 export type V_employee_designations_with_countRow = {
     active_count: number | null;
     created_at: string | null;
@@ -1639,6 +1685,18 @@ export type V_employees_with_countRow = {
     status: boolean | null;
     total_count: number | null;
     updated_at: string | null;
+};
+
+export type V_end_to_end_pathsRow = {
+    destination_system_id: string | null;
+    operational_status: string | null;
+    path_id: string | null;
+    path_name: string | null;
+    route_names: string | null;
+    segment_count: number | null;
+    source_system_id: string | null;
+    total_distance_km: number | null;
+    total_loss_db: number | null;
 };
 
 export type V_junction_closures_completeRow = {
@@ -1863,6 +1921,21 @@ export type V_system_connections_completeRow = {
     vmux_channel: string | null;
     vmux_subscriber: string | null;
     vmux_tk: string | null;
+};
+
+export type V_system_ring_paths_detailedRow = {
+    created_at: string | null;
+    end_node_id: string | null;
+    end_node_name: string | null;
+    id: string | null;
+    logical_path_id: string | null;
+    ofc_cable_id: string | null;
+    path_name: string | null;
+    path_order: number | null;
+    route_name: string | null;
+    source_system_id: string | null;
+    start_node_id: string | null;
+    start_node_name: string | null;
 };
 
 export type V_systems_completeRow = {

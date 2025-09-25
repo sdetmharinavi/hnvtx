@@ -41,7 +41,7 @@ function DashboardContent({
           <DashboardHeader onMenuClick={() => setIsCollapsed(false)} />
 
           {/* Main Content */}
-          <main className="p-6">
+          <main>
             <div className="mx-auto max-w-full">
               {children as ReactNode}
             </div>

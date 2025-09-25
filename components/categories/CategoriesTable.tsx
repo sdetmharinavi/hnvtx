@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FiEdit2, FiInfo } from "react-icons/fi";
 import { Button } from "@/components/common/ui/Button";
-import { Card } from "@/components/common/ui/Card";
+import { Card } from "@/components/common/ui/card";
 import { formatCategoryName } from "@/components/categories/utils";
 import { Categories, CategoryInfo } from "./categories-types";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";

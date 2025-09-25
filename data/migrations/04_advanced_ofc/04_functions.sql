@@ -698,3 +698,85 @@ CREATE OR REPLACE TRIGGER trigger_junction_closures_delete_segments
   AFTER DELETE ON public.junction_closures
   FOR EACH ROW
   EXECUTE FUNCTION public.trigger_recreate_cable_segments_on_jc_delete();
+
+  -- This function is now the core logic for managing how a cable is divided into segments.
+-- It is called by a trigger whenever a JC is added or deleted.
+CREATE OR REPLACE FUNCTION public.recalculate_segments_for_cable(p_cable_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_cable RECORD;
+BEGIN
+  -- Get the main cable details
+  SELECT * INTO v_cable FROM public.ofc_cables WHERE id = p_cable_id;
+  IF NOT FOUND THEN
+    RAISE WARNING 'Cable not found for segmentation: %', p_cable_id;
+    RETURN;
+  END IF;
+
+  -- Delete old segments to rebuild them from scratch
+  DELETE FROM public.cable_segments WHERE original_cable_id = p_cable_id;
+
+  -- Create a temporary table of all points on the route (start node, all JCs, end node)
+  CREATE TEMP TABLE route_points AS
+  SELECT v_cable.sn_id AS point_id, 'node' AS point_type, 0.0 AS position_km
+  UNION ALL
+  SELECT jc.node_id, 'jc', jc.position_km
+  FROM public.junction_closures jc
+  WHERE jc.ofc_cable_id = p_cable_id
+  UNION ALL
+  SELECT v_cable.en_id, 'node', v_cable.current_rkm;
+
+  -- Insert the new, correct segments based on the ordered points
+  INSERT INTO public.cable_segments (
+    original_cable_id, segment_order,
+    start_node_id, start_node_type,
+    end_node_id, end_node_type,
+    distance_km, fiber_count
+  )
+  SELECT
+    p_cable_id,
+    ROW_NUMBER() OVER (ORDER BY p_start.position_km),
+    p_start.point_id, p_start.point_type,
+    p_end.point_id, p_end.point_type,
+    p_end.position_km - p_start.position_km,
+    v_cable.capacity
+  FROM route_points p_start
+  JOIN LATERAL (
+    SELECT * FROM route_points p2
+    WHERE p2.position_km > p_start.position_km
+    ORDER BY p2.position_km ASC
+    LIMIT 1
+  ) p_end ON true;
+
+  DROP TABLE route_points;
+END;
+$$;
+
+-- This trigger function ensures segmentation is always up-to-date.
+CREATE OR REPLACE FUNCTION public.trigger_manage_cable_segments()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    -- A new JC was added, recalculate segments for its parent cable.
+    PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
+  ELSIF (TG_OP = 'DELETE') THEN
+    -- A JC was removed, recalculate segments for its parent cable.
+    PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
+  END IF;
+  RETURN NULL; -- result is ignored since this is an AFTER trigger
+END;
+$$;
+
+-- Attach the trigger to the junction_closures table.
+CREATE OR REPLACE TRIGGER on_junction_closure_change
+AFTER INSERT OR DELETE ON public.junction_closures
+FOR EACH ROW
+EXECUTE FUNCTION public.trigger_manage_cable_segments();

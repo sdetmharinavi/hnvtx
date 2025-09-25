@@ -1,5 +1,5 @@
 -- Path: migrations/04_advanced_ofc/02_views.sql
--- Description: Defines views for analyzing OFC paths and utilization.
+-- Description: Defines views for analyzing OFC paths and utilization. [UPDATED]
 
 -- View showing complete information for a junction closure.
 CREATE OR REPLACE VIEW public.v_junction_closures_complete WITH (security_invoker = true) AS
@@ -14,8 +14,8 @@ SELECT
 FROM public.junction_closures jc
 JOIN public.nodes n ON jc.node_id = n.id;
 
+-- NEW VIEW: This view helps find which cable segments are connected to a specific JC node.
 CREATE OR REPLACE VIEW public.v_cable_segments_at_jc WITH (security_invoker = true) AS
--- Normalize START endpoint: expose jc_id as the node_id of the matched junction_closure
 SELECT
   cs.id,
   cs.original_cable_id,
@@ -23,41 +23,10 @@ SELECT
   cs.fiber_count,
   cs.start_node_id,
   cs.end_node_id,
-  cs.start_node_type,
-  cs.end_node_type,
-  cs.created_at,
-  cs.updated_at,
-  jcs.node_id AS jc_id,
-  'start'::text AS jc_position
+  jcs.node_id as jc_node_id
 FROM public.cable_segments cs
-JOIN public.junction_closures jcs
-  ON cs.start_node_type = 'jc'
- AND (
-       jcs.id = cs.start_node_id  -- proper schema
-    OR jcs.node_id = cs.start_node_id -- legacy data stored node_id in start_node_id
-     )
-UNION ALL
--- Normalize END endpoint: expose jc_id as the node_id of the matched junction_closure
-SELECT
-  cs.id,
-  cs.original_cable_id,
-  cs.segment_order,
-  cs.fiber_count,
-  cs.start_node_id,
-  cs.end_node_id,
-  cs.start_node_type,
-  cs.end_node_type,
-  cs.created_at,
-  cs.updated_at,
-  jce.node_id AS jc_id,
-  'end'::text AS jc_position
-FROM public.cable_segments cs
-JOIN public.junction_closures jce
-  ON cs.end_node_type = 'jc'
- AND (
-       jce.id = cs.end_node_id    -- proper schema
-    OR jce.node_id = cs.end_node_id -- legacy data stored node_id in end_node_id
-     );
+JOIN public.junction_closures jcs ON (cs.start_node_type = 'jc' AND cs.start_node_id = jcs.node_id)
+                                  OR (cs.end_node_type = 'jc' AND cs.end_node_id = jcs.node_id);
 
 
 -- View showing end-to-end logical path summaries.

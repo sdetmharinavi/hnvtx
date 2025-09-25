@@ -9,31 +9,32 @@
 GRANT ALL ON public.junction_closures TO admin;
 GRANT ALL ON public.cable_segments TO admin;
 GRANT ALL ON public.fiber_splices TO admin;
-GRANT ALL ON public.fiber_joints TO admin;
+-- GRANT ALL ON public.fiber_joints TO admin;
 GRANT ALL ON public.logical_fiber_paths TO admin;
-GRANT ALL ON public.logical_path_segments TO admin;
+-- GRANT ALL ON public.logical_path_segments TO admin;
 
 
 -- Viewer gets read-only access to all tables and views.
 GRANT SELECT ON public.junction_closures TO viewer;
 GRANT SELECT ON public.cable_segments TO viewer;
 GRANT SELECT ON public.fiber_splices TO viewer;
-GRANT SELECT ON public.fiber_joints TO viewer;
+-- GRANT SELECT ON public.fiber_joints TO viewer;
 GRANT SELECT ON public.logical_fiber_paths TO viewer;
-GRANT SELECT ON public.logical_path_segments TO viewer;
+-- GRANT SELECT ON public.logical_path_segments TO viewer;
 
 -- View grants for this module's features
 GRANT SELECT ON public.v_junction_closures_complete TO viewer, admin;
-GRANT SELECT ON public.v_system_ring_paths_detailed TO viewer, admin;
-GRANT SELECT ON public.v_cable_utilization TO viewer, admin;
-GRANT SELECT ON public.v_end_to_end_paths TO viewer, admin;
-GRANT SELECT ON public.v_cable_segments_at_node TO viewer, admin, authenticated;
+GRANT SELECT ON public.v_cable_segments_at_jc TO viewer, admin;
+-- GRANT SELECT ON public.v_system_ring_paths_detailed TO viewer, admin;
+-- GRANT SELECT ON public.v_cable_utilization TO viewer, admin;
+-- GRANT SELECT ON public.v_end_to_end_paths TO viewer, admin;
+-- GRANT SELECT ON public.v_cable_segments_at_node TO viewer, admin, authenticated;
 
 -- Grant select on dependent tables from other modules for views to work
 GRANT SELECT ON public.ofc_cables TO viewer, authenticated;
 GRANT SELECT ON public.nodes TO viewer;
 GRANT SELECT ON public.junction_closures TO authenticated;
-GRANT SELECT ON public.v_cable_segments_at_node TO viewer, authenticated;
+-- GRANT SELECT ON public.v_cable_segments_at_node TO viewer, authenticated;
 GRANT SELECT ON public.cable_segments TO authenticated;
 
 
@@ -49,8 +50,8 @@ DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'junction_closures', 'cable_segments', 'fiber_splices', 'fiber_joints',
-    'logical_fiber_paths', 'logical_path_segments'
+    'junction_closures', 'cable_segments', 'fiber_splices',
+    'logical_fiber_paths'-- , 'fiber_joints', 'logical_path_segments'
   ]
   LOOP
     -- Enable RLS
@@ -97,16 +98,16 @@ USING (true);
 -- This allows any logged-in user to CALL the function.
 -- Security inside the function and RLS on tables will enforce permissions.
 
-GRANT EXECUTE ON FUNCTION public.manage_splice(p_action TEXT, p_jc_id UUID, p_splice_id UUID, p_incoming_cable_id UUID, p_incoming_fiber_no INT, p_outgoing_cable_id UUID, p_outgoing_fiber_no INT, p_splice_type TEXT) TO authenticated;
+-- GRANT EXECUTE ON FUNCTION public.manage_splice(p_action TEXT, p_jc_id UUID, p_splice_id UUID, p_incoming_cable_id UUID, p_incoming_fiber_no INT, p_outgoing_cable_id UUID, p_outgoing_fiber_no INT, p_splice_type TEXT) TO authenticated;
 
 -- =================================================================
 -- Section 4: View-Level Grants
 -- =================================================================
 DO $$
 BEGIN
-  GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer;
-  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer;
-  GRANT SELECT ON public.v_cable_utilization TO admin, viewer;
+  -- GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer;
+  -- GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer;
+  -- GRANT SELECT ON public.v_cable_utilization TO admin, viewer;
 
   RAISE NOTICE 'Applied SELECT grants on advanced OFC views.';
 END;

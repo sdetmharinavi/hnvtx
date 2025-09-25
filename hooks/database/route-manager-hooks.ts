@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { JcSplicingDetails, AutoSpliceResult } from '@/components/route-manager/types';
+import { JcSplicingDetails, AutoSpliceResult, Site, Equipment, CableSegment, FiberSplice } from '@/components/route-manager/types';
 import { toast } from 'sonner';
 import {
   Ofc_cablesRowSchema,
@@ -31,8 +31,18 @@ export type CableRoute = {
 
 // Detailed data for a selected route, fetched on the client
 export interface RouteDetailsPayload {
-  route: CableRoute;
-  junction_closures: JunctionClosure[];
+  route: {
+    id: string;
+    name: string;
+    start_site: Site;
+    end_site: Site;
+    capacity: number;
+    distance_km: number;
+    evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
+  };
+  equipment: Equipment[]; // existing JCs
+  segments: CableSegment[];
+  splices: FiberSplice[];
 }
 
 const supabase = createClient();
@@ -72,38 +82,73 @@ export function useRouteDetails(routeId: string | null) {
   return useQuery({
     queryKey: ['route-details', routeId],
     queryFn: async (): Promise<RouteDetailsPayload | null> => {
-      console.log("routeId",routeId);
       if (!routeId) return null;
-      // Fetch from the complete view which already has the node names
+
+      // In a real app, this would be a single RPC call `get_route_evolution_details(routeId)`
+      // For now, we simulate it with multiple calls.
+      
+      // 1. Fetch main route info
       const { data: routeData, error: routeError } = await supabase
         .from('v_ofc_cables_complete')
         .select('*')
         .eq('id', routeId)
         .single();
       if (routeError) throw routeError;
-      if (!routeData) return null;
 
+      // 2. Fetch all JCs on this cable
       const { data: jcData, error: jcError } = await supabase
-        .from('v_junction_closures_complete')
-        .select('*')
-        .eq('ofc_cable_id', routeId)
-        .order('position_km');
+        .from('junction_closures')
+        .select('*, node:node_id(name, latitude, longitude)')
+        .eq('ofc_cable_id', routeId);
       if (jcError) throw jcError;
 
-      // Type-safe mapping from the view row to the payload structure
-      const route: RouteDetailsPayload['route'] = {
-        id: routeData.node_id!,
-        route_name: routeData.route_name!,
-        start_node: { id: routeData.sn_id!, name: routeData.sn_name || 'Unknown SN' },
-        end_node: { id: routeData.en_id!, name: routeData.en_name || 'Unknown EN' },
-        capacity: routeData.capacity!,
-        current_rkm: routeData.current_rkm,
-      };
+      // 3. Fetch all segments for this cable
+      const { data: segmentData, error: segmentError } = await supabase
+        .from('cable_segments')
+        .select('*')
+        .eq('original_cable_id', routeId)
+        .order('segment_order');
+      if (segmentError) throw segmentError;
 
-      return { route, junction_closures: jcData as JunctionClosure[] };
+      // 4. Fetch all splices related to these segments
+      const segmentIds = segmentData?.map(s => s.id) || [];
+      const { data: spliceData, error: spliceError } = await supabase
+          .from('fiber_splices')
+          .select('*')
+          .in('incoming_segment_id', segmentIds);
+      if(spliceError) throw spliceError;
+
+      // 5. Transform data into the final payload structure
+      const payload: RouteDetailsPayload = {
+        route: {
+          id: routeData.id,
+          name: routeData.route_name,
+          start_site: { id: routeData.sn_id, name: routeData.sn_name },
+          end_site: { id: routeData.en_id, name: routeData.en_name },
+          capacity: routeData.capacity,
+          distance_km: routeData.current_rkm,
+          evolution_status: 'fully_segmented' // This would be determined by logic
+        },
+        equipment: jcData.map(jc => ({
+          id: jc.id,
+          name: jc.node.name,
+          equipment_type: 'junction_closure',
+          latitude: jc.node.latitude,
+          longitude: jc.node.longitude,
+          status: 'existing',
+          attributes: {
+            jc_type: 'inline', // This would come from your DB
+            capacity: 0, // This would come from your DB
+            position_on_route: (jc.position_km / routeData.current_rkm) * 100
+          }
+        })),
+        segments: segmentData,
+        splices: spliceData
+      };
+      
+      return payload;
     },
     enabled: !!routeId,
-    // staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -157,32 +202,40 @@ export function useManageSplice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: {
-      action: 'create' | 'delete' | 'update_otdr';
+      action: 'create' | 'delete';
       jcId: string;
       spliceId?: string;
-      incomingCableId?: string;
+      // FIX: Use segment IDs now
+      incomingSegmentId?: string;
       incomingFiberNo?: number;
-      outgoingCableId?: string;
+      outgoingSegmentId?: string;
       outgoingFiberNo?: number;
       spliceType?: 'pass_through' | 'branch' | 'termination';
-      otdrLengthKm?: number;
     }) => {
-      const { data, error } = await supabase.rpc('manage_splice', {
-        p_action: variables.action,
-        p_jc_id: variables.jcId,
-        p_splice_id: variables.spliceId,
-        p_incoming_cable_id: variables.incomingCableId,
-        p_incoming_fiber_no: variables.incomingFiberNo,
-        p_outgoing_cable_id: variables.outgoingCableId,
-        p_outgoing_fiber_no: variables.outgoingFiberNo,
-        p_splice_type: variables.spliceType,
-        p_otdr_length_km: variables.otdrLengthKm,
-      });
-      if (error) throw error;
-      return data;
+      // This would now call an updated `manage_splice` RPC that accepts segment IDs
+      // For brevity, the direct SDK call is shown
+      if (variables.action === 'create') {
+        const { data, error } = await supabase.from('fiber_splices').insert({
+          jc_id: variables.jcId,
+          incoming_segment_id: variables.incomingSegmentId,
+          incoming_fiber_no: variables.incomingFiberNo,
+          outgoing_segment_id: variables.outgoingSegmentId,
+          outgoing_fiber_no: variables.outgoingFiberNo,
+          splice_type: variables.spliceType,
+        }).select();
+        if (error) throw error;
+        return data;
+      }
+      if (variables.action === 'delete' && variables.spliceId) {
+        const { error } = await supabase.from('fiber_splices').delete().eq('id', variables.spliceId);
+        if (error) throw error;
+      }
     },
-    onSuccess: (_, variables) =>
-      queryClient.invalidateQueries({ queryKey: ['jc-splicing-details', variables.jcId] }),
+    onSuccess: (_, variables) => {
+      toast.success("Splice configuration updated!");
+      queryClient.invalidateQueries({ queryKey: ['route-details', variables.jcId] });
+    },
+    onError: (err) => toast.error(`Splice Error: ${err.message}`),
   });
 }
 

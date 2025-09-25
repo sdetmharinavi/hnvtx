@@ -3,13 +3,13 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePagedOfcCablesComplete } from './database';
-import { Row } from './database';
+import { Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
 
-type OfcConnection = Row<'ofc_connections'>;
+
 interface useCreateOfcConnectionProps {
   supabase: SupabaseClient<Database>;
   cableId: string;
-  rawConnections: OfcConnection[];
+  rawConnections: Ofc_connectionsRowSchema[];
   refetchOfcConnections: () => void;
   isLoadingOfcConnections: boolean;
 }
@@ -41,7 +41,7 @@ export const useCreateOfcConnection = ({
 
   // Mutation for creating new connections (unchanged)
   const { mutateAsync: createConnections } = useMutation({
-    mutationFn: async (newConnections: OfcConnection[]) => {
+    mutationFn: async (newConnections: Ofc_connectionsRowSchema[]) => {
       const { data, error } = await supabase
         .from('ofc_connections')
         .insert(newConnections);
@@ -83,22 +83,24 @@ export const useCreateOfcConnection = ({
 
     // Create an array of new connections to insert
     const newConnections = Array.from({ length: missingCount }, (_, index) => {
-      const connection: Partial<OfcConnection> = {
+      const connection: Partial<Ofc_connectionsRowSchema> = {
+        connection_category: 'OFC_JOINT_TYPES', // Or a default value
+        connection_type: 'straight', // Or a default value
+        destination_port: null,
+        en_dom: null,
+        en_power_dbm: null,
         ofc_id: cableId,
         fiber_no_sn: currentConnectionCount + index + 1,
         fiber_no_en: currentConnectionCount + index + 1,
-        connection_type: 'straight', // Or a default value
-        connection_category: 'OFC_JOINT_TYPES', // Or a default value
         fiber_role: 'working', // Or a default value
+        logical_path_id: null,
         status: true,
         // --- All optional fields are explicitly set to null for clarity ---
         system_id: null, // <-- The only missing field, now added
-        en_dom: null,
-        en_power_dbm: null,
-        logical_path_id: null,
         otdr_distance_en_km: null,
         otdr_distance_sn_km: null,
         path_segment_order: null,
+        source_port: null,
         remark: null,
         route_loss_db: null,
         sn_dom: null,
@@ -110,7 +112,7 @@ export const useCreateOfcConnection = ({
 
     try {
       console.log(`Creating ${newConnections.length} new connections`);
-      await createConnections(newConnections as OfcConnection[]);
+      await createConnections(newConnections as Ofc_connectionsRowSchema[]);
     } catch (error) {
       console.error('Failed to create connections:', error);
       throw error;

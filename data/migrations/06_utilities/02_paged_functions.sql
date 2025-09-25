@@ -164,7 +164,7 @@ BEGIN
     'SELECT v.id, v.name, v.created_at, v.latitude, v.longitude, v.maintenance_area_name, v.node_type_name, v.remark, v.status, v.updated_at,
       count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_nodes_complete v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_nodes_complete', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_nodes_complete(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -177,7 +177,7 @@ BEGIN
     'SELECT v.id, v.route_name, v.sn_name, v.en_name, v.capacity, v.ofc_type_name, v.ofc_owner_name, v.current_rkm, v.maintenance_area_name, v.commissioned_on, v.status, v.remark, v.updated_at,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_ofc_cables_complete v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_ofc_cables_complete', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_ofc_cables_complete(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -190,7 +190,7 @@ BEGIN
     'SELECT v.id, v.name, v.ring_type_name, v.maintenance_area_name, v.total_nodes, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_rings_with_count v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_rings_with_count', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_rings_with_count(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -203,7 +203,7 @@ BEGIN
     'SELECT v.id, v.ofc_route_name, v.fiber_no_sn, v.sn_name, v.system_name, v.en_name, v.fiber_role, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_ofc_connections_complete v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_ofc_connections_complete', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_ofc_connections_complete(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -216,7 +216,7 @@ BEGIN
     'SELECT v.id, v.system_name, v.system_type_name, v.node_name, v.ip_address, v.status, v.remark,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_systems_complete v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_systems_complete', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_systems_complete(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -229,7 +229,7 @@ BEGIN
     'SELECT v.id, v.system_name, v.system_type_name, v.media_type_name, v.sn_name, v.sn_node_name, v.en_name, v.en_node_name, v.connected_system_name, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_system_connections_complete v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+   public.build_where_clause(p_filters, 'v_system_connections_complete', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_system_connections_complete(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -242,7 +242,7 @@ BEGIN
     'SELECT v.id, v.category, v.name, v.code, v.description, v.sort_order, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_lookup_types_with_count v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+     public.build_where_clause(p_filters, 'v_lookup_types_with_count', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_lookup_types_with_count(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -255,7 +255,7 @@ BEGIN
     'SELECT v.id, v.name, v.code, v.maintenance_area_type_name, v.contact_person, v.contact_number, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_maintenance_areas_with_count v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_maintenance_areas_with_count', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_maintenance_areas_with_count(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -268,7 +268,7 @@ BEGIN
     'SELECT v.id, v.name, v.parent_id, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_employee_designations_with_count v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_employee_designations_with_count', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_employee_designations_with_count(INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 
@@ -281,6 +281,6 @@ BEGIN
     'SELECT v.id, v.employee_name, v.employee_pers_no, v.employee_designation_name, v.employee_contact, v.status,
            count(*) OVER() AS total_count, sum(CASE WHEN v.status THEN 1 ELSE 0 END) OVER() AS active_count, sum(CASE WHEN NOT v.status THEN 1 ELSE 0 END) OVER() AS inactive_count
     FROM public.v_employees_with_count v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L',
-    public.build_where_clause(p_filters), p_order_by, p_order_dir, p_limit, p_offset);
+    public.build_where_clause(p_filters, 'v_employees_with_count', 'v'), p_order_by, p_order_dir, p_limit, p_offset);
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_employees_with_count(INT, INT, TEXT, TEXT, JSONB) TO authenticated;

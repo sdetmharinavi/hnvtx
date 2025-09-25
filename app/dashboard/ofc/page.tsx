@@ -79,7 +79,7 @@ const useOfcData = (
   const inactiveCount = data?.[0]?.inactive_count || 0;
 
   return {
-    data: data || [],
+    data: (data || []) as V_ofc_cables_completeRowSchema[],
     totalCount,
     activeCount,
     inactiveCount,
