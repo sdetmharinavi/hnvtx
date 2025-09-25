@@ -2,54 +2,34 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/stores/authStore";
-import { Database, Json } from "@/types/supabase-types";
+import { Json } from "@/types/supabase-types";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
-import { useGetMyUserDetails, useTableUpdate } from "@/hooks/database";
+import { useTableUpdate } from "@/hooks/database";
 import { useRouter } from "next/navigation";
+import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
+import { useAdminGetAllUsersExtended } from "@/hooks/useAdminUsers";
 
-
-type ProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"];
-
-// Define Address as a type that can be serialized to JSON
-type Address = {
-  street?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zip_code?: string | null;
-  country?: string | null;
-};
-
-interface ProfileFormData {
-  first_name: string;
-  last_name: string;
-  avatar_url: string;
-  date_of_birth: string;
-  designation: string;
-  phone_number: string;
-  address: Address | null;
-  preferences: Json | null;
-}
 
 // Helper function to safely get first profile
-const getFirstProfile = (profiles: any[] | undefined) => {
+const getFirstProfile = (profiles: V_user_profiles_extendedRowSchema[]) => {
   return profiles && profiles.length > 0 ? profiles[0] : null;
 };
 
 // Helper function to safely cast to Address
-const toAddress = (data: unknown): Address | null => {
+const toAddress = (data: unknown): Json | null => {
   if (!data || typeof data !== "object") return null;
-  return data as Address;
+  return data as Json;
 };
 
 // Helper function to create initial form data
-const createInitialFormData = (): ProfileFormData => ({
+const createInitialFormData = (): User_profilesUpdateSchema => ({
   first_name: "",
   last_name: "",
-  avatar_url: "",
-  date_of_birth: "",
-  designation: "",
-  phone_number: "",
+  avatar_url: null,
+  date_of_birth: null,
+  designation: null,
+  phone_number: null,
   address: null,
   preferences: null,
 });
@@ -59,14 +39,20 @@ export default function OnboardingFormEnhanced() {
   const supabase = createClient();
   // const updateProfile = useUpdateProfile();
   const [isDirty, setIsDirty] = useState(false);
-  const [formData, setFormData] = useState<ProfileFormData>(createInitialFormData);
+  const [formData, setFormData] = useState<User_profilesUpdateSchema>(createInitialFormData);
   const [localError, setLocalError] = useState<Error | null>(null);
   const [isUpdateSuccess, setIsUpdateSuccess] = useState(false);
 
   const router = useRouter();
   
   
-  const { data: profiles, isLoading: profileLoading, error: profileError } = useGetMyUserDetails(supabase);
+  const { data: profiles, isLoading: profileLoading, error: profileError } = useAdminGetAllUsersExtended({
+    search_query: "",
+    filter_role: "",
+    filter_status: "",
+    page_offset: 0,
+    page_limit: 10,
+  });
 
   const { mutate, isPending: updatePending } = useTableUpdate(supabase, "user_profiles", {
     onSuccess: () => {
@@ -84,19 +70,19 @@ export default function OnboardingFormEnhanced() {
   const isLoading = profileLoading || updatePending;
 
   // Get the first profile safely
-  const profile = getFirstProfile(profiles);
+  const profile = getFirstProfile(profiles as V_user_profiles_extendedRowSchema[]);
 
   // Initialize form data when profile loads
   useEffect(() => {
     if (profile) {
       // console.log("profile", profile);
-      const newFormData: ProfileFormData = {
+      const newFormData: User_profilesUpdateSchema = {
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",
-        avatar_url: profile.avatar_url || "",
-        date_of_birth: profile.date_of_birth || "",
-        designation: profile.designation || "",
-        phone_number: profile.phone_number || "",
+        avatar_url: profile.avatar_url,
+        date_of_birth: profile.date_of_birth,
+        designation: profile.designation,
+        phone_number: profile.phone_number,
         address: toAddress(profile.address),
         preferences: (profile.preferences as Json) || null,
       };
@@ -111,10 +97,10 @@ export default function OnboardingFormEnhanced() {
       setFormData({
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",
-        avatar_url: profile.avatar_url || "",
-        date_of_birth: profile.date_of_birth || "",
-        designation: profile.designation || "",
-        phone_number: profile.phone_number || "",
+        avatar_url: profile.avatar_url,
+        date_of_birth: profile.date_of_birth,
+        designation: profile.designation,
+        phone_number: profile.phone_number,
         address: toAddress(profile.address),
         preferences: (profile.preferences as Json) || null,
       });
@@ -128,7 +114,7 @@ export default function OnboardingFormEnhanced() {
     if (!isDirty) return;
 
     try {
-      const updates: Partial<ProfileUpdate> = {};
+      const updates: Partial<User_profilesUpdateSchema> = {};
 
       if (profile) {
         // Compare each field and only update if changed
@@ -138,16 +124,16 @@ export default function OnboardingFormEnhanced() {
         if (formData.last_name !== (profile.last_name || "")) {
           updates.last_name = formData.last_name;
         }
-        if (formData.avatar_url !== (profile.avatar_url || "")) {
+        if (formData.avatar_url !== (profile.avatar_url)) {
           updates.avatar_url = formData.avatar_url;
         }
-        if (formData.date_of_birth !== (profile.date_of_birth || "")) {
+        if (formData.date_of_birth !== (profile.date_of_birth)) {
           updates.date_of_birth = formData.date_of_birth;
         }
-        if (formData.designation !== (profile.designation || "")) {
+        if (formData.designation !== (profile.designation)) {
           updates.designation = formData.designation;
         }
-        if (formData.phone_number !== (profile.phone_number || "")) {
+        if (formData.phone_number !== (profile.phone_number)) {
           updates.phone_number = formData.phone_number;
         }
 
@@ -180,7 +166,7 @@ export default function OnboardingFormEnhanced() {
 
       if (Object.keys(updates).length > 0) {
         await mutate({
-          id: profile.id,
+          id: profile?.id || "",
           data: updates,
         });
       }
@@ -198,7 +184,7 @@ export default function OnboardingFormEnhanced() {
     setIsDirty(true);
   };
 
-  const handleAddressChange = (field: keyof Address, value: string) => {
+  const handleAddressChange = (field: keyof Json, value: string) => {
     setFormData((prev) => ({
       ...prev,
       address: {
@@ -283,7 +269,7 @@ export default function OnboardingFormEnhanced() {
             id='phone_number'
             name='phone_number'
             type='tel'
-            value={formData.phone_number}
+            value={formData.phone_number ?? ""}
             onChange={handleChange}
             placeholder='+1 (555) 123-4567'
             className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -331,7 +317,7 @@ export default function OnboardingFormEnhanced() {
             id='designation'
             name='designation'
             type='text'
-            value={formData.designation}
+            value={formData.designation ?? ""}
             onChange={handleChange}
             placeholder='e.g. Software Engineer'
             className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -347,7 +333,7 @@ export default function OnboardingFormEnhanced() {
             id='date_of_birth'
             name='date_of_birth'
             type='date'
-            value={formData.date_of_birth}
+            value={formData.date_of_birth ?? ""}
             onChange={handleChange}
             max={new Date().toISOString().split("T")[0]} // Prevent future dates
             className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -364,7 +350,7 @@ export default function OnboardingFormEnhanced() {
               id='avatar_url'
               name='avatar_url'
               type='url'
-              value={formData.avatar_url}
+              value={formData.avatar_url ?? ""}
               onChange={handleChange}
               placeholder='https://example.com/avatar.jpg'
               className='flex-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -404,7 +390,7 @@ export default function OnboardingFormEnhanced() {
               <input
                 id='address_street'
                 type='text'
-                value={formData.address?.street || ""}
+                value={formData.address?.street ?? ""}
                 onChange={(e) => handleAddressChange("street", e.target.value)}
                 placeholder='123 Main Street'
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -418,7 +404,7 @@ export default function OnboardingFormEnhanced() {
               <input
                 id='address_city'
                 type='text'
-                value={formData.address?.city || ""}
+                value={formData.address?.city ?? ""}
                 onChange={(e) => handleAddressChange("city", e.target.value)}
                 placeholder='New York'
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -432,7 +418,7 @@ export default function OnboardingFormEnhanced() {
               <input
                 id='address_state'
                 type='text'
-                value={formData.address?.state || ""}
+                value={formData.address?.state ?? ""}
                 onChange={(e) => handleAddressChange("state", e.target.value)}
                 placeholder='NY'
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -446,7 +432,7 @@ export default function OnboardingFormEnhanced() {
               <input
                 id='address_postal_code'
                 type='text'
-                value={formData.address?.zip_code || ""}
+                value={formData.address?.zip_code ?? ""}
                 onChange={(e) => handleAddressChange("zip_code", e.target.value)}
                 placeholder='10001'
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -460,7 +446,7 @@ export default function OnboardingFormEnhanced() {
               <input
                 id='address_country'
                 type='text'
-                value={formData.address?.country || ""}
+                value={formData.address?.country ?? ""}
                 onChange={(e) => handleAddressChange("country", e.target.value)}
                 placeholder='United States'
                 className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'

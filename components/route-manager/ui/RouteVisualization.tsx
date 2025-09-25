@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Equipment, RouteDetailsPayload, CableSegment } from '@/components/route-manager/types';
+import { Equipment, RouteDetailsPayload } from '@/components/route-manager/types';
 import { Button } from '@/components/common/ui';
 import { FiEdit, FiTrash2 } from 'react-icons/fi';
 
@@ -11,14 +11,6 @@ interface Props {
   onJcClick: (jc: Equipment) => void;
   onEditJc: (jc: Equipment) => void;
   onDeleteJc: (jc: Equipment) => void;
-}
-
-interface Point {
-  type: 'node' | 'jc';
-  id: string;
-  name: string;
-  position: number; // Position in KM
-  originalEquipment?: Equipment;
 }
 
 export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, onDeleteJc }: Props) {
@@ -32,7 +24,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                        type: 'jc' as const, 
                        id: jc.id, 
                        name: jc.name, 
-                       position: (route.distance_km * jc.attributes.position_on_route) / 100,
+                       position: (route.distance_km ?? 0 * jc.attributes.position_on_route) / 100,
                        originalEquipment: jc
                      })),
     { type: 'node' as const, id: route.end_site.id, name: route.end_site.name, position: route.distance_km },
@@ -56,7 +48,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       <div className="relative w-full h-1 bg-gray-300 dark:bg-gray-600 my-8">
           <div className="relative flex justify-between w-full h-full">
             {points.map((point) => {
-              const leftPercentage = Math.min(100, Math.max(0, (point.position / totalDistance) * 100));
+              const leftPercentage = Math.min(100, Math.max(0, (point.position ?? 0 / totalDistance) * 100));
               return (
                 <div
                   key={`${point.type}-${point.id}`}
@@ -70,8 +62,8 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                     <span className="text-white font-bold text-sm">{point.type === 'node' ? 'N' : 'JC'}</span>
                   </div>
                   <div className="absolute top-12 text-center w-28">
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={point.name}>{point.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{point.position.toFixed(2)} km</p>
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={point.name ?? ''}>{point.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{point.position?.toFixed(2)} km</p>
                   </div>
                   {point.type === 'jc' && point.originalEquipment && (
                     <div className="absolute -top-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">

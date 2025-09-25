@@ -5,19 +5,14 @@ import { formatDate } from "@/utils/formatters";
 import { RoleBadge } from '@/components/common/ui';
 import { UserRole } from '@/types/user-roles';
 import { renderKeyValueCell } from '@/utils/renderKeyValueCell';
-import { UserProfileData } from '@/components/users/user-types';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
-export const UserProfileColumns = (data:UserProfileData[]) => {
+export const UserProfileColumns = (data:V_user_profiles_extendedRowSchema[]) => {
   return useDynamicColumnConfig("v_user_profiles_extended", {
     data:data,
     omit: ["id", "created_at", "updated_at", "auth_updated_at", "email_confirmed_at", "raw_user_meta_data", "raw_app_meta_data", "phone_confirmed_at", "first_name", "last_name", "is_phone_verified", "computed_status"],
     overrides: {
-      last_sign_in_at: {
-        render: (value) => {
-          return formatDate(value as string, { format: "dd-mm-yyyy" });
-        },
-      },
       status: {
         render: (value) => {
           return <StatusBadge status={value as string} />;

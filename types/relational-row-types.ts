@@ -1,6 +1,7 @@
-import { Row } from "@/hooks/database";
+import { Employee_designationsRowSchema, EmployeesRowSchema, Logical_fiber_pathsRowSchema, Maintenance_areasRowSchema, Management_portsInsertSchema, NodesRowSchema, Ofc_cablesRowSchema, Ofc_connectionsRowSchema, RingsRowSchema, Sdh_connectionsRowSchema, Sdh_node_associationsRowSchema, Sdh_systemsRowSchema, System_connectionsRowSchema, SystemsRowSchema, User_profilesRowSchema, V_system_connections_completeRowSchema, V_systems_completeRowSchema, Vmux_connectionsRowSchema, Vmux_systemsRowSchema } from "@/schemas/zod-schemas";
 
-export type RingRowsWithRelations = Row<'rings'> & {
+
+export type RingRowsWithRelations = RingsRowSchema & {
   ring_type?: {
     id: string;
     code: string;
@@ -11,14 +12,14 @@ export type RingRowsWithRelations = Row<'rings'> & {
   } | null;
 };
   
-  export type EmployeeDesignationRowsWithRelations = Row<'employee_designations'> & {
+  export type EmployeeDesignationRowsWithRelations = Employee_designationsRowSchema & {
     parent?: {
       id: string;
       name: string;
     } | null;
   };
   
-  export type EmployeeRowsWithRelations = Row<'employees'> & {
+  export type EmployeeRowsWithRelations = EmployeesRowSchema & {
     employee_designation?: {
       id: string;
       name: string;
@@ -29,41 +30,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type FiberJointConnectionRowsWithRelations = Row<'fiber_joint_connections'> & {
-    input_ofc_cable?: {
-      id: string;
-      route_name: string;
-    } | null;
-    fiber_joint?: {
-      id: string;
-      joint_name: string;
-    } | null;
-    logical_fiber_path?: {
-      id: string;
-      path_name: string;
-    } | null;
-    output_ofc_cable?: {
-      id: string;
-      route_name: string;
-    } | null;
-  };
-  
-  export type FiberJointRowsWithRelations = Row<'fiber_joints'> & {
-    maintenance_area?: {
-      id: string;
-      name: string;
-    } | null;
-    node?: {
-      id: string;
-      name: string;
-    } | null;
-    joint_type_lookup?: {
-      category: string;
-      name: string;
-    } | null;
-  };
-  
-  export type LogicalFiberPathRowsWithRelations = Row<'logical_fiber_paths'> & {
+  export type LogicalFiberPathRowsWithRelations = Logical_fiber_pathsRowSchema & {
     operational_status_lookup?: {
       category: string;
       name: string;
@@ -83,7 +50,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
   };
   
   
-  export type MaintenanceAreaRowsWithRelations = Row<'maintenance_areas'> & {
+  export type MaintenanceAreaRowsWithRelations = Maintenance_areasRowSchema & {
     area_type?: {
       id: string;
       name: string;
@@ -94,7 +61,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type ManagementPortRowsWithRelations = Row<'management_ports'> & {
+  export type ManagementPortRowsWithRelations = Management_portsInsertSchema & {
     node?: {
       id: string;
       name: string;
@@ -105,7 +72,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type NodeRowsWithRelations = Row<'nodes'> & {
+  export type NodeRowsWithRelations = NodesRowSchema & {
     maintenance_terminal?: {
       id: string;
       name: string;
@@ -116,7 +83,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type OfcCableRowsWithRelations = Row<'ofc_cables'> & {
+  export type OfcCableRowsWithRelations = Ofc_cablesRowSchema & {
     en_node?: {
       id: string;
       name: string;
@@ -139,7 +106,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type OfcConnectionRowsWithRelations = Row<'ofc_connections'> & {
+  export type OfcConnectionRowsWithRelations = Ofc_connectionsRowSchema & {
     connection_type_lookup?: {
       category: string;
       name: string;
@@ -158,13 +125,13 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type SdhConnectionRowsWithRelations = Row<'sdh_connections'> & {
+  export type SdhConnectionRowsWithRelations = Sdh_connectionsRowSchema & {
     system_connection?: {
       id: string;
     } | null;
   };
   
-  export type SdhNodeAssociationRowsWithRelations = Row<'sdh_node_associations'> & {
+  export type SdhNodeAssociationRowsWithRelations = Sdh_node_associationsRowSchema & {
     node?: {
       id: string;
       name: string;
@@ -174,13 +141,13 @@ export type RingRowsWithRelations = Row<'rings'> & {
     } | null;
   };
   
-  export type SdhSystemRowsWithRelations = Row<'sdh_systems'> & {
+  export type SdhSystemRowsWithRelations = Sdh_systemsRowSchema & {
     system?: {
       id: string;
     } | null;
   };
   
-  export type SystemConnectionRowsWithRelations = Row<'system_connections'> & {
+  export type SystemConnectionRowsWithRelations = System_connectionsRowSchema & {
     connected_system?: {
       id: string;
       system_name: string;
@@ -204,7 +171,7 @@ export type RingRowsWithRelations = Row<'rings'> & {
   };
   
   // In your types file, update the SystemRowsWithRelations type:
-export type SystemRowsWithRelations = Row<'systems'> & {
+export type SystemRowsWithRelations = SystemsRowSchema & {
   maintenance_terminal?: {
     id: string;
     name: string;
@@ -221,29 +188,65 @@ export type SystemRowsWithRelations = Row<'systems'> & {
   commissioned_on: Date | null;
 } & {
   // This makes all fields from the base Row type required
-  [K in keyof Row<'systems'>]: Row<'systems'>[K];
+  [K in keyof SystemsRowSchema]: SystemsRowSchema[K];
 };
   
-  export type UserActivityLogRowsWithRelations = Row<'user_activity_logs'> & {
+  // export type UserActivityLogRowsWithRelations = User_activity_logsRowSchema & {
+  //   user_profile_extended?: {
+  //     id: string;
+  //   } | null;
+  // };
+  
+  export type UserProfileRowsWithRelations = User_profilesRowSchema & {
     user_profile_extended?: {
       id: string;
     } | null;
   };
   
-  export type UserProfileRowsWithRelations = Row<'user_profiles'> & {
-    user_profile_extended?: {
-      id: string;
-    } | null;
-  };
-  
-  export type VmuxConnectionRowsWithRelations = Row<'vmux_connections'> & {
+  export type VmuxConnectionRowsWithRelations = Vmux_connectionsRowSchema & {
     system_connection?: {
       id: string;
     } | null;
   };
   
-  export type VmuxSystemRowsWithRelations = Row<'vmux_systems'> & {
+  export type VmuxSystemRowsWithRelations = Vmux_systemsRowSchema & {
     system?: {
       id: string;
     } | null;
   };
+
+  export type  SystemRowsWithCountWithRelations = V_systems_completeRowSchema & {
+    system_type?: {
+        id: string;
+        name: string;
+    } | null;
+    node?: {
+        id: string;
+        name: string;
+    } | null;
+    maintenance_terminal?: {
+        id: string;
+        name: string;
+    } | null;
+};
+
+export type OfcConnectionRowsWithCountWithRelations = V_system_connections_completeRowSchema & {
+    connection_type_lookup?: {
+        category: string;
+        name: string;
+    } | null;
+    logical_fiber_path?: {
+        id: string;
+        path_name: string;
+    } | null;
+    system?: {
+        id: string;
+        system_name: string;
+    } | null;
+    ofc_cable?: {
+        id: string;
+        route_name: string;
+    } | null;
+};
+
+    

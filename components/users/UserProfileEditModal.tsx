@@ -10,19 +10,21 @@ import {
 import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
 import Image from 'next/image';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput, FormDateInput } from '../common/form/FormControls'; // Import your new controls
 import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
 import {
-  user_profilesInsertSchema,
   User_profilesInsertSchema,
-  User_profilesRowSchema,
+  User_profilesUpdateSchema,
+  user_profilesUpdateSchema,
 } from '@/schemas/zod-schemas';
 
+const type UserProfile = user_profilesUpdateSchema.omit<'address', 'preferences'> & {address?: {street?: string, city?: string, state?: string, zip_code?: string}, preferences?: {language?: string}};
+
 interface UserProfileEditProps {
-  user: User_profilesRowSchema | null;
+  user: UserProfile | null;
   onClose: () => void;
   onSave?: () => void; // Optional callback for when save is successful
   isOpen: boolean;
@@ -49,8 +51,8 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     reset,
     control,
     watch,
-  } = useForm<User_profilesInsertSchema>({
-    resolver: zodResolver(user_profilesInsertSchema),
+  } = useForm<User_profilesUpdateSchema>({
+    resolver: zodResolver(  user_profilesUpdateSchema),
     // Initialize with empty defaults. We will populate it with an effect.
     defaultValues: {
       first_name: user?.first_name,
@@ -243,7 +245,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
                     {...field}
                     value={field.value || ''}
                     placeholder="Street Address"
-                    error={(errors.address as any)?.street?.message}
+                    error={errors.address?.street?.message}
                   />
                 )}
               />
@@ -255,7 +257,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
                     {...field}
                     value={field.value || ''}
                     placeholder="City"
-                    error={(errors.address as any)?.city?.message}
+                    error={errors.address?.city?.message}
                   />
                 )}
               />
@@ -267,7 +269,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
                     {...field}
                     value={field.value || ''}
                     placeholder="State/Province"
-                    error={(errors.address as any)?.state?.message}
+                    error={errors.address?.state?.message}
                   />
                 )}
               />
@@ -279,7 +281,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
                     {...field}
                     value={field.value || ''}
                     placeholder="ZIP/Postal Code"
-                    error={(errors.address as any)?.zip_code?.message}
+                    error={errors.address?.zip_code?.message}
                   />
                 )}
               />

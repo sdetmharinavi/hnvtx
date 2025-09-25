@@ -4,12 +4,10 @@ import {
   PageHeader,
   useStandardHeaderActions,
 } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/users/BulkActions';
-import { UserProfileData } from '@/components/users/user-types';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { DataTable } from '@/components/table/DataTable';
 import { UserFilters } from '@/components/users/UserFilters';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
@@ -19,22 +17,26 @@ import {
   useAdminGetAllUsersExtended,
   useAdminUserOperations,
   useIsSuperAdmin,
+  UserCreateInput,
 } from '@/hooks/useAdminUsers';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { UserProfileFormData } from '@/schemas';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { TableAction } from '@/components/table/datatable-types';
+import { Json } from '@/types/supabase-types';
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
 const useUsersData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<UserProfileData> => {
+): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
   const { currentPage, pageLimit, searchQuery, filters } = params;
 
   const { data, isLoading, error, refetch } = useAdminGetAllUsersExtended({
@@ -45,8 +47,9 @@ const useUsersData = (
     page_limit: pageLimit,
   });
 
+
   return {
-    data: data || [], // `data` is now correctly typed as UserProfileData[]
+    data: (data || []) as V_user_profiles_extendedRowSchema[],
     totalCount: data?.length || 0,
     activeCount: (data || []).filter((u) => !!u.status).length,
     inactiveCount: (data || []).filter((u) => !u.status).length,
@@ -85,31 +88,30 @@ const AdminUsersPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'user_profiles', UserProfileData>({
+  } = useCrudManager<'user_profiles', V_user_profiles_extendedRowSchema>({
     tableName: 'user_profiles',
     dataQueryHook: useUsersData,
   });
 
-  const columns = UserProfileColumns(users);
+  const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
   const tableActions = useMemo(
     () =>
-      createStandardActions<UserProfileData>({
+      createStandardActions<V_user_profiles_extendedRowSchema>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
         canDelete: (record) => !record.is_super_admin,
-      }),
+      }) as TableAction<"v_user_profiles_extended">[],
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const handleCreateUser = async (userData: any) => {
+  const handleCreateUser = async (userData: UserCreateInput) => {
     await createUser.mutateAsync({
       ...userData,
-      status: 'active', // Default status for new users
     });
   };
 
@@ -212,7 +214,13 @@ const AdminUsersPage = () => {
       />
       <DataTable
         tableName="v_user_profiles_extended"
-        data={users as unknown as Row<'v_user_profiles_extended'>[]}
+        data={users.map(user => ({
+          ...user,
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          id: user.id || '',
+          address: user.address as Json | null
+        }))}
         columns={columns}
         loading={isLoading || isOperationLoading}
         actions={tableActions}
@@ -220,7 +228,7 @@ const AdminUsersPage = () => {
         onRowSelect={(rows) => {
           // Filter out any rows where id is null
           const validRows = rows.filter(
-            (row): row is UserProfileData & { id: string } => row.id !== null
+            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
           );
           bulkActions.handleRowSelect(validRows);
         }}
@@ -261,7 +269,7 @@ const AdminUsersPage = () => {
       />
       <UserProfileEditModal
         isOpen={editModal.isOpen}
-        user={editModal.record as UserProfileFormData}
+        user={editModal.record as User_profilesUpdateSchema}
         onClose={editModal.close}
         onSave={() => {
           refetch();

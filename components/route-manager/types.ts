@@ -1,20 +1,52 @@
 // path: components/route-manager/types.ts
 
-import { Ofc_cablesRowSchema, V_junction_closures_completeRowSchema, V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
+import { Fiber_splicesRowSchema, Junction_closuresRowSchema, NodesRowSchema, Ofc_cablesRowSchema, V_cable_segments_at_jcRowSchema, V_junction_closures_completeRowSchema, V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
 // Create a new schema with only the fields we want
 export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
 export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'id' | 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
 
-export type CableRoute = Pick<V_ofc_cables_completeRowSchema, 'id' | 'route_name' | 'capacity' | 'sn_id' | 'sn_name' | 'en_id' | 'en_name' | 'current_rkm'>;
+export type CableSegment = Pick<V_cable_segments_at_jcRowSchema, 'id' | 'segment_order' | 'start_node_id' | 'end_node_id' | 'fiber_count'> & { distance_km: number; start_point_type: 'site' | 'equipment'; end_point_type: 'site' | 'equipment'; };
 
+export type FiberSplice = Pick<Fiber_splicesRowSchema, 'id' | 'jc_id' | 'incoming_segment_id' | 'incoming_fiber_no' | 'outgoing_segment_id' | 'outgoing_fiber_no' | 'splice_type' | 'status' | 'logical_path_id' | 'loss_db' | 'otdr_length_km' | 'created_at' | 'updated_at'>;
+
+export type CableRoute = {
+  id: V_ofc_cables_completeRowSchema['id'];
+  name: V_ofc_cables_completeRowSchema['route_name'];
+  capacity: V_ofc_cables_completeRowSchema['capacity'];
+  distance_km: V_ofc_cables_completeRowSchema['current_rkm'];
+  start_site: {
+    id: V_ofc_cables_completeRowSchema['sn_id'];
+    name: V_ofc_cables_completeRowSchema['sn_name'];
+  };
+  end_site: {
+    id: V_ofc_cables_completeRowSchema['en_id'];
+    name: V_ofc_cables_completeRowSchema['en_name'];
+  };
+  evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
+};
+
+  export interface Equipment {
+    id: string;
+    name: string;
+    equipment_type: 'junction_closure';
+    latitude: number;
+    longitude: number;
+    status: 'existing' | 'planned'; // 'existing' from DB, 'planned' is new
+    attributes: {
+      jc_type: 'inline' | 'branching' | 'terminal';
+      capacity: number;
+      position_on_route: number; // 0-100%
+    };
+  }
 
 // Detailed data for a selected route, fetched on the client
 export interface RouteDetailsPayload {
   route: CableRoute;
-  junction_closures: JunctionClosure[];
-  equipment: Equipment[];
+  equipment: Equipment[]; // existing JCs
+  segments: CableSegment[];
+  splices: FiberSplice[];
 }
 
 // Information for a single fiber within the Splice Matrix
@@ -28,11 +60,11 @@ export interface FiberInfo {
 
 // Represents a cable column within the Splice Matrix
 export interface CableInJc {
-  cable_id: string;
-  route_name: string;
-  capacity: number;
-  start_node: string;
-  end_node: string;
+  cable_id: CableRoute['id'];
+  route_name: CableRoute['name'];
+  capacity: CableRoute['capacity'];
+  start_site: CableRoute['start_site'];
+  end_site: CableRoute['end_site'];
   fibers: FiberInfo[];
 }
 
@@ -46,18 +78,7 @@ export interface JcSplicingDetails {
 }
 
 // Represents a single row from the fiber_splices table
-export interface SpliceConnection {
-    splice_id: string;
-    jc_id: string;
-    jc_name: string;
-    jc_position_km: number | null;
-    incoming_cable_id: string;
-    incoming_fiber_no: number;
-    outgoing_cable_id: string | null;
-    outgoing_fiber_no: number | null;
-    otdr_length_km: number | null;
-    loss_db: number | null;
-}
+export type SpliceConnection = Pick<Fiber_splicesRowSchema, 'id' | 'jc_id' | 'incoming_segment_id' | 'incoming_fiber_no' | 'outgoing_segment_id' | 'outgoing_fiber_no' | 'otdr_length_km' | 'loss_db'> & Pick<NodesRowSchema, 'name' > & Pick<Junction_closuresRowSchema, 'position_km' >;
 
 export interface FiberTraceSegment {
     segment_order: number;
@@ -103,63 +124,67 @@ export interface AutoSpliceResult {
 // ========================================================================================================================
 
 
-// The high-level route object, fetched on the server for initial selection
-export interface RouteForSelection {
-    id: string;
-    route_name: string;
-    evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
-  }
+// // The high-level route object, fetched on the server for initial selection
+// export interface RouteForSelection {
+//     id: string;
+//     route_name: string;
+//     evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
+//   }
 
-  // Detailed data for a selected route, fetched on the client
-  export interface Site {
-    id: string;
-    name: string;
-  }
+//   // Detailed data for a selected route, fetched on the client
+//   export interface Site {
+//     id: string;
+//     name: string;
+//   }
 
-  export interface Equipment {
-    id: string;
-    name: string;
-    equipment_type: 'junction_closure';
-    latitude: number;
-    longitude: number;
-    status: 'existing' | 'planned'; // 'existing' from DB, 'planned' is new
-    attributes: {
-      jc_type: 'inline' | 'branching' | 'terminal';
-      capacity: number;
-      position_on_route: number; // 0-100%
-    };
-  }
+//   export interface Equipment {
+//     id: string;
+//     name: string;
+//     equipment_type: 'junction_closure';
+//     latitude: number;
+//     longitude: number;
+//     status: 'existing' | 'planned'; // 'existing' from DB, 'planned' is new
+//     attributes: {
+//       jc_type: 'inline' | 'branching' | 'terminal';
+//       capacity: number;
+//       position_on_route: number; // 0-100%
+//     };
+//   }
 
-  export interface CableSegment {
-    id: string;
-    segment_order: number;
-    start_point_id: string;
-    end_point_id: string;
-    start_point_type: 'site' | 'equipment';
-    end_point_type: 'site' | 'equipment';
-    fiber_count: number;
-    distance_km: number;
-  }
 
-  export interface FiberSplice {
-    id: string;
-    jc_id: string; // Junction closure ID
-    incoming_cable_id: string; // Incoming cable ID
-    incoming_fiber_no: number; // Incoming fiber number
-    outgoing_cable_id: string | null; // Outgoing cable ID (nullable for termination)
-    outgoing_fiber_no: number | null; // Outgoing fiber number (nullable for termination)
-    splice_type: 'pass_through' | 'branch' | 'termination'; // Match SQL constraints
-    status: 'active' | 'faulty' | 'reserved'; // Match SQL constraints
-    logical_path_id?: string | null; // Optional logical path reference
-    loss_db?: number | null; // Optional loss measurement
-    otdr_length_km?: number | null; // Optional OTDR measurement
-    created_at?: string; // Optional timestamps
-    updated_at?: string;
-  }
 
-  // Payload for the POST request to commit changes
-  export interface EvolutionCommitPayload {
-    plannedEquipment: Omit<Equipment, 'status' | 'id'>[];
-    plannedSegments: Omit<CableSegment, 'id'>[];
-    plannedSplices: Omit<FiberSplice, 'id'>[];
-  }
+//   export interface CableSegment {
+//     id: string;
+//     segment_order: number;
+//     start_point_id: string;
+//     end_point_id: string;
+//     start_point_type: 'site' | 'equipment';
+//     end_point_type: 'site' | 'equipment';
+//     fiber_count: number;
+//     distance_km: number;
+//   }
+
+
+
+//   export interface FiberSplice {
+//     id: string;
+//     jc_id: string; // Junction closure ID
+//     incoming_cable_id: string; // Incoming cable ID
+//     incoming_fiber_no: number; // Incoming fiber number
+//     outgoing_cable_id: string | null; // Outgoing cable ID (nullable for termination)
+//     outgoing_fiber_no: number | null; // Outgoing fiber number (nullable for termination)
+//     splice_type: 'pass_through' | 'branch' | 'termination'; // Match SQL constraints
+//     status: 'active' | 'faulty' | 'reserved'; // Match SQL constraints
+//     logical_path_id?: string | null; // Optional logical path reference
+//     loss_db?: number | null; // Optional loss measurement
+//     otdr_length_km?: number | null; // Optional OTDR measurement
+//     created_at?: string; // Optional timestamps
+//     updated_at?: string;
+//   }
+
+//   // Payload for the POST request to commit changes
+//   export interface EvolutionCommitPayload {
+//     plannedEquipment: Omit<Equipment, 'status' | 'id'>[];
+//     plannedSegments: Omit<CableSegment, 'id'>[];
+//     plannedSplices: Omit<FiberSplice, 'id'>[];
+//   }

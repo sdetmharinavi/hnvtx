@@ -2,11 +2,9 @@
 import Link from "next/link";
 import OnboardingFormEnhanced from "./onboarding-form-enhanced";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
 
 export default function OnboardingPage() {
   const { logout } = useAuth();
-  const [initialLoading, setInitialLoading] = useState(true);
   
 
   return (

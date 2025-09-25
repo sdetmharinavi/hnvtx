@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProps } from 'react-leaflet';
+import { LatLngBounds } from 'leaflet';
 import { 
   Cable, 
   Network, 
@@ -167,10 +168,10 @@ function generateLargeDataset() {
     nodes.push({
       id: `node_${i}`,
       name: `NODE ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26)}`,
-      type: ['OFC', 'JC', 'END_POINT'][i % 3] as any,
+      type: ['OFC', 'JC', 'END_POINT'][i % 3] as FiberNode['type'],
       position: [22.5 + (Math.random() - 0.5) * 0.1, 88.35 + (Math.random() - 0.5) * 0.1],
       capacity: ['12F', '24F', '48F', '96F'][i % 4],
-      status: ['active', 'inactive', 'maintenance'][i % 3] as any,
+      status: ['active', 'inactive', 'maintenance'][i % 3] as FiberNode['status'],
       connections: [],
       fiberTerminations: [],
       region: regions[i % regions.length],
@@ -187,17 +188,17 @@ function generateLargeDataset() {
     ofcCables.push({
       id: `ofc_${i}`,
       name: `OFC ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26)}`,
-      type: ['main', 'branch', 'cascade'][i % 3] as any,
+      type: ['main', 'branch', 'cascade'][i % 3] as OFCCable['type'],
       startNode: startNode.id,
       endNode: endNode.id,
       fiberCount: [12, 24, 48, 96][i % 4],
       length: Math.random() * 10 + 0.5,
-      status: ['operational', 'damaged', 'under_maintenance'][i % 3] as any,
+      status: ['operational', 'damaged', 'under_maintenance'][i % 3] as OFCCable['status'],
       path: [startNode.position, endNode.position],
       fiberAllocations: [],
       region: regions[i % regions.length],
       district: districts[i % districts.length],
-      priority: ['high', 'medium', 'low'][i % 3] as any
+      priority: ['high', 'medium', 'low'][i % 3] as OFCCable['priority'],
     });
   }
 
@@ -210,14 +211,14 @@ function generateLargeDataset() {
     systems.push({
       id: `system_${i}`,
       name: `CPAN ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26)}`,
-      type: ['transmission', 'access', 'backbone'][i % 3] as any,
+      type: ['transmission', 'access', 'backbone'][i % 3] as NetworkSystem['type'],
       startNode: startNode.id,
       endNode: endNode.id,
       fiberRoute: [],
       bandwidth: ['1Gbps', '10Gbps', '100Gbps'][i % 3],
-      redundancy: ['protected', 'unprotected'][i % 2] as any,
-      status: ['operational', 'degraded', 'down'][i % 3] as any,
-      priority: ['critical', 'high', 'medium', 'low'][i % 4] as any,
+      redundancy: ['protected', 'unprotected'][i % 2] as NetworkSystem['redundancy'],
+      status: ['operational', 'degraded', 'down'][i % 3] as NetworkSystem['status'],
+      priority: ['critical', 'high', 'medium', 'low'][i % 4] as NetworkSystem['priority'],
       region: regions[i % regions.length],
       district: districts[i % districts.length]
     });
@@ -527,7 +528,7 @@ function OptimizedNetworkMap({
 
   // Filter visible items based on zoom level and performance
   const [zoom, setZoom] = useState(13);
-  const [bounds2, setBounds2] = useState<any>(null);
+  const [bounds2, setBounds2] = useState<LatLngBounds | null>(null);
 
   const visibleNodes = useMemo(() => {
     if (!bounds2 || !visibleLayers.nodes) return [];
@@ -564,7 +565,7 @@ function OptimizedNetworkMap({
     >
       <MapEventHandler setBounds2={setBounds2} setZoom={setZoom} />
       <TileLayer
-      {...({ url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: '&copy; OpenStreetMap contributors' } as any)}
+      {...({ url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: '&copy; OpenStreetMap contributors' } as TileLayerProps)}
       />
       {/* Render cables */}
       {visibleCables.map((cable: OFCCable) => (
@@ -611,7 +612,7 @@ function MapEventHandler({
   setBounds2,
   setZoom
 }: {
-  setBounds2: (bounds: any) => void;
+  setBounds2: (bounds: LatLngBounds) => void;
   setZoom: (zoom: number) => void;
 }) {
   const map = useMap();
@@ -648,7 +649,7 @@ export default function ScalableFiberNetworkDashboard() {
   // 2. Add state to control the modal
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   // 3. Create a handler function for saving the new allocation
-  const handleSaveAllocation = (allocationData: any) => {
+  const handleSaveAllocation = (allocationData: FiberAllocation) => {
     console.log("New Allocation to be saved:", allocationData);
     // In a real application, you would:
     // 1. Update your main data state
@@ -934,7 +935,7 @@ export default function ScalableFiberNetworkDashboard() {
             {['overview', 'systems', 'allocations'].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab as any)}
+                onClick={() => setActiveTab(tab as 'overview' | 'systems' | 'allocations')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm capitalize relative ${
                   activeTab === tab
                     ? 'border-blue-500 text-blue-600'

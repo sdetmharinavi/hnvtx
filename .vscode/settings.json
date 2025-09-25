@@ -18,12 +18,14 @@
       "initcap",
       "isdistinct",
       "isdropdown",
+      "lngs",
       "maan",
       "MAANADMIN",
       "mbps",
       "MNGADMIN",
       "MNGPAN",
       "mnnttnrgafkymejqpjhw",
+      "moveend",
       "node",
       "opengraph",
       "otdr",
@@ -58,7 +60,8 @@
       "vmux",
       "VMUXADMIN",
       "webauthn",
-      "yunvefyvwbqaigkawcvj"
+      "yunvefyvwbqaigkawcvj",
+      "zoomend"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative"
