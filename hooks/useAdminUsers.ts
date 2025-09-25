@@ -1,19 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Database } from "@/types/supabase-types";
-import { UserProfileData } from "@/components/users/user-types";
+import { Database, Json } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
+import { User_profilesInsertSchema } from "@/schemas/zod-schemas";
 
-type ErrorType = {
-  error: string;
-  message: string;
-  status?: number;
-};
-
-type Json = Record<string, any>;
 
 type UserCreateInput = {
-  id: string;  // This will be your custom UUID
+  id?: string;  // This will be your custom UUID, optional as it can be auto-generated
   email: string;
   password: string;
   email_confirm?: boolean;
@@ -21,6 +14,8 @@ type UserCreateInput = {
   last_name: string;
   role: string;
 };
+
+export type { UserCreateInput };
 
 // Types
 type AdminGetAllUsers =
@@ -43,26 +38,6 @@ type AdminBulkUpdateUserStatus =
 type AdminUpdateUserProfile =
   Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
 
-export interface UserData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string;
-  phone_number: string;
-  date_of_birth: string;
-  address: Json;
-  preferences: Json;
-  role: string;
-  designation: string;
-  status: string;
-  is_email_verified: boolean;
-  last_sign_in_at: string;
-  created_at: string;
-  updated_at: string;
-  total_count: number;
-}
-
 
 
 // Query Keys
@@ -83,7 +58,7 @@ export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
   const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
-    queryFn: async (): Promise<UserData[]> => {
+    queryFn: async (): Promise<User_profilesInsertSchema[]> => {
       const { data, error } = await supabase.rpc("admin_get_all_users", params);
 
       if (error) {

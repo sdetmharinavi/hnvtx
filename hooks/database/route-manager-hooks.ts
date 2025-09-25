@@ -2,48 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { JcSplicingDetails, AutoSpliceResult, Site, Equipment, CableSegment, FiberSplice } from '@/components/route-manager/types';
+import { JcSplicingDetails, AutoSpliceResult, OfcForSelection, RouteDetailsPayload } from '@/components/route-manager/types';
 import { toast } from 'sonner';
-import {
-  Ofc_cablesRowSchema,
-  V_junction_closures_completeRowSchema,
-  V_ofc_cables_completeRowSchema,
-} from '@/schemas/zod-schemas';
 
-export type OfcForSelection = Pick<Ofc_cablesRowSchema, 'id' | 'route_name' | 'capacity'>;
 
-export type JunctionClosure = Pick<V_junction_closures_completeRowSchema, 'id' | 'node_id' | 'name' | 'ofc_cable_id' | 'latitude' | 'longitude' | 'position_km'>;
-
-export type CableRoute = {
-  id: V_ofc_cables_completeRowSchema['id'];
-  route_name: V_ofc_cables_completeRowSchema['route_name'];
-  capacity: V_ofc_cables_completeRowSchema['capacity'];
-  current_rkm: V_ofc_cables_completeRowSchema['current_rkm'];
-  start_node: {
-    id: V_ofc_cables_completeRowSchema['sn_id'];
-    name: V_ofc_cables_completeRowSchema['sn_name'];
-  };
-  end_node: {
-    id: V_ofc_cables_completeRowSchema['en_id'];
-    name: V_ofc_cables_completeRowSchema['en_name'];
-  };
-};
-
-// Detailed data for a selected route, fetched on the client
-export interface RouteDetailsPayload {
-  route: {
-    id: string;
-    name: string;
-    start_site: Site;
-    end_site: Site;
-    capacity: number;
-    distance_km: number;
-    evolution_status: 'simple' | 'with_jcs' | 'fully_segmented';
-  };
-  equipment: Equipment[]; // existing JCs
-  segments: CableSegment[];
-  splices: FiberSplice[];
-}
 
 const supabase = createClient();
 

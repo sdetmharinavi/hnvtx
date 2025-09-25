@@ -12,24 +12,25 @@ const FileUploader = dynamic(
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { AuthChangeEvent, AuthSession, User } from "@supabase/supabase-js";
 
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    let listener: any;
+    let listener: { unsubscribe: () => void };
 
     async function initSupabase() {
       const { data: { user } = {} } = await supabase.auth.getUser();
       setUser(user ?? null);
 
       const { data } = supabase.auth.onAuthStateChange(
-        (_event: any, session: any) => {
+        (_event: AuthChangeEvent, session: AuthSession | null) => {
           setUser(session?.user ?? null);
         },
       );
-      listener = data;
+      listener = data.subscription;
     }
 
     initSupabase();
@@ -39,7 +40,7 @@ export default function Home() {
         listener.unsubscribe();
       }
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <div className="p-4">
