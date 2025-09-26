@@ -30,9 +30,9 @@ const evolutionCommitPayloadSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const routeId = params.id;
+  const routeId = (await context.params).id;
   if (!routeId) {
     return NextResponse.json({ error: 'Route ID is required' }, { status: 400 });
   }
@@ -103,9 +103,9 @@ export async function GET(
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
   ) {
-    const routeId = params.id;
+    const routeId = (await context.params).id;
     if (!routeId) {
       return NextResponse.json({ error: 'Route ID is required' }, { status: 400 });
     }

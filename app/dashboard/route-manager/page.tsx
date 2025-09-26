@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from "@/components/common/page-header";
 import { SearchableSelect } from "@/components/common/ui/select/SearchableSelect";
-import { useOfcRoutesForSelection } from "@/hooks/database/route-manager-hooks";
+import { useDeleteJc, useOfcRoutesForSelection } from "@/hooks/database/route-manager-hooks";
 import { PageSpinner } from "@/components/common/ui/LoadingSpinner";
 import { FaRoute } from "react-icons/fa";
 import { FiPlus } from "react-icons/fi";
@@ -58,6 +58,7 @@ export default function RouteManagerPage() {
   const [editingJc, setEditingJc] = useState<Equipment | null>(null);
   const [plannedJCs, setPlannedJCs] = useState<Equipment[]>([]);
   const [isJcFormModalOpen, setIsJcFormModalOpen] = useState(false);
+  const deleteJcMutation = useDeleteJc();
   
   const { data: routesForSelection, isLoading: isLoadingRoutes } = useOfcRoutesForSelection();
 
@@ -70,12 +71,12 @@ export default function RouteManagerPage() {
   const allEquipmentOnRoute = useMemo(() => [...(routeDetails?.equipment || []), ...plannedJCs], [routeDetails, plannedJCs]);
   const projectedSegments = useMemo(() => {
       if (!routeDetails) return [];
-      return projectSegments(routeDetails.route, allEquipmentOnRoute, {});
+      return projectSegments(routeDetails.route, allEquipmentOnRoute);
   }, [routeDetails, allEquipmentOnRoute]);
 
   const projectedSplices = useMemo(() => {
       if (!routeDetails) return [];
-      return projectDefaultSplices(routeDetails.route, projectedSegments, allEquipmentOnRoute, {});
+      return projectDefaultSplices(routeDetails.route, projectedSegments, allEquipmentOnRoute);
   }, [routeDetails, projectedSegments, allEquipmentOnRoute]);
 
   const handleOpenEditJcModal = (jc: Equipment) => {
@@ -92,12 +93,14 @@ export default function RouteManagerPage() {
         if (jcToRemove?.status === 'planned') {
             setPlannedJCs(prev => prev.filter(jc => jc.id !== jcId));
         } else {
-            alert("Deletion of existing JCs is not yet implemented.");
+          deleteJcMutation.mutate(jcToRemove!.id);
+            refetchRouteDetails();
         }
     }
   };
 
   // On click JC, open splice tab
+  // TODO: Implement this
   // To be implemented?
   
   const routeOptions = routesForSelection?.map((r) => ({ value: r.id, label: r.route_name })) || [];
