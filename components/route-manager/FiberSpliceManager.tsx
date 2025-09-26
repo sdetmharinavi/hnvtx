@@ -1,25 +1,93 @@
 // components/route-manager/FiberSpliceManager.tsx
 "use client";
 
-import { useState } from 'react';
-import { JcSplicingDetails } from '@/components/route-manager/types';
+import { useMemo, useState } from 'react';
 import { useJcSplicingDetails, useManageSplice, useAutoSplice } from '@/hooks/database/route-manager-hooks';
 import { PageSpinner, Button } from '@/components/common/ui';
 import { FiGitBranch, FiLink, FiX, FiZap } from 'react-icons/fi';
+import type { JcSplicingDetails } from '@/components/route-manager/types';
 
 interface FiberSpliceManagerProps {
     junctionClosureId: string | null;
 }
 
+type FiberStatus = 'available' | 'used_as_incoming' | 'used_as_outgoing' | 'terminated';
+
+interface FiberAtSegment {
+    fiber_no: number;
+    status: FiberStatus;
+    connected_to_segment: string | null;
+    connected_to_fiber: number | null;
+    splice_id: string | null;
+}
+
+interface SegmentAtJc {
+    segment_id: string;
+    segment_name: string;
+    fiber_count: number;
+    fibers: FiberAtSegment[];
+}
+
+type RawFiberAtSegment = {
+    fiber_no?: number | string | null;
+    status?: string | null;
+    connected_to_segment?: string | null;
+    connected_to_fiber?: number | null;
+    splice_id?: string | null;
+};
+
+type RawSegmentAtJc = {
+    segment_id: string;
+    segment_name: string;
+    fiber_count: number;
+    fibers?: RawFiberAtSegment[] | null;
+};
+
+type RawSplicingDetails = JcSplicingDetails & {
+    segments_at_jc?: RawSegmentAtJc[] | null;
+};
+
+const normalizeFibers = (fibers: RawFiberAtSegment[] | null | undefined): FiberAtSegment[] => {
+    const casted = Array.isArray(fibers) ? fibers : [];
+
+    return casted
+        .map((fiber) => {
+            const fiberNoRaw = fiber?.fiber_no;
+            const fiberNo = typeof fiberNoRaw === 'number' ? fiberNoRaw : Number(fiberNoRaw ?? NaN);
+
+            if (!Number.isFinite(fiberNo)) {
+                return null;
+            }
+
+            const statusRaw = fiber?.status ?? 'available';
+            const status = (['available', 'used_as_incoming', 'used_as_outgoing', 'terminated'] as FiberStatus[])
+                .includes(statusRaw as FiberStatus)
+                ? (statusRaw as FiberStatus)
+                : 'available';
+
+            return {
+                fiber_no: fiberNo,
+                status,
+                connected_to_segment: fiber?.connected_to_segment ?? null,
+                connected_to_fiber: fiber?.connected_to_fiber ?? null,
+                splice_id: fiber?.splice_id ?? null,
+            } satisfies FiberAtSegment;
+        })
+        .filter((fiber): fiber is FiberAtSegment => fiber !== null);
+};
+
+interface ExtendedSplicingDetails extends Omit<JcSplicingDetails, 'segments_at_jc'> {
+    segments_at_jc: SegmentAtJc[];
+}
+
 export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId }) => {
-    // This hook now correctly fetches all details for the splice matrix
     const { data: spliceDetails, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
 
     const [selectedFiber, setSelectedFiber] = useState<{ segmentId: string; fiberNo: number } | null>(null);
 
-    const handleFiberClick = (segmentId: string, fiberNo: number, status: string) => {
+    const handleFiberClick = (segmentId: string, fiberNo: number, status: FiberStatus) => {
         if (status === 'used_as_outgoing') return;
 
         if (selectedFiber && selectedFiber.segmentId === segmentId && selectedFiber.fiberNo === fiberNo) {
@@ -57,7 +125,11 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     
     const handleAutoSplice = (segment1Id: string, segment2Id: string) => {
         if (junctionClosureId) {
-            autoSpliceMutation.mutate({ jcId: junctionClosureId, segment1Id, segment2Id });
+            autoSpliceMutation.mutate({
+                jcId: junctionClosureId,
+                cable1Id: segment1Id,
+                cable2Id: segment2Id,
+            } as Parameters<typeof autoSpliceMutation.mutate>[0]);
         }
     };
 
@@ -65,21 +137,44 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     if (isLoading) return <PageSpinner text="Loading splice details..." />;
     if (isError) return <div className="p-4 text-red-500">Error loading splice details: {error.message}</div>;
     // This is the CRITICAL FIX: Ensure spliceDetails and its properties exist before trying to render them.
-    if (!spliceDetails || !spliceDetails.junction_closure || !Array.isArray(spliceDetails.segments_at_jc)) {
+    const normalizedDetails: ExtendedSplicingDetails | null = useMemo(() => {
+        const rawDetails = spliceDetails as RawSplicingDetails | null;
+
+        if (!rawDetails || !rawDetails.junction_closure) {
+            return null;
+        }
+
+        const segments = Array.isArray(rawDetails.segments_at_jc)
+            ? rawDetails.segments_at_jc
+            : [];
+
+        return {
+            ...rawDetails,
+            segments_at_jc: segments.map((segment) => ({
+                segment_id: segment.segment_id,
+                segment_name: segment.segment_name,
+                fiber_count: segment.fiber_count,
+                fibers: normalizeFibers(segment.fibers),
+            })),
+        };
+    }, [spliceDetails]);
+
+    if (!normalizedDetails) {
         return <div className="p-4 text-gray-500">Select a Junction Closure to manage its splices.</div>;
     }
 
-    const { junction_closure, segments_at_jc } = spliceDetails;
+    const { junction_closure, segments_at_jc } = normalizedDetails;
 
     // --- RENDER FIBER (Helper Component) ---
-    const renderFiber = (fiber: any, segmentId: string) => {
+    const renderFiber = (fiber: FiberAtSegment, segmentId: string) => {
         const isSelected = selectedFiber?.segmentId === segmentId && selectedFiber.fiberNo === fiber.fiber_no;
-        const isTargetable = selectedFiber && selectedFiber.segmentId !== segmentId && fiber.status === 'available';
+        const isTargetable = Boolean(selectedFiber) && selectedFiber?.segmentId !== segmentId && fiber.status === 'available';
 
-        const statusClasses = {
+        const statusClasses: Record<FiberStatus, string> = {
             available: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
             used_as_incoming: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
             used_as_outgoing: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+            terminated: 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
         };
 
         return (
@@ -95,12 +190,21 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-xs font-bold w-6 text-center">{fiber.fiber_no}</span>
                     {fiber.status !== 'available' && <FiLink className="w-3 h-3 flex-shrink-0" />}
-                    <span className="text-xs truncate" title={fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}>
-                        {fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}
+                    <span className="text-xs truncate" title={fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}>
+                        {fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}
                     </span>
                 </div>
                 {fiber.splice_id && (
-                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber.splice_id); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const spliceId = fiber.splice_id;
+                            if (spliceId) {
+                                handleRemoveSplice(spliceId);
+                            }
+                        }}
+                        className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500"
+                    >
                         <FiX className="w-3 h-3" />
                     </button>
                 )}
@@ -146,7 +250,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         )}
 
                         <div className="space-y-1 max-h-96 overflow-y-auto">
-                            {segment.fibers.map(fiber => renderFiber(fiber, segment.segment_id))}
+                            {segment.fibers.map((fiber) => renderFiber(fiber, segment.segment_id))}
                         </div>
                     </div>
                 ))}

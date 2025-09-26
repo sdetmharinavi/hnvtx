@@ -16,16 +16,16 @@ import {
     FiTool
   } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
-import { Row } from '@/hooks/database';
+import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
   
   // OFC details modal configuration
   export const ofcDetailsConfig = {
     header: {
-      title: (ofc: Row<"v_ofc_cables_complete">) => ofc.route_name || "Unnamed OFC Route",
-      subtitle: (ofc: Row<"v_ofc_cables_complete">) => ofc.ofc_owner_name || "Unknown Owner",
+      title: (ofc: V_ofc_cables_completeRowSchema) => ofc.route_name || "Unnamed OFC Route",
+      subtitle: (ofc: V_ofc_cables_completeRowSchema) => ofc.ofc_owner_name || "Unknown Owner",
       avatar: {
         urlKey: '', // OFC doesn’t have avatars
-        fallbackText: (ofc: Row<"v_ofc_cables_complete">) => (ofc.ofc_owner_name?.charAt(0)?.toUpperCase() || "O")
+        fallbackText: (ofc: V_ofc_cables_completeRowSchema) => (ofc.ofc_owner_name?.charAt(0)?.toUpperCase() || "O")
       },
       badges: [
         {
@@ -43,7 +43,7 @@ import { Row } from '@/hooks/database';
           )
         }
       ]
-    } as HeaderConfig,
+    } as HeaderConfig<V_ofc_cables_completeRowSchema>,
   
     sections: [
       {
@@ -103,10 +103,10 @@ import { Row } from '@/hooks/database';
           { key: 'inactive_count', label: 'Inactive', icon: <FiDatabase size={18} /> }
         ]
       }
-    ] as SectionConfig[]
+    ] as SectionConfig<V_ofc_cables_completeRowSchema>[]
   };
   
-  export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: Row<"v_ofc_connections_complete">[], onClose: () => void, isOpen: boolean }) => {
+  export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: V_ofc_cables_completeRowSchema, onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
         data={ofc}

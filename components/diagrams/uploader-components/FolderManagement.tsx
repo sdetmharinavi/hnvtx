@@ -5,7 +5,7 @@ interface FolderManagementProps {
   newFolderName: string;
   setNewFolderName: (value: string) => void;
   handleCreateFolder: () => void;
-  folders: any[];
+  folders: { id: string; name: string }[];
   folderId: string | null;
   setFolderId: (value: string | null) => void;
 }

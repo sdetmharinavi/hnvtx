@@ -1,6 +1,6 @@
 // hooks/useUppyUploader.ts
 import { useRef, useState, useEffect } from 'react';
-import Uppy from '@uppy/core';
+import Uppy, { type UppyFile } from '@uppy/core';
 import XHRUpload from '@uppy/xhr-upload';
 import Webcam from '@uppy/webcam';
 import { createClient } from "@/utils/supabase/client";
@@ -9,18 +9,39 @@ import { smartCompress, convertToWebP, createProgressiveJPEG } from "@/utils/ima
 import { useUploadFile } from "@/hooks/database/file-queries";
 
 
-interface UploadedFile {
+export interface UploadedFile {
   public_id: string;
-  secure_url: string;
-  // Add other properties as needed
+  secure_url: string | null | undefined;
+  [key: string]: unknown;
 }
 
-interface SelectedFile {
+export interface SelectedFile {
   id: string;
   name: string;
   type: string;
   size: number;
 }
+
+type UppyMeta = { folderId: string | null };
+type UppyBody = Record<string, never>;
+export type AppUppy = Uppy<UppyMeta, UppyBody>;
+type AppUppyFile = UppyFile<UppyMeta, UppyBody>;
+
+interface UploadSuccessResponse {
+  body?: unknown;
+  status: number;
+  bytesUploaded?: number;
+  uploadURL?: string;
+}
+
+const isUploadedFile = (value: unknown): value is UploadedFile => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return typeof record.public_id === "string";
+};
 
 interface UseUppyUploaderProps {
   folderId: string | null;
@@ -31,7 +52,7 @@ interface UseUppyUploaderProps {
 }
 
 interface UseUppyUploaderReturn {
-  uppyRef: React.RefObject<Uppy | null>;
+  uppyRef: React.RefObject<AppUppy | null>;
   uploadedFiles: UploadedFile[];
   selectedFiles: SelectedFile[];
   isUploading: boolean;
@@ -51,9 +72,9 @@ export function useUppyUploader({
 }: UseUppyUploaderProps): UseUppyUploaderReturn {
   const { mutate: uploadFile } = useUploadFile();
   const supabase = createClient();
-  const uppyRef = useRef<Uppy<any, Record<string, never>> | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const uppyRef = useRef<AppUppy | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(
     (localStorage.getItem("preferredCamera") as 'user' | 'environment') || 'environment'
@@ -61,11 +82,46 @@ export function useUppyUploader({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [processedFiles, setProcessedFiles] = useState<Set<string>>(new Set());
+  const processedFilesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    processedFilesRef.current = processedFiles;
+  }, [processedFiles]);
+
+  const addProcessedFile = (fileId: string) => {
+    setProcessedFiles((prev) => {
+      if (prev.has(fileId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(fileId);
+      processedFilesRef.current = next;
+      return next;
+    });
+  };
+
+  const removeProcessedFile = (fileId: string) => {
+    setProcessedFiles((prev) => {
+      if (!prev.has(fileId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(fileId);
+      processedFilesRef.current = next;
+      return next;
+    });
+  };
+
+  const resetProcessedFiles = () => {
+    const empty = new Set<string>();
+    processedFilesRef.current = empty;
+    setProcessedFiles(empty);
+  };
 
 
   // Initialize Uppy
   useEffect(() => {
-    const uppy = createOptimizedUppy({ folderId });
+    const uppy = createOptimizedUppy({ folderId }) as AppUppy;
 
     uppy.use(XHRUpload, {
       endpoint: "/api/upload",
@@ -87,17 +143,15 @@ export function useUppyUploader({
       mirror: facingMode === "user",
       videoConstraints: {
         facingMode: facingMode,
-        width: { min: 720, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 },
       },
       showVideoSourceDropdown: true,
     });
 
     if (webcamPlugin && typeof webcamPlugin.on === "function") {
-      webcamPlugin.on("error", (error: any) => {
-        const errorMsg = `Camera error: ${error.message}`;
-        setCameraError(errorMsg);
-       console.error("Webcam error:", error);
+      webcamPlugin.on("error", (error: unknown) => {
+        const message = error instanceof Error ? error.message : "Unknown camera error";
+        setCameraError(`Camera error: ${message}`);
+        console.error("Webcam error:", error);
       });
     }
 
@@ -106,9 +160,13 @@ export function useUppyUploader({
       const optimizationPromises = fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
 
-        if (file?.type?.startsWith("image/")) {
+        if (file?.type?.startsWith("image/") && file.data instanceof Blob) {
           try {
-            let optimizedFile = await smartCompress(file.data as File);
+            const originalName = typeof file.name === "string" && file.name ? file.name : "image-upload";
+            const sourceFile =
+              file.data instanceof File ? file.data : new File([file.data], originalName, { type: file.type ?? "application/octet-stream" });
+
+            let optimizedFile = await smartCompress(sourceFile);
             if (!optimizedFile || optimizedFile.size === 0) {
               console.warn("Optimization failed for", file.name, "- using original");
               return;
@@ -146,101 +204,99 @@ export function useUppyUploader({
       await Promise.all(optimizationPromises);
     });
 
-    // Event handlers
     uppy.on("upload", () => {
       setIsUploading(true);
       setCameraError(null);
     });
 
-    uppy.on("upload-success", async (file, response) => {
+    uppy.on("upload-success", async (file: AppUppyFile | undefined, response: UploadSuccessResponse) => {
       try {
-       if (!file || processedFiles.has(file.id)) return;
-        setProcessedFiles((prev) => new Set([...prev, file.id]));
+        if (!file || processedFilesRef.current.has(file.id)) return;
+        addProcessedFile(file.id);
 
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError || !userData?.user) {
           throw new Error("User not authenticated");
         }
 
-        if (!response.body?.public_id) {
+        const responseBody = response?.body;
+
+        if (!isUploadedFile(responseBody)) {
           console.error("Missing public_id in response:", {
             file: file.name,
-            response: response.body,
+            response: responseBody,
           });
           setError("Upload response is missing public_id.");
           return;
         }
 
-        if (!file.name) {
+        const fileName = typeof file.name === "string" ? file.name : "Unnamed File";
+
+        if (!fileName) {
           throw new Error("File name is required");
         }
 
         const fileData = {
           user_id: userData.user.id,
-          file_name: file.name,
-          file_type: file.type || 'application/octet-stream',
-          file_size: file.size?.toString() || '0', // Convert to string
-          file_route: response.body.public_id,
-          file_url: response.body.secure_url || "",
+          file_name: fileName,
+          file_type: typeof file.type === "string" && file.type ? file.type : 'application/octet-stream',
+          file_size: typeof file.size === "number" ? file.size.toString() : '0',
+          file_route: responseBody.public_id,
+          file_url: responseBody.secure_url ?? "",
           folder_id: folderId || null,
         };
 
         try {
           await uploadFile(fileData);
-          setUploadedFiles((prev) => [...prev, response.body]);
+          setUploadedFiles((prev) => [...prev, responseBody]);
           setRefresh((prev) => !prev);
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
           console.error("Error saving file to database:", error);
-          setError(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          setProcessedFiles((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(file.id);
-            return newSet;
-          });
+          setError(`Database error: ${message}`);
+          removeProcessedFile(file.id);
         }
-      } catch (err: any) {
-        console.error("Upload success handler error:", err);
-        setError(err.message);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected error occurred during upload.";
+        console.error("Upload success handler error:", error);
+        setError(message);
         if (file) {
-          setProcessedFiles((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(file.id);
-            return newSet;
-          });
+          removeProcessedFile(file.id);
         }
       }
     });
 
-    uppy.on("upload-error", (file, error) => {
-     console.error("Upload error:", error);
-      setError(`Upload failed: ${error.message}`);
+    uppy.on("upload-error", (_file: AppUppyFile | undefined, error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Upload error:", error);
+      setError(`Upload failed: ${message}`);
       setIsUploading(false);
     });
 
-   uppy.on("complete", (result) => {
+    uppy.on("complete", (result: { successful?: unknown[] } | undefined) => {
       console.log("Upload complete:", result);
       setIsUploading(false);
-      if ((result.successful ?? []).length > 0) {
+      if (Array.isArray(result?.successful) && result.successful.length > 0) {
         setError(null);
         setSelectedFiles([]);
-        setTimeout(() => setProcessedFiles(new Set()), 1000);
+        setTimeout(() => resetProcessedFiles(), 1000);
       }
     });
 
-    uppy.on("file-added", (file) => {
+    uppy.on("file-added", (file: AppUppyFile) => {
       uppy.setFileMeta(file.id, { folderId });
       setSelectedFiles(prev => [
         ...prev.filter(f => f.id !== file.id),
         {
           id: file.id,
-          name: file.name,
-          type: file.type,
-          size: file.size,
+          name: typeof file.name === "string" ? file.name : "Unnamed File",
+          type: typeof file.type === "string" && file.type ? file.type : "application/octet-stream",
+          size: typeof file.size === "number" ? file.size : 0,
         },
       ]);
     });
 
-    uppy.on("file-removed", (file) => {
+    uppy.on("file-removed", (file: AppUppyFile) => {
       setSelectedFiles((prev) => prev.filter((f) => f.id !== file.id));
     });
 
@@ -250,9 +306,7 @@ export function useUppyUploader({
       uppy.destroy();
       uppyRef.current = null;
     };
-  }, [folderId, supabase, facingMode, processedFiles]);
-
-
+  }, [folderId, facingMode, setError, setRefresh, uploadFile, supabase]);
 
   const handleStartUpload = () => {
     if (!folderId) {
@@ -285,7 +339,7 @@ export function useUppyUploader({
   };
 
   const toggleCameraActive = () => {
-    setIsCameraActive(!isCameraActive);
+    setIsCameraActive((prev) => !prev);
   };
 
   return {

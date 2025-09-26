@@ -1,5 +1,6 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 class NextJsAppRouterUnusedFileFinder {
   constructor(projectRoot = process.cwd()) {
@@ -365,10 +366,12 @@ class NextJsAppRouterUnusedFileFinder {
   }
 }
 
+const __filename = fileURLToPath(import.meta.url);
+
 // Usage
-if (require.main === module) {
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   const finder = new NextJsAppRouterUnusedFileFinder();
   finder.generateReport().catch(console.error);
 }
 
-module.exports = NextJsAppRouterUnusedFileFinder;
+export default NextJsAppRouterUnusedFileFinder;

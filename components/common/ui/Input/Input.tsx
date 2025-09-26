@@ -70,7 +70,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       }
     };
     
-    const shouldShowClear = clearable && !disabled && !isLoading && (String((value as any) || '').length > 0 || liveHasValue);
+    const shouldShowClear = clearable && !disabled && !isLoading && (String((value) || '').length > 0 || liveHasValue);
     const defaultValue = (props as { defaultValue?: string | number })?.defaultValue;
     const rawVal = value ?? defaultValue ?? '';
     const hasValue = liveHasValue || String(rawVal).length > 0;
@@ -104,7 +104,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           type={type}
           className={inputClasses}
           disabled={disabled || isLoading}
-          value={value as any}
+          value={value}
           onChange={(e) => {
             setLiveHasValue(e.currentTarget.value.length > 0);
             props.onChange?.(e);

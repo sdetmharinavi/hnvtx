@@ -38,7 +38,7 @@ export interface EntityConfig<T extends BaseEntity> {
     key: keyof T;
     label: string;
     type: 'text' | 'status' | 'parent' | 'date' | 'custom';
-    render?: (value: any, entity: T) => React.ReactNode;
+    render?: (value: T[keyof T], entity: T) => React.ReactNode;
   }>;
   filterOptions: Array<{
     key: string;

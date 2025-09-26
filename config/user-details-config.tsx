@@ -19,6 +19,7 @@ import {
   } from "react-icons/fi";
   import { RoleBadge } from "@/components/common/ui/badges/RoleBadge";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
   
   // User details modal configuration
   export const userDetailsConfig = {
@@ -48,7 +49,7 @@ import {
           ) : null
         }
       ]
-    } as HeaderConfig,
+    } as HeaderConfig<V_user_profiles_extendedRowSchema>,
     sections: [
       {
         title: "Personal Information",
@@ -145,10 +146,10 @@ import {
           </div>
         )
       }
-    ] as SectionConfig[]
+    ] as SectionConfig<V_user_profiles_extendedRowSchema>[]
   };
 
-  export const UserDetailsModal = ({ user, onClose, isOpen }: { user: any, onClose: () => void, isOpen: boolean }) => {
+  export const UserDetailsModal = ({ user, onClose, isOpen }: { user: V_user_profiles_extendedRowSchema, onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
         data={user}

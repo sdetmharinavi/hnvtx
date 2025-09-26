@@ -2,12 +2,16 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { TableNames } from "@/config/helper-types";
+import { TableName, TableNames } from "@/config/helper-types";
 import { Tables } from "@/types/supabase-types";
+
+type UploadableTableRow<T extends TableNames> = T extends TableName
+  ? Tables<T>
+  : Record<string, unknown>;
 
 export interface UploadColumnMapping<T extends TableNames> {
   excelHeader: string;
-  dbKey: keyof Tables<T> & string;
+  dbKey: keyof UploadableTableRow<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
@@ -15,7 +19,7 @@ export interface UploadConfig<T extends TableNames> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
-  conflictColumn?: keyof Tables<T> & string;
+  conflictColumn?: keyof UploadableTableRow<T> & string;
   isUploadEnabled: boolean;
 }
 

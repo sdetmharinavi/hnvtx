@@ -8,7 +8,6 @@ import {
 import type { BranchConfigMap } from '@/components/route-manager/logic/project';
 import { isRouteDetailsPayload } from '@/components/route-manager/schemas';
 import {
-  RouteForSelection,
   RouteDetailsPayload,
   Equipment,
   CableSegment,
@@ -26,15 +25,15 @@ import {
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { OfcConnectionRowsWithCount } from '@/types/view-row-types';
 import { createClient } from '@/utils/supabase/client';
 import { useParams } from 'next/navigation';
 import { usePagedOfcConnectionsComplete } from '@/hooks/database';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 
 // 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcConnectionsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<OfcConnectionRowsWithCount> => {
+): DataQueryHookReturn<V_ofc_connections_completeRowSchema> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
   const { id } = useParams();
@@ -62,7 +61,7 @@ const useOfcConnectionsData = (
     isLoading,
     error,
     refetch,
-  } as unknown as DataQueryHookReturn<OfcConnectionRowsWithCount>;
+  } as unknown as DataQueryHookReturn<V_ofc_connections_completeRowSchema>;
 };
 
 // --- Client-Side API Functions ---
@@ -127,7 +126,7 @@ export default function RouteManager({
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'ofc_connections', OfcConnectionRowsWithCount>({
+  } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
     dataQueryHook: useOfcConnectionsData,
   });

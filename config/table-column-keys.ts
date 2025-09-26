@@ -5,11 +5,13 @@ import {
   GenericRow,
   TableMetaMap,
   TableName,
+  TableNames,
   TableOrViewName,
   UploadMetaMap,
   UploadTableMeta,
 } from '@/config/helper-types';
 import { Tables } from '@/types/supabase-types';
+import type { UploadConfig } from '@/stores/useUploadConfigStore';
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -103,7 +105,9 @@ export const TABLE_COLUMN_META: TableMetaMap = {
 
 // Build UI column configs (lightweight structure; consumer can enrich widths/formats)
 export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
-  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof GenericRow<T> & string)[];
+  const keys = TABLE_COLUMN_KEYS[
+    tableName as keyof typeof TABLE_COLUMN_KEYS
+  ] as unknown as readonly (keyof GenericRow<T> & string)[];
   const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<
     string,
     ColumnMeta
@@ -120,15 +124,24 @@ export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
   });
 }
 // Build upload config from SSOT
-export function buildUploadConfig<T extends TableName>(tableName: T) {
-  const keys = TABLE_COLUMN_KEYS[tableName] as (keyof Tables<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName] || {}) as Record<
-    string,
-    ColumnMeta
+export function buildUploadConfig<T extends TableNames>(tableName: T) {
+  type RowType = T extends TableName ? Tables<T> : Record<string, unknown>;
+  type ColumnKey = keyof RowType & string;
+
+  const tableColumnKeys = TABLE_COLUMN_KEYS as unknown as Record<
+    TableNames,
+    readonly string[]
   >;
-  const tableMeta = (UPLOAD_TABLE_META[tableName] || {
-    uploadType: 'upsert',
-  }) as UploadTableMeta<T>;
+  const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
+  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Partial<
+    Record<ColumnKey, ColumnMeta>
+  >;
+  const tableMeta = (UPLOAD_TABLE_META as Partial<
+    Record<TableNames, UploadTableMeta<TableName>>
+  >)[tableName];
+  const uploadType = tableMeta?.uploadType ?? 'upsert';
+  const conflictColumn = tableMeta?.conflictColumn as ColumnKey | undefined;
+  const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
 
   const columnMapping = keys.map((key) => {
     const m = meta[key] || {};
@@ -160,10 +173,10 @@ export function buildUploadConfig<T extends TableName>(tableName: T) {
   return {
     tableName,
     columnMapping,
-    uploadType: tableMeta.uploadType,
-    conflictColumn: tableMeta.conflictColumn,
-    isUploadEnabled: tableMeta.isUploadEnabled ?? true,
-  };
+    uploadType,
+    conflictColumn,
+    isUploadEnabled,
+  } satisfies UploadConfig<T>;
 }
 
 /**
@@ -798,7 +811,7 @@ export const TABLE_COLUMN_KEYS = {
     'start_node_id',
     'start_node_name',
   ],
-};
+} as const satisfies Record<string, readonly string[]>;
 
 // Separate tables and views for better type safety
 export const TABLES = {

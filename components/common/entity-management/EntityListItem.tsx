@@ -25,7 +25,7 @@ export function EntityListItem<T extends BaseEntity>({
   const getParentName = (entity: T): string | null => {
     if (!config.isHierarchical || !config.parentField) return null;
     
-    const parentObject = entity[config.parentField] as any;
+    const parentObject = entity[config.parentField] as HierarchicalEntity;
     if (parentObject?.name) {
       return parentObject.name;
     }
