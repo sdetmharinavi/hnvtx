@@ -780,3 +780,61 @@ CREATE OR REPLACE TRIGGER on_junction_closure_change
 AFTER INSERT OR DELETE ON public.junction_closures
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_manage_cable_segments();
+
+-- Function to commit a route evolution by adding new JCs and recalculating segments
+CREATE OR REPLACE FUNCTION public.commit_route_evolution(
+  p_route_id UUID,
+  p_planned_equipment JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  jc JSONB;
+  new_node_id UUID;
+  new_jc_id UUID;
+  v_jc_node_type_id UUID;
+  result_jcs JSONB[] := ARRAY[]::JSONB[];
+BEGIN
+  -- Get the Node Type ID for 'Joint / Splice Point' once to avoid repeated lookups
+  SELECT id INTO v_jc_node_type_id 
+  FROM public.lookup_types 
+  WHERE category = 'NODE_TYPES' AND name = 'Joint / Splice Point'
+  LIMIT 1;
+
+  IF v_jc_node_type_id IS NULL THEN
+    RAISE EXCEPTION 'Node type "Joint / Splice Point" not found in lookup_types.';
+  END IF;
+
+  -- Loop through each planned JC in the JSONB array
+  FOR jc IN SELECT * FROM jsonb_array_elements(p_planned_equipment)
+  LOOP
+    -- 1. Create a new node for the JC
+    INSERT INTO public.nodes (name, latitude, longitude, node_type_id)
+    VALUES (
+      jc->>'name',
+      (jc->>'latitude')::NUMERIC,
+      (jc->>'longitude')::NUMERIC,
+      v_jc_node_type_id
+    )
+    RETURNING id INTO new_node_id;
+
+    -- 2. Create the junction_closure record linking the new node and parent cable
+    -- The trigger on this table will automatically handle recalculating the segments.
+    INSERT INTO public.junction_closures (ofc_cable_id, node_id, position_km)
+    VALUES (
+      p_route_id,
+      new_node_id,
+      -- Calculate position in km from the percentage provided by the client
+      (SELECT current_rkm FROM public.ofc_cables WHERE id = p_route_id) * ((jc->'attributes'->>'position_on_route')::NUMERIC / 100)
+    )
+    RETURNING id INTO new_jc_id;
+
+    -- Add the new JC's info to our result array for returning to the client
+    result_jcs := array_append(result_jcs, jsonb_build_object('id', new_jc_id, 'node_id', new_node_id, 'name', jc->>'name'));
+  END LOOP;
+
+  RETURN jsonb_build_object('created_jcs', result_jcs);
+END;
+$$;

@@ -8,11 +8,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormInput, FormSearchableSelect } from '@/components/common/form';
 import { createClient } from '@/utils/supabase/client';
-import { Equipment } from './types';
 import { toast } from 'sonner';
-import { Junction_closuresInsertSchema, junction_closuresInsertSchema } from '@/schemas/zod-schemas';
+import { junction_closuresInsertSchema } from '@/schemas/zod-schemas';
 import { Filters, useTableQuery } from '@/hooks/database';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { Equipment } from '@/app/dashboard/route-manager/page';
 
 
 interface JcFormModalProps {
@@ -67,7 +67,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         // For planned equipment, we need to map the fields appropriately
         // Since Equipment doesn't have node_id, we'll need to handle this differently
         reset({
-          node_id: '', // Planned equipment doesn't have a node_id yet
+          node_id: editingJc.node_id,
           position_km: editingJc.attributes.position_on_route
             ? (editingJc.attributes.position_on_route / 100) * (rkm || 0)
             : null,
@@ -109,11 +109,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       toast.error("Position on route (km) cannot be greater than Cable length.");
       return;
     }
-
-    console.log('=== JC FORM SUBMIT DEBUG ===');
-    console.log('routeId:', routeId);
-    console.log('formData:', formData);
-    console.log('isEditMode:', isEditMode);
 
     const payload = {
       ...formData,

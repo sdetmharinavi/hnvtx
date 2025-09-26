@@ -3797,6 +3797,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      commit_route_evolution: {
+        Args: { p_planned_equipment: Json; p_route_id: string }
+        Returns: Json
+      }
       create_cable_segments_on_jc_add: {
         Args: { p_jc_id: string; p_ofc_cable_id: string }
         Returns: {
