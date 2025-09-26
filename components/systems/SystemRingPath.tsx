@@ -15,7 +15,7 @@ import { CreatePathModal } from "./CreatePathModal";
 import { AddSegmentModal } from "./AddSegmentModal";
 import { PathSegmentList } from "./PathSegmentList";
 import { FiberProvisioning } from "./FiberProvisioning";
-import { LoadingSpinner } from "../common/ui";
+import { LoadingSpinner } from "../common/ui/LoadingSpinner";
 
 interface Props {
   system: Row<'systems'> & { node: Row<'nodes'> | null };
@@ -94,7 +94,9 @@ export function SystemRingPath({ system }: Props) {
       {/* Provisioning Section - Renders only when there is a path AND segments */}
       {path && pathSegments && pathSegments.length > 0 && (
         <FiberProvisioning
-          logicalPath={path}
+          pathName={path.path_name ?? ""}
+          systemId={system.id}
+          physicalPathId={path.id}
         />
       )}
       

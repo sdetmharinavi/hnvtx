@@ -12,7 +12,7 @@ interface FileType {
   file_type: string;
   file_url: string;
   uploaded_at: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface FileTableProps {

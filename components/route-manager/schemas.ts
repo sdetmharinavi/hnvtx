@@ -1,7 +1,7 @@
 // components/route-manager/schemas.ts
 // Lightweight runtime validators (type guards) to avoid extra deps.
 
-import { RouteDetailsPayload, EvolutionCommitPayload, Equipment, CableSegment, FiberSplice, Site } from './types';
+import { RouteDetailsPayload, Equipment, CableSegment, FiberSplice, EvolutionCommitPayload, Site } from './types';
 
 function isSite(x: any): x is Site {
   return x && typeof x.id === 'string' && typeof x.name === 'string';

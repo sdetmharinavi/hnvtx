@@ -1,4 +1,4 @@
-// config/designations.ts
+// config/areas.ts
 
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";

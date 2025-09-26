@@ -1,17 +1,16 @@
-// components/diagrams/uploader-components/SimpleUpload.tsx
 import React from "react";
+import type { AppUppy, SelectedFile } from "@/components/diagrams/hooks/useUppyUploader";
 import { Loader2 } from "lucide-react";
 
 interface SimpleUploadProps {
-  uppyRef: React.RefObject<any>;
+  uppyRef: React.RefObject<AppUppy | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   triggerFileInput: () => void;
-  selectedFiles: any[];
+  selectedFiles: SelectedFile[];
   handleRemoveFile: (fileId: string) => void;
   isUploading: boolean;
   handleStartUpload: () => void;
-//   FileItemComponent?: ({ file }: { file: any }) => React.JSX.Element;
 }
 
 const formatFileSize = (bytes: number) => {

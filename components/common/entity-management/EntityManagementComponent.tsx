@@ -1,3 +1,4 @@
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
 import { EntityListItem } from "@/components/common/entity-management/EntityListItem";
 import { EntityTreeItem } from "@/components/common/entity-management/EntityTreeItem";
@@ -10,8 +11,8 @@ import { FiInfo, FiPlus } from "react-icons/fi";
 
 interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
-  entitiesQuery: any;
-  toggleStatusMutation: any;
+  entitiesQuery: UseQueryResult<T[], Error>;
+  toggleStatusMutation: UseMutationResult<unknown, Error, unknown, unknown>;
   onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;

@@ -16,12 +16,22 @@ import { FormInput, FormDateInput } from '../common/form/FormControls'; // Impor
 import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
 import {
-  User_profilesInsertSchema,
   User_profilesUpdateSchema,
   user_profilesUpdateSchema,
 } from '@/schemas/zod-schemas';
 
-const type UserProfile = user_profilesUpdateSchema.omit<'address', 'preferences'> & {address?: {street?: string, city?: string, state?: string, zip_code?: string}, preferences?: {language?: string}};
+export type UserProfile = Omit<User_profilesUpdateSchema, "address" | "preferences"> & {
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+  } | null;
+  preferences?: {
+    language?: string;
+    theme?: string;
+  } | null;
+};
 
 interface UserProfileEditProps {
   user: UserProfile | null;
@@ -51,7 +61,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     reset,
     control,
     watch,
-  } = useForm<User_profilesUpdateSchema>({
+  } = useForm<UserProfile>({
     resolver: zodResolver(  user_profilesUpdateSchema),
     // Initialize with empty defaults. We will populate it with an effect.
     defaultValues: {
@@ -109,7 +119,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   const updateProfile = useAdminUpdateUserProfile();
 
   // === Form Submission Handler ===
-  const onValidSubmit = async (data: User_profilesInsertSchema) => {
+  const onValidSubmit = async (data: UserProfile) => {
     if (!isDirty) {
       toast.info('No changes to save.');
       onClose();
@@ -121,11 +131,11 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
       user_id: user?.id || '',
     };
 
-    (Object.keys(data) as Array<keyof User_profilesInsertSchema>).forEach(
+    (Object.keys(data) as Array<keyof UserProfile>).forEach(
       (key) => {
         if (
           JSON.stringify(data[key]) !==
-          JSON.stringify((user as User_profilesInsertSchema)[key])
+          JSON.stringify((user as UserProfile)[key])
         ) {
           // Special handling for date to ensure correct format
           if (key === 'date_of_birth' && data.date_of_birth) {

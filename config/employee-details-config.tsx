@@ -16,6 +16,7 @@ import {
     FiInfo 
   } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+import { V_employees_with_countRowSchema } from '@/schemas/zod-schemas';
   
   // Employee details modal configuration
   export const employeeDetailsConfig = {
@@ -42,7 +43,7 @@ import {
           )
         }
       ]
-    } as HeaderConfig,
+    } as HeaderConfig<V_employees_with_countRowSchema>,
   
     sections: [
       {
@@ -113,10 +114,10 @@ import {
           { key: 'updated_at', label: 'Updated At', icon: <FiClock size={18} />, formatter: defaultFormatters.dateTime }
         ]
       }
-    ] as SectionConfig[]
+    ] as SectionConfig<V_employees_with_countRowSchema>[]
   };
   
-  export const EmployeeDetailsModal = ({ employee, onClose, isOpen }: { employee: any, onClose: () => void, isOpen: boolean }) => {
+  export const EmployeeDetailsModal = ({ employee, onClose, isOpen }: { employee: V_employees_with_countRowSchema, onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
         data={employee}

@@ -3,10 +3,10 @@ import { BaseEntity } from '@/components/common/entity-management/types';
 
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
-  value: any;
+  value: unknown;
   type: 'text' | 'status' | 'parent' | 'date' | 'custom';
   entity: T;
-  render?: (value: any, entity: T) => React.ReactNode;
+  render?: (value: unknown, entity: T) => React.ReactNode;
 }
 
 export function DetailItem<T extends BaseEntity>({
@@ -37,9 +37,14 @@ export function DetailItem<T extends BaseEntity>({
           </span>
         );
       case 'parent':
-        return value?.name || 'No parent';
+        return value && typeof value === 'object' && 'name' in value
+          ? String(value.name)
+          : 'No parent';
       case 'date':
-        return value ? new Date(value).toLocaleDateString() : 'N/A';
+        if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
+          return new Date(value).toLocaleDateString();
+        }
+        return 'N/A';
       case 'text':
       default:
         return String(value);

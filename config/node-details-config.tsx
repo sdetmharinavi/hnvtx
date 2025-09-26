@@ -42,7 +42,7 @@ export const nodeDetailsConfig = {
         ) : null
       }
     ]
-  } as HeaderConfig,
+  } as HeaderConfig<V_nodes_completeRowSchema>,
 
   sections: [
     {
@@ -79,7 +79,7 @@ export const nodeDetailsConfig = {
         { key: 'updated_at', label: 'Updated At', icon: <FiClock size={18} />, formatter: defaultFormatters.dateTime }
       ]
     }
-  ] as SectionConfig[]
+  ] as SectionConfig<V_nodes_completeRowSchema>[]
 };
 
 export const NodeDetailsModal = ({ node, onClose, isOpen }: { node: V_nodes_completeRowSchema, onClose: () => void, isOpen: boolean }) => {

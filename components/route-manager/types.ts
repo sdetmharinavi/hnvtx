@@ -75,6 +75,12 @@ export interface JcSplicingDetails {
     name: string;
   };
   cables_at_jc: CableInJc[];
+  segments_at_jc?: Array<{
+    segment_id: string;
+    segment_name: string;
+    fiber_count: number;
+    fibers?: FiberInfo[] | null;
+  }> | null;
 }
 
 // Represents a single row from the fiber_splices table
@@ -182,9 +188,14 @@ export interface AutoSpliceResult {
 //     updated_at?: string;
 //   }
 
-//   // Payload for the POST request to commit changes
-//   export interface EvolutionCommitPayload {
-//     plannedEquipment: Omit<Equipment, 'status' | 'id'>[];
-//     plannedSegments: Omit<CableSegment, 'id'>[];
-//     plannedSplices: Omit<FiberSplice, 'id'>[];
-//   }
+export interface Site {
+    id: string;
+    name: string;
+}
+
+  // Payload for the POST request to commit changes
+  export interface EvolutionCommitPayload {
+    plannedEquipment: Omit<Equipment, 'status' | 'id'>[];
+    plannedSegments: Omit<CableSegment, 'id'>[];
+    plannedSplices: Omit<FiberSplice, 'id'>[];
+  }

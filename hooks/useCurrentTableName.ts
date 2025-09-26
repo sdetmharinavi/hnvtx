@@ -47,19 +47,19 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "systems":
         return "systems";
       case "cpan":
-        return "cpan_systems";
+        return null;
       case "cpan_connections":
-        return "cpan_connections";
+        return null;
       case "fiber-joints":
         return "fiber_joints";
       case "fiber-joint-connections":
-        return "fiber_joint_connections";
+        return null;
       case "logical-fiber-paths":
         return "logical_fiber_paths";
       case "maan":
-        return "maan_systems";
+        return null;
       case "maan_connections":
-        return "maan_connections";
+        return null;
       case "management-ports":
         return "management_ports";
       case "sdh":

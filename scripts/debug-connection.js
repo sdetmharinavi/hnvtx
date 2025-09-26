@@ -33,7 +33,7 @@ if (!dbUrl && !pgVars.PGHOST) {
 }
 
 // Test connection
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 try {
   console.log('\n🧪 Testing connection...');

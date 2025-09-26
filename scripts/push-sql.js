@@ -12,50 +12,132 @@
  * execution immediately if any SQL script fails.
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// --- 1. ARGUMENT AND ENVIRONMENT SETUP ---
+// --- 1. MAIN EXECUTION ---
 
-const targets = process.argv.slice(2);
-if (targets.length === 0) {
-  console.error('❌ Please provide SQL files or folders to process.');
-  console.error('   Examples:');
-  console.error('     node push-all.js migrations/                    # Push entire folder');
-  console.error('     node push-all.js script.sql                    # Push single file');
-  console.error('     node push-all.js file1.sql migrations/ file2.sql  # Push multiple targets');
-  process.exit(1);
-}
-
-// Validate all targets exist
-for (const target of targets) {
-  if (!fs.existsSync(target)) {
-    console.error(`❌ File or folder not found: ${target}`);
+export function runPushSql(targets = process.argv.slice(2)) {
+  if (targets.length === 0) {
+    console.error('❌ Please provide SQL files or folders to process.');
+    console.error('   Examples:');
+    console.error('     node push-all.js migrations/                    # Push entire folder');
+    console.error('     node push-all.js script.sql                    # Push single file');
+    console.error('     node push-all.js file1.sql migrations/ file2.sql  # Push multiple targets');
     process.exit(1);
   }
-}
 
-// Check for database connection info from environment variables
-const dbUrl = process.env.SUPABASE_DB_URL;
-const pgHost = process.env.PGHOST;
-const pgUser = process.env.PGUSER;
-const pgPassword = process.env.PGPASSWORD;
-const pgDatabase = process.env.PGDATABASE;
-const pgPort = process.env.PGPORT;
+  // Validate all targets exist
+  for (const target of targets) {
+    if (!fs.existsSync(target)) {
+      console.error(`❌ File or folder not found: ${target}`);
+      process.exit(1);
+    }
+  }
 
-if (!dbUrl && !pgHost) {
-  console.error('❌ Database connection not configured. Set either:');
-  console.error("   SUPABASE_DB_URL='postgresql://user:pass@host:port/database'");
-  console.error('   OR individual PG variables: PGHOST, PGUSER, PGPASSWORD, etc.');
-  process.exit(1);
-}
+  // Check for database connection info from environment variables
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  const pgHost = process.env.PGHOST;
+  const pgUser = process.env.PGUSER;
+  const pgPassword = process.env.PGPASSWORD;
+  const pgDatabase = process.env.PGDATABASE;
+  const pgPort = process.env.PGPORT;
 
-console.log(`📂 Processing targets: ${targets.join(', ')}`);
-if (dbUrl) {
-  console.log(`🔗 Using SUPABASE_DB_URL`);
-} else {
-  console.log(`🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`);
+  if (!dbUrl && !pgHost) {
+    console.error('❌ Database connection not configured. Set either:');
+    console.error("   SUPABASE_DB_URL='postgresql://user:pass@host:port/database'");
+    console.error('   OR individual PG variables: PGHOST, PGUSER, PGPASSWORD, etc.');
+    process.exit(1);
+  }
+
+  console.log(`📂 Processing targets: ${targets.join(', ')}`);
+  if (dbUrl) {
+    console.log(`🔗 Using SUPABASE_DB_URL`);
+  } else {
+    console.log(`🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`);
+  }
+
+  // --- 3. MAIN EXECUTION ---
+
+  try {
+    console.log('\n🔍 Processing all targets...');
+
+    let allSqlFiles = [];
+
+    // Process each target and collect all SQL files
+    for (const target of targets) {
+      const stat = fs.statSync(target);
+
+      if (stat.isFile()) {
+        if (target.endsWith('.sql')) {
+          allSqlFiles.push(target);
+          console.log(`📄 Added file: ${target}`);
+        } else {
+          console.warn(`⚠️  Skipping non-SQL file: ${target}`);
+        }
+      } else if (stat.isDirectory()) {
+        const folderFiles = getAllSqlFiles(target);
+        allSqlFiles = allSqlFiles.concat(folderFiles);
+        console.log(`📁 Added ${folderFiles.length} files from folder: ${target}`);
+      }
+    }
+
+    if (allSqlFiles.length === 0) {
+      console.log('🟡 No .sql files found to execute.');
+      process.exit(0);
+    }
+
+    console.log('🔀 Sorting files using natural sort to ensure correct execution order...');
+    allSqlFiles.sort(naturalSort); // Use the custom sort function
+
+    console.log(`\n▶️  Found ${allSqlFiles.length} scripts to execute in the following order:`);
+    allSqlFiles.forEach((file, index) => {
+      // Show relative path for cleaner display
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ${(index + 1).toString().padStart(2, ' ')}. ${displayPath}`);
+    });
+    console.log('---\n');
+
+    // Prepare environment variables for the psql command
+    const psqlEnv = { ...process.env };
+    if (dbUrl) {
+      const url = new URL(dbUrl.trim());
+      psqlEnv.PGHOST = url.hostname;
+      psqlEnv.PGPORT = url.port || '5432';
+      psqlEnv.PGDATABASE = url.pathname.slice(1) || 'postgres';
+      psqlEnv.PGUSER = url.username;
+      psqlEnv.PGPASSWORD = url.password;
+    } else {
+      psqlEnv.PGHOST = pgHost;
+      psqlEnv.PGPORT = pgPort || '5432';
+      psqlEnv.PGDATABASE = pgDatabase || 'postgres';
+      psqlEnv.PGUSER = pgUser;
+      psqlEnv.PGPASSWORD = pgPassword;
+    }
+
+    // Execute each file in the correctly sorted order
+    for (const file of allSqlFiles) {
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ▶ Running: ${displayPath}`);
+      // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
+      // Use -q to suppress NOTICE messages (quiet mode)
+      const command = `psql -q -v ON_ERROR_STOP=1 -f "${file}"`;
+
+      execSync(command, {
+        stdio: 'inherit', // Show psql output in real-time
+        env: psqlEnv,
+      });
+    }
+
+    console.log('\n✅ All scripts executed successfully.');
+  } catch (err) {
+    console.error(`\n❌ An error occurred during execution.`);
+    console.error(`   The script has been halted. Please check the error message from psql above`);
+    console.error(`   to debug the issue in the failed SQL file.`);
+    process.exit(1);
+  }
 }
 
 // --- 2. HELPER FUNCTIONS ---
@@ -78,28 +160,6 @@ function getAllSqlFiles(dir) {
     }
   }
   return filesToReturn;
-}
-
-/**
- * Processes a single target (file or folder) and returns all SQL files to execute.
- * @param {string} target - The file or folder path.
- * @returns {string[]} Array of SQL file paths.
- */
-function processTarget(target) {
-  const stat = fs.statSync(target);
-  
-  if (stat.isFile()) {
-    if (target.endsWith('.sql')) {
-      return [target];
-    } else {
-      console.warn(`⚠️  Skipping non-SQL file: ${target}`);
-      return [];
-    }
-  } else if (stat.isDirectory()) {
-    return getAllSqlFiles(target);
-  }
-  
-  return [];
 }
 
 /**
@@ -143,93 +203,13 @@ function naturalSort(a, b) {
   return segmentsA.length - segmentsB.length;
 }
 
-// --- 3. MAIN EXECUTION ---
+const __filename = fileURLToPath(import.meta.url);
 
-try {
-  console.log('\n🔍 Processing all targets...');
-  
-  let allSqlFiles = [];
-  
-  // Process each target and collect all SQL files
-  for (const target of targets) {
-    const stat = fs.statSync(target);
-    
-    if (stat.isFile()) {
-      if (target.endsWith('.sql')) {
-        allSqlFiles.push(target);
-        console.log(`📄 Added file: ${target}`);
-      } else {
-        console.warn(`⚠️  Skipping non-SQL file: ${target}`);
-      }
-    } else if (stat.isDirectory()) {
-      const folderFiles = getAllSqlFiles(target);
-      allSqlFiles = allSqlFiles.concat(folderFiles);
-      console.log(`📁 Added ${folderFiles.length} files from folder: ${target}`);
-    }
-  }
-
-  if (allSqlFiles.length === 0) {
-    console.log('🟡 No .sql files found to execute.');
-    process.exit(0);
-  }
-
-  console.log('🔀 Sorting files using natural sort to ensure correct execution order...');
-  allSqlFiles.sort(naturalSort); // Use the custom sort function
-
-  console.log(`\n▶️  Found ${allSqlFiles.length} scripts to execute in the following order:`);
-  allSqlFiles.forEach((file, index) => {
-    // Show relative path for cleaner display
-    const displayPath = path.relative(process.cwd(), file);
-    console.log(`   ${(index + 1).toString().padStart(2, ' ')}. ${displayPath}`);
-  });
-  console.log('---\n');
-
-  // Prepare environment variables for the psql command
-  const psqlEnv = { ...process.env };
-  if (dbUrl) {
-    const url = new URL(dbUrl.trim());
-    psqlEnv.PGHOST = url.hostname;
-    psqlEnv.PGPORT = url.port || '5432';
-    psqlEnv.PGDATABASE = url.pathname.slice(1) || 'postgres';
-    psqlEnv.PGUSER = url.username;
-    psqlEnv.PGPASSWORD = url.password;
-  }
-
-  // Execute each file in the correctly sorted order
-  for (const file of allSqlFiles) {
-    const displayPath = path.relative(process.cwd(), file);
-    console.log(`   ▶ Running: ${displayPath}`);
-    // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
-    // Use -q to suppress NOTICE messages (quiet mode)
-    const command = `psql -q -v ON_ERROR_STOP=1 -f "${file}"`;
-
-    execSync(command, {
-      stdio: 'inherit', // Show psql output in real-time
-      env: psqlEnv,
-    });
-  }
-
-  console.log('\n✅ All scripts executed successfully.');
-
-} catch (err) {
-  console.error(`\n❌ An error occurred during execution.`);
-  console.error(`   The script has been halted. Please check the error message from psql above`);
-  console.error(`   to debug the issue in the failed SQL file.`);
-  process.exit(1);
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  runPushSql();
 }
 
-// // Usage
-// # Push a single SQL file
-// node push-all.js migration.sql
-
-// # Push multiple files
-// node push-all.js file1.sql file2.sql file3.sql
-
-// # Push an entire folder (original functionality)
-// node push-all.js migrations/
-
-// # Mix files and folders
-// node push-all.js init.sql migrations/ cleanup.sql
+export default runPushSql;
 
 // # Push multiple folders
 // node push-all.js migrations/ seeds/
