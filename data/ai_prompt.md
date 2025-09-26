@@ -65,6 +65,6 @@ Request detailed implementation guidance for fixes
 Seek clarification on trade-offs between different approaches
 Ask for help prioritizing improvements based on impact vs. effort
 
-Also keep in mind our fiber splicing situation can be like for example in attached files.
+Also keep in mind our fiber splicing situation can be like for example in attached files. Also keep in mind what packages and their versions being used in this project through package.json and try to use the same packages for any new feature or component.
 
 Please keep this analysis in context for our future discussions in this conversation. Below is the my existing project
