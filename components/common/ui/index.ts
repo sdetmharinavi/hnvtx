@@ -18,6 +18,9 @@ export { ErrorDisplay } from './error/ErrorDisplay';
 export { RoleBadge } from './badges/RoleBadge';
 export { StatusBadge } from './badges/StatusBadge';
 export {PageSpinner} from './LoadingSpinner';
+export {Tabs, TabsContent, TabsList, TabsTrigger} from './tabs';
+export {SearchableSelect} from './select/SearchableSelect';
+
 
 
 

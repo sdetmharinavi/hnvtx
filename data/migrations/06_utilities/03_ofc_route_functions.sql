@@ -223,9 +223,7 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
 
-
--- FIX: This function has been fully rewritten to work with SEGMENTS.
--- Description: Fetches structured JSON for the splice matrix UI.
+-- Fetches structured JSON for the splice matrix UI.
 CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -243,9 +241,7 @@ segments_at_jc AS (
   SELECT
     cs.id as segment_id,
     oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
-    cs.fiber_count,
-    cs.start_node_id,
-    cs.end_node_id
+    cs.fiber_count
   FROM public.cable_segments cs
   JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
   WHERE cs.start_node_id = (SELECT node_id FROM jc_info) OR cs.end_node_id = (SELECT node_id FROM jc_info)
@@ -259,7 +255,8 @@ splice_info AS (
     fs.id as splice_id,
     fs.incoming_segment_id, fs.incoming_fiber_no,
     fs.outgoing_segment_id, fs.outgoing_fiber_no,
-    (SELECT oc.route_name || ' (Seg ' || cs.segment_order || ')' FROM cable_segments cs JOIN ofc_cables oc ON cs.original_cable_id = oc.id WHERE cs.id = fs.outgoing_segment_id) as outgoing_segment_name
+    (SELECT s_out.segment_name FROM segments_at_jc s_out WHERE s_out.segment_id = fs.outgoing_segment_id) as outgoing_segment_name,
+    (SELECT s_in.segment_name FROM segments_at_jc s_in WHERE s_in.segment_id = fs.incoming_segment_id) as incoming_segment_name
   FROM public.fiber_splices fs
   WHERE fs.jc_id = p_jc_id
 )
@@ -281,7 +278,7 @@ SELECT jsonb_build_object(
                 ELSE 'available'
               END,
               'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
-              'connected_to_segment', COALESCE(s_in.outgoing_segment_name, (SELECT s2.segment_name FROM segments_at_jc s2 WHERE s2.segment_id = s_out.incoming_segment_id)),
+              'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
               'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no)
             ) ORDER BY fu.fiber_no
           )

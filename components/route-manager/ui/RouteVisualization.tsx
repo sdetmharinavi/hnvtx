@@ -2,31 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Trash2, Edit } from 'lucide-react';
-import { z } from 'zod';
-import { 
-    junction_closuresRowSchema, 
-    cable_segmentsRowSchema,
-    v_ofc_cables_completeRowSchema 
-} from '@/schemas/zod-schemas';
-
-// --- Types are now correctly inferred from Zod schemas ---
-type CableRoute = z.infer<typeof v_ofc_cables_completeRowSchema> & {
-    distance_km?: number | null;
-    start_site: { id: string | null; name: string | null };
-    end_site: { id: string | null; name: string | null };
-};
-type Equipment = z.infer<typeof junction_closuresRowSchema> & {
-  node?: { name: string | null; } | null;
-  status: 'existing' | 'planned'; 
-  attributes: { position_on_route: number; name?: string; } 
-};
-type CableSegment = z.infer<typeof cable_segmentsRowSchema>;
-
-interface RouteDetailsPayload {
-    route: CableRoute;
-    equipment: Equipment[];
-    segments: CableSegment[];
-}
+import { RouteDetailsPayload, Equipment } from '@/schemas/custom-schemas';
 
 interface RouteVisualizationProps {
     routeDetails: RouteDetailsPayload;
