@@ -1084,7 +1084,7 @@ export const maintenance_areasUpdateSchema = z.object({
 });
 
 export const management_portsRowSchema = z.object({
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1097,7 +1097,7 @@ export const management_portsRowSchema = z.object({
 });
 
 export const management_portsInsertSchema = z.object({
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
@@ -1110,7 +1110,7 @@ export const management_portsInsertSchema = z.object({
 });
 
 export const management_portsUpdateSchema = z.object({
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
@@ -1164,7 +1164,7 @@ export const nodesUpdateSchema = z.object({
 export const ofc_cablesRowSchema = z.object({
   asset_no: z.string().nullable(),
   capacity: z.number(),
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   current_rkm: z.number().nullable(),
   en_id: z.uuid(),
@@ -1184,7 +1184,7 @@ export const ofc_cablesRowSchema = z.object({
 export const ofc_cablesInsertSchema = z.object({
   asset_no: z.string().nullable().optional(),
   capacity: z.number(),
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   current_rkm: z.number().nullable().optional(),
   en_id: z.uuid(),
@@ -1204,7 +1204,7 @@ export const ofc_cablesInsertSchema = z.object({
 export const ofc_cablesUpdateSchema = z.object({
   asset_no: z.string().nullable().optional(),
   capacity: z.number().optional(),
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   current_rkm: z.number().nullable().optional(),
   en_id: z.uuid().optional(),
@@ -1463,7 +1463,7 @@ export const sfp_based_connectionsUpdateSchema = z.object({
 
 export const system_connectionsRowSchema = z.object({
   bandwidth_mbps: z.number().nullable(),
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   connected_system_id: z.uuid().nullable(),
   created_at: z.iso.datetime().nullable(),
   en_id: z.uuid().nullable(),
@@ -1483,7 +1483,7 @@ export const system_connectionsRowSchema = z.object({
 
 export const system_connectionsInsertSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   connected_system_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   en_id: z.uuid().nullable().optional(),
@@ -1503,7 +1503,7 @@ export const system_connectionsInsertSchema = z.object({
 
 export const system_connectionsUpdateSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   connected_system_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   en_id: z.uuid().nullable().optional(),
@@ -1522,7 +1522,7 @@ export const system_connectionsUpdateSchema = z.object({
 });
 
 export const systemsRowSchema = z.object({
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   ip_address: z.string().nullable(),
@@ -1537,7 +1537,7 @@ export const systemsRowSchema = z.object({
 });
 
 export const systemsInsertSchema = z.object({
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   ip_address: z.string().nullable().optional(),
@@ -1552,7 +1552,7 @@ export const systemsInsertSchema = z.object({
 });
 
 export const systemsUpdateSchema = z.object({
-  commissioned_on: z.string().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   ip_address: z.string().nullable().optional(),
@@ -1796,7 +1796,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   asset_no: z.string().nullable(),
   capacity: z.number().nullable(),
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   current_rkm: z.number().nullable(),
   en_id: z.uuid().nullable(),
@@ -1899,7 +1899,7 @@ export const v_system_connections_completeRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -1958,7 +1958,7 @@ export const v_system_ring_paths_detailedRowSchema = z.object({
 
 export const v_systems_completeRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
-  commissioned_on: z.string().nullable(),
+  commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   inactive_count: z.number().int().min(0).nullable(),

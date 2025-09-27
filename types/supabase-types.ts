@@ -4238,6 +4238,38 @@ export type Database = {
         }
         Returns: number
       }
+      upsert_system_with_details: {
+        Args: {
+          p_commissioned_on: string
+          p_gne?: string
+          p_id: string
+          p_ip_address: unknown
+          p_maintenance_terminal_id: string
+          p_make?: string
+          p_node_id: string
+          p_remark: string
+          p_ring_id?: string
+          p_s_no: string
+          p_status: boolean
+          p_system_name: string
+          p_system_type_id: string
+          p_vm_id?: string
+        }
+        Returns: {
+          commissioned_on: string | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          maintenance_terminal_id: string | null
+          node_id: string
+          remark: string | null
+          s_no: string | null
+          status: boolean | null
+          system_name: string | null
+          system_type_id: string
+          updated_at: string | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
