@@ -13,10 +13,10 @@ import { buildRpcFilters, createRpcQueryKey, RpcFilters } from './utility-functi
 import { DEFAULTS } from '@/config/constants';
 
 // =================================================================
-// Section 2: Generic & Specific RPC Hooks (Non-Paginated)
+// Section 1: Generic & Specific RPC Hooks (Non-Paginated)
 // =================================================================
 
-// Generic RPC query hook for any non-paginated function (No changes needed)
+// Generic RPC query hook for any non-paginated function
 export function useRpcQuery<
   T extends RpcFunctionName,
   TData = RpcFunctionReturns<T>
@@ -43,7 +43,7 @@ export function useRpcQuery<
   });
 }
 
-// Generic RPC mutation hook (No changes needed)
+// Generic RPC mutation hook
 export function useRpcMutation<T extends RpcFunctionName>(
   supabase: SupabaseClient<Database>,
   functionName: T,
@@ -74,7 +74,7 @@ export function useRpcMutation<T extends RpcFunctionName>(
   });
 }
 
-// Specific hook for the dashboard overview (No changes needed)
+// Specific hook for the dashboard overview
 export function useDashboardOverview(
   supabase: SupabaseClient<Database>,
   options?: UseRpcQueryOptions<'get_dashboard_overview'>
@@ -82,7 +82,11 @@ export function useDashboardOverview(
   return useRpcQuery(supabase, 'get_dashboard_overview', {}, options);
 }
 
-// Define the shape of the JSONB object returned by the new SQL function
+// =================================================================
+// Section 2: Efficient Generic Pagination Hook
+// =================================================================
+
+// Define the shape of the JSONB object returned by the efficient `get_paged_data` SQL function
 export interface PagedDataResult<T> {
   data: T[];
   total_count: number;
@@ -90,7 +94,7 @@ export interface PagedDataResult<T> {
   inactive_count: number;
 }
 
-// Hook options
+// Hook options for our new generic paged hook
 interface UsePagedDataOptions {
   limit?: number;
   offset?: number;
@@ -99,6 +103,7 @@ interface UsePagedDataOptions {
   filters?: RpcFilters;
 }
 
+// A type guard to safely check if the RPC response is valid.
 function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
   if (typeof obj !== 'object' || obj === null) return false;
   const o = obj as Record<string, unknown>;
@@ -111,7 +116,7 @@ function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
 }
 
 /**
- * A generic hook to fetch paginated data from any view using the 'get_paged_data' RPC.
+ * A generic hook to fetch paginated data from any view using the efficient 'get_paged_data' RPC.
  * @param viewName The name of the table or view to query.
  * @param hookOptions Pagination, ordering, and filtering options.
  * @param queryOptions Standard TanStack Query options.

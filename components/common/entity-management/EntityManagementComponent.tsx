@@ -1,4 +1,4 @@
-import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
 import { EntityListItem } from "@/components/common/entity-management/EntityListItem";
 import { EntityTreeItem } from "@/components/common/entity-management/EntityTreeItem";
@@ -7,12 +7,29 @@ import { BaseEntity, EntityConfig } from "@/components/common/entity-management/
 import { ViewModeToggle } from "@/components/common/entity-management/ViewModeToggle";
 import { useEntityManagement } from "@/hooks/useEntityManagement";
 import { FiInfo, FiPlus } from "react-icons/fi";
+import { useCallback, useState } from "react";
 
+type ToggleStatusVariables = {
+  id: string;
+  status: boolean;
+  nameField?: keyof BaseEntity;
+};
 
 interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
   entitiesQuery: UseQueryResult<T[], Error>;
-  toggleStatusMutation: UseMutationResult<unknown, Error, unknown, unknown>;
+  toggleStatusMutation: {
+    mutate: (variables: ToggleStatusVariables) => void;
+    isPending: boolean;
+    // Additional properties that might come from useMutation
+    data?: unknown;
+    error?: unknown;
+    isError?: boolean;
+    isSuccess?: boolean;
+    isIdle?: boolean;
+    reset?: () => void;
+    variables?: ToggleStatusVariables;
+  };
   onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;
@@ -26,43 +43,60 @@ export function EntityManagementComponent<T extends BaseEntity>({
   onDelete,
   onCreateNew,
 }: EntityManagementComponentProps<T>) {
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
+  // Selected entity is now managed by the useEntityManagement hook
+  const [expandedEntities] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
+    e.stopPropagation();
+    if (entity.status === null || entity.status === undefined) return;
+    toggleStatusMutation.mutate({
+      id: entity.id,
+      status: !entity.status,
+      nameField: 'status'
+    });
+  }, [toggleStatusMutation]);
+
+  const handleEntitySelectWithPanel = (id: string, entity: T) => {
+    if (handleEntitySelect) {
+      handleEntitySelect(id, entity);
+    }
+  };
+
+  const handleCloseDetailsPanel = useCallback(() => {
+    setShowDetailsPanel(false);
+  }, []);
+
+  
   const {
-    searchTerm,
-    viewMode,
-    showFilters,
-    filters,
-    showDetailsPanel,
-    expandedEntities,
     filteredEntities,
     hierarchicalEntities,
     selectedEntity,
-    setSearchTerm,
-    setViewMode,
-    setShowFilters,
-    setFilters,
-    setShowDetailsPanel,
     handleEntitySelect,
-    toggleExpanded,
     handleOpenCreateForm,
     handleOpenEditForm,
-    onToggleStatus, // This is the handler returned by the hook
-  } = useEntityManagement({
+    toggleExpanded,
+  } = useEntityManagement<T>({
     entitiesQuery,
-    config,
+    config: {
+      ...config,
+      isHierarchical: config.isHierarchical || false,
+    },
     onEdit,
     onDelete,
-    // It accepts both arguments but only uses the `entity` to trigger the mutation.
-    onToggleStatus: (e, entity) => {
-      toggleStatusMutation.mutate(entity);
-    },
+    onToggleStatus: handleToggleStatus,
     onCreateNew,
   });
+
 
   const IconComponent = config.icon;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -153,9 +187,9 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     level={0}
                     selectedEntityId={selectedEntity?.id ?? null}
                     expandedEntities={expandedEntities}
-                    onSelect={handleEntitySelect}
-                    onToggleExpand={toggleExpanded}
-                    onToggleStatus={onToggleStatus}
+                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    onToggleExpand={(id) => toggleExpanded(id)}
+                    onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
                   />
                 ))}
@@ -168,8 +202,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     entity={entity}
                     config={config}
                     isSelected={entity.id === selectedEntity?.id}
-                    onSelect={handleEntitySelect}
-                    onToggleStatus={onToggleStatus}
+                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
                   />
                 ))}
@@ -185,7 +219,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
               <button
-                onClick={() => setShowDetailsPanel(false)}
+                onClick={handleCloseDetailsPanel}
                 className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

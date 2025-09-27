@@ -1,12 +1,9 @@
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { PageHeader } from '@/components/common/page-header/PageHeader';
+import { useStandardHeaderActions } from '@/components/common/page-header/hooks/useStandardHeaderActions';
 import { DesignationFormModal } from '@/components/designations/DesignationFormModal';
 import { designationConfig } from '@/config/designations';
 import {
@@ -16,6 +13,7 @@ import {
   useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
+// BaseEntity type not needed anymore
 import { useDelete } from '@/hooks/useDelete';
 import {
   Employee_designationsInsertSchema,
@@ -38,6 +36,7 @@ export default function DesignationManagerPage() {
   const supabase = createClient();
 
   // State management
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [selectedDesignationId, setSelectedDesignationId] = useState<
     string | null
@@ -90,7 +89,21 @@ export default function DesignationManagerPage() {
     supabase,
     'employee_designations',
     { onSuccess: onMutationSuccess }
-  );
+  ) as unknown as {
+    mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
+    isPending: boolean;
+  };
+  
+  // Create a properly typed mutate function
+  const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
+    return toggleStatusMutation.mutate({
+      ...variables,
+      nameField: 'status' // Ensure nameField is always 'status' for this table
+    });
+  };
+  
+  // Extract the properties we need for EntityManagementComponent
+  const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDelete({
     tableName: 'employee_designations',
@@ -117,6 +130,7 @@ export default function DesignationManagerPage() {
   const handleOpenEditForm = (designation: DesignationWithRelations) => {
     setEditingDesignation(designation);
     setFormOpen(true);
+    console.log(designation);
   };
 
   const handleFormSubmit = (data: Employee_designationsInsertSchema) => {
@@ -198,7 +212,7 @@ export default function DesignationManagerPage() {
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
-        toggleStatusMutation={toggleStatusMutation}
+        toggleStatusMutation={{ mutate: toggleStatus, isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}

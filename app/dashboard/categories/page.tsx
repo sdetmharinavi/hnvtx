@@ -103,6 +103,7 @@ export default function CategoriesPage() {
     if (!isLoading) {
       refreshCategoryInfo();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading]);
 
   async function handleRefresh() {

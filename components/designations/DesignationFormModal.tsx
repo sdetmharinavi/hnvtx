@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,7 +18,7 @@ interface DesignationFormModalProps {
   isLoading: boolean;
 }
 
-export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, allDesignations, isLoading }: DesignationFormModalProps) {
+export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, allDesignations }: DesignationFormModalProps) {
   // === React Hook Form Setup ===
   // Create a form-specific schema that excludes timestamp fields to avoid Date vs string/null mismatches
   const designationFormSchema = employee_designationsInsertSchema.pick({ id: true, name: true, parent_id: true, status: true });
@@ -81,19 +81,11 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
-      <div className='max-h-[90vh] w-full overflow-y-auto rounded-lg bg-white p-6 dark:bg-gray-800'>
-        <div className='mb-4 flex items-center justify-between'>
-          <h2 className='text-lg font-semibold text-gray-900 dark:text-white'>{designation ? "Edit Designation" : "Add New Designation"}</h2>
-          <button onClick={onClose} className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'>
-            ×
-          </button>
-        </div>
-        <FormCard onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose} heightClass="h-[calc(90vh-140px)]">
+        <FormCard standalone onSubmit={handleSubmit(onValidSubmit)} title={designation ? "Edit Designation" : "Add New Designation"} onCancel={onClose} heightClass="h-[calc(90vh-140px)]">
           <FormInput name='name' label='Designation Name' register={register} error={errors.name} required />
           <FormSearchableSelect name='parent_id' label='Parent Designation' control={control} error={errors.parent_id} required options={availableParents.map((d) => ({ value: d.id, label: d.name }))} />
           <FormSwitch name='status' label='Status' control={control} error={errors.status} className="mt-4" />
         </FormCard>
-      </div>
     </div>
   );
 }

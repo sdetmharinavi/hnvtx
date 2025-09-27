@@ -1,7 +1,7 @@
 // Main OfcForm component
 import React, { useMemo } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { usePagedNodesComplete, useTableQuery } from '@/hooks/database';
+import { usePagedData, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
@@ -17,6 +17,7 @@ import MaintenanceSection from '@/components/ofc/OfcForm/MaintenanceSection';
 import { PathValue } from 'react-hook-form';
 import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
 import {
+  NodesRowSchema,
   Ofc_cablesInsertSchema,
   Ofc_cablesRowSchema,
 } from '@/schemas/zod-schemas';
@@ -54,8 +55,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const currentOfcTypeId = watch('ofc_type_id');
 
   // Data fetching with optimized queries
-  const { data: nodesData, isLoading: nodesLoading } = usePagedNodesComplete(
+  const { data: nodesData, isLoading: nodesLoading } = usePagedData<NodesRowSchema>(
     supabase,
+    'nodes',
     {
       filters: {
         status: true,
@@ -107,7 +109,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
     useRouteGeneration<Ofc_cablesRowSchema>({
       startingNodeId,
       endingNodeId,
-      nodesData: nodesData ?? undefined,
+      nodesData: nodesData?.data as Array<{ id: string; name: string }> | undefined,
       isEdit,
       setValue: setValueWithType,
     });
@@ -122,9 +124,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
   // Memoized options to prevent unnecessary re-renders
   const nodeOptions = useMemo(
     (): Option[] =>
-      nodesData?.map((node) => ({
+      nodesData?.data.map((node: NodesRowSchema) => ({
         value: String(node.id),
-        label: node.name,
+        label: node.name || `Node ${node.id}`,
       })) || [],
     [nodesData]
   );

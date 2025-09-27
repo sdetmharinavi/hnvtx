@@ -1,7 +1,7 @@
 "use client";
 
 import { BaseEntity, EntityWithChildren, isHierarchicalEntity, UseEntityManagementProps } from "@/components/common/entity-management/types";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, config, onEdit, onDelete, onToggleStatus, onCreateNew }: UseEntityManagementProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,10 +9,11 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [selectedEntity, setSelectedEntity] = useState<T | null>(null);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
-  const allEntities = entitiesQuery.data || [];
+  const allEntities = useMemo(() => entitiesQuery.data || [], [entitiesQuery.data]);
 
   // Search functionality
   const searchedEntities = useMemo(() => {
@@ -32,9 +33,11 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
 
-        const entityValue = (entity as any)[key];
+        // Safely access the property using type assertion
+        const entityValue = key in entity ? entity[key as keyof T] : undefined;
+        
         if (key === "status") {
-          return entityValue.toString() === value;
+          return entityValue !== undefined && entityValue?.toString() === value;
         }
         return entityValue === value;
       });
@@ -78,13 +81,17 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     return rootEntities;
   }, [filteredEntities, config.isHierarchical]);
 
-  const selectedEntity = allEntities.find((entity) => entity.id === selectedEntityId) || null;
-
   // Event handlers
-  const handleEntitySelect = (id: string) => {
+  const handleEntitySelect = useCallback((id: string, entity?: T) => {
     setSelectedEntityId(id);
+    if (entity) {
+      setSelectedEntity(entity);
+    } else {
+      const foundEntity = allEntities.find(e => e.id === id) || null;
+      setSelectedEntity(foundEntity);
+    }
     setShowDetailsPanel(true);
-  };
+  }, [allEntities]);
 
   const toggleExpanded = (id: string) => {
     setExpandedEntities((prev) => {
@@ -102,11 +109,11 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     onCreateNew();
   };
 
-  const handleOpenEditForm = () => {
+  const handleOpenEditForm = useCallback(() => {
     if (selectedEntity) {
       onEdit(selectedEntity);
     }
-  };
+  }, [selectedEntity, onEdit]);
 
   return {
     // State
@@ -115,6 +122,7 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     showFilters,
     filters,
     selectedEntityId,
+    selectedEntity,
     showDetailsPanel,
     expandedEntities,
 
@@ -122,7 +130,6 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     allEntities,
     filteredEntities,
     hierarchicalEntities,
-    selectedEntity,
 
     // Handlers
     setSearchTerm,
