@@ -29,50 +29,6 @@ BEGIN
 END;
 $$;
 
--- -- Back-compat wrappers for existing callers
-
--- -- 2-arg wrapper: delegates to 3-arg with default alias 'v'
--- CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT)
--- RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
--- BEGIN
---   RETURN public.build_where_clause(p_filters, p_view_name, 'v');
--- END;
--- $$;
-
--- -- 1-arg wrapper: delegates to 3-arg without a view name (no column-existence check)
--- -- We pass empty view/alias; the 3-arg function should tolerate empty view_name by skipping column checks.
--- CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB)
--- RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
--- DECLARE
---   where_clause TEXT := '';
---   filter_key TEXT;
---   filter_value JSONB;
--- BEGIN
---   IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' AND p_filters != '{}'::jsonb THEN
---     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
---       IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
---       IF filter_key = 'or' OR filter_key = '$or' THEN
---         where_clause := where_clause || format(' AND (%s)', filter_value->>0);
---       ELSE
---         IF jsonb_typeof(filter_value) = 'array' THEN
---           where_clause := where_clause || format(
---             ' AND %I IN (SELECT value::text FROM jsonb_array_elements_text(%L))',
---             filter_key, filter_value
---           );
---         ELSE
---           IF right(filter_key, 3) = '_id' OR jsonb_typeof(filter_value) = 'boolean' THEN
---             where_clause := where_clause || format(' AND %I::text = %L', filter_key, filter_value->>0);
---           ELSE
---             where_clause := where_clause || format(' AND %I::text ILIKE %L', filter_key, '%' || (filter_value->>0) || '%');
---           END IF;
---         END IF;
---       END IF;
---     END LOOP;
---   END IF;
---   RETURN where_clause;
--- END;
--- $$;
-
 -- Helper function to build the WHERE clause dynamically
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$

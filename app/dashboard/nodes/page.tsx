@@ -11,15 +11,14 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { usePagedNodesComplete } from '@/hooks/database';
+import { usePagedData } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { NodesRowSchema } from '@/schemas/zod-schemas';
-import { NodeRowsWithCount } from '@/types/view-row-types';
+import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo } from 'react';
 import { FiCpu } from 'react-icons/fi';
@@ -39,35 +38,34 @@ export type NodeRowsWithRelations = NodesRowSchema & {
 // 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<NodeRowsWithCount> => {
+): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedNodesComplete(supabase, {
-    filters: {
-      ...filters,
-      ...(searchQuery ? { name: searchQuery } : {}),
-    },
-    limit: pageLimit,
-    offset: (currentPage - 1) * pageLimit,
-  });
-
-  // Calculate counts from the full dataset
-  const totalCount = data?.[0]?.total_count || 0;
-  const activeCount = data?.[0]?.active_count || 0;
-  const inactiveCount = data?.[0]?.inactive_count || 0;
+  const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
+    supabase,
+    'v_nodes_complete', // The name of the view
+    {
+      filters: {
+        ...filters,
+        ...(searchQuery ? { name: searchQuery } : {}),
+      },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+    }
+  );
 
   return {
-    data: data || [],
-    totalCount,
-    activeCount,
-    inactiveCount,
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
     isLoading,
     error,
     refetch,
   };
 };
+
 
 const NodesPage = () => {
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
@@ -88,7 +86,7 @@ const NodesPage = () => {
     // bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'nodes', NodeRowsWithCount>({
+  } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
     tableName: 'nodes',
     dataQueryHook: useNodesData,
   });
@@ -135,7 +133,7 @@ const NodesPage = () => {
 
   const tableActions = useMemo(
     () =>
-      createStandardActions<NodeRowsWithCount>({
+      createStandardActions<V_nodes_completeRowSchema>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -199,7 +197,7 @@ const NodesPage = () => {
 
       <NodeDetailsModal
         isOpen={viewModal.isOpen}
-        node={viewModal.record as NodeRowsWithCount}
+        node={viewModal.record as V_nodes_completeRowSchema}
         onClose={viewModal.close}
       />
 
