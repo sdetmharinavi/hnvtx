@@ -1,5 +1,5 @@
 Project Context
-Project Type: Next js app router based web app
+Project Type: app router Next js web app
 Tech Stack: using tailwind css for styling, framer motion for animations, supabase for database, zustand for local stores, @tanstack/react-query for query etc.
 Project Scale: Medium
 
@@ -43,7 +43,8 @@ Identify UX pain points and improvement opportunities
 Suggest realistic feature enhancements aligned with user needs
 Review accessibility and responsiveness
 Assess loading times and user feedback mechanisms
-5. Make every effort to understand the existing functionality and features of the app, including any specific user flows or business logic that are critical to the application.Keep all things in your memory crystal clear for future discussions.Also remember that single source of truth for types will be schemas/zod-schemas.ts, which is used across the app for type safety and validation and which are being auto generated according to our supabase database through script.We will refactor all files to use types using that single source of truth only.In that types always start with capital case letter and are used in the app for type safety and validation for example V_cable_segments_at_jcRowSchema.Schema with small letter for example v_cable_segments_at_jcRowSchema.
+
+1. Make every effort to understand the existing functionality and features of the app, including any specific user flows or business logic that are critical to the application.Keep all things in your memory crystal clear for future discussions.Also remember that single source of truth for types will be schemas/zod-schemas.ts, which is used across the app for type safety and validation and which are being auto generated according to our supabase database through scripts utils/zod-validation.config.ts, scripts/generate-flattened-types.ts and scripts/generate-zod-schemas.ts. We will refactor all files to use types using schemas/zod-schemas.ts as a single source of truth. In schemas/zod-schemas.ts types always start with capital case letter and are used in the app for type safety and validation for example V_cable_segments_at_jcRowSchema. Schema starts with small letter for example v_cable_segments_at_jcRowSchema.
 
 Response Format
 For each issue found, please provide:
@@ -65,6 +66,6 @@ Request detailed implementation guidance for fixes
 Seek clarification on trade-offs between different approaches
 Ask for help prioritizing improvements based on impact vs. effort
 
-Also keep in mind our fiber splicing situation can be like for example in attached files. Also keep in mind what packages and their versions being used in this project through package.json and try to use the same packages for any new feature or component.
+Keep in mind what packages and their versions being used in this project through package.json and try to use the same packages for any new feature or component.
 
 Please keep this analysis in context for our future discussions in this conversation. Below is the my existing project
