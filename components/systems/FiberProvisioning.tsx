@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAvailableFibers } from "@/hooks/database/path-queries";
-import { useProvisionRingPath } from "@/hooks/database/path-mutations"; // <-- Use the new, correct hook
+import { useProvisionRingPath } from "@/hooks/database/path-mutations";
 import { Button } from "../common/ui/Button";
 import { toast } from "sonner";
 import { FiZap } from "react-icons/fi";
@@ -50,7 +50,6 @@ export function FiberProvisioning({ pathName, systemId, physicalPathId }: Props)
       return;
     }
     
-    // Call the mutation with the full, correct set of variables
     provisionMutation.mutate({
       systemId: systemId,
       pathName: pathName,

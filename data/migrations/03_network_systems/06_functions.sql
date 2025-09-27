@@ -2,7 +2,6 @@
 -- Description: Contains functions for the Network Systems module.
 
 CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
-    p_id UUID,
     p_system_name TEXT,
     p_system_type_id UUID,
     p_node_id UUID,
@@ -12,6 +11,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_s_no TEXT,
     p_remark TEXT,
     p_status BOOLEAN,
+    p_id UUID DEFAULT NULL,
     -- Subtype fields (optional)
     p_ring_id UUID DEFAULT NULL,
     p_gne TEXT DEFAULT NULL,
@@ -71,4 +71,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(UUID, TEXT, UUID, UUID, INET, UUID, DATE, TEXT, TEXT, BOOLEAN, UUID, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, INET, UUID, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;

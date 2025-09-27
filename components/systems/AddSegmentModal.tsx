@@ -1,11 +1,9 @@
 "use client";
 
-import { useAvailablePathSegments } from "@/hooks/database/path-queries";
 import { Modal } from "../common/ui/Modal";
-import { useState } from "react";
-
+import { useState, useMemo } from "react";
 import { Button } from "../common/ui/Button";
-import { useTableInsert } from "@/hooks/database";
+import { useTableInsert, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
@@ -14,18 +12,22 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   logicalPathId: string;
-  sourceNodeId: string;
   currentSegments: Row<'v_system_ring_paths_detailed'>[];
   onSegmentAdded: () => void;
 }
 
-export function AddSegmentModal({ isOpen, onClose, logicalPathId, sourceNodeId, currentSegments, onSegmentAdded }: Props) {
+export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegments, onSegmentAdded }: Props) {
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
   const supabase = createClient();
   
-  const { data: availableCables, isLoading } = useAvailablePathSegments(sourceNodeId, currentSegments);
+  const lastSegment = currentSegments.length > 0 ? currentSegments[currentSegments.length - 1] : null;
+  const nextNodeId = lastSegment ? lastSegment.end_node_id : null;
 
-  console.log(availableCables);
+  const { data: availableCables, isLoading } = useTableQuery(supabase, 'ofc_cables', {
+      columns: 'id, route_name, sn:sn_id(name), en:en_id(name)',
+      filters: nextNodeId ? { or: `(sn_id.eq.${nextNodeId},en_id.eq.${nextNodeId})` } : {},
+      enabled: !!nextNodeId
+  });
 
   const { mutate: addSegment, isPending } = useTableInsert(supabase, 'logical_path_segments', {
     onSuccess: () => {
@@ -51,23 +53,23 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, sourceNodeId, 
     <Modal isOpen={isOpen} onClose={onClose} title="Add Next Path Segment">
       <div className="space-y-4">
         <label htmlFor="cable-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Available Cables
+          Available Cables from {lastSegment?.end_node_name || "Start Node"}
         </label>
         {isLoading && <p>Loading available cables...</p>}
         {!isLoading && (!availableCables || availableCables.length === 0) && (
-            <p className="text-gray-500">No further connecting cables found from the last node in the path.</p>
+            <p className="text-gray-500">No further connecting cables found.</p>
         )}
         {availableCables && availableCables.length > 0 && (
             <select
                 id="cable-select"
-                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={selectedCableId || ""}
                 onChange={(e) => setSelectedCableId(e.target.value)}
             >
                 <option value="" disabled>Select a cable...</option>
                 {availableCables?.map((cable) => (
                     <option key={cable.id} value={cable.id}>
-                        {cable.route_name} ({cable.sn?.name || 'N/A'} → {cable.en?.name || 'N/A'})
+                        {cable.route_name}
                     </option>
                 ))}
             </select>
