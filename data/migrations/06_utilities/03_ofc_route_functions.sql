@@ -158,71 +158,6 @@ AS $$
 $$;
 GRANT EXECUTE ON FUNCTION public.get_all_splices() TO authenticated;
 
-
--- FIX: This function has been fully rewritten to trace through SEGMENTS, not cables.
--- Description: Trace a fiber's path from a starting point through splices recursively.
-CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
-RETURNS TABLE (
-    segment_order BIGINT, path_type TEXT, element_id UUID,
-    element_name TEXT, details TEXT, fiber_no INT,
-    distance_km NUMERIC, loss_db NUMERIC
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    RETURN QUERY
-    WITH RECURSIVE path_traversal AS (
-        SELECT 1::BIGINT AS segment_order, p_start_segment_id AS current_segment_id, p_start_fiber_no AS current_fiber_no
-        UNION ALL
-        SELECT
-            p.segment_order + 1,
-            s.outgoing_segment_id,
-            s.outgoing_fiber_no
-        FROM path_traversal p
-        JOIN public.fiber_splices s ON p.current_segment_id = s.incoming_segment_id AND p.current_fiber_no = s.incoming_fiber_no
-        WHERE s.outgoing_segment_id IS NOT NULL AND p.segment_order < 50
-    )
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY pt.segment_order, z.type_order) AS final_segment_order,
-        z.path_type, z.element_id, z.element_name, z.details, z.fiber_no, z.distance_km, z.loss_db
-    FROM path_traversal pt
-    CROSS JOIN LATERAL (
-        SELECT
-            1 AS type_order,
-            'SEGMENT'::TEXT AS path_type,
-            cs.id AS element_id,
-            (oc.route_name || ' (Seg ' || cs.segment_order || ')')::TEXT AS element_name,
-            (start_node.name || ' → ' || end_node.name)::TEXT AS details,
-            pt.current_fiber_no AS fiber_no,
-            cs.distance_km,
-            NULL::NUMERIC AS loss_db
-        FROM public.cable_segments cs
-        JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-        JOIN public.nodes start_node ON cs.start_node_id = start_node.id
-        JOIN public.nodes end_node ON cs.end_node_id = end_node.id
-        WHERE cs.id = pt.current_segment_id
-        UNION ALL
-        SELECT
-            2 AS type_order,
-            'JC'::TEXT AS path_type,
-            s.jc_id AS element_id,
-            n.name AS element_name,
-            'Splice'::TEXT AS details,
-            s.outgoing_fiber_no AS fiber_no,
-            NULL::NUMERIC AS distance_km,
-            s.loss_db AS loss_db
-        FROM public.fiber_splices s
-        JOIN public.junction_closures jc ON s.jc_id = jc.id
-        JOIN public.nodes n ON jc.node_id = n.id
-        WHERE s.incoming_segment_id = pt.current_segment_id AND s.incoming_fiber_no = pt.current_fiber_no
-    ) AS z
-    WHERE z.element_id IS NOT NULL ORDER BY final_segment_order;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
-
 -- Fetches structured JSON for the splice matrix UI.
 CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
 RETURNS JSONB
@@ -295,3 +230,91 @@ SELECT jsonb_build_object(
 FROM jc_info;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
+
+-- Traces a fiber's path bi-directionally with loop detection.
+CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
+RETURNS TABLE (
+    step_order BIGINT,
+    element_type TEXT,
+    element_id UUID,
+    element_name TEXT,
+    details TEXT,
+    fiber_in INT,
+    fiber_out INT,
+    distance_km NUMERIC,
+    loss_db NUMERIC
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH RECURSIVE path_traversal AS (
+        -- Initial step: Start with the selected segment
+        SELECT
+            1::BIGINT AS step,
+            p_start_segment_id AS segment_id,
+            p_start_fiber_no AS fiber_no,
+            ARRAY[p_start_segment_id] AS path_history -- For loop detection
+
+        UNION ALL
+
+        -- Recursive step: Find the next connected segment
+        SELECT
+            p.step + 1,
+            -- Determine the next segment_id
+            CASE
+                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
+                ELSE s.incoming_segment_id
+            END AS next_segment_id,
+            -- Determine the next fiber_no
+            CASE
+                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no
+                ELSE s.incoming_fiber_no
+            END AS next_fiber_no,
+            -- Add the new segment to our history
+            p.path_history || CASE
+                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
+                ELSE s.incoming_segment_id
+            END
+        FROM
+            path_traversal p
+        JOIN
+            public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no)
+                                   OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE
+            -- Loop prevention: stop if we've already seen the next segment
+            NOT (
+                CASE
+                    WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
+                    ELSE s.incoming_segment_id
+                END = ANY(p.path_history)
+            )
+            -- Stop if the path terminates (no outgoing connection)
+            AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL)
+            -- Safety limit
+            AND p.step < 50
+    )
+    -- Final selection and data shaping
+    SELECT
+        pt.step as step_order,
+        'SEGMENT'::TEXT AS element_type,
+        cs.id AS element_id,
+        oc.route_name AS element_name,
+        (sn.name || ' → ' || en.name)::TEXT AS details,
+        pt.fiber_no AS fiber_in,
+        pt_next.fiber_no AS fiber_out,
+        cs.distance_km,
+        NULL::NUMERIC AS loss_db
+    FROM
+        path_traversal pt
+    JOIN public.cable_segments cs ON pt.segment_id = cs.id
+    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+    JOIN public.nodes sn ON cs.start_node_id = sn.id
+    JOIN public.nodes en ON cs.end_node_id = en.id
+    LEFT JOIN path_traversal pt_next ON pt.step + 1 = pt_next.step
+    ORDER BY pt.step;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;

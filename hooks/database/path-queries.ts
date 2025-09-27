@@ -3,10 +3,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { FiberTraceSegment, FiberTraceNode } from "@/components/route-manager/types";
 import { toast } from "sonner";
-import { useRpcQuery } from "./rpc-queries";
-import { buildTraceTree } from "@/components/ofc-details/trace-helper";
+import { useRpcQuery } from "@/hooks/database/rpc-queries";
+import { z } from 'zod';
+import { fiberTraceSegmentSchema, FiberTraceSegment } from "@/schemas/custom-schemas";
 
 const supabase = createClient();
 
@@ -36,17 +36,15 @@ export function useAvailableFibers(pathId: string | null) {
 
 /**
  * Hook to trace a fiber's complete path using the recursive RPC function.
- * This now transforms the flat data into a nested tree structure.
- * FIX: Updated to use the correct RPC parameter names (p_start_segment_id).
+ * The new RPC returns a pre-ordered, structured list, so no client-side tree building is needed.
  */
 export function useFiberTrace(startSegmentId: string | null, fiberNo: number | null) {
   return useQuery({
     queryKey: ['fiber-trace', startSegmentId, fiberNo],
-    queryFn: async (): Promise<FiberTraceNode | null> => {
-      if (!startSegmentId || fiberNo === null) return null;
+    queryFn: async (): Promise<FiberTraceSegment[]> => { // FIX: Return type is now non-nullable
+      if (!startSegmentId || fiberNo === null) return []; // FIX: Return empty array instead of null
 
       const { data, error } = await supabase.rpc('trace_fiber_path', {
-        // FIX: The parameter names now match the corrected SQL function signature.
         p_start_segment_id: startSegmentId,
         p_start_fiber_no: fiberNo
       });
@@ -56,7 +54,19 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
         throw error;
       }
 
-      return buildTraceTree(data as FiberTraceSegment[] || []);
+      if (!data || data.length === 0) {
+        return []; // FIX: Return empty array for valid but empty traces
+      }
+
+      const parsed = z.array(fiberTraceSegmentSchema).safeParse(data);
+
+      if (!parsed.success) {
+        console.error("Zod validation error for Fiber Trace:", parsed.error);
+        toast.error("Trace data from server was malformed.");
+        throw new Error("Received invalid data structure for fiber trace.");
+      }
+
+      return parsed.data;
     },
     enabled: !!startSegmentId && fiberNo !== null,
   });

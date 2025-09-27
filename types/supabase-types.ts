@@ -4222,10 +4222,11 @@ export type Database = {
           distance_km: number
           element_id: string
           element_name: string
-          fiber_no: number
+          element_type: string
+          fiber_in: number
+          fiber_out: number
           loss_db: number
-          path_type: string
-          segment_order: number
+          step_order: number
         }[]
       }
       update_fiber_connections_on_splice: {
