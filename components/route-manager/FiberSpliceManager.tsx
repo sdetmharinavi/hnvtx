@@ -1,83 +1,37 @@
+// path: components/route-manager/FiberSpliceManager.tsx
 "use client";
 
 import { useMemo, useState } from 'react';
 import { useJcSplicingDetails, useManageSplice, useAutoSplice } from '@/hooks/database/route-manager-hooks';
 import { PageSpinner, Button } from '@/components/common/ui';
 import { FiLink, FiX, FiZap } from 'react-icons/fi';
+import { JcSplicingDetails } from '@/schemas/custom-schemas';
 
-// --- Local Type Definitions for this component ---
-// These types define the clean, validated data structure the component will work with internally.
-type FiberStatus = 'available' | 'used_as_incoming' | 'used_as_outgoing' | 'terminated';
-
-interface FiberAtSegment {
-    fiber_no: number;
-    status: FiberStatus;
-    connected_to_segment: string | null;
-    connected_to_fiber: number | null;
-    splice_id: string | null;
-}
-
-interface SegmentAtJc {
-    segment_id: string;
-    segment_name: string;
-    fiber_count: number;
-    fibers: FiberAtSegment[];
-}
-
-interface SplicingDetails {
-    junction_closure: { id: string; name: string; };
-    segments_at_jc: SegmentAtJc[];
-}
+// --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
+type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
+type FiberAtSegment = JcSplicingDetails['segments_at_jc'][0]['fibers'][0];
 
 interface FiberSpliceManagerProps {
     junctionClosureId: string | null;
 }
 
-// --- Data Normalization Hook ---
-// This custom hook takes the raw, potentially messy data from the RPC and transforms it
-// into the clean, reliable SplicingDetails type, preventing crashes.
-const useNormalizedSplicingDetails = (junctionClosureId: string | null): { normalizedData: SplicingDetails | null; isLoading: boolean; isError: boolean; error: Error | null } => {
+const useNormalizedSplicingDetails = (junctionClosureId: string | null): { 
+  normalizedData: JcSplicingDetails | null; 
+  isLoading: boolean; 
+  isError: boolean; 
+  error: Error | null 
+} => {
     const { data: rawData, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
 
-    const normalizedData = useMemo((): SplicingDetails | null => {
+    const normalizedData = useMemo((): JcSplicingDetails | null => {
         if (!rawData || typeof rawData !== 'object' || !('junction_closure' in rawData)) {
             return null;
         }
-
-        const rawDetails = rawData as any; // Cast to any to safely access potentially missing properties
-
-        const segments = Array.isArray(rawDetails.segments_at_jc) ? rawDetails.segments_at_jc : [];
-
-        return {
-            junction_closure: rawDetails.junction_closure,
-            segments_at_jc: segments.map((segment: any) => {
-                const fibers = Array.isArray(segment.fibers) ? segment.fibers : [];
-                return {
-                    segment_id: String(segment.segment_id || ''),
-                    segment_name: String(segment.segment_name || 'Unnamed Segment'),
-                    fiber_count: Number(segment.fiber_count || 0),
-                    fibers: fibers
-                        .map((fiber: any) => {
-                            const fiberNo = Number(fiber?.fiber_no);
-                            if (isNaN(fiberNo)) return null;
-
-                            return {
-                                fiber_no: fiberNo,
-                                status: fiber?.status || 'available',
-                                connected_to_segment: fiber?.connected_to_segment || null,
-                                connected_to_fiber: fiber?.connected_to_fiber || null,
-                                splice_id: fiber?.splice_id || null,
-                            };
-                        })
-                        .filter((f): f is FiberAtSegment => f !== null),
-                };
-            }),
-        };
+        return rawData;
     }, [rawData]);
 
     return { normalizedData, isLoading, isError, error };
 };
-
 
 export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId }) => {
     const { normalizedData: spliceDetails, isLoading, isError, error } = useNormalizedSplicingDetails(junctionClosureId);
@@ -111,7 +65,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     };
 
     const handleRemoveSplice = (spliceId: string) => {
-        if (window.confirm("Are you sure?") && junctionClosureId) {
+        if (window.confirm("Are you sure you want to remove this splice?") && junctionClosureId) {
             manageSpliceMutation.mutate({ action: 'delete', jcId: junctionClosureId, spliceId });
             setSelectedFiber(null);
         }
@@ -119,17 +73,19 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     
     const handleAutoSplice = (segment1Id: string, segment2Id: string) => {
         if (junctionClosureId) {
-            autoSpliceMutation.mutate({ jcId: junctionClosureId, segment1Id, segment2Id } as any);
+            autoSpliceMutation.mutate({ jcId: junctionClosureId, segment1Id, segment2Id });
         }
     };
 
     if (isLoading) return <PageSpinner text="Loading splice details..." />;
-    if (isError) return <div className="p-4 text-red-500">Error: {error.message}</div>;
+    if (isError) return <div className="p-4 text-red-500">Error: {error?.message}</div>;
     if (!spliceDetails?.junction_closure) {
         return <div className="p-4 text-gray-500">Select a Junction Closure to manage its splices.</div>;
     }
 
     const { junction_closure, segments_at_jc } = spliceDetails;
+
+    const gridTemplateColumns = `repeat(${Math.max(1, segments_at_jc.length)}, minmax(0, 1fr))`;
 
     const renderFiber = (fiber: FiberAtSegment, segmentId: string) => {
         const isSelected = selectedFiber?.segmentId === segmentId && selectedFiber.fiberNo === fiber.fiber_no;
@@ -141,6 +97,10 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             used_as_outgoing: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
             terminated: 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
         };
+
+        const titleText = fiber.connected_to_segment 
+          ? `-> F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` 
+          : fiber.status.replace(/_/g, ' ');
 
         return (
             <div
@@ -155,11 +115,11 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-xs font-bold w-6 text-center">{fiber.fiber_no}</span>
                     {fiber.status !== 'available' && <FiLink className="w-3 h-3 flex-shrink-0" />}
-                    <span className="text-xs truncate" title={fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}>
-                        {fiber.connected_to_segment ? `→ F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` : fiber.status.replace(/_/g, ' ')}
+                    <span className="text-xs truncate" title={titleText}>
+                        {titleText}
                     </span>
                 </div>
-                {fiber.splice_id && (
+                {fiber.splice_id && fiber.status === 'used_as_incoming' && (
                     <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber.splice_id!); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
                         <FiX className="w-3 h-3" />
                     </button>
@@ -180,7 +140,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 </div>
             )}
             
-            <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${Math.max(1, segments_at_jc.length)}, minmax(0, 1fr))` }}>
+            <div className="grid gap-4" style={{ gridTemplateColumns }}>
                 {segments_at_jc.map((segment, index) => (
                     <div key={segment.segment_id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border dark:border-gray-700">
                         <h4 className="font-bold text-sm mb-2 truncate" title={segment.segment_name}>{segment.segment_name}</h4>
