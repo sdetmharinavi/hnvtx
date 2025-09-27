@@ -36,7 +36,9 @@
       "PGPASSWORD",
       "PGPORT",
       "PGUSER",
+      "phfts",
       "pkey",
+      "plfts",
       "plpgsql",
       "postgrest",
       "psql",
@@ -60,6 +62,7 @@
       "vmux",
       "VMUXADMIN",
       "webauthn",
+      "wfts",
       "yunvefyvwbqaigkawcvj",
       "zoomend"
     ],

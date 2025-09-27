@@ -170,16 +170,16 @@ export interface OptimisticContext {
   previousData?: [readonly unknown[], unknown][];
 }
 
-export type PagedSystemsCompleteResult = Array<Database["public"]["Functions"]["get_paged_v_systems_complete"]["Returns"][number]> | null;
+// export type PagedSystemsCompleteResult = Array<Database["public"]["Functions"]["get_paged_v_systems_complete"]["Returns"][number]> | null;
 
-export type UsePagedSystemsCompleteOptions = {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  orderDir?: "asc" | "desc";
-  filters?: Json;
-  queryOptions?: Omit<UseQueryOptions<PagedSystemsCompleteResult>, "queryKey" | "queryFn">;
-};
+// export type UsePagedSystemsCompleteOptions = {
+//   limit?: number;
+//   offset?: number;
+//   orderBy?: string;
+//   orderDir?: "asc" | "desc";
+//   filters?: Json;
+//   queryOptions?: Omit<UseQueryOptions<PagedSystemsCompleteResult>, "queryKey" | "queryFn">;
+// };
 
 // --- TYPES FOR EXCEL UPLOAD HOOK ---
 
