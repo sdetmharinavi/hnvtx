@@ -2,8 +2,9 @@
 
 import {
   Filters,
+  RpcFilters,
   convertRichFiltersToSimpleJson,
-  usePagedOfcCablesComplete,
+  usePagedData,
   useTableInsert,
   useTableUpdate,
 } from '@/hooks/database';
@@ -16,7 +17,7 @@ import { BulkActions } from '@/components/common/BulkActions';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import { DataTable } from '@/components/table/DataTable';
-import { Json, TablesInsert } from '@/types/supabase-types';
+import { TablesInsert } from '@/types/supabase-types';
 // import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
@@ -61,28 +62,26 @@ const useOfcData = (
     if (searchQuery) {
       richFilters.or = `(route_name ILIKE '%${searchQuery}%' OR asset_no ILIKE '%${searchQuery}%' OR transnet_id ILIKE '%${searchQuery}%')`;
     }
-    return convertRichFiltersToSimpleJson(richFilters);
+    const result = convertRichFiltersToSimpleJson(richFilters);
+    return result || {}; // Ensure we always return an object, never null
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedOfcCablesComplete(
+  const { data, isLoading, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
+    'ofc_cables_complete',
     {
-      filters: serverFilters as Json,
+      filters: serverFilters as RpcFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
   );
 
-  // Calculate counts from the full dataset
-  const totalCount = data?.[0]?.total_count || 0;
-  const activeCount = data?.[0]?.active_count || 0;
-  const inactiveCount = data?.[0]?.inactive_count || 0;
 
   return {
-    data: (data || []) as V_ofc_cables_completeRowSchema[],
-    totalCount,
-    activeCount,
-    inactiveCount,
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
     isLoading,
     error,
     refetch,
@@ -217,7 +216,7 @@ const OfcPage = () => {
 
   const orderedColumns = useOrderedColumns(
     columns,
-    TABLE_COLUMN_KEYS.ofc_cables
+    [...TABLE_COLUMN_KEYS.ofc_cables] // Spread operator creates a new mutable array
   );
 
   const tableActions = useMemo(

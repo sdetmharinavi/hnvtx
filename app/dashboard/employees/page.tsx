@@ -5,11 +5,10 @@ import { FiDownload, FiPlus } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import {
   TableInsert,
-  usePagedEmployeesWithCount,
+  usePagedData,
   useTableQuery,
 } from '@/hooks/database';
 import { DataTable } from '@/components/table/DataTable';
-import { Row } from '@/hooks/database';
 import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
@@ -27,19 +26,19 @@ import {
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { EmployeeRowsWithCount } from '@/types/view-row-types';
-import { EmployeesRowSchema } from '@/schemas/zod-schemas';
+import { EmployeesRowSchema, V_employees_with_countRowSchema } from '@/schemas/zod-schemas';
 
 // 1. ADAPTER HOOK
 const useEmployeesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<EmployeeRowsWithCount> => {
+): DataQueryHookReturn<EmployeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedEmployeesWithCount(
+  const { data, isLoading, error, refetch } = usePagedData<EmployeesRowSchema>(
     supabase,
+    'employees',
     {
       filters: {
         ...filters,
@@ -50,16 +49,11 @@ const useEmployeesData = (
     }
   );
 
-  // Calculate counts from the full dataset
-  const totalCount = data?.[0]?.total_count || 0;
-  const activeCount = data?.[0]?.active_count || 0;
-  const inactiveCount = data?.[0]?.inactive_count || 0;
-
   return {
-    data: data || [],
-    totalCount,
-    activeCount,
-    inactiveCount,
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
     isLoading,
     error,
     refetch,
@@ -68,13 +62,14 @@ const useEmployeesData = (
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
+  const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(null);
 
   // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: employeesData,
     totalCount,
-    activeCount,
-    inactiveCount,
+    // activeCount,
+    // inactiveCount,
     isLoading,
     // isMutating,
     error,
@@ -83,11 +78,11 @@ const EmployeesPage = () => {
     search,
     filters,
     editModal,
-    viewModal,
+    // viewModal,
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'employees', EmployeeRowsWithCount>({
+  } = useCrudManager<'employees', EmployeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
     processDataForSave: (data) => {
@@ -98,9 +93,6 @@ const EmployeesPage = () => {
     },
   });
 
-  const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(
-    null
-  );
 
   const supabase = createClient();
   const { data: designations = [] } = useTableQuery(
@@ -224,7 +216,7 @@ const EmployeesPage = () => {
           const validRows = selectedRows.filter(
             (
               row
-            ): row is EmployeeRowsWithCount & {
+            ): row is EmployeesRowSchema & {
               id: string;
               employee_name: string; // Ensure employee_name is not null
             } => row.id !== null && row.employee_name !== null
@@ -282,11 +274,28 @@ const EmployeesPage = () => {
         designations={designations}
         maintenanceAreas={maintenanceAreas}
       />
-      <EmployeeDetailsModal
-        employee={employeesData.find((e) => e.id === viewingEmployeeId)}
-        onClose={() => setViewingEmployeeId(null)}
-        isOpen={viewingEmployeeId !== null}
-      />
+
+      {viewingEmployeeId && (() => {
+        const employee = employeesData.find((e) => e.id === viewingEmployeeId);
+        if (!employee) return null;
+        
+        // Map the employee data to the expected type
+        const employeeWithCount: V_employees_with_countRowSchema = {
+          ...employee,
+          active_count: 0,
+          inactive_count: 0,
+          total_count: 1,
+          employee_designation_name: designations.find(d => d.id === employee.employee_designation_id)?.name || null
+        };
+        
+        return (
+          <EmployeeDetailsModal
+            employee={employeeWithCount}
+            onClose={() => setViewingEmployeeId(null)}
+            isOpen={true}
+          />
+        );
+      })()}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

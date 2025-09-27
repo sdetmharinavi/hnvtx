@@ -3,10 +3,10 @@ import { BaseEntity } from '@/components/common/entity-management/types';
 
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
-  value: unknown;
+  value: T[keyof T] | unknown;
   type: 'text' | 'status' | 'parent' | 'date' | 'custom';
   entity: T;
-  render?: (value: unknown, entity: T) => React.ReactNode;
+  render?: (value: T[keyof T], entity: T) => React.ReactNode;
 }
 
 export function DetailItem<T extends BaseEntity>({
@@ -20,7 +20,8 @@ export function DetailItem<T extends BaseEntity>({
 
   const renderValue = () => {
     if (render) {
-      return render(value, entity);
+      // We know value should be T[keyof T] when render is provided
+      return render(value as T[keyof T], entity);
     }
 
     switch (type) {

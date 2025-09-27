@@ -767,11 +767,13 @@ BEGIN
   IF (TG_OP = 'INSERT') THEN
     -- A new JC was added, recalculate segments for its parent cable.
     PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
+    RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
     -- A JC was removed, recalculate segments for its parent cable.
     PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
+    RETURN OLD;
   END IF;
-  RETURN NULL; -- result is ignored since this is an AFTER trigger
+  RETURN NULL; -- Result is ignored for AFTER triggers
 END;
 $$;
 
