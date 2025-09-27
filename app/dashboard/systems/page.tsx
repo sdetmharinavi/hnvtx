@@ -91,7 +91,7 @@ export default function SystemsPage() {
     onRefresh: () => { refetch(); toast.success('Systems refreshed.'); },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: 'v_systems_complete' },
+    exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
   });
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;

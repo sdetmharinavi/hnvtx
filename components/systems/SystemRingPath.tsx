@@ -1,6 +1,7 @@
+// path: components/systems/SystemRingPath.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableQuery } from "@/hooks/database";
 import { Button } from "@/components/common/ui/Button";
@@ -9,8 +10,6 @@ import { Row } from "@/hooks/database";
 import { useSystemPath } from "@/hooks/database/path-queries";
 import { useDeletePathSegment, useReorderPathSegments } from "@/hooks/database/path-mutations";
 import { DragEndEvent } from "@dnd-kit/core";
-
-// Import all child components
 import { CreatePathModal } from "./CreatePathModal";
 import { AddSegmentModal } from "./AddSegmentModal";
 import { PathSegmentList } from "./PathSegmentList";
@@ -48,7 +47,7 @@ export function SystemRingPath({ system }: Props) {
       const [movedItem] = reorderedSegments.splice(oldIndex, 1);
       reorderedSegments.splice(newIndex, 0, movedItem);
 
-      const newSegmentIds = reorderedSegments.map(s => s.id);
+      const newSegmentIds = reorderedSegments.map(s => s.id).filter((id): id is string => !!id);
       reorderSegmentsMutation.mutate({ pathId: path.id, segmentIds: newSegmentIds });
     }
   };
@@ -59,7 +58,6 @@ export function SystemRingPath({ system }: Props) {
     }
   };
 
-  // --- Render Logic ---
   if (isLoadingPath) {
     return <div className="p-4 text-center"><LoadingSpinner text="Loading path information..." /></div>;
   }
@@ -90,8 +88,7 @@ export function SystemRingPath({ system }: Props) {
           />
         )}
       </div>
-
-      {/* Provisioning Section - Renders only when there is a path AND segments */}
+      
       {path && pathSegments && pathSegments.length > 0 && (
         <FiberProvisioning
           pathName={path.path_name ?? ""}
@@ -100,13 +97,11 @@ export function SystemRingPath({ system }: Props) {
         />
       )}
       
-      {/* Modals */}
       {isAddSegmentModalOpen && path && system.node && (
         <AddSegmentModal
           isOpen={isAddSegmentModalOpen}
           onClose={() => setIsAddSegmentModalOpen(false)}
           logicalPathId={path.id}
-          sourceNodeId={system.node.id}
           currentSegments={pathSegments || []}
           onSegmentAdded={() => {
             refetchSegments();

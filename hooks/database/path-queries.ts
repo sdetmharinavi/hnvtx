@@ -17,7 +17,7 @@ export function useSystemPath(logicalPathId: string | null) {
   return useRpcQuery(
     supabase,
     'get_system_path_details',
-    { p_path_id: logicalPathId },
+    { p_path_id: logicalPathId! },
     { enabled: !!logicalPathId }
   );
 }
@@ -29,7 +29,7 @@ export function useAvailableFibers(pathId: string | null) {
   return useRpcQuery(
     supabase,
     'get_continuous_available_fibers',
-    { p_path_id: pathId },
+    { p_path_id: pathId! },
     { enabled: !!pathId }
   );
 }

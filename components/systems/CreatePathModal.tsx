@@ -2,7 +2,7 @@
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { logicalFiberPathSchema } from "@/schemas";
+import { logical_fiber_pathsInsertSchema } from "@/schemas/zod-schemas";
 import { z } from "zod";
 import { useTableInsert, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
@@ -20,7 +20,7 @@ interface Props {
   onPathCreated: () => void;
 }
 
-const createPathFormSchema = logicalFiberPathSchema.pick({
+const createPathFormSchema = logical_fiber_pathsInsertSchema.pick({
   path_name: true,
   path_type_id: true,
   destination_system_id: true,
@@ -34,10 +34,9 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
     resolver: zodResolver(createPathFormSchema),
   });
 
-  const { data: fetchedPathTypes } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'OFC_PATH_TYPE'} });
+  const { data: fetchedPathTypes } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'OFC_PATH_TYPES'} });
   const pathTypes = fetchedPathTypes?.filter(pt => pt.name !== "DEFAULT");
   const { data: systems } = useTableQuery(supabase, 'systems', { filters: { id: { operator: 'neq', value: system.id } } });
-console.log(pathTypes);
 
   const { mutate: createPath } = useTableInsert(supabase, 'logical_fiber_paths', {
     onSuccess: () => {
@@ -56,8 +55,7 @@ console.log(pathTypes);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Logical Path" visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New Logical Path" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Path Name*</label>

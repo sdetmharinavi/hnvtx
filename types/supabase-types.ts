@@ -4242,7 +4242,7 @@ export type Database = {
         Args: {
           p_commissioned_on: string
           p_gne?: string
-          p_id: string
+          p_id?: string
           p_ip_address: unknown
           p_maintenance_terminal_id: string
           p_make?: string
