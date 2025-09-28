@@ -24,6 +24,7 @@ import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
 import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
 import { toast } from 'sonner';
 import { Ofc_connectionsRowSchema, V_ofc_cables_completeRowSchema, V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { orderBy } from 'lodash';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,9 @@ const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn
       filters: { ofc_id: cableId, ...(searchQuery ? { or: `system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%` } : {}) },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
-    }
+      orderBy: 'fiber_no_sn',
+      orderDir: 'asc',
+    },
   );
 
 
