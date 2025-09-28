@@ -41,6 +41,7 @@ export interface DataQueryHookReturn<V> {
   activeCount: number;
   inactiveCount: number;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   refetch: () => void;
 }
@@ -82,7 +83,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   }, [debouncedSearch, filters]);
 
   // --- DATA FETCHING ---
-  const { data, totalCount, activeCount, inactiveCount, isLoading, error, refetch } = dataQueryHook({
+  const { data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch } = dataQueryHook({
     currentPage,
     pageLimit,
     searchQuery: debouncedSearch,
@@ -173,26 +174,6 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   // --- SAVE HANDLER ---
   const handleSave = useCallback(
     (formData: TableInsertWithDates<T>) => {
-      // Convert ISO date strings back to Date objects for the database
-      // const processedData = { ...formData };
-
-      // Handle date fields - adjust these field names as needed
-      // const dateFields = [
-      //   "employee_dob",
-      //   "employee_doj", 
-      //   "created_at",
-      //   "updated_at",
-      // ] as const;
-
-      // dateFields.forEach((field) => {
-      //   const fieldKey = field as keyof typeof processedData;
-      //   if (field in processedData && processedData[fieldKey]) {
-      //     const dateValue = processedData[fieldKey] as string | Date;
-      //     (processedData as TableInsertWithDates<T>)[fieldKey] = new Date(
-      //       dateValue
-      //     ) as unknown as TableInsertWithDates<T>[typeof fieldKey];
-      //   }
-      // });
       const processedData = processDataForSave 
         ? processDataForSave(formData) 
         : (formData as TableInsert<T>);
@@ -334,6 +315,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     activeCount,
     inactiveCount,
     isLoading,
+    isFetching,
     error,
     isMutating,
     refetch,

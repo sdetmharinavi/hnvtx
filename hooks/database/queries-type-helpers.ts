@@ -1,7 +1,7 @@
 // hooks/database/queries-type-helpers.ts
 
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database, Tables, TablesInsert, TablesUpdate, Json } from "@/types/supabase-types";
+import { Database, Tables, TablesInsert, TablesUpdate } from "@/types/supabase-types";
 
 // --- TYPE HELPERS ---
 
@@ -67,7 +67,19 @@ export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like"
 
 export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
 
-export type Filters = Record<string, FilterValue>;
+// A base type for standard key-value filters
+type StandardFilters = Record<string, FilterValue | undefined>;
+
+// The corrected Filters type definition
+export type Filters = Omit<StandardFilters, 'or'> & {
+  /** A special key for creating OR conditions across multiple columns. 
+      The value should be a record where keys are column names and values are the search term.
+      Example: { or: { employee_name: 'John', employee_pers_no: 'John' } }
+  */
+  or?: Record<string, string>;
+};
+
+
 
 export type OrderBy = {
   column: string;
@@ -244,110 +256,6 @@ export interface UseExcelUploadOptions<T extends TableName> {
   showToasts?: boolean;
   batchSize?: number;
 }
-
-// FIX: Add the return type for the new RPC function
-export type PagedOfcCablesCompleteResult = 
-  Array<Database["public"]["Functions"]["get_paged_ofc_cables_complete"]["Returns"][number]> | null;
-
-// FIX: Add the options type for the new hook we will create
-// export type UsePagedOfcCablesCompleteOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedOfcCablesCompleteResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedNodesCompleteResult = Array<Database["public"]["Functions"]["get_paged_nodes_complete"]["Returns"][number]> | null;
-
-// export type UsePagedNodesCompleteOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedNodesCompleteResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedOfcConnectionsCompleteResult = 
-  Array<Database["public"]["Functions"]["get_paged_ofc_connections_complete"]["Returns"][number]> | null;
-
-// FIX: Add the options type for the new hook we will create
-// export type UsePagedOfcConnectionsCompleteOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedOfcConnectionsCompleteResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedSystemConnectionsCompleteResult = Array<Database["public"]["Functions"]["get_paged_system_connections_complete"]["Returns"][number]> | null;
-
-// export type UsePagedSystemConnectionsCompleteOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedSystemConnectionsCompleteResult>, "queryKey" | "queryFn">;
-// };
-
-export type PagedLookupTypesWithCountResult = Array<Database["public"]["Functions"]["get_paged_lookup_types_with_count"]["Returns"][number]> | null;
-
-// export type UsePagedLookupTypesWithCountOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedLookupTypesWithCountResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedMaintenanceAreasWithCountResult = Array<Database["public"]["Functions"]["get_paged_maintenance_areas_with_count"]["Returns"][number]> | null;
-
-// export type UsePagedMaintenanceAreasWithCountOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedMaintenanceAreasWithCountResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedEmployeeDesignationsWithCountResult = Array<Database["public"]["Functions"]["get_paged_employee_designations_with_count"]["Returns"][number]> | null;
-
-// export type UsePagedEmployeeDesignationsWithCountOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedEmployeeDesignationsWithCountResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedEmployeesWithCountResult = Array<Database["public"]["Functions"]["get_paged_employees_with_count"]["Returns"][number]> | null;
-
-// export type UsePagedEmployeesWithCountOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedEmployeesWithCountResult, Error>, "queryKey" | "queryFn">;
-// };
-
-export type PagedRingsWithCountResult = Array<Database["public"]["Functions"]["get_paged_rings_with_count"]["Returns"][number]> | null;
-
-// export type UsePagedRingsWithCountOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedRingsWithCountResult, Error>, "queryKey" | "queryFn">;
-// };
 
 // Define a type for the function's return data for full type safety
 export type DashboardOverviewData = {

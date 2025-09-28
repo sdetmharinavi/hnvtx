@@ -103,6 +103,7 @@ export function DataTable<T extends AuthTableOrViewName>({
   tableName,
   columns,
   loading = false,
+  isFetching = false,
   pagination,
   actions = [],
   searchable = true,
@@ -411,7 +412,7 @@ export function DataTable<T extends AuthTableOrViewName>({
   return (
     <div 
       className={cn(
-        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)]", 
+        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)] relative", 
         bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md", 
         className
       )}
@@ -464,8 +465,16 @@ export function DataTable<T extends AuthTableOrViewName>({
       </div>
 
       {/* Section 2: Scrollable Table Area */}
-      <div className='flex-1 w-full overflow-auto min-h-0'>
-        <table className={`min-w-full  w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
+      <div className='flex-1 w-full overflow-auto min-h-0 relative'>
+      {isFetching && !loading && (
+          <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm">
+            <div className="flex items-center space-x-2 text-gray-500">
+              <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-blue-500"></div>
+              <span>Refreshing data...</span>
+            </div>
+          </div>
+        )}
+        <table className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
             <TableHeader
               columns={columns}
               visibleColumns={visibleColumnsData}

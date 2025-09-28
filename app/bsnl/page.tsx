@@ -641,12 +641,20 @@ function MapEventHandler({
 
 // Main dashboard component with scalability improvements
 export default function ScalableFiberNetworkDashboard() {
-  const [data] = useState(() => generateLargeDataset());
+  // CORRECTED: Conditionally generate mock data only in development
+  const [data] = useState(() => {
+    // This check ensures the mock data function is completely removed from production builds.
+    if (process.env.NODE_ENV === 'development') {
+      return generateLargeDataset();
+    }
+    // In production, initialize with an empty state, ready for real data.
+    return { nodes: [], ofcCables: [], systems: [] };
+  });
+
   const [selectedSystem, setSelectedSystem] = useState<NetworkSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<OFCCable | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'systems' | 'allocations'>('overview');
   const [loading, setLoading] = useState(false);
-  // 2. Add state to control the modal
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   // 3. Create a handler function for saving the new allocation
   const handleSaveAllocation = (allocationData: FiberAllocation) => {
