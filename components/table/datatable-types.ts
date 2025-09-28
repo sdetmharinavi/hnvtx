@@ -29,6 +29,7 @@ export interface DataTableProps<T extends AuthTableOrViewName> {
   tableName: T;
   columns: Column<Row<T>>[];
   loading?: boolean;
+  isFetching?: boolean;
   showColumnSelector?: boolean;
   // Controls visibility of the Columns toggle button in the toolbar
   showColumnsToggle?: boolean;

@@ -33,13 +33,17 @@ const useSystemsData = (
   const serverFilters = useMemo(() => {
     const richFilters: Filters = { ...filters };
     if (searchQuery) {
-      richFilters.or = `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%)`;
+      richFilters.or = {
+        system_name: searchQuery,
+        system_type_name: searchQuery,
+      };
     }
+    // The convertRichFiltersToSimpleJson function will correctly pass this object.
     return convertRichFiltersToSimpleJson(richFilters);
   }, [filters, searchQuery]);
 
   const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema> (supabase,
-    'v_systems_completeRowSchema',
+    'v_systems_complete',
      {
     filters: serverFilters as RpcFilters,
     limit: pageLimit,

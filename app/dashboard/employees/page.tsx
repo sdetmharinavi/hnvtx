@@ -1,51 +1,55 @@
+// app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { FiDownload, FiPlus } from 'react-icons/fi';
-import { createClient } from '@/utils/supabase/client';
-import {
-  TableInsert,
-  usePagedData,
-  useTableQuery,
-} from '@/hooks/database';
-import { DataTable } from '@/components/table/DataTable';
-import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import React, { useMemo } from 'react';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
-import { getEmployeeTableActions } from '@/components/employee/EmployeeTableActions';
-import { EmployeeWithRelations } from '@/components/employee/employee-types';
+import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
-import { useTableExcelDownload } from '@/hooks/database/excel-queries';
-import { toast } from 'sonner';
-import { formatDate } from '@/utils/formatters';
-import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
-import { EmployeeDetailsModal } from '@/config/employee-details-config';
+import { Filters, RpcFilters, usePagedData, useTableQuery } from '@/hooks/database';
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from '@/hooks/useCrudManager';
-import { EmployeesRowSchema, V_employees_with_countRowSchema } from '@/schemas/zod-schemas';
+  V_employees_with_countRowSchema,
+  EmployeesInsertSchema,
+  EmployeesRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { FiUsers } from 'react-icons/fi';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { TableAction } from '@/components/table/datatable-types';
+import { EmployeeDetailsModal } from '@/config/employee-details-config';
+import { toast } from 'sonner';
 
-// 1. ADAPTER HOOK
+// 1. ADAPTER HOOK: Makes our paged employee data query compatible with useCrudManager.
 const useEmployeesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<EmployeesRowSchema> => {
+): DataQueryHookReturn<V_employees_with_countRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedData<EmployeesRowSchema>(
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
+    if (searchQuery) {
+      // CORRECTED: Pass a structured object for the OR condition
+      newFilters.or = {
+        employee_name: searchQuery,
+        employee_pers_no: searchQuery,
+      };
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
+
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employees_with_countRowSchema>(
     supabase,
-    'employees',
+    'v_employees_with_count',
     {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { employee_name: searchQuery } : {}),
-      },
+      filters: searchFilters as RpcFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
+      orderBy: 'employee_name',
     }
   );
 
@@ -55,148 +59,91 @@ const useEmployeesData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
 };
 
 const EmployeesPage = () => {
-  const [showFilters, setShowFilters] = useState(false);
-  const [viewingEmployeeId, setViewingEmployeeId] = useState<string | null>(null);
-
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  // 2. USE THE CRUD MANAGER: All state and logic is now centralized here.
   const {
-    data: employeesData,
+    data: employees,
     totalCount,
-    // activeCount,
-    // inactiveCount,
+    activeCount,
+    inactiveCount,
     isLoading,
-    // isMutating,
+    isFetching,
+    isMutating,
     error,
     refetch,
     pagination,
     search,
     filters,
     editModal,
-    // viewModal,
+    viewModal,
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'employees', EmployeesRowSchema>({
+  } = useCrudManager<'employees', V_employees_with_countRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
-    processDataForSave: (data) => {
-      // Employee-specific date logic
-      if (data.employee_dob) data.employee_dob = new Date(data.employee_dob);
-      if (data.employee_doj) data.employee_doj = new Date(data.employee_doj);
-      return data as TableInsert<'employees'>;
-    },
   });
-
 
   const supabase = createClient();
-  const { data: designations = [] } = useTableQuery(
-    supabase,
-    'employee_designations',
-    { orderBy: [{ column: 'name' }] }
-  );
-  const { data: maintenanceAreas = [] } = useTableQuery(
-    supabase,
-    'maintenance_areas',
-    { filters: { status: true }, orderBy: [{ column: 'name' }] }
-  );
+  const { data: designations = [] } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
+  const { data: maintenanceAreas = [] } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
 
-  const columns = useMemo(
-    () =>
-      getEmployeeTableColumns({
-        designationMap: Object.fromEntries(
-          designations.map((d) => [d.id, d.name])
-        ),
-        areaMap: Object.fromEntries(
-          maintenanceAreas.map((a) => [a.id, a.name])
-        ),
-      }),
-    [designations, maintenanceAreas]
-  );
+  const columns = useMemo(() => getEmployeeTableColumns({
+    designationMap: Object.fromEntries(designations.map(d => [d.id, d.name])),
+    areaMap: Object.fromEntries(maintenanceAreas.map(a => [a.id, a.name])),
+  }), [designations, maintenanceAreas]);
 
   const tableActions = useMemo(
-    () =>
-      getEmployeeTableActions({
-        onView: (id) => setViewingEmployeeId(id),
-        onEdit: (id) => {
-          const emp = employeesData.find((e) => e.id === id);
-          if (emp) editModal.openEdit(emp);
-        },
-        onToggleStatus: (record) => crudActions.handleToggleStatus(record),
-        onDelete: (employeeId, displayName = 'this employee') =>
-          crudActions.handleDelete({ id: employeeId, name: displayName }),
-      }),
-    [employeesData, editModal, crudActions]
+    () => createStandardActions<V_employees_with_countRowSchema>({
+      onView: viewModal.open,
+      onEdit: editModal.openEdit,
+      onToggleStatus: crudActions.handleToggleStatus,
+      onDelete: crudActions.handleDelete,
+    }) as TableAction<'v_employees_with_count'>[],
+    [viewModal.open, editModal.openEdit, crudActions.handleToggleStatus, crudActions.handleDelete]
   );
-
-  // Download Configurations
-  const exportColumns = useDynamicColumnConfig('employees', {
-    data: employeesData as EmployeesRowSchema[],
-  });
-  const tableExcelDownload = useTableExcelDownload(supabase, 'employees', {
-    onSuccess: () => {
-      toast.success('Export successful');
+  
+  const headerActions = useStandardHeaderActions<'employees'>({
+    data: employees as EmployeesRowSchema[],
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
     },
-    onError: () => toast.error('Export failed'),
+    onAddNew: editModal.openAdd,
+    isLoading: isLoading,
+    exportConfig: { tableName: 'employees' },
   });
 
-  const handleExport = async () => {
-    const tableName = 'employees';
-    const tableOptions = {
-      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${String(
-        tableName
-      )}-export.xlsx`,
-      sheetName: String(tableName),
-      columns: exportColumns,
-      // filters: filters.filters,
-      maxRows: 1000,
-      customStyles: {},
-    };
-    tableExcelDownload.mutate(tableOptions);
-  };
+  const headerStats = [
+    { value: totalCount, label: 'Total Employees' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+  ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
   return (
-    <div className="mx-auto space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">
-          Employee Management ({totalCount})
-        </h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            leftIcon={<FiDownload />}
-            onClick={handleExport}
-          >
-            Export
-          </Button>
-          <Button onClick={editModal.openAdd} leftIcon={<FiPlus />}>
-            Add Employee
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto space-y-4 p-6">
+      <PageHeader
+        title="Employee Management"
+        description="View, add, and manage all employee records."
+        icon={<FiUsers />}
+        stats={headerStats}
+        actions={headerActions}
+        // isLoading={isLoading}
+      />
+
       <BulkActions
         selectedCount={bulkActions.selectedCount}
-        isOperationLoading={isLoading}
+        isOperationLoading={isMutating}
         onBulkDelete={bulkActions.handleBulkDelete}
         onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
         onClearSelection={bulkActions.handleClearSelection}
@@ -205,27 +152,19 @@ const EmployeesPage = () => {
       />
 
       <DataTable
-        tableName="employees"
-        data={employeesData as EmployeesRowSchema[]}
+        tableName="v_employees_with_count"
+        data={employees}
         columns={columns}
-        loading={isLoading}
+        loading={isLoading} // <-- For initial skeleton
+        isFetching={isFetching || isMutating} // <-- For background overlay
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows) => {
-          // Filter out any rows where id is null
-          const validRows = selectedRows.filter(
-            (
-              row
-            ): row is EmployeesRowSchema & {
-              id: string;
-              employee_name: string; // Ensure employee_name is not null
-            } => row.id !== null && row.employee_name !== null
-          );
-          bulkActions.handleRowSelect(validRows);
+            const validRows = selectedRows.filter(
+                (row): row is V_employees_with_countRowSchema & { id: string } => row.id != null
+            );
+            bulkActions.handleRowSelect(validRows);
         }}
-        searchable={false} // Turn off internal search
-        filterable={false} // Turn off internal filters
-        showColumnsToggle={true}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -238,65 +177,35 @@ const EmployeesPage = () => {
         }}
         customToolbar={
           <EmployeeFilters
-            searchQuery={search.searchQuery} // <-- PASS THE SEARCH QUERY DOWN
-            showFilters={showFilters}
+            searchQuery={search.searchQuery}
             filters={filters.filters}
             onSearchChange={search.setSearchQuery}
-            onFilterToggle={() => setShowFilters(!showFilters)}
-            onDesignationChange={(value) =>
-              filters.setFilters((prev) => ({
-                ...prev,
-                employee_designation_id: value,
-              }))
-            }
-            onStatusChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, status: value }))
-            }
-            onMaintenanceAreaChange={(value) =>
-              filters.setFilters((prev) => ({
-                ...prev,
-                maintenance_terminal_id: value,
-              }))
-            }
+            // REVISED: Pass setFilters directly
+            setFilters={filters.setFilters} 
             designations={designations}
             maintenanceAreas={maintenanceAreas}
+            showFilters={true} // You can manage this with a state if needed
+            onFilterToggle={() => {}}
           />
         }
       />
-
+      
+      {/* Modals remain the same */}
       <EmployeeForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        employee={editModal.record as EmployeeWithRelations | null}
-        onSubmit={crudActions.handleSave}
+        employee={editModal.record}
+        onSubmit={(data) => crudActions.handleSave(data as EmployeesInsertSchema)}
         onCancel={editModal.close}
-        isLoading={isLoading}
+        isLoading={isMutating}
         designations={designations}
         maintenanceAreas={maintenanceAreas}
       />
-
-      {viewingEmployeeId && (() => {
-        const employee = employeesData.find((e) => e.id === viewingEmployeeId);
-        if (!employee) return null;
-        
-        // Map the employee data to the expected type
-        const employeeWithCount: V_employees_with_countRowSchema = {
-          ...employee,
-          active_count: 0,
-          inactive_count: 0,
-          total_count: 1,
-          employee_designation_name: designations.find(d => d.id === employee.employee_designation_id)?.name || null
-        };
-        
-        return (
-          <EmployeeDetailsModal
-            employee={employeeWithCount}
-            onClose={() => setViewingEmployeeId(null)}
-            isOpen={true}
-          />
-        );
-      })()}
-
+      <EmployeeDetailsModal
+        employee={viewModal.record}
+        onClose={viewModal.close}
+        isOpen={viewModal.isOpen}
+      />
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}

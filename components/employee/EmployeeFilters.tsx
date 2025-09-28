@@ -1,10 +1,11 @@
+// path: components/employee/EmployeeFilters.tsx
 'use client';
 
 import React, { memo, useState, useEffect } from 'react';
+import { useDebounce } from 'use-debounce';
 import { FiFilter, FiSearch } from 'react-icons/fi';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
-import { Filters} from '@/hooks/database';
-import { useDebounce } from 'use-debounce'; // <-- IMPORT useDebounce
+import { Filters } from '@/hooks/database';
 import { DEFAULTS } from '@/config/constants';
 import {
   Employee_designationsRowSchema,
@@ -12,16 +13,14 @@ import {
 } from '@/schemas/zod-schemas';
 
 interface EmployeeFiltersProps {
-  searchQuery: string; // This prop is now used to set the initial value
+  searchQuery: string;
   filters: Filters;
   showFilters: boolean;
   designations: Employee_designationsRowSchema[];
   maintenanceAreas: Maintenance_areasRowSchema[];
   onSearchChange: (value: string) => void;
   onFilterToggle: () => void;
-  onDesignationChange: (value: string) => void;
-  onStatusChange: (value: 'true' | 'false' | '') => void;
-  onMaintenanceAreaChange: (value: string) => void;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
 }
 
 const EmployeeFiltersComponent = memo(
@@ -33,27 +32,55 @@ const EmployeeFiltersComponent = memo(
     maintenanceAreas,
     onSearchChange,
     onFilterToggle,
-    onDesignationChange,
-    onStatusChange,
-    onMaintenanceAreaChange,
+    setFilters,
   }: EmployeeFiltersProps) => {
-    // --- DEBOUNCING LOGIC ---
     const [internalSearch, setInternalSearch] = useState(searchQuery);
-    const [debouncedSearch] = useDebounce(
-      internalSearch,
-      DEFAULTS.DEBOUNCE_DELAY
-    );
+    const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY);
 
-    // Effect to call the parent's onSearchChange only when the debounced value changes
     useEffect(() => {
       onSearchChange(debouncedSearch);
     }, [debouncedSearch, onSearchChange]);
 
-    // Effect to sync the internal state if the parent's state changes (e.g., from a "clear all" button)
     useEffect(() => {
       setInternalSearch(searchQuery);
     }, [searchQuery]);
-    // --- END DEBOUNCING LOGIC ---
+
+    // REVISED: These handlers now safely update the state without type conflicts.
+    const onDesignationChange = (value: string | null) => {
+      setFilters(prev => {
+        const newFilters: Filters = { ...prev };
+        if (value) {
+          newFilters.employee_designation_id = value;
+        } else {
+          delete newFilters.employee_designation_id;
+        }
+        return newFilters;
+      });
+    };
+
+    const onStatusChange = (value: 'true' | 'false' | '') => {
+      setFilters(prev => {
+        const newFilters: Filters = { ...prev };
+        if (value) {
+          newFilters.status = value;
+        } else {
+          delete newFilters.status;
+        }
+        return newFilters;
+      });
+    };
+
+    const onMaintenanceAreaChange = (value: string | null) => {
+      setFilters(prev => {
+        const newFilters: Filters = { ...prev };
+        if (value) {
+          newFilters.maintenance_terminal_id = value;
+        } else {
+          delete newFilters.maintenance_terminal_id;
+        }
+        return newFilters;
+      });
+    };
 
     return (
       <div className="mb-6 rounded-lg border bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -64,8 +91,8 @@ const EmployeeFiltersComponent = memo(
               <input
                 type="text"
                 placeholder="Search employees..."
-                value={internalSearch} // <-- Use internal state for immediate input feedback
-                onChange={(e) => setInternalSearch(e.target.value)} // <-- Update internal state on every keystroke
+                value={internalSearch}
+                onChange={(e) => setInternalSearch(e.target.value)}
                 onKeyDown={(e) => e.stopPropagation()}
                 className="w-full rounded-md border border-gray-300 py-2 pr-4 pl-10 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600 sm:w-80"
               />
@@ -88,21 +115,16 @@ const EmployeeFiltersComponent = memo(
         {showFilters && (
           <div className="mt-4 grid grid-cols-1 gap-3 border-t pt-4 dark:border-gray-700 sm:grid-cols-3">
             <SearchableSelect
-              options={designations.map((d) => ({
-                value: d.id,
-                label: d.name,
-              }))}
+              options={designations.map((d) => ({ value: d.id, label: d.name }))}
               value={filters.employee_designation_id as string}
-              onChange={(v) => onDesignationChange(v ?? '')}
+              onChange={onDesignationChange}
               placeholder="All Designations"
               searchPlaceholder="Search designations..."
               clearable={true}
             />
             <select
               value={filters.status as string}
-              onChange={(e) =>
-                onStatusChange(e.target.value as 'true' | 'false')
-              }
+              onChange={(e) => onStatusChange(e.target.value as 'true' | 'false' | '')}
               className="rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600"
             >
               <option value="">All Status</option>
@@ -115,7 +137,7 @@ const EmployeeFiltersComponent = memo(
                 label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
               }))}
               value={filters.maintenance_terminal_id as string}
-              onChange={(v) => onMaintenanceAreaChange(v ?? '')}
+              onChange={onMaintenanceAreaChange}
               placeholder="All Maintenance Areas"
               searchPlaceholder="Search areas..."
               clearable={true}
