@@ -11,7 +11,7 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { usePagedData } from '@/hooks/database';
+import { convertRichFiltersToSimpleJson, usePagedData, Filters } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -41,15 +41,20 @@ const useNodesData = (
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
+  // Convert rich filters to simple RPC filters
+    const rpcFilters = useMemo(() => {
+      const convertedFilters = convertRichFiltersToSimpleJson(filters);
+      return {
+        ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
+        ...(searchQuery ? { name: searchQuery } : {}),
+      };
+    }, [filters, searchQuery]);
 
   const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
     'v_nodes_complete', // The name of the view
     {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
-      },
+      filters: rpcFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
@@ -228,7 +233,7 @@ const NodesPage = () => {
               filters.filters.node_type_id as string | undefined
             }
             onNodeTypeChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, node_type_id: value }))
+              filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))
             }
           />
         }

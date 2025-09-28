@@ -7,50 +7,34 @@ import {
   FilterOperator,
   Filters,
   OrderBy,
-  PerformanceOptions,
 } from './queries-type-helpers';
 import { Json } from '@/types/supabase-types';
-// The rich 'Filters' type is no longer needed for the RPCs.
-// We'll define a simpler type.
-export type RpcFilters = Record<string, string | number | boolean | string[] | null>;
 
-/**
- * Converts a filter object from the UI into a simple JSON object
- * suitable for our generic RPC functions.
- *
- * @param filters The filter object from the UI state.
- * @returns A Json-compatible object.
- */
-export function buildRpcFilters(filters: RpcFilters): Json {
+export function buildRpcFilters(filters: Filters): Json {
   const rpcFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
+    if (key === 'or') {
+      if (typeof filters.or === 'object' && filters.or !== null) {
+        const orConditions = Object.entries(filters.or)
+            .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
+            .join(',');
+        if (orConditions) {
+            rpcFilters.or = `(${orConditions})`;
+        }
+      }
+      continue;
+    }
+    
     const filterValue = filters[key];
-
-    // Only include filters that have a meaningful value
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
       rpcFilters[key] = filterValue as Json;
     }
   }
 
-  // Special handling for the 'or' filter, which should be a string
-  if (filters.or && typeof filters.or === 'string') {
-    rpcFilters.or = filters.or;
-  }
-
   return rpcFilters;
 }
 
-// // Usage example:
-// const myFilters: RpcFilters = {
-//   status: true,
-//   name: 'Central', // For ILIKE
-//   node_type_id: ['uuid1', 'uuid2'], // For IN
-//   // For a complex OR, you would construct the PostgREST string
-//   or: '(maintenance_area_name.ilike.*North*,code.eq.NRT)'
-// };
-
-// --- UTILITY FUNCTIONS ---
 export const createQueryKey = (
   tableName: string,
   filters?: Filters,
@@ -63,21 +47,8 @@ export const createQueryKey = (
   offset?: number
 ): QueryKey => {
   const key: unknown[] = ['table', tableName];
-  const params: Record<string, unknown> = {
-    filters,
-    columns,
-    orderBy,
-    deduplication,
-    aggregation,  
-    enhancedOrderBy,
-    limit,
-    offset,
-  };
-  const cleanParams = Object.fromEntries(
-    Object.entries(params).filter(
-      ([, value]) => value !== undefined && value !== null
-    )
-  );
+  const params: Record<string, unknown> = { filters, columns, orderBy, deduplication, aggregation, enhancedOrderBy, limit, offset };
+  const cleanParams = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null));
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
@@ -85,15 +56,11 @@ export const createQueryKey = (
 export const createRpcQueryKey = (
   functionName: string,
   args?: Record<string, unknown>,
-  performance?: PerformanceOptions
+  performance?: any,
 ): QueryKey => {
   const key: unknown[] = ['rpc', functionName];
   const params = { args, performance };
-  const cleanParams = Object.fromEntries(
-    Object.entries(params).filter(
-      ([, value]) => value !== undefined && value !== null
-    )
-  );
+  const cleanParams = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null));
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
@@ -104,44 +71,29 @@ export const createUniqueValuesKey = (
   filters?: Filters,
   orderBy?: OrderBy[],
   enhancedOrderBy?: EnhancedOrderBy[]
-): QueryKey => [
-  'unique',
-  tableName,
-  column,
-  { filters, orderBy, enhancedOrderBy }
-];
+): QueryKey => ['unique', tableName, column, { filters, orderBy, enhancedOrderBy }];
 
 export function applyFilters(query: any, filters: Filters): any {
   let modifiedQuery = query;
   Object.entries(filters).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
 
-    if (key === '$or' || key === 'or') {
-      if (typeof value === 'string') {
-        modifiedQuery = modifiedQuery.or(value);
-      } else {
-        console.warn('Unsupported $or filter format; expected a raw string.');
+    if (key === 'or') {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const orConditions = Object.entries(value)
+          .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
+          .join(',');
+        if (orConditions) {
+          modifiedQuery = modifiedQuery.or(orConditions);
+        }
       }
       return;
     }
 
-    if (
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      'operator' in value
-    ) {
-      const { operator, value: filterValue } = value as {
-        operator: FilterOperator;
-        value: unknown;
-      };
-
-      if (
-        operator in modifiedQuery &&
-        typeof (modifiedQuery as any)[operator] === 'function'
-      ) {
+    if (typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
+      const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
+      if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
         modifiedQuery = modifiedQuery[operator](key, filterValue);
-      } else {
-        console.warn(`Unsupported or dynamic operator used: ${operator}`);
       }
     } else if (Array.isArray(value)) {
       modifiedQuery = modifiedQuery.in(key, value);
@@ -152,92 +104,25 @@ export function applyFilters(query: any, filters: Filters): any {
   return modifiedQuery;
 }
 
-// Enhanced version with better type safety and validation
 export function applyOrdering(query: any, orderBy: OrderBy[]): any {
   let modifiedQuery = query;
-
   orderBy.forEach(({ column, ascending = true, nullsFirst, foreignTable }) => {
-    // Validate column name to prevent injection
-    if (!column || typeof column !== 'string') {
-      console.warn(`Invalid column name: ${column}`);
-      return;
-    }
-
-    // Build the column reference
+    if (!column || typeof column !== 'string') return;
     const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
-
-    // Build options object
     const options: { ascending: boolean; nullsFirst?: boolean } = { ascending };
     if (nullsFirst !== undefined) {
       options.nullsFirst = nullsFirst;
     }
-
     try {
       modifiedQuery = modifiedQuery.order(orderColumn, options);
     } catch (error) {
       console.error(`Error applying order by ${orderColumn}:`, error);
-      // Continue with other orderings even if one fails
     }
   });
-
   return modifiedQuery;
 }
 
-// Alternative version with more explicit type handling for EnhancedOrderBy
-export function applyEnhancedOrdering(
-  query: any,
-  orderBy: EnhancedOrderBy[]
-): any {
-  let modifiedQuery = query;
-
-  orderBy.forEach(
-    ({ column, ascending = true, nullsFirst, foreignTable, dataType }) => {
-      // Validate column name to prevent injection
-      if (!column || typeof column !== 'string') {
-        console.warn(`Invalid column name: ${column}`);
-        return;
-      }
-
-      const orderColumn = foreignTable ? `${foreignTable}.${column}` : column;
-
-      const options: any = { ascending };
-      if (nullsFirst !== undefined) {
-        options.nullsFirst = nullsFirst;
-      }
-
-      // Optional: Add type-specific handling
-      if (dataType) {
-        switch (dataType) {
-          case 'numeric':
-            // Supabase handles numeric sorting automatically
-            break;
-          case 'text':
-            // For case-insensitive text sorting, you'd need custom SQL
-            // This is handled at the PostgreSQL level
-            break;
-          case 'date':
-          case 'timestamp':
-            // Date sorting is handled well by default
-            break;
-          default:
-            break;
-        }
-      }
-
-      try {
-        modifiedQuery = modifiedQuery.order(orderColumn, options);
-      } catch (error) {
-        console.error(
-          `Error applying enhanced order by ${orderColumn}:`,
-          error
-        );
-      }
-    }
-  );
-
-  return modifiedQuery;
-}
-
+// RESTORED FUNCTION
 export function buildDeduplicationQuery(
   tableName: string,
   deduplication: DeduplicationOptions,
@@ -311,26 +196,21 @@ export function buildDeduplicationQuery(
   `;
 }
 
-/**
- * Converts a rich "Filters" object (used by the PostgREST query builder)
- * into a simple key-value JSON object suitable for RPC functions.
- * It strips out complex operators and preserves simple values.
- *
- * @param filters The rich Filters object.
- * @returns A Json-compatible object.
- */
 export function convertRichFiltersToSimpleJson(filters: Filters): Json {
   const simpleFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
-    // Skip the client-side only '$or' operator
-    if (key === '$or') {
+    if (key === 'or' && typeof filters.or === 'object' && filters.or !== null) {
+      const orConditions = Object.entries(filters.or)
+        .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
+        .join(',');
+      if (orConditions) {
+        simpleFilters.or = `(${orConditions})`;
+      }
       continue;
     }
 
     const filterValue = filters[key];
-
-    // Check if the value is a simple primitive (string, number, boolean, or null)
     if (
       typeof filterValue === 'string' ||
       typeof filterValue === 'number' ||
@@ -338,14 +218,9 @@ export function convertRichFiltersToSimpleJson(filters: Filters): Json {
       filterValue === null
     ) {
       simpleFilters[key] = filterValue;
-    }
-    // You can also handle simple arrays if your RPCs support the 'IN' operator
-    else if (Array.isArray(filterValue)) {
+    } else if (Array.isArray(filterValue)) {
       simpleFilters[key] = filterValue;
     }
-    // We explicitly IGNORE complex objects like { operator: 'neq', value: '...' }
-    // because the RPC function doesn't know how to handle them.
   }
-
   return simpleFilters;
 }

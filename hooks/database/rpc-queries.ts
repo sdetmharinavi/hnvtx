@@ -8,8 +8,9 @@ import {
   RpcFunctionReturns,
   UseRpcQueryOptions,
   UseTableMutationOptions,
+  Filters,
 } from './queries-type-helpers';
-import { buildRpcFilters, createRpcQueryKey, RpcFilters } from './utility-functions';
+import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
 import { DEFAULTS } from '@/config/constants';
 
 // =================================================================
@@ -94,16 +95,15 @@ export interface PagedDataResult<T> {
   inactive_count: number;
 }
 
-// Hook options for our new generic paged hook
+// CORRECTED: The options now correctly use the `Filters` type
 interface UsePagedDataOptions {
   limit?: number;
   offset?: number;
   orderBy?: string;
   orderDir?: 'asc' | 'desc';
-  filters?: RpcFilters;
+  filters?: Filters; // <-- This now uses the correct, complex Filters type
 }
 
-// A type guard to safely check if the RPC response is valid.
 function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
   if (typeof obj !== 'object' || obj === null) return false;
   const o = obj as Record<string, unknown>;
@@ -129,6 +129,7 @@ export function usePagedData<T>(
     filters = {},
   } = hookOptions;
 
+  // The hook internally converts the complex Filters object to the simple JSON the RPC expects
   const rpcFilters = buildRpcFilters(filters);
   const queryKey = ['paged-data', viewName, { limit, offset, orderBy, orderDir, filters: rpcFilters }];
 

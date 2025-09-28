@@ -16,39 +16,39 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { convertRichFiltersToSimpleJson, Filters, Row, RpcFilters, usePagedData, useTableQuery } from '@/hooks/database';
+import { Filters, Row, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-// CORRECTED: Import the correct, auto-generated schema type
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
 
-// 1. ADAPTER HOOK: Correctly typed to return the auto-generated view schema
 const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  
-  const serverFilters = useMemo(() => {
-    const richFilters: Filters = { ...filters };
+
+  // This hook now correctly receives and uses the complex `Filters` type
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
     if (searchQuery) {
-      richFilters.or = {
+      newFilters.or = {
         system_name: searchQuery,
         system_type_name: searchQuery,
       };
     }
-    // The convertRichFiltersToSimpleJson function will correctly pass this object.
-    return convertRichFiltersToSimpleJson(richFilters);
+    return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema> (supabase,
+  // Pass the complex `Filters` object directly to usePagedData
+  const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
     'v_systems_complete',
      {
-    filters: serverFilters as RpcFilters,
-    limit: pageLimit,
-    offset: (currentPage - 1) * pageLimit,
-  });
+      filters: searchFilters,
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+    }
+  );
 
   return {
     data: data?.data || [],
@@ -65,7 +65,6 @@ export default function SystemsPage() {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
 
-  // 2. USE THE CRUD MANAGER: Correctly typed with the base table and the auto-generated view schema
   const {
     data: systems, totalCount, activeCount, inactiveCount, isLoading, error, refetch,
     pagination, search, filters, editModal, deleteModal, actions: crudActions,

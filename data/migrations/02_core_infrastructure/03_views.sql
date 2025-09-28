@@ -105,6 +105,9 @@ SELECT
   ofc.en_id,
   sn.name AS sn_name,
   en.name AS en_name,
+  -- ADDED: Join to get start and end node type names
+  lt_sn_type.name as sn_node_type_name,
+  lt_en_type.name as en_node_type_name,
   ofc.capacity,
   ofc.ofc_type_id,
   lt_ofc.name AS ofc_type_name,
@@ -132,4 +135,8 @@ LEFT JOIN public.nodes sn ON ofc.sn_id = sn.id
 LEFT JOIN public.nodes en ON ofc.en_id = en.id
 LEFT JOIN public.lookup_types lt_ofc ON ofc.ofc_type_id = lt_ofc.id
 LEFT JOIN public.lookup_types lt_ofc_owner ON ofc.ofc_owner_id = lt_ofc_owner.id
-LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id;
+LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
+-- ADDED: Left join for start node type
+LEFT JOIN public.lookup_types lt_sn_type ON sn.node_type_id = lt_sn_type.id
+-- ADDED: Left join for end node type
+LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id;

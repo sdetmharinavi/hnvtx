@@ -1783,6 +1783,7 @@ export type V_ofc_cables_completeRow = {
     current_rkm: number | null;
     en_id: string | null;
     en_name: string | null;
+    en_node_type_name: string | null;
     id: string | null;
     inactive_count: number | null;
     maintenance_area_code: string | null;
@@ -1798,6 +1799,7 @@ export type V_ofc_cables_completeRow = {
     route_name: string | null;
     sn_id: string | null;
     sn_name: string | null;
+    sn_node_type_name: string | null;
     status: boolean | null;
     total_count: number | null;
     transnet_id: string | null;
@@ -1950,6 +1952,7 @@ export type V_systems_completeRow = {
     maintenance_terminal_id: string | null;
     node_id: string | null;
     node_name: string | null;
+    node_type_name: string | null;
     remark: string | null;
     ring_id: string | null;
     ring_logical_area_name: string | null;

@@ -69,7 +69,7 @@ Request detailed implementation guidance for fixes
 Seek clarification on trade-offs between different approaches
 Ask for help prioritizing improvements based on impact vs. effort
 
-Keep in mind what packages and their versions being used in this project through package.json and try to use the same packages for any new feature or component.
+Keep in mind what packages and their versions being used in this project through package.json and try to use the same packages for any new feature or component. Provide clean, correct, and complete solutions whenever asked.
 
 Please keep this analysis in context for our future discussions in this conversation. Below is the my existing project
 

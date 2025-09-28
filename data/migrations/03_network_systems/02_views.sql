@@ -6,6 +6,8 @@ CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) 
 SELECT
   s.*,
   n.name AS node_name,
+  -- ADDED: Join to get the node_type_name for filtering
+  lt_node_type.name AS node_type_name,
   n.latitude,
   n.longitude,
   lt_system.name AS system_type_name,
@@ -23,6 +25,8 @@ SELECT
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+  -- ADDED: Join to lookup_types via nodes to get the node's type
+  LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id

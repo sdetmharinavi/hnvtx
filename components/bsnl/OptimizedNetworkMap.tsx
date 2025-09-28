@@ -1,7 +1,7 @@
 // path: components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, memo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProps } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
@@ -11,20 +11,52 @@ import { Maximize, Minimize } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 
 // Component to handle map events like pan and zoom
-function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds) => void; setZoom: (zoom: number) => void; }) {
+function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
 
   useEffect(() => {
     const handler = () => {
-      setBounds(map.getBounds());
-      setZoom(map.getZoom());
+      try {
+        // Check if map is ready before getting bounds
+        if (!map || !map.getBounds || !map.getContainer()) return;
+        
+        const newBounds = map.getBounds();
+        const newZoom = map.getZoom();
+        
+        // Validate bounds before proceeding
+        const sw = newBounds.getSouthWest();
+        const ne = newBounds.getNorthEast();
+        
+        if (!isFinite(sw.lat) || !isFinite(sw.lng) || !isFinite(ne.lat) || !isFinite(ne.lng)) {
+          return; // Skip if bounds are invalid
+        }
+        
+        if (!isFinite(newZoom) || newZoom <= 0) {
+          return; // Skip if zoom is invalid
+        }
+        
+        // Only update if bounds or zoom actually changed
+        setBounds(newBounds);
+        
+        setZoom(newZoom);
+      } catch (error) {
+        // Silently ignore errors during map initialization
+        console.debug('Map not ready yet:', error);
+      }
     };
+    
     // This forces the map to re-evaluate its size, crucial for the full-screen toggle
-    const invalidateSize = () => setTimeout(() => map.invalidateSize(), 100);
+    const invalidateSize = () => setTimeout(() => {
+      if (map && map.invalidateSize) {
+        map.invalidateSize();
+      }
+    }, 100);
     
     map.on('zoomend moveend', handler);
     window.addEventListener('resize', invalidateSize);
-    handler(); // Initial call
+    
+    // Delay initial call to ensure map is ready
+    setTimeout(handler, 100);
     
     return () => { 
       map.off('zoomend moveend', handler); 
@@ -34,6 +66,73 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
 
   return null;
 }
+
+// Helper function to validate coordinates
+const isValidCoordinate = (lat: number | null | undefined, lng: number | null | undefined): boolean => {
+  return lat != null && lng != null && 
+         isFinite(lat) && isFinite(lng) && 
+         lat >= -90 && lat <= 90 && 
+         lng >= -180 && lng <= 180;
+};
+
+// Memoized Map Content Component
+const MapContent = memo<{
+  cables: BsnlCable[];
+  visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
+  visibleNodes: BsnlNode[];
+  nodeMap: Map<string, BsnlNode>;
+  mapUrl: string;
+  mapAttribution: string;
+  setMapBounds: (bounds: LatLngBounds | null) => void;
+  setZoom: (zoom: number) => void;
+}>(({ cables, visibleLayers, visibleNodes, nodeMap, mapUrl, mapAttribution, setMapBounds, setZoom }) => (
+  <>
+    <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
+    <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
+
+    {visibleLayers.cables && cables.map((cable: BsnlCable) => {
+        const startNode = nodeMap.get(cable.sn_id!);
+        const endNode = nodeMap.get(cable.en_id!);
+        if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
+            return (
+                <Polyline
+                    key={cable.id}
+                    positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
+                    pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
+                >
+                  <Popup>
+                      <div className="w-48">
+                          <h3 className="font-semibold text-base">{cable.route_name}</h3>
+                          <p className="text-sm">Type: {cable.ofc_type_name}</p>
+                          <p className="text-sm">Capacity: {cable.capacity}F</p>
+                          <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
+                          <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
+                      </div>
+                  </Popup>
+                </Polyline>
+            );
+        }
+        return null;
+    })}
+
+    {visibleNodes.map((node: BsnlNode) => (
+      (node.latitude && node.longitude) && (
+          <Marker key={node.id} position={[node.latitude, node.longitude]}>
+              <Popup>
+                  <div className="w-48">
+                      <h3 className="font-semibold text-base">{node.name}</h3>
+                      <p className="text-sm">Type: {node.node_type_name || 'N/A'}</p>
+                      <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p>
+                      <p className="text-sm">Region: {node.maintenance_area_name}</p>
+                  </div>
+              </Popup>
+          </Marker>
+      )
+    ))}
+  </>
+));
+
+MapContent.displayName = 'MapContent';
 
 export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: true, cables: true, systems: true } }: { nodes: BsnlNode[]; cables: BsnlCable[]; selectedSystem: BsnlSystem | null; visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean }; }) {
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -63,15 +162,23 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
 
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
-    const lats = nodes.map(n => n.latitude ?? 0).filter(Boolean);
-    const lngs = nodes.map(n => n.longitude ?? 0).filter(Boolean);
+    const lats = nodes.map(n => n.latitude ?? 0).filter(lat => lat !== 0 && isFinite(lat));
+    const lngs = nodes.map(n => n.longitude ?? 0).filter(lng => lng !== 0 && isFinite(lng));
     if (lats.length === 0 || lngs.length === 0) return null;
     return [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]] as [[number, number], [number, number]];
   }, [nodes]);
 
   const [zoom, setZoom] = useState(13);
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-  const nodeMap = useMemo(() => new Map(nodes.map(node => [node.id, node])), [nodes]);
+
+  const stableSetBounds = useCallback((bounds: LatLngBounds | null) => {
+    setMapBounds(bounds);
+  }, []);
+
+  const stableSetZoom = useCallback((zoom: number) => {
+    setZoom(zoom);
+  }, []);
+  const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
   const visibleNodes = useMemo(() => {
     if (!mapBounds || !visibleLayers.nodes) return [];
@@ -79,7 +186,7 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
     return nodes.slice(0, maxItems).filter(node => {
         const lat = node.latitude;
         const lng = node.longitude;
-        if (lat == null || lng == null) return false;
+        if (lat == null || lng == null || !isFinite(lat) || !isFinite(lng)) return false;
         return lat >= mapBounds.getSouth() && lat <= mapBounds.getNorth() && lng >= mapBounds.getWest() && lng <= mapBounds.getEast();
     });
   }, [nodes, mapBounds, zoom, visibleLayers.nodes]);
@@ -99,48 +206,16 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
       {/* Regular map container */}
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
         <MapContainer key="normal" bounds={bounds} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
-          <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
-          <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
-          
-          {visibleLayers.cables && cables.map((cable: BsnlCable) => {
-              const startNode = nodeMap.get(cable.sn_id!);
-              const endNode = nodeMap.get(cable.en_id!);
-              if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
-                  return (
-                      <Polyline 
-                          key={cable.id} 
-                          positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]} 
-                          pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
-                      >
-                        <Popup>
-                            <div className="w-48">
-                                <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                                <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                                <p className="text-sm">Capacity: {cable.capacity}F</p>
-                                <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                                <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
-                            </div>
-                        </Popup>
-                      </Polyline>
-                  );
-              }
-              return null;
-          })}
-
-          {visibleNodes.map((node: BsnlNode) => (
-            (node.latitude && node.longitude) && (
-                <Marker key={node.id} position={[node.latitude, node.longitude]}>
-                    <Popup>
-                        <div className="w-48">
-                            <h3 className="font-semibold text-base">{node.name}</h3>
-                            <p className="text-sm">Type: {node.node_type_name}</p>
-                            <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p>
-                            <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                        </div>
-                    </Popup>
-                </Marker>
-            )
-          ))}
+          <MapContent
+            cables={cables}
+            visibleLayers={visibleLayers}
+            visibleNodes={visibleNodes}
+            nodeMap={nodeMap}
+            mapUrl={mapUrl}
+            mapAttribution={mapAttribution}
+            setMapBounds={stableSetBounds}
+            setZoom={stableSetZoom}
+          />
         </MapContainer>
         
         <button
@@ -156,48 +231,16 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
       {isFullScreen && (
         <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
           <MapContainer key="fullscreen" bounds={bounds} className="h-full w-full bg-gray-200 dark:bg-gray-800">
-            <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
-            <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
-            
-            {visibleLayers.cables && cables.map((cable: BsnlCable) => {
-                const startNode = nodeMap.get(cable.sn_id!);
-                const endNode = nodeMap.get(cable.en_id!);
-                if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
-                    return (
-                        <Polyline 
-                            key={cable.id} 
-                            positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]} 
-                            pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
-                        >
-                          <Popup>
-                              <div className="w-48">
-                                  <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                                  <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                                  <p className="text-sm">Capacity: {cable.capacity}F</p>
-                                  <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                                  <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
-                              </div>
-                          </Popup>
-                        </Polyline>
-                    );
-                }
-                return null;
-            })}
-
-            {visibleNodes.map((node: BsnlNode) => (
-              (node.latitude && node.longitude) && (
-                  <Marker key={node.id} position={[node.latitude, node.longitude]}>
-                      <Popup>
-                          <div className="w-48">
-                              <h3 className="font-semibold text-base">{node.name}</h3>
-                              <p className="text-sm">Type: {node.node_type_name}</p>
-                              <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p>
-                              <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                          </div>
-                      </Popup>
-                  </Marker>
-              )
-            ))}
+            <MapContent
+              cables={cables}
+              visibleLayers={visibleLayers}
+              visibleNodes={visibleNodes}
+              nodeMap={nodeMap}
+              mapUrl={mapUrl}
+              mapAttribution={mapAttribution}
+              setMapBounds={stableSetBounds}
+              setZoom={stableSetZoom}
+            />
           </MapContainer>
           
           <button

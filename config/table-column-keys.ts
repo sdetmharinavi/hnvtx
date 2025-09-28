@@ -256,10 +256,10 @@ export const TABLE_COLUMN_KEYS = {
   rings: [
     'id',
     'name',
+    'total_nodes',
     'description',
     'ring_type_id',
     'maintenance_terminal_id',
-    'total_nodes',
     'status',
     'created_at',
     'updated_at',

@@ -9,7 +9,7 @@ import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
-import { Filters, RpcFilters, usePagedData, useTableQuery } from '@/hooks/database';
+import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_employees_with_countRowSchema,
@@ -46,7 +46,7 @@ const useEmployeesData = (
     supabase,
     'v_employees_with_count',
     {
-      filters: searchFilters as RpcFilters,
+      filters: searchFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'employee_name',
