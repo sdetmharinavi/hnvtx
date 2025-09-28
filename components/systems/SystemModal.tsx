@@ -13,7 +13,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormDateInput, FormInput, FormIPAddressInput, FormSearchableSelect, FormSwitch, FormTextarea } from '@/components/common/form';
 import { V_systems_completeRowSchema, systemsInsertSchema, SystemsInsertSchema } from '@/schemas/zod-schemas';
-import { Option } from '@/components/common/ui/select/SearchableSelect';
 
 // This type represents all possible fields the form can handle.
 // It's a combination of the base system insert type and all possible subtype fields.

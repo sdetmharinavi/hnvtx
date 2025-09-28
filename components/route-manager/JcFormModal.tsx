@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { junction_closuresInsertSchema } from '@/schemas/zod-schemas';
 import { Filters, useTableQuery } from '@/hooks/database';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { Equipment } from '@/app/dashboard/route-manager/page';
+import { Equipment } from '@/schemas/custom-schemas';
 
 
 interface JcFormModalProps {

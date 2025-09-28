@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 export const useDebugSession = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [sessionInfo, setSessionInfo] = useState<any>(null)
   const supabase = createClient()
 
@@ -48,6 +49,7 @@ export const useDebugSession = () => {
     )
 
     return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return sessionInfo

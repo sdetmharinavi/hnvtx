@@ -20,20 +20,21 @@ import {
   import { RoleBadge } from "@/components/common/ui/badges/RoleBadge";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { UserRole } from '@/types/user-roles';
   
   // User details modal configuration
   export const userDetailsConfig = {
     header: {
-      title: (user: any) => {
+      title: (user: V_user_profiles_extendedRowSchema) => {
         const firstName = user.first_name?.trim() || "";
         const lastName = user.last_name?.trim() || "";
         const fullName = `${firstName} ${lastName}`.trim();
         return fullName || "No name provided";
       },
-      subtitle: (user: any) => user.email,
+      subtitle: (user: V_user_profiles_extendedRowSchema) => user.email,
       avatar: {
         urlKey: 'avatar_url',
-        fallbackText: (user: any) => {
+        fallbackText: (user: V_user_profiles_extendedRowSchema) => {
           const firstInitial = user.first_name?.charAt(0)?.toUpperCase() || "";
           const lastInitial = user.last_name?.charAt(0)?.toUpperCase() || "";
           return firstInitial + lastInitial || "?";
@@ -69,7 +70,7 @@ import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
             key: 'email',
             label: 'Email Address',
             icon: <FiMail size={18} />,
-            formatter: (email: string, data: any) => defaultFormatters.email(email, data?.is_email_verified)
+            formatter: (email: string, data: V_user_profiles_extendedRowSchema) => defaultFormatters.email(email, data?.is_email_verified ?? undefined)
           },
           {
             key: 'phone_number',
@@ -97,7 +98,7 @@ import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
             key: 'role',
             label: 'Role',
             icon: <FiShield size={18} />,
-            formatter: (role: any) => <RoleBadge role={role} />
+            formatter: (role: UserRole) => <RoleBadge role={role} />
           },
           {
             key: 'status',
@@ -127,8 +128,8 @@ import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
       {
         title: "Address Information",
         icon: <FiMapPin size={20} />,
-        condition: (user: any) => user.address && defaultFormatters.address(user.address),
-        renderCustom: (user: any) => (
+        condition: (user: V_user_profiles_extendedRowSchema) => user.address && defaultFormatters.address(user.address),
+        renderCustom: (user: V_user_profiles_extendedRowSchema) => (
           <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700">
             <p className="text-gray-900 dark:text-white font-medium text-lg leading-relaxed">
               {defaultFormatters.address(user.address)}
@@ -139,8 +140,8 @@ import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
       {
         title: "User Preferences",
         icon: <FiSettings size={20} />,
-        condition: (user: any) => user.preferences && Object.keys(user.preferences).length > 0,
-        renderCustom: (user: any) => (
+        condition: (user: V_user_profiles_extendedRowSchema) => user.preferences && Object.keys(user.preferences).length > 0,
+        renderCustom: (user: V_user_profiles_extendedRowSchema) => (
           <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {defaultFormatters.json(user.preferences)}
           </div>

@@ -50,10 +50,19 @@ export default function MaintenanceAreasPage() {
     [
       'area_type:area_type_id(id, name)',
       'parent_area:parent_id(id, name, code)',
+      'child_areas:maintenance_areas!parent_id(id, name, code, status)'
     ],
     {
       filters: serverFilters,
       orderBy: [{ column: 'name', ascending: true }],
+      select: (data) => {
+        return data.map(item => ({
+          ...item,
+          area_type: item.area_type_id || null,
+          parent_area: item.parent_id || null,
+          child_areas: item.id || []
+        })) as MaintenanceAreaWithRelations[];
+      }
     }
   );
 
@@ -162,7 +171,12 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
-        toggleStatusMutation={toggleStatusMutation}
+        toggleStatusMutation={{
+          mutate: toggleStatusMutation.mutate,
+          isPending: toggleStatusMutation.isPending,
+          error: toggleStatusMutation.error,
+          data: toggleStatusMutation.data
+        }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
