@@ -17,9 +17,9 @@ import MaintenanceSection from '@/components/ofc/OfcForm/MaintenanceSection';
 import { PathValue } from 'react-hook-form';
 import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
 import {
-  NodesRowSchema,
   Ofc_cablesInsertSchema,
   Ofc_cablesRowSchema,
+  V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
 
 interface OfcFormProps {
@@ -55,9 +55,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const currentOfcTypeId = watch('ofc_type_id');
 
   // Data fetching with optimized queries
-  const { data: nodesData, isLoading: nodesLoading } = usePagedData<NodesRowSchema>(
+  const { data: nodesData, isLoading: nodesLoading } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
-    'nodes',
+    'v_nodes_complete',
     {
       filters: {
         status: true,
@@ -124,7 +124,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
   // Memoized options to prevent unnecessary re-renders
   const nodeOptions = useMemo(
     (): Option[] =>
-      nodesData?.data.map((node: NodesRowSchema) => ({
+      nodesData?.data.map((node: V_nodes_completeRowSchema) => ({
         value: String(node.id),
         label: node.name || `Node ${node.id}`,
       })) || [],

@@ -115,12 +115,6 @@ function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
   );
 }
 
-/**
- * A generic hook to fetch paginated data from any view using the efficient 'get_paged_data' RPC.
- * @param viewName The name of the table or view to query.
- * @param hookOptions Pagination, ordering, and filtering options.
- * @param queryOptions Standard TanStack Query options.
- */
 export function usePagedData<T>(
   supabase: SupabaseClient<Database>,
   viewName: string | null,

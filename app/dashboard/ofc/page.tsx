@@ -68,11 +68,12 @@ const useOfcData = (
 
   const { data, isLoading, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
-    'ofc_cables_complete',
+    'v_ofc_cables_complete',
     {
       filters: serverFilters as RpcFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
+      orderBy: 'route_name', // Changed from default 'name' to 'route_name' which exists in the view
     }
   );
 
