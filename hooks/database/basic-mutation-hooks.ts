@@ -41,7 +41,6 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
       }
-      options?.onSuccess?.(data, variables, context);
     },
     ...mutationOptions,
   });
@@ -116,7 +115,6 @@ export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Dat
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
       }
-      options?.onSuccess?.(data, variables, context);
     },
     ...mutationOptions,
   });
@@ -168,7 +166,6 @@ export function useTableUpdate<T extends TableName>(supabase: SupabaseClient<Dat
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
       }
-      options?.onSuccess?.(data, variables, context);
     },
     ...mutationOptions,
   });
@@ -240,7 +237,6 @@ export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Dat
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
       }
-      options?.onSuccess?.(data, variables, context);
     },
     ...mutationOptions,
   });

@@ -1,7 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/common/ui/Button';
-import { Input } from '@/components/common/ui/Input';
-import { useForm, Controller, useFormContext, type FieldValues, type UseFormReturn } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -57,6 +55,7 @@ export function UserCreateModal({
     register,
     handleSubmit,
     control,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     formState: { errors, isDirty, isValid },
     reset,
   } = form;
@@ -72,7 +71,7 @@ export function UserCreateModal({
       await onCreate(payload);
       reset();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating user:', error);
     }
   };

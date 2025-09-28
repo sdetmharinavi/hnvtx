@@ -1,7 +1,7 @@
 // path: components/systems/SystemRingPath.tsx
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableQuery } from "@/hooks/database";
 import { Button } from "@/components/common/ui/Button";

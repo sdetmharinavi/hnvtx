@@ -13,7 +13,7 @@ export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [showUploadSection, setShowUploadSection] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
+  // const [showDashboard, setShowDashboard] = useState(false);
 
   const {
     folders,
@@ -29,21 +29,21 @@ export default function FileUploader() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
   });
 
-  const handleUploadSuccess = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['files'] });
-  }, [queryClient]);
+  // const handleUploadSuccess = useCallback(() => {
+  //   queryClient.invalidateQueries({ queryKey: ['files'] });
+  // }, [queryClient]);
 
   const {
     uppyRef,
-    uploadedFiles,
+    // uploadedFiles,
     selectedFiles,
     isUploading,
     handleStartUpload,
-    toggleCamera,
-    toggleCameraActive,
-    facingMode,
-    isCameraActive,
-    cameraError,
+    // toggleCamera,
+    // toggleCameraActive,
+    // facingMode,
+    // isCameraActive,
+    // cameraError,
   } = useUppyUploader({
     folderId: folderId || null,
     setRefresh: () => {
@@ -58,12 +58,17 @@ export default function FileUploader() {
     fileInputRef,
     handleFileInputChange,
     triggerFileInput,
-    handleRemoveFile,
+    // handleRemoveFile,
   } = useFileHandling(uppyRef);
 
   const handleFileDeleted = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['files'] });
   }, [queryClient]);
+
+  if(error){
+    console.log("Error: ", error);
+    
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">

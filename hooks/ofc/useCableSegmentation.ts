@@ -1,6 +1,5 @@
-// hooks/ofc/useCableSegmentation.ts
-import { useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface JunctionClosure {
@@ -60,9 +59,10 @@ export const useCableSegmentation = () => {
 
       toast.success('Junction Closure added successfully');
       return data as JunctionClosure;
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to add Junction Closure: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(`Failed to add Junction Closure: ${errorMessage}`);
       return null;
     } finally {
       setIsLoading(false);
@@ -97,11 +97,12 @@ export const useCableSegmentation = () => {
 
       toast.success('Cable segments created successfully');
       return data as CableSegment[];
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error in createCableSegments:', err);
-      console.error('Error details:', err.message, err.details, err.hint, err.code);
-      setError(err.message);
-      toast.error(`Failed to create cable segments: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      console.error('Error details:', errorMessage, (err instanceof Error && 'details' in err) ? err.details : undefined, (err instanceof Error && 'hint' in err) ? err.hint : undefined, (err instanceof Error && 'code' in err) ? err.code : undefined);
+      setError(errorMessage);
+      toast.error(`Failed to create cable segments: ${errorMessage}`);
       return [];
     } finally {
       setIsLoading(false);
@@ -126,9 +127,10 @@ export const useCableSegmentation = () => {
 
       toast.success('Fiber connections created successfully');
       return data as number;
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to create fiber connections: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(`Failed to create fiber connections: ${errorMessage}`);
       return 0;
     } finally {
       setIsLoading(false);
@@ -159,9 +161,10 @@ export const useCableSegmentation = () => {
 
       toast.success('Fiber connections updated successfully');
       return data as number;
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to update fiber connections: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(`Failed to update fiber connections: ${errorMessage}`);
       return 0;
     } finally {
       setIsLoading(false);
@@ -189,9 +192,10 @@ export const useCableSegmentation = () => {
       }
 
       return data;
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(`Failed to get fiber path: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(`Failed to get fiber path: ${errorMessage}`);
       return [];
     } finally {
       setIsLoading(false);

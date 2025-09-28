@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Database, Json } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
-import { User_profilesInsertSchema } from "@/schemas/zod-schemas";
+import { User_profilesInsertSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
 
 
 type UserCreateInput = {
@@ -23,8 +23,6 @@ type AdminGetAllUsers =
 
 type AdminGetAllUsersExtended =
   Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
-
-type AdminGetUserByID = Database['public']['Functions']['admin_get_user_by_id']['Args']
 
 type AdminBulkDeleteUsersFunction =
   Database["public"]["Functions"]["admin_bulk_delete_users"]["Args"];
@@ -76,14 +74,14 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
   const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
-    queryFn: async (): Promise<UserProfileData[]> => {
+    queryFn: async (): Promise<User_profilesUpdateSchema[]> => {
       const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
 
       if (error) {
         throw new Error(error.message);
       }
 
-      return data as UserProfileData[] || [];
+      return data as User_profilesUpdateSchema[] || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -95,7 +93,7 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
   const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.detail(userId),
-    queryFn: async (): Promise<UserProfileData | null> => {
+    queryFn: async (): Promise<User_profilesUpdateSchema | null> => {
       const { data, error } = await supabase.rpc("admin_get_user_by_id", {
         user_id: userId,
       });
@@ -104,7 +102,7 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
         throw new Error(error.message);
       }
 
-      return data?.[0] as UserProfileData || null;
+      return data?.[0] as User_profilesUpdateSchema || null;
     },
     enabled: enabled && !!userId,
     staleTime: 5 * 60 * 1000,
@@ -141,7 +139,7 @@ export const useGetMyUserDetails = () => {
         throw new Error(error.message);
       }
 
-      return data?.[0] || null;
+      return data?.[0] as User_profilesUpdateSchema || null;
     },
     staleTime: 10 * 60 * 1000,
   });

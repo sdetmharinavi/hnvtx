@@ -1,4 +1,4 @@
-import { useMemo, ReactNode, useEffect } from 'react';
+import { useMemo, ReactNode } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { GenericRow, TableOrViewName } from '@/config/helper-types';
@@ -90,9 +90,9 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
   }, [data, dateColumns]);
 
   const columns = useMemo(() => {
-    const keysToUse = TABLE_COLUMN_KEYS[tableName] as
-      | (keyof GenericRow<T> & string)[]
-      | undefined;
+    const keysToUse = TABLE_COLUMN_KEYS[
+      tableName as keyof typeof TABLE_COLUMN_KEYS
+    ] as unknown as (keyof GenericRow<T> & string)[] | undefined;
 
     if (!keysToUse) {
       console.warn(`No column keys found for table/view: ${tableName}`);
@@ -120,7 +120,7 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
       });
   }, [tableName, overrides, omit, columnWidths]);
 
-  const columnsKeys = columns.map((col) => col.key);
+  // const columnsKeys = columns.map((col) => col.key);
 
   // useEffect(() => {
   //   console.log(`columns for ${tableName}`, columnsKeys);

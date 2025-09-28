@@ -1,8 +1,8 @@
 // hooks/useFileHandling.ts
 import { useCallback, useRef } from 'react';
-import Uppy from "@uppy/core";
+import { AppUppy } from './useUppyUploader';
 
-export function useFileHandling(uppyRef: React.RefObject<Uppy | null>) {
+export function useFileHandling(uppyRef: React.RefObject<AppUppy | null>) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {

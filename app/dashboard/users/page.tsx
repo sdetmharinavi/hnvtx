@@ -278,7 +278,7 @@ const AdminUsersPage = () => {
 
       <UserDetailsModal
         isOpen={viewModal.isOpen}
-        user={viewModal.record}
+        user={viewModal.record as V_user_profiles_extendedRowSchema}
         onClose={viewModal.close}
       />
       <ConfirmModal

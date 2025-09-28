@@ -16,11 +16,10 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { convertRichFiltersToSimpleJson, Filters, Row, usePagedSystemsComplete, useTableQuery } from '@/hooks/database';
+import { convertRichFiltersToSimpleJson, Filters, Row, RpcFilters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { Json } from '@/types/supabase-types';
 // CORRECTED: Import the correct, auto-generated schema type
-import { SystemsRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
 
@@ -39,17 +38,19 @@ const useSystemsData = (
     return convertRichFiltersToSimpleJson(richFilters);
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedSystemsComplete(supabase, {
-    filters: serverFilters as Json,
+  const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema> (supabase,
+    'v_systems_completeRowSchema',
+     {
+    filters: serverFilters as RpcFilters,
     limit: pageLimit,
     offset: (currentPage - 1) * pageLimit,
   });
 
   return {
-    data: (data || []) as V_systems_completeRowSchema[],
-    totalCount: data?.[0]?.total_count || 0,
-    activeCount: data?.[0]?.active_count || 0,
-    inactiveCount: data?.[0]?.inactive_count || 0,
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
     isLoading,
     error,
     refetch,

@@ -2,8 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { usePagedOfcCablesComplete } from './database';
-import { Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
+import { usePagedData} from './database';
+import { Ofc_cablesRowSchema, Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
 
 
 interface useCreateOfcConnectionProps {
@@ -24,8 +24,9 @@ export const useCreateOfcConnection = ({
   const queryClient = useQueryClient();
 
   // Get OFC cable by Id
-  const { data: cable, isLoading: isLoadingCable } = usePagedOfcCablesComplete(
+  const { data: cable, isLoading: isLoadingCable } = usePagedData<Ofc_cablesRowSchema>(
     supabase,
+    'ofc_cables',
     {
       filters: { id: cableId },
       limit: 1,
@@ -57,7 +58,7 @@ export const useCreateOfcConnection = ({
 
   // createMissingConnections (unchanged)
   const createMissingConnections = useCallback(async (): Promise<void> => {
-    if (!cable || !cable[0]) return;
+    if (!cable || !cable.data || !cable.data[0]) return;
 
     // Get fresh connection count to avoid stale data
     const { data: currentConnections, error } = await supabase
@@ -71,7 +72,7 @@ export const useCreateOfcConnection = ({
     }
 
     const currentConnectionCount = currentConnections?.length || 0;
-    const cableCapacity = cable[0].capacity as number;
+    const cableCapacity = cable.data[0].capacity;
     const missingCount = cableCapacity - currentConnectionCount;
 
     if (missingCount <= 0) {
@@ -135,7 +136,7 @@ export const useCreateOfcConnection = ({
   }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 
   return {
-    cable: cable?.[0],
+    cable: cable?.data?.[0],
     existingConnections, // Now optionally client-sorted, but maintains same structure
     isLoadingOfc: isLoadingCable,
     ensureConnectionsExist,

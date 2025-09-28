@@ -1,10 +1,7 @@
 // app/dashboard/rings/page.tsx
 'use client';
 
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { RingsFilters } from '@/components/rings/RingsFilters';
@@ -12,16 +9,9 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
-import { usePagedRingsWithCount } from '@/hooks/database';
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from '@/hooks/useCrudManager';
-import {
-  RingsRowSchema,
-  V_rings_with_countRowSchema,
-} from '@/schemas/zod-schemas';
+import { usePagedData } from '@/hooks/database';
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { RingsRowSchema, V_rings_with_countRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo } from 'react';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -45,37 +35,30 @@ const useRingsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedRingsWithCount(supabase, {
-    filters: {
-      ...filters,
-      ...(searchQuery ? { name: searchQuery } : {}),
-    },
-    limit: pageLimit,
-    offset: (currentPage - 1) * pageLimit,
-    // queryOptions: {
-    //   enabled: true,
-    //   refetchOnWindowFocus: false,
-    //   refetchOnMount: true,
-    //   refetchInterval: 0,
-    //   refetchIntervalInBackground: false,
-    //   staleTime: 3 * 60 * 1000,
-    // }
-  });
+  const { data, isLoading, error, refetch } = usePagedData<V_rings_with_countRowSchema>(
+    supabase,
+    'v_rings_with_count',
+    {
+      filters: {
+        ...filters,
+        ...(searchQuery ? { name: searchQuery } : {}),
+      },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
+    }
+  );
 
   // Calculate counts from the full dataset
-    const totalCount = data?.[0]?.total_count || 0;
-    const activeCount = data?.[0]?.active_count || 0;
-    const inactiveCount = data?.[0]?.inactive_count || 0;
-  
-    return {
-      data: (data || []) as unknown as V_rings_with_countRowSchema[],
-      totalCount,
-      activeCount,
-      inactiveCount,
-      isLoading,
-      error,
-      refetch,
-    };
+
+  return {
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
+    isLoading,
+    error,
+    refetch,
+  };
 };
 
 const RingsPage = () => {
@@ -135,9 +118,7 @@ const RingsPage = () => {
   // Type guard to remove undefined from the mapped array
   const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
   const orderedColumns = [
-    ...desiredRingColumnOrder
-      .map((k) => columns.find((c) => c.key === k))
-      .filter(notUndefined),
+    ...desiredRingColumnOrder.map((k) => columns.find((c) => c.key === k)).filter(notUndefined),
     ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
   ];
 
@@ -210,10 +191,7 @@ const RingsPage = () => {
           },
         }}
         customToolbar={
-          <RingsFilters
-            searchQuery={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-          />
+          <RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />
         }
       />
 

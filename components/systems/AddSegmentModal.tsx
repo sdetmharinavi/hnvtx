@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "../common/ui/Modal";
-import { useState, useMemo } from "react";
+import { useState} from "react";
 import { Button } from "../common/ui/Button";
 import { useTableInsert, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";

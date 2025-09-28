@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner } from '@/components/common/ui/LoadingSpinner';
 import { DataTable } from '@/components/table';
-import { Row, usePagedOfcConnectionsComplete, useTableQuery } from '@/hooks/database';
+import { Row, usePagedData, useTableQuery } from '@/hooks/database';
 import { ConfirmModal } from '@/components/common/ui';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
@@ -33,21 +33,25 @@ const useOfcConnectionsData = (params: DataQueryHookParams): DataQueryHookReturn
   const { id } = useParams();
   const cableId = id as string;
 
-  const { data, isLoading, error, refetch } = usePagedOfcConnectionsComplete(supabase, {
+  const { data, isLoading, error, refetch } = usePagedData<V_ofc_connections_completeRowSchema>(supabase,
+    "v_ofc_connections_complete",
+       {
       filters: { ofc_id: cableId, ...(searchQuery ? { or: `system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%` } : {}) },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
   );
 
-  const totalCount = data?.[0]?.total_count || 0;
-  const activeCount = data?.[0]?.active_count || 0;
-  const inactiveCount = data?.[0]?.inactive_count || 0;
 
-  // normalize/cast the raw paged result to the expected return row schema
-  const normalizedData = (data || []) as unknown as V_ofc_connections_completeRowSchema[];
-
-  return { data: normalizedData, totalCount, activeCount, inactiveCount, isLoading, error, refetch };
+  return {
+    data: data?.data || [],
+    totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0,
+    inactiveCount: data?.inactive_count || 0,
+    isLoading,
+    error,
+    refetch,
+  };
 };
 
 export default function OfcCableDetailsPage() {
@@ -90,7 +94,7 @@ export default function OfcCableDetailsPage() {
   }, [isLoading, routeDetails, ensureConnectionsExist]);
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
-  const orderedColumns = useOrderedColumns(columns, TABLE_COLUMN_KEYS.v_ofc_connections_complete);
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_connections_complete]);
 
   const { data: isSuperAdmin } = useIsSuperAdmin();
 
@@ -134,7 +138,7 @@ export default function OfcCableDetailsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">OFC Cable Details</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{`Route: ${routeDetails.route.name}`}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{`Route: ${routeDetails.route.route_name}`}</p>
         </div>
         <div>
           <Link href="/dashboard/ofc" className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Back to List</Link>

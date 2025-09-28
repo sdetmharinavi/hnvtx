@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableInsert, TableUpdate, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
+import { TableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
 import { applyFilters } from "./utility-functions";
 
 // Enhanced bulk operations hook with filter support
