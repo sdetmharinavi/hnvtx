@@ -13,6 +13,7 @@ import { usePagedData } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { RingsRowSchema, V_rings_with_countRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
+import { convertRichFiltersToSimpleJson } from '@/hooks/database/utility-functions';
 import { useMemo } from 'react';
 import { GiLinkedRings } from 'react-icons/gi';
 import { toast } from 'sonner';
@@ -35,14 +36,20 @@ const useRingsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
+  // Convert rich filters to simple RPC filters
+  const rpcFilters = useMemo(() => {
+    const convertedFilters = convertRichFiltersToSimpleJson(filters);
+    return {
+      ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
+      ...(searchQuery ? { name: searchQuery } : {}),
+    };
+  }, [filters, searchQuery]);
+
   const { data, isLoading, error, refetch } = usePagedData<V_rings_with_countRowSchema>(
     supabase,
     'v_rings_with_count',
     {
-      filters: {
-        ...filters,
-        ...(searchQuery ? { name: searchQuery } : {}),
-      },
+      filters: rpcFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }

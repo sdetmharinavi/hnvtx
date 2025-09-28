@@ -2,8 +2,6 @@
 
 import {
   Filters,
-  RpcFilters,
-  convertRichFiltersToSimpleJson,
   usePagedData,
   useTableInsert,
   useTableUpdate,
@@ -18,7 +16,6 @@ import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import { DataTable } from '@/components/table/DataTable';
 import { TablesInsert } from '@/types/supabase-types';
-// import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import {
@@ -60,17 +57,20 @@ const useOfcData = (
   const serverFilters = useMemo(() => {
     const richFilters: Filters = { ...filters };
     if (searchQuery) {
-      richFilters.or = `(route_name ILIKE '%${searchQuery}%' OR asset_no ILIKE '%${searchQuery}%' OR transnet_id ILIKE '%${searchQuery}%')`;
+      richFilters.or = {
+        route_name: searchQuery,
+        asset_no: searchQuery,
+        transnet_id: searchQuery,
+      };
     }
-    const result = convertRichFiltersToSimpleJson(richFilters);
-    return result || {}; // Ensure we always return an object, never null
+    return richFilters; // Return Filters type instead of converting to Json
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
     'v_ofc_cables_complete',
     {
-      filters: serverFilters as RpcFilters,
+      filters: serverFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'route_name', // Changed from default 'name' to 'route_name' which exists in the view
@@ -84,6 +84,7 @@ const useOfcData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
@@ -98,6 +99,7 @@ const OfcPage = () => {
     inactiveCount,
     isLoading,
     isMutating,
+    isFetching,
     error,
     refetch,
     pagination,
@@ -321,6 +323,7 @@ const OfcPage = () => {
         data={ofcData}
         columns={orderedColumns}
         loading={loading}
+        isFetching={isFetching}
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows: V_ofc_cables_completeRowSchema[]): void => {

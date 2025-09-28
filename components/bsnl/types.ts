@@ -3,16 +3,13 @@ import {
   v_nodes_completeRowSchema,
   v_ofc_cables_completeRowSchema,
   v_systems_completeRowSchema,
-  ofc_connectionsRowSchema
 } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 
 export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
 export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
 export type BsnlSystem = z.infer<typeof v_systems_completeRowSchema>;
-export type BsnlConnection = z.infer<typeof ofc_connectionsRowSchema>;
 
-// CORRECTED: Added and exported missing types
 export interface FiberRoutePath {
   nodeId: string;
   ofcId: string;
@@ -41,13 +38,13 @@ export interface AllocationSaveData {
     taps: { [key: string]: FiberRoutePath[] };
   };
 }
-// END CORRECTION
 
+// CORRECTED: Removed 'district' and ensured 'nodeType' is present.
 export interface SearchFilters {
   query: string;
   status: string[];
   type: string[];
   region: string[];
-  district: string[];
+  nodeType: string[]; // This is the correct property for node type filtering.
   priority: string[];
 }

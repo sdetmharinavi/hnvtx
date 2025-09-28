@@ -1900,6 +1900,13 @@ export type Database = {
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "node_type_name"]
+          },
+          {
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["system_category", "system_type_name"]
           },
           {
@@ -2984,6 +2991,7 @@ export type Database = {
           current_rkm: number | null
           en_id: string | null
           en_name: string | null
+          en_node_type_name: string | null
           id: string | null
           inactive_count: number | null
           maintenance_area_code: string | null
@@ -2999,6 +3007,7 @@ export type Database = {
           route_name: string | null
           sn_id: string | null
           sn_name: string | null
+          sn_node_type_name: string | null
           status: boolean | null
           total_count: number | null
           transnet_id: string | null
@@ -3146,6 +3155,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_rings_with_count"
             referencedColumns: ["ring_type_category", "ring_type_name"]
+          },
+          {
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "node_type_name"]
           },
           {
             foreignKeyName: "fk_connection_type"
@@ -3498,6 +3514,7 @@ export type Database = {
           maintenance_terminal_id: string | null
           node_id: string | null
           node_name: string | null
+          node_type_name: string | null
           remark: string | null
           ring_id: string | null
           ring_logical_area_name: string | null

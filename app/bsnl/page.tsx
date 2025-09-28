@@ -2,28 +2,31 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import {
-  Network, Settings, RefreshCw
-} from 'lucide-react';
+import { Network, Settings, RefreshCw } from 'lucide-react';
 import { BsnlCable, BsnlSystem, SearchFilters, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
 import { PaginatedTable } from '@/components/bsnl/PaginatedTable';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
-import { useTableQuery } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
-import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid'; // <-- Import the new component
+import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { toast } from 'sonner';
+import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
 export default function ScalableFiberNetworkDashboard() {
-  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('overview');
+  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  
+  // CORRECTED: The initial state now perfectly matches the SearchFilters interface.
   const [filters, setFilters] = useState<SearchFilters>({
-    query: '', status: [], type: [], region: [], district: [], priority: []
+    query: '', 
+    status: [], 
+    type: [], 
+    region: [], 
+    nodeType: [],
+    priority: [] 
   });
 
   const { data, isLoading, isError, error, refetchAll } = useBsnlDashboardData(filters);
@@ -37,7 +40,7 @@ export default function ScalableFiberNetworkDashboard() {
   };
 
   const clearFilters = useCallback(() => {
-    setFilters({ query: '', status: [], type: [], region: [], district: [], priority: [] });
+    setFilters({ query: '', status: [], type: [], region: [], nodeType: [], priority: [] });
   }, []);
   
   const handleRefresh = async () => {
@@ -45,6 +48,20 @@ export default function ScalableFiberNetworkDashboard() {
     await refetchAll();
     toast.success("Dashboard data refreshed.");
   };
+
+  const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
+    const allSystemTypes = [...new Set(data.systems.map(s => s.system_type_name).filter(Boolean))];
+    const allCableTypes = [...new Set(data.ofcCables.map(c => c.ofc_type_name).filter(Boolean))];
+    const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
+    const allRegions = [...new Set(data.nodes.map(n => n.maintenance_area_name).filter(Boolean))].sort();
+    const allNodeTypes = [...new Set(data.nodes.map(n => n.node_type_name).filter(Boolean))].sort();
+    
+    return { 
+      typeOptions: uniqueTypes as string[], 
+      regionOptions: allRegions as string[],
+      nodeTypeOptions: allNodeTypes as string[],
+    };
+  }, [data]);
 
   const systemColumns = [
     { key: 'name', label: 'System Name', render: (system: BsnlSystem) => (<div><div className="font-medium text-gray-900 dark:text-white">{system.system_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{system.system_type_name}</div></div>) },
@@ -86,7 +103,14 @@ export default function ScalableFiberNetworkDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <AdvancedSearchBar filters={filters} onFiltersChange={setFilters} onClear={clearFilters} />
+        <AdvancedSearchBar 
+          filters={filters} 
+          onFiltersChange={setFilters} 
+          onClear={clearFilters}
+          typeOptions={typeOptions}
+          regionOptions={regionOptions}
+          nodeTypeOptions={nodeTypeOptions}
+        />
         
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
@@ -102,7 +126,7 @@ export default function ScalableFiberNetworkDashboard() {
           <div className="space-y-6">
             <DashboardStatsGrid />
             <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <OptimizedNetworkMap nodes={data.nodes} cables={data.ofcCables} selectedSystem={selectedSystem} visibleLayers={{ nodes: true, cables: true, systems: true }} />
+              <OptimizedNetworkMap nodes={data.nodes} cables={data.ofcCables} selectedSystem={selectedSystem} visibleLayers={{ nodes: true, cables: true, systems: true }} />
             </div>
           </div>
         )}

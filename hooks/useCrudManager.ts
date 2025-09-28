@@ -41,7 +41,7 @@ export interface DataQueryHookReturn<V> {
   activeCount: number;
   inactiveCount: number;
   isLoading: boolean;
-  isFetching: boolean;
+  isFetching?: boolean;
   error: Error | null;
   refetch: () => void;
 }

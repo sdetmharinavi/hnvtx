@@ -67,16 +67,18 @@ export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like"
 
 export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
 
-// A base type for standard key-value filters
-type StandardFilters = Record<string, FilterValue | undefined>;
-
 // The corrected Filters type definition
-export type Filters = Omit<StandardFilters, 'or'> & {
-  /** A special key for creating OR conditions across multiple columns. 
-      The value should be a record where keys are column names and values are the search term.
+export type Filters = {
+  /** A special key for creating OR conditions across multiple columns.
+      Can be either:
+      - A record where keys are column names and values are search terms
+      - A PostgREST OR syntax string
       Example: { or: { employee_name: 'John', employee_pers_no: 'John' } }
+      Example: { or: '(system_name.ilike.*search*,node_name.ilike.*search*)' }
   */
-  or?: Record<string, string>;
+  or?: Record<string, string> | string;
+  /** All other filter properties */
+  [key: string]: FilterValue | Record<string, string> | string | undefined;
 };
 
 
