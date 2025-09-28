@@ -2,74 +2,49 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw } from 'lucide-react';
-import { BsnlCable, BsnlSystem, SearchFilters, BsnlNode } from '@/components/bsnl/types';
+import {
+  Network, Settings, RefreshCw
+} from 'lucide-react';
+import { BsnlCable, BsnlSystem, SearchFilters, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
 import { PaginatedTable } from '@/components/bsnl/PaginatedTable';
-import AdvancedAllocationModal, { AllocationSaveData } from '@/components/bsnl/NewAllocationModal';
+import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 import { useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
+import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
+import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid'; // <-- Import the new component
+import { toast } from 'sonner';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
-function useSearchAndFilter<T extends BsnlCable | BsnlSystem>(
-  items: T[],
-  searchFn: (item: T, filters: SearchFilters) => boolean,
-  filters: SearchFilters
-) {
-  return useMemo(() => {
-    return items.filter(item => searchFn(item, filters));
-  }, [items, searchFn, filters]);
-}
-
 export default function ScalableFiberNetworkDashboard() {
-  const supabase = createClient();
-  const { data: nodesData, isLoading: isLoadingNodes, isError: isErrorNodes, error: errorNodes } = useTableQuery(supabase, 'v_nodes_complete');
-  const { data: cablesData, isLoading: isLoadingCables, isError: isErrorCables, error: errorCables } = useTableQuery(supabase, 'v_ofc_cables_complete');
-  const { data: systemsData, isLoading: isLoadingSystems, isError: isErrorSystems, error: errorSystems } = useTableQuery(supabase, 'v_systems_complete');
-
-  const isLoading = isLoadingNodes || isLoadingCables || isLoadingSystems;
-  const isError = isErrorNodes || isErrorCables || isErrorSystems;
-  const error = errorNodes || errorCables || errorSystems;
-
-  const data = useMemo(() => ({
-    nodes: (nodesData as BsnlNode[]) || [],
-    ofcCables: (cablesData as BsnlCable[]) || [],
-    systems: (systemsData as BsnlSystem[]) || [],
-  }), [nodesData, cablesData, systemsData]);
-
-  const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
-  const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
+  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('overview');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({
     query: '', status: [], type: [], region: [], district: [], priority: []
   });
 
+  const { data, isLoading, isError, error, refetchAll } = useBsnlDashboardData(filters);
+
+  const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
+  const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
+
   const handleSaveAllocation = (allocationData: AllocationSaveData) => {
     console.log("Allocation Saved:", allocationData);
+    toast.info("Allocation feature is a work in progress.");
   };
-
-  const searchSystems = useCallback((system: BsnlSystem, filters: SearchFilters) => {
-    const query = filters.query.toLowerCase();
-    if (filters.query && !(system.system_name?.toLowerCase().includes(query) || system.node_name?.toLowerCase().includes(query))) return false;
-    return true;
-  }, []);
-
-  const searchCables = useCallback((cable: BsnlCable, filters: SearchFilters) => {
-    const query = filters.query.toLowerCase();
-    if (filters.query && !(cable.route_name?.toLowerCase().includes(query) || cable.asset_no?.toLowerCase().includes(query))) return false;
-    return true;
-  }, []);
-
-  const filteredSystems = useSearchAndFilter(data.systems, searchSystems, filters);
-  const filteredCables = useSearchAndFilter(data.ofcCables, searchCables, filters);
 
   const clearFilters = useCallback(() => {
     setFilters({ query: '', status: [], type: [], region: [], district: [], priority: [] });
   }, []);
+  
+  const handleRefresh = async () => {
+    toast.info("Refreshing network data...");
+    await refetchAll();
+    toast.success("Dashboard data refreshed.");
+  };
 
   const systemColumns = [
     { key: 'name', label: 'System Name', render: (system: BsnlSystem) => (<div><div className="font-medium text-gray-900 dark:text-white">{system.system_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{system.system_type_name}</div></div>) },
@@ -87,7 +62,7 @@ export default function ScalableFiberNetworkDashboard() {
     { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
   ];
   
-  if (isLoading) return <PageSpinner text="Loading Network Dashboard Data..." />;
+  if (isLoading && data.nodes.length === 0) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;
 
   return (
@@ -103,7 +78,7 @@ export default function ScalableFiberNetworkDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={() => { /* Implement refetch logic */ }} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"><RefreshCw className={`h-5 w-5`} /></button>
+              <button onClick={handleRefresh} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"><RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} /></button>
               <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"><Settings className="h-5 w-5" /></button>
             </div>
           </div>
@@ -122,22 +97,25 @@ export default function ScalableFiberNetworkDashboard() {
             ))}
           </nav>
         </div>
-
+        
         {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <DashboardStatsGrid />
             <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 <OptimizedNetworkMap nodes={data.nodes} cables={data.ofcCables} selectedSystem={selectedSystem} visibleLayers={{ nodes: true, cables: true, systems: true }} />
             </div>
+          </div>
         )}
 
         {activeTab === 'systems' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-            <PaginatedTable data={filteredSystems} columns={systemColumns} onItemClick={setSelectedSystem} pageSize={50} />
+            <PaginatedTable data={data.systems} columns={systemColumns} onItemClick={setSelectedSystem} pageSize={50} />
           </div>
         )}
 
         {activeTab === 'allocations' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-            <PaginatedTable data={filteredCables} columns={cableColumns} onItemClick={setSelectedCable} pageSize={25} />
+            <PaginatedTable data={data.ofcCables} columns={cableColumns} onItemClick={setSelectedCable} pageSize={25} />
           </div>
         )}
       </div>

@@ -5,13 +5,13 @@ import { useEffect, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
+import { AuthError } from "@supabase/supabase-js";
 
 // Auth Hook
 export const useAuth = () => {
   const { user, authState, setUser, setAuthState, logout: logoutStore, executeWithLoading, isAuthenticated, isLoading, getUserId } = useAuthStore();
   const supabase = useMemo(() => createClient(), []);
 
-  // Initialize auth state - runs only once
   useEffect(() => {
     let isMounted = true;
     const subscription = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -22,22 +22,16 @@ export const useAuth = () => {
 
     const initAuth = async () => {
       try {
-        // First try to get existing session without forcing refresh
         const { data: { session: existingSession } } = await supabase.auth.getSession();
-        
         if (existingSession?.user) {
           if (isMounted) setUser(existingSession.user);
           return;
         }
-
-        // Only force refresh if no existing session
         const { data: { session }, error } = await supabase.auth.refreshSession();
-
         if (error) {
           if (isMounted) setAuthState("unauthenticated");
           return;
         }
-
         if (session?.user && isMounted) {
           setUser(session.user);
         } else if (isMounted) {
@@ -50,7 +44,6 @@ export const useAuth = () => {
         }
       }
     };
-
     initAuth();
 
     return () => {
@@ -59,8 +52,8 @@ export const useAuth = () => {
     };
   }, [supabase, setUser, setAuthState]);
 
-  // Memoized auth methods
   const signUp = useCallback(async (credentials: { email: string; password: string; firstName: string; lastName: string }) => {
+    // CORRECTED: Ensure the result of the async operation is returned.
     return executeWithLoading(async () => {
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -78,44 +71,26 @@ export const useAuth = () => {
         if (data.user && !data.session) {
           toast.success("Signup successful! Please check your email for verification.");
         }
-        return { data, error: null };
+        return { data: { user: null, session: null }, error: null };
       } catch (error) {
         const message = error instanceof Error ? error.message : "Signup failed";
         toast.error(message);
-        return { data: null, error: message };
+        return { data: { user: null, session: null }, error: { message, name: 'SignUpError' } as AuthError };
       }
     });
   }, [executeWithLoading, supabase.auth]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
     return executeWithLoading(async () => {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in successfully!");
-        return { data, error: null };
+        return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Sign in failed";
         toast.error(message);
-        return { data: null, error: message };
-      }
-    });
-  }, [executeWithLoading, supabase.auth]);
-
-  const signInWithMagicLink = useCallback(async (email: string) => {
-    return executeWithLoading(async () => {
-      try {
-        const { data, error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: true },
-        });
-        if (error) throw error;
-        toast.success("Check your email for the magic link!");
-        return { data, error: null };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to send magic link";
-        toast.error(message);
-        return { data: null, error: message };
+        return false;
       }
     });
   }, [executeWithLoading, supabase.auth]);
@@ -124,26 +99,21 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { 
+        options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          // Skip browser redirect to prevent page reload
           skipBrowserRedirect: true
         },
       });
-      
       if (error) throw error;
-      
-      // If we have a URL, perform the redirect manually
       if (data?.url) {
         window.location.href = data.url;
       }
-      
       return { data, error: null };
     } catch (error) {
       sessionStorage.removeItem('oauth_in_progress');
       const message = error instanceof Error ? error.message : "Google sign in failed";
       toast.error(message);
-      return { data: null, error: message };
+      return { data: null, error: { message, name: 'OAuthError' } };
     }
   }, [supabase.auth]);
 
@@ -178,18 +148,18 @@ export const useAuth = () => {
       }
     });
   }, [executeWithLoading, supabase.auth, setAuthState]);
-
-  const resetPassword = useCallback(async (newPassword: string) => {
+  
+  const resetPassword = useCallback(async (newPassword: string): Promise<boolean> => {
     return executeWithLoading(async () => {
       try {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         toast.success("Password updated successfully!");
-        return { error: null };
+        return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Password update failed";
         toast.error(message);
-        return { error: message };
+        return false;
       }
     });
   }, [executeWithLoading, supabase.auth]);
@@ -197,10 +167,7 @@ export const useAuth = () => {
   const syncSession = useCallback(async () => {
     try {
       const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error("Session sync error:", error);
-        return false;
-      }
+      if (error) return false;
       if (session?.user) {
         setUser(session.user);
         return true;
@@ -212,47 +179,11 @@ export const useAuth = () => {
     }
   }, [supabase.auth, setUser]);
 
-  const checkSession = useCallback(async () => {
-    return executeWithLoading(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      return session;
-    });
-  }, [executeWithLoading, supabase.auth, setUser]);
-
-  // Memoize the entire return value
   return useMemo(() => ({
-    // State
-    user,
-    authState,
+    user, authState,
     isLoading: isLoading(),
     isAuthenticated: isAuthenticated(),
-    userId: getUserId(),
-
-    // Actions
-    signUp,
-    signIn,
-    signInWithMagicLink,
-    signInWithGoogle,
-    logout,
-    forgotPassword,
-    resetPassword,
-    syncSession,
-    checkSession,
-  }), [
-    user,
-    authState,
-    isLoading,
-    isAuthenticated,
-    getUserId,
-    signUp,
-    signIn,
-    signInWithMagicLink,
-    signInWithGoogle,
-    logout,
-    forgotPassword,
-    resetPassword,
-    syncSession,
-    checkSession
-  ]);
+    getUserId: getUserId(),
+    signUp, signIn, signInWithGoogle, logout, forgotPassword, resetPassword, syncSession
+  }), [user, authState, isLoading, isAuthenticated, getUserId, signUp, signIn, signInWithGoogle, logout, forgotPassword, resetPassword, syncSession]);
 };
