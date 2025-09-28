@@ -1179,6 +1179,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "junction_closures_ofc_cable_id_fkey"
             columns: ["ofc_cable_id"]
             isOneToOne: false
@@ -1573,6 +1580,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "management_ports_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "management_ports_system_id_fkey"
             columns: ["system_id"]
             isOneToOne: false
@@ -1730,6 +1744,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ofc_cables_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
@@ -1783,6 +1804,13 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -1877,23 +1905,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lookup_types_with_count"
             referencedColumns: ["category", "name"]
-          },
-          {
-            foreignKeyName: "fk_connection_type"
-            columns: ["connection_category", "connection_type"]
-            isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
-            referencedColumns: [
-              "maintenance_area_type_category",
-              "maintenance_area_type_name",
-            ]
-          },
-          {
-            foreignKeyName: "fk_connection_type"
-            columns: ["connection_category", "connection_type"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
-            referencedColumns: ["ring_type_category", "ring_type_name"]
           },
           {
             foreignKeyName: "fk_connection_type"
@@ -1997,6 +2008,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["ring_id"]
           },
           {
             foreignKeyName: "ring_based_systems_ring_id_fkey"
@@ -2166,6 +2184,13 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sdh_node_associations_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -2479,6 +2504,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "systems_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "systems_system_type_id_fkey"
             columns: ["system_type_id"]
             isOneToOne: false
@@ -2667,6 +2699,13 @@ export type Database = {
             referencedRelation: "v_nodes_complete"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["jc_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_cable_utilization: {
@@ -2830,6 +2869,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "junction_closures_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "junction_closures_ofc_cable_id_fkey"
             columns: ["ofc_cable_id"]
             isOneToOne: false
@@ -2884,14 +2930,8 @@ export type Database = {
           inactive_count: number | null
           latitude: number | null
           longitude: number | null
-          maintenance_area_type_category: string | null
           maintenance_area_type_code: string | null
-          maintenance_area_type_created_at: string | null
-          maintenance_area_type_is_system_default: boolean | null
           maintenance_area_type_name: string | null
-          maintenance_area_type_sort_order: number | null
-          maintenance_area_type_status: boolean | null
-          maintenance_area_type_updated_at: string | null
           name: string | null
           parent_id: string | null
           status: boolean | null
@@ -2937,9 +2977,7 @@ export type Database = {
           inactive_count: number | null
           latitude: number | null
           longitude: number | null
-          maintenance_area_code: string | null
           maintenance_area_name: string | null
-          maintenance_area_type_name: string | null
           maintenance_terminal_id: string | null
           name: string | null
           node_type_code: string | null
@@ -3030,6 +3068,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ofc_cables_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
@@ -3083,6 +3128,13 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -3143,23 +3195,6 @@ export type Database = {
             foreignKeyName: "fk_connection_type"
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
-            referencedColumns: [
-              "maintenance_area_type_category",
-              "maintenance_area_type_name",
-            ]
-          },
-          {
-            foreignKeyName: "fk_connection_type"
-            columns: ["connection_category", "connection_type"]
-            isOneToOne: false
-            referencedRelation: "v_rings_with_count"
-            referencedColumns: ["ring_type_category", "ring_type_name"]
-          },
-          {
-            foreignKeyName: "fk_connection_type"
-            columns: ["connection_category", "connection_type"]
-            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["system_category", "node_type_name"]
           },
@@ -3213,6 +3248,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ofc_cables_sn_id_fkey"
             columns: ["sn_id"]
             isOneToOne: false
@@ -3224,6 +3266,13 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -3249,6 +3298,22 @@ export type Database = {
           },
         ]
       }
+      v_ring_nodes: {
+        Row: {
+          id: string | null
+          ip: string | null
+          lat: number | null
+          long: number | null
+          name: string | null
+          order_in_ring: number | null
+          remark: string | null
+          ring_id: string | null
+          ring_name: string | null
+          ring_status: boolean | null
+          type: string | null
+        }
+        Relationships: []
+      }
       v_rings_with_count: {
         Row: {
           active_count: number | null
@@ -3256,63 +3321,18 @@ export type Database = {
           description: string | null
           id: string | null
           inactive_count: number | null
-          maintenance_area_area_type_id: string | null
-          maintenance_area_code: string | null
-          maintenance_area_contact_number: string | null
-          maintenance_area_contact_person: string | null
-          maintenance_area_created_at: string | null
-          maintenance_area_email: string | null
-          maintenance_area_latitude: number | null
-          maintenance_area_longitude: number | null
           maintenance_area_name: string | null
-          maintenance_area_parent_id: string | null
-          maintenance_area_status: boolean | null
-          maintenance_area_updated_at: string | null
           maintenance_terminal_id: string | null
           name: string | null
-          ring_type_category: string | null
           ring_type_code: string | null
-          ring_type_created_at: string | null
           ring_type_id: string | null
-          ring_type_is_system_default: boolean | null
           ring_type_name: string | null
-          ring_type_sort_order: number | null
-          ring_type_status: boolean | null
-          ring_type_updated_at: string | null
           status: boolean | null
           total_count: number | null
           total_nodes: number | null
           updated_at: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "maintenance_areas_area_type_id_fkey"
-            columns: ["maintenance_area_area_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maintenance_areas_area_type_id_fkey"
-            columns: ["maintenance_area_area_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maintenance_areas_parent_id_fkey"
-            columns: ["maintenance_area_parent_id"]
-            isOneToOne: false
-            referencedRelation: "maintenance_areas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "maintenance_areas_parent_id_fkey"
-            columns: ["maintenance_area_parent_id"]
-            isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "rings_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
@@ -3486,6 +3506,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ofc_cables_en_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ofc_cables_sn_id_fkey"
             columns: ["start_node_id"]
             isOneToOne: false
@@ -3497,6 +3524,13 @@ export type Database = {
             columns: ["start_node_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cables_sn_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -3544,6 +3578,13 @@ export type Database = {
             foreignKeyName: "ring_based_systems_ring_id_fkey"
             columns: ["ring_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["ring_id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
             referencedRelation: "v_rings_with_count"
             referencedColumns: ["id"]
           },
@@ -3573,6 +3614,13 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -4037,18 +4085,22 @@ export type Database = {
         }
         Returns: number
       }
+      update_ring_system_associations: {
+        Args: { p_ring_id: string; p_system_ids: string[] }
+        Returns: undefined
+      }
       upsert_system_with_details: {
         Args: {
-          p_commissioned_on: string
+          p_commissioned_on?: string
           p_gne?: string
           p_id?: string
-          p_ip_address: unknown
-          p_maintenance_terminal_id: string
+          p_ip_address?: unknown
+          p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
-          p_remark: string
+          p_remark?: string
           p_ring_id?: string
-          p_s_no: string
+          p_s_no?: string
           p_status: boolean
           p_system_name: string
           p_system_type_id: string

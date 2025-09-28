@@ -171,6 +171,8 @@ DO $$
 BEGIN
   GRANT SELECT ON public.v_systems_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_system_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_ring_nodes TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_rings_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   -- v_ofc_connections_complete is also defined here and needs grants
   GRANT SELECT ON public.v_ofc_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 

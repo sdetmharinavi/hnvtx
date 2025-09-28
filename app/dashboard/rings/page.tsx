@@ -1,229 +1,157 @@
-// app/dashboard/rings/page.tsx
+// path: app/dashboard/rings/page.tsx
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
+import { RingSystemsModal } from '@/components/rings/RingSystemsModal'; // <-- Import the new modal
 import { RingsFilters } from '@/components/rings/RingsFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
-import { usePagedData } from '@/hooks/database';
+import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { RingsRowSchema, V_rings_with_countRowSchema } from '@/schemas/zod-schemas';
+import { V_rings_with_countRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { convertRichFiltersToSimpleJson } from '@/hooks/database/utility-functions';
-import { useMemo } from 'react';
+import { useMemo, useCallback, useState } from 'react'; // <-- Import useState
 import { GiLinkedRings } from 'react-icons/gi';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { FaNetworkWired } from 'react-icons/fa'; // <-- A suitable icon
 
-export type RingRowsWithRelations = RingsRowSchema & {
-  ring_type?: {
-    id: string;
-    code: string;
-  } | null;
-  maintenance_terminal?: {
-    id: string;
-    name: string;
-  } | null;
-};
-
-// 1. ADAPTER HOOK: Makes `useRingsData` compatible with `useCrudManager`
 const useRingsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_rings_with_countRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-
-  // Convert rich filters to simple RPC filters
-  const rpcFilters = useMemo(() => {
-    const convertedFilters = convertRichFiltersToSimpleJson(filters);
-    return {
-      ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
-      ...(searchQuery ? { name: searchQuery } : {}),
-    };
-  }, [filters, searchQuery]);
-
   const { data, isLoading, error, refetch } = usePagedData<V_rings_with_countRowSchema>(
-    supabase,
-    'v_rings_with_count',
-    {
-      filters: rpcFilters,
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
+    supabase, 'v_rings_with_count', {
+      filters: { ...filters, ...(searchQuery ? { name: searchQuery } : {}) },
+      limit: pageLimit, offset: (currentPage - 1) * pageLimit,
     }
   );
-
-  // Calculate counts from the full dataset
-
   return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
-    isLoading,
-    error,
-    refetch,
+    data: data?.data || [], totalCount: data?.total_count || 0,
+    activeCount: data?.active_count || 0, inactiveCount: data?.inactive_count || 0,
+    isLoading, error, refetch,
   };
 };
 
 const RingsPage = () => {
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  const router = useRouter();
+  const supabase = createClient();
+  
+  // ADDED: State to manage the new RingSystemsModal
+  const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
+  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_rings_with_countRowSchema | null>(null);
+
   const {
-    data: rings,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    // isMutating,
-    // error,
-    refetch,
-    pagination,
-    search,
-    // filters,
-    editModal,
-    viewModal,
-    // bulkActions,
-    deleteModal,
-    actions: crudActions,
+    data: rings, totalCount, activeCount, inactiveCount, isLoading, refetch,
+    pagination, search, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'rings', V_rings_with_countRowSchema>({
-    tableName: 'rings',
-    dataQueryHook: useRingsData,
+    tableName: 'rings', dataQueryHook: useRingsData,
   });
 
-  // 3. Extract ring types from the rings data
-  const ringTypes = useMemo(() => {
-    const uniqueRingTypes = new Map();
-    // console.log("rings", rings);
-    rings.forEach((ring) => {
-      if (ring.ring_type_code) {
-        uniqueRingTypes.set(ring.ring_type_id, {
-          id: ring.ring_type_id,
-          name: ring.ring_type_code,
-        });
-      }
-    });
-    return Array.from(uniqueRingTypes.values());
-  }, [rings]);
-
-  // 4. Extract maintenance areas from the rings data
-  const maintenanceAreas = useMemo(() => {
-    const uniqueMaintenanceAreas = new Map();
-    rings.forEach((ring) => {
-      if (ring.maintenance_area_area_type_id && ring.maintenance_terminal_id) {
-        uniqueMaintenanceAreas.set(ring.maintenance_terminal_id, {
-          id: ring.maintenance_terminal_id,
-          name: ring.maintenance_area_name,
-        });
-      }
-    });
-    return Array.from(uniqueMaintenanceAreas.values());
-  }, [rings]);
+  const { data: ringTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+    filters: { category: 'RING_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
+    orderBy: [{ column: 'name' }]
+  });
+  const { data: maintenanceAreas = [] } = useTableQuery(supabase, 'maintenance_areas', {
+    filters: { status: true }, orderBy: [{ column: 'name' }]
+  });
 
   const columns = RingsColumns(rings);
-  // Type guard to remove undefined from the mapped array
   const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
   const orderedColumns = [
     ...desiredRingColumnOrder.map((k) => columns.find((c) => c.key === k)).filter(notUndefined),
     ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
   ];
 
-  // --- tableActions ---
-  const tableActions = useMemo(
-    () =>
-      createStandardActions<V_rings_with_countRowSchema>({
-        onEdit: editModal.openEdit,
-        onView: viewModal.open,
-        onDelete: crudActions.handleDelete,
-        // You can also add custom logic, for example:
-        // canDelete: (record) => record.name !== 'CRITICAL_RING',
-      }),
-    [editModal.openEdit, viewModal.open, crudActions.handleDelete]
-  );
+  const handleView = useCallback((record: V_rings_with_countRowSchema) => {
+    if (record.id) {
+      router.push(`/dashboard/rings/${record.id}`);
+    } else {
+      toast.error("Cannot view ring: Missing ID.");
+    }
+  }, [router]);
 
-  // --- Define header content using the hook ---
+  // ADDED: Handler to open the new modal
+  const handleManageSystems = useCallback((record: V_rings_with_countRowSchema) => {
+    setSelectedRingForSystems(record);
+    setIsSystemsModalOpen(true);
+  }, []);
+
+  const tableActions = useMemo(() => {
+    const standardActions = createStandardActions<V_rings_with_countRowSchema>({
+      onEdit: editModal.openEdit,
+      onView: handleView,
+      onDelete: crudActions.handleDelete,
+    });
+    // Add our new custom action
+    standardActions.unshift({
+      key: 'manage-systems',
+      label: 'Manage Systems',
+      icon: <FaNetworkWired className="w-4 h-4" />,
+      onClick: handleManageSystems,
+      variant: 'secondary',
+    });
+    return standardActions;
+  }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems]);
+
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: isLoading,
-    exportConfig: { tableName: 'rings' },
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: editModal.openAdd, isLoading: isLoading, exportConfig: { tableName: 'rings' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Rings' },
-    {
-      value: activeCount,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: inactiveCount,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   return (
-    <div className="mx-auto space-y-4">
-      {/* Header */}
+    <div className="mx-auto space-y-4 p-6">
       <PageHeader
         title="Ring Management"
         description="Manage network rings and their related information."
         icon={<GiLinkedRings />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
+        actions={headerActions}
         isLoading={isLoading}
       />
-
-      {/* Table */}
       <DataTable
         tableName="v_rings_with_count"
-        data={rings}
-        columns={orderedColumns}
-        loading={isLoading}
-        actions={tableActions}
+        data={rings} columns={orderedColumns} loading={isLoading} actions={tableActions}
         pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, pageSize) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(pageSize);
-          },
+          current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
+          onChange: (page, pageSize) => { pagination.setCurrentPage(page); pagination.setPageLimit(pageSize); },
         }}
-        customToolbar={
-          <RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />
-        }
+        customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
-
+      
+      {/* Modals */}
+      
       <RingModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        editingRing={editModal.record as RingRowsWithRelations | null}
-        onCreated={crudActions.handleSave}
-        onUpdated={crudActions.handleSave}
-        ringTypes={ringTypes}
-        maintenanceAreas={maintenanceAreas}
+        isOpen={editModal.isOpen} onClose={editModal.close} editingRing={editModal.record as RingsRowSchema | null}
+        onCreated={crudActions.handleSave as (ring: RingsRowSchema) => void}
+        onUpdated={crudActions.handleSave as (ring: RingsRowSchema) => void}
+        ringTypes={ringTypes.map(rt => ({ id: rt.id, name: rt.name, code: rt.code }))}
+        maintenanceAreas={maintenanceAreas.map(ma => ({ id: ma.id, name: ma.name, code: ma.code }))}
       />
 
-      {/* Render the confirmation modal, driven by the hook's state */}
+      {/* ADDED: The new modal instance */}
+      <RingSystemsModal
+        isOpen={isSystemsModalOpen}
+        onClose={() => setIsSystemsModalOpen(false)}
+        ring={selectedRingForSystems}
+      />
+
       <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-        showIcon
-        loading={deleteModal.loading}
+        isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel}
+        title="Confirm Deletion" message={deleteModal.message} confirmText="Delete"
+        cancelText="Cancel" type="danger" showIcon loading={deleteModal.loading}
       />
     </div>
   );
