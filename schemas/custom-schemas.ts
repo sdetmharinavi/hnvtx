@@ -7,7 +7,8 @@ import {
   v_ofc_cables_completeRowSchema,
   cable_segmentsRowSchema,
   junction_closuresRowSchema,
-  fiber_splicesRowSchema
+  fiber_splicesRowSchema,
+  nodesRowSchema, // Import nodes schema for site definitions
 } from '@/schemas/zod-schemas';
 
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
@@ -43,9 +44,10 @@ const segmentAtJcSchema = z.object({
 });
 
 export const jcSplicingDetailsSchema = z.object({
+  // CORRECTED: Derive junction_closure shape from base schemas for consistency
   junction_closure: z.object({
-    id: z.uuid(),
-    name: z.string(),
+    id: junction_closuresRowSchema.shape.id,
+    name: nodesRowSchema.shape.name, // The name comes from the related node
   }),
   segments_at_jc: z.array(segmentAtJcSchema),
 });
@@ -53,21 +55,21 @@ export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
 
 // --- For RouteDetailsPayload and its constituent parts ---
 
-// CORRECTED: Create "relaxed" versions of the base schemas to handle data inconsistencies.
+// Using relaxed schemas for API flexibility, which is a good pattern.
 const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
-  created_at: z.string().nullable(), // Was z.iso.datetime()
-  updated_at: z.string().nullable(), // Was z.iso.datetime()
-  transnet_id: z.string().nullable(), // Was z.uuid().nullable()
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
+  transnet_id: z.string().nullable(),
 });
 
 const relaxed_junction_closuresRowSchema = junction_closuresRowSchema.extend({
-  created_at: z.string().nullable(), // Was z.iso.datetime()
-  updated_at: z.string().nullable(), // Was z.iso.datetime()
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
 });
 
 const relaxed_cable_segmentsRowSchema = cable_segmentsRowSchema.extend({
-  created_at: z.string().nullable(), // Was z.iso.datetime()
-  updated_at: z.string().nullable(), // Was z.iso.datetime()
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
 });
 
 export const cableSegmentSchema = relaxed_cable_segmentsRowSchema;
@@ -76,9 +78,10 @@ export type CableSegment = z.infer<typeof cableSegmentSchema>;
 export const fiberSpliceSchema = fiber_splicesRowSchema;
 export type FiberSplice = z.infer<typeof fiberSpliceSchema>;
 
+// CORRECTED: Derive site schema from the nodes schema
 const siteSchema = z.object({
-  id: z.string().uuid().nullable(),
-  name: z.string().nullable(),
+  id: nodesRowSchema.shape.id.nullable(),
+  name: nodesRowSchema.shape.name.nullable(),
 });
 
 export const cableRouteSchema = relaxed_v_ofc_cables_completeRowSchema.extend({
@@ -89,7 +92,7 @@ export const cableRouteSchema = relaxed_v_ofc_cables_completeRowSchema.extend({
 export type CableRoute = z.infer<typeof cableRouteSchema>;
 
 export const equipmentSchema = relaxed_junction_closuresRowSchema.extend({
-    node: z.object({ name: z.string().nullable() }).nullable(),
+    node: z.object({ name: nodesRowSchema.shape.name.nullable() }).nullable(),
     status: z.enum(['existing', 'planned']),
     attributes: z.object({
         position_on_route: z.number(),
@@ -109,10 +112,10 @@ export type RouteDetailsPayload = z.infer<typeof routeDetailsPayloadSchema>;
 // --- For the new trace_fiber_path RPC ---
 export const fiberTraceSegmentSchema = z.object({
   step_order: z.number().int(),
-  element_type: z.string(), // e.g., 'SEGMENT'
+  element_type: z.string(),
   element_id: z.string().uuid(),
   element_name: z.string(),
-  details: z.string(), // e.g., "Node A -> Node B"
+  details: z.string(),
   fiber_in: z.number().int(),
   fiber_out: z.number().int().nullable(),
   distance_km: z.number().nullable(),

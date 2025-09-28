@@ -7,9 +7,10 @@ import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import z from 'zod';
+import { z } from 'zod';
 import { loginSchema } from '@/app/(auth)/login/page';
 
+// CORRECTED: Extend the schema from the login page, ensuring consistency.
 const signupSchema = loginSchema
   .extend({
     firstName: z
@@ -33,14 +34,12 @@ export default function SignUpPage() {
   const { signUp, authState } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (authState === 'authenticated') {
       redirect('/onboarding');
     }
   }, [authState]);
 
-  // Setup React Hook Form
   const {
     register,
     handleSubmit,
@@ -56,19 +55,18 @@ export default function SignUpPage() {
     },
   });
 
-  // Form submit handler
   const onSubmit = async (data: SignupForm) => {
-    const success = await signUp({
-      email: data.email || '',
-      password: data.encrypted_password || '',
+    const { data: result, error } = await signUp({
+      email: data.email ?? '',
+      password: data.encrypted_password ?? '',
       firstName: data.firstName,
       lastName: data.lastName,
     });
 
-    if (success) {
+    if (!error && result?.user) {
       router.push('/verify-email');
     } else {
-      toast.error('Sign up failed. Please try again.');
+      toast.error(error?.message || 'Sign up failed. Please try again.');
     }
   };
 
@@ -214,25 +212,6 @@ export default function SignUpPage() {
                   'Create account'
                 )}
               </button>
-            </div>
-
-            <div className="text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                By creating an account, you agree to our{' '}
-                <Link
-                  href="/terms"
-                  className="text-blue-600 hover:text-blue-500 dark:text-blue-400"
-                >
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link
-                  href="/privacy"
-                  className="text-blue-600 hover:text-blue-500 dark:text-blue-400"
-                >
-                  Privacy Policy
-                </Link>
-              </p>
             </div>
           </form>
         </div>

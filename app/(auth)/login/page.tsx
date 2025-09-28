@@ -9,8 +9,10 @@ import OAuthProviders from '@/components/auth/OAuthProviders';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { authUsersRowSchema } from '@/schemas/zod-schemas';
-import z from 'zod';
+import { z } from 'zod';
 
+// CORRECTED: Use the auto-generated schema as the single source of truth.
+// We only pick the fields that are relevant to the login form.
 export const loginSchema = authUsersRowSchema.pick({
   email: true,
   encrypted_password: true,
@@ -51,10 +53,8 @@ export default function LoginPage() {
   }, [errorParam]);
 
   const onSubmit = async (data: LoginForm) => {
-    const success = await signIn(
-      data.email || '',
-      data.encrypted_password || ''
-    );
+    // The nullish coalescing operator `??` provides a fallback and satisfies TypeScript
+    const success = await signIn(data.email ?? '', data.encrypted_password ?? '');
     if (success) {
       router.push(redirectTo);
     }
