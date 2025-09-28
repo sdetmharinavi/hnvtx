@@ -77,7 +77,6 @@ BEGIN
   GRANT SELECT ON public.v_maintenance_areas_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_employee_designations_with_count TO admin, viewer;
   GRANT SELECT ON public.v_employees_with_count TO admin, viewer;
-  GRANT SELECT ON public.v_rings_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_nodes_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ofc_cables_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 

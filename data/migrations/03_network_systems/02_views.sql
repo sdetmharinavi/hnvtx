@@ -114,3 +114,51 @@ FROM public.ofc_connections oc
   LEFT JOIN public.nodes nb ON ofc.en_id = nb.id
   LEFT JOIN public.systems s ON oc.system_id = s.id
   LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id;
+
+
+-- View for Ring Map Node Data [CORRECTED join logic and removed placeholder columns]
+CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
+SELECT
+    n.id,
+    r.id as ring_id,
+    r.name as ring_name,
+    n.name,
+    n.latitude as lat,
+    n.longitude as long,
+    ROW_NUMBER() OVER(PARTITION BY r.id ORDER BY n.name) as order_in_ring, -- Generate a stable order
+    lt.name as type,
+    COALESCE(s.status, false) as ring_status, -- A system's status determines if it's part of the main ring path
+    s.ip_address::text as ip,
+    n.remark
+FROM
+    public.rings r
+JOIN
+    public.ring_based_systems rbs ON r.id = rbs.ring_id
+JOIN
+    public.systems s ON rbs.system_id = s.id
+JOIN
+    public.nodes n ON s.node_id = n.id
+LEFT JOIN
+    public.lookup_types lt ON n.node_type_id = lt.id;
+
+-- View for rings with joined data and aggregate counts [CORRECTED to calculate actual node count]
+CREATE OR REPLACE VIEW public.v_rings_with_count WITH (security_invoker = true) AS
+SELECT
+  r.id,
+  r.name,
+  r.description,
+  r.ring_type_id,
+  r.maintenance_terminal_id,
+  r.status,
+  r.created_at,
+  r.updated_at,
+  (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
+  lt_ring.name AS ring_type_name,
+  lt_ring.code AS ring_type_code,
+  ma.name AS maintenance_area_name,
+  count(*) OVER() AS total_count,
+  sum(CASE WHEN r.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
+  sum(CASE WHEN r.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+FROM public.rings r
+LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
+LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;

@@ -1738,14 +1738,8 @@ export type V_maintenance_areas_with_countRow = {
     inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
-    maintenance_area_type_category: string | null;
     maintenance_area_type_code: string | null;
-    maintenance_area_type_created_at: string | null;
-    maintenance_area_type_is_system_default: boolean | null;
     maintenance_area_type_name: string | null;
-    maintenance_area_type_sort_order: number | null;
-    maintenance_area_type_status: boolean | null;
-    maintenance_area_type_updated_at: string | null;
     name: string | null;
     parent_id: string | null;
     status: boolean | null;
@@ -1760,9 +1754,7 @@ export type V_nodes_completeRow = {
     inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
-    maintenance_area_code: string | null;
     maintenance_area_name: string | null;
-    maintenance_area_type_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
     node_type_code: string | null;
@@ -1844,35 +1836,32 @@ export type V_ofc_connections_completeRow = {
     updated_at: string | null;
 };
 
+export type V_ring_nodesRow = {
+    id: string | null;
+    ip: string | null;
+    lat: number | null;
+    long: number | null;
+    name: string | null;
+    order_in_ring: number | null;
+    remark: string | null;
+    ring_id: string | null;
+    ring_name: string | null;
+    ring_status: boolean | null;
+    type: string | null;
+};
+
 export type V_rings_with_countRow = {
     active_count: number | null;
     created_at: string | null;
     description: string | null;
     id: string | null;
     inactive_count: number | null;
-    maintenance_area_area_type_id: string | null;
-    maintenance_area_code: string | null;
-    maintenance_area_contact_number: string | null;
-    maintenance_area_contact_person: string | null;
-    maintenance_area_created_at: string | null;
-    maintenance_area_email: string | null;
-    maintenance_area_latitude: number | null;
-    maintenance_area_longitude: number | null;
     maintenance_area_name: string | null;
-    maintenance_area_parent_id: string | null;
-    maintenance_area_status: boolean | null;
-    maintenance_area_updated_at: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
-    ring_type_category: string | null;
     ring_type_code: string | null;
-    ring_type_created_at: string | null;
     ring_type_id: string | null;
-    ring_type_is_system_default: boolean | null;
     ring_type_name: string | null;
-    ring_type_sort_order: number | null;
-    ring_type_status: boolean | null;
-    ring_type_updated_at: string | null;
     status: boolean | null;
     total_count: number | null;
     total_nodes: number | null;
