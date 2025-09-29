@@ -28,7 +28,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
           const isLastSegment = index === traceData.length - 1;
 
           return (
-            <li key={segment.element_id} className="mb-10 ml-8">
+            <li key={`${segment.element_id}-${index}`} className="mb-10 ml-8">
               {/* Step Icon */}
               <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-800">
                 <Cable className="h-4 w-4 text-blue-600 dark:text-blue-300" />

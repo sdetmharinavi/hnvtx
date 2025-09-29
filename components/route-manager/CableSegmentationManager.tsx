@@ -35,7 +35,6 @@ export const CableSegmentationManager = ({
     addJunctionClosure,
     createCableSegments,
     createInitialFiberConnections,
-    updateFiberConnections,
   } = useCableSegmentation();
 
   const loadExistingData = useCallback(async () => {
@@ -135,13 +134,6 @@ export const CableSegmentationManager = ({
     );
 
     if (!nextSegment) return;
-
-    await updateFiberConnections(
-      segment.end_node_id,
-      segmentId,
-      nextSegment.id,
-      spliceConfig
-    );
 
     toast.success('Splice configuration applied successfully');
   };

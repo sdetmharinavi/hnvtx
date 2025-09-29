@@ -137,40 +137,6 @@ export const useCableSegmentation = () => {
     }
   }, [supabase]);
 
-  const updateFiberConnections = useCallback(async (
-    jcId: string,
-    incomingSegmentId: string,
-    outgoingSegmentId: string,
-    spliceConfig: SpliceConfiguration[]
-  ): Promise<number> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: updateError } = await supabase
-        .rpc('update_fiber_connections_on_splice', {
-          p_jc_id: jcId,
-          p_incoming_segment_id: incomingSegmentId,
-          p_outgoing_segment_id: outgoingSegmentId,
-          p_splice_config: spliceConfig
-        });
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success('Fiber connections updated successfully');
-      return data as number;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-      setError(errorMessage);
-      toast.error(`Failed to update fiber connections: ${errorMessage}`);
-      return 0;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [supabase]);
-
   const getFiberPath = useCallback(async (
     startNodeId: string,
     endNodeId: string,
@@ -208,7 +174,6 @@ export const useCableSegmentation = () => {
     addJunctionClosure,
     createCableSegments,
     createInitialFiberConnections,
-    updateFiberConnections,
     getFiberPath,
   };
 };

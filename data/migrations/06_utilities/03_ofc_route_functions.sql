@@ -110,8 +110,6 @@ BEGIN
     RETURN result;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, TEXT, NUMERIC) TO authenticated;
-
 
 -- Description: Get a list of all cable segments present at a specific Junction Closure.
 CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)
@@ -172,6 +170,7 @@ WITH jc_info AS (
   JOIN public.nodes n ON jc.node_id = n.id
   WHERE jc.id = p_jc_id
 ),
+-- CORRECTED: This CTE now finds ALL segments from ANY cable that connect to this JC's node.
 segments_at_jc AS (
   SELECT
     cs.id as segment_id,
@@ -190,8 +189,9 @@ splice_info AS (
     fs.id as splice_id,
     fs.incoming_segment_id, fs.incoming_fiber_no,
     fs.outgoing_segment_id, fs.outgoing_fiber_no,
-    (SELECT s_out.segment_name FROM segments_at_jc s_out WHERE s_out.segment_id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT s_in.segment_name FROM segments_at_jc s_in WHERE s_in.segment_id = fs.incoming_segment_id) as incoming_segment_name
+    -- This subquery correctly finds the name of the connected segment
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' FROM cable_segments cs_out JOIN ofc_cables oc ON cs_out.original_cable_id = oc.id WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' FROM cable_segments cs_in JOIN ofc_cables oc ON cs_in.original_cable_id = oc.id WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
   FROM public.fiber_splices fs
   WHERE fs.jc_id = p_jc_id
 )
@@ -232,7 +232,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
 -- Traces a fiber's path bi-directionally with loop detection.
-CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_cable_id UUID, p_start_fiber_no INT)
+CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
     step_order BIGINT,
     element_type TEXT,
@@ -248,87 +248,61 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    v_first_segment_id UUID;
 BEGIN
-    -- Find the very first segment of the cable route to begin the trace.
-    -- This makes the trace truly bidirectional, regardless of which segment is passed in.
-    SELECT cs.id INTO v_first_segment_id
-    FROM public.cable_segments cs
-    WHERE cs.original_cable_id = p_start_cable_id
-    ORDER BY cs.segment_order
-    LIMIT 1;
-
-    IF v_first_segment_id IS NULL THEN
-        -- If there are no segments, there's nothing to trace. Return an empty set.
-        RETURN;
-    END IF;
-
     RETURN QUERY
-    WITH RECURSIVE path_traversal AS (
-        -- Initial step: Start with the first segment of the selected cable
-        SELECT
-            1::BIGINT AS step,
-            v_first_segment_id AS segment_id,
-            p_start_fiber_no AS fiber_no,
-            ARRAY[v_first_segment_id] AS path_history -- For loop detection
-
+    WITH RECURSIVE 
+    -- Trace forward from the starting point
+    path_forward AS (
+        SELECT 1::BIGINT AS step, p_start_segment_id AS segment_id, p_start_fiber_no AS fiber_no, ARRAY[p_start_segment_id] AS path_history
         UNION ALL
-
-        -- Recursive step: Find the next connected segment by checking both sides of the splice
         SELECT
             p.step + 1,
-            -- Determine the next segment_id by picking the one that is NOT the current segment
-            CASE
-                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
-                ELSE s.incoming_segment_id
-            END AS next_segment_id,
-            -- Determine the next fiber_no accordingly
-            CASE
-                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no
-                ELSE s.incoming_fiber_no
-            END AS next_fiber_no,
-            -- Add the new segment to our history to prevent loops
-            p.path_history || CASE
-                WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
-                ELSE s.incoming_segment_id
-            END
-        FROM
-            path_traversal p
-        JOIN
-            public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no)
-                                   OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-        WHERE
-            -- Loop prevention: stop if we've already seen the next segment
-            NOT (
-                CASE
-                    WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
-                    ELSE s.incoming_segment_id
-                END = ANY(p.path_history)
-            )
-            -- Stop if the path terminates (no outgoing connection)
-            AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL)
-            -- Safety limit to prevent infinite recursion in case of data errors
-            AND p.step < 50
+            CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
+            CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
+            p.path_history || CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END
+        FROM path_forward p
+        JOIN public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE NOT (CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END = ANY(p.path_history))
+          AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL) AND p.step < 50
+    ),
+    -- Trace backward from the starting point
+    path_backward AS (
+        SELECT 0::BIGINT AS step, p_start_segment_id AS segment_id, p_start_fiber_no AS fiber_no, ARRAY[p_start_segment_id] AS path_history
+        UNION ALL
+        SELECT
+            p.step - 1,
+            CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
+            CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
+            p.path_history || CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END
+        FROM path_backward p
+        JOIN public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE NOT (CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END = ANY(p.path_history))
+          AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL) AND p.step > -50
+    ),
+    -- Combine both traces, excluding the duplicate start point from the backward trace
+    combined_path AS (
+        SELECT step, segment_id, fiber_no FROM path_forward
+        UNION ALL
+        SELECT step, segment_id, fiber_no FROM path_backward WHERE step < 1
     )
     -- Final selection and data shaping
     SELECT
-        pt.step as step_order,
+        ROW_NUMBER() OVER (ORDER BY cp.step) as step_order,
         'SEGMENT'::TEXT AS element_type,
         cs.id AS element_id,
         oc.route_name AS element_name,
         (sn.name || ' → ' || en.name)::TEXT AS details,
-        pt.fiber_no AS fiber_in,
-        pt_next.fiber_no AS fiber_out,
+        cp.fiber_no AS fiber_in,
+        next_cp.fiber_no AS fiber_out,
         cs.distance_km,
         NULL::NUMERIC AS loss_db
     FROM
-        path_traversal pt
-    JOIN public.cable_segments cs ON pt.segment_id = cs.id
+        combined_path cp
+    JOIN public.cable_segments cs ON cp.segment_id = cs.id
     JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
     JOIN public.nodes sn ON cs.start_node_id = sn.id
     JOIN public.nodes en ON cs.end_node_id = en.id
-    LEFT JOIN path_traversal pt_next ON pt.step + 1 = pt_next.step
-    ORDER BY pt.step;
+    LEFT JOIN (SELECT step, fiber_no FROM combined_path) next_cp ON next_cp.step = cp.step + 1
+    ORDER BY cp.step;
 END;
 $$;

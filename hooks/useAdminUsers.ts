@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Database } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
-import { User_profilesInsertSchema, User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
+import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
 
 
 type UserCreateInput = {
@@ -28,9 +28,6 @@ type UserDataResult = {
 export type { UserCreateInput };
 
 // Types
-type AdminGetAllUsers =
-  Database["public"]["Functions"]["admin_get_all_users"]["Args"];
-
 type AdminGetAllUsersExtended =
   Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
 
@@ -52,32 +49,13 @@ type AdminUpdateUserProfile =
 export const adminUserKeys = {
   all: ["admin-users"] as const,
   lists: () => [...adminUserKeys.all, "list"] as const,
-  list: (filters: AdminGetAllUsers) =>
+  list: (filters: AdminGetAllUsersExtended) =>
     [...adminUserKeys.lists(), filters] as const,
   details: () => [...adminUserKeys.all, "detail"] as const,
   detail: (id: string) => [...adminUserKeys.details(), id] as const,
   role: () => [...adminUserKeys.all, "my-role"] as const,
   userDetails: () => [...adminUserKeys.all, "my-details"] as const,
   superAdmin: () => [...adminUserKeys.all, "super-admin"] as const,
-};
-
-// Hook to get all users with filtering and pagination
-export const useAdminGetAllUsers = (params: AdminGetAllUsers = {}) => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.list(params),
-    queryFn: async (): Promise<User_profilesInsertSchema[]> => {
-      const { data, error } = await supabase.rpc("admin_get_all_users", params);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
 };
 
 export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {}) => {

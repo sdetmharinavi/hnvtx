@@ -38,15 +38,15 @@ export function useAvailableFibers(pathId: string | null) {
  * Hook to trace a fiber's complete path using the recursive RPC function.
  * The new RPC returns a pre-ordered, structured list, so no client-side tree building is needed.
  */
-export function useFiberTrace(startCableId: string | null, fiberNo: number | null) {
+export function useFiberTrace(startSegmentId: string | null, fiberNo: number | null) {
   return useQuery({
-    queryKey: ['fiber-trace', startCableId, fiberNo],
+    queryKey: ['fiber-trace', startSegmentId, fiberNo],
     queryFn: async (): Promise<FiberTraceSegment[]> => {
-      if (!startCableId || fiberNo === null) return [];
+      if (!startSegmentId || fiberNo === null) return [];
 
-      // CORRECTED: Call the RPC with the correct parameter names
+      // CORRECTED: Call the RPC with the segment_id parameter
       const { data, error } = await supabase.rpc('trace_fiber_path', {
-        p_start_cable_id: startCableId,
+        p_start_segment_id: startSegmentId,
         p_start_fiber_no: fiberNo
       });
 
@@ -54,21 +54,18 @@ export function useFiberTrace(startCableId: string | null, fiberNo: number | nul
         toast.error(`Trace failed: ${error.message}`);
         throw error;
       }
-
+      // ... (rest of the function is the same)
       if (!data || data.length === 0) {
         return [];
       }
-
       const parsed = z.array(fiberTraceSegmentSchema).safeParse(data);
-
       if (!parsed.success) {
         console.error("Zod validation error for Fiber Trace:", parsed.error);
         toast.error("Trace data from server was malformed.");
         throw new Error("Received invalid data structure for fiber trace.");
       }
-
       return parsed.data;
     },
-    enabled: !!startCableId && fiberNo !== null,
+    enabled: !!startSegmentId && fiberNo !== null,
   });
 }

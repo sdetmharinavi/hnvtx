@@ -25,9 +25,6 @@ DROP FUNCTION IF EXISTS public.update_my_profile(
 DROP FUNCTION IF EXISTS public.get_my_user_details();
 DROP FUNCTION IF EXISTS public.is_super_admin();
 DROP FUNCTION IF EXISTS public.get_my_role();
-DROP FUNCTION IF EXISTS public.admin_get_all_users(
-  TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, INTEGER, INTEGER
-);
 DROP FUNCTION IF EXISTS public.admin_get_user_by_id(UUID);
 DROP FUNCTION IF EXISTS public.admin_update_user_profile(
   UUID, TEXT, TEXT, TEXT, TEXT, DATE, JSONB, JSONB, TEXT, TEXT, TEXT

@@ -9,15 +9,15 @@ import { OfcForSelection } from '@/schemas/custom-schemas';
 interface FiberTraceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  startCableId: string | null; 
+  startSegmentId: string | null; 
   fiberNo: number | null;
   allCables: OfcForSelection[] | undefined;
 }
 
-export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, startCableId, fiberNo, allCables }) => {
-  const { data: traceData, isLoading, isError, error } = useFiberTrace(startCableId, fiberNo);
+export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, startSegmentId, fiberNo, allCables }) => {
+  const { data: traceData, isLoading, isError, error } = useFiberTrace(startSegmentId, fiberNo);
 
-  const startingCableName = allCables?.find(c => c.id === startCableId)?.route_name || 'Selected Route';
+  const startingCableName = allCables?.find(c => c.id === startSegmentId)?.route_name || 'Selected Route';
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Tracing fiber path..." />;

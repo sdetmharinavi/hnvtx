@@ -13,6 +13,7 @@ type FiberAtSegment = JcSplicingDetails['segments_at_jc'][0]['fibers'][0];
 
 interface FiberSpliceManagerProps {
     junctionClosureId: string | null;
+    // REMOVED: routeId is no longer needed
 }
 
 const useNormalizedSplicingDetails = (junctionClosureId: string | null): { 
@@ -21,6 +22,7 @@ const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
   isError: boolean; 
   error: Error | null 
 } => {
+    // CORRECTED: The hook call is now simpler.
     const { data: rawData, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
 
     const normalizedData = useMemo((): JcSplicingDetails | null => {
@@ -34,6 +36,7 @@ const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
 };
 
 export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId }) => {
+    // CORRECTED: The hook call is now simpler.
     const { normalizedData: spliceDetails, isLoading, isError, error } = useNormalizedSplicingDetails(junctionClosureId);
     
     const manageSpliceMutation = useManageSplice();

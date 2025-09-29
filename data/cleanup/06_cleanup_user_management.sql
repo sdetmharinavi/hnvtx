@@ -8,7 +8,6 @@ DROP VIEW IF EXISTS public.v_user_profiles_extended;
 DROP FUNCTION IF EXISTS public.is_super_admin();
 DROP FUNCTION IF EXISTS public.get_my_role();
 DROP FUNCTION IF EXISTS public.get_my_user_details();
-DROP FUNCTION IF EXISTS public.admin_get_all_users(TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, INT, INT);
 DROP FUNCTION IF EXISTS public.admin_get_all_users_extended(TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, INT, INT);
 DROP FUNCTION IF EXISTS public.admin_get_user_by_id(UUID);
 DROP FUNCTION IF EXISTS public.admin_update_user_profile(UUID, TEXT, TEXT, TEXT, TEXT, DATE, JSONB, JSONB, TEXT, TEXT, TEXT);
