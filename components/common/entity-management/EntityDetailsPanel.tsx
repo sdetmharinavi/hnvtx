@@ -33,11 +33,11 @@ export function EntityDetailsPanel<T extends BaseEntity>({
         <span
           className={`rounded-full px-2 py-1 text-xs ${
             entity.status
-              ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
-              : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
           }`}
         >
-          {entity.status ? "Active" : "Inactive"}
+          {entity.status ? 'Active' : 'Inactive'}
         </span>
       </div>
 

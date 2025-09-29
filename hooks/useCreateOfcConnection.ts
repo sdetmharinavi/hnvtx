@@ -3,13 +3,13 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePagedData} from './database';
-import { Ofc_cablesRowSchema, Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
+import { Ofc_cablesRowSchema, Ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
 
 
 interface useCreateOfcConnectionProps {
   supabase: SupabaseClient<Database>;
   cableId: string;
-  rawConnections: Ofc_connectionsRowSchema[];
+  rawConnections: Ofc_connectionsInsertSchema[];
   refetchOfcConnections: () => void;
   isLoadingOfcConnections: boolean;
 }

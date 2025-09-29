@@ -101,7 +101,7 @@ const MapContent = memo<{
                     pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
                 >
                   <Popup>
-                      <div className="w-48">
+                      <div className="min-w-48 max-w-72">
                           <h3 className="font-semibold text-base">{cable.route_name}</h3>
                           <p className="text-sm">Type: {cable.ofc_type_name}</p>
                           <p className="text-sm">Capacity: {cable.capacity}F</p>
@@ -119,11 +119,15 @@ const MapContent = memo<{
       (node.latitude && node.longitude) && (
           <Marker key={node.id} position={[node.latitude, node.longitude]}>
               <Popup>
-                  <div className="w-48">
+                  <div className="min-w-48 max-w-72">
                       <h3 className="font-semibold text-base">{node.name}</h3>
-                      <p className="text-sm">Type: {node.node_type_name || 'N/A'}</p>
-                      <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p>
+                      <p className="text-sm">Type: {node.node_type_code}</p>
+                      {/* <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p> */}
                       <p className="text-sm">Region: {node.maintenance_area_name}</p>
+                      {node.latitude && <p className="text-sm">Lat: {node.latitude}</p>}
+                      {node.longitude && <p className="text-sm">Long: {node.longitude}</p>}
+                      {node.remark && <p className="text-sm">Remark: {node.remark}</p>}
+
                   </div>
               </Popup>
           </Marker>
