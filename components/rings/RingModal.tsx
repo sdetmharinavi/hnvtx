@@ -156,14 +156,14 @@ export function RingModal({
       onClose={handleClose}
       title={isEdit ? "Edit Ring" : "Add Ring"}
       visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+      className="transparent bg-gray-700 rounded-2xl"
     >
       <FormCard
         onSubmit={handleSubmit(onValidSubmit)}
         heightClass="min-h-calc(90vh - 200px)"
         title={isEdit ? "Edit Ring" : "Add Ring"}
         onCancel={handleClose}
-        standalone
+        standalone={true}
       >
         <FormInput
           name="name"

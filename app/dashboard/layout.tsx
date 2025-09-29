@@ -7,6 +7,7 @@ import { Protected } from "@/components/auth/Protected";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
+import 'leaflet/dist/leaflet.css';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

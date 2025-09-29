@@ -21,38 +21,42 @@ interface RingSystemsModalProps {
 }
 
 // Data fetching hook
-const useRingSystemsData = (ringId: string | null | undefined) => {
+const useRingSystemsData = (ring: V_rings_with_countRowSchema | null) => {
   const supabase = createClient();
   return useQuery({
-    queryKey: ['ring-systems-data', ringId],
+    queryKey: ['ring-systems-data', ring?.id],
     queryFn: async () => {
-      if (!ringId) return { associated: [], available: [] };
+      if (!ring?.id || !ring.maintenance_terminal_id) {
+        return { associated: [], available: [] };
+      }
 
-      // Fetch systems already associated with this ring
+      // Fetch systems already associated with this ring (no change here)
       const { data: associated, error: assocError } = await supabase
         .from('v_systems_complete')
-        .select<'id, system_name', { id: string; system_name: string | null }>('id, system_name')
-        .eq('ring_id', ringId);
+        .select('id, system_name')
+        .eq('ring_id', ring.id);
       if (assocError) throw new Error(`Failed to fetch associated systems: ${assocError.message}`);
 
-      // Fetch systems that are ring-based but not yet assigned to any ring
+      // CORRECTED QUERY: Fetch available systems ONLY from the same maintenance area
       const { data: available, error: availError } = await supabase
         .from('v_systems_complete')
-        .select<'id, system_name', { id: string; system_name: string | null }>('id, system_name')
+        .select('id, system_name')
         .in('system_type_name', ['CPAN', 'MAAN', 'SDH'])
-        .is('ring_id', null);
+        .is('ring_id', null)
+        .eq('maintenance_terminal_id', ring.maintenance_terminal_id); // <-- THE FIX
+
       if (availError) throw new Error(`Failed to fetch available systems: ${availError.message}`);
 
       return { associated: associated || [], available: available || [] };
     },
-    enabled: !!ringId,
+    enabled: !!ring?.id && !!ring.maintenance_terminal_id,
   });
 };
 
 export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProps) {
   const queryClient = useQueryClient();
   const supabase = createClient();
-  const { data, isLoading, isError, error } = useRingSystemsData(ring?.id);
+  const { data, isLoading, isError, error } = useRingSystemsData(ring);
 
   const [associated, setAssociated] = useState<SystemOption[]>([]);
   const [available, setAvailable] = useState<SystemOption[]>([]);
