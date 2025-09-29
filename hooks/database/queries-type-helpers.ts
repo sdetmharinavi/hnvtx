@@ -2,6 +2,7 @@
 
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
 import { Database, Tables, TablesInsert, TablesUpdate } from "@/types/supabase-types";
+import { tableNames } from '@/types/flattened-types';
 
 // --- TYPE HELPERS ---
 
@@ -30,23 +31,12 @@ export type TableOrViewName = TableName | ViewName;
 export type AuthTableOrViewName = AuthTable | ViewName | TableName;
 
 // Helper function to check if the table name is a table (not a view)
+// CORRECTED: This is now robust and automated. No more manual updates needed.
 export const isTableName = (name: AuthTableOrViewName): name is TableName => {
-  // List of view names - add your view names here
-  const viewNames = [
-    'v_nodes_complete',
-    'v_ofc_cables_complete',
-    'v_ofc_connections_complete',
-    'v_system_connections_complete',
-    'v_systems_complete',
-    // 'vmux_connections',
-    // 'vmux_systems',
-    // Add other view names here
-  ];
-  const authViewNames = [
-    'users',
-  ];
-  return !viewNames.includes(name as string) && !authViewNames.includes(name as string);
+  // The 'as readonly string[]' assertion helps TypeScript understand the imported const array
+  return (tableNames as readonly string[]).includes(name as string);
 };
+
 
 // Table-specific types for mutation operations (insert, update, delete).
 export type TableRow<T extends TableName> = Tables<T>;

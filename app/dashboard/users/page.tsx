@@ -49,10 +49,10 @@ const useUsersData = (
 
 
   return {
-    data: (data || []) as V_user_profiles_extendedRowSchema[],
-    totalCount: data?.length || 0,
-    activeCount: (data || []).filter((u) => !!u.status).length,
-    inactiveCount: (data || []).filter((u) => !u.status).length,
+    data: (data?.data || []) as V_user_profiles_extendedRowSchema[],
+    totalCount: data?.counts?.total || 0,
+    activeCount: data?.counts?.active || 0,
+    inactiveCount: data?.counts?.inactive || 0,
     isLoading,
     error: (error as Error) || null,
     refetch: () => {

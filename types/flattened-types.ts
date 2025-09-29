@@ -1389,19 +1389,16 @@ export type Sdh_node_associationsUpdate = {
 
 export type Sdh_systemsRow = {
     gne: string | null;
-    make: string | null;
     system_id: string;
 };
 
 export type Sdh_systemsInsert = {
     gne?: string | null;
-    make?: string | null;
     system_id: string;
 };
 
 export type Sdh_systemsUpdate = {
     gne?: string | null;
-    make?: string | null;
     system_id?: string;
 };
 
@@ -1507,6 +1504,7 @@ export type SystemsRow = {
     id: string;
     ip_address: unknown | null;
     maintenance_terminal_id: string | null;
+    make: string | null;
     node_id: string;
     remark: string | null;
     s_no: string | null;
@@ -1522,6 +1520,7 @@ export type SystemsInsert = {
     id?: string;
     ip_address?: unknown | null;
     maintenance_terminal_id?: string | null;
+    make?: string | null;
     node_id: string;
     remark?: string | null;
     s_no?: string | null;
@@ -1537,6 +1536,7 @@ export type SystemsUpdate = {
     id?: string;
     ip_address?: unknown | null;
     maintenance_terminal_id?: string | null;
+    make?: string | null;
     node_id?: string;
     remark?: string | null;
     s_no?: string | null;
@@ -1939,6 +1939,7 @@ export type V_systems_completeRow = {
     latitude: number | null;
     longitude: number | null;
     maintenance_terminal_id: string | null;
+    make: string | null;
     node_id: string | null;
     node_name: string | null;
     node_type_name: string | null;
@@ -1947,7 +1948,6 @@ export type V_systems_completeRow = {
     ring_logical_area_name: string | null;
     s_no: string | null;
     sdh_gne: string | null;
-    sdh_make: string | null;
     status: boolean | null;
     system_category: string | null;
     system_maintenance_terminal_name: string | null;
@@ -2003,4 +2003,72 @@ export type AuthFactor_type = "totp" | "webauthn" | "phone";
 export type AuthOauth_registration_type = "dynamic" | "manual";
 
 export type AuthOne_time_token_type = "confirmation_token" | "reauthentication_token" | "recovery_token" | "email_change_token_new" | "email_change_token_current" | "phone_change_token";
+
+// ============= HELPERS =============
+
+export const tableNames = [
+  "audit_log_entries",
+  "flow_state",
+  "identities",
+  "instances",
+  "mfa_amr_claims",
+  "mfa_challenges",
+  "mfa_factors",
+  "oauth_clients",
+  "one_time_tokens",
+  "refresh_tokens",
+  "saml_providers",
+  "saml_relay_states",
+  "schema_migrations",
+  "sessions",
+  "sso_domains",
+  "sso_providers",
+  "users",
+  "cable_segments",
+  "employee_designations",
+  "employees",
+  "fiber_splices",
+  "files",
+  "folders",
+  "junction_closures",
+  "logical_fiber_paths",
+  "logical_path_segments",
+  "lookup_types",
+  "maintenance_areas",
+  "management_ports",
+  "nodes",
+  "ofc_cables",
+  "ofc_connections",
+  "ring_based_systems",
+  "rings",
+  "sdh_connections",
+  "sdh_node_associations",
+  "sdh_systems",
+  "sfp_based_connections",
+  "system_connections",
+  "systems",
+  "user_profiles",
+  "vmux_connections",
+  "vmux_systems"
+] as const;
+
+export const viewNames = [
+  "v_cable_segments_at_jc",
+  "v_cable_utilization",
+  "v_employee_designations_with_count",
+  "v_employees_with_count",
+  "v_end_to_end_paths",
+  "v_junction_closures_complete",
+  "v_lookup_types_with_count",
+  "v_maintenance_areas_with_count",
+  "v_nodes_complete",
+  "v_ofc_cables_complete",
+  "v_ofc_connections_complete",
+  "v_ring_nodes",
+  "v_rings_with_count",
+  "v_system_connections_complete",
+  "v_system_ring_paths_detailed",
+  "v_systems_complete",
+  "v_user_profiles_extended"
+] as const;
 

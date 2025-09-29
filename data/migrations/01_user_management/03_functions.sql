@@ -162,7 +162,7 @@ BEGIN
 END;
 $$;
 
--- Enhanced admin function that leverages the view structure
+-- Enhanced admin function that returns a structured JSONB object
 CREATE OR REPLACE FUNCTION public.admin_get_all_users_extended(
     search_query TEXT DEFAULT NULL,
     filter_role TEXT DEFAULT NULL,
@@ -172,32 +172,29 @@ CREATE OR REPLACE FUNCTION public.admin_get_all_users_extended(
     date_to TIMESTAMPTZ DEFAULT NULL,
     page_offset INTEGER DEFAULT 0,
     page_limit INTEGER DEFAULT 50
-) RETURNS TABLE (
-    id uuid, email text, last_sign_in_at timestamptz, created_at timestamptz, is_super_admin boolean, is_email_verified boolean,
-    first_name text, last_name text, avatar_url text, phone_number text, date_of_birth date, address jsonb, preferences jsonb,
-    role text, designation text, updated_at timestamptz, status text, full_name text, computed_status text, account_age_days integer,
-    last_activity_period text, total_count bigint, active_count bigint, inactive_count bigint
-)
+) 
+-- CORRECTED: Returns a single JSONB object
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
 AS $$
 DECLARE
-    -- Declare variables to hold all three counts
     v_total_records bigint;
     v_active_count bigint;
     v_inactive_count bigint;
+    v_user_data JSONB;
 BEGIN
     -- Check if user is super admin
     IF NOT public.is_super_admin() THEN
         RAISE EXCEPTION 'Access denied. Super admin privileges required.';
     END IF;
 
-    -- FIX: Calculate all three counts in a single, efficient query
+    -- Calculate all three counts in a single, efficient query
     SELECT
         COUNT(*),
         COUNT(*) FILTER (WHERE v.status = 'active'),
-        COUNT(*) FILTER (WHERE v.status = 'inactive') -- You can add more statuses if needed
+        COUNT(*) FILTER (WHERE v.status = 'inactive')
     INTO
         v_total_records,
         v_active_count,
@@ -211,28 +208,37 @@ BEGIN
     AND (date_from IS NULL OR v.created_at >= date_from)
     AND (date_to IS NULL OR v.created_at <= date_to);
 
-    -- Return paginated results using the calculated counts
-    RETURN QUERY
-    SELECT
-        v.id, v.email, v.last_sign_in_at, v.created_at, v.is_super_admin, v.is_email_verified,
-        v.first_name, v.last_name, v.avatar_url, v.phone_number, v.date_of_birth, v.address,
-        v.preferences, v.role, v.designation, v.updated_at, v.status, v.full_name,
-        v.computed_status, v.account_age_days, v.last_activity_period,
-        -- FIX: Use the variables calculated above instead of trying to select from the view
-        v_total_records,
-        v_active_count,
-        v_inactive_count
-    FROM public.v_user_profiles_extended v
-    WHERE
-        (search_query IS NULL OR v.full_name ILIKE '%' || search_query || '%' OR v.email ILIKE '%' || search_query || '%')
-    AND (filter_role IS NULL OR filter_role = 'all' OR v.role = filter_role)
-    AND (filter_status IS NULL OR filter_status = 'all' OR v.status = filter_status)
-    AND (filter_activity IS NULL OR filter_activity = 'all' OR v.last_activity_period = filter_activity)
-    AND (date_from IS NULL OR v.created_at >= date_from)
-    AND (date_to IS NULL OR v.created_at <= date_to)
-    ORDER BY v.created_at DESC
-    OFFSET page_offset
-    LIMIT page_limit;
+    -- Fetch the paginated user data into a JSONB array
+    SELECT jsonb_agg(t)
+    INTO v_user_data
+    FROM (
+        SELECT
+            v.id, v.email, v.last_sign_in_at, v.created_at, v.is_super_admin, v.is_email_verified,
+            v.first_name, v.last_name, v.avatar_url, v.phone_number, v.date_of_birth, v.address,
+            v.preferences, v.role, v.designation, v.updated_at, v.status, v.full_name,
+            v.computed_status, v.account_age_days, v.last_activity_period
+        FROM public.v_user_profiles_extended v
+        WHERE
+            (search_query IS NULL OR v.full_name ILIKE '%' || search_query || '%' OR v.email ILIKE '%' || search_query || '%')
+        AND (filter_role IS NULL OR filter_role = 'all' OR v.role = filter_role)
+        AND (filter_status IS NULL OR filter_status = 'all' OR v.status = filter_status)
+        AND (filter_activity IS NULL OR filter_activity = 'all' OR v.last_activity_period = filter_activity)
+        AND (date_from IS NULL OR v.created_at >= date_from)
+        AND (date_to IS NULL OR v.created_at <= date_to)
+        ORDER BY v.created_at DESC
+        OFFSET page_offset
+        LIMIT page_limit
+    ) t;
+
+    -- CORRECTED: Combine data and counts into a single JSONB object
+    RETURN jsonb_build_object(
+        'data', COALESCE(v_user_data, '[]'::jsonb),
+        'counts', jsonb_build_object(
+            'total', COALESCE(v_total_records, 0),
+            'active', COALESCE(v_active_count, 0),
+            'inactive', COALESCE(v_inactive_count, 0)
+        )
+    );
 END;
 $$;
 
