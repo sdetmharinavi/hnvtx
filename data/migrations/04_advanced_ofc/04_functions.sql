@@ -763,8 +763,8 @@ DECLARE
   result_jcs JSONB[] := ARRAY[]::JSONB[];
 BEGIN
   -- Get the Node Type ID for 'Joint / Splice Point' once to avoid repeated lookups
-  SELECT id INTO v_jc_node_type_id 
-  FROM public.lookup_types 
+  SELECT id INTO v_jc_node_type_id
+  FROM public.lookup_types
   WHERE category = 'NODE_TYPES' AND name = 'Joint / Splice Point'
   LIMIT 1;
 
@@ -816,8 +816,8 @@ DECLARE
     path_record RECORD;
     full_path_cursor CURSOR FOR
         WITH RECURSIVE full_trace AS (
-            SELECT 
-                changed_splice.incoming_segment_id as segment_id, 
+            SELECT
+                changed_splice.incoming_segment_id as segment_id,
                 changed_splice.incoming_fiber_no as fiber_no,
                 ARRAY[changed_splice.incoming_segment_id] as visited_segments
             UNION ALL
@@ -826,8 +826,8 @@ DECLARE
                 CASE WHEN ft.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
                 ft.visited_segments || (CASE WHEN ft.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END)
             FROM full_trace ft
-            JOIN fiber_splices s ON 
-                (ft.segment_id = s.incoming_segment_id AND ft.fiber_no = s.incoming_fiber_no) OR 
+            JOIN fiber_splices s ON
+                (ft.segment_id = s.incoming_segment_id AND ft.fiber_no = s.incoming_fiber_no) OR
                 (ft.segment_id = s.outgoing_segment_id AND ft.fiber_no = s.outgoing_fiber_no)
             WHERE NOT (CASE WHEN ft.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END = ANY(ft.visited_segments))
         )
@@ -844,7 +844,7 @@ BEGIN
         SET updated_fiber_no_en = fiber_no_en, updated_fiber_no_sn = fiber_no_sn
         WHERE ofc_id = (SELECT original_cable_id FROM public.cable_segments WHERE id = OLD.incoming_segment_id)
           AND fiber_no_sn = OLD.incoming_fiber_no;
-        
+
         IF OLD.outgoing_segment_id IS NOT NULL THEN
              UPDATE public.ofc_connections
              SET updated_fiber_no_en = fiber_no_en, updated_fiber_no_sn = fiber_no_sn
@@ -890,14 +890,14 @@ BEGIN
         ) AS forwards;
         IF NOT FOUND THEN ultimate_end_fiber := 0; END IF;
     END IF;
-    
+
     -- STEP 2: Iterate through every segment in the path and update its logical connection
     LOOP
         FETCH full_path_cursor INTO path_record;
         EXIT WHEN NOT FOUND;
 
         UPDATE public.ofc_connections
-        SET 
+        SET
             updated_fiber_no_sn = ultimate_start_fiber,
             updated_fiber_no_en = ultimate_end_fiber
         WHERE ofc_id = path_record.original_cable_id AND fiber_no_sn = path_record.fiber_no;

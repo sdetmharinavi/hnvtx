@@ -165,13 +165,19 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 WITH jc_info AS (
+  -- Step 1: Find the primary JC and its physical node_id
   SELECT jc.id, n.name, jc.node_id
   FROM public.junction_closures jc
   JOIN public.nodes n ON jc.node_id = n.id
   WHERE jc.id = p_jc_id
 ),
--- CORRECTED: This CTE now finds ALL segments from ANY cable that connect to this JC's node.
+all_jcs_at_node AS (
+  -- Step 2: Find ALL junction closures that share the same physical node_id
+  SELECT id FROM public.junction_closures
+  WHERE node_id = (SELECT node_id FROM jc_info)
+),
 segments_at_jc AS (
+  -- Step 3: Find ALL segments connected to this physical node
   SELECT
     cs.id as segment_id,
     oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
@@ -181,20 +187,23 @@ segments_at_jc AS (
   WHERE cs.start_node_id = (SELECT node_id FROM jc_info) OR cs.end_node_id = (SELECT node_id FROM jc_info)
 ),
 fiber_universe AS (
+  -- Step 4: Create a complete list of every fiber in every segment at this node
   SELECT s.segment_id, series.i as fiber_no
   FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
 ),
 splice_info AS (
+  -- Step 5: (THE FIX) Select ALL splices from ALL JCs at this physical node
   SELECT
     fs.id as splice_id,
+    fs.jc_id, -- Keep the original jc_id for reference
     fs.incoming_segment_id, fs.incoming_fiber_no,
     fs.outgoing_segment_id, fs.outgoing_fiber_no,
-    -- This subquery correctly finds the name of the connected segment
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' FROM cable_segments cs_out JOIN ofc_cables oc ON cs_out.original_cable_id = oc.id WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' FROM cable_segments cs_in JOIN ofc_cables oc ON cs_in.original_cable_id = oc.id WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' FROM cable_segments cs_out JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' FROM cable_segments cs_in JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
   FROM public.fiber_splices fs
-  WHERE fs.jc_id = p_jc_id
+  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node) -- <<< THIS IS THE FIX!
 )
+-- Final step: Assemble the JSON response
 SELECT jsonb_build_object(
   'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
   'segments_at_jc', (
