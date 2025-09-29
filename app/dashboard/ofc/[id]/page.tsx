@@ -72,8 +72,8 @@ export default function OfcCableDetailsPage() {
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
   
-  // FIX: This state now stores the STARTING SEGMENT ID and fiber number.
-  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number } | null>(null);
+  // CORRECTED: This state now correctly stores the CABLE ID and fiber number.
+  const [tracingFiber, setTracingFiber] = useState<{ cableId: string; fiberNo: number } | null>(null);
 
   // FIX: Fetch the segments for the current cable to find the starting point for a trace.
   const { data: cableSegments } = useTableQuery(supabase, 'cable_segments', {
@@ -107,14 +107,13 @@ export default function OfcCableDetailsPage() {
             label: 'Trace Fiber Path',
             icon: <GitCommit className="h-4 w-4" />,
             onClick: (record: V_ofc_connections_completeRowSchema) => {
-                if (record.fiber_no_sn && cableSegments && cableSegments.length > 0) {
-                  // FIX: Find the first segment of this cable to start the trace from.
-                  const firstSegment = cableSegments[0];
-                  setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn });
-                } else {
-                  toast.error("Cannot trace fiber: No cable segments found for this route.");
-                }
-            },
+              if (record.ofc_id && record.fiber_no_sn) {
+                // CORRECTED: Set the state with the original cable ID and the fiber number.
+                setTracingFiber({ cableId: record.ofc_id, fiberNo: record.fiber_no_sn });
+              } else {
+                toast.error("Cannot trace fiber: Missing cable ID or fiber number.");
+              }
+          },
             variant: 'secondary' as const
         },
       ...createStandardActions({
@@ -176,7 +175,8 @@ export default function OfcCableDetailsPage() {
        <FiberTraceModal
         isOpen={!!tracingFiber}
         onClose={() => setTracingFiber(null)}
-        startSegmentId={tracingFiber?.startSegmentId || null}
+        // CORRECTED: Pass the correct props to the modal
+        startCableId={tracingFiber?.cableId || null}
         fiberNo={tracingFiber?.fiberNo || null}
         allCables={allCablesData}
       />

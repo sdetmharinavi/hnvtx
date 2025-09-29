@@ -232,7 +232,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
 -- Traces a fiber's path bi-directionally with loop detection.
-CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
+CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_cable_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
     step_order BIGINT,
     element_type TEXT,
@@ -248,32 +248,47 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_first_segment_id UUID;
 BEGIN
+    -- Find the very first segment of the cable route to begin the trace.
+    -- This makes the trace truly bidirectional, regardless of which segment is passed in.
+    SELECT cs.id INTO v_first_segment_id
+    FROM public.cable_segments cs
+    WHERE cs.original_cable_id = p_start_cable_id
+    ORDER BY cs.segment_order
+    LIMIT 1;
+
+    IF v_first_segment_id IS NULL THEN
+        -- If there are no segments, there's nothing to trace. Return an empty set.
+        RETURN;
+    END IF;
+
     RETURN QUERY
     WITH RECURSIVE path_traversal AS (
-        -- Initial step: Start with the selected segment
+        -- Initial step: Start with the first segment of the selected cable
         SELECT
             1::BIGINT AS step,
-            p_start_segment_id AS segment_id,
+            v_first_segment_id AS segment_id,
             p_start_fiber_no AS fiber_no,
-            ARRAY[p_start_segment_id] AS path_history -- For loop detection
+            ARRAY[v_first_segment_id] AS path_history -- For loop detection
 
         UNION ALL
 
-        -- Recursive step: Find the next connected segment
+        -- Recursive step: Find the next connected segment by checking both sides of the splice
         SELECT
             p.step + 1,
-            -- Determine the next segment_id
+            -- Determine the next segment_id by picking the one that is NOT the current segment
             CASE
                 WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
                 ELSE s.incoming_segment_id
             END AS next_segment_id,
-            -- Determine the next fiber_no
+            -- Determine the next fiber_no accordingly
             CASE
                 WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no
                 ELSE s.incoming_fiber_no
             END AS next_fiber_no,
-            -- Add the new segment to our history
+            -- Add the new segment to our history to prevent loops
             p.path_history || CASE
                 WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id
                 ELSE s.incoming_segment_id
@@ -293,7 +308,7 @@ BEGIN
             )
             -- Stop if the path terminates (no outgoing connection)
             AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL)
-            -- Safety limit
+            -- Safety limit to prevent infinite recursion in case of data errors
             AND p.step < 50
     )
     -- Final selection and data shaping
@@ -317,4 +332,3 @@ BEGIN
     ORDER BY pt.step;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
