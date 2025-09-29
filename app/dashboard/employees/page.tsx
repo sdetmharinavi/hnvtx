@@ -1,7 +1,7 @@
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -126,6 +126,11 @@ const EmployeesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  // NEW: Define a stable function with useCallback
+  const handleSaveEmployee = useCallback((data: EmployeesInsertSchema) => {
+    crudActions.handleSave(data);
+  }, [crudActions]);
+
   if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
@@ -195,7 +200,8 @@ const EmployeesPage = () => {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         employee={editModal.record}
-        onSubmit={(data) => crudActions.handleSave(data as EmployeesInsertSchema)}
+        // Pass the stable function as the prop
+        onSubmit={handleSaveEmployee}
         onCancel={editModal.close}
         isLoading={isMutating}
         designations={designations}

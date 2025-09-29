@@ -1,4 +1,4 @@
-// components/auth/ForgotPasswordForm.tsx
+// path: components/auth/ForgotPasswordForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -20,10 +20,8 @@ export default function ForgotPasswordForm() {
 
   const validateEmail = isValidEmail(email);
 
-  // Check if reset email was already sent
-  const resetEmail = localStorage.getItem("reset_email_sent");
   const isResetEmailSent = () => {
-    return !!resetEmail;
+    return typeof window !== 'undefined' && !!localStorage.getItem("reset_email_sent");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,54 +38,36 @@ export default function ForgotPasswordForm() {
     }
 
     setIsLoading(true);
+    // CORRECTED: Destructure the new return shape
+    const { success, error: responseError } = await forgotPassword(email);
+    setIsLoading(false);
 
-    try {
-      const response = await forgotPassword(email);
-
-      if (response.error) {
-        console.error("Password reset failed:", response.error);
-        setError(response.error || "Failed to send reset email");
-        toast.error(response.error || "Failed to send reset email");
-      } else {
-        localStorage.setItem("reset_email_sent", email);
-        isResetEmailSent() ? toast.success("Password reset email sent again!") : toast.success("Password reset email sent!");
-        setEmail("");
-        setError("");
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+    if (success) {
+      localStorage.setItem("reset_email_sent", email);
+      setEmail("");
+      setError("");
+      // Force a re-render to show the confirmation screen
+      router.refresh(); 
+    } else {
+      setError(responseError?.message || "Failed to send reset email.");
     }
   };
 
   const handleResendEmail = async () => {
     setIsLoading(true);
     setError("");
-    try {
-      const response = await forgotPassword(localStorage.getItem("reset_email_sent") || "");
-
-      if (response.error) {
-        setError(response.error || "Failed to resend email");
-        toast.error(response.error || "Failed to resend email");
-      } else {
-        localStorage.setItem("reset_email_sent", localStorage.getItem("reset_email_sent") || "");
-        toast.success("Reset email sent again!");
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+    const sentEmail = localStorage.getItem("reset_email_sent");
+    if (sentEmail) {
+      await forgotPassword(sentEmail);
     }
+    setIsLoading(false);
   };
-
+  
   const clearResetState = () => {
     localStorage.removeItem("reset_email_sent");
+    router.refresh();
   };
+
 
   if (isResetEmailSent()) {
     return (
@@ -101,12 +81,10 @@ export default function ForgotPasswordForm() {
             <h2 className='text-2xl font-bold text-gray-900 dark:text-white mb-2'>Check Your Email</h2>
 
             <p className='text-gray-600 dark:text-gray-400 mb-6'>
-              We&apos;ve sent a password reset link to your email address.
+              We&apos;ve sent a password reset link to <span className="font-medium text-gray-800 dark:text-gray-200">{localStorage.getItem("reset_email_sent")}</span>.
             </p>
 
             <div className='space-y-4'>
-              <p className='text-sm text-gray-500 dark:text-gray-400'>Didn&apos;t receive the email? Check your spam folder or click below to resend.</p>
-
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -126,35 +104,20 @@ export default function ForgotPasswordForm() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={()=>{setEmail(""); clearResetState(); router.push("/forgot-password")}}
-                disabled={isLoading}
-                className='w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                {isLoading ? (
-                  <div className='flex items-center justify-center'>
-                    <FiLoader className='animate-spin mr-2' />
-                    Clearing...
-                  </div>
-                ) : (
-                  "Send Reset to anotherEmail"
-                )}
-              </motion.button>
-
-              <Link 
-                href='/login' 
-                className='inline-flex items-center justify-center w-full text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium transition-colors'
                 onClick={clearResetState}
+                className='w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'>
+                Use a different email address
+              </motion.button>
+              
+              <Link
+                href='/login'
+                className='inline-flex items-center justify-center w-full text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium transition-colors'
               >
                 <FiArrowLeft className='mr-2' />
                 Back to Login
               </Link>
             </div>
           </div>
-
-          {error && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className='mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md'>
-              <p className='text-red-600 dark:text-red-400 text-sm'>{error}</p>
-            </motion.div>
-          )}
         </div>
       </motion.div>
     );
@@ -165,7 +128,7 @@ export default function ForgotPasswordForm() {
       <div className='bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8'>
         <div className='text-center mb-8'>
           <h2 className='text-3xl font-bold text-gray-900 dark:text-white'>Forgot Password?</h2>
-          <p className='text-gray-600 dark:text-gray-400 mt-2'>Enter your email address and we&apos;ll send you a link to reset your password.</p>
+          <p className='text-gray-600 dark:text-gray-400 mt-2'>Enter your email and we&apos;ll send you a reset link.</p>
         </div>
 
         {error && (
@@ -204,16 +167,15 @@ export default function ForgotPasswordForm() {
             {isLoading ? (
               <ButtonSpinner />
             ) : (
-              "Send Reset Email"
+              "Send Reset Link"
             )}
           </motion.button>
         </form>
 
         <div className='mt-8 text-center'>
-          <Link 
-            href='/login' 
+          <Link
+            href='/login'
             className='inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium transition-colors'
-            onClick={clearResetState}
           >
             <FiArrowLeft className='mr-2' />
             Back to Login
