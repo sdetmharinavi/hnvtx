@@ -63,10 +63,14 @@ export function useRouteDetails(routeId: string | null) {
 /** Fetches all data needed for the splice matrix editor for a single JC. */
 export function useJcSplicingDetails(jcId: string | null) {
   return useQuery({
+    // CORRECTED: The query key is now only dependent on the jcId.
     queryKey: ['jc-splicing-details', jcId],
     queryFn: async (): Promise<JcSplicingDetails | null> => {
       if (!jcId) return null;
-      const { data, error } = await supabase.rpc('get_jc_splicing_details', { p_jc_id: jcId });
+      // CORRECTED: The RPC call now only needs one parameter.
+      const { data, error } = await supabase.rpc('get_jc_splicing_details', { 
+        p_jc_id: jcId
+      });
       if (error) throw error;
       
       const parsed = jcSplicingDetailsSchema.safeParse(data);

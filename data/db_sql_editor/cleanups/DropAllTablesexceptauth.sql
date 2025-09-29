@@ -8,7 +8,7 @@
 -- - Table: user_profiles
 -- - View: v_user_profiles_extended
 -- - Functions: is_super_admin, get_my_role, get_my_user_details, 
---              admin_get_all_users, admin_get_all_users_extended, 
+--              admin_get_all_users_extended, 
 --              admin_get_user_by_id, admin_update_user_profile,
 --              admin_bulk_update_status, admin_bulk_update_role,
 --              admin_bulk_delete_users, update_user_profile_timestamp,
@@ -101,7 +101,6 @@ FOR r IN (
         'is_super_admin',
         'get_my_role',
         'get_my_user_details',
-        'admin_get_all_users',
         'admin_get_all_users_extended',
         'admin_get_user_by_id',
         'admin_update_user_profile',
@@ -196,7 +195,6 @@ GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_user_details() TO authenticated;
 
 -- Grants for admin functions
-GRANT EXECUTE ON FUNCTION public.admin_get_all_users(text, text, text, timestamptz, timestamptz, integer, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_get_all_users_extended(text, text, text, text, timestamptz, timestamptz, integer, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_get_user_by_id(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_update_user_profile(uuid, text, text, text, text, date, jsonb, jsonb, text, text, text) TO authenticated;
