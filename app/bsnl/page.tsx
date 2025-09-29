@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { Network, Settings, RefreshCw } from 'lucide-react';
-import { BsnlCable, BsnlSystem, SearchFilters, AllocationSaveData } from '@/components/bsnl/types';
+import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
 import { PaginatedTable } from '@/components/bsnl/PaginatedTable';
@@ -12,6 +12,7 @@ import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
 import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
+import { BsnlSearchFilters, bsnlSearchFiltersSchema } from '@/schemas/custom-schemas';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
@@ -20,14 +21,16 @@ export default function ScalableFiberNetworkDashboard() {
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   
   // CORRECTED: The initial state now perfectly matches the SearchFilters interface.
-  const [filters, setFilters] = useState<SearchFilters>({
-    query: '', 
-    status: [], 
-    type: [], 
-    region: [], 
-    nodeType: [],
-    priority: [] 
-  });
+  const [filters, setFilters] = useState<BsnlSearchFilters>(
+    bsnlSearchFiltersSchema.parse({
+      query: '',
+      status: [],
+      type: [],
+      region: [],
+      nodeType: [],
+      priority: []
+    })
+  );
 
   const { data, isLoading, isError, error, refetchAll } = useBsnlDashboardData(filters);
 

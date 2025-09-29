@@ -110,15 +110,12 @@ export const routeDetailsPayloadSchema = z.object({
 export type RouteDetailsPayload = z.infer<typeof routeDetailsPayloadSchema>;
 
 // --- For the new trace_fiber_path RPC ---
-export const fiberTraceSegmentSchema = z.object({
-  step_order: z.number().int(),
-  element_type: z.string(),
-  element_id: z.string().uuid(),
-  element_name: z.string(),
-  details: z.string(),
-  fiber_in: z.number().int(),
-  fiber_out: z.number().int().nullable(),
-  distance_km: z.number().nullable(),
-  loss_db: z.number().nullable(),
+export const bsnlSearchFiltersSchema = z.object({
+  query: z.string(),
+  status: z.array(z.string()),
+  type: z.array(z.string()),
+  region: z.array(z.string()),
+  nodeType: z.array(z.string()),
+  priority: z.array(z.string()),
 });
-export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
+export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

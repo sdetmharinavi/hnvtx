@@ -33,8 +33,8 @@ export const defaultValidationConfig: ValidationConfig = {
     },
     {
       fieldPatterns: ["encrypted_password"],
-      validation: 'z.string().min(1, "Encrypted password cannot be empty")',
-      description: "Already encrypted passwords just need presence check",
+      validation: 'z.string().min(1, "Password cannot be empty")',
+      description: "Passwords just need presence check",
     },
     {
       fieldPatterns: ["password", "pwd"],
