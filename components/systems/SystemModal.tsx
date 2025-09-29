@@ -58,15 +58,28 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     reset,
     control,
     watch,
     setValue,
   } = useForm<SystemFormValues>({
-    resolver: zodResolver(systemFormValidationSchema), // Use the correct form schema
-    defaultValues: createDefaultFormValues()
+    resolver: zodResolver(systemFormValidationSchema),
+    defaultValues: createDefaultFormValues(),
+    mode: 'onChange' // Enable validation on change
   });
+
+  // DEBUG: Log errors whenever they change
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log('Form errors updated:', errors);
+    }
+  }, [errors]);
+
+  // DEBUG: Log form validity
+  useEffect(() => {
+    console.log('Form isValid:', isValid);
+  }, [isValid]);
 
   const selectedSystemTypeId = watch('system_type_id');
   const selectedNodeId = watch('node_id');
@@ -124,7 +137,10 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
   });
 
   const onValidSubmit = useCallback((formData: SystemFormValues) => {
-    console.log("formData", formData);
+    console.log("=== FORM SUBMITTED SUCCESSFULLY ===");
+    console.log("formData:", formData);
+    console.log("Validation passed, proceeding with mutation");
+    
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
       p_system_name: formData.system_name!,
       p_system_type_id: formData.system_type_id!,
@@ -144,10 +160,26 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     upsertSystemMutation.mutate(payload);
   }, [isEditMode, rowData, upsertSystemMutation, isRingBasedSystem]);
 
+  // FIXED: Better error handling callback with debugging
+  const onInvalidSubmit = useCallback((validationErrors: typeof errors) => {
+    console.error("Form validation errors:", validationErrors);
+    console.log("Current form values:", watch());
+    console.log("Form state errors:", errors);
+    
+    // Show user-friendly error toast
+    const errorFields = Object.keys(validationErrors);
+    if (errorFields.length > 0) {
+      toast.error(`Please fix the following fields: ${errorFields.join(', ')}`);
+    } else {
+      // If no validation errors but callback triggered, something else is wrong
+      toast.error('Form submission failed. Please check all required fields.');
+    }
+  }, [watch, errors]);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit System' : 'Add System'} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
-        onSubmit={handleSubmit(onValidSubmit, (errors) => console.error("Form validation errors:", errors))}
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
         isLoading={upsertSystemMutation.isPending || isSubmitting}
         standalone
