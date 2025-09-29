@@ -17,7 +17,6 @@ SELECT
   rbs.ring_id,
   ring_area.name AS ring_logical_area_name,
   ss.gne AS sdh_gne,
-  ss.make AS sdh_make,
   vs.vm_id AS vmux_vm_id,
   count(*) OVER() AS total_count,
   sum(CASE WHEN s.status THEN 1 ELSE 0 END) OVER() AS active_count,

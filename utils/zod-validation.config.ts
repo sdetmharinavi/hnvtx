@@ -27,12 +27,17 @@ export interface CustomValidationRule {
 export const defaultValidationConfig: ValidationConfig = {
   stringRules: [
     {
-      fieldPatterns: ['email'],
-      validation: 'z.email()',
-      description: 'Email format validation',
+      fieldPatterns: ["email"],
+      validation: "z.email()",
+      description: "Email format validation",
     },
     {
-      fieldPatterns: ['password', 'pwd'],
+      fieldPatterns: ["encrypted_password"],
+      validation: 'z.string().min(1, "Encrypted password cannot be empty")',
+      description: "Already encrypted passwords just need presence check",
+    },
+    {
+      fieldPatterns: ["password", "pwd"],
       validation: `z.string()
         .min(6, "Password must be at least 6 characters long")
         .max(50, "Password must not exceed 50 characters")
@@ -40,130 +45,120 @@ export const defaultValidationConfig: ValidationConfig = {
           /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]/,
           "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
         )`,
-      description: 'Basic password strength',
+      description: "Basic password strength",
     },
     {
-      fieldPatterns: ['encrypted_password'],
-      validation: 'z.string().min(1, "Encrypted password cannot be empty")',
-      description: 'Already encrypted passwords just need presence check',
+      fieldPatterns: ["^id$", ".*_id$", ".*uuid.*"],
+      validation: "z.uuid()",
+      description: "UUID format validation",
     },
     {
-      fieldPatterns: ['^id$', '.*_id$', '.*uuid.*'],
-      validation: 'z.uuid()',
-      description: 'UUID format validation',
+      fieldPatterns: ["url", "website", "link"],
+      validation: "z.url()",
+      description: "URL format validation",
     },
     {
-      fieldPatterns: ['url', 'website', 'link'],
-      validation: 'z.url()',
-      description: 'URL format validation',
+      fieldPatterns: ["phone", "mobile", "tel"],
+      validation: 'z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number")',
+      description: "International phone number format",
     },
     {
-      fieldPatterns: ['phone', 'mobile', 'tel'],
-      validation:
-        'z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number")',
-      description: 'International phone number format',
-    },
-    {
-      fieldPatterns: ['.*_at$', '.*date.*', '.*time.*'],
-      validation: 'z.iso.datetime()',
-      description: 'ISO datetime string validation',
-    },
-    {
-      fieldPatterns: ['.*dob.*', '.*doj.*', 'commissioned_on', "sn_dom", "en_dom"],
+      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', "sn_dom", "en_dom"],
       validation: 'z.iso.date()',
       description: 'ISO date string validation (e.g., YYYY-MM-DD)',
     },
     {
-      fieldPatterns: ['token', 'jwt'],
-      validation: 'z.jwt()',
-      description: 'Token presence validation',
+      fieldPatterns: [".*_at$", ".*date.*", ".*time.*"],
+      validation: "z.iso.datetime()",
+      description: "ISO datetime string validation",
     },
     {
-      fieldPatterns: ['slug'],
-      validation:
-        'z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format")',
-      description: 'URL-friendly slug format',
+      fieldPatterns: ["token", "jwt"],
+      validation: "z.jwt()",
+      description: "Token presence validation",
     },
     {
-      fieldPatterns: ['username', 'user_name'],
-      validation:
-        'z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")',
-      description: 'Username format validation',
+      fieldPatterns: ["slug"],
+      validation: 'z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format")',
+      description: "URL-friendly slug format",
     },
     {
-      fieldPatterns: ['.*name$', 'title'],
-      validation:
-        'z.string().min(1, "Name cannot be empty").max(255, "Name is too long")',
-      description: 'Name fields validation',
+      fieldPatterns: ["username", "user_name"],
+      validation: 'z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")',
+      description: "Username format validation",
     },
     {
-      fieldPatterns: ['description', 'content', 'text', 'message'],
+      fieldPatterns: [".*name$", "title"],
+      validation: 'z.string().min(1, "Name cannot be empty").max(255, "Name is too long")',
+      description: "Name fields validation",
+    },
+    {
+      fieldPatterns: ["description", "content", "text", "message"],
       validation: 'z.string().max(10000, "Text is too long")',
-      description: 'Long text fields validation',
+      description: "Long text fields validation",
     },
     {
-      fieldPatterns: ['.*address.*', '.*addr.*'],
-      validation:
-        'z.string().min(5, "Address must be at least 5 characters").max(500)',
-      description: 'Address fields validation',
+      fieldPatterns: [".*address.*", ".*addr.*"],
+      validation: 'z.string().min(5, "Address must be at least 5 characters").max(500)',
+      description: "Address fields validation",
     },
     {
-      fieldPatterns: ['ip.*', '.*ip_address.*'],
-      validation: 'z.ipv4()',
-      description: 'IP address format validation',
+      fieldPatterns: ["ip.*", ".*ip_address.*"],
+      validation: "z.ipv4()",
+      description: "IP address format validation",
     },
     {
-      fieldPatterns: ['status'],
+      fieldPatterns: ["status"],
       validation: 'z.string().min(1, "Status cannot be empty")',
-      description: 'Status fields validation',
+      description: "Status fields validation",
     },
   ],
 
   numberRules: [
     {
-      fieldPatterns: ['age'],
-      validation: 'z.number().int().min(0).max(150)',
-      description: 'Age validation',
+      fieldPatterns: ["age"],
+      validation: "z.number().int().min(0).max(150)",
+      description: "Age validation",
     },
     {
-      fieldPatterns: ['count', 'quantity', 'qty'],
-      validation: 'z.number().int().min(0)',
-      description: 'Count/quantity validation',
+      fieldPatterns: ["count", "quantity", "qty"],
+      validation: "z.number().int().min(0)",
+      description: "Count/quantity validation",
     },
     {
-      fieldPatterns: ['price', 'amount', 'cost', 'fee'],
-      validation: 'z.number().min(0)',
-      description: 'Monetary amount validation',
+      fieldPatterns: ["price", "amount", "cost", "fee"],
+      validation: "z.number().min(0)",
+      description: "Monetary amount validation",
     },
     {
-      fieldPatterns: ['rating', 'score'],
-      validation: 'z.number().min(0).max(10)',
-      description: 'Rating/score validation',
+      fieldPatterns: ["rating", "score"],
+      validation: "z.number().min(0).max(10)",
+      description: "Rating/score validation",
     },
     {
-      fieldPatterns: ['percent.*', '.*_rate$'],
-      validation: 'z.number().min(0).max(100)',
-      description: 'Percentage validation',
+      fieldPatterns: ["percent.*", ".*_rate$"],
+      validation: "z.number().min(0).max(100)",
+      description: "Percentage validation",
     },
     {
-      fieldPatterns: ['^id$', '.*_id$'],
-      validation: 'z.number().int().positive()',
-      description: 'Numeric ID validation',
+      fieldPatterns: ["^id$", ".*_id$"],
+      validation: "z.number().int().positive()",
+      description: "Numeric ID validation",
     },
   ],
 
   customRules: [
     {
-      fieldName: 'aud',
-      tableName: 'user', // Will match "user_profiles", "users", etc.
-      validation: 'z.string().min(1)',
-      description: 'Supabase auth audience field',
+      fieldName: "aud",
+      tableName: "user", // Will match "user_profiles", "users", etc.
+      validation: "z.string().min(1)",
+      description: "Supabase auth audience field",
     },
     {
-      fieldName: 'role',
-      tableName: 'user', // Will match "user_profiles", "users", etc.
-      validation: 'z.enum(UserRole)',
-      description: 'User role field using native enum',
+      fieldName: "role",
+      tableName: "user", // Will match "user_profiles", "users", etc.
+      validation: "z.enum(UserRole)",
+      description: "User role field using native enum",
     },
   ],
 };

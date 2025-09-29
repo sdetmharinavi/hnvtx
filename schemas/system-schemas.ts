@@ -7,7 +7,7 @@ export const systemFormValidationSchema = systemsInsertSchema.omit({
   created_at: true,
   updated_at: true,
   id: true,
-}).extend({
+}) & ({
   ring_id: ring_based_systemsInsertSchema.pick({ ring_id: true }),
   gne: sdh_systemsInsertSchema.pick({ gne: true }),
   vm_id: vmux_systemsInsertSchema.pick({ vm_id: true }),

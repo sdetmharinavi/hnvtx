@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Database } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
-import { User_profilesInsertSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
+import { User_profilesInsertSchema, User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
 
 
 type UserCreateInput = {
@@ -13,6 +13,16 @@ type UserCreateInput = {
   first_name: string;
   last_name: string;
   role: string;
+};
+
+// Define the shape of the RPC response
+type UserDataResult = {
+  data: V_user_profiles_extendedRowSchema[];
+  counts: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
 };
 
 export type { UserCreateInput };
@@ -74,14 +84,19 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
   const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
-    queryFn: async (): Promise<User_profilesUpdateSchema[]> => {
+    // CORRECTED: Update the query function to expect the new JSONB structure
+    queryFn: async (): Promise<UserDataResult> => {
       const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
 
       if (error) {
         throw new Error(error.message);
       }
 
-      return data as User_profilesUpdateSchema[] || [];
+      // Return the structured data, providing defaults if the RPC returns null
+      return {
+        data: data?.data || [],
+        counts: data?.counts || { total: 0, active: 0, inactive: 0 },
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

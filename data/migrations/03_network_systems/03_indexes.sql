@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_ring_based_systems_ring_area ON public.ring_based
 CREATE INDEX IF NOT EXISTS idx_sfp_based_connections_customer ON public.sfp_based_connections (customer_name);
 
 -- Indexes for other system-specific tables
-CREATE INDEX IF NOT EXISTS idx_sdh_systems_make ON public.sdh_systems (make);
+CREATE INDEX IF NOT EXISTS idx_systems_make ON public.systems (make);
 
 -- =================================================================
 -- Section 2: Full-Text Search (FTS) GIN Indexes

@@ -531,13 +531,7 @@ export const authUsersRowSchema = z.object({
   email_change_token_current: z.email().nullable(),
   email_change_token_new: z.email().nullable(),
   email_confirmed_at: z.email().nullable(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable(),
+  encrypted_password: z.string().min(1, "Encrypted password cannot be empty").nullable(),
   id: z.uuid(),
   instance_id: z.uuid().nullable(),
   invited_at: z.iso.datetime().nullable(),
@@ -575,13 +569,7 @@ export const authUsersInsertSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable().optional(),
+  encrypted_password: z.string().min(1, "Encrypted password cannot be empty").nullable().optional(),
   id: z.uuid(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),
@@ -619,13 +607,7 @@ export const authUsersUpdateSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string()
-        .min(6, "Password must be at least 6 characters long")
-        .max(50, "Password must not exceed 50 characters")
-        .regex(
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
-        ).nullable().optional(),
+  encrypted_password: z.string().min(1, "Encrypted password cannot be empty").nullable().optional(),
   id: z.uuid().optional(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),
@@ -1409,19 +1391,16 @@ export const sdh_node_associationsUpdateSchema = z.object({
 
 export const sdh_systemsRowSchema = z.object({
   gne: z.string().nullable(),
-  make: z.string().nullable(),
   system_id: z.uuid(),
 });
 
 export const sdh_systemsInsertSchema = z.object({
   gne: z.string().nullable().optional(),
-  make: z.string().nullable().optional(),
   system_id: z.uuid(),
 });
 
 export const sdh_systemsUpdateSchema = z.object({
   gne: z.string().nullable().optional(),
-  make: z.string().nullable().optional(),
   system_id: z.uuid().optional(),
 });
 
@@ -1527,6 +1506,7 @@ export const systemsRowSchema = z.object({
   id: z.uuid(),
   ip_address: z.string().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
+  make: z.string().nullable(),
   node_id: z.uuid(),
   remark: z.string().nullable(),
   s_no: z.string().nullable(),
@@ -1542,6 +1522,7 @@ export const systemsInsertSchema = z.object({
   id: z.uuid().optional(),
   ip_address: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
+  make: z.string().nullable().optional(),
   node_id: z.uuid(),
   remark: z.string().nullable().optional(),
   s_no: z.string().nullable().optional(),
@@ -1557,6 +1538,7 @@ export const systemsUpdateSchema = z.object({
   id: z.uuid().optional(),
   ip_address: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
+  make: z.string().nullable().optional(),
   node_id: z.uuid().optional(),
   remark: z.string().nullable().optional(),
   s_no: z.string().nullable().optional(),
@@ -1570,7 +1552,7 @@ export const user_profilesRowSchema = z.object({
   address: z.any().nullable(),
   avatar_url: z.url().nullable(),
   created_at: z.iso.datetime().nullable(),
-  date_of_birth: z.iso.datetime().nullable(),
+  date_of_birth: z.iso.date().nullable(),
   designation: z.string().nullable(),
   first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   id: z.uuid(),
@@ -1586,7 +1568,7 @@ export const user_profilesInsertSchema = z.object({
   address: z.any().nullable().optional(),
   avatar_url: z.url().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  date_of_birth: z.iso.datetime().nullable().optional(),
+  date_of_birth: z.iso.date().nullable().optional(),
   designation: z.string().nullable().optional(),
   first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   id: z.uuid(),
@@ -1602,7 +1584,7 @@ export const user_profilesUpdateSchema = z.object({
   address: z.any().nullable().optional(),
   avatar_url: z.url().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  date_of_birth: z.iso.datetime().nullable().optional(),
+  date_of_birth: z.iso.date().nullable().optional(),
   designation: z.string().nullable().optional(),
   first_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   id: z.uuid().optional(),
@@ -1957,6 +1939,7 @@ export const v_systems_completeRowSchema = z.object({
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
+  make: z.string().nullable(),
   node_id: z.uuid().nullable(),
   node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1965,7 +1948,6 @@ export const v_systems_completeRowSchema = z.object({
   ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   s_no: z.string().nullable(),
   sdh_gne: z.string().nullable(),
-  sdh_make: z.string().nullable(),
   status: z.boolean().nullable(),
   system_category: z.string().nullable(),
   system_maintenance_terminal_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1985,7 +1967,7 @@ export const v_user_profiles_extendedRowSchema = z.object({
   avatar_url: z.url().nullable(),
   computed_status: z.string().min(1, "Status cannot be empty").nullable(),
   created_at: z.iso.datetime().nullable(),
-  date_of_birth: z.iso.datetime().nullable(),
+  date_of_birth: z.iso.date().nullable(),
   designation: z.string().nullable(),
   email: z.email().nullable(),
   email_confirmed_at: z.email().nullable(),

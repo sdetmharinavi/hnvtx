@@ -278,6 +278,15 @@ function generateFlattenedTypes(
     }
   }
 
+  // Generate lists of table and view names for runtime checks
+  output += '// ============= HELPERS =============\n\n';
+
+  const tableNamesArray = tables.map(t => `"${t.name}"`).join(',\n  ');
+  output += `export const tableNames = [\n  ${tableNamesArray}\n] as const;\n\n`;
+
+  const viewNamesArray = views.map(v => `"${v.name}"`).join(',\n  ');
+  output += `export const viewNames = [\n  ${viewNamesArray}\n] as const;\n\n`;
+
   return output;
 }
 

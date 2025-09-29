@@ -1,202 +1,132 @@
+// path: app/onboarding/onboarding-form-enhanced.tsx
+
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
-import { Json } from "@/types/supabase-types";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
 import { useRouter } from "next/navigation";
-import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
-import { useAdminGetAllUsersExtended } from "@/hooks/useAdminUsers";
+import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { User_profilesUpdateSchema, user_profilesUpdateSchema } from "@/schemas/zod-schemas";
 
+import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+import { z } from "zod";
+import { Input, Label } from "@/components/common/ui";
 
-// Helper function to safely get first profile
-const getFirstProfile = (profiles: V_user_profiles_extendedRowSchema[]) => {
-  return profiles && profiles.length > 0 ? profiles[0] : null;
+// NEW: Define specific shapes for nested JSONB fields for robust form validation.
+const addressSchema = z
+  .object({
+    street: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    zip_code: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+  })
+  .nullable();
+
+const preferencesSchema = z
+  .object({
+    language: z.string().optional().nullable(),
+    theme: z.string().optional().nullable(),
+  })
+  .nullable();
+
+// NEW: Extend the base schema to include our specific nested shapes.
+const onboardingFormSchema = user_profilesUpdateSchema
+  .pick({
+    first_name: true,
+    last_name: true,
+    avatar_url: true,
+    date_of_birth: true,
+    designation: true,
+    phone_number: true,
+  })
+  .extend({
+    address: addressSchema,
+    preferences: preferencesSchema,
+  });
+
+type OnboardingFormData = z.infer<typeof onboardingFormSchema>;
+
+// Helper to safely cast unknown to a record or return an empty object
+const toObject = (data: unknown): Record<string, unknown> => {
+  if (data && typeof data === "object") {
+    return data as Record<string, unknown>;
+  }
+  return {};
 };
-
-// Helper function to safely cast to Address
-const toAddress = (data: unknown): Json | null => {
-  if (!data || typeof data !== "object") return null;
-  return data as Json;
-};
-
-// Helper function to create initial form data
-const createInitialFormData = (): User_profilesUpdateSchema => ({
-  first_name: "",
-  last_name: "",
-  avatar_url: null,
-  date_of_birth: null,
-  designation: null,
-  phone_number: null,
-  address: null,
-  preferences: null,
-});
 
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
-  // const updateProfile = useUpdateProfile();
-  const [isDirty, setIsDirty] = useState(false);
-  const [formData, setFormData] = useState<User_profilesUpdateSchema>(createInitialFormData);
-  const [localError, setLocalError] = useState<Error | null>(null);
-  const [isUpdateSuccess, setIsUpdateSuccess] = useState(false);
-
   const router = useRouter();
-  
-  
-  const { data: profiles, isLoading: profileLoading, error: profileError } = useAdminGetAllUsersExtended({
-    search_query: "",
-    filter_role: "",
-    filter_status: "",
-    page_offset: 0,
-    page_limit: 10,
+
+  const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetMyUserDetails();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting, isDirty, dirtyFields },
+    watch,
+  } = useForm<OnboardingFormData>({
+    resolver: zodResolver(onboardingFormSchema),
   });
 
-  const { mutate, isPending: updatePending } = useTableUpdate(supabase, "user_profiles", {
-    onSuccess: () => {
-      setIsDirty(false);
-      setIsUpdateSuccess(true);
-      setLocalError(null); // Clear any previous errors on success
+  const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(supabase, "user_profiles", {
+    onSuccess: (data) => {
+      toast.success("Profile updated successfully!");
+      refetch();
+      // After a successful save, reset the form state with the new data
+      // to make sure 'isDirty' becomes false.
+      reset(data[0] as OnboardingFormData);
     },
     onError: (error) => {
-      console.log(error);
-      setLocalError(error); // Store the error in local state
-      setIsUpdateSuccess(false);
+      toast.error(`Update failed: ${error.message}`);
     },
   });
 
-  const isLoading = profileLoading || updatePending;
+  const isLoading = isProfileLoading || isUpdatePending;
+  const avatarUrl = watch("avatar_url");
 
-  // Get the first profile safely
-  const profile = getFirstProfile(profiles as V_user_profiles_extendedRowSchema[]);
-
-  // Initialize form data when profile loads
   useEffect(() => {
     if (profile) {
-      // console.log("profile", profile);
-      const newFormData: User_profilesUpdateSchema = {
+      reset({
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",
         avatar_url: profile.avatar_url,
         date_of_birth: profile.date_of_birth,
         designation: profile.designation,
         phone_number: profile.phone_number,
-        address: toAddress(profile.address),
-        preferences: (profile.preferences as Json) || null,
-      };
-      setFormData(newFormData);
-      setIsDirty(false);
-    }
-  }, [profile]);
-
-  // Memoized reset function
-  const resetForm = useCallback(() => {
-    if (profile) {
-      setFormData({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
-        avatar_url: profile.avatar_url,
-        date_of_birth: profile.date_of_birth,
-        designation: profile.designation,
-        phone_number: profile.phone_number,
-        address: toAddress(profile.address),
-        preferences: (profile.preferences as Json) || null,
+        address: toObject(profile.address),
+        preferences: toObject(profile.preferences),
       });
-      setIsDirty(false);
     }
-  }, [profile]);
+  }, [profile, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = (data: OnboardingFormData) => {
+    if (!isDirty || !user?.id) {
+      toast.info("No changes to save.");
+      return;
+    }
 
-    if (!isDirty) return;
+    const updates: Partial<User_profilesUpdateSchema> = {};
+    // This logic now correctly handles nested dirty fields
+    for (const key in dirtyFields) {
+      const fieldName = key as keyof OnboardingFormData;
+      updates[fieldName] = data[fieldName];
+    }
 
-    try {
-      const updates: Partial<User_profilesUpdateSchema> = {};
-
-      if (profile) {
-        // Compare each field and only update if changed
-        if (formData.first_name !== (profile.first_name || "")) {
-          updates.first_name = formData.first_name;
-        }
-        if (formData.last_name !== (profile.last_name || "")) {
-          updates.last_name = formData.last_name;
-        }
-        if (formData.avatar_url !== (profile.avatar_url)) {
-          updates.avatar_url = formData.avatar_url;
-        }
-        if (formData.date_of_birth !== (profile.date_of_birth)) {
-          updates.date_of_birth = formData.date_of_birth;
-        }
-        if (formData.designation !== (profile.designation)) {
-          updates.designation = formData.designation;
-        }
-        if (formData.phone_number !== (profile.phone_number)) {
-          updates.phone_number = formData.phone_number;
-        }
-
-        // Compare address objects
-        const currentAddress = toAddress(profile.address) || {};
-        const newAddress = formData.address || {};
-        if (JSON.stringify(currentAddress) !== JSON.stringify(newAddress)) {
-          updates.address = newAddress;
-        }
-
-        // Compare preferences objects
-        const currentPreferences = (profile.preferences as Json) || {};
-        const newPreferences = formData.preferences || {};
-        if (JSON.stringify(currentPreferences) !== JSON.stringify(newPreferences)) {
-          updates.preferences = newPreferences;
-        }
-      } else {
-        // If no profile exists, create a new one with all form data
-        Object.assign(updates, {
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          avatar_url: formData.avatar_url,
-          date_of_birth: formData.date_of_birth,
-          designation: formData.designation,
-          phone_number: formData.phone_number,
-          address: formData.address,
-          preferences: formData.preferences,
-        });
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await mutate({
-          id: profile?.id || "",
-          data: updates,
-        });
-      }
-    } catch (error) {
-      console.error("Update failed:", error);
+    if (Object.keys(updates).length > 0) {
+      updateProfile({ id: user.id, data: updates });
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    setIsDirty(true);
-  };
-
-  const handleAddressChange = (field: keyof Json, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      address: {
-        ...(prev.address || {}),
-        [field]: value,
-      },
-    }));
-    setIsDirty(true);
-  };
-
-  // Show loading state
-  if (profileLoading) {
+  if (isProfileLoading) {
     return (
       <div className='animate-pulse space-y-4'>
         <div className='h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4'></div>
@@ -209,7 +139,6 @@ export default function OnboardingFormEnhanced() {
     );
   }
 
-  // Show error state
   if (profileError) {
     return (
       <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'>
@@ -223,264 +152,102 @@ export default function OnboardingFormEnhanced() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className='space-y-6 w-full max-w-3xl mx-auto p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm'>
-      {/* Status Messages */}
-      {localError && (
-        <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 flex justify-between items-start'>
-          <div>
-            <h3 className='font-medium'>Update Failed</h3>
-            <p className='text-sm mt-1'>{localError.message}</p>
-          </div>
-          <button type='button' onClick={() => setLocalError(null)} className='text-red-400 hover:text-red-600 dark:hover:text-red-200' aria-label='Dismiss error'>
-            ×
-          </button>
+    <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-3xl mx-auto'>
+      {/* Avatar and URL */}
+      <div className='flex items-center gap-4'>
+        <Image src={avatarUrl || "/default-avatar.png"} alt='Profile' width={64} height={64} className='w-16 h-16 rounded-full object-cover bg-gray-200' />
+        <div className='flex-1'>
+          <Label htmlFor='avatar_url'>Avatar URL</Label>
+          <Input id='avatar_url' {...register("avatar_url")} placeholder='https://example.com/avatar.jpg' className='mt-1' />
+          {errors.avatar_url && <p className='text-red-500 text-xs mt-1'>{errors.avatar_url.message}</p>}
         </div>
-      )}
-      {isUpdateSuccess && (
-        <div className='p-4 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex justify-between items-center'>
-          <span className='font-medium'>Profile updated successfully!</span>
-          <button type='button' onClick={() => setIsUpdateSuccess(false)} className='text-green-400 hover:text-green-600 dark:hover:text-green-200' aria-label='Dismiss success message'>
-            ×
-          </button>
-        </div>
-      )}
+      </div>
 
       <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
-        {/* Email - Read Only */}
         <div>
-          <label htmlFor='email' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-            Email
-          </label>
-          <input
-            id='email'
-            type='email'
-            value={user?.email || ""}
-            disabled
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 sm:text-sm'
-          />
+          <Label htmlFor='email'>Email</Label>
+          <Input id='email' type='email' value={user?.email || ""} disabled className='mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500' />
         </div>
-
-        {/* Phone Number */}
         <div>
-          <label htmlFor='phone_number' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-            Phone Number
-          </label>
-          <input
-            id='phone_number'
-            name='phone_number'
-            type='tel'
-            value={formData.phone_number ?? ""}
-            onChange={handleChange}
-            placeholder='+1 (555) 123-4567'
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-          />
+          <Label htmlFor='phone_number'>Phone Number</Label>
+          <Input id='phone_number' type='tel' {...register("phone_number")} placeholder='+1 (555) 123-4567' className='mt-1' />
+          {errors.phone_number && <p className='text-red-500 text-xs mt-1'>{errors.phone_number.message}</p>}
         </div>
-
-        {/* First Name */}
         <div>
-          <label htmlFor='first_name' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
+          <Label htmlFor='first_name'>
             First Name <span className='text-red-500'>*</span>
-          </label>
-          <input
-            id='first_name'
-            name='first_name'
-            type='text'
-            required
-            value={formData.first_name}
-            onChange={handleChange}
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-          />
+          </Label>
+          <Input id='first_name' type='text' {...register("first_name")} className='mt-1' />
+          {errors.first_name && <p className='text-red-500 text-xs mt-1'>{errors.first_name.message}</p>}
         </div>
-
-        {/* Last Name */}
         <div>
-          <label htmlFor='last_name' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
+          <Label htmlFor='last_name'>
             Last Name <span className='text-red-500'>*</span>
-          </label>
-          <input
-            id='last_name'
-            name='last_name'
-            type='text'
-            required
-            value={formData.last_name}
-            onChange={handleChange}
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-          />
+          </Label>
+          <Input id='last_name' type='text' {...register("last_name")} className='mt-1' />
+          {errors.last_name && <p className='text-red-500 text-xs mt-1'>{errors.last_name.message}</p>}
         </div>
+      </div>
 
-        {/* Designation */}
-        <div>
-          <label htmlFor='designation' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-            Job Title / Designation
-          </label>
-          <input
-            id='designation'
-            name='designation'
-            type='text'
-            value={formData.designation ?? ""}
-            onChange={handleChange}
-            placeholder='e.g. Software Engineer'
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-          />
-        </div>
-
-        {/* Date of Birth */}
-        <div>
-          <label htmlFor='date_of_birth' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-            Date of Birth
-          </label>
-          <input
-            id='date_of_birth'
-            name='date_of_birth'
-            type='date'
-            value={formData.date_of_birth ?? ""}
-            onChange={handleChange}
-            max={new Date().toISOString().split("T")[0]} // Prevent future dates
-            className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-          />
-        </div>
-
-        {/* Avatar URL */}
-        <div className='sm:col-span-2'>
-          <label htmlFor='avatar_url' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-            Avatar URL
-          </label>
-          <div className='mt-1 flex rounded-md shadow-sm'>
-            <input
-              id='avatar_url'
-              name='avatar_url'
-              type='url'
-              value={formData.avatar_url ?? ""}
-              onChange={handleChange}
-              placeholder='https://example.com/avatar.jpg'
-              className='flex-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-            />
-            {formData.avatar_url && (
-              <div className='inline-flex items-center px-3 border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-r-md'>
-                <Image
-                  src={formData.avatar_url}
-                  alt='Avatar preview'
-                  className='h-8 w-8 rounded-full object-cover'
-                  width={32}
-                  height={32}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              </div>
-            )}
+      {/* Address Section */}
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Address Information</h3>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div className='sm:col-span-2'>
+            <Label htmlFor='address_street'>Street Address</Label>
+            <Input id='address_street' {...register("address.street")} placeholder='123 Main St' className='mt-1' />
           </div>
-        </div>
-
-        {/* Address Section */}
-        <div className='sm:col-span-2 space-y-4 border border-gray-200 dark:border-gray-700 p-4 rounded-md bg-gray-50 dark:bg-gray-800'>
-          <h3 className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center'>
-            <svg className='w-4 h-4 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
-            </svg>
-            Address Information
-          </h3>
-
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-            <div className='sm:col-span-2'>
-              <label htmlFor='address_street' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Street Address
-              </label>
-              <input
-                id='address_street'
-                type='text'
-                value={formData.address?.street ?? ""}
-                onChange={(e) => handleAddressChange("street", e.target.value)}
-                placeholder='123 Main Street'
-                className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              />
-            </div>
-
-            <div>
-              <label htmlFor='address_city' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                City
-              </label>
-              <input
-                id='address_city'
-                type='text'
-                value={formData.address?.city ?? ""}
-                onChange={(e) => handleAddressChange("city", e.target.value)}
-                placeholder='New York'
-                className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              />
-            </div>
-
-            <div>
-              <label htmlFor='address_state' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                State/Province
-              </label>
-              <input
-                id='address_state'
-                type='text'
-                value={formData.address?.state ?? ""}
-                onChange={(e) => handleAddressChange("state", e.target.value)}
-                placeholder='NY'
-                className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              />
-            </div>
-
-            <div>
-              <label htmlFor='address_postal_code' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Postal Code
-              </label>
-              <input
-                id='address_postal_code'
-                type='text'
-                value={formData.address?.zip_code ?? ""}
-                onChange={(e) => handleAddressChange("zip_code", e.target.value)}
-                placeholder='10001'
-                className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              />
-            </div>
-
-            <div>
-              <label htmlFor='address_country' className='block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Country
-              </label>
-              <input
-                id='address_country'
-                type='text'
-                value={formData.address?.country ?? ""}
-                onChange={(e) => handleAddressChange("country", e.target.value)}
-                placeholder='United States'
-                className='mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              />
-            </div>
+          <div>
+            <Label htmlFor='address_city'>City</Label>
+            <Input id='address_city' {...register("address.city")} placeholder='New York' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_state'>State/Province</Label>
+            <Input id='address_state' {...register("address.state")} placeholder='NY' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_zip_code'>Zip Code</Label>
+            <Input id='address_zip_code' {...register("address.zip_code")} placeholder='12345' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_country'>Country</Label>
+            <Input id='address_country' {...register("address.country")} placeholder='USA' className='mt-1' />
           </div>
         </div>
       </div>
 
-      {/* Form Actions */}
-      <div className='flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700'>
-        <div className='text-sm text-gray-500 dark:text-gray-400'>{isDirty && <span className='text-orange-600 dark:text-orange-400'>● Unsaved changes</span>}</div>
+      {/* Preferences Section */}
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div>
+            <Label htmlFor='preferences_language'>Language</Label>
+            <Input id='preferences_language' {...register("preferences.language")} placeholder='English' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='preferences_theme'>Theme</Label>
+            <Input id='preferences_theme' {...register("preferences.theme")} placeholder='Light' className='mt-1' />
+          </div>
+        </div>
+      </div>
+
+      <div className='flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-700'>
         <div className='flex space-x-3'>
-          <button onClick={() => router.back()} className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
-            Close
-          </button>
           <button
             type='button'
-            onClick={resetForm}
-            disabled={!isDirty || updatePending}
-            className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'>
+            onClick={() => reset()}
+            disabled={!isDirty || isLoading}
+            className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50'>
             Reset
           </button>
-          <button
-            type='submit'
-            disabled={!isDirty || updatePending}
-            className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center'>
-            {updatePending && (
+          <button type='submit' disabled={!isDirty || isLoading} className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center'>
+            {isLoading && (
               <svg className='animate-spin -ml-1 mr-2 h-4 w-4 text-white' fill='none' viewBox='0 0 24 24'>
                 <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
                 <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' />
               </svg>
             )}
-            {updatePending ? "Updating..." : "Update Profile"}
+            {isLoading ? "Updating..." : "Update Profile"}
           </button>
         </div>
       </div>

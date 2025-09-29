@@ -1,10 +1,7 @@
 -- Path: data/migrations/03_network_systems/06_functions.sql
 -- Description: Contains functions for the Network Systems module.
 
--- path: data/migrations/03_network_systems/06_functions.sql
--- Description: Contains functions for the Network Systems module.
-
--- CORRECTED: The function logic is now restructured to handle all system subtypes correctly.
+-- The function logic is now restructured to handle all system subtypes correctly.
 CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_system_name TEXT,
     p_system_type_id UUID,
@@ -33,13 +30,13 @@ BEGIN
     -- Get the name of the system type to determine which subtype table to use
     SELECT name INTO v_system_type_name FROM public.lookup_types WHERE id = p_system_type_id;
 
-    -- Step 1: Upsert the main system record
+    -- Step 1: Upsert the main system record (CORRECTED: Added 'make' column)
     INSERT INTO public.systems (
         id, system_name, system_type_id, node_id, ip_address,
-        maintenance_terminal_id, commissioned_on, s_no, remark, status
+        maintenance_terminal_id, commissioned_on, s_no, remark, status, make
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_node_id, p_ip_address,
-        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status
+        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
@@ -51,6 +48,7 @@ BEGIN
         s_no = EXCLUDED.s_no,
         remark = EXCLUDED.remark,
         status = EXCLUDED.status,
+        make = EXCLUDED.make, -- CORRECTED: Added 'make' to the update set
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
@@ -68,11 +66,11 @@ BEGIN
         ON CONFLICT (system_id) DO UPDATE SET ring_id = EXCLUDED.ring_id;
     END IF;
 
-    -- Handle SDH-Specific Systems
+    -- Handle SDH-Specific Systems (CORRECTED: Removed 'make' from this part)
     IF v_system_type_name IN ('Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
-        INSERT INTO public.sdh_systems (system_id, gne, make)
-        VALUES (v_system_id, p_gne, p_make)
-        ON CONFLICT (system_id) DO UPDATE SET gne = EXCLUDED.gne, make = EXCLUDED.make;
+        INSERT INTO public.sdh_systems (system_id, gne)
+        VALUES (v_system_id, p_gne)
+        ON CONFLICT (system_id) DO UPDATE SET gne = EXCLUDED.gne;
     END IF;
     
     -- Handle VMUX-Specific Systems

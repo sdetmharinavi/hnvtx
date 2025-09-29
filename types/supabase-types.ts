@@ -2205,17 +2205,14 @@ export type Database = {
       sdh_systems: {
         Row: {
           gne: string | null
-          make: string | null
           system_id: string
         }
         Insert: {
           gne?: string | null
-          make?: string | null
           system_id: string
         }
         Update: {
           gne?: string | null
-          make?: string | null
           system_id?: string
         }
         Relationships: [
@@ -2438,6 +2435,7 @@ export type Database = {
           id: string
           ip_address: unknown | null
           maintenance_terminal_id: string | null
+          make: string | null
           node_id: string
           remark: string | null
           s_no: string | null
@@ -2452,6 +2450,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           maintenance_terminal_id?: string | null
+          make?: string | null
           node_id: string
           remark?: string | null
           s_no?: string | null
@@ -2466,6 +2465,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           maintenance_terminal_id?: string | null
+          make?: string | null
           node_id?: string
           remark?: string | null
           s_no?: string | null
@@ -3546,6 +3546,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           maintenance_terminal_id: string | null
+          make: string | null
           node_id: string | null
           node_name: string | null
           node_type_name: string | null
@@ -3554,7 +3555,6 @@ export type Database = {
           ring_logical_area_name: string | null
           s_no: string | null
           sdh_gne: string | null
-          sdh_make: string | null
           status: boolean | null
           system_category: string | null
           system_maintenance_terminal_name: string | null
@@ -3750,32 +3750,7 @@ export type Database = {
           page_offset?: number
           search_query?: string
         }
-        Returns: {
-          account_age_days: number
-          active_count: number
-          address: Json
-          avatar_url: string
-          computed_status: string
-          created_at: string
-          date_of_birth: string
-          designation: string
-          email: string
-          first_name: string
-          full_name: string
-          id: string
-          inactive_count: number
-          is_email_verified: boolean
-          is_super_admin: boolean
-          last_activity_period: string
-          last_name: string
-          last_sign_in_at: string
-          phone_number: string
-          preferences: Json
-          role: string
-          status: string
-          total_count: number
-          updated_at: string
-        }[]
+        Returns: Json
       }
       admin_get_user_by_id: {
         Args: { user_id: string }
@@ -4112,6 +4087,7 @@ export type Database = {
           id: string
           ip_address: unknown | null
           maintenance_terminal_id: string | null
+          make: string | null
           node_id: string
           remark: string | null
           s_no: string | null
