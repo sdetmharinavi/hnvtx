@@ -38,14 +38,15 @@ export function useAvailableFibers(pathId: string | null) {
  * Hook to trace a fiber's complete path using the recursive RPC function.
  * The new RPC returns a pre-ordered, structured list, so no client-side tree building is needed.
  */
-export function useFiberTrace(startSegmentId: string | null, fiberNo: number | null) {
+export function useFiberTrace(startCableId: string | null, fiberNo: number | null) {
   return useQuery({
-    queryKey: ['fiber-trace', startSegmentId, fiberNo],
-    queryFn: async (): Promise<FiberTraceSegment[]> => { // FIX: Return type is now non-nullable
-      if (!startSegmentId || fiberNo === null) return []; // FIX: Return empty array instead of null
+    queryKey: ['fiber-trace', startCableId, fiberNo],
+    queryFn: async (): Promise<FiberTraceSegment[]> => {
+      if (!startCableId || fiberNo === null) return [];
 
+      // CORRECTED: Call the RPC with the correct parameter names
       const { data, error } = await supabase.rpc('trace_fiber_path', {
-        p_start_segment_id: startSegmentId,
+        p_start_cable_id: startCableId,
         p_start_fiber_no: fiberNo
       });
 
@@ -55,7 +56,7 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
       }
 
       if (!data || data.length === 0) {
-        return []; // FIX: Return empty array for valid but empty traces
+        return [];
       }
 
       const parsed = z.array(fiberTraceSegmentSchema).safeParse(data);
@@ -68,6 +69,6 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
 
       return parsed.data;
     },
-    enabled: !!startSegmentId && fiberNo !== null,
+    enabled: !!startCableId && fiberNo !== null,
   });
 }

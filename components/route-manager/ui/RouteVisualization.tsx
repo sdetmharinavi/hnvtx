@@ -15,6 +15,7 @@ interface RouteVisualizationProps {
 export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, onDeleteJc }: RouteVisualizationProps) {
   const { route, equipment, segments } = routeDetails;
   
+  // This is the crucial logic block
   const allPoints = [
     { 
       id: route.sn_id, 
@@ -24,7 +25,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       raw: {} 
     },
     ...equipment.map(e => ({ 
-        id: e.node_id, // <-- CORRECTED: Use node_id for matching against segments
+        id: e.node_id, // <-- CORRECTED: Use the node_id for matching against segments
         name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
         type: 'equipment' as const, 
         position: e.attributes?.position_on_route || 0, 
