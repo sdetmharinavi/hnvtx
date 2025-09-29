@@ -142,20 +142,3 @@ export function useAutoSplice() {
         onError: (error) => toast.error(`Auto-splice failed: ${error.message}`),
     });
 }
-
-/** Hook to delete a Junction Closure. */
-export function useDeleteJc() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (jcId: string) => {
-            const { error } = await supabase.from('junction_closures').delete().eq('id', jcId);
-            if (error) throw error;
-        },
-        onSuccess: (_, jcId) => {
-            toast.success('Junction Closure deleted successfully.');
-            queryClient.invalidateQueries({ queryKey: ['route-details'] });
-            queryClient.invalidateQueries({ queryKey: ['jc-splicing-details', jcId] });
-        },
-        onError: (error) => toast.error(`Failed to delete JC: ${error.message}`),
-    });
-}
