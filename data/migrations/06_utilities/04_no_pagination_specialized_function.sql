@@ -23,3 +23,23 @@ BEGIN
     GROUP BY conn.fiber_no_sn HAVING COUNT(conn.ofc_id) = path_cable_count;
 END; $$;
 GRANT EXECUTE ON FUNCTION public.get_continuous_available_fibers(UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.find_cable_between_nodes(
+    p_node1_id UUID,
+    p_node2_id UUID
+)
+RETURNS TABLE (id UUID, route_name TEXT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT oc.id, oc.route_name
+  FROM public.ofc_cables oc
+  WHERE
+    (oc.sn_id = p_node1_id AND oc.en_id = p_node2_id) OR
+    (oc.sn_id = p_node2_id AND oc.en_id = p_node1_id)
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.find_cable_between_nodes(UUID, UUID) TO authenticated;

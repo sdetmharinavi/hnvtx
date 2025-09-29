@@ -1,28 +1,27 @@
 // path: components/systems/SystemRingPath.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useTableQuery } from "@/hooks/database";
-import { Button } from "@/components/common/ui/Button";
-import { FiPlus } from "react-icons/fi";
-import { Row } from "@/hooks/database";
+import { useTableQuery, useTableInsert, Row } from "@/hooks/database";
+import { Button, PageSpinner } from "@/components/common/ui";
+import { FiPlus, FiZap } from "react-icons/fi";
 import { useSystemPath } from "@/hooks/database/path-queries";
 import { useDeletePathSegment, useReorderPathSegments } from "@/hooks/database/path-mutations";
 import { DragEndEvent } from "@dnd-kit/core";
 import { CreatePathModal } from "./CreatePathModal";
-import { AddSegmentModal } from "./AddSegmentModal";
 import { PathSegmentList } from "./PathSegmentList";
 import { FiberProvisioning } from "./FiberProvisioning";
-import { LoadingSpinner } from "../common/ui/LoadingSpinner";
+import ClientRingMap, { MapNode } from "@/components/map/ClientRingMap";
+import { toast } from "sonner";
+import { SystemsRowSchema, NodesRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
 
 interface Props {
-  system: Row<'systems'> & { node: Row<'nodes'> | null };
+  system: SystemsRowSchema & { node: NodesRowSchema | null };
 }
 
 export function SystemRingPath({ system }: Props) {
   const supabase = createClient();
-  const [isAddSegmentModalOpen, setIsAddSegmentModalOpen] = useState(false);
   const [isCreatePathModalOpen, setIsCreatePathModalOpen] = useState(false);
 
   // --- Data Fetching ---
@@ -32,21 +31,103 @@ export function SystemRingPath({ system }: Props) {
   });
   const path = logicalPathData?.[0];
 
-  const { data: pathSegments, isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
+  const { data: pathSegments = [], isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
 
+  // Fetch all nodes in the same maintenance area as the system (for clicking/selection)
+  const { data: nodesInArea = [], isLoading: isLoadingNodes } = useTableQuery(supabase, 'v_nodes_complete', {
+    filters: { maintenance_terminal_id: system.maintenance_terminal_id! },
+    enabled: !!system.maintenance_terminal_id,
+  });
+  
+  // --- BUG FIX: Fetch all nodes that are part of the current path to ensure visibility ---
+  const pathNodeIdsToFetch = useMemo(() => {
+      if (!pathSegments || pathSegments.length === 0) return [];
+      const ids = new Set(pathSegments.flatMap(s => [s.start_node_id, s.end_node_id]));
+      return Array.from(ids);
+  }, [pathSegments]);
+
+  const { data: pathNodesData, isLoading: isLoadingPathNodes } = useTableQuery(supabase, 'v_nodes_complete', {
+      filters: { id: { operator: 'in', value: pathNodeIdsToFetch } },
+      enabled: pathNodeIdsToFetch.length > 0,
+  });
+
+  // --- Mutations ---
   const deleteSegmentMutation = useDeletePathSegment();
   const reorderSegmentsMutation = useReorderPathSegments();
+  const { mutate: addSegment } = useTableInsert(supabase, 'logical_path_segments', {
+    onSuccess: () => {
+      toast.success("Segment added to path!");
+      refetchSegments();
+    },
+    onError: (err) => toast.error(`Failed to add segment: ${err.message}`),
+  });
+
+  // --- State and Memos for Path Building ---
+  const pathNodeIds = useMemo(() => {
+    if (!pathSegments || pathSegments.length === 0) return system.node_id ? [system.node_id] : [];
+    const ids = [pathSegments[0].start_node_id, ...pathSegments.map(s => s.end_node_id)];
+    return [...new Set(ids)];
+  }, [pathSegments, system.node_id]);
+
+  const lastNodeInPathId = useMemo(() => {
+    if (!pathSegments || pathSegments.length === 0) return system.node_id;
+    return pathSegments[pathSegments.length - 1].end_node_id;
+  }, [pathSegments, system.node_id]);
+
+  // --- BUG FIX: Combine local area nodes and specific path nodes for the map ---
+  const mapNodes = useMemo((): MapNode[] => {
+    const allNodes = new Map<string, V_nodes_completeRowSchema>();
+    (nodesInArea || []).forEach(node => allNodes.set(node.id!, node));
+    (pathNodesData || []).forEach(node => allNodes.set(node.id!, node));
+
+    return Array.from(allNodes.values())
+      .filter(node => node.latitude != null && node.longitude != null)
+      .map(node => ({
+        id: node.id!,
+        name: node.name!,
+        lat: node.latitude!,
+        lng: node.longitude!,
+        type: node.node_type_name,
+        status: node.status,
+        remark: node.remark,
+        ip: null,
+      }));
+  }, [nodesInArea, pathNodesData]);
+
+  // --- Event Handlers ---
+  const handleNodeClick = useCallback(async (clickedNodeId: string) => {
+    if (!path || !lastNodeInPathId || clickedNodeId === lastNodeInPathId) return;
+    try {
+      const { data: cable, error } = await supabase.rpc('find_cable_between_nodes', {
+        p_node1_id: lastNodeInPathId,
+        p_node2_id: clickedNodeId,
+      });
+      if (error) throw new Error(`Could not find cable: ${error.message}`);
+      if (!cable || (Array.isArray(cable) && cable.length === 0)) {
+        toast.warning("No direct cable route found between the selected nodes.");
+        return;
+      }
+      const foundCable = Array.isArray(cable) ? cable[0] : cable;
+      const newSegment = {
+        logical_path_id: path.id,
+        ofc_cable_id: (foundCable as { id: string }).id,
+        path_order: (pathSegments?.length || 0) + 1,
+      };
+      addSegment(newSegment);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      toast.error(errorMessage);
+    }
+  }, [path, lastNodeInPathId, pathSegments, addSegment, supabase]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id && pathSegments && path) {
       const oldIndex = pathSegments.findIndex(s => s.id === active.id);
       const newIndex = pathSegments.findIndex(s => s.id === over.id);
-
       const reorderedSegments = Array.from(pathSegments);
       const [movedItem] = reorderedSegments.splice(oldIndex, 1);
       reorderedSegments.splice(newIndex, 0, movedItem);
-
       const newSegmentIds = reorderedSegments.map(s => s.id).filter((id): id is string => !!id);
       reorderSegmentsMutation.mutate({ pathId: path.id, segmentIds: newSegmentIds });
     }
@@ -58,37 +139,51 @@ export function SystemRingPath({ system }: Props) {
     }
   };
 
-  if (isLoadingPath) {
-    return <div className="p-4 text-center"><LoadingSpinner text="Loading path information..." /></div>;
+  if (isLoadingPath || isLoadingNodes || isLoadingPathNodes) {
+    return <PageSpinner text="Loading path builder..." />;
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-      <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-        <h3 className="text-xl font-semibold">Ring Path Builder</h3>
-        {!path ? (
-            <Button onClick={() => setIsCreatePathModalOpen(true)}>Initialize Path</Button>
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
+        <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+          <h3 className="text-xl font-semibold">Ring Path Builder</h3>
+          {!path && <Button onClick={() => setIsCreatePathModalOpen(true)}>Initialize Path</Button>}
+        </div>
+        {path ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+            <div className="h-[60vh] min-h-[400px] rounded-lg overflow-hidden border dark:border-gray-700">
+              <ClientRingMap
+                nodes={mapNodes}
+                pathSegments={pathSegments}
+                highlightedNodeIds={pathNodeIds.filter(id => id !== null) as string[]}
+                onNodeClick={handleNodeClick}
+              />
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto pr-2">
+              {isLoadingSegments ? (
+                <PageSpinner text="Loading path segments..." />
+              ) : (!pathSegments || pathSegments.length === 0) ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-500">Click a node on the map to start building the path.</p>
+                  <p className="text-sm text-gray-400 mt-2">Path starts at: <span className="font-semibold">{system.node?.name}</span></p>
+                </div>
+              ) : (
+                <PathSegmentList
+                  segments={pathSegments}
+                  onDragEnd={handleDragEnd}
+                  onDelete={handleDeleteSegment}
+                />
+              )}
+            </div>
+          </div>
         ) : (
-            <Button onClick={() => setIsAddSegmentModalOpen(true)} leftIcon={<FiPlus />}>Add Segment</Button>
+          <div className="p-8 text-center text-gray-500">
+            Click "Initialize Path" to begin building the ring topology.
+          </div>
         )}
       </div>
 
-      <div className="p-4">
-        {isLoadingSegments ? (
-          <p>Loading path segments...</p>
-        ) : (!pathSegments || pathSegments.length === 0) ? (
-            <p className="text-gray-500 text-center py-8">
-                {path ? "No segments defined. Click 'Add Segment' to begin building the physical path." : "Initialize a logical path to start."}
-            </p>
-        ) : (
-          <PathSegmentList
-            segments={pathSegments}
-            onDragEnd={handleDragEnd}
-            onDelete={handleDeleteSegment}
-          />
-        )}
-      </div>
-      
       {path && pathSegments && pathSegments.length > 0 && (
         <FiberProvisioning
           pathName={path.path_name ?? ""}
@@ -96,21 +191,9 @@ export function SystemRingPath({ system }: Props) {
           physicalPathId={path.id}
         />
       )}
-      
-      {isAddSegmentModalOpen && path && system.node && (
-        <AddSegmentModal
-          isOpen={isAddSegmentModalOpen}
-          onClose={() => setIsAddSegmentModalOpen(false)}
-          logicalPathId={path.id}
-          currentSegments={pathSegments || []}
-          onSegmentAdded={() => {
-            refetchSegments();
-            setIsAddSegmentModalOpen(false);
-          }}
-        />
-      )}
+
       {isCreatePathModalOpen && (
-          <CreatePathModal 
+          <CreatePathModal
             isOpen={isCreatePathModalOpen}
             onClose={() => setIsCreatePathModalOpen(false)}
             system={system}
