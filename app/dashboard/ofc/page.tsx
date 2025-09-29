@@ -206,13 +206,14 @@ const OfcPage = () => {
   const closeModal = useCallback(() => {
     editModal.close();
   }, [editModal]);
-  const handleSave = (data: TablesInsert<'ofc_cables'>) => {
+
+  const handleSave = useCallback((data: TablesInsert<'ofc_cables'>) => {
     if (editModal.record) {
       updateOfcCable({ id: editModal.record.id!, data });
     } else {
       insertOfcCable(data);
     }
-  };
+  }, [editModal.record, insertOfcCable, updateOfcCable]); 
 
   // --- MEMOIZED VALUES ---
   const columns = OfcTableColumns(ofcData);
