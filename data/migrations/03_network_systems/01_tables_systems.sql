@@ -11,11 +11,13 @@ CREATE TABLE IF NOT EXISTS public.systems (
   maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
   commissioned_on DATE,
   s_no TEXT,
+  make TEXT, -- ADDED: 'make' is a common property, moved to the main table.
   remark TEXT,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
 
 -- 2. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
@@ -75,8 +77,7 @@ CREATE TABLE IF NOT EXISTS public.sfp_based_connections (
 -- 6. Dedicated Table for SDH System Specific Details
 CREATE TABLE IF NOT EXISTS public.sdh_systems (
   system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
-  gne TEXT,
-  make TEXT
+  gne TEXT
 );
 
 -- 7. Dedicated Table for SDH Connection Specific Details
@@ -103,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.sdh_node_associations (
 -- 9. Dedicated Table for VMUX System Specific Details
 CREATE TABLE IF NOT EXISTS public.vmux_systems (
   system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
-  vm_id TEXT
+ vm_id TEXT
 );
 
 -- 10. Dedicated Table for VMUX Connection Specific Details
