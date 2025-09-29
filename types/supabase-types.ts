@@ -3181,6 +3181,8 @@ export type Database = {
           system_name: string | null
           total_count: number | null
           updated_at: string | null
+          updated_fiber_no_en: number | null
+          updated_fiber_no_sn: number | null
         }
         Relationships: [
           {

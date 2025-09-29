@@ -108,10 +108,7 @@ export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
   const keys = TABLE_COLUMN_KEYS[
     tableName as keyof typeof TABLE_COLUMN_KEYS
   ] as unknown as readonly (keyof GenericRow<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<
-    string,
-    ColumnMeta
-  >;
+  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<string, ColumnMeta>;
   return keys.map((key) => {
     const m = meta[key] || {};
     const title = m.title ?? toTitleCase(key);
@@ -128,17 +125,14 @@ export function buildUploadConfig<T extends TableNames>(tableName: T) {
   type RowType = T extends TableName ? Tables<T> : Record<string, unknown>;
   type ColumnKey = keyof RowType & string;
 
-  const tableColumnKeys = TABLE_COLUMN_KEYS as unknown as Record<
-    TableNames,
-    readonly string[]
-  >;
+  const tableColumnKeys = TABLE_COLUMN_KEYS as unknown as Record<TableNames, readonly string[]>;
   const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
   const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Partial<
     Record<ColumnKey, ColumnMeta>
   >;
-  const tableMeta = (UPLOAD_TABLE_META as Partial<
-    Record<TableNames, UploadTableMeta<TableName>>
-  >)[tableName];
+  const tableMeta = (UPLOAD_TABLE_META as Partial<Record<TableNames, UploadTableMeta<TableName>>>)[
+    tableName
+  ];
   const uploadType = tableMeta?.uploadType ?? 'upsert';
   const conflictColumn = tableMeta?.conflictColumn as ColumnKey | undefined;
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
@@ -229,14 +223,7 @@ export const TABLE_COLUMN_KEYS = {
     'created_at',
     'updated_at',
   ],
-  employee_designations: [
-    'id',
-    'name',
-    'parent_id',
-    'status',
-    'created_at',
-    'updated_at',
-  ],
+  employee_designations: ['id', 'name', 'parent_id', 'status', 'created_at', 'updated_at'],
   employees: [
     'id',
     'employee_pers_no',
@@ -316,6 +303,8 @@ export const TABLE_COLUMN_KEYS = {
     'system_id',
     'fiber_no_sn',
     'fiber_no_en',
+    'updated_fiber_no_sn',
+    'updated_fiber_no_en',
     'path_segment_order',
     'connection_type',
     'connection_category',
@@ -370,13 +359,7 @@ export const TABLE_COLUMN_KEYS = {
     'b_customer',
     'b_slot',
   ],
-  sdh_node_associations: [
-    'id',
-    'sdh_system_id',
-    'node_id',
-    'node_position',
-    'node_ip',
-  ],
+  sdh_node_associations: ['id', 'sdh_system_id', 'node_id', 'node_position', 'node_ip'],
   sdh_systems: ['system_id', 'make', 'gne'],
   system_connections: [
     'id',
@@ -397,13 +380,7 @@ export const TABLE_COLUMN_KEYS = {
     'created_at',
     'updated_at',
   ],
-  vmux_connections: [
-    'system_connection_id',
-    'subscriber',
-    'channel',
-    'c_code',
-    'tk',
-  ],
+  vmux_connections: ['system_connection_id', 'subscriber', 'channel', 'c_code', 'tk'],
   vmux_systems: ['system_id', 'vm_id'],
   fiber_joints: [
     'id',
@@ -547,10 +524,12 @@ export const TABLE_COLUMN_KEYS = {
   ],
   v_ofc_connections_complete: [
     'fiber_no_sn',
+    'updated_fiber_no_sn',
     'otdr_distance_sn_km',
     'sn_power_dbm',
     'sn_dom',
     'fiber_no_en',
+    'updated_fiber_no_en',
     'otdr_distance_en_km',
     'en_power_dbm',
     'en_dom',

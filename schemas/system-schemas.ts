@@ -1,3 +1,4 @@
+// path: schemas/system-schemas.ts
 import { z } from 'zod';
 import {
   systemsInsertSchema,
