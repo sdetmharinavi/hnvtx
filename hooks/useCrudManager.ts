@@ -297,7 +297,8 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
 
   // --- BULK DELETE BY FILTER ---
   const handleBulkDeleteByFilter = useCallback(
-    (column: string, value: unknown, displayName: string) => {
+    // CORRECTED: The 'value' parameter is now strictly typed, preventing the error.
+    (column: string, value: string | number | boolean | null, displayName: string) => {
       deleteManager.deleteBulk({
         column,
         value,
