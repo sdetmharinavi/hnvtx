@@ -54,7 +54,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     // The nullish coalescing operator `??` provides a fallback and satisfies TypeScript
-    const success = await signIn(data.email ?? '', data.encrypted_password ?? '');
+    const { success } = await signIn(data.email ?? '', data.encrypted_password ?? '');
     if (success) {
       router.push(redirectTo);
     }

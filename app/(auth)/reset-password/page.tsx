@@ -31,14 +31,10 @@ export default function ResetPasswordPage() {
 
     setIsLoading(true);
     try {
-      const success = await resetPassword(password);
-
+      const { success } = await resetPassword(password);
       if (success) {
         toast.success("Password updated successfully!");
         router.push("/login");
-      } else {
-        setIsLoading(false);
-        toast.error("Something went wrong");
       }
     } catch (error) {
       toast.error("Something went wrong");

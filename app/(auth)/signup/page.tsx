@@ -56,18 +56,16 @@ export default function SignUpPage() {
   });
 
   const onSubmit = async (data: SignupForm) => {
-    const { data: result, error } = await signUp({
+    const { success, error } = await signUp({
       email: data.email ?? '',
       password: data.encrypted_password ?? '',
       firstName: data.firstName,
       lastName: data.lastName,
     });
-
-    if (!error && result?.user) {
+  
+    if (success) {
       router.push('/verify-email');
-    } else {
-      toast.error(error?.message || 'Sign up failed. Please try again.');
-    }
+    } 
   };
 
   return (

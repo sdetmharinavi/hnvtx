@@ -1,3 +1,4 @@
+// path: hooks/useAuth.ts
 // hooks/useAuth.ts
 "use client";
 
@@ -6,6 +7,12 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { AuthError } from "@supabase/supabase-js";
+
+// CORRECTED: Define a consistent return type for auth actions
+interface AuthActionResult {
+  success: boolean;
+  error: AuthError | null;
+}
 
 // Auth Hook
 export const useAuth = () => {
@@ -52,8 +59,7 @@ export const useAuth = () => {
     };
   }, [supabase, setUser, setAuthState]);
 
-  const signUp = useCallback(async (credentials: { email: string; password: string; firstName: string; lastName: string }) => {
-    // CORRECTED: Ensure the result of the async operation is returned.
+  const signUp = useCallback(async (credentials: { email: string; password: string; firstName: string; lastName: string }): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -71,26 +77,26 @@ export const useAuth = () => {
         if (data.user && !data.session) {
           toast.success("Signup successful! Please check your email for verification.");
         }
-        return { data: { user: null, session: null }, error: null };
+        return { success: true, error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Signup failed";
-        toast.error(message);
-        return { data: { user: null, session: null }, error: { message, name: 'SignUpError' } as AuthError };
+        const authError = error as AuthError;
+        toast.error(authError.message || "Signup failed");
+        return { success: false, error: authError };
       }
     });
   }, [executeWithLoading, supabase.auth]);
 
-  const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in successfully!");
-        return true;
+        return { success: true, error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Sign in failed";
-        toast.error(message);
-        return false;
+        const authError = error as AuthError;
+        toast.error(authError.message || "Sign in failed");
+        return { success: false, error: authError };
       }
     });
   }, [executeWithLoading, supabase.auth]);
@@ -108,58 +114,60 @@ export const useAuth = () => {
       if (data?.url) {
         window.location.href = data.url;
       }
-      return { data, error: null };
+      return { success: true, error: null };
     } catch (error) {
       sessionStorage.removeItem('oauth_in_progress');
-      const message = error instanceof Error ? error.message : "Google sign in failed";
-      toast.error(message);
-      return { data: null, error: { message, name: 'OAuthError' } };
+      const authError = error as AuthError;
+      toast.error(authError.message || "Google sign in failed");
+      return { success: false, error: authError };
     }
   }, [supabase.auth]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (): Promise<AuthActionResult> => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       logoutStore();
       toast.success("Signed out successfully!");
+      return { success: true, error: null };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Logout failed";
-      toast.error(message);
+      const authError = error as AuthError;
+      toast.error(authError.message || "Logout failed");
       logoutStore();
-      throw error;
+      return { success: false, error: authError };
     }
   }, [supabase.auth, logoutStore]);
 
-  const forgotPassword = useCallback(async (email: string) => {
+  const forgotPassword = useCallback(async (email: string): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
         if (error) throw error;
-        return { error: null };
+        toast.success("Password reset email sent!");
+        return { success: true, error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to send reset email";
-        toast.error(message);
-        return { error: message };
+        const authError = error as AuthError;
+        toast.error(authError.message || "Failed to send reset email");
+        return { success: false, error: authError };
       } finally {
         setAuthState("unauthenticated");
       }
     });
   }, [executeWithLoading, supabase.auth, setAuthState]);
   
-  const resetPassword = useCallback(async (newPassword: string): Promise<boolean> => {
+  const resetPassword = useCallback(async (newPassword: string): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         toast.success("Password updated successfully!");
-        return true;
+        return { success: true, error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Password update failed";
-        toast.error(message);
-        return false;
+        const authError = error as AuthError;
+        toast.error(authError.message || "Password update failed");
+        return { success: false, error: authError };
       }
     });
   }, [executeWithLoading, supabase.auth]);
