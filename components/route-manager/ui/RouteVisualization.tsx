@@ -1,3 +1,4 @@
+// path: components/route-manager/ui/RouteVisualization.tsx
 "use client";
 
 import { motion } from 'framer-motion';
@@ -15,7 +16,6 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
   const { route, equipment, segments } = routeDetails;
   
   const allPoints = [
-    // Fixed: Safely access potentially null names with better fallbacks
     { 
       id: route.sn_id, 
       name: route.sn_name || route.start_site?.name || 'Start Node', 
@@ -24,7 +24,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       raw: {} 
     },
     ...equipment.map(e => ({ 
-        id: e.id, 
+        id: e.node_id, // <-- CORRECTED: Use node_id for matching against segments
         name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
         type: 'equipment' as const, 
         position: e.attributes?.position_on_route || 0, 
@@ -60,17 +60,14 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
         </div>
       </div>
       
-      {/* Route visualization container with improved spacing */}
       <div className="mb-8">
         <div className="overflow-x-auto pb-4">
           <div className="relative min-w-[800px] h-64 py-8">
-            {/* Main route line with enhanced styling */}
             <div 
               className="absolute top-1/2 h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg" 
               style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }} 
             />
             
-            {/* Points container */}
             <div className="absolute top-0 left-0 right-0 h-full">
               {allPoints.map((point, index) => {
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
@@ -93,16 +90,13 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                       ease: "easeOut"
                     }}
                   >
-                    {/* Point name label - above with better positioning */}
                     <div className="absolute -top-16 text-center min-w-max max-w-40">
                       <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 px-2 py-1.5 bg-white dark:bg-gray-700 rounded-lg shadow-md border dark:border-gray-600 whitespace-nowrap">
                         {point.name}
                       </p>
-                      {/* Small arrow pointing down */}
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white dark:border-t-gray-700"></div>
                     </div>
                     
-                    {/* Enhanced main point circle */}
                     <div 
                       onClick={() => point.type === 'equipment' && onJcClick(point.raw as Equipment)}
                       className={`relative w-6 h-6 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-lg ${
@@ -119,14 +113,12 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                       </span>
                     </div>
                     
-                    {/* Distance label - below with better styling */}
                     <div className="absolute top-10 text-center min-w-max">
                       <p className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md border dark:border-gray-600 shadow-sm">
                         {km} km
                       </p>
                     </div>
                     
-                    {/* Enhanced action buttons for equipment */}
                     {point.type === 'equipment' && (
                       <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
                         <button 
@@ -142,7 +134,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteJc(point.id!);
+                            onDeleteJc((point.raw as Equipment).id!);
                           }} 
                           className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
                           title="Delete JC"
@@ -159,7 +151,6 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
         </div>
       </div>
       
-      {/* Enhanced cable segments section */}
       <div className="border-t dark:border-gray-600 pt-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center">
