@@ -1,12 +1,11 @@
-// path: app/dashboard/route-manager/page.tsx
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from "@/components/common/page-header";
 import { SearchableSelect, Option } from "@/components/common/ui/select/SearchableSelect";
-import { useDeleteJc, useOfcRoutesForSelection } from "@/hooks/database/route-manager-hooks";
-import { PageSpinner } from "@/components/common/ui/LoadingSpinner";
+import { useOfcRoutesForSelection } from "@/hooks/database/route-manager-hooks"; 
+import { PageSpinner, ConfirmModal } from "@/components/common/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/common/ui/tabs";
 import { FaRoute } from "react-icons/fa";
 import { FiPlus } from "react-icons/fi";
@@ -17,6 +16,8 @@ import {
     RouteDetailsPayload,
     Equipment
 } from '@/schemas/custom-schemas';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { toast } from 'sonner';
 
 const queryKeys = {
   routes: ['routes'] as const,
@@ -40,7 +41,6 @@ export default function RouteManagerPage() {
   const [activeTab, setActiveTab] = useState('visualization');
   
   const queryClient = useQueryClient();
-  const deleteJcMutation = useDeleteJc();
   
   const { data: routesForSelection, isLoading: isLoadingRoutes } = useOfcRoutesForSelection();
 
@@ -50,36 +50,43 @@ export default function RouteManagerPage() {
     enabled: !!selectedRouteId,
   });
 
+  // Instantiate the delete manager for junction_closures
+  const deleteManager = useDeleteManager({
+    tableName: 'junction_closures',
+    onSuccess: () => {
+      toast.success('Junction Closure deleted successfully.');
+      // When a JC is deleted, we must refetch the entire route's details
+      refetchRouteDetails(); 
+      // If the currently selected JC for splicing was the one deleted, reset the view
+      if (selectedJc && selectedJc.id === (deleteManager.deleteConfig?.items[0]?.id)) {
+        setSelectedJc(null);
+        setActiveTab('visualization');
+      }
+    }
+  });
+
   const allEquipmentOnRoute = useMemo(() => (routeDetails?.equipment || []), [routeDetails]);
   const currentSegments = useMemo(() => (routeDetails?.segments || []), [routeDetails]);
 
-  // FIX: Explicitly type the entire function signature for the callbacks.
-  // This guarantees they match the prop types expected by RouteVisualization.
-  const handleOpenEditJcModal: (jc: Equipment) => void = useCallback((jc) => {
+  const handleOpenEditJcModal = useCallback((jc: Equipment) => {
     setEditingJc(jc);
     setIsJcFormModalOpen(true);
   }, []);
   
-  const handleJcClick: (jc: Equipment) => void = useCallback((jc) => {
+  const handleJcClick = useCallback((jc: Equipment) => {
     setSelectedJc(jc);
     setActiveTab('splicing');
   }, []);
   
+  // The handler now uses the delete manager
   const handleRemoveJc = useCallback((jcId: string) => {
     const jcToRemove = allEquipmentOnRoute.find(jc => jc.id === jcId);
-    const name = jcToRemove?.attributes?.name || jcToRemove?.node?.name || "this JC";
-    if (window.confirm(`Are you sure you want to delete "${name}"? This will re-calculate all segments.`)) {
-        deleteJcMutation.mutate(jcToRemove!.id, {
-            onSuccess: () => {
-                if (selectedJc?.id === jcId) {
-                    setSelectedJc(null);
-                    setActiveTab('visualization');
-                }
-                refetchRouteDetails();
-            }
-        });
-    }
-  }, [allEquipmentOnRoute, selectedJc, deleteJcMutation, refetchRouteDetails]);
+    if (!jcToRemove) return;
+
+    const name = jcToRemove.attributes?.name || jcToRemove.node?.name || `JC ${jcId.slice(-4)}`;
+    
+    deleteManager.deleteSingle({ id: jcId, name });
+  }, [allEquipmentOnRoute, deleteManager]);
   
   const routeOptions = useMemo((): Option[] => {
     if (!routesForSelection) return [];
@@ -151,6 +158,17 @@ export default function RouteManagerPage() {
         routeId={selectedRouteId}
         editingJc={editingJc}
         rkm={routeDetails?.route.current_rkm ?? null}
+      />
+
+      {/* NEW: Add the ConfirmModal wired to the delete manager */}
+      <ConfirmModal
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
+        title="Confirm Deletion"
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
+        type="danger"
       />
     </div>
   );
