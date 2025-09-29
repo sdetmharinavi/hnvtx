@@ -1227,6 +1227,8 @@ export const ofc_connectionsRowSchema = z.object({
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
+  updated_fiber_no_en: z.number().nullable(),
+  updated_fiber_no_sn: z.number().nullable(),
 });
 
 export const ofc_connectionsInsertSchema = z.object({
@@ -1253,6 +1255,8 @@ export const ofc_connectionsInsertSchema = z.object({
   status: z.boolean().nullable().optional(),
   system_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
+  updated_fiber_no_en: z.number().nullable().optional(),
+  updated_fiber_no_sn: z.number().nullable().optional(),
 });
 
 export const ofc_connectionsUpdateSchema = z.object({
@@ -1279,6 +1283,8 @@ export const ofc_connectionsUpdateSchema = z.object({
   status: z.boolean().nullable().optional(),
   system_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
+  updated_fiber_no_en: z.number().nullable().optional(),
+  updated_fiber_no_sn: z.number().nullable().optional(),
 });
 
 export const ring_based_systemsRowSchema = z.object({

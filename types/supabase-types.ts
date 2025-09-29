@@ -1840,6 +1840,8 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           updated_at: string | null
+          updated_fiber_no_en: number | null
+          updated_fiber_no_sn: number | null
         }
         Insert: {
           connection_category?: string
@@ -1865,6 +1867,8 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
+          updated_fiber_no_en?: number | null
+          updated_fiber_no_sn?: number | null
         }
         Update: {
           connection_category?: string
@@ -1890,6 +1894,8 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
+          updated_fiber_no_en?: number | null
+          updated_fiber_no_sn?: number | null
         }
         Relationships: [
           {
@@ -4050,15 +4056,6 @@ export type Database = {
           loss_db: number
           step_order: number
         }[]
-      }
-      update_fiber_connections_on_splice: {
-        Args: {
-          p_incoming_segment_id: string
-          p_jc_id: string
-          p_outgoing_segment_id: string
-          p_splice_config: Json
-        }
-        Returns: number
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
