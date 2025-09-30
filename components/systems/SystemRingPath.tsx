@@ -57,7 +57,6 @@ export function SystemRingPath({ system }: Props) {
   const supabase = createClient();
   const [isCreatePathModalOpen, setIsCreatePathModalOpen] = useState(false);
 
-  // Data Fetching
   const { data: logicalPathData, refetch: refetchLogicalPath, isLoading: isLoadingPath } = useTableQuery(supabase, 'logical_fiber_paths', {
     filters: { source_system_id: system.id },
     limit: 1
@@ -66,7 +65,7 @@ export function SystemRingPath({ system }: Props) {
 
   const { data: pathSegments = [], isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
   
-  const { data: validationResult, isLoading: isValidating } = useRpcQuery<PathValidationResult>(
+  const { data: validationResult, isLoading: isValidating } = useRpcQuery<"validate_ring_path", PathValidationResult>(
     supabase,
     'validate_ring_path',
     { p_path_id: path?.id! },
@@ -81,7 +80,7 @@ export function SystemRingPath({ system }: Props) {
   const pathNodeIdsToFetch = useMemo(() => {
       if (!pathSegments || pathSegments.length === 0) return [];
       const ids = new Set(pathSegments.flatMap(s => [s.start_node_id, s.end_node_id]));
-      return Array.from(ids);
+      return Array.from(ids).filter((id): id is string => id !== null);
   }, [pathSegments]);
 
   const { data: pathNodesData, isLoading: isLoadingPathNodes } = useTableQuery(supabase, 'v_nodes_complete', {
@@ -89,7 +88,6 @@ export function SystemRingPath({ system }: Props) {
       enabled: pathNodeIdsToFetch.length > 0,
   });
 
-  // Mutations
   const deleteSegmentMutation = useDeletePathSegment();
   const reorderSegmentsMutation = useReorderPathSegments();
   const { mutate: addSegment } = useTableInsert(supabase, 'logical_path_segments', {
@@ -100,11 +98,10 @@ export function SystemRingPath({ system }: Props) {
     onError: (err) => toast.error(`Failed to add segment: ${err.message}`),
   });
 
-  // Memos for Path Building
-  const pathNodeIds = useMemo(() => {
+  const pathNodeIds = useMemo((): string[] => {
     if (!pathSegments || pathSegments.length === 0) return system.node_id ? [system.node_id] : [];
     const ids = [pathSegments[0].start_node_id, ...pathSegments.map(s => s.end_node_id)];
-    return [...new Set(ids)];
+    return [...new Set(ids)].filter((id): id is string => id !== null);
   }, [pathSegments, system.node_id]);
 
   const lastNodeInPathId = useMemo(() => {
@@ -114,8 +111,8 @@ export function SystemRingPath({ system }: Props) {
 
   const mapNodes = useMemo((): MapNode[] => {
     const allNodes = new Map<string, V_nodes_completeRowSchema>();
-    (nodesInArea || []).forEach(node => allNodes.set(node.id!, node));
-    (pathNodesData || []).forEach(node => allNodes.set(node.id!, node));
+    (nodesInArea || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
+    (pathNodesData || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
 
     return Array.from(allNodes.values())
       .filter(node => node.latitude != null && node.longitude != null)
@@ -123,7 +120,7 @@ export function SystemRingPath({ system }: Props) {
         id: node.id!,
         name: node.name!,
         lat: node.latitude!,
-        lng: node.longitude!,
+        long: node.longitude!,
         type: node.node_type_name,
         status: node.status,
         remark: node.remark,
@@ -131,7 +128,6 @@ export function SystemRingPath({ system }: Props) {
       }));
   }, [nodesInArea, pathNodesData]);
 
-  // Event Handlers
   const handleNodeClick = useCallback(async (clickedNodeId: string) => {
     if (!path || !lastNodeInPathId || clickedNodeId === lastNodeInPathId) return;
     try {
@@ -192,7 +188,11 @@ export function SystemRingPath({ system }: Props) {
             <div className="h-[60vh] min-h-[400px] rounded-lg overflow-hidden border dark:border-gray-700">
               <ClientRingMap
                 nodes={mapNodes}
-                pathSegments={pathSegments}
+                solidLines={pathSegments?.map((seg) => {
+                  const start = mapNodes.find(n => n.id === seg.start_node_id);
+                  const end = mapNodes.find(n => n.id === seg.end_node_id);
+                  return (start && end) ? [start, end] : null;
+                }).filter((p): p is [MapNode, MapNode] => p !== null)}
                 highlightedNodeIds={pathNodeIds}
                 onNodeClick={handleNodeClick}
               />
@@ -200,7 +200,7 @@ export function SystemRingPath({ system }: Props) {
             <div className="max-h-[60vh] overflow-y-auto pr-2">
               <div className="mb-4">
                 {isValidating && <p className="text-sm text-gray-500">Validating path...</p>}
-                {validationResult && <PathStatusIndicator {...validationResult} />}
+                {validationResult && typeof validationResult === 'object' && <PathStatusIndicator {...validationResult} />}
               </div>
               {isLoadingSegments ? (
                 <PageSpinner text="Loading path segments..." />
@@ -225,7 +225,7 @@ export function SystemRingPath({ system }: Props) {
         )}
       </div>
 
-      {path && pathSegments && pathSegments.length > 0 && validationResult?.status === 'valid_ring' && (
+      {path && pathSegments && pathSegments.length > 0 && (validationResult?.status === 'valid_ring' || validationResult?.status === 'open_path') && (
         <FiberProvisioning
           pathName={path.path_name ?? ""}
           systemId={system.id}

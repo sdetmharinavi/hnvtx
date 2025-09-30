@@ -70,7 +70,7 @@ export function FiberProvisioning({ pathName, systemId, physicalPathId }: Props)
       return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Working Fiber</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Tx Fiber</label>
             <select
               value={workingFiber}
               onChange={(e) => setWorkingFiber(e.target.value)}
@@ -81,7 +81,7 @@ export function FiberProvisioning({ pathName, systemId, physicalPathId }: Props)
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Protection Fiber</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Rx Fiber</label>
             <select
               value={protectionFiber}
               onChange={(e) => setProtectionFiber(e.target.value)}
@@ -112,7 +112,7 @@ export function FiberProvisioning({ pathName, systemId, physicalPathId }: Props)
     <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 border border-dashed dark:border-gray-700 rounded-lg">
       <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 dark:text-white">
         <FiZap className="text-yellow-500" />
-        Provision Protected Ring Service
+        Provision Ring Service
       </h4>
       {renderContent()}
     </div>

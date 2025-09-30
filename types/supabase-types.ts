@@ -3864,9 +3864,20 @@ export type Database = {
         Args: { p_segment_id: string }
         Returns: number
       }
+      delete_path_segment_and_reorder: {
+        Args: { p_path_id: string; p_segment_id: string }
+        Returns: undefined
+      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json
+      }
+      find_cable_between_nodes: {
+        Args: { p_node1_id: string; p_node2_id: string }
+        Returns: {
+          id: string
+          route_name: string
+        }[]
       }
       get_all_splices: {
         Args: Record<PropertyKey, never>
@@ -4041,6 +4052,19 @@ export type Database = {
           working_path_id: string
         }[]
       }
+      provision_ring_path: {
+        Args: {
+          p_path_name: string
+          p_physical_path_id: string
+          p_protection_fiber_no: number
+          p_system_id: string
+          p_working_fiber_no: number
+        }
+        Returns: {
+          protection_path_id: string
+          working_path_id: string
+        }[]
+      }
       recalculate_segments_for_cable: {
         Args: { p_cable_id: string }
         Returns: undefined
@@ -4095,6 +4119,10 @@ export type Database = {
           system_type_id: string
           updated_at: string | null
         }[]
+      }
+      validate_ring_path: {
+        Args: { p_path_id: string }
+        Returns: Json
       }
     }
     Enums: {

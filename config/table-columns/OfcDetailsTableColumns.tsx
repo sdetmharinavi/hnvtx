@@ -19,7 +19,6 @@ export const OfcDetailsTableColumns = (
       // 'connection_type',
       'destination_port',
       'en_name',
-      'logical_path_id',
       'path_segment_order',
       'sn_name',
       'source_port',

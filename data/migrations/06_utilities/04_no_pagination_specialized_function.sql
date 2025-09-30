@@ -43,3 +43,112 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.find_cable_between_nodes(UUID, UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.validate_ring_path(p_path_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_segment_count INT;
+    v_first_segment RECORD;
+    v_last_segment RECORD;
+    v_is_continuous BOOLEAN;
+    v_is_closed_loop BOOLEAN;
+BEGIN
+    -- Count segments in the path
+    SELECT COUNT(*) INTO v_segment_count FROM logical_path_segments WHERE logical_path_id = p_path_id;
+
+    IF v_segment_count = 0 THEN
+        RETURN jsonb_build_object('status', 'empty', 'message', 'Path has no segments.');
+    END IF;
+
+    -- Get first and last segments using the detailed view
+    SELECT * INTO v_first_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC LIMIT 1;
+    SELECT * INTO v_last_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order DESC LIMIT 1;
+
+    -- Check for continuity (every segment's start node matches the previous segment's end node)
+    SELECT NOT EXISTS (
+        SELECT 1
+        FROM v_system_ring_paths_detailed s1
+        LEFT JOIN v_system_ring_paths_detailed s2 ON s1.logical_path_id = s2.logical_path_id AND s2.path_order = s1.path_order + 1
+        WHERE s1.logical_path_id = p_path_id AND s2.id IS NOT NULL AND s1.end_node_id <> s2.start_node_id
+    ) INTO v_is_continuous;
+
+    IF NOT v_is_continuous THEN
+        RETURN jsonb_build_object('status', 'broken', 'message', 'Path is not continuous. A segment connection is mismatched.');
+    END IF;
+
+    -- Check if the path forms a closed loop
+    v_is_closed_loop := v_first_segment.start_node_id = v_last_segment.end_node_id;
+
+    IF v_is_closed_loop THEN
+        RETURN jsonb_build_object('status', 'valid_ring', 'message', 'Path forms a valid closed-loop ring.');
+    ELSE
+        RETURN jsonb_build_object('status', 'open_path', 'message', 'Path is a valid point-to-point route but not a closed ring.');
+    END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.validate_ring_path(UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.provision_ring_path(
+    p_path_name TEXT,
+    p_physical_path_id UUID,
+    p_working_fiber_no INT,
+    p_protection_fiber_no INT,
+    p_system_id UUID
+)
+RETURNS TABLE(working_path_id UUID, protection_path_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_working_path_id UUID;
+    v_protection_path_id UUID;
+    v_active_status_id UUID;
+BEGIN
+    -- Get the ID for the 'active' operational status from lookup_types
+    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUSES' AND name = 'active' LIMIT 1;
+    IF v_active_status_id IS NULL THEN
+        RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
+    END IF;
+
+    -- Step 1: Create the "working" logical path record
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id)
+    VALUES (p_path_name || ' (Working)', p_system_id, 'working', v_active_status_id) RETURNING id INTO v_working_path_id;
+
+    -- Step 2: Create the "protection" logical path record, linking it to the working path
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id)
+    VALUES (p_path_name || ' (Protection)', p_system_id, 'protection', v_working_path_id, v_active_status_id) RETURNING id INTO v_protection_path_id;
+
+    -- Step 3: Atomically update all ofc_connections for the working fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_working_path_id,
+        fiber_role = 'working'
+    WHERE
+        fiber_no_sn = p_working_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
+
+    -- Step 4: Atomically update all ofc_connections for the protection fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_protection_path_id,
+        fiber_role = 'protection'
+    WHERE
+        fiber_no_sn = p_protection_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
+
+    -- Return the IDs of the newly created paths
+    RETURN QUERY SELECT v_working_path_id, v_protection_path_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.provision_ring_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
