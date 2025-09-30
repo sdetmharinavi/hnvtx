@@ -22,7 +22,6 @@ export default function SystemDetailsPage() {
     supabase,
     "systems",
     id,
-    // This is Supabase's syntax for fetching a related record in the same query
     { columns: "*, node:node_id(*)" }
   );
 
@@ -40,7 +39,6 @@ export default function SystemDetailsPage() {
       </header>
 
       <main>
-        {/* The main component for building the ring path */}
         <SystemRingPath system={system} />
       </main>
     </div>

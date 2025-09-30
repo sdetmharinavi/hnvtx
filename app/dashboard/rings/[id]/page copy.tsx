@@ -8,7 +8,7 @@ import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { MaanNode, MapNode, NodeType } from "@/components/map/types/node"; // Import both types
+import { MaanNode, NodeType } from "@/components/map/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -18,32 +18,32 @@ export default function RingMapPage() {
 
   const { data: nodes, isLoading, isError, error, refetch } = useRingNodes(ringId);
 
+  // Map the fetched data to the MaanNode type
   const mappedNodes = useMemo((): MaanNode[] => {
     if (!nodes) return [];
-    return nodes
-      .filter(node => node.lat != null && node.long != null)
-      .map(node => ({
-        id: node.id!,
-        ring_id: node.ring_id,
-        name: node.name!,
-        lat: node.lat!,
-        long: node.long!,
-        order_in_ring: node.order_in_ring,
-        type: node.type as NodeType | string | null,
-        ring_status: node.ring_status,
-        ip: node.ip,
-        remark: node.remark,
-      }));
+    return nodes.map(node => ({
+      id: node.id!,
+      ring_id: node.ring_id,
+      name: node.name!,
+      lat: node.lat!,
+      long: node.long!,
+      order_in_ring: node.order_in_ring,
+      type: node.type as NodeType | string | null,
+      ring_status: node.ring_status,
+      ip: node.ip,
+      remark: node.remark,
+    }));
   }, [nodes]);
 
-  const { mainSegments, spurConnections, allPairs } = useMemo(() => {
+  // Perform the business logic to determine main nodes and connection types
+  const { mainNodes, mainSegments, spurConnections, allPairs } = useMemo(() => {
     const ringStatusNodes = mappedNodes.filter(node => node.ring_status);
     
     const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes.filter(n => n.type === NodeType.MAAN))
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
     if (main.length === 0) {
-      return { mainSegments: [], spurConnections: [], allPairs: [] };
+      return { mainNodes: [], mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
     const segments: Array<[MaanNode, MaanNode]> = [];
@@ -62,13 +62,10 @@ export default function RingMapPage() {
       }
     });
 
-    return { mainSegments: segments, spurConnections: spurs, allPairs: [...segments, ...spurs] };
+    return { mainNodes: main, mainSegments: segments, spurConnections: spurs, allPairs: [...segments, ...spurs] };
   }, [mappedNodes]);
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
-
-  console.log("distances", distances);
-  
 
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
 
@@ -80,8 +77,8 @@ export default function RingMapPage() {
     return (
       <ClientRingMap
         nodes={mappedNodes}
-        solidLines={mainSegments}
-        dashedLines={spurConnections}
+        mainSegments={mainSegments}
+        spurConnections={spurConnections}
         distances={distances}
         onBack={() => router.push('/dashboard/rings')}
       />

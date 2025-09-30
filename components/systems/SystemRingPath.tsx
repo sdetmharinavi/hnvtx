@@ -3,18 +3,51 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useTableQuery, useTableInsert, Row } from "@/hooks/database";
+import { useTableQuery, useTableInsert, Row, useRpcQuery } from "@/hooks/database";
 import { Button, PageSpinner } from "@/components/common/ui";
-import { FiPlus, FiZap } from "react-icons/fi";
+import { FiPlus, FiZap, FiCheckCircle, FiXCircle, FiAlertTriangle } from "react-icons/fi";
 import { useSystemPath } from "@/hooks/database/path-queries";
 import { useDeletePathSegment, useReorderPathSegments } from "@/hooks/database/path-mutations";
 import { DragEndEvent } from "@dnd-kit/core";
 import { CreatePathModal } from "./CreatePathModal";
 import { PathSegmentList } from "./PathSegmentList";
 import { FiberProvisioning } from "./FiberProvisioning";
-import ClientRingMap, { MapNode } from "@/components/map/ClientRingMap";
+import ClientRingMap from "@/components/map/ClientRingMap";
 import { toast } from "sonner";
 import { SystemsRowSchema, NodesRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
+import { MapNode } from "@/components/map/types/node";
+
+interface PathValidationResult {
+  status: 'empty' | 'broken' | 'valid_ring' | 'open_path';
+  message: string;
+}
+
+const PathStatusIndicator = ({ status, message }: PathValidationResult) => {
+  const config = useMemo(() => {
+    switch (status) {
+      case 'valid_ring':
+        return { icon: FiCheckCircle, color: 'text-green-500', bgColor: 'bg-green-50 dark:bg-green-900/20' };
+      case 'open_path':
+        return { icon: FiCheckCircle, color: 'text-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-900/20' };
+      case 'broken':
+        return { icon: FiXCircle, color: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-900/20' };
+      default:
+        return { icon: FiAlertTriangle, color: 'text-yellow-500', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
+    }
+  }, [status]);
+
+  const Icon = config.icon;
+
+  return (
+    <div className={`p-3 rounded-lg flex items-center gap-3 border ${config.bgColor} border-current`}>
+      <Icon className={`w-6 h-6 flex-shrink-0 ${config.color}`} />
+      <div>
+        <p className={`font-semibold ${config.color}`}>{status.replace('_', ' ').toUpperCase()}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   system: SystemsRowSchema & { node: NodesRowSchema | null };
@@ -24,7 +57,7 @@ export function SystemRingPath({ system }: Props) {
   const supabase = createClient();
   const [isCreatePathModalOpen, setIsCreatePathModalOpen] = useState(false);
 
-  // --- Data Fetching ---
+  // Data Fetching
   const { data: logicalPathData, refetch: refetchLogicalPath, isLoading: isLoadingPath } = useTableQuery(supabase, 'logical_fiber_paths', {
     filters: { source_system_id: system.id },
     limit: 1
@@ -32,14 +65,19 @@ export function SystemRingPath({ system }: Props) {
   const path = logicalPathData?.[0];
 
   const { data: pathSegments = [], isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
+  
+  const { data: validationResult, isLoading: isValidating } = useRpcQuery<PathValidationResult>(
+    supabase,
+    'validate_ring_path',
+    { p_path_id: path?.id! },
+    { enabled: !!path?.id && pathSegments.length > 0 }
+  );
 
-  // Fetch all nodes in the same maintenance area as the system (for clicking/selection)
   const { data: nodesInArea = [], isLoading: isLoadingNodes } = useTableQuery(supabase, 'v_nodes_complete', {
     filters: { maintenance_terminal_id: system.maintenance_terminal_id! },
     enabled: !!system.maintenance_terminal_id,
   });
   
-  // --- BUG FIX: Fetch all nodes that are part of the current path to ensure visibility ---
   const pathNodeIdsToFetch = useMemo(() => {
       if (!pathSegments || pathSegments.length === 0) return [];
       const ids = new Set(pathSegments.flatMap(s => [s.start_node_id, s.end_node_id]));
@@ -51,7 +89,7 @@ export function SystemRingPath({ system }: Props) {
       enabled: pathNodeIdsToFetch.length > 0,
   });
 
-  // --- Mutations ---
+  // Mutations
   const deleteSegmentMutation = useDeletePathSegment();
   const reorderSegmentsMutation = useReorderPathSegments();
   const { mutate: addSegment } = useTableInsert(supabase, 'logical_path_segments', {
@@ -62,7 +100,7 @@ export function SystemRingPath({ system }: Props) {
     onError: (err) => toast.error(`Failed to add segment: ${err.message}`),
   });
 
-  // --- State and Memos for Path Building ---
+  // Memos for Path Building
   const pathNodeIds = useMemo(() => {
     if (!pathSegments || pathSegments.length === 0) return system.node_id ? [system.node_id] : [];
     const ids = [pathSegments[0].start_node_id, ...pathSegments.map(s => s.end_node_id)];
@@ -74,7 +112,6 @@ export function SystemRingPath({ system }: Props) {
     return pathSegments[pathSegments.length - 1].end_node_id;
   }, [pathSegments, system.node_id]);
 
-  // --- BUG FIX: Combine local area nodes and specific path nodes for the map ---
   const mapNodes = useMemo((): MapNode[] => {
     const allNodes = new Map<string, V_nodes_completeRowSchema>();
     (nodesInArea || []).forEach(node => allNodes.set(node.id!, node));
@@ -94,7 +131,7 @@ export function SystemRingPath({ system }: Props) {
       }));
   }, [nodesInArea, pathNodesData]);
 
-  // --- Event Handlers ---
+  // Event Handlers
   const handleNodeClick = useCallback(async (clickedNodeId: string) => {
     if (!path || !lastNodeInPathId || clickedNodeId === lastNodeInPathId) return;
     try {
@@ -156,11 +193,15 @@ export function SystemRingPath({ system }: Props) {
               <ClientRingMap
                 nodes={mapNodes}
                 pathSegments={pathSegments}
-                highlightedNodeIds={pathNodeIds.filter(id => id !== null) as string[]}
+                highlightedNodeIds={pathNodeIds}
                 onNodeClick={handleNodeClick}
               />
             </div>
             <div className="max-h-[60vh] overflow-y-auto pr-2">
+              <div className="mb-4">
+                {isValidating && <p className="text-sm text-gray-500">Validating path...</p>}
+                {validationResult && <PathStatusIndicator {...validationResult} />}
+              </div>
               {isLoadingSegments ? (
                 <PageSpinner text="Loading path segments..." />
               ) : (!pathSegments || pathSegments.length === 0) ? (
@@ -184,7 +225,7 @@ export function SystemRingPath({ system }: Props) {
         )}
       </div>
 
-      {path && pathSegments && pathSegments.length > 0 && (
+      {path && pathSegments && pathSegments.length > 0 && validationResult?.status === 'valid_ring' && (
         <FiberProvisioning
           pathName={path.path_name ?? ""}
           systemId={system.id}
