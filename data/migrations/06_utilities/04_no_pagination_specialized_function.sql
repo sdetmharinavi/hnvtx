@@ -152,3 +152,47 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.provision_ring_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
+
+
+CREATE OR REPLACE FUNCTION public.deprovision_logical_path(p_path_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_working_path_id UUID;
+    v_protection_path_id UUID;
+BEGIN
+    -- Find the working path ID, regardless if the input is a working or protection path ID
+    SELECT
+        CASE
+            WHEN path_role = 'working' THEN id
+            ELSE working_path_id
+        END
+    INTO v_working_path_id
+    FROM public.logical_fiber_paths
+    WHERE id = p_path_id OR working_path_id = p_path_id
+    LIMIT 1;
+
+    -- If a valid working path was found, find its associated protection path
+    IF v_working_path_id IS NOT NULL THEN
+        SELECT id INTO v_protection_path_id
+        FROM public.logical_fiber_paths
+        WHERE working_path_id = v_working_path_id;
+    END IF;
+
+    -- Clear the logical_path_id and fiber_role from all associated connections
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = NULL,
+        fiber_role = NULL
+    WHERE logical_path_id = v_working_path_id OR logical_path_id = v_protection_path_id;
+
+    -- Delete the logical_fiber_paths records themselves (cascading delete will handle protection path)
+    DELETE FROM public.logical_fiber_paths WHERE id = v_working_path_id;
+    
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated;

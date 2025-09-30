@@ -84,6 +84,7 @@ export default function RingMapPage() {
         dashedLines={spurConnections}
         distances={distances}
         onBack={() => router.push('/dashboard/rings')}
+        showControls={true} 
       />
     );
   };

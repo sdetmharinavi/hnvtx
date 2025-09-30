@@ -9,7 +9,7 @@ import ReactDOM from "react-dom";
 import { useThemeStore } from "@/stores/themeStore";
 import { FiMaximize, FiMinimize } from "react-icons/fi";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { MapNode, MaanNode } from "./types/node"; // CORRECTED IMPORT
+import { MapNode, MaanNode } from "./types/node";
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -19,8 +19,11 @@ interface ClientRingMapProps {
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;
   onBack?: () => void;
+  flyToCoordinates?: [number, number] | null;
+  showControls?: boolean; // NEW PROP
 }
 
+// ... (Helper components like MapController and FullscreenControl remain the same)
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -66,6 +69,17 @@ const FullscreenControl = ({ isFullScreen, setIsFullScreen }: { isFullScreen: bo
   return null;
 };
 
+const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (coords) {
+            map.flyTo(coords, 16);
+        }
+    }, [coords, map]);
+    return null;
+};
+
+
 export default function ClientRingMap({
   nodes,
   solidLines = [],
@@ -74,6 +88,8 @@ export default function ClientRingMap({
   onBack,
   highlightedNodeIds = [],
   onNodeClick,
+  flyToCoordinates = null,
+  showControls = false, // NEW PROP with default value
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -116,19 +132,23 @@ export default function ClientRingMap({
 
   return (
     <div className={mapContainerClass}>
-      <div className='absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white'>
-        {onBack && <button onClick={onBack} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>← Back to List</button>}
-        <button onClick={() => setShowAllNodePopups(!showAllNodePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
-          <span className={showAllNodePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllNodePopups ? "Hide" : "Show"} Node Info
-        </button>
-        <button onClick={() => setShowAllLinePopups(!showAllLinePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
-          <span className={showAllLinePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllLinePopups ? "Hide" : "Show"} Line Info
-        </button>
-      </div>
+      {/* --- THIS UI BLOCK IS NOW CONDITIONAL --- */}
+      {showControls && (
+        <div className='absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white'>
+          {onBack && <button onClick={onBack} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>← Back to List</button>}
+          <button onClick={() => setShowAllNodePopups(!showAllNodePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
+            <span className={showAllNodePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllNodePopups ? "Hide" : "Show"} Node Info
+          </button>
+          <button onClick={() => setShowAllLinePopups(!showAllLinePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
+            <span className={showAllLinePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllLinePopups ? "Hide" : "Show"} Line Info
+          </button>
+        </div>
+      )}
 
       <MapContainer center={bounds?.getCenter() || [22.57, 88.36]} bounds={bounds || undefined} zoom={13} ref={mapRef} style={{ height: "100%", width: "100%" }} className='z-0'>
         <MapController isFullScreen={isFullScreen} />
         <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
+        <MapFlyToController coords={flyToCoordinates} />
         <TileLayer url={mapUrl} attribution={mapAttribution} />
         
         {solidLines.map(([start, end]) => (
