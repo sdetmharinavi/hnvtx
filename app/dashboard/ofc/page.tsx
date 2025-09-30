@@ -54,23 +54,23 @@ const useOfcData = (
   const supabase = createClient();
 
   // Build the server filters object that the RPC function expects.
-  const serverFilters = useMemo(() => {
-    const richFilters: Filters = { ...filters };
-    if (searchQuery) {
-      richFilters.or = {
-        route_name: searchQuery,
-        asset_no: searchQuery,
-        transnet_id: searchQuery,
-      };
-    }
-    return richFilters; // Return Filters type instead of converting to Json
-  }, [filters, searchQuery]);
+  // const serverFilters = useMemo(() => {
+  //   const richFilters: Filters = { ...filters };
+  //   if (searchQuery) {
+  //     richFilters.or = {
+  //       route_name: searchQuery,
+  //       asset_no: searchQuery,
+  //       transnet_id: searchQuery,
+  //     };
+  //   }
+  //   return richFilters; // Return Filters type instead of converting to Json
+  // }, [filters, searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
     'v_ofc_cables_complete',
     {
-      filters: serverFilters,
+      filters: filters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'route_name', // Changed from default 'name' to 'route_name' which exists in the view
@@ -112,8 +112,9 @@ const OfcPage = () => {
     actions: crudActions,
   } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
-    dataQueryHook: useOfcData,
-    searchColumn: 'route_name', // This can be considered the "primary" search field for display purposes
+    dataQueryHook: useOfcData, 
+    // Provide an array of column names to search across
+    searchColumn: ['route_name', 'asset_no', 'transnet_id'],
   });
 
   // 3. Extract ring types from the rings data
