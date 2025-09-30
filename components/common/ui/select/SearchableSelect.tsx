@@ -1,3 +1,4 @@
+// path: components/common/ui/select/SearchableSelect.tsx
 "use client";
 
 import { Label } from "@/components/common/ui/label/Label";
@@ -17,7 +18,7 @@ export type { Option };
 // The props interface remains the same
 interface SearchableSelectProps {
   options: Option[];
-  value?: string;
+  value?: string | null; // <-- THE FIX: Now accepts string | null | undefined
   onChange: (value: string | null) => void;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -35,7 +36,7 @@ interface SearchableSelectProps {
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
-  value = "",
+  value = null, // Default to null
   onChange,
   placeholder = "Select an option",
   searchPlaceholder = "Search options...",
@@ -53,17 +54,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  
-  // NEW: State for the dropdown's calculated position
+
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
-  // Refs for the trigger, the dropdown itself, and the list items
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Memoized filtering and sorting logic (no changes needed here)
   const filteredOptions = useMemo(() => {
     const processedOptions = [...options];
     if (sortOptions) {
@@ -79,21 +77,18 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const selectedLabel = selectedOption?.label || "";
   const hasValue = selectedLabel.length > 0;
 
-  // NEW: Effect to calculate dropdown position using useLayoutEffect for precision
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       setDropdownStyle({
-        // Position fixed relative to the viewport
-        position: 'fixed', 
-        top: `${rect.bottom + 4}px`, // 4px gap below the trigger
+        position: 'fixed',
+        top: `${rect.bottom + 4}px`,
         left: `${rect.left}px`,
-        width: `${rect.width}px`, // Match the trigger's width
+        width: `${rect.width}px`,
       });
     }
   }, [isOpen]);
 
-  // Updated Effect to handle clicks outside both the trigger and the dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -109,15 +104,12 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Effect to focus search input when dropdown opens
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
-      // Small timeout to allow the portal to render and be focusable
       setTimeout(() => searchInputRef.current?.focus(), 0);
     }
   }, [isOpen]);
-  
-  // Keyboard navigation logic (no changes needed here)
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
     switch (e.key) {
@@ -150,14 +142,12 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
   };
 
-  // Scroll focused option into view (no changes needed here)
   useEffect(() => {
     if (focusedIndex >= 0 && optionRefs.current[focusedIndex]) {
       optionRefs.current[focusedIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }, [focusedIndex]);
 
-  // Handlers (no changes needed here)
   const handleOptionSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
@@ -179,10 +169,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       }
     }
   };
-  
+
   const baseClasses = `relative w-full rounded-md border px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:outline-none transition-colors cursor-pointer ${error ? "border-red-300 dark:border-red-600" : "border-gray-300 dark:border-gray-600"} ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500`} dark:text-white dark:focus-within:ring-blue-600`;
 
-  // Extracted Dropdown JSX to be used in the portal
   const DropdownContent = (
     <div
       ref={dropdownRef}
@@ -235,8 +224,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   return (
     <div ref={triggerRef} className={`relative ${className}`}>
-      {/* The trigger element remains in its original position */}
-      <Label>{label}</Label>
+      {label && <Label>{label}</Label>}
       <div
         className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`}
         onClick={toggleDropdown}
@@ -262,8 +250,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           </div>
         </div>
       </div>
-
-      {/* RENDER THE DROPDOWN IN A PORTAL */}
       {isOpen && typeof document !== 'undefined' && createPortal(DropdownContent, document.body)}
     </div>
   );

@@ -35,6 +35,33 @@ export function useAvailableFibers(pathId: string | null) {
 }
 
 /**
+ * Fetches the working and protection fiber numbers for a given path.
+ */
+
+export function useProvisionedFibers(pathId: string | null) {
+  return useQuery({
+      queryKey: ['provisioned-fibers', pathId],
+      queryFn: async () => {
+          if (!pathId) return null;
+
+          const { data, error } = await supabase
+              .from('ofc_connections')
+              .select('fiber_no_sn, fiber_role')
+              .eq('logical_path_id', pathId)
+              .in('fiber_role', ['working', 'protection']);
+
+          if (error) throw error;
+          
+          const working = data.find(f => f.fiber_role === 'working')?.fiber_no_sn || null;
+          const protection = data.find(f => f.fiber_role === 'protection')?.fiber_no_sn || null;
+
+          return { working, protection };
+      },
+      enabled: !!pathId,
+  });
+}
+
+/**
  * Hook to trace a fiber's complete path using the recursive RPC function.
  * The new RPC returns a pre-ordered, structured list, so no client-side tree building is needed.
  */
