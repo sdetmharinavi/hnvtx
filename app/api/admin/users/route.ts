@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
+import { createAdmin } from '@/utils/supabase/admin';
 
 const pgHost = process.env.PGHOST;
 const pgUser = process.env.PGUSER;
@@ -13,6 +14,7 @@ const pool = new Pool({
   connectionString: `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`,
 });
 
+// This function handles creating users
 export async function POST(req: Request) {
   try {
     const userData = await req.json();
@@ -66,6 +68,45 @@ export async function POST(req: Request) {
     console.error('Error inserting user:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// This function handles deleting users
+export async function DELETE(req: Request) {
+  try {
+    const { userIds } = await req.json();
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
+    }
+
+    const supabaseAdmin = createAdmin();
+    const deletionErrors: { id: string; error: string }[] = [];
+
+    for (const id of userIds) {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (error) {
+        console.error(`Failed to delete user ${id}:`, error.message);
+        deletionErrors.push({ id, error: error.message });
+      }
+    }
+
+    if (deletionErrors.length > 0) {
+      return NextResponse.json({
+        message: `Completed with ${deletionErrors.length} errors.`,
+        errors: deletionErrors,
+      }, { status: 500 });
+    }
+    
+    // The ON DELETE CASCADE on the user_profiles table will handle the rest automatically.
+    return NextResponse.json({ message: 'Users deleted successfully' });
+
+  } catch (err: unknown) {
+    console.error('Error processing delete request:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'An unknown error occurred' },
       { status: 500 }
     );
   }

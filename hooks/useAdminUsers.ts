@@ -191,33 +191,29 @@ export const useAdminUpdateUserProfile = () => {
 
 // Hook to bulk delete users
 export const useAdminBulkDeleteUsers = () => {
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      params: AdminBulkDeleteUsersFunction
-    ): Promise<boolean> => {
-      const { data, error } = await supabase.rpc(
-        "admin_bulk_delete_users",
-        params
-      );
+    mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIds: params.user_ids }),
+      });
 
-      if (error) {
-        throw new Error(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete users.');
       }
-
-      return data || false;
     },
     onSuccess: (_, variables) => {
       toast.success(
         `Successfully deleted ${variables.user_ids.length} user(s)`
       );
-
-      // Invalidate all user lists
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-
-      // Remove individual user queries from cache
       variables.user_ids.forEach((userId) => {
         queryClient.removeQueries({ queryKey: adminUserKeys.detail(userId) });
       });
@@ -227,6 +223,7 @@ export const useAdminBulkDeleteUsers = () => {
     },
   });
 };
+
 
 // Hook to bulk update user roles
 export const useAdminBulkUpdateUserRole = () => {

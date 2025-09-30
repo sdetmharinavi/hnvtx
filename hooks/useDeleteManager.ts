@@ -1,10 +1,10 @@
 // path: hooks/useDeleteManager.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useTableBulkOperations } from '@/hooks/database'; // CORRECTED: Import bulk operations
+import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-import { hasDetails } from '@/types/error-types';
+import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers'; // <-- IMPORT THE CORRECT HOOK
 
 interface DeleteItem {
   id: string;
@@ -14,7 +14,6 @@ interface DeleteItem {
 
 interface BulkDeleteFilter {
   column: string;
-  // CORRECTED: Changed 'unknown' to a more specific, type-safe union
   value: string | number | boolean | null;
   displayName: string;
 }
@@ -30,7 +29,17 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
 
   const supabase = createClient();
-  const { mutate: bulkDelete, isPending } = useTableBulkOperations(supabase, tableName).bulkDelete;
+
+  // --- THE FIX: USE THE CORRECT MUTATION BASED ON TABLE NAME ---
+
+  // 1. Get the generic bulk delete for all other tables.
+  const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(supabase, tableName).bulkDelete;
+  
+  // 2. Get the specific, API-driven user delete mutation.
+  const { mutate: userDelete, isPending: isUserDeletePending } = useAdminBulkDeleteUsers();
+
+  // 3. The overall loading state depends on which mutation is active.
+  const isPending = isGenericDeletePending || isUserDeletePending;
 
   const deleteSingle = useCallback((item: DeleteItem) => {
     setItemsToDelete([item]);
@@ -49,40 +58,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setBulkFilter(filter);
     setIsConfirmModalOpen(true);
   }, []);
-  
-
-  const handleConfirm = useCallback(async () => {
-    if (itemsToDelete.length > 0) {
-        const idsToDelete = itemsToDelete.map(item => item.id);
-        bulkDelete({ ids: idsToDelete }, {
-            onSuccess: () => {
-              const successMessage = itemsToDelete.length === 1
-                ? `Successfully deleted "${itemsToDelete[0].name}"`
-                : `Successfully deleted ${itemsToDelete.length} items.`;
-              toast.success(successMessage);
-              onSuccess?.();
-            },
-            onError: (err) => toast.error(`Deletion failed: ${err.message}`),
-            onSettled: () => {
-                setIsConfirmModalOpen(false);
-                setItemsToDelete([]);
-            }
-        });
-    } else if (bulkFilter) {
-        // This is now type-safe because bulkFilter.value is no longer 'unknown'
-        bulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, {
-            onSuccess: () => {
-              toast.success(`Successfully deleted all items in "${bulkFilter.displayName}"`);
-              onSuccess?.();
-            },
-            onError: (err) => toast.error(`Bulk deletion failed: ${err.message}`),
-            onSettled: () => {
-                setIsConfirmModalOpen(false);
-                setBulkFilter(null);
-            }
-        });
-    }
-  }, [itemsToDelete, bulkFilter, bulkDelete, onSuccess]);
 
   const handleCancel = useCallback(() => {
     setIsConfirmModalOpen(false);
@@ -90,12 +65,51 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setBulkFilter(null);
   }, []);
 
+  const handleConfirm = useCallback(async () => {
+    const mutationOptions = {
+      onSuccess: () => {
+        const successMessage = itemsToDelete.length === 1
+          ? `Successfully deleted "${itemsToDelete[0].name}"`
+          : itemsToDelete.length > 1
+            ? `Successfully deleted ${itemsToDelete.length} items.`
+            : `Successfully performed bulk delete.`;
+        toast.success(successMessage);
+        onSuccess?.();
+      },
+      onError: (err: Error) => toast.error(`Deletion failed: ${err.message}`),
+      onSettled: () => {
+        setIsConfirmModalOpen(false);
+        setItemsToDelete([]);
+        setBulkFilter(null);
+      }
+    };
+
+    // 4. THE CORE LOGIC: Check the table name and call the appropriate mutation.
+    if (tableName === 'user_profiles') {
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map(item => item.id);
+        userDelete({ user_ids: idsToDelete }, mutationOptions);
+      } else {
+        toast.error("Bulk delete by filter is not supported for users.");
+        handleCancel();
+      }
+    } else {
+      // For all other tables, use the generic client-side delete.
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map(item => item.id);
+        genericBulkDelete({ ids: idsToDelete }, mutationOptions);
+      } else if (bulkFilter) {
+        genericBulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, mutationOptions);
+      }
+    }
+  }, [tableName, itemsToDelete, onSuccess, userDelete, handleCancel, bulkFilter, genericBulkDelete]);
+
   const getConfirmationMessage = useCallback(() => {
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
-        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This cannot be undone.`;
+        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action is permanent and will remove the user's login access.`;
       }
-      return `Are you sure you want to delete these ${itemsToDelete.length} items? This cannot be undone.`;
+      return `Are you sure you want to delete these ${itemsToDelete.length} items? This action is permanent.`;
     }
     if (bulkFilter) {
       return `Are you sure you want to delete all items in "${bulkFilter.displayName}"? This cannot be undone.`;

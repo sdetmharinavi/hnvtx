@@ -95,9 +95,10 @@ export default function OnboardingFormEnhanced() {
 
   useEffect(() => {
     if (profile) {
+      // If a profile exists (even a placeholder), reset the form with its data.
       reset({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
+        first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
+        last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
         avatar_url: profile.avatar_url,
         date_of_birth: profile.date_of_birth,
         designation: profile.designation,
@@ -105,8 +106,21 @@ export default function OnboardingFormEnhanced() {
         address: toObject(profile.address),
         preferences: toObject(profile.preferences),
       });
+    } else if (!isProfileLoading) {
+      // If loading is finished and there is still no profile,
+      // reset to a blank form. This prevents getting stuck.
+      reset({
+        first_name: "",
+        last_name: "",
+        avatar_url: null,
+        date_of_birth: null,
+        designation: null,
+        phone_number: null,
+        address: {},
+        preferences: {},
+      });
     }
-  }, [profile, reset]);
+  }, [profile, isProfileLoading, reset]);
 
   const onSubmit = (data: OnboardingFormData) => {
     if (!isDirty || !user?.id) {
