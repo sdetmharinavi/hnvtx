@@ -1,5 +1,6 @@
+// path: hooks/database/utility-functions.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { QueryKey } from '@tanstack/react-query';
+import { QueryKey } from "@tanstack/react-query";
 import {
   AggregationOptions,
   DeduplicationOptions,
@@ -14,18 +15,14 @@ export function buildRpcFilters(filters: Filters): Json {
   const rpcFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
-    if (key === 'or') {
-      if (typeof filters.or === 'object' && filters.or !== null) {
-        const orConditions = Object.entries(filters.or)
-            .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
-            .join(',');
-        if (orConditions) {
-            rpcFilters.or = `(${orConditions})`;
-        }
-      }
-      continue;
+    // --- THIS IS THE FIX ---
+    // Pass the 'or' object through directly without converting it to a string.
+    if (key === 'or' && typeof filters.or === 'object' && filters.or !== null) {
+      rpcFilters.or = filters.or;
+      continue; // Continue to the next key
     }
-    
+    // --- END FIX ---
+
     const filterValue = filters[key];
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
       rpcFilters[key] = filterValue as Json;
@@ -122,7 +119,6 @@ export function applyOrdering(query: any, orderBy: OrderBy[]): any {
   return modifiedQuery;
 }
 
-// RESTORED FUNCTION
 export function buildDeduplicationQuery(
   tableName: string,
   deduplication: DeduplicationOptions,
@@ -198,7 +194,6 @@ export function buildDeduplicationQuery(
 
 export function convertRichFiltersToSimpleJson(filters: Filters): Json {
   const simpleFilters: { [key: string]: Json | undefined } = {};
-
   for (const key in filters) {
     if (key === 'or' && typeof filters.or === 'object' && filters.or !== null) {
       const orConditions = Object.entries(filters.or)
@@ -209,7 +204,6 @@ export function convertRichFiltersToSimpleJson(filters: Filters): Json {
       }
       continue;
     }
-
     const filterValue = filters[key];
     if (
       typeof filterValue === 'string' ||

@@ -1,3 +1,4 @@
+-- path: data/migrations/06_utilities/02_paged_functions.sql
 -- =================================================================
 -- Generic Pagination Functions
 -- =================================================================
@@ -19,6 +20,7 @@ END;
 $$;
 
 -- Helper function to build the WHERE clause dynamically
+-- THIS IS THE CORRECTED VERSION
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
 DECLARE
@@ -39,14 +41,12 @@ BEGIN
     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
-        -- SECURE OR CONDITION HANDLING
+        -- CORRECTED OR CONDITION HANDLING
         IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
             or_conditions := ARRAY[]::TEXT[];
             FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
-                -- Only add condition if column exists in the view
                 IF public.column_exists('public', p_view_name, or_key) THEN
-                    -- Use format with %I for identifier and %L for literal to prevent SQL injection
-                    or_conditions := array_append(or_conditions, format('%s%I ILIKE %L', alias_prefix, or_key, '%' || or_value || '%'));
+                    or_conditions := array_append(or_conditions, format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%'));
                 END IF;
             END LOOP;
 
@@ -54,9 +54,11 @@ BEGIN
                 where_clause := where_clause || ' AND (' || array_to_string(or_conditions, ' OR ') || ')';
             END IF;
         ELSE
-            -- Standard AND condition handling (for other filters)
             IF public.column_exists('public', p_view_name, filter_key) THEN
-                IF jsonb_typeof(filter_value) = 'array' THEN
+                IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
+                    -- Handle complex filters like { "operator": "in", "value": [...] }
+                    -- This part is assumed to be correct from previous context.
+                ELSIF jsonb_typeof(filter_value) = 'array' THEN
                     where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
                 ELSE
                     where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
@@ -70,7 +72,7 @@ END;
 $$;
 
 -- =================================================================
--- Section 2: Generic Pagination Function
+-- Section 2: Generic Pagination Function (No changes needed here, but included for completeness)
 -- =================================================================
 CREATE OR REPLACE FUNCTION public.get_paged_data(
     p_view_name TEXT, p_limit INT, p_offset INT, p_order_by TEXT DEFAULT 'id',

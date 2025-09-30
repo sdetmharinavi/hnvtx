@@ -915,3 +915,32 @@ CREATE TRIGGER trigger_after_splice_change
 AFTER INSERT OR UPDATE OR DELETE ON public.fiber_splices
 FOR EACH ROW
 EXECUTE FUNCTION public.update_ofc_connections_from_splice();
+
+CREATE OR REPLACE FUNCTION public.delete_path_segment_and_reorder(p_segment_id UUID, p_path_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_deleted_order INT;
+BEGIN
+    -- Find the order of the segment being deleted
+    SELECT path_order INTO v_deleted_order
+    FROM public.logical_path_segments
+    WHERE id = p_segment_id AND logical_path_id = p_path_id;
+
+    -- If the segment exists, proceed
+    IF FOUND THEN
+        -- Step 1: Delete the specified segment
+        DELETE FROM public.logical_path_segments
+        WHERE id = p_segment_id;
+
+        -- Step 2: Update the order of all subsequent segments in the same path
+        UPDATE public.logical_path_segments
+        SET path_order = path_order - 1
+        WHERE logical_path_id = p_path_id AND path_order > v_deleted_order;
+    END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_path_segment_and_reorder(UUID, UUID) TO authenticated;
