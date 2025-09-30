@@ -1,14 +1,16 @@
+// app/(auth)/signup/page.tsx
+
 'use client';
 
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
-import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { loginSchema } from '@/app/(auth)/login/page';
+import { toast } from 'sonner';
 
 // CORRECTED: Extend the schema from the login page, ensuring consistency.
 const signupSchema = loginSchema
@@ -65,7 +67,12 @@ export default function SignUpPage() {
   
     if (success) {
       router.push('/verify-email');
-    } 
+    }
+    
+    if(error){
+      toast.error(error.message);
+    }
+    
   };
 
   return (
