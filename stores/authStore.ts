@@ -1,9 +1,9 @@
 // stores/authStore.ts
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { User } from "@supabase/supabase-js";
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { User } from '@supabase/supabase-js';
 
-export type AuthState = "loading" | "authenticated" | "unauthenticated";
+export type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
 interface AuthStore {
   // Auth State
@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthStore>()(
       (set, get) => ({
         // Initial State
         user: null,
-        authState: "loading",
+        authState: 'loading',
 
         // Actions
         setUser: (user) => {
@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthStore>()(
           if (user?.id !== currentUser?.id) {
             set({
               user,
-              authState: user ? "authenticated" : "unauthenticated",
+              authState: user ? 'authenticated' : 'unauthenticated',
             });
           }
         },
@@ -54,77 +54,44 @@ export const useAuthStore = create<AuthStore>()(
         logout: () => {
           set({
             user: null,
-            authState: "unauthenticated",
+            authState: 'unauthenticated',
           });
         },
 
-        // // Fixed async action wrapper
-        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-        //   const currentState = get().authState;
-        //   const currentUser = get().user;
-
-        //   // Only set loading if not already in a loading state
-        //   if (currentState !== "loading") {
-        //     set({ authState: "loading" });
-        //   }
-
-        //   try {
-        //     const result = await action();
-            
-        //     // Get the latest state after action completes
-        //     const { authState: latestState, user: latestUser } = get();
-            
-        //     // Only update state if still in loading state and we have a definitive state
-        //     if (latestState === "loading") {
-        //       // If user exists, we're authenticated, otherwise unauthenticated
-        //       const newState = latestUser ? "authenticated" : "unauthenticated";
-        //       if (newState !== currentState) {
-        //         set({ authState: newState });
-        //       }
-        //     }
-
-        //     return result;
-        //   } catch (error) {
-        //     // On error, reset to appropriate state based on current user
-        //     const { user } = get();
-        //     const newState = user ? "authenticated" : "unauthenticated";
-        //     if (newState !== currentState) {
-        //       set({ authState: newState });
-        //     }
-        //     throw error;
-        //   }
-        // },
-
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-          if (get().authState !== "loading") {
-            set({ authState: "loading" });
+          if (get().authState !== 'loading') {
+            set({ authState: 'loading' });
           }
-        
+
           try {
             const result = await action();
             // The onAuthStateChange listener is the primary driver for state changes.
             // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
-            if (get().authState === "loading") {
+            if (get().authState === 'loading') {
               const finalUser = get().user;
-              set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+              set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
             }
             return result;
           } catch (error) {
-            // On error, let onAuthStateChange handle the state, or fall back.
-            const finalUser = get().user;
-            set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+            // // On error, let onAuthStateChange handle the state, or fall back.
+            // const finalUser = get().user;
+            // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+            // throw error;
+            // On any error within the action, assume the session might be invalid.
+            // Set the state directly to 'unauthenticated'.
+            set({ authState: 'unauthenticated', user: null }); // Also clear the user
             throw error;
           }
         },
 
         // Getters
         isLoading: () => {
-          return get().authState === "loading";
+          return get().authState === 'loading';
         },
 
         isAuthenticated: () => {
           const { user, authState } = get();
-          return user !== null && authState === "authenticated";
+          return user !== null && authState === 'authenticated';
         },
 
         getUserId: () => {
@@ -133,11 +100,11 @@ export const useAuthStore = create<AuthStore>()(
         },
       }),
       {
-        name: "AuthenticationStore",
+        name: 'AuthenticationStore',
       }
     ),
     {
-      name: "auth-store",
+      name: 'auth-store',
       partialize: (state) => ({
         user: state.user,
         authState: state.authState,

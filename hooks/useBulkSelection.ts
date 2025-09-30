@@ -41,8 +41,8 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
   // Toggle all items selection
   const toggleAllSelection = useCallback((allIds: T[]) => {
     setSelectedItems(prev => {
-      if (prev.size === allIds.length && allIds.length > 0) {
-        return new Set(); // Clear all if all are selected
+      if (prev.size === allIds.length) {
+        return new Set(); // Clear selection
       } else {
         return new Set(allIds); // Select all
       }
