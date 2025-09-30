@@ -2,11 +2,11 @@
 -- Description: Drops all objects related to the Core Infrastructure module.
 
 -- Drop Views
-DROP VIEW IF EXISTS public.v_lookup_types_with_count;
-DROP VIEW IF EXISTS public.v_maintenance_areas_with_count;
-DROP VIEW IF EXISTS public.v_employee_designations_with_count;
-DROP VIEW IF EXISTS public.v_employees_with_count;
-DROP VIEW IF EXISTS public.v_rings_with_count;
+DROP VIEW IF EXISTS public.v_lookup_types;
+DROP VIEW IF EXISTS public.v_maintenance_areas;
+DROP VIEW IF EXISTS public.v_employee_designations;
+DROP VIEW IF EXISTS public.v_employees;
+DROP VIEW IF EXISTS public.v_rings;
 DROP VIEW IF EXISTS public.v_nodes_complete;
 DROP VIEW IF EXISTS public.v_ofc_cables_complete;
 DROP VIEW IF EXISTS public.v_ofc_connections_complete; -- This view is created in network_systems, but depends on core tables.

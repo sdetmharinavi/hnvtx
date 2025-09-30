@@ -36,6 +36,12 @@ export default function WorkflowCard({ purpose, workflows, color }: WorkflowCard
       badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
       icon: 'text-orange-400',
     },
+    yellow: {
+      border: 'border-yellow-500/30',
+      glow: 'shadow-yellow-500/10',
+      badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+      icon: 'text-yellow-400',
+    },
   };
 
   const colors = colorMap[color];

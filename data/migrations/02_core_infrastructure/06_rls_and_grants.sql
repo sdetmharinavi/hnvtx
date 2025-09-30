@@ -1,5 +1,5 @@
--- Path: migrations/02_core_infrastructure/06_rls_and_grants.sql
--- Description: Applies a baseline set of RLS policies and grants to core tables.
+-- path: data/migrations/02_core_infrastructure/06_rls_and_grants.sql
+-- Description: Applies a baseline set of RLS policies and grants to core tables. [UPDATED VIEW NAMES]
 
 DO $$
 DECLARE
@@ -70,13 +70,13 @@ BEGIN
 END;
 $$;
 
--- CORRECTED SECTION: Added grants for specific admin roles to all relevant views in this module.
+-- CORRECTED SECTION: Grants now reference the renamed views.
 DO $$
 BEGIN
-  GRANT SELECT ON public.v_lookup_types_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_maintenance_areas_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_employee_designations_with_count TO admin, viewer;
-  GRANT SELECT ON public.v_employees_with_count TO admin, viewer;
+  GRANT SELECT ON public.v_lookup_types TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_maintenance_areas TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_employee_designations TO admin, viewer;
+  GRANT SELECT ON public.v_employees TO admin, viewer;
   GRANT SELECT ON public.v_nodes_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ofc_cables_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 

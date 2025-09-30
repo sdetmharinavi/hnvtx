@@ -1,6 +1,6 @@
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import { V_employees_with_countRowSchema } from '@/schemas/zod-schemas';
+import { V_employeesRowSchema } from '@/schemas/zod-schemas';
 
 // Columns for employees table using DataTable component
 // Note: We type columns against Row<"employees">; relation fields are accessed via custom render using any casts.
@@ -11,14 +11,14 @@ type LookupOptions = {
 
 export const getEmployeeTableColumns = (
   options?: LookupOptions
-): Column<V_employees_with_countRowSchema>[] => [
+): Column<V_employeesRowSchema>[] => [
   {
     title: 'Employee',
     dataIndex: 'employee_name',
     key: 'employee_name',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="min-w-[180px]">
         <div className="font-medium text-gray-900 dark:text-white">
           {record.employee_name || '—'}
@@ -37,7 +37,7 @@ export const getEmployeeTableColumns = (
     key: 'contact',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_contact && (
           <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -53,7 +53,7 @@ export const getEmployeeTableColumns = (
     key: 'email',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_email && (
           <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -68,7 +68,7 @@ export const getEmployeeTableColumns = (
     dataIndex: 'employee_designation_id',
     key: 'designation',
     width: 180,
-    render: (_, record: V_employees_with_countRowSchema) => {
+    render: (_, record: V_employeesRowSchema) => {
       const id = record?.employee_designation_id as unknown as string | null;
       return (id && options?.designationMap?.[id]) || 'Not set';
     },
@@ -78,7 +78,7 @@ export const getEmployeeTableColumns = (
     dataIndex: 'maintenance_terminal_id',
     key: 'maintenance_area',
     width: 200,
-    render: (_, record: V_employees_with_countRowSchema) => {
+    render: (_, record: V_employeesRowSchema) => {
       const id = record?.maintenance_terminal_id as unknown as string | null;
       return (id && options?.areaMap?.[id]) || 'Not set';
     },

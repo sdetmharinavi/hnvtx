@@ -17,9 +17,9 @@ import {
   FiInfo 
 } from "react-icons/fi";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
-import { V_employees_with_countRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
+import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
 
-type EmployeeDetails = V_employees_with_countRowSchema | (EmployeesRowSchema & { employee_designation_name?: string | null });
+type EmployeeDetails = V_employeesRowSchema | (EmployeesRowSchema & { employee_designation_name?: string | null });
 
 // Helper function to get the first letter of the name for avatar
 const getInitials = (name?: string | null) => {

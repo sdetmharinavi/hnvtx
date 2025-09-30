@@ -1,12 +1,11 @@
--- Path: migrations/03_network_systems/02_views.sql
--- Description: Defines denormalized views for the Network Systems module.
+-- path: data/migrations/03_network_systems/02_views.sql
+-- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
   n.name AS node_name,
-  -- ADDED: Join to get the node_type_name for filtering
   lt_node_type.name AS node_type_name,
   n.latitude,
   n.longitude,
@@ -17,14 +16,10 @@ SELECT
   rbs.ring_id,
   ring_area.name AS ring_logical_area_name,
   ss.gne AS sdh_gne,
-  vs.vm_id AS vmux_vm_id,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN s.status THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN NOT s.status THEN 1 ELSE 0 END) OVER() AS inactive_count
+  vs.vm_id AS vmux_vm_id
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
-  -- ADDED: Join to lookup_types via nodes to get the node's type
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
@@ -49,10 +44,7 @@ SELECT
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer,
   -- VMUX details
-  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN sc.status THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN NOT sc.status THEN 1 ELSE 0 END) OVER() AS inactive_count
+  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -104,10 +96,7 @@ SELECT
   ofc_type.name AS ofc_type_name,
   na.name AS sn_name,
   s.system_name AS system_name,
-  nb.name AS en_name,
-  count(*) OVER()::integer AS total_count,
-  sum(CASE WHEN oc.status THEN 1 ELSE 0 END) OVER()::integer AS active_count,
-  sum(CASE WHEN NOT oc.status THEN 1 ELSE 0 END) OVER()::integer AS inactive_count
+  nb.name AS en_name
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
@@ -117,7 +106,7 @@ FROM public.ofc_connections oc
   LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id;
 
 
--- View for Ring Map Node Data [CORRECTED join logic and removed placeholder columns]
+-- View for Ring Map Node Data
 CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
 SELECT
     n.id,
@@ -142,8 +131,8 @@ JOIN
 LEFT JOIN
     public.lookup_types lt ON n.node_type_id = lt.id;
 
--- View for rings with joined data and aggregate counts [CORRECTED to calculate actual node count]
-CREATE OR REPLACE VIEW public.v_rings_with_count WITH (security_invoker = true) AS
+-- View for rings with joined data
+CREATE OR REPLACE VIEW public.v_rings WITH (security_invoker = true) AS
 SELECT
   r.id,
   r.name,
@@ -156,10 +145,7 @@ SELECT
   (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
   lt_ring.name AS ring_type_name,
   lt_ring.code AS ring_type_code,
-  ma.name AS maintenance_area_name,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN r.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN r.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ma.name AS maintenance_area_name
 FROM public.rings r
 LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;

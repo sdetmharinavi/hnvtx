@@ -12,7 +12,7 @@ import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { V_rings_with_countRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useCallback, useState } from 'react'; // <-- Import useState
 import { GiLinkedRings } from 'react-icons/gi';
@@ -22,11 +22,11 @@ import { FaNetworkWired } from 'react-icons/fa'; // <-- A suitable icon
 
 const useRingsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<V_rings_with_countRowSchema> => {
+): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const { data, isLoading, error, refetch } = usePagedData<V_rings_with_countRowSchema>(
-    supabase, 'v_rings_with_count', {
+  const { data, isLoading, error, refetch } = usePagedData<V_ringsRowSchema>(
+    supabase, 'v_rings', {
       filters: { ...filters, ...(searchQuery ? { name: searchQuery } : {}) },
       limit: pageLimit, offset: (currentPage - 1) * pageLimit,
     }
@@ -44,12 +44,12 @@ const RingsPage = () => {
   
   // ADDED: State to manage the new RingSystemsModal
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
-  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_rings_with_countRowSchema | null>(null);
+  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
     data: rings, totalCount, activeCount, inactiveCount, isLoading, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
-  } = useCrudManager<'rings', V_rings_with_countRowSchema>({
+  } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
   });
 
@@ -68,7 +68,7 @@ const RingsPage = () => {
     ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
   ];
 
-  const handleView = useCallback((record: V_rings_with_countRowSchema) => {
+  const handleView = useCallback((record: V_ringsRowSchema) => {
     if (record.id) {
       router.push(`/dashboard/rings/${record.id}`);
     } else {
@@ -77,13 +77,13 @@ const RingsPage = () => {
   }, [router]);
 
   // ADDED: Handler to open the new modal
-  const handleManageSystems = useCallback((record: V_rings_with_countRowSchema) => {
+  const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
     setSelectedRingForSystems(record);
     setIsSystemsModalOpen(true);
   }, []);
 
   const tableActions = useMemo(() => {
-    const standardActions = createStandardActions<V_rings_with_countRowSchema>({
+    const standardActions = createStandardActions<V_ringsRowSchema>({
       onEdit: editModal.openEdit,
       onView: handleView,
       onDelete: crudActions.handleDelete,
@@ -122,7 +122,7 @@ const RingsPage = () => {
         isLoading={isLoading}
       />
       <DataTable
-        tableName="v_rings_with_count"
+        tableName="v_rings"
         data={rings} columns={orderedColumns} loading={isLoading} actions={tableActions}
         pagination={{
           current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,

@@ -662,7 +662,7 @@ export const TABLE_COLUMN_KEYS = {
     'account_age_days',
     'last_activity_period',
   ],
-  v_lookup_types_with_count: [
+  v_lookup_types: [
     'id',
     'category',
     'name',
@@ -677,7 +677,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_employee_designations_with_count: [
+  v_employee_designations: [
     'id',
     'name',
     'parent_id',
@@ -688,7 +688,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_maintenance_areas_with_count: [
+  v_maintenance_areas: [
     'id',
     'code',
     'name',
@@ -715,7 +715,7 @@ export const TABLE_COLUMN_KEYS = {
     'maintenance_area_type_status',
     'maintenance_area_type_updated_at',
   ],
-  v_employees_with_count: [
+  v_employees: [
     'id',
     'employee_pers_no',
     'employee_name',
@@ -735,7 +735,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_rings_with_count: [
+  v_rings: [
     // from rings r.*
     'id',
     'name',
@@ -835,11 +835,11 @@ export const VIEWS = {
   v_system_connections_complete: 'v_system_connections_complete',
   v_systems_complete: 'v_systems_complete',
   v_user_profiles_extended: 'v_user_profiles_extended',
-  v_lookup_types_with_count: 'v_lookup_types_with_count',
-  v_employee_designations_with_count: 'v_employee_designations_with_count',
-  v_maintenance_areas_with_count: 'v_maintenance_areas_with_count',
-  v_employees_with_count: 'v_employees_with_count',
-  v_rings_with_count: 'v_rings_with_count',
+  v_lookup_types: 'v_lookup_types',
+  v_employee_designations: 'v_employee_designations',
+  v_maintenance_areas: 'v_maintenance_areas',
+  v_employees: 'v_employees',
+  v_rings: 'v_rings',
   v_system_ring_paths_detailed: 'v_system_ring_paths_detailed',
 } as const;
 

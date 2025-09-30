@@ -8,7 +8,7 @@ export interface WorkflowSection {
   gradient: string;
   iconColor: string;
   bgGlow: string;
-  color: "violet" | "blue" | "teal" | "cyan" | "orange";
+  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
   purpose: string;
   workflows: Workflow[];
 }
@@ -23,7 +23,7 @@ export interface Workflow {
 export interface WorkflowCardProps {
   purpose: string;
   workflows: Workflow[];
-  color: "violet" | "blue" | "teal" | "cyan" | "orange";
+  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
 }
 
 export interface WorkflowSectionProps {

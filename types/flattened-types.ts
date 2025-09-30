@@ -1660,20 +1660,16 @@ export type V_cable_utilizationRow = {
     utilization_percent: number | null;
 };
 
-export type V_employee_designations_with_countRow = {
-    active_count: number | null;
+export type V_employee_designationsRow = {
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     name: string | null;
     parent_id: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
-export type V_employees_with_countRow = {
-    active_count: number | null;
+export type V_employeesRow = {
     created_at: string | null;
     employee_addr: string | null;
     employee_contact: string | null;
@@ -1685,11 +1681,9 @@ export type V_employees_with_countRow = {
     employee_name: string | null;
     employee_pers_no: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_terminal_id: string | null;
     remark: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
@@ -1715,24 +1709,20 @@ export type V_junction_closures_completeRow = {
     position_km: number | null;
 };
 
-export type V_lookup_types_with_countRow = {
-    active_count: number | null;
+export type V_lookup_typesRow = {
     category: string | null;
     code: string | null;
     created_at: string | null;
     description: string | null;
     id: string | null;
-    inactive_count: number | null;
     is_system_default: boolean | null;
     name: string | null;
     sort_order: number | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
-export type V_maintenance_areas_with_countRow = {
-    active_count: number | null;
+export type V_maintenance_areasRow = {
     address: string | null;
     area_type_id: string | null;
     code: string | null;
@@ -1741,7 +1731,6 @@ export type V_maintenance_areas_with_countRow = {
     created_at: string | null;
     email: string | null;
     id: string | null;
-    inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_area_type_code: string | null;
@@ -1749,15 +1738,12 @@ export type V_maintenance_areas_with_countRow = {
     name: string | null;
     parent_id: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_nodes_completeRow = {
-    active_count: number | null;
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_area_name: string | null;
@@ -1768,12 +1754,10 @@ export type V_nodes_completeRow = {
     node_type_name: string | null;
     remark: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_ofc_cables_completeRow = {
-    active_count: number | null;
     asset_no: string | null;
     capacity: number | null;
     commissioned_on: string | null;
@@ -1783,7 +1767,6 @@ export type V_ofc_cables_completeRow = {
     en_name: string | null;
     en_node_type_name: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_area_code: string | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
@@ -1799,14 +1782,12 @@ export type V_ofc_cables_completeRow = {
     sn_name: string | null;
     sn_node_type_name: string | null;
     status: boolean | null;
-    total_count: number | null;
     transnet_id: string | null;
     transnet_rkm: number | null;
     updated_at: string | null;
 };
 
 export type V_ofc_connections_completeRow = {
-    active_count: number | null;
     connection_category: string | null;
     connection_type: string | null;
     created_at: string | null;
@@ -1819,7 +1800,6 @@ export type V_ofc_connections_completeRow = {
     fiber_no_sn: number | null;
     fiber_role: string | null;
     id: string | null;
-    inactive_count: number | null;
     logical_path_id: string | null;
     maintenance_area_name: string | null;
     ofc_id: string | null;
@@ -1838,7 +1818,6 @@ export type V_ofc_connections_completeRow = {
     status: boolean | null;
     system_id: string | null;
     system_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
@@ -1858,12 +1837,10 @@ export type V_ring_nodesRow = {
     type: string | null;
 };
 
-export type V_rings_with_countRow = {
-    active_count: number | null;
+export type V_ringsRow = {
     created_at: string | null;
     description: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
@@ -1871,13 +1848,11 @@ export type V_rings_with_countRow = {
     ring_type_id: string | null;
     ring_type_name: string | null;
     status: boolean | null;
-    total_count: number | null;
     total_nodes: number | null;
     updated_at: string | null;
 };
 
 export type V_system_connections_completeRow = {
-    active_count: number | null;
     bandwidth_allocated_mbps: number | null;
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
@@ -1892,7 +1867,6 @@ export type V_system_connections_completeRow = {
     fiber_in: number | null;
     fiber_out: number | null;
     id: string | null;
-    inactive_count: number | null;
     media_type_name: string | null;
     remark: string | null;
     sdh_a_customer: string | null;
@@ -1913,7 +1887,6 @@ export type V_system_connections_completeRow = {
     system_id: string | null;
     system_name: string | null;
     system_type_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     vlan: string | null;
     vmux_c_code: string | null;
@@ -1938,11 +1911,9 @@ export type V_system_ring_paths_detailedRow = {
 };
 
 export type V_systems_completeRow = {
-    active_count: number | null;
     commissioned_on: string | null;
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     ip_address: unknown | null;
     latitude: number | null;
     longitude: number | null;
@@ -1963,7 +1934,6 @@ export type V_systems_completeRow = {
     system_type_code: string | null;
     system_type_id: string | null;
     system_type_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     vmux_vm_id: string | null;
 };
@@ -2063,17 +2033,17 @@ export const tableNames = [
 export const viewNames = [
   "v_cable_segments_at_jc",
   "v_cable_utilization",
-  "v_employee_designations_with_count",
-  "v_employees_with_count",
+  "v_employee_designations",
+  "v_employees",
   "v_end_to_end_paths",
   "v_junction_closures_complete",
-  "v_lookup_types_with_count",
-  "v_maintenance_areas_with_count",
+  "v_lookup_types",
+  "v_maintenance_areas",
   "v_nodes_complete",
   "v_ofc_cables_complete",
   "v_ofc_connections_complete",
   "v_ring_nodes",
-  "v_rings_with_count",
+  "v_rings",
   "v_system_connections_complete",
   "v_system_ring_paths_detailed",
   "v_systems_complete",

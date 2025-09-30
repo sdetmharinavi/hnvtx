@@ -1568,7 +1568,7 @@ LEFT JOIN
     public.lookup_types lt ON n.node_type_id = lt.id;
 
 -- View for rings with joined data and aggregate counts [CORRECTED to calculate actual node count]
-CREATE OR REPLACE VIEW public.v_rings_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_rings WITH (security_invoker = true) AS
 SELECT
   r.id,
   r.name,
@@ -2051,7 +2051,7 @@ BEGIN
   GRANT SELECT ON public.v_systems_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_system_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ring_nodes TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_rings_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_rings TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   -- v_ofc_connections_complete is also defined here and needs grants
   GRANT SELECT ON public.v_ofc_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 
@@ -3780,10 +3780,10 @@ $$;
 -- CORRECTED SECTION: Added grants for specific admin roles to all relevant views in this module.
 DO $$
 BEGIN
-  GRANT SELECT ON public.v_lookup_types_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_maintenance_areas_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_employee_designations_with_count TO admin, viewer;
-  GRANT SELECT ON public.v_employees_with_count TO admin, viewer;
+  GRANT SELECT ON public.v_lookup_types TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_maintenance_areas TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_employee_designations TO admin, viewer;
+  GRANT SELECT ON public.v_employees TO admin, viewer;
   GRANT SELECT ON public.v_nodes_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ofc_cables_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 
@@ -3798,7 +3798,7 @@ $$;
 -- Description: Defines denormalized views for the Core Infrastructure module. [CORRECTED]
 
 -- View for lookup_types with aggregate counts
-CREATE OR REPLACE VIEW public.v_lookup_types_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_lookup_types WITH (security_invoker = true) AS
 SELECT
   lt.*,
   count(*) OVER() AS total_count,
@@ -3807,7 +3807,7 @@ SELECT
 FROM public.lookup_types lt;
 
 -- View for maintenance_areas with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_maintenance_areas_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_maintenance_areas WITH (security_invoker = true) AS
 SELECT
   ma.*,
   lt_ma.name AS maintenance_area_type_name,
@@ -3819,7 +3819,7 @@ FROM public.maintenance_areas ma
 LEFT JOIN public.lookup_types lt_ma ON ma.area_type_id = lt_ma.id;
 
 -- View for employee_designations with aggregate counts
-CREATE OR REPLACE VIEW public.v_employee_designations_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_employee_designations WITH (security_invoker = true) AS
 SELECT
   ed.*,
   count(*) OVER() AS total_count,
@@ -3828,7 +3828,7 @@ SELECT
 FROM public.employee_designations ed;
 
 -- View for employees with joined data and aggregate counts
-CREATE OR REPLACE VIEW public.v_employees_with_count WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.v_employees WITH (security_invoker = true) AS
 SELECT
   e.*,
   ed.name AS employee_designation_name,
@@ -7262,7 +7262,7 @@ export const v_cable_utilizationRowSchema = z.object({
   utilization_percent: z.number().min(0).max(100).nullable(),
 });
 
-export const v_employee_designations_with_countRowSchema = z.object({
+export const v_employee_designationsRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
@@ -7274,7 +7274,7 @@ export const v_employee_designations_with_countRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
-export const v_employees_with_countRowSchema = z.object({
+export const v_employeesRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
@@ -7317,7 +7317,7 @@ export const v_junction_closures_completeRowSchema = z.object({
   position_km: z.number().nullable(),
 });
 
-export const v_lookup_types_with_countRowSchema = z.object({
+export const v_lookup_typesRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   category: z.string().nullable(),
   code: z.string().nullable(),
@@ -7333,7 +7333,7 @@ export const v_lookup_types_with_countRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
-export const v_maintenance_areas_with_countRowSchema = z.object({
+export const v_maintenance_areasRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   area_type_id: z.uuid().nullable(),
@@ -7460,7 +7460,7 @@ export const v_ring_nodesRowSchema = z.object({
   type: z.string().nullable(),
 });
 
-export const v_rings_with_countRowSchema = z.object({
+export const v_ringsRowSchema = z.object({
   active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
@@ -7734,17 +7734,17 @@ export const schemas = {
   vmux_systemsUpdateSchema,
   v_cable_segments_at_jcRowSchema,
   v_cable_utilizationRowSchema,
-  v_employee_designations_with_countRowSchema,
-  v_employees_with_countRowSchema,
+  v_employee_designationsRowSchema,
+  v_employeesRowSchema,
   v_end_to_end_pathsRowSchema,
   v_junction_closures_completeRowSchema,
-  v_lookup_types_with_countRowSchema,
-  v_maintenance_areas_with_countRowSchema,
+  v_lookup_typesRowSchema,
+  v_maintenance_areasRowSchema,
   v_nodes_completeRowSchema,
   v_ofc_cables_completeRowSchema,
   v_ofc_connections_completeRowSchema,
   v_ring_nodesRowSchema,
-  v_rings_with_countRowSchema,
+  v_ringsRowSchema,
   v_system_connections_completeRowSchema,
   v_system_ring_paths_detailedRowSchema,
   v_systems_completeRowSchema,
@@ -7884,17 +7884,17 @@ export type Vmux_systemsInsertSchema = z.infer<typeof vmux_systemsInsertSchema>;
 export type Vmux_systemsUpdateSchema = z.infer<typeof vmux_systemsUpdateSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
-export type V_employee_designations_with_countRowSchema = z.infer<typeof v_employee_designations_with_countRowSchema>;
-export type V_employees_with_countRowSchema = z.infer<typeof v_employees_with_countRowSchema>;
+export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
+export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;
-export type V_lookup_types_with_countRowSchema = z.infer<typeof v_lookup_types_with_countRowSchema>;
-export type V_maintenance_areas_with_countRowSchema = z.infer<typeof v_maintenance_areas_with_countRowSchema>;
+export type V_lookup_typesRowSchema = z.infer<typeof v_lookup_typesRowSchema>;
+export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRowSchema>;
 export type V_nodes_completeRowSchema = z.infer<typeof v_nodes_completeRowSchema>;
 export type V_ofc_cables_completeRowSchema = z.infer<typeof v_ofc_cables_completeRowSchema>;
 export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connections_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
-export type V_rings_with_countRowSchema = z.infer<typeof v_rings_with_countRowSchema>;
+export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
 export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;
@@ -22372,7 +22372,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui';
-import { V_rings_with_countRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -22384,11 +22384,11 @@ interface SystemOption {
 interface RingSystemsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  ring: V_rings_with_countRowSchema | null;
+  ring: V_ringsRowSchema | null;
 }
 
 // Data fetching hook
-const useRingSystemsData = (ring: V_rings_with_countRowSchema | null) => {
+const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
   const supabase = createClient();
   return useQuery({
     queryKey: ['ring-systems-data', ring?.id],
@@ -22452,7 +22452,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
       queryClient.invalidateQueries({ queryKey: ['ring-systems-data', ring?.id] });
       queryClient.invalidateQueries({ queryKey: ['table', 'rings'] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'v_rings_with_count'] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'v_rings'] });
       onClose();
     },
     onError: (err) => toast.error(`Failed to update systems: ${err.message}`),
@@ -41809,14 +41809,14 @@ import {
   employeesInsertSchema,
   EmployeesInsertSchema,
   Maintenance_areasRowSchema,
-  V_employees_with_countRowSchema, // Import the view schema
+  V_employeesRowSchema, // Import the view schema
 } from '@/schemas/zod-schemas';
 
 interface EmployeeFormProps {
   isOpen: boolean;
   onClose: () => void;
   // The form now accepts the record directly from the view
-  employee?: V_employees_with_countRowSchema | null;
+  employee?: V_employeesRowSchema | null;
   onSubmit: (data: EmployeesInsertSchema) => void;
   onCancel: () => void;
   isLoading: boolean;
@@ -42017,7 +42017,7 @@ export default EmployeeForm;
 ```typescript
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import { V_employees_with_countRowSchema } from '@/schemas/zod-schemas';
+import { V_employeesRowSchema } from '@/schemas/zod-schemas';
 
 // Columns for employees table using DataTable component
 // Note: We type columns against Row<"employees">; relation fields are accessed via custom render using any casts.
@@ -42028,14 +42028,14 @@ type LookupOptions = {
 
 export const getEmployeeTableColumns = (
   options?: LookupOptions
-): Column<V_employees_with_countRowSchema>[] => [
+): Column<V_employeesRowSchema>[] => [
   {
     title: 'Employee',
     dataIndex: 'employee_name',
     key: 'employee_name',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="min-w-[180px]">
         <div className="font-medium text-gray-900 dark:text-white">
           {record.employee_name || '—'}
@@ -42054,7 +42054,7 @@ export const getEmployeeTableColumns = (
     key: 'contact',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_contact && (
           <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -42070,7 +42070,7 @@ export const getEmployeeTableColumns = (
     key: 'email',
     width: 220,
     searchable: true,
-    render: (_, record: V_employees_with_countRowSchema) => (
+    render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_email && (
           <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -42085,7 +42085,7 @@ export const getEmployeeTableColumns = (
     dataIndex: 'employee_designation_id',
     key: 'designation',
     width: 180,
-    render: (_, record: V_employees_with_countRowSchema) => {
+    render: (_, record: V_employeesRowSchema) => {
       const id = record?.employee_designation_id as unknown as string | null;
       return (id && options?.designationMap?.[id]) || 'Not set';
     },
@@ -42095,7 +42095,7 @@ export const getEmployeeTableColumns = (
     dataIndex: 'maintenance_terminal_id',
     key: 'maintenance_area',
     width: 200,
-    render: (_, record: V_employees_with_countRowSchema) => {
+    render: (_, record: V_employeesRowSchema) => {
       const id = record?.maintenance_terminal_id as unknown as string | null;
       return (id && options?.areaMap?.[id]) || 'Not set';
     },
@@ -43021,7 +43021,7 @@ export type Database = {
             foreignKeyName: "employee_designations_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "v_employee_designations_with_count"
+            referencedRelation: "v_employee_designations"
             referencedColumns: ["id"]
           },
         ]
@@ -43087,7 +43087,7 @@ export type Database = {
             foreignKeyName: "employees_employee_designation_id_fkey"
             columns: ["employee_designation_id"]
             isOneToOne: false
-            referencedRelation: "v_employee_designations_with_count"
+            referencedRelation: "v_employee_designations"
             referencedColumns: ["id"]
           },
           {
@@ -43101,7 +43101,7 @@ export type Database = {
             foreignKeyName: "employees_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
         ]
@@ -43465,7 +43465,7 @@ export type Database = {
             foreignKeyName: "logical_fiber_paths_operational_status_id_fkey"
             columns: ["operational_status_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -43479,7 +43479,7 @@ export type Database = {
             foreignKeyName: "logical_fiber_paths_path_type_id_fkey"
             columns: ["path_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -43661,7 +43661,7 @@ export type Database = {
             foreignKeyName: "maintenance_areas_area_type_id_fkey"
             columns: ["area_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -43675,7 +43675,7 @@ export type Database = {
             foreignKeyName: "maintenance_areas_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
         ]
@@ -43804,7 +43804,7 @@ export type Database = {
             foreignKeyName: "nodes_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -43818,7 +43818,7 @@ export type Database = {
             foreignKeyName: "nodes_node_type_id_fkey"
             columns: ["node_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -43914,7 +43914,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -43928,7 +43928,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_ofc_owner_id_fkey"
             columns: ["ofc_owner_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -43942,7 +43942,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_ofc_type_id_fkey"
             columns: ["ofc_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -44062,7 +44062,7 @@ export type Database = {
             foreignKeyName: "fk_connection_type"
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["category", "name"]
           },
           {
@@ -44158,7 +44158,7 @@ export type Database = {
             foreignKeyName: "ring_based_systems_maintenance_area_id_fkey"
             columns: ["maintenance_area_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -44179,7 +44179,7 @@ export type Database = {
             foreignKeyName: "ring_based_systems_ring_id_fkey"
             columns: ["ring_id"]
             isOneToOne: false
-            referencedRelation: "v_rings_with_count"
+            referencedRelation: "v_rings"
             referencedColumns: ["id"]
           },
           {
@@ -44244,7 +44244,7 @@ export type Database = {
             foreignKeyName: "rings_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -44258,7 +44258,7 @@ export type Database = {
             foreignKeyName: "rings_ring_type_id_fkey"
             columns: ["ring_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -44437,7 +44437,7 @@ export type Database = {
             foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
             columns: ["sfp_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -44554,7 +44554,7 @@ export type Database = {
             foreignKeyName: "system_connections_media_type_id_fkey"
             columns: ["media_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -44645,7 +44645,7 @@ export type Database = {
             foreignKeyName: "systems_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -44680,7 +44680,7 @@ export type Database = {
             foreignKeyName: "systems_system_type_id_fkey"
             columns: ["system_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -44878,7 +44878,7 @@ export type Database = {
         }
         Relationships: []
       }
-      v_employee_designations_with_count: {
+      v_employee_designations: {
         Row: {
           active_count: number | null
           created_at: string | null
@@ -44902,12 +44902,12 @@ export type Database = {
             foreignKeyName: "employee_designations_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "v_employee_designations_with_count"
+            referencedRelation: "v_employee_designations"
             referencedColumns: ["id"]
           },
         ]
       }
-      v_employees_with_count: {
+      v_employees: {
         Row: {
           active_count: number | null
           created_at: string | null
@@ -44940,7 +44940,7 @@ export type Database = {
             foreignKeyName: "employees_employee_designation_id_fkey"
             columns: ["employee_designation_id"]
             isOneToOne: false
-            referencedRelation: "v_employee_designations_with_count"
+            referencedRelation: "v_employee_designations"
             referencedColumns: ["id"]
           },
           {
@@ -44954,7 +44954,7 @@ export type Database = {
             foreignKeyName: "employees_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
         ]
@@ -45057,7 +45057,7 @@ export type Database = {
           },
         ]
       }
-      v_lookup_types_with_count: {
+      v_lookup_types: {
         Row: {
           active_count: number | null
           category: string | null
@@ -45075,7 +45075,7 @@ export type Database = {
         }
         Relationships: []
       }
-      v_maintenance_areas_with_count: {
+      v_maintenance_areas: {
         Row: {
           active_count: number | null
           address: string | null
@@ -45109,7 +45109,7 @@ export type Database = {
             foreignKeyName: "maintenance_areas_area_type_id_fkey"
             columns: ["area_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -45123,7 +45123,7 @@ export type Database = {
             foreignKeyName: "maintenance_areas_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
         ]
@@ -45159,7 +45159,7 @@ export type Database = {
             foreignKeyName: "nodes_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -45173,7 +45173,7 @@ export type Database = {
             foreignKeyName: "nodes_node_type_id_fkey"
             columns: ["node_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -45244,7 +45244,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -45258,7 +45258,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_ofc_owner_id_fkey"
             columns: ["ofc_owner_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -45272,7 +45272,7 @@ export type Database = {
             foreignKeyName: "ofc_cables_ofc_type_id_fkey"
             columns: ["ofc_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -45349,7 +45349,7 @@ export type Database = {
             foreignKeyName: "fk_connection_type"
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["category", "name"]
           },
           {
@@ -45475,7 +45475,7 @@ export type Database = {
         }
         Relationships: []
       }
-      v_rings_with_count: {
+      v_rings: {
         Row: {
           active_count: number | null
           created_at: string | null
@@ -45505,7 +45505,7 @@ export type Database = {
             foreignKeyName: "rings_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -45519,7 +45519,7 @@ export type Database = {
             foreignKeyName: "rings_ring_type_id_fkey"
             columns: ["ring_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -45746,7 +45746,7 @@ export type Database = {
             foreignKeyName: "ring_based_systems_ring_id_fkey"
             columns: ["ring_id"]
             isOneToOne: false
-            referencedRelation: "v_rings_with_count"
+            referencedRelation: "v_rings"
             referencedColumns: ["id"]
           },
           {
@@ -45760,7 +45760,7 @@ export type Database = {
             foreignKeyName: "systems_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
-            referencedRelation: "v_maintenance_areas_with_count"
+            referencedRelation: "v_maintenance_areas"
             referencedColumns: ["id"]
           },
           {
@@ -45795,7 +45795,7 @@ export type Database = {
             foreignKeyName: "systems_system_type_id_fkey"
             columns: ["system_type_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types_with_count"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -48108,7 +48108,7 @@ export type V_cable_utilizationRow = {
     utilization_percent: number | null;
 };
 
-export type V_employee_designations_with_countRow = {
+export type V_employee_designationsRow = {
     active_count: number | null;
     created_at: string | null;
     id: string | null;
@@ -48120,7 +48120,7 @@ export type V_employee_designations_with_countRow = {
     updated_at: string | null;
 };
 
-export type V_employees_with_countRow = {
+export type V_employeesRow = {
     active_count: number | null;
     created_at: string | null;
     employee_addr: string | null;
@@ -48163,7 +48163,7 @@ export type V_junction_closures_completeRow = {
     position_km: number | null;
 };
 
-export type V_lookup_types_with_countRow = {
+export type V_lookup_typesRow = {
     active_count: number | null;
     category: string | null;
     code: string | null;
@@ -48179,7 +48179,7 @@ export type V_lookup_types_with_countRow = {
     updated_at: string | null;
 };
 
-export type V_maintenance_areas_with_countRow = {
+export type V_maintenance_areasRow = {
     active_count: number | null;
     address: string | null;
     area_type_id: string | null;
@@ -48306,7 +48306,7 @@ export type V_ring_nodesRow = {
     type: string | null;
 };
 
-export type V_rings_with_countRow = {
+export type V_ringsRow = {
     active_count: number | null;
     created_at: string | null;
     description: string | null;
@@ -48511,17 +48511,17 @@ export const tableNames = [
 export const viewNames = [
   "v_cable_segments_at_jc",
   "v_cable_utilization",
-  "v_employee_designations_with_count",
-  "v_employees_with_count",
+  "v_employee_designations",
+  "v_employees",
   "v_end_to_end_paths",
   "v_junction_closures_complete",
-  "v_lookup_types_with_count",
-  "v_maintenance_areas_with_count",
+  "v_lookup_types",
+  "v_maintenance_areas",
   "v_nodes_complete",
   "v_ofc_cables_complete",
   "v_ofc_connections_complete",
   "v_ring_nodes",
-  "v_rings_with_count",
+  "v_rings",
   "v_system_connections_complete",
   "v_system_ring_paths_detailed",
   "v_systems_complete",
@@ -50534,7 +50534,7 @@ import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { V_rings_with_countRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useCallback, useState } from 'react'; // <-- Import useState
 import { GiLinkedRings } from 'react-icons/gi';
@@ -50544,11 +50544,11 @@ import { FaNetworkWired } from 'react-icons/fa'; // <-- A suitable icon
 
 const useRingsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<V_rings_with_countRowSchema> => {
+): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const { data, isLoading, error, refetch } = usePagedData<V_rings_with_countRowSchema>(
-    supabase, 'v_rings_with_count', {
+  const { data, isLoading, error, refetch } = usePagedData<V_ringsRowSchema>(
+    supabase, 'v_rings', {
       filters: { ...filters, ...(searchQuery ? { name: searchQuery } : {}) },
       limit: pageLimit, offset: (currentPage - 1) * pageLimit,
     }
@@ -50566,12 +50566,12 @@ const RingsPage = () => {
   
   // ADDED: State to manage the new RingSystemsModal
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
-  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_rings_with_countRowSchema | null>(null);
+  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
     data: rings, totalCount, activeCount, inactiveCount, isLoading, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
-  } = useCrudManager<'rings', V_rings_with_countRowSchema>({
+  } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
   });
 
@@ -50590,7 +50590,7 @@ const RingsPage = () => {
     ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
   ];
 
-  const handleView = useCallback((record: V_rings_with_countRowSchema) => {
+  const handleView = useCallback((record: V_ringsRowSchema) => {
     if (record.id) {
       router.push(`/dashboard/rings/${record.id}`);
     } else {
@@ -50599,13 +50599,13 @@ const RingsPage = () => {
   }, [router]);
 
   // ADDED: Handler to open the new modal
-  const handleManageSystems = useCallback((record: V_rings_with_countRowSchema) => {
+  const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
     setSelectedRingForSystems(record);
     setIsSystemsModalOpen(true);
   }, []);
 
   const tableActions = useMemo(() => {
-    const standardActions = createStandardActions<V_rings_with_countRowSchema>({
+    const standardActions = createStandardActions<V_ringsRowSchema>({
       onEdit: editModal.openEdit,
       onView: handleView,
       onDelete: crudActions.handleDelete,
@@ -50644,7 +50644,7 @@ const RingsPage = () => {
         isLoading={isLoading}
       />
       <DataTable
-        tableName="v_rings_with_count"
+        tableName="v_rings"
         data={rings} columns={orderedColumns} loading={isLoading} actions={tableActions}
         pagination={{
           current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
@@ -51299,7 +51299,7 @@ import { BulkActions } from '@/components/common/BulkActions';
 import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
-  V_employees_with_countRowSchema,
+  V_employeesRowSchema,
   EmployeesInsertSchema,
   EmployeesRowSchema,
 } from '@/schemas/zod-schemas';
@@ -51313,7 +51313,7 @@ import { toast } from 'sonner';
 // 1. ADAPTER HOOK: Makes our paged employee data query compatible with useCrudManager.
 const useEmployeesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<V_employees_with_countRowSchema> => {
+): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -51329,9 +51329,9 @@ const useEmployeesData = (
     return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employees_with_countRowSchema>(
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employeesRowSchema>(
     supabase,
-    'v_employees_with_count',
+    'v_employees',
     {
       filters: searchFilters,
       limit: pageLimit,
@@ -51372,7 +51372,7 @@ const EmployeesPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'employees', V_employees_with_countRowSchema>({
+  } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
   });
@@ -51387,12 +51387,12 @@ const EmployeesPage = () => {
   }), [designations, maintenanceAreas]);
 
   const tableActions = useMemo(
-    () => createStandardActions<V_employees_with_countRowSchema>({
+    () => createStandardActions<V_employeesRowSchema>({
       onView: viewModal.open,
       onEdit: editModal.openEdit,
       onToggleStatus: crudActions.handleToggleStatus,
       onDelete: crudActions.handleDelete,
-    }) as TableAction<'v_employees_with_count'>[],
+    }) as TableAction<'v_employees'>[],
     [viewModal.open, editModal.openEdit, crudActions.handleToggleStatus, crudActions.handleDelete]
   );
   
@@ -51444,7 +51444,7 @@ const EmployeesPage = () => {
       />
 
       <DataTable
-        tableName="v_employees_with_count"
+        tableName="v_employees"
         data={employees}
         columns={columns}
         loading={isLoading} // <-- For initial skeleton
@@ -51453,7 +51453,7 @@ const EmployeesPage = () => {
         selectable
         onRowSelect={(selectedRows) => {
             const validRows = selectedRows.filter(
-                (row): row is V_employees_with_countRowSchema & { id: string } => row.id != null
+                (row): row is V_employeesRowSchema & { id: string } => row.id != null
             );
             bulkActions.handleRowSelect(validRows);
         }}
@@ -54535,9 +54535,9 @@ import {
   FiInfo 
 } from "react-icons/fi";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
-import { V_employees_with_countRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
+import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
 
-type EmployeeDetails = V_employees_with_countRowSchema | (EmployeesRowSchema & { employee_designation_name?: string | null });
+type EmployeeDetails = V_employeesRowSchema | (EmployeesRowSchema & { employee_designation_name?: string | null });
 
 // Helper function to get the first letter of the name for avatar
 const getInitials = (name?: string | null) => {
@@ -55659,10 +55659,10 @@ export const UserProfileColumns = (data:V_user_profiles_extendedRowSchema[]) => 
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
-import { V_rings_with_countRowSchema } from "@/schemas/zod-schemas";
+import { V_ringsRowSchema } from "@/schemas/zod-schemas";
 
-export const RingsColumns = (data: V_rings_with_countRowSchema[]) => {
-  return useDynamicColumnConfig("v_rings_with_count", {
+export const RingsColumns = (data: V_ringsRowSchema[]) => {
+  return useDynamicColumnConfig("v_rings", {
     data: data,
     omit: [
       "id",
@@ -55712,14 +55712,14 @@ export const RingsColumns = (data: V_rings_with_countRowSchema[]) => {
       },
       ring_type_code: {
         title: "Ring Type",
-        render: (_value: unknown, record: V_rings_with_countRowSchema) => {
+        render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.ring_type_code;
           return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
         },
       },
       maintenance_area_name: {
         title: "Maintenance Area",
-        render: (_value: unknown, record: V_rings_with_countRowSchema) => {
+        render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.maintenance_area_name;
           return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
         },
@@ -56930,7 +56930,7 @@ export const TABLE_COLUMN_KEYS = {
     'account_age_days',
     'last_activity_period',
   ],
-  v_lookup_types_with_count: [
+  v_lookup_types: [
     'id',
     'category',
     'name',
@@ -56945,7 +56945,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_employee_designations_with_count: [
+  v_employee_designations: [
     'id',
     'name',
     'parent_id',
@@ -56956,7 +56956,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_maintenance_areas_with_count: [
+  v_maintenance_areas: [
     'id',
     'code',
     'name',
@@ -56983,7 +56983,7 @@ export const TABLE_COLUMN_KEYS = {
     'maintenance_area_type_status',
     'maintenance_area_type_updated_at',
   ],
-  v_employees_with_count: [
+  v_employees: [
     'id',
     'employee_pers_no',
     'employee_name',
@@ -57003,7 +57003,7 @@ export const TABLE_COLUMN_KEYS = {
     'active_count',
     'inactive_count',
   ],
-  v_rings_with_count: [
+  v_rings: [
     // from rings r.*
     'id',
     'name',
@@ -57103,11 +57103,11 @@ export const VIEWS = {
   v_system_connections_complete: 'v_system_connections_complete',
   v_systems_complete: 'v_systems_complete',
   v_user_profiles_extended: 'v_user_profiles_extended',
-  v_lookup_types_with_count: 'v_lookup_types_with_count',
-  v_employee_designations_with_count: 'v_employee_designations_with_count',
-  v_maintenance_areas_with_count: 'v_maintenance_areas_with_count',
-  v_employees_with_count: 'v_employees_with_count',
-  v_rings_with_count: 'v_rings_with_count',
+  v_lookup_types: 'v_lookup_types',
+  v_employee_designations: 'v_employee_designations',
+  v_maintenance_areas: 'v_maintenance_areas',
+  v_employees: 'v_employees',
+  v_rings: 'v_rings',
   v_system_ring_paths_detailed: 'v_system_ring_paths_detailed',
 } as const;
 
