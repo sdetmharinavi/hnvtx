@@ -25,11 +25,11 @@ export function useRpcQuery<
   supabase: SupabaseClient<Database>,
   functionName: T,
   args?: RpcFunctionArgs<T>,
-  options?: UseRpcQueryOptions<T, TData>
+  options?: Omit<UseQueryOptions<RpcFunctionReturns<T>, Error, TData>, 'queryKey' | 'queryFn'>
 ) {
-  const { performance, ...queryOptions } = options || {};
+  const { performance, ...queryOptions } = (options || {}) as UseRpcQueryOptions<T, TData>;
 
-  return useQuery({
+  return useQuery<RpcFunctionReturns<T>, Error, TData>({
     queryKey: createRpcQueryKey(functionName, args, performance),
     queryFn: async (): Promise<RpcFunctionReturns<T>> => {
       const { data, error } = await supabase.rpc(
@@ -39,7 +39,7 @@ export function useRpcQuery<
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
-    staleTime: 3 * 60 * 1000, // Default stale time for RPCs
+    staleTime: 3 * 60 * 1000,
     ...queryOptions,
   });
 }
@@ -64,12 +64,16 @@ export function useRpcMutation<T extends RpcFunctionName>(
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
+    // THE FIX: The onSuccess callback now correctly accepts all four arguments
     onSuccess: (data, variables, context, mutation) => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ['table'] });
         queryClient.invalidateQueries({ queryKey: ['rpc'] });
       }
-      options?.onSuccess?.(data, variables, context, mutation);
+      // The original onSuccess is called with the correct signature
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, context, mutation);
+      }
     },
     ...mutationOptions,
   });
