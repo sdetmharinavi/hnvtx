@@ -12,7 +12,7 @@ import { BulkActions } from '@/components/common/BulkActions';
 import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
-  V_employees_with_countRowSchema,
+  V_employeesRowSchema,
   EmployeesInsertSchema,
   EmployeesRowSchema,
 } from '@/schemas/zod-schemas';
@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 // 1. ADAPTER HOOK: Makes our paged employee data query compatible with useCrudManager.
 const useEmployeesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<V_employees_with_countRowSchema> => {
+): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -42,9 +42,9 @@ const useEmployeesData = (
     return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employees_with_countRowSchema>(
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employeesRowSchema>(
     supabase,
-    'v_employees_with_count',
+    'v_employees',
     {
       filters: searchFilters,
       limit: pageLimit,
@@ -85,7 +85,7 @@ const EmployeesPage = () => {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'employees', V_employees_with_countRowSchema>({
+  } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
   });
@@ -100,12 +100,12 @@ const EmployeesPage = () => {
   }), [designations, maintenanceAreas]);
 
   const tableActions = useMemo(
-    () => createStandardActions<V_employees_with_countRowSchema>({
+    () => createStandardActions<V_employeesRowSchema>({
       onView: viewModal.open,
       onEdit: editModal.openEdit,
       onToggleStatus: crudActions.handleToggleStatus,
       onDelete: crudActions.handleDelete,
-    }) as TableAction<'v_employees_with_count'>[],
+    }) as TableAction<'v_employees'>[],
     [viewModal.open, editModal.openEdit, crudActions.handleToggleStatus, crudActions.handleDelete]
   );
   
@@ -157,7 +157,7 @@ const EmployeesPage = () => {
       />
 
       <DataTable
-        tableName="v_employees_with_count"
+        tableName="v_employees"
         data={employees}
         columns={columns}
         loading={isLoading} // <-- For initial skeleton
@@ -166,7 +166,7 @@ const EmployeesPage = () => {
         selectable
         onRowSelect={(selectedRows) => {
             const validRows = selectedRows.filter(
-                (row): row is V_employees_with_countRowSchema & { id: string } => row.id != null
+                (row): row is V_employeesRowSchema & { id: string } => row.id != null
             );
             bulkActions.handleRowSelect(validRows);
         }}

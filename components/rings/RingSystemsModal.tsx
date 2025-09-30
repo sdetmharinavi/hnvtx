@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui';
-import { V_rings_with_countRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -17,11 +17,11 @@ interface SystemOption {
 interface RingSystemsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  ring: V_rings_with_countRowSchema | null;
+  ring: V_ringsRowSchema | null;
 }
 
 // Data fetching hook
-const useRingSystemsData = (ring: V_rings_with_countRowSchema | null) => {
+const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
   const supabase = createClient();
   return useQuery({
     queryKey: ['ring-systems-data', ring?.id],
@@ -85,7 +85,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
       queryClient.invalidateQueries({ queryKey: ['ring-systems-data', ring?.id] });
       queryClient.invalidateQueries({ queryKey: ['table', 'rings'] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'v_rings_with_count'] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'v_rings'] });
       onClose();
     },
     onError: (err) => toast.error(`Failed to update systems: ${err.message}`),

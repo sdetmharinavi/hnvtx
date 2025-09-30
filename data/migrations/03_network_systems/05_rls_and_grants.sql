@@ -1,5 +1,5 @@
--- Path: migrations/03_network_systems/05_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module.
+-- path: data/migrations/03_network_systems/05_rls_and_grants.sql
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [UPDATED VIEW NAMES]
 
 -- =================================================================
 -- PART 1: GENERIC GRANTS AND RLS SETUP FOR ALL SYSTEM TABLES
@@ -165,15 +165,14 @@ END;
 $$;
 
 -- =================================================================
--- Section 4: View-Level Grants
+-- Section 4: View-Level Grants [UPDATED VIEW NAMES]
 -- =================================================================
 DO $$
 BEGIN
   GRANT SELECT ON public.v_systems_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_system_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ring_nodes TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_rings_with_count TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  -- v_ofc_connections_complete is also defined here and needs grants
+  GRANT SELECT ON public.v_rings TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ofc_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';

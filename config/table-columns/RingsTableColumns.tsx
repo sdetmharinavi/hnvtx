@@ -1,10 +1,10 @@
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
-import { V_rings_with_countRowSchema } from "@/schemas/zod-schemas";
+import { V_ringsRowSchema } from "@/schemas/zod-schemas";
 
-export const RingsColumns = (data: V_rings_with_countRowSchema[]) => {
-  return useDynamicColumnConfig("v_rings_with_count", {
+export const RingsColumns = (data: V_ringsRowSchema[]) => {
+  return useDynamicColumnConfig("v_rings", {
     data: data,
     omit: [
       "id",
@@ -54,14 +54,14 @@ export const RingsColumns = (data: V_rings_with_countRowSchema[]) => {
       },
       ring_type_code: {
         title: "Ring Type",
-        render: (_value: unknown, record: V_rings_with_countRowSchema) => {
+        render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.ring_type_code;
           return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
         },
       },
       maintenance_area_name: {
         title: "Maintenance Area",
-        render: (_value: unknown, record: V_rings_with_countRowSchema) => {
+        render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.maintenance_area_name;
           return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
         },

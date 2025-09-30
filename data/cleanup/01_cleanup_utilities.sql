@@ -10,11 +10,11 @@ DROP FUNCTION IF EXISTS public.get_paged_ofc_cables_complete(INT, INT, TEXT, TEX
 DROP FUNCTION IF EXISTS public.get_paged_ofc_connections_complete(INT, INT, TEXT, TEXT, JSONB);
 DROP FUNCTION IF EXISTS public.get_paged_systems_complete(INT, INT, TEXT, TEXT, JSONB);
 DROP FUNCTION IF EXISTS public.get_paged_system_connections_complete(INT, INT, TEXT, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.get_paged_lookup_types_with_count(INT, INT, TEXT, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.get_paged_maintenance_areas_with_count(INT, INT, TEXT, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.get_paged_employee_designations_with_count(INT, INT, TEXT, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.get_paged_employees_with_count(INT, INT, TEXT, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.get_paged_rings_with_count(INT, INT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.get_paged_lookup_types(INT, INT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.get_paged_maintenance_areas(INT, INT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.get_paged_employee_designations(INT, INT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.get_paged_employees(INT, INT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.get_paged_rings(INT, INT, TEXT, TEXT, JSONB);
 DROP FUNCTION IF EXISTS public.get_system_path_details(UUID);
 DROP FUNCTION IF EXISTS public.get_continuous_available_fibers(UUID);
 

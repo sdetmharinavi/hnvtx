@@ -1660,20 +1660,16 @@ export const v_cable_utilizationRowSchema = z.object({
   utilization_percent: z.number().min(0).max(100).nullable(),
 });
 
-export const v_employee_designations_with_countRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
+export const v_employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
-export const v_employees_with_countRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
+export const v_employeesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   employee_contact: z.string().nullable(),
@@ -1685,11 +1681,9 @@ export const v_employees_with_countRowSchema = z.object({
   employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   employee_pers_no: z.string().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -1715,24 +1709,20 @@ export const v_junction_closures_completeRowSchema = z.object({
   position_km: z.number().nullable(),
 });
 
-export const v_lookup_types_with_countRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
+export const v_lookup_typesRowSchema = z.object({
   category: z.string().nullable(),
   code: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   is_system_default: z.boolean().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sort_order: z.number().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
-export const v_maintenance_areas_with_countRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
+export const v_maintenance_areasRowSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   area_type_id: z.uuid().nullable(),
   code: z.string().nullable(),
@@ -1741,7 +1731,6 @@ export const v_maintenance_areas_with_countRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   email: z.email().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_area_type_code: z.string().nullable(),
@@ -1749,15 +1738,12 @@ export const v_maintenance_areas_with_countRowSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_nodes_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1768,12 +1754,10 @@ export const v_nodes_completeRowSchema = z.object({
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ofc_cables_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   asset_no: z.string().nullable(),
   capacity: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
@@ -1783,7 +1767,6 @@ export const v_ofc_cables_completeRowSchema = z.object({
   en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_code: z.string().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
@@ -1799,14 +1782,12 @@ export const v_ofc_cables_completeRowSchema = z.object({
   sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   transnet_id: z.uuid().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ofc_connections_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   connection_category: z.string().nullable(),
   connection_type: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -1819,7 +1800,6 @@ export const v_ofc_connections_completeRowSchema = z.object({
   fiber_no_sn: z.number().nullable(),
   fiber_role: z.string().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   logical_path_id: z.uuid().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   ofc_id: z.uuid().nullable(),
@@ -1838,7 +1818,6 @@ export const v_ofc_connections_completeRowSchema = z.object({
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   updated_fiber_no_en: z.number().nullable(),
   updated_fiber_no_sn: z.number().nullable(),
@@ -1858,12 +1837,10 @@ export const v_ring_nodesRowSchema = z.object({
   type: z.string().nullable(),
 });
 
-export const v_rings_with_countRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
+export const v_ringsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -1871,13 +1848,11 @@ export const v_rings_with_countRowSchema = z.object({
   ring_type_id: z.uuid().nullable(),
   ring_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   total_nodes: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_system_connections_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
@@ -1892,7 +1867,6 @@ export const v_system_connections_completeRowSchema = z.object({
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   sdh_a_customer: z.string().nullable(),
@@ -1913,7 +1887,6 @@ export const v_system_connections_completeRowSchema = z.object({
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   vmux_c_code: z.string().nullable(),
@@ -1938,11 +1911,9 @@ export const v_system_ring_paths_detailedRowSchema = z.object({
 });
 
 export const v_systems_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   ip_address: z.string().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
@@ -1963,7 +1934,6 @@ export const v_systems_completeRowSchema = z.object({
   system_type_code: z.string().nullable(),
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vmux_vm_id: z.uuid().nullable(),
 });
@@ -2132,17 +2102,17 @@ export const schemas = {
   vmux_systemsUpdateSchema,
   v_cable_segments_at_jcRowSchema,
   v_cable_utilizationRowSchema,
-  v_employee_designations_with_countRowSchema,
-  v_employees_with_countRowSchema,
+  v_employee_designationsRowSchema,
+  v_employeesRowSchema,
   v_end_to_end_pathsRowSchema,
   v_junction_closures_completeRowSchema,
-  v_lookup_types_with_countRowSchema,
-  v_maintenance_areas_with_countRowSchema,
+  v_lookup_typesRowSchema,
+  v_maintenance_areasRowSchema,
   v_nodes_completeRowSchema,
   v_ofc_cables_completeRowSchema,
   v_ofc_connections_completeRowSchema,
   v_ring_nodesRowSchema,
-  v_rings_with_countRowSchema,
+  v_ringsRowSchema,
   v_system_connections_completeRowSchema,
   v_system_ring_paths_detailedRowSchema,
   v_systems_completeRowSchema,
@@ -2282,17 +2252,17 @@ export type Vmux_systemsInsertSchema = z.infer<typeof vmux_systemsInsertSchema>;
 export type Vmux_systemsUpdateSchema = z.infer<typeof vmux_systemsUpdateSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
-export type V_employee_designations_with_countRowSchema = z.infer<typeof v_employee_designations_with_countRowSchema>;
-export type V_employees_with_countRowSchema = z.infer<typeof v_employees_with_countRowSchema>;
+export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
+export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;
-export type V_lookup_types_with_countRowSchema = z.infer<typeof v_lookup_types_with_countRowSchema>;
-export type V_maintenance_areas_with_countRowSchema = z.infer<typeof v_maintenance_areas_with_countRowSchema>;
+export type V_lookup_typesRowSchema = z.infer<typeof v_lookup_typesRowSchema>;
+export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRowSchema>;
 export type V_nodes_completeRowSchema = z.infer<typeof v_nodes_completeRowSchema>;
 export type V_ofc_cables_completeRowSchema = z.infer<typeof v_ofc_cables_completeRowSchema>;
 export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connections_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
-export type V_rings_with_countRowSchema = z.infer<typeof v_rings_with_countRowSchema>;
+export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
 export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;

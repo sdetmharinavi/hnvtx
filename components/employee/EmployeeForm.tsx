@@ -17,14 +17,14 @@ import {
   employeesInsertSchema,
   EmployeesInsertSchema,
   Maintenance_areasRowSchema,
-  V_employees_with_countRowSchema, // Import the view schema
+  V_employeesRowSchema, // Import the view schema
 } from '@/schemas/zod-schemas';
 
 interface EmployeeFormProps {
   isOpen: boolean;
   onClose: () => void;
   // The form now accepts the record directly from the view
-  employee?: V_employees_with_countRowSchema | null;
+  employee?: V_employeesRowSchema | null;
   onSubmit: (data: EmployeesInsertSchema) => void;
   onCancel: () => void;
   isLoading: boolean;
