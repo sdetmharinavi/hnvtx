@@ -1,4 +1,4 @@
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/postcss.config.mjs -->
+<!-- path: postcss.config.mjs -->
 ```mjs
 const config = {
   plugins: ["@tailwindcss/postcss"],
@@ -8,7 +8,7 @@ export default config;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/stores/authStore.ts -->
+<!-- path: stores/authStore.ts -->
 ```typescript
 // stores/authStore.ts
 import { create } from "zustand";
@@ -70,43 +70,6 @@ export const useAuthStore = create<AuthStore>()(
           });
         },
 
-        // // Fixed async action wrapper
-        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-        //   const currentState = get().authState;
-        //   const currentUser = get().user;
-
-        //   // Only set loading if not already in a loading state
-        //   if (currentState !== "loading") {
-        //     set({ authState: "loading" });
-        //   }
-
-        //   try {
-        //     const result = await action();
-            
-        //     // Get the latest state after action completes
-        //     const { authState: latestState, user: latestUser } = get();
-            
-        //     // Only update state if still in loading state and we have a definitive state
-        //     if (latestState === "loading") {
-        //       // If user exists, we're authenticated, otherwise unauthenticated
-        //       const newState = latestUser ? "authenticated" : "unauthenticated";
-        //       if (newState !== currentState) {
-        //         set({ authState: newState });
-        //       }
-        //     }
-
-        //     return result;
-        //   } catch (error) {
-        //     // On error, reset to appropriate state based on current user
-        //     const { user } = get();
-        //     const newState = user ? "authenticated" : "unauthenticated";
-        //     if (newState !== currentState) {
-        //       set({ authState: newState });
-        //     }
-        //     throw error;
-        //   }
-        // },
-
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
           if (get().authState !== "loading") {
             set({ authState: "loading" });
@@ -160,7 +123,7 @@ export const useAuthStore = create<AuthStore>()(
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/stores/useUploadConfigStore.ts -->
+<!-- path: stores/useUploadConfigStore.ts -->
 ```typescript
 // src/stores/useUploadConfigStore.ts
 
@@ -238,7 +201,7 @@ export const useUploadConfigStore = create<UploadConfigState>()(
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/stores/themeStore.ts -->
+<!-- path: stores/themeStore.ts -->
 ```typescript
 import { create } from "zustand";
 
@@ -292,7 +255,7 @@ export const hydrateThemeStore = () => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/providers/QueryProvider.tsx -->
+<!-- path: providers/QueryProvider.tsx -->
 ```typescript
 // providers/QueryProvider.tsx
 'use client'
@@ -332,7 +295,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/providers/ToastProvider.tsx -->
+<!-- path: providers/ToastProvider.tsx -->
 ```typescript
 // components/providers/ToastProvider.tsx
 'use client';
@@ -369,7 +332,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/providers/ThemeProvider.tsx -->
+<!-- path: providers/ThemeProvider.tsx -->
 ```typescript
 "use client";
 
@@ -429,7 +392,7 @@ export default function ThemeProvider({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/scripts/generate-flattened-types.ts -->
+<!-- path: scripts/generate-flattened-types.ts -->
 ```typescript
 import * as ts from 'typescript';
 import * as fs from 'fs';
@@ -794,7 +757,7 @@ main();
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/scripts/generate-zod-schemas.ts -->
+<!-- path: scripts/generate-zod-schemas.ts -->
 ```typescript
 import * as ts from 'typescript';
 import * as fs from 'fs';
@@ -1269,7 +1232,7 @@ main();
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/05_auditing/03_triggers_attach_all.sql -->
+<!-- path: data/migrations/05_auditing/03_triggers_attach_all.sql -->
 ```sql
 -- Path: migrations/05_auditing/03_triggers_attach_all.sql
 -- Description: Dynamically attaches the log_data_changes trigger to all relevant tables.
@@ -1315,7 +1278,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/05_auditing/01_table_user_activity_logs.sql -->
+<!-- path: data/migrations/05_auditing/01_table_user_activity_logs.sql -->
 ```sql
 -- Path: migrations/05_auditing/01_table_user_activity_logs.sql
 -- Description: Defines the table for storing all user activity and data change logs.
@@ -1339,7 +1302,7 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_logs_action_type ON public.user_act
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_table_name ON public.user_activity_logs(table_name);
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/05_auditing/02_functions.sql -->
+<!-- path: data/migrations/05_auditing/02_functions.sql -->
 ```sql
 -- Path: migrations/05_auditing/02_functions.sql
 -- Description: Core functions for the auditing system.
@@ -1434,7 +1397,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/05_auditing/04_rls_and_grants.sql -->
+<!-- path: data/migrations/05_auditing/04_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/05_auditing/04_rls_and_grants.sql
 -- Description: Secures the user_activity_logs table, allowing access only to admins.
@@ -1458,7 +1421,7 @@ USING (is_super_admin() OR get_my_role() = 'admin')
 WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/02_views.sql -->
+<!-- path: data/migrations/03_network_systems/02_views.sql -->
 ```sql
 -- Path: migrations/03_network_systems/02_views.sql
 -- Description: Defines denormalized views for the Network Systems module.
@@ -1627,7 +1590,7 @@ LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/03_indexes.sql -->
+<!-- path: data/migrations/03_network_systems/03_indexes.sql -->
 ```sql
 -- Path: migrations/03_network_systems/03_indexes.sql
 -- Description: Creates B-tree and GIN (FTS) indexes for the Network Systems module.
@@ -1655,7 +1618,7 @@ CREATE INDEX IF NOT EXISTS idx_system_connections_remark_fts ON public.system_co
 CREATE INDEX IF NOT EXISTS idx_management_ports_remark_fts ON public.management_ports USING gin(to_tsvector('english', remark));
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/04_triggers.sql -->
+<!-- path: data/migrations/03_network_systems/04_triggers.sql -->
 ```sql
 -- Path: migrations/03_network_systems/04_triggers.sql
 -- Description: Attaches 'updated_at' triggers to all tables in the Network Systems module.
@@ -1672,7 +1635,7 @@ CREATE OR REPLACE TRIGGER trigger_vmux_systems_updated_at BEFORE UPDATE ON publi
 CREATE OR REPLACE TRIGGER trigger_vmux_connections_updated_at BEFORE UPDATE ON public.vmux_connections FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/01_tables_systems.sql -->
+<!-- path: data/migrations/03_network_systems/01_tables_systems.sql -->
 ```sql
 -- Path: migrations/03_network_systems/01_tables_systems.sql
 -- Description: Defines tables for generic and specific network systems.
@@ -1793,7 +1756,7 @@ CREATE TABLE IF NOT EXISTS public.vmux_connections (
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/06_functions.sql -->
+<!-- path: data/migrations/03_network_systems/06_functions.sql -->
 ```sql
 -- Path: data/migrations/03_network_systems/06_functions.sql
 -- Description: Contains functions for the Network Systems module.
@@ -1912,7 +1875,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) TO authenticated;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/03_network_systems/05_rls_and_grants.sql -->
+<!-- path: data/migrations/03_network_systems/05_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/03_network_systems/05_rls_and_grants.sql
 -- Description: Defines all RLS policies and Grants for the Network Systems module.
@@ -2097,7 +2060,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/06_utilities/05_dashboard_functions.sql -->
+<!-- path: data/migrations/06_utilities/05_dashboard_functions.sql -->
 ```sql
 -- path: migrations/06_utilities/05_dashboard_functions.sql
 -- Description: Contains functions for dashboard aggregations.
@@ -2142,7 +2105,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_dashboard_overview() TO authenticated;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/06_utilities/01_generic_functions.sql -->
+<!-- path: data/migrations/06_utilities/01_generic_functions.sql -->
 ```sql
 -- Path: migrations/06_utilities/01_generic_functions.sql
 -- Description: A collection of generic, reusable utility functions for querying, pagination, and data manipulation.
@@ -2421,7 +2384,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/06_utilities/04_no_pagination_specialized_function.sql -->
+<!-- path: data/migrations/06_utilities/04_no_pagination_specialized_function.sql -->
 ```sql
 -- =================================================================
 -- Section 3: Specialized Utility Functions (No Pagination)
@@ -2623,7 +2586,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/06_utilities/02_paged_functions.sql -->
+<!-- path: data/migrations/06_utilities/02_paged_functions.sql -->
 ```sql
 -- path: data/migrations/06_utilities/02_paged_functions.sql
 -- =================================================================
@@ -2749,7 +2712,7 @@ GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSON
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/06_utilities/03_ofc_route_functions.sql -->
+<!-- path: data/migrations/06_utilities/03_ofc_route_functions.sql -->
 ```sql
 -- =================================================================
 -- Section 4: OFC and Splicing Specific Utility Functions
@@ -3070,7 +3033,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/99_finalization/01_cross_module_constraints.sql -->
+<!-- path: data/migrations/99_finalization/01_cross_module_constraints.sql -->
 ```sql
 -- Path: migrations/99_finalization/01_cross_module_constraints.sql
 -- Description: Adds all cross-module foreign key constraints after all tables have been created.
@@ -3121,7 +3084,7 @@ REFERENCES public.systems(id)
 ON DELETE SET NULL;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/00_setup/01_roles.sql -->
+<!-- path: data/migrations/00_setup/01_roles.sql -->
 ```sql
 -- Path: migrations/00_setup/01_roles.sql
 -- Description: Creates all custom database roles. Must be run first.
@@ -3183,7 +3146,7 @@ END
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/00_setup/02_function_stubs.sql -->
+<!-- path: data/migrations/00_setup/02_function_stubs.sql -->
 ```sql
 -- Path: migrations/00_setup/02_function_stubs.sql
 -- Description: Creates dummy "stub" versions of functions that may be optionally defined later.
@@ -3211,7 +3174,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/02_views.sql -->
+<!-- path: data/migrations/01_user_management/02_views.sql -->
 ```sql
 -- Path: migrations/01_user_management/02_views.sql
 -- Description: Defines views for the User Management module.
@@ -3262,7 +3225,7 @@ FROM auth.users u
 JOIN public.user_profiles p ON u.id = p.id;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/06_rls_and_grants.sql -->
+<!-- path: data/migrations/01_user_management/06_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/01_user_management/06_rls_and_grants.sql
 -- Description: All RLS policies and Grants for the User Management module.
@@ -3336,7 +3299,7 @@ FOR DELETE
 USING ((select auth.uid()) = id);
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/05_triggers.sql -->
+<!-- path: data/migrations/01_user_management/05_triggers.sql -->
 ```sql
 -- Path: migrations/01_user_management/05_triggers.sql
 -- Description: Attaches triggers for the User Management module.
@@ -3380,7 +3343,7 @@ DO $$ BEGIN
 END $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/04_indexes.sql -->
+<!-- path: data/migrations/01_user_management/04_indexes.sql -->
 ```sql
 -- Path: migrations/01_user_management/04_indexes.sql
 -- Description: Indexes for user_profiles to improve performance.
@@ -3398,7 +3361,7 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_last_name_first_name ON public.user
 CREATE INDEX IF NOT EXISTS idx_user_profiles_created_at ON public.user_profiles (created_at);
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/01_tables_user_profiles.sql -->
+<!-- path: data/migrations/01_user_management/01_tables_user_profiles.sql -->
 ```sql
 -- Path: migrations/01_user_management/01_tables_user_profiles.sql
 -- Description: Defines the user_profiles table, which extends auth.users.
@@ -3439,7 +3402,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/01_user_management/03_functions.sql -->
+<!-- path: data/migrations/01_user_management/03_functions.sql -->
 ```sql
 -- Path: migrations/01_user_management/03_functions.sql
 -- Description: All functions for the User Management module.
@@ -3740,7 +3703,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/06_rls_and_grants.sql -->
+<!-- path: data/migrations/02_core_infrastructure/06_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/06_rls_and_grants.sql
 -- Description: Applies a baseline set of RLS policies and grants to core tables.
@@ -3829,7 +3792,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/03_views.sql -->
+<!-- path: data/migrations/02_core_infrastructure/03_views.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/03_views.sql
 -- Description: Defines denormalized views for the Core Infrastructure module. [CORRECTED]
@@ -3918,7 +3881,7 @@ LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/02_functions.sql -->
+<!-- path: data/migrations/02_core_infrastructure/02_functions.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/02_functions.sql
 -- Description: Contains helper and trigger functions for core tables.
@@ -3971,7 +3934,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/05_triggers.sql -->
+<!-- path: data/migrations/02_core_infrastructure/05_triggers.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/05_triggers.sql
 -- Description: Attaches all triggers for the Core Infrastructure module.
@@ -3991,7 +3954,7 @@ CREATE OR REPLACE TRIGGER trigger_update_sn_dom_on_otdr_change BEFORE UPDATE ON 
 CREATE OR REPLACE TRIGGER trigger_update_en_dom_on_otdr_change BEFORE UPDATE ON public.ofc_connections FOR EACH ROW EXECUTE FUNCTION public.update_en_dom_on_otdr_change();
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/04_indexes.sql -->
+<!-- path: data/migrations/02_core_infrastructure/04_indexes.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/04_indexes.sql
 -- Description: Creates all B-tree and GIN (FTS) indexes for the Core module.
@@ -4040,7 +4003,7 @@ CREATE INDEX IF NOT EXISTS idx_ofc_cables_remark_fts ON public.ofc_cables USING 
 CREATE INDEX IF NOT EXISTS idx_ofc_connections_remark_fts ON public.ofc_connections USING gin(to_tsvector('english', remark));
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/02_core_infrastructure/01_tables_core.sql -->
+<!-- path: data/migrations/02_core_infrastructure/01_tables_core.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/01_tables_core.sql
 -- Description: Defines all core infrastructure and master data tables.
@@ -4208,7 +4171,7 @@ CREATE TABLE IF NOT EXISTS public.files (
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/02_views.sql -->
+<!-- path: data/migrations/04_advanced_ofc/02_views.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/02_views.sql
 -- Description: Defines views for analyzing OFC paths and utilization. [UPDATED]
@@ -4307,7 +4270,7 @@ GROUP BY
   oc.id, oc.route_name, oc.capacity;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/06_rls_and_grants.sql -->
+<!-- path: data/migrations/04_advanced_ofc/06_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/06_rls_and_grants.sql
 -- Description: RLS policies and Grants for the Advanced OFC (Route Manager) module.
@@ -4391,7 +4354,7 @@ END;
 $$;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/03_indexes.sql -->
+<!-- path: data/migrations/04_advanced_ofc/03_indexes.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/03_indexes.sql
 -- Description: Creates indexes for the Advanced OFC module tables.
@@ -4400,7 +4363,7 @@ CREATE INDEX IF NOT EXISTS idx_logical_fiber_paths_source_system_id ON public.lo
 CREATE INDEX IF NOT EXISTS idx_logical_path_segments_path_id ON public.logical_path_segments(logical_path_id);
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql -->
+<!-- path: data/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/01_tables_advanced_ofc.sql
 -- Description: Defines tables for advanced OFC path and splice management. [CORRECTED FOR SEGMENTS]
@@ -4482,7 +4445,7 @@ CREATE TABLE IF NOT EXISTS public.fiber_splices (
 COMMENT ON TABLE public.fiber_splices IS 'Tracks individual fiber connections (splices) between cable segments within a junction closure.';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/05_triggers.sql -->
+<!-- path: data/migrations/04_advanced_ofc/05_triggers.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/04_triggers.sql
 -- Description: Attaches 'updated_at' triggers and cable segmentation triggers for the Advanced OFC module.
@@ -4504,7 +4467,7 @@ CREATE OR REPLACE TRIGGER trigger_logical_path_segments_updated_at BEFORE UPDATE
 CREATE OR REPLACE TRIGGER trigger_fiber_splices_updated_at BEFORE UPDATE ON public.fiber_splices FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/data/migrations/04_advanced_ofc/04_functions.sql -->
+<!-- path: data/migrations/04_advanced_ofc/04_functions.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/06_functions.sql
 -- Description: Database functions for cable segmentation and fiber path management
@@ -5454,7 +5417,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.delete_path_segment_and_reorder(UUID, UUID) TO authenticated;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/next.config.ts -->
+<!-- path: next.config.ts -->
 ```typescript
 import type { NextConfig } from "next";
 
@@ -5498,7 +5461,7 @@ export default nextConfig;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/schemas/custom-schemas.ts -->
+<!-- path: schemas/custom-schemas.ts -->
 ```typescript
 // path: schemas/custom-schemas.ts
 // This file is for custom, composed, or derived Zod schemas.
@@ -5635,7 +5598,7 @@ export const bsnlSearchFiltersSchema = z.object({
 export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/schemas/zod-schemas.ts -->
+<!-- path: schemas/zod-schemas.ts -->
 ```typescript
 // Auto-generated Zod schemas from flattened-types.ts
 
@@ -7939,7 +7902,7 @@ export type V_user_profiles_extendedRowSchema = z.infer<typeof v_user_profiles_e
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/schemas/system-schemas.ts -->
+<!-- path: schemas/system-schemas.ts -->
 ```typescript
 // path: schemas/system-schemas.ts
 import { z } from 'zod';
@@ -7968,7 +7931,7 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useOutdatedBrowserCheck.tsx -->
+<!-- path: hooks/useOutdatedBrowserCheck.tsx -->
 ```typescript
 import { useEffect, useState } from 'react';
 
@@ -8037,7 +8000,7 @@ export function useOutdatedBrowserCheck(): boolean | null {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useEntityManagement.ts -->
+<!-- path: hooks/useEntityManagement.ts -->
 ```typescript
 "use client";
 
@@ -8189,7 +8152,7 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useDelete.ts -->
+<!-- path: hooks/useDelete.ts -->
 ```typescript
 import { useState } from "react";
 import { useTableDelete } from "@/hooks/database";
@@ -8233,7 +8196,7 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useCreateOfcConnection.ts -->
+<!-- path: hooks/useCreateOfcConnection.ts -->
 ```typescript
 import { useCallback, useMemo } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -8383,7 +8346,7 @@ export const useCreateOfcConnection = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useAuth.ts -->
+<!-- path: hooks/useAuth.ts -->
 ```typescript
 // path: hooks/useAuth.ts
 // hooks/useAuth.ts
@@ -8584,7 +8547,7 @@ export const useAuth = () => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/bulk-queries.ts -->
+<!-- path: hooks/database/bulk-queries.ts -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8934,7 +8897,7 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/ring-map-queries.ts -->
+<!-- path: hooks/database/ring-map-queries.ts -->
 ```typescript
 // path: hooks/database/ring-map-queries.ts
 "use client";
@@ -8968,7 +8931,7 @@ export function useRingNodes(ringId: string | null) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/path-queries.ts -->
+<!-- path: hooks/database/path-queries.ts -->
 ```typescript
 // path: hooks/database/path-queries.ts
 "use client";
@@ -9070,7 +9033,7 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/basic-mutation-hooks.ts -->
+<!-- path: hooks/database/basic-mutation-hooks.ts -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9318,7 +9281,7 @@ export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Dat
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/file-queries.ts -->
+<!-- path: hooks/database/file-queries.ts -->
 ```typescript
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
@@ -9446,7 +9409,7 @@ export function useUpdateFile() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/utility-functions.ts -->
+<!-- path: hooks/database/utility-functions.ts -->
 ```typescript
 // path: hooks/database/utility-functions.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -9670,7 +9633,7 @@ export function convertRichFiltersToSimpleJson(filters: Filters): Json {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/route-manager-hooks.ts -->
+<!-- path: hooks/database/route-manager-hooks.ts -->
 ```typescript
 // path: hooks/database/route-manager-hooks.ts
 
@@ -9823,7 +9786,7 @@ export function useAutoSplice() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/advanced-bulk-queries.ts -->
+<!-- path: hooks/database/advanced-bulk-queries.ts -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10087,7 +10050,7 @@ export function useAdvancedBulkOperations<T extends TableName>(
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/core-queries.ts -->
+<!-- path: hooks/database/core-queries.ts -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
@@ -10394,7 +10357,7 @@ export function useTableWithRelations<
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/rpc-hook-factory.ts -->
+<!-- path: hooks/database/rpc-hook-factory.ts -->
 ```typescript
 // path: hooks/database/rpc-hook-factory.ts
 import { useQuery, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
@@ -10491,7 +10454,7 @@ export function createPagedRpcHook<
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/index.ts -->
+<!-- path: hooks/database/index.ts -->
 ```typescript
 // hooks/database/index.ts - Main export file
 export * from './queries-type-helpers'
@@ -10516,7 +10479,7 @@ export * from './cache-performance'
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/path-mutations.ts -->
+<!-- path: hooks/database/path-mutations.ts -->
 ```typescript
 "use client";
 
@@ -10649,7 +10612,7 @@ export function useDeprovisionPath() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/rpc-queries.ts -->
+<!-- path: hooks/database/rpc-queries.ts -->
 ```typescript
 // path: hooks/database/rpc-queries.ts
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
@@ -10833,7 +10796,7 @@ export function usePagedData<T>(
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/cache-performance.ts -->
+<!-- path: hooks/database/cache-performance.ts -->
 ```typescript
 import { useQueryClient, QueryClient } from "@tanstack/react-query";
 import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, TableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
@@ -11011,7 +10974,7 @@ export const tableQueryUtils = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/queries-type-helpers.ts -->
+<!-- path: hooks/database/queries-type-helpers.ts -->
 ```typescript
 // hooks/database/queries-type-helpers.ts
 
@@ -11282,7 +11245,7 @@ export type DashboardOverviewData = {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/excel-queries/excel-download.ts -->
+<!-- path: hooks/database/excel-queries/excel-download.ts -->
 ```typescript
 
 import { AuthTableOrViewName, isTableName, Row, TableName, ViewName } from "../queries-type-helpers";
@@ -11819,7 +11782,7 @@ export function useTableExcelDownload<T extends AuthTableOrViewName>(
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/excel-queries/excel-helpers.ts -->
+<!-- path: hooks/database/excel-queries/excel-helpers.ts -->
 ```typescript
 // hooks/database/excel-queries.ts
 import * as ExcelJS from "exceljs";
@@ -12208,13 +12171,13 @@ export const validateValue = (
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/excel-queries/index.ts -->
+<!-- path: hooks/database/excel-queries/index.ts -->
 ```typescript
 export * from "./excel-download";
 export * from "./excel-upload";
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/database/excel-queries/excel-upload.ts -->
+<!-- path: hooks/database/excel-queries/excel-upload.ts -->
 ```typescript
 import * as XLSX from "xlsx";
 import { TableInsert, TableName, UploadOptions, UseExcelUploadOptions } from "../queries-type-helpers";
@@ -12996,7 +12959,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useRoleFunctions.ts -->
+<!-- path: hooks/useRoleFunctions.ts -->
 ```typescript
 // hooks/database/functions.ts - Hooks for Supabase functions
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
@@ -13188,7 +13151,7 @@ export const useHasPermission = (allowedRoles?: string[]): boolean => {
 export type { UserRole, SuperAdminStatus, UserPermissions }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useDeleteManager.ts -->
+<!-- path: hooks/useDeleteManager.ts -->
 ```typescript
 // path: hooks/useDeleteManager.ts
 import { useState, useCallback } from 'react';
@@ -13309,7 +13272,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useIsMobile.tsx -->
+<!-- path: hooks/useIsMobile.tsx -->
 ```typescript
 // hooks/useIsMobile.tsx
 import { useState, useEffect } from 'react';
@@ -13368,7 +13331,7 @@ export default useIsMobile;
 // const isMobile = useIsMobile(480); // Smaller breakpoint for strict mobile-only
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/defaultUploadConfigs.ts -->
+<!-- path: hooks/defaultUploadConfigs.ts -->
 ```typescript
 import { TableNames } from "@/config/helper-types";
 import { buildUploadConfig, TABLES } from "@/config/table-column-keys";
@@ -13393,7 +13356,7 @@ export default defaultUploadConfigs;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useBulkSelection.ts -->
+<!-- path: hooks/useBulkSelection.ts -->
 ```typescript
 import { useState, useCallback } from 'react';
 
@@ -13475,7 +13438,7 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useCrudManager.ts -->
+<!-- path: hooks/useCrudManager.ts -->
 ```typescript
 // path: hooks/useCrudManager.ts
 "use client";
@@ -13810,7 +13773,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useOrderedColumns.ts -->
+<!-- path: hooks/useOrderedColumns.ts -->
 ```typescript
 import { useMemo } from 'react';
 
@@ -13832,7 +13795,7 @@ const useOrderedColumns = <T extends { key: string }>(
 export default useOrderedColumns;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useSorting.ts -->
+<!-- path: hooks/useSorting.ts -->
 ```typescript
 import { useMemo, useState, useCallback } from 'react';
 
@@ -14151,7 +14114,7 @@ export function useTypedSorting<T extends Record<string, unknown>>(
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useColumnConfig.tsx -->
+<!-- path: hooks/useColumnConfig.tsx -->
 ```typescript
 import { useMemo, ReactNode } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
@@ -14275,19 +14238,13 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
       });
   }, [tableName, overrides, omit, columnWidths]);
 
-  // const columnsKeys = columns.map((col) => col.key);
-
-  // useEffect(() => {
-  //   console.log(`columns for ${tableName}`, columnsKeys);
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
 
   return columns;
 }
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/ofc/useCableSegmentation.ts -->
+<!-- path: hooks/ofc/useCableSegmentation.ts -->
 ```typescript
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useState } from 'react';
@@ -14471,7 +14428,7 @@ export const useCableSegmentation = () => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useDebounce.ts -->
+<!-- path: hooks/useDebounce.ts -->
 ```typescript
 // @/hooks/useDebounce.ts
 import { useState, useEffect } from 'react';
@@ -14494,7 +14451,7 @@ export function useDebounce<T>(value: T, delay: number): T {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useCurrentTableName.ts -->
+<!-- path: hooks/useCurrentTableName.ts -->
 ```typescript
 // hooks/useCurrentTableName.ts
 import { usePathname } from "next/navigation";
@@ -14582,7 +14539,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/UseRouteBasedUploadConfigOptions.tsx -->
+<!-- path: hooks/UseRouteBasedUploadConfigOptions.tsx -->
 ```typescript
 // src/hooks/useRouteBasedUploadConfig.ts
 
@@ -14672,7 +14629,7 @@ export const RouteBasedUploadConfigProvider: FC<{
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useAdminUsers.ts -->
+<!-- path: hooks/useAdminUsers.ts -->
 ```typescript
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15046,7 +15003,7 @@ export const useAdminUserOperations = (): UserOperations => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useDebugSession.ts -->
+<!-- path: hooks/useDebugSession.ts -->
 ```typescript
 // hooks/useDebugSession.ts
 import { useEffect, useState } from 'react'
@@ -15106,7 +15063,7 @@ export const useDebugSession = () => {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/hooks/useORSRouteDistances.ts -->
+<!-- path: hooks/useORSRouteDistances.ts -->
 ```typescript
 // path: hooks/useORSRouteDistances.ts
 import { useQuery } from '@tanstack/react-query';
@@ -15183,7 +15140,7 @@ export default function useORSRouteDistances(pairs: Array<[MaanNode, MaanNode]>)
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/tsconfig.json -->
+<!-- path: tsconfig.json -->
 ```json
 {
   "$schema": "https://json.schemastore.org/tsconfig",
@@ -15222,7 +15179,7 @@ export default function useORSRouteDistances(pairs: Array<[MaanNode, MaanNode]>)
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/eslint.config.mjs -->
+<!-- path: eslint.config.mjs -->
 ```mjs
 import { dirname } from "path";
 import { fileURLToPath } from "url";
@@ -15253,7 +15210,7 @@ export default eslintConfig;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components.json -->
+<!-- path: components.json -->
 ```json
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -15278,7 +15235,7 @@ export default eslintConfig;
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/classNames.tsx -->
+<!-- path: utils/classNames.tsx -->
 ```typescript
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15292,7 +15249,7 @@ export const cn: CnFunction = (...args) => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/caseConverter.ts -->
+<!-- path: utils/caseConverter.ts -->
 ```typescript
 /**
  * Type-safe case conversion utilities for JavaScript objects
@@ -15619,7 +15576,7 @@ export type {
  */
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/hashPassword.ts -->
+<!-- path: utils/hashPassword.ts -->
 ```typescript
 import bcrypt from "bcrypt";
 
@@ -15630,7 +15587,7 @@ export async function hashPassword(password: string) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/validationUtils.ts -->
+<!-- path: utils/validationUtils.ts -->
 ```typescript
 /**
  * Enhanced Validation Utility Functions
@@ -16238,7 +16195,7 @@ const validationUtils = {
 export default validationUtils;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/formatters.ts -->
+<!-- path: utils/formatters.ts -->
 ```typescript
 /**
  * Professional data formatting utility library
@@ -17063,7 +17020,7 @@ const formatters = {
 export default formatters;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/imageOptimization.ts -->
+<!-- path: utils/imageOptimization.ts -->
 ```typescript
 // utils/imageOptimization.ts
 "use client";
@@ -17635,7 +17592,7 @@ export const optimizeFilesBatch = async (files: File[]): Promise<File[]> => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/zod-validation.config.ts -->
+<!-- path: utils/zod-validation.config.ts -->
 ```typescript
 // Configuration for smart Zod validation rules
 export interface ValidationConfig {
@@ -17809,7 +17766,7 @@ export function loadValidationConfig(): ValidationConfig {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/distance.ts -->
+<!-- path: utils/distance.ts -->
 ```typescript
 // utils/distance.ts
 
@@ -17834,13 +17791,10 @@ export function haversineDistance(
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
-// // Usage
-// const minDist = haversineDistance(22.5726, 88.3639, 28.7041, 77.1025);
-// console.log(`Distance: ${minDist.toFixed(2)} km`);
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/renderKeyValueCell.tsx -->
+<!-- path: utils/renderKeyValueCell.tsx -->
 ```typescript
 import React, { JSX } from "react";
 
@@ -17881,7 +17835,7 @@ export function renderKeyValueCell(value: unknown): JSX.Element {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/getNodeIcons.ts -->
+<!-- path: utils/getNodeIcons.ts -->
 ```typescript
 import L from "leaflet";
 
@@ -17903,7 +17857,7 @@ export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: 
   };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/index.ts -->
+<!-- path: utils/index.ts -->
 ```typescript
 // Core utilities
 export { cn } from './classNames';
@@ -17917,7 +17871,7 @@ export { createClient as createBrowserClient } from './supabase/client';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/supabase/admin.ts -->
+<!-- path: utils/supabase/admin.ts -->
 ```typescript
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
@@ -17949,7 +17903,7 @@ export function createAdmin() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/supabase/client.ts -->
+<!-- path: utils/supabase/client.ts -->
 ```typescript
 // utils/supabase/client.ts
 
@@ -17963,7 +17917,7 @@ export function createClient() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/supabase/server.ts -->
+<!-- path: utils/supabase/server.ts -->
 ```typescript
  
 import { createServerClient } from '@supabase/ssr'
@@ -17999,7 +17953,7 @@ export async function createClient() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/utils/supabase/middleware.ts -->
+<!-- path: utils/supabase/middleware.ts -->
 ```typescript
  
 import { createServerClient } from '@supabase/ssr'
@@ -18039,7 +17993,7 @@ export async function updateSession(request: NextRequest) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/next-env.d.ts -->
+<!-- path: next-env.d.ts -->
 ```typescript
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
@@ -18050,7 +18004,7 @@ export async function updateSession(request: NextRequest) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/public/sw.js -->
+<!-- path: public/sw.js -->
 ```javascript
 self.addEventListener('push', function (event) {
   if (event.data) {
@@ -18076,7 +18030,7 @@ self.addEventListener('notificationclick', function (event) {
 })
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/lookup-hooks.ts -->
+<!-- path: components/lookup/lookup-hooks.ts -->
 ```typescript
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -18238,14 +18192,14 @@ export function useLookupTypes(initialCategory = "") {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/lookup-types.ts -->
+<!-- path: components/lookup/lookup-types.ts -->
 ```typescript
 export interface LookupTypesPageProps {
     initialCategory?: string;
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/LookupModal.tsx -->
+<!-- path: components/lookup/LookupModal.tsx -->
 ```typescript
 "use client";
 
@@ -18681,7 +18635,7 @@ export function LookupModal({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/LookupTypesEmptyStates.tsx -->
+<!-- path: components/lookup/LookupTypesEmptyStates.tsx -->
 ```typescript
 "use client";
 
@@ -18751,7 +18705,7 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry: () => vo
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/LookupTypesTable.tsx -->
+<!-- path: components/lookup/LookupTypesTable.tsx -->
 ```typescript
 "use client";
 
@@ -18994,7 +18948,7 @@ export function LookupTypesTable({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/index.tsx -->
+<!-- path: components/lookup/index.tsx -->
 ```typescript
 export * from "./lookup-types";
 export * from "./lookup-hooks";
@@ -19004,7 +18958,7 @@ export * from "./LookupTypesFilters";
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/lookup/LookupTypesFilters.tsx -->
+<!-- path: components/lookup/LookupTypesFilters.tsx -->
 ```typescript
 "use client";
 
@@ -19070,7 +19024,7 @@ export function LookupTypesFilters({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar.tsx -->
+<!-- path: components/navigation/sidebar.tsx -->
 ```typescript
 "use client";
 
@@ -19170,7 +19124,7 @@ export default Sidebar;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/NavItem.tsx -->
+<!-- path: components/navigation/sidebar-components/NavItem.tsx -->
 ```typescript
 "use client";
 
@@ -19357,7 +19311,7 @@ export const NavItem = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/sidebar-types.ts -->
+<!-- path: components/navigation/sidebar-components/sidebar-types.ts -->
 ```typescript
 import { Database } from "@/types/supabase-types";
 import { UserRole } from "@/types/user-roles";
@@ -19409,7 +19363,7 @@ export const submenuVariants = {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/HoverMenu.tsx -->
+<!-- path: components/navigation/sidebar-components/HoverMenu.tsx -->
 ```typescript
 "use client";
 
@@ -19488,7 +19442,7 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/NavItems.tsx -->
+<!-- path: components/navigation/sidebar-components/NavItems.tsx -->
 ```typescript
 import { UserRole } from '@/types/user-roles';
 import { NavItem as NavItemType } from '@/components/navigation/sidebar-components/sidebar-types';
@@ -19670,7 +19624,7 @@ export default NavItems;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/QuickActions.tsx -->
+<!-- path: components/navigation/sidebar-components/QuickActions.tsx -->
 ```typescript
 "use client";
 
@@ -19831,7 +19785,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/navigation/sidebar-components/MobileSidebar.tsx -->
+<!-- path: components/navigation/sidebar-components/MobileSidebar.tsx -->
 ```typescript
 "use client";
 
@@ -19923,7 +19877,7 @@ export const MobileSidebar = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc-details/OfcConnectionsFormModal.tsx -->
+<!-- path: components/ofc-details/OfcConnectionsFormModal.tsx -->
 ```typescript
 // path: components/ofc-details/OfcConnectionsFormModal.tsx
 "use client";
@@ -20081,7 +20035,7 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc-details/CableNotFound.tsx -->
+<!-- path: components/ofc-details/CableNotFound.tsx -->
 ```typescript
 import { ButtonSpinner } from '@/components/common/ui';
 import { motion } from 'framer-motion';
@@ -20219,7 +20173,7 @@ export default CableNotFound;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc-details/FiberTraceModal.tsx -->
+<!-- path: components/ofc-details/FiberTraceModal.tsx -->
 ```typescript
 // path: components/ofc-details/FiberTraceModal.tsx
 'use client';
@@ -20265,7 +20219,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc-details/FiberTraceVisualizer.tsx -->
+<!-- path: components/ofc-details/FiberTraceVisualizer.tsx -->
 ```typescript
 // path: components/ofc-details/FiberTraceVisualizer.tsx
 'use client';
@@ -20348,7 +20302,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc-details/OfcDetailsHeader.tsx -->
+<!-- path: components/ofc-details/OfcDetailsHeader.tsx -->
 ```typescript
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
@@ -20565,7 +20519,7 @@ interface OfcDetailsHeaderProps {
   export default OfcDetailsHeader;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/HeroContent.tsx -->
+<!-- path: components/home/HeroContent.tsx -->
 ```typescript
 import {
   motion,
@@ -20677,7 +20631,7 @@ export default function HeroContent({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/ParticlesOverlay.tsx -->
+<!-- path: components/home/ParticlesOverlay.tsx -->
 ```typescript
 "use client"
 import { motion } from "framer-motion";
@@ -20783,7 +20737,7 @@ export default function ParticlesOverlay() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/ScrollIndicator.tsx -->
+<!-- path: components/home/ScrollIndicator.tsx -->
 ```typescript
 "use client";
 import { motion } from "framer-motion";
@@ -20861,7 +20815,7 @@ export default function ScrollIndicator() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/StatsHighlights.tsx -->
+<!-- path: components/home/StatsHighlights.tsx -->
 ```typescript
 "use client"
 import { motion } from "framer-motion";
@@ -20944,7 +20898,7 @@ export default function StatsHighlights() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/variants.ts -->
+<!-- path: components/home/variants.ts -->
 ```typescript
 import { TargetAndTransition, Variants } from "framer-motion";
 
@@ -21043,7 +20997,7 @@ export const floatingAnimation: TargetAndTransition = {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/home/AnimatedBackground.tsx -->
+<!-- path: components/home/AnimatedBackground.tsx -->
 ```typescript
 "use client"
 import Image from "next/image";
@@ -21102,7 +21056,7 @@ export default function AnimatedBackground() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/JcFormModal.tsx -->
+<!-- path: components/route-manager/JcFormModal.tsx -->
 ```typescript
 // path: components/route-manager/JcFormModal.tsx
 'use client';
@@ -21333,7 +21287,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/CableSegmentationManager.tsx -->
+<!-- path: components/route-manager/CableSegmentationManager.tsx -->
 ```typescript
 // components/ofc/CableSegmentationManager.tsx
 'use client';
@@ -21692,7 +21646,7 @@ export const CableSegmentationManager = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/ui/RouteVisualization.tsx -->
+<!-- path: components/route-manager/ui/RouteVisualization.tsx -->
 ```typescript
 // path: components/route-manager/ui/RouteVisualization.tsx
 "use client";
@@ -21925,7 +21879,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/logic/project.ts -->
+<!-- path: components/route-manager/logic/project.ts -->
 ```typescript
 import { z } from 'zod';
 import { 
@@ -22009,7 +21963,7 @@ export function projectDefaultSplices(
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/queryKeys.ts -->
+<!-- path: components/route-manager/queryKeys.ts -->
 ```typescript
 // components/route-manager/queryKeys.ts
 
@@ -22020,7 +21974,7 @@ export const queryKeys = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/route-manager/FiberSpliceManager.tsx -->
+<!-- path: components/route-manager/FiberSpliceManager.tsx -->
 ```typescript
 // path: components/route-manager/FiberSpliceManager.tsx
 "use client";
@@ -22190,7 +22144,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/rings/RingModal.tsx -->
+<!-- path: components/rings/RingModal.tsx -->
 ```typescript
 "use client";
 
@@ -22409,7 +22363,7 @@ export function RingModal({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/rings/RingSystemsModal.tsx -->
+<!-- path: components/rings/RingSystemsModal.tsx -->
 ```typescript
 // path: components/rings/RingSystemsModal.tsx
 "use client";
@@ -22584,7 +22538,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/rings/RingsFilters.tsx -->
+<!-- path: components/rings/RingsFilters.tsx -->
 ```typescript
 import { FiSearch } from "react-icons/fi";
 
@@ -22616,7 +22570,7 @@ export default RingsFilters;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/hooks/useFileHandling.ts -->
+<!-- path: components/diagrams/hooks/useFileHandling.ts -->
 ```typescript
 // hooks/useFileHandling.ts
 import { useCallback, useRef } from 'react';
@@ -22658,7 +22612,7 @@ export function useFileHandling(uppyRef: React.RefObject<AppUppy | null>) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/hooks/useFolders.ts -->
+<!-- path: components/diagrams/hooks/useFolders.ts -->
 ```typescript
 // hooks/useFolders.ts
 "use client";
@@ -22776,7 +22730,7 @@ export function useFolders({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/hooks/useUppyUploader.ts -->
+<!-- path: components/diagrams/hooks/useUppyUploader.ts -->
 ```typescript
 // hooks/useUppyUploader.ts
 import { useRef, useState, useEffect } from 'react';
@@ -23138,7 +23092,7 @@ export function useUppyUploader({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/FileUploader.tsx -->
+<!-- path: components/diagrams/FileUploader.tsx -->
 ```typescript
 // components/FileUploader.tsx
 'use client';
@@ -23289,7 +23243,7 @@ export default function FileUploader() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/FileTable.tsx -->
+<!-- path: components/diagrams/FileTable.tsx -->
 ```typescript
 "use client";
 
@@ -23832,7 +23786,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/types/storage.ts -->
+<!-- path: components/diagrams/types/storage.ts -->
 ```typescript
 export interface StoredFile {
   name: string;
@@ -23864,7 +23818,7 @@ export interface SupabaseStorageError {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/ErrorDisplay.tsx -->
+<!-- path: components/diagrams/uploader-components/ErrorDisplay.tsx -->
 ```typescript
 // components/diagrams/uploader-components/ErrorDisplay.tsx
 import React, { useEffect } from "react";
@@ -23904,7 +23858,7 @@ export default ErrorDisplay;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/AdvancedUpload.tsx -->
+<!-- path: components/diagrams/uploader-components/AdvancedUpload.tsx -->
 ```typescript
 
 
@@ -24061,7 +24015,7 @@ export default AdvancedUpload;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/SimpleUpload.tsx -->
+<!-- path: components/diagrams/uploader-components/SimpleUpload.tsx -->
 ```typescript
 import React from "react";
 import type { AppUppy, SelectedFile } from "@/components/diagrams/hooks/useUppyUploader";
@@ -24217,7 +24171,7 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
 export default SimpleUpload;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/UploadModeToggle.tsx -->
+<!-- path: components/diagrams/uploader-components/UploadModeToggle.tsx -->
 ```typescript
 // components/diagrams/uploader-components/UploadModeToggle.tsx
 import React from "react";
@@ -24263,7 +24217,7 @@ const UploadModeToggle: React.FC<UploadModeToggleProps> = ({
 export default UploadModeToggle;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/FolderManagement.tsx -->
+<!-- path: components/diagrams/uploader-components/FolderManagement.tsx -->
 ```typescript
 // components/diagrams/uploader-components/FolderManagement.tsx
 import React from "react";
@@ -24336,7 +24290,7 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
 export default FolderManagement;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/diagrams/uploader-components/RecentlyUploaded.tsx -->
+<!-- path: components/diagrams/uploader-components/RecentlyUploaded.tsx -->
 ```typescript
 // components/diagrams/uploader-components/RecentlyUploaded.tsx
 import React from "react";
@@ -24422,7 +24376,7 @@ const RecentlyUploaded: React.FC<RecentlyUploadedProps> = ({
 export default RecentlyUploaded;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/EmptyState.tsx -->
+<!-- path: components/categories/EmptyState.tsx -->
 ```typescript
 import { FiPlus } from "react-icons/fi";
 import { Button } from "@/components/common/ui/Button";
@@ -24447,7 +24401,7 @@ export function EmptyState({ onCreate }: EmptyStateProps) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/CategorySearch.tsx -->
+<!-- path: components/categories/CategorySearch.tsx -->
 ```typescript
 import { FiSearch } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
@@ -24482,7 +24436,7 @@ export function CategorySearch({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/CategoriesTable.tsx -->
+<!-- path: components/categories/CategoriesTable.tsx -->
 ```typescript
 import Link from "next/link";
 import { FiEdit2, FiInfo } from "react-icons/fi";
@@ -24629,7 +24583,7 @@ export function CategoriesTable({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/CategoryModal.tsx -->
+<!-- path: components/categories/CategoryModal.tsx -->
 ```typescript
 "use client";
 
@@ -24952,7 +24906,7 @@ useEffect(() => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/categories-types.ts -->
+<!-- path: components/categories/categories-types.ts -->
 ```typescript
 import { Database } from "@/types/supabase-types";
 
@@ -24966,7 +24920,7 @@ export interface CategoryInfo {
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/utils.ts -->
+<!-- path: components/categories/utils.ts -->
 ```typescript
 import { Categories } from "@/components/categories/categories-types";
 
@@ -24978,7 +24932,7 @@ export function formatCategoryName(category: Categories): string {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/categories/LoadingState.tsx -->
+<!-- path: components/categories/LoadingState.tsx -->
 ```typescript
 import { LoadingSpinner } from "@/components/common/ui/LoadingSpinner";
 
@@ -24992,7 +24946,7 @@ export function LoadingState() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/terms.tsx -->
+<!-- path: components/auth/terms.tsx -->
 ```typescript
 import React from "react";
 
@@ -25043,7 +24997,7 @@ export default Terms;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/ForgotPasswordForm.tsx -->
+<!-- path: components/auth/ForgotPasswordForm.tsx -->
 ```typescript
 // path: components/auth/ForgotPasswordForm.tsx
 "use client";
@@ -25234,7 +25188,7 @@ export default function ForgotPasswordForm() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/UnauthorizedModal.tsx -->
+<!-- path: components/auth/UnauthorizedModal.tsx -->
 ```typescript
 // components/auth/UnauthorizedModal.tsx
 "use client"
@@ -25359,7 +25313,7 @@ export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/OAuthProviders.tsx -->
+<!-- path: components/auth/OAuthProviders.tsx -->
 ```typescript
 // components/auth/OAuthProviders.tsx
 'use client';
@@ -25417,7 +25371,7 @@ export default function OAuthProviders({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/OAuthButton.tsx -->
+<!-- path: components/auth/OAuthButton.tsx -->
 ```typescript
 // components/auth/OAuthButton.tsx
 "use client";
@@ -25681,7 +25635,7 @@ export function OAuthButton({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/privacy.tsx -->
+<!-- path: components/auth/privacy.tsx -->
 ```typescript
 import React from "react";
 
@@ -25726,7 +25680,7 @@ export default Privacy;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/Protected.tsx -->
+<!-- path: components/auth/Protected.tsx -->
 ```typescript
 // "use client";
 
@@ -26004,7 +25958,7 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/auth/authButton.tsx -->
+<!-- path: components/auth/authButton.tsx -->
 ```typescript
 // components/auth/authButton.tsx
 'use client'
@@ -26100,7 +26054,7 @@ export default function AuthButton() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/maintenance-areas/AreaFormModal.tsx -->
+<!-- path: components/maintenance-areas/AreaFormModal.tsx -->
 ```typescript
 // components/AreaFormModal.tsx
 "use client";
@@ -26347,7 +26301,7 @@ export function AreaFormModal({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/maintenance-areas/useMaintenanceAreasMutations.ts -->
+<!-- path: components/maintenance-areas/useMaintenanceAreasMutations.ts -->
 ```typescript
 // components/maintenance-areas/useMaintenanceAreasMutations.ts
 import { createClient } from "@/utils/supabase/client";
@@ -26382,7 +26336,7 @@ export function useMaintenanceAreasMutations(
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/maintenance-areas/index.ts -->
+<!-- path: components/maintenance-areas/index.ts -->
 ```typescript
 export * from "./AreaFormModal";
 export * from "./useMaintenanceAreasMutations";
@@ -26390,7 +26344,7 @@ export * from "./useMaintenanceAreasMutations";
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/map/ClientRingMap.tsx -->
+<!-- path: components/map/ClientRingMap.tsx -->
 ```typescript
 // path: components/map/ClientRingMap.tsx
 "use client";
@@ -26588,7 +26542,7 @@ export default function ClientRingMap({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/map/ClientRingMapCopy.tsx -->
+<!-- path: components/map/ClientRingMapCopy.tsx -->
 ```typescript
 // path: components/map/ClientRingMap.tsx
 "use client";
@@ -26766,7 +26720,7 @@ export default function ClientRingMap({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/map/types/node.ts -->
+<!-- path: components/map/types/node.ts -->
 ```typescript
 // path: components/map/types/node.ts
 export enum NodeType {
@@ -26805,7 +26759,7 @@ export type MaanNode = MapNode & {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/designations/DesignationFormModal.tsx -->
+<!-- path: components/designations/DesignationFormModal.tsx -->
 ```typescript
 import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -26901,7 +26855,7 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/polyfills/PolyfillLoader.tsx -->
+<!-- path: components/polyfills/PolyfillLoader.tsx -->
 ```typescript
 "use client";
  
@@ -26924,7 +26878,7 @@ export default function PolyfillLoader() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/dashboard/MenuButton.tsx -->
+<!-- path: components/dashboard/MenuButton.tsx -->
 ```typescript
 "use client";
 import { FiMenu } from "react-icons/fi";
@@ -26948,7 +26902,7 @@ export default function MenuButton({ onClick }: MenuButtonProps) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/dashboard/ColumnManagementProvider.tsx -->
+<!-- path: components/dashboard/ColumnManagementProvider.tsx -->
 ```typescript
 "use client";
 
@@ -27060,7 +27014,7 @@ export default function ColumnManagementProvider({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/dashboard/DashboardHeader.tsx -->
+<!-- path: components/dashboard/DashboardHeader.tsx -->
 ```typescript
 "use client";
 
@@ -27145,7 +27099,7 @@ export default function DashboardHeader({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/dashboard/DashboardContent.tsx -->
+<!-- path: components/dashboard/DashboardContent.tsx -->
 ```typescript
 import { ReactNode } from "react";
 import ColumnManagementProvider from "./ColumnManagementProvider";
@@ -27204,7 +27158,7 @@ export default DashboardContent;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/EntityDetailsPanel.tsx -->
+<!-- path: components/common/entity-management/EntityDetailsPanel.tsx -->
 ```typescript
 import React from 'react';
 import { FiEdit3, FiTrash2 } from 'react-icons/fi';
@@ -27282,7 +27236,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/EntityManagementComponent.tsx -->
+<!-- path: components/common/entity-management/EntityManagementComponent.tsx -->
 ```typescript
 import type { UseQueryResult } from "@tanstack/react-query";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
@@ -27548,7 +27502,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/ViewModeToggle.tsx -->
+<!-- path: components/common/entity-management/ViewModeToggle.tsx -->
 ```typescript
 interface ViewModeToggleProps {
     viewMode: "tree" | "list";
@@ -27585,7 +27539,7 @@ interface ViewModeToggleProps {
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/DetailItem.tsx -->
+<!-- path: components/common/entity-management/DetailItem.tsx -->
 ```typescript
 import React from 'react';
 import { BaseEntity } from '@/components/common/entity-management/types';
@@ -27650,7 +27604,7 @@ export function DetailItem<T extends BaseEntity>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/types.ts -->
+<!-- path: components/common/entity-management/types.ts -->
 ```typescript
 // components/common/entity-management/types.ts
 import { UseQueryResult } from '@tanstack/react-query';
@@ -27728,7 +27682,7 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/EntityTreeItem.tsx -->
+<!-- path: components/common/entity-management/EntityTreeItem.tsx -->
 ```typescript
 import { BaseEntity, EntityTreeItemProps } from "@/components/common/entity-management/types";
 import { FiChevronDown, FiChevronRight, FiToggleLeft, FiToggleRight } from "react-icons/fi";
@@ -27819,7 +27773,7 @@ export function EntityTreeItem<T extends BaseEntity>({
   
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/SearchAndFilters.tsx -->
+<!-- path: components/common/entity-management/SearchAndFilters.tsx -->
 ```typescript
 import { MdFilterList as Filter, MdSearch as Search, MdClear as Clear } from 'react-icons/md';
 import { BaseEntity, EntityConfig } from '@/components/common/entity-management/types';
@@ -27925,7 +27879,7 @@ export function SearchAndFilters<T extends BaseEntity>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/entity-management/EntityListItem.tsx -->
+<!-- path: components/common/entity-management/EntityListItem.tsx -->
 ```typescript
 import React from 'react';
 import { BiToggleLeft, BiToggleRight } from 'react-icons/bi';
@@ -28006,7 +27960,7 @@ export function EntityListItem<T extends BaseEntity>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/page-header/PageHeader.tsx -->
+<!-- path: components/common/page-header/PageHeader.tsx -->
 ```typescript
 'use client';
 
@@ -28154,7 +28108,7 @@ export function PageHeader({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/page-header/hooks/useStandardHeaderActions.tsx -->
+<!-- path: components/common/page-header/hooks/useStandardHeaderActions.tsx -->
 ```typescript
 'use client';
 
@@ -28344,7 +28298,7 @@ export function useStandardHeaderActions<T extends TableOrViewName>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/page-header/DropdownButton.tsx -->
+<!-- path: components/common/page-header/DropdownButton.tsx -->
 ```typescript
 'use client';
 import { Button } from '@/components/common/ui';
@@ -28436,7 +28390,7 @@ export const DropdownButton: React.FC<ActionButton> = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/page-header/StatCard.tsx -->
+<!-- path: components/common/page-header/StatCard.tsx -->
 ```typescript
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
@@ -28501,7 +28455,7 @@ export const StatCard: React.FC<StatProps> = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/page-header/index.ts -->
+<!-- path: components/common/page-header/index.ts -->
 ```typescript
 export * from './DropdownButton';
 export * from './PageHeader';
@@ -28510,7 +28464,7 @@ export * from './hooks/useStandardHeaderActions';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/DataListView.tsx -->
+<!-- path: components/common/DataListView.tsx -->
 ```typescript
 import React, { useState } from 'react';
 import { 
@@ -28863,216 +28817,9 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
-
-
-// // Example usage component
-// const ExampleUsage = () => {
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [selectedId, setSelectedId] = useState(null);
-//   const [viewMode, setViewMode] = useState('list');
-//   const [showFilters, setShowFilters] = useState(false);
-//   const [filters, setFilters] = useState({});
-
-//   // Mock data
-//   const sampleData = [
-//     { id: '1', name: 'Software Engineer', description: 'Develops applications', department: 'Engineering', status: 'active' },
-//     { id: '2', name: 'Product Manager', description: 'Manages product roadmap', department: 'Product', status: 'active' },
-//     { id: '3', name: 'UX Designer', description: 'Designs user experiences', department: 'Design', status: 'inactive' },
-//     { id: '4', name: 'Data Analyst', description: 'Analyzes business data', department: 'Analytics', status: 'active' },
-//   ];
-
-//   const filteredData = sampleData.filter((item) => {
-//     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-//     const matchesStatus = !filters.status || item.status === filters.status;
-//     const matchesDepartment = !filters.department || item.department === filters.department;
-//     return matchesSearch && matchesStatus && matchesDepartment;
-//   });
-
-//   const handleFilterChange = (newFilters) => {
-//     setFilters({ ...filters, ...newFilters });
-//   };
-
-//   const handleClearFilters = () => {
-//     setFilters({});
-//   };
-
-//   const handleItemSelect = (item) => {
-//     setSelectedId(item.id);
-//   };
-
-//   const handleCreateNew = () => {
-//     alert('Create new position');
-//   };
-
-//   const handleSearchChange = (value) => {
-//     setSearchTerm(value);
-//   };
-
-//   const handleToggleFilters = () => {
-//     setShowFilters(!showFilters);
-//   };
-
-//   const handleViewModeChange = (mode) => {
-//     setViewMode(mode);
-//   };
-
-//   const renderListItem = (item, isSelected, onSelect) => (
-//     <div
-//       key={item.id}
-//       onClick={onSelect}
-//       className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-//         isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600' : ''
-//       }`}
-//     >
-//       <div className="flex justify-between items-start">
-//         <div>
-//           <h3 className="font-medium text-gray-900 dark:text-white">
-//             {item.name}
-//           </h3>
-//           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div className="flex flex-col items-end space-y-1">
-//           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-//             {item.department}
-//           </span>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   const renderFiltersComponent = (currentFilters, onFilterChange, onClearFilters) => (
-//     <div className="pt-3 space-y-3">
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Status
-//           </label>
-//           <select
-//             value={currentFilters.status || ''}
-//             onChange={(e) => onFilterChange({ status: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Status</option>
-//             <option value="active">Active</option>
-//             <option value="inactive">Inactive</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Department
-//           </label>
-//           <select
-//             value={currentFilters.department || ''}
-//             onChange={(e) => onFilterChange({ department: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Departments</option>
-//             <option value="Engineering">Engineering</option>
-//             <option value="Product">Product</option>
-//             <option value="Design">Design</option>
-//             <option value="Analytics">Analytics</option>
-//           </select>
-//         </div>
-//       </div>
-//       <div className="flex justify-end">
-//         <button
-//           onClick={onClearFilters}
-//           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-//         >
-//           Clear Filters
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   const renderDetailsPanelComponent = (item) => (
-//     <div className="p-6">
-//       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-//         {item.name}
-//       </h3>
-//       <div className="space-y-4">
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Description
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Department
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.department}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Status
-//           </label>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//       <div className="mt-6 flex space-x-3">
-//         <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-//           Edit
-//         </button>
-//         <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-//           Delete
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   return (
-//     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-//       <DataListView
-//         data={filteredData}
-//         searchTerm={searchTerm}
-//         onSearchChange={handleSearchChange}
-//         searchPlaceholder="Search positions..."
-//         showFilters={showFilters}
-//         onToggleFilters={handleToggleFilters}
-//         filters={filters}
-//         onFilterChange={handleFilterChange}
-//         onClearFilters={handleClearFilters}
-//         selectedItemId={selectedId}
-//         onItemSelect={handleItemSelect}
-//         viewMode={viewMode}
-//         onViewModeChange={handleViewModeChange}
-//         detailsTitle="Position Details"
-//         emptyStateTitle="No positions found"
-//         emptyStateDescription="Try adjusting your search criteria."
-//         createButtonText="Add Position"
-//         onCreateNew={handleCreateNew}
-//         renderListItem={renderListItem}
-//         renderFilters={renderFiltersComponent}
-//         renderDetailsPanel={renderDetailsPanelComponent}
-//       />
-//     </div>
-//   );
-// };
-
-// export default ExampleUsage;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/form/IPAddressInput.tsx -->
+<!-- path: components/common/form/IPAddressInput.tsx -->
 ```typescript
 import React, { useState, useCallback, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
@@ -29295,7 +29042,7 @@ export default IPAddressInput;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/form/SectionCard.tsx -->
+<!-- path: components/common/form/SectionCard.tsx -->
 ```typescript
 import { ReactNode } from "react";
 import { cn } from "@/utils/classNames";
@@ -29332,7 +29079,7 @@ export default function SectionCard({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/form/FormControls.tsx -->
+<!-- path: components/common/form/FormControls.tsx -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
@@ -29854,7 +29601,7 @@ export function FormIPAddressInput<T extends FieldValues>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/form/FormCard.tsx -->
+<!-- path: components/common/form/FormCard.tsx -->
 ```typescript
 import React from "react";
 import { cn } from "@/utils/classNames";
@@ -30152,7 +29899,7 @@ export const FormCard: React.FC<FormCardProps> = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/form/index.ts -->
+<!-- path: components/common/form/index.ts -->
 ```typescript
 export * from './FormCard';
 export * from './FormControls';
@@ -30162,7 +29909,7 @@ export * from './IPAddressInput';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/badges/RoleBadge.tsx -->
+<!-- path: components/common/ui/badges/RoleBadge.tsx -->
 ```typescript
 // components/users/RoleBadge.tsx
 import { UserRole } from "@/types/user-roles";
@@ -30273,7 +30020,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/badges/StatusBadge.tsx -->
+<!-- path: components/common/ui/badges/StatusBadge.tsx -->
 ```typescript
 // components/users/StatusBadge.tsx
 
@@ -30462,7 +30209,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/error/ErrorDisplay.tsx -->
+<!-- path: components/common/ui/error/ErrorDisplay.tsx -->
 ```typescript
 import React, { useState, MouseEvent } from "react";
 
@@ -30748,7 +30495,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Modal/DetailsModal.tsx -->
+<!-- path: components/common/ui/Modal/DetailsModal.tsx -->
 ```typescript
 import { motion, AnimatePresence } from "framer-motion";
 import { FiX } from "react-icons/fi";
@@ -31183,7 +30930,7 @@ export { DetailsModal, defaultFormatters };
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Modal/ChangePasswordModal.tsx -->
+<!-- path: components/common/ui/Modal/ChangePasswordModal.tsx -->
 ```typescript
 // components/common/Modal/ChangePasswordModal.tsx
 import { useState } from "react";
@@ -31303,7 +31050,7 @@ export const ChangePasswordModal = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Modal/confirmModal.tsx -->
+<!-- path: components/common/ui/Modal/confirmModal.tsx -->
 ```typescript
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -31853,7 +31600,7 @@ export const ConfirmModalDemo: React.FC = () => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Modal/Modal.tsx -->
+<!-- path: components/common/ui/Modal/Modal.tsx -->
 ```typescript
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useEffect } from "react";
@@ -31983,7 +31730,7 @@ export const Modal = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Modal/index.ts -->
+<!-- path: components/common/ui/Modal/index.ts -->
 ```typescript
 // Base Modal Component
 export { Modal } from './Modal';
@@ -31996,7 +31743,7 @@ export { ChangePasswordModal } from './ChangePasswordModal';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/ProgressBar/ProgressBar.tsx -->
+<!-- path: components/common/ui/ProgressBar/ProgressBar.tsx -->
 ```typescript
 // src/components/common/ProgressBar/ProgressBar.tsx
 import { motion } from 'framer-motion';
@@ -32203,12 +31950,12 @@ export const StepProgress: React.FC<StepProgressProps> = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/ProgressBar/index.ts -->
+<!-- path: components/common/ui/ProgressBar/index.ts -->
 ```typescript
 export { ProgressBar } from './ProgressBar';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/switch/Switch.tsx -->
+<!-- path: components/common/ui/switch/Switch.tsx -->
 ```typescript
 import { MouseEvent } from "react";
 import { Label } from "@/components/common/ui/label/Label";
@@ -32407,43 +32154,9 @@ export const Switch: React.FC<SwitchProps> = ({
   );
 };
 
-// // Basic usage
-// <Switch checked={isActive} onChange={setIsActive} />
-
-// // With label on left
-// <Switch 
-//   label="Dark Mode" 
-//   labelPosition="left" 
-//   checked={darkMode} 
-//   onChange={setDarkMode} 
-// />
-
-// // With color and status text
-// <Switch
-//   color="success"
-//   showStatusText
-//   checked={isEnabled}
-//   onChange={setIsEnabled}
-// />
-
-// // With icons and custom size
-// <Switch
-//   size="lg"
-//   showIcons
-//   checked={notifications}
-//   onChange={setNotifications}
-// />
-
-// // Disabled switch
-// <Switch
-//   disabled
-//   label="Read-only"
-//   checked={false}
-// />
-
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
+<!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
 ```typescript
 "use client";
 
@@ -32853,12 +32566,12 @@ export default function PhoneInputWithCountry({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/phoneInput/index.ts -->
+<!-- path: components/common/ui/phoneInput/index.ts -->
 ```typescript
 export { default as PhoneInputWithCountry } from './PhoneInputWithCountry';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/scroll-area.tsx -->
+<!-- path: components/common/ui/scroll-area.tsx -->
 ```typescript
 "use client"
 
@@ -32921,7 +32634,7 @@ export { ScrollArea, ScrollBar }
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/theme/ThemeToggle.tsx -->
+<!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
 "use client";
 
@@ -33040,7 +32753,7 @@ export default function ThemeToggle() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/label/Label.tsx -->
+<!-- path: components/common/ui/label/Label.tsx -->
 ```typescript
 // Type definitions
 type LabelSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -33127,25 +32840,9 @@ export const Label: React.FC<LabelProps> = ({
   );
 };
 
-
-// // Usage
-// // Basic usage
-// <Label htmlFor="email">Email Address</Label>
-
-// // With required field
-// <Label htmlFor="password" required>Password</Label>
-
-// // With tooltip
-// <Label htmlFor="api-key" tooltip="Your unique API identifier">API Key</Label>
-
-// // Custom size and weight
-// <Label htmlFor="name" size="lg" weight="bold">Full Name</Label>
-
-// // Disabled state
-// <Label htmlFor="readonly" disabled>Read-only Field</Label>
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Button/Button.tsx -->
+<!-- path: components/common/ui/Button/Button.tsx -->
 ```typescript
 // src/components/common/Button/Button.tsx
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
@@ -33416,12 +33113,12 @@ export const PreviousButton: React.FC<Omit<ButtonProps, 'variant' | 'leftIcon'>>
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Button/index.ts -->
+<!-- path: components/common/ui/Button/index.ts -->
 ```typescript
 export { Button } from './Button';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/select/Select.tsx -->
+<!-- path: components/common/ui/select/Select.tsx -->
 ```typescript
 "use client"
 
@@ -33623,7 +33320,7 @@ export {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/select/SearchableSelect.tsx -->
+<!-- path: components/common/ui/select/SearchableSelect.tsx -->
 ```typescript
 // path: components/common/ui/select/SearchableSelect.tsx
 "use client";
@@ -33883,7 +33580,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/textarea/Textarea.tsx -->
+<!-- path: components/common/ui/textarea/Textarea.tsx -->
 ```typescript
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, ChangeEvent, FocusEvent } from "react";
@@ -34053,7 +33750,7 @@ export const Textarea: React.FC<TextareaProps> = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/card/card.tsx -->
+<!-- path: components/common/ui/card/card.tsx -->
 ```typescript
 import * as React from "react"
 
@@ -34150,7 +33847,7 @@ export {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/card/_Card.tsx -->
+<!-- path: components/common/ui/card/_Card.tsx -->
 ```typescript
 import { type ReactNode, forwardRef } from 'react';
 import { motion } from 'framer-motion';
@@ -34277,7 +33974,7 @@ const CardFooter = ({ children, className }: CardFooterProps) => (
 export { Card, CardHeader, CardBody, CardFooter };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/card/index.ts -->
+<!-- path: components/common/ui/card/index.ts -->
 ```typescript
 export { Card } from './_Card';
 export { CardHeader } from './_Card';
@@ -34285,7 +33982,7 @@ export { CardBody } from './_Card';
 export { CardFooter } from './_Card';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/separator.tsx -->
+<!-- path: components/common/ui/separator.tsx -->
 ```typescript
 "use client"
 
@@ -34318,7 +34015,7 @@ export { Separator }
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/tabs.tsx -->
+<!-- path: components/common/ui/tabs.tsx -->
 ```typescript
 "use client"
 
@@ -34389,7 +34086,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent }
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/index.ts -->
+<!-- path: components/common/ui/index.ts -->
 ```typescript
 export { Button } from './Button';
 export { Card } from './card';
@@ -34420,7 +34117,7 @@ export {SearchableSelect} from './select/SearchableSelect';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/table/TableSkeleton.tsx -->
+<!-- path: components/common/ui/table/TableSkeleton.tsx -->
 ```typescript
 import React from 'react';
 
@@ -34657,7 +34354,7 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({
 export default Skeleton;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/LoadingSpinner/LoadingSpinner.tsx -->
+<!-- path: components/common/ui/LoadingSpinner/LoadingSpinner.tsx -->
 ```typescript
 // components/common/ui/LoadingSpinner/LoadingSpinner.tsx
 import { cn } from '@/utils/classNames';
@@ -34808,7 +34505,7 @@ export const LoadingCard: React.FC<{
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/LoadingSpinner/AdvancedLoader.tsx -->
+<!-- path: components/common/ui/LoadingSpinner/AdvancedLoader.tsx -->
 ```typescript
 "use client";
 
@@ -34915,13 +34612,13 @@ export default AdvancedLoader;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/LoadingSpinner/index.ts -->
+<!-- path: components/common/ui/LoadingSpinner/index.ts -->
 ```typescript
 export { LoadingSpinner } from './LoadingSpinner';
 export { ButtonSpinner, PageSpinner, CardSpinner, LoadingSkeleton, LoadingCard } from './LoadingSpinner';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Input/Input.tsx -->
+<!-- path: components/common/ui/Input/Input.tsx -->
 ```typescript
 "use client";
 
@@ -35052,13 +34749,13 @@ Input.displayName = 'Input';
 export default Input;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/Input/index.ts -->
+<!-- path: components/common/ui/Input/index.ts -->
 ```typescript
 export { default as Input } from './Input';
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/ui/accordion.tsx -->
+<!-- path: components/common/ui/accordion.tsx -->
 ```typescript
 "use client"
 
@@ -35129,7 +34826,7 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/BulkActions.tsx -->
+<!-- path: components/common/BulkActions.tsx -->
 ```typescript
 // BulkActions Component (Enhanced version)
 import { FiTrash2, FiCheck, FiX } from "react-icons/fi";
@@ -35267,7 +34964,7 @@ export function BulkActions({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/filters/FilterInputs.tsx -->
+<!-- path: components/common/filters/FilterInputs.tsx -->
 ```typescript
 import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { Input } from '@/components/common/ui/Input';
@@ -35403,7 +35100,7 @@ export const InputFilter: React.FC<InputFilterProps> = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/filters/SearchAndFilters.tsx -->
+<!-- path: components/common/filters/SearchAndFilters.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiSearch, FiX, FiFilter, FiChevronDown, FiChevronUp } from "react-icons/fi";
@@ -35506,7 +35203,7 @@ export function SearchAndFilters({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/common/TruncateTooltip.tsx -->
+<!-- path: components/common/TruncateTooltip.tsx -->
 ```typescript
 // @/components/common/TruncateTooltip.tsx
 import React, { useEffect, useRef, useState } from "react";
@@ -35608,7 +35305,7 @@ export default TruncateTooltip;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/ofc-types.ts -->
+<!-- path: components/ofc/ofc-types.ts -->
 ```typescript
 import { V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
@@ -35644,7 +35341,7 @@ export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcStats.tsx -->
+<!-- path: components/ofc/OfcStats.tsx -->
 ```typescript
 // app/dashboard/employees/components/EmployeeStats.tsx
 interface OfcStatsProps {
@@ -35667,7 +35364,7 @@ interface OfcStatsProps {
   };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/constants/ofcFormConfig.ts -->
+<!-- path: components/ofc/OfcForm/constants/ofcFormConfig.ts -->
 ```typescript
 // components/ofc/OfcForm/constants/ofcFormConfig.ts
 export const OFC_FORM_CONFIG = {
@@ -35701,7 +35398,7 @@ export const OFC_FORM_CONFIG = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/MaintenanceSection.tsx -->
+<!-- path: components/ofc/OfcForm/MaintenanceSection.tsx -->
 ```typescript
 // components/OfcForm/MaintenanceSection.tsx
 import React from 'react';
@@ -35757,7 +35454,7 @@ export default MaintenanceSection;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/RouteConfigurationSection.tsx -->
+<!-- path: components/ofc/OfcForm/RouteConfigurationSection.tsx -->
 ```typescript
 // components/OfcForm/RouteConfigurationSection.tsx
 import React from 'react';
@@ -35844,7 +35541,7 @@ export default RouteConfigurationSection;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/FormSection.tsx -->
+<!-- path: components/ofc/OfcForm/FormSection.tsx -->
 ```typescript
 // components/OfcForm/FormSection.tsx
 import React from "react";
@@ -35875,7 +35572,7 @@ const FormSection: React.FC<FormSectionProps> = ({
 export default FormSection;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/hooks/useOfcFormData.ts -->
+<!-- path: components/ofc/OfcForm/hooks/useOfcFormData.ts -->
 ```typescript
 // components/ofc/OfcForm/hooks/useOfcFormData.ts
 'use client';
@@ -36017,7 +35714,7 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/hooks/useCapacityInference.ts -->
+<!-- path: components/ofc/OfcForm/hooks/useCapacityInference.ts -->
 ```typescript
 'use client';
 
@@ -36088,7 +35785,7 @@ export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/hooks/useRouteGeneration.ts -->
+<!-- path: components/ofc/OfcForm/hooks/useRouteGeneration.ts -->
 ```typescript
 'use client';
 
@@ -36249,7 +35946,7 @@ export const useRouteGeneration = <T extends FieldValues>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/OfcForm.tsx -->
+<!-- path: components/ofc/OfcForm/OfcForm.tsx -->
 ```typescript
 // Main OfcForm component
 import React, { useMemo } from 'react';
@@ -36484,7 +36181,7 @@ export default OfcForm;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/types/ofcForm.types.ts -->
+<!-- path: components/ofc/OfcForm/types/ofcForm.types.ts -->
 ```typescript
 // types/ofcForm.types.ts
 export interface FormLoadingState {
@@ -36509,7 +36206,7 @@ export interface FormLoadingState {
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/CableSpecificationsSection.tsx -->
+<!-- path: components/ofc/OfcForm/CableSpecificationsSection.tsx -->
 ```typescript
 // components/OfcForm/CableSpecificationsSection.tsx
 import React from 'react';
@@ -36679,7 +36376,7 @@ export default CableSpecificationsSection;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/ExistingRoutesAlert.tsx -->
+<!-- path: components/ofc/OfcForm/ExistingRoutesAlert.tsx -->
 ```typescript
 // components/OfcForm/ExistingRoutesAlert.tsx
 import React from "react";
@@ -36723,7 +36420,7 @@ const ExistingRoutesAlert: React.FC<ExistingRoutesAlertProps> = ({ routes }) => 
 export default ExistingRoutesAlert;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/ofc/OfcForm/LoadingOverlay.tsx -->
+<!-- path: components/ofc/OfcForm/LoadingOverlay.tsx -->
 ```typescript
 
 // components/OfcForm/LoadingOverlay.tsx
@@ -36750,7 +36447,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 export default LoadingOverlay;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/outdated/OutdatedBrowserModal.tsx -->
+<!-- path: components/outdated/OutdatedBrowserModal.tsx -->
 ```typescript
 
 // components/outdated/OutdatedBrowserModal.tsx
@@ -36811,7 +36508,7 @@ const OutdatedBrowserModal: React.FC<OutdatedBrowserModalProps> = ({ handleClose
 export default OutdatedBrowserModal
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/pwa/offline-status.tsx -->
+<!-- path: components/pwa/offline-status.tsx -->
 ```typescript
 'use client'
  
@@ -36876,7 +36573,7 @@ export default function OfflineStatus() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/pwa/pwa-install-prompt.tsx -->
+<!-- path: components/pwa/pwa-install-prompt.tsx -->
 ```typescript
 'use client'
  
@@ -36978,7 +36675,7 @@ export default function PWAInstallPrompt() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TableFilterPanel.tsx -->
+<!-- path: components/table/TableFilterPanel.tsx -->
 ```typescript
 // @/components/table/TableFilterPanel.tsx
 import React, { useState, useEffect } from "react";
@@ -37072,7 +36769,7 @@ export function TableFilterPanel<T extends AuthTableOrViewName>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/action-helpers.ts -->
+<!-- path: components/table/action-helpers.ts -->
 ```typescript
 import React from "react";
 import {
@@ -37189,7 +36886,7 @@ export function createStandardActions<V extends ActionableRecord>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TableColumnSelector.tsx -->
+<!-- path: components/table/TableColumnSelector.tsx -->
 ```typescript
 // @/components/table/TableColumnSelector.tsx
 import React, { useEffect, useRef } from "react";
@@ -37271,7 +36968,7 @@ export function TableColumnSelector<T extends AuthTableOrViewName>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TablePagination.tsx -->
+<!-- path: components/table/TablePagination.tsx -->
 ```typescript
 // @/components/table/TablePagination.tsx
 import React from "react";
@@ -37342,7 +37039,7 @@ export function TablePagination({ pagination, bordered }: TablePaginationProps) 
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TableHeader.tsx -->
+<!-- path: components/table/TableHeader.tsx -->
 ```typescript
 // @/components/table/TableHeader.tsx
 import React from "react";
@@ -37502,7 +37199,7 @@ export const TableHeader = React.memo(TableHeaderBase) as <T extends AuthTableOr
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TableBody.tsx -->
+<!-- path: components/table/TableBody.tsx -->
 ```typescript
 // @/components/table/TableBody.tsx
 import React, { useRef, useEffect } from "react";
@@ -37745,7 +37442,7 @@ export const TableBody = React.memo(TableBodyBase) as <T extends AuthTableOrView
 ) => React.ReactElement;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/TableToolbar.tsx -->
+<!-- path: components/table/TableToolbar.tsx -->
 ```typescript
 // @/components/table/TableToolbar.tsx
 import React, { useState, useEffect, useRef } from "react";
@@ -37941,7 +37638,7 @@ export function TableToolbar<T extends AuthTableOrViewName>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/index.ts -->
+<!-- path: components/table/index.ts -->
 ```typescript
 export * from "./DataTable";
 export * from "./TableHeader";
@@ -37953,7 +37650,7 @@ export * from "./TableToolbar";
 export * from "./datatable-types";
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/DataTable.tsx -->
+<!-- path: components/table/DataTable.tsx -->
 ```typescript
 // @/components/table/DataTable.tsx
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
@@ -38488,7 +38185,7 @@ export function DataTable<T extends AuthTableOrViewName>({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/table/datatable-types.ts -->
+<!-- path: components/table/datatable-types.ts -->
 ```typescript
 // @/components/table/types.ts
 import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
@@ -38576,7 +38273,7 @@ export type TablePaginationProps = Pick<DataTableProps<AuthTableOrViewName>, 'pa
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/useDashboardOverview.ts -->
+<!-- path: components/bsnl/useDashboardOverview.ts -->
 ```typescript
 // path: components/bsnl/useDashboardOverview.ts
 "use client";
@@ -38636,7 +38333,7 @@ export function useDashboardOverview() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/types.ts -->
+<!-- path: components/bsnl/types.ts -->
 ```typescript
 // path: components/bsnl/types.ts
 import {
@@ -38690,7 +38387,7 @@ export interface SearchFilters {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/NewAllocationModal.tsx -->
+<!-- path: components/bsnl/NewAllocationModal.tsx -->
 ```typescript
 "use client"
 
@@ -38948,7 +38645,7 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
 export default AdvancedAllocationModal;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/useBsnlDashboardData.ts -->
+<!-- path: components/bsnl/useBsnlDashboardData.ts -->
 ```typescript
 "use client";
 
@@ -39023,7 +38720,7 @@ export function useBsnlDashboardData(filters: SearchFilters) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/PaginatedTable.tsx -->
+<!-- path: components/bsnl/PaginatedTable.tsx -->
 ```typescript
 // path: components/bsnl/PaginatedTable.tsx
 "use client";
@@ -39121,7 +38818,7 @@ export function PaginatedTable<T>({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/OptimizedNetworkMap.tsx -->
+<!-- path: components/bsnl/OptimizedNetworkMap.tsx -->
 ```typescript
 // path: components/bsnl/OptimizedNetworkMap.tsx
 "use client";
@@ -39386,7 +39083,7 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/DashboardStatsGrid.tsx -->
+<!-- path: components/bsnl/DashboardStatsGrid.tsx -->
 ```typescript
 // path: components/bsnl/DashboardStatsGrid.tsx
 "use client";
@@ -39473,7 +39170,7 @@ export const DashboardStatsGrid: React.FC = () => {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/bsnl/AdvancedSearchBar.tsx -->
+<!-- path: components/bsnl/AdvancedSearchBar.tsx -->
 ```typescript
 "use client";
 
@@ -39588,7 +39285,7 @@ const ChevronUp = (props: React.SVGProps<SVGSVGElement>) => (
 );
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/CreatePathModal.tsx -->
+<!-- path: components/systems/CreatePathModal.tsx -->
 ```typescript
 "use client";
 
@@ -39700,7 +39397,7 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/PathSegmentList.tsx -->
+<!-- path: components/systems/PathSegmentList.tsx -->
 ```typescript
 "use client";
 
@@ -39774,7 +39471,7 @@ export function PathSegmentList({ segments, onDragEnd, onDelete }: ListProps) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/SystemRingPath.tsx -->
+<!-- path: components/systems/SystemRingPath.tsx -->
 ```typescript
 // path: components/systems/SystemRingPath.tsx
 "use client";
@@ -40008,7 +39705,7 @@ export function SystemRingPath({ system }: Props) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/AddSegmentModal.tsx -->
+<!-- path: components/systems/AddSegmentModal.tsx -->
 ```typescript
 "use client";
 
@@ -40098,7 +39795,7 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegment
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/SystemModal.tsx -->
+<!-- path: components/systems/SystemModal.tsx -->
 ```typescript
 // path: components/systems/SystemModal.tsx
 
@@ -40355,7 +40052,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/systems/FiberProvisioning.tsx -->
+<!-- path: components/systems/FiberProvisioning.tsx -->
 ```typescript
 // path: components/systems/FiberProvisioning.tsx
 "use client";
@@ -40512,7 +40209,7 @@ export function FiberProvisioning({ path, pathName, systemId, physicalPathId, va
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/nodes/NodesFilters.tsx -->
+<!-- path: components/nodes/NodesFilters.tsx -->
 ```typescript
 "use client";
 
@@ -40586,7 +40283,7 @@ NodesFiltersComponent.displayName = "NodesFilters";
 export const NodesFilters = NodesFiltersComponent;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/nodes/NodeFormModal.tsx -->
+<!-- path: components/nodes/NodeFormModal.tsx -->
 ```typescript
 'use client';
 
@@ -40856,7 +40553,7 @@ export function NodeFormModal({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/users/UserFilters.tsx -->
+<!-- path: components/users/UserFilters.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiSearch, FiX, FiFilter, FiChevronDown, FiChevronUp } from "react-icons/fi";
@@ -41034,7 +40731,7 @@ export function UserFilters({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/users/BulkActions.tsx -->
+<!-- path: components/users/BulkActions.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiTrash2 } from "react-icons/fi";
@@ -41119,7 +40816,7 @@ export function BulkActions({
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/users/UserProfileEditModal.tsx -->
+<!-- path: components/users/UserProfileEditModal.tsx -->
 ```typescript
 'use client';
 
@@ -41484,7 +41181,7 @@ export default UserProfileEditModal;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/users/UserCreateModal.tsx -->
+<!-- path: components/users/UserCreateModal.tsx -->
 ```typescript
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -41674,7 +41371,7 @@ export function UserCreateModal({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeFilters.tsx -->
+<!-- path: components/employee/EmployeeFilters.tsx -->
 ```typescript
 // path: components/employee/EmployeeFilters.tsx
 'use client';
@@ -41831,7 +41528,7 @@ EmployeeFiltersComponent.displayName = 'EmployeeFilters';
 export default EmployeeFiltersComponent;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeTableActions.tsx -->
+<!-- path: components/employee/EmployeeTableActions.tsx -->
 ```typescript
 import { FiEdit, FiTrash2, FiToggleRight, FiEye } from "react-icons/fi";
 import { TableAction } from "@/components/table/datatable-types";
@@ -41882,7 +41579,7 @@ export const getEmployeeTableActions = ({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeDetailsModal.tsx -->
+<!-- path: components/employee/EmployeeDetailsModal.tsx -->
 ```typescript
 // components/employee/EmployeeDetailsModal.tsx
 import { FiX, FiMail, FiPhone, FiUser, FiBriefcase, FiCalendar, FiEdit3 } from "react-icons/fi";
@@ -42068,7 +41765,7 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
 export default EmployeeDetailsModal;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeStats.tsx -->
+<!-- path: components/employee/EmployeeStats.tsx -->
 ```typescript
 // app/dashboard/employees/components/EmployeeStats.tsx
 interface EmployeeStatsProps {
@@ -42091,7 +41788,7 @@ interface EmployeeStatsProps {
   };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeForm.tsx -->
+<!-- path: components/employee/EmployeeForm.tsx -->
 ```typescript
 // path: components/employee/EmployeeForm.tsx
 
@@ -42316,7 +42013,7 @@ export default EmployeeForm;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/components/employee/EmployeeTableColumns.tsx -->
+<!-- path: components/employee/EmployeeTableColumns.tsx -->
 ```typescript
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
@@ -42434,7 +42131,7 @@ export const getEmployeeTableColumns = (
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/types/error-types.ts -->
+<!-- path: types/error-types.ts -->
 ```typescript
 export type DetailedError = Error & { details?: unknown; hint?: unknown; code?: unknown };
 
@@ -42443,7 +42140,7 @@ export function hasDetails(error: unknown): error is DetailedError {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/types/pollyfills.d.ts -->
+<!-- path: types/pollyfills.d.ts -->
 ```typescript
 declare module 'core-js/stable';
 declare module 'regenerator-runtime/runtime';
@@ -42452,7 +42149,7 @@ declare module 'intersection-observer';
 declare module 'url-polyfill';
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/types/supabase-types.ts -->
+<!-- path: types/supabase-types.ts -->
 ```typescript
 export type Json =
   | string
@@ -46747,7 +46444,7 @@ export const Constants = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/types/flattened-types.ts -->
+<!-- path: types/flattened-types.ts -->
 ```typescript
 // Auto-generated from types/supabase-types.ts
 
@@ -48834,7 +48531,7 @@ export const viewNames = [
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/types/user-roles.ts -->
+<!-- path: types/user-roles.ts -->
 ```typescript
 // types/user-roles.ts
 
@@ -48851,7 +48548,7 @@ export enum UserRole {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/lib/queryClient.ts -->
+<!-- path: lib/queryClient.ts -->
 ```typescript
 
 // lib/queryClient.ts
@@ -48878,7 +48575,7 @@ export const queryClient = new QueryClient({
 })
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/lib/utils.ts -->
+<!-- path: lib/utils.ts -->
 ```typescript
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
@@ -48889,7 +48586,7 @@ export function cn(...inputs: ClassValue[]) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/terms/page.tsx -->
+<!-- path: app/terms/page.tsx -->
 ```typescript
 // app/terms/page.tsx
 import Terms from '@/components/auth/terms';
@@ -48903,7 +48600,7 @@ const TermsPage = () => {
 export default TermsPage;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/login/page.tsx -->
+<!-- path: app/(auth)/login/page.tsx -->
 ```typescript
 'use client';
 
@@ -49067,7 +48764,7 @@ export default function LoginPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/verify-email/page.tsx -->
+<!-- path: app/(auth)/verify-email/page.tsx -->
 ```typescript
 // app/(auth)/verify-email/page.tsx
 import Link from 'next/link'
@@ -49111,7 +48808,7 @@ export default function VerifyEmailPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/reset-password/page.tsx -->
+<!-- path: app/(auth)/reset-password/page.tsx -->
 ```typescript
 // app/(auth)/reset-password/page.tsx
 "use client";
@@ -49212,7 +48909,7 @@ export default function ResetPasswordPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/layout.tsx -->
+<!-- path: app/(auth)/layout.tsx -->
 ```typescript
 // app/(auth)/layout.tsx
 "use client";
@@ -49274,7 +48971,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/forgot-password/page.tsx -->
+<!-- path: app/(auth)/forgot-password/page.tsx -->
 ```typescript
 // app/(auth)/forgot-password/page.tsx
 'use client'
@@ -49314,7 +49011,7 @@ export default function ForgotPasswordPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/(auth)/signup/page.tsx -->
+<!-- path: app/(auth)/signup/page.tsx -->
 ```typescript
 'use client';
 
@@ -49537,7 +49234,7 @@ export default function SignUpPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/privacy/page.tsx -->
+<!-- path: app/privacy/page.tsx -->
 ```typescript
 
 // app/privacy/page.tsx
@@ -49551,7 +49248,7 @@ export default PrivacyPage;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/api/ors-distance/route.ts -->
+<!-- path: app/api/ors-distance/route.ts -->
 ```typescript
 // path: app/api/ors-distance/route.ts
 import { NextRequest, NextResponse } from "next/server";
@@ -49595,7 +49292,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/api/admin/users/route.ts -->
+<!-- path: app/api/admin/users/route.ts -->
 ```typescript
 // app/api/admin/users/route.ts
 import { NextResponse } from 'next/server';
@@ -49672,7 +49369,7 @@ export async function POST(req: Request) {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/api/route/[id]/route.ts -->
+<!-- path: app/api/route/[id]/route.ts -->
 ```typescript
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
@@ -49814,7 +49511,7 @@ export async function POST(
   }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/customuppy.css -->
+<!-- path: app/customuppy.css -->
 ```css
 /* Custom Uppy Styles - Add this to your globals.css or import as a separate file */
 
@@ -50085,7 +49782,7 @@ export async function POST(
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/page.tsx -->
+<!-- path: app/page.tsx -->
 ```typescript
 "use client";
 
@@ -50163,104 +49860,8 @@ export default function Home() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/auth/callback/route.ts -->
+<!-- path: app/auth/callback/route.ts -->
 ```typescript
-// // app/auth/callback/route.ts
-// import { createClient } from '@/utils/supabase/server'
-// import { NextResponse } from 'next/server'
-
-// export async function GET(request: Request) {
-//   const { searchParams, origin } = new URL(request.url)
-//   const code = searchParams.get('code')
-//   const next = searchParams.get('next') ?? '/dashboard'
-//   const error = searchParams.get('error')
-//   const errorDescription = searchParams.get('error_description')
-
-//   // console.log('Auth callback received:', { code: !!code, error, errorDescription })
-
-//   // Handle OAuth errors
-//   if (error) {
-//     console.error('OAuth error:', error, errorDescription)
-//     const errorParams = new URLSearchParams({
-//       error: error,
-//       message: errorDescription || 'Authentication failed'
-//     })
-//     return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//   }
-
-//   if (code) {
-//     const supabase = await createClient()
-    
-//     try {
-//       // console.log('Exchanging code for session...')
-//       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      
-//       if (exchangeError) {
-//         console.error('Session exchange error:', exchangeError)
-//         const errorParams = new URLSearchParams({
-//           error: 'session_exchange_failed',
-//           message: exchangeError.message
-//         })
-//         return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//       }
-
-//       if (data.user) {
-//         // console.log('User authenticated:', data.user.id)
-        
-//         // Check if user has a profile
-//         // console.log('Checking for existing profile...')
-//         const { data: profile, error: profileError } = await supabase
-//           .from('user_profiles')
-//           .select('id')
-//           .eq('id', data.user.id)
-//           .single()
-
-//         // console.log('Profile check result:', { profile: !!profile, error: profileError?.code })
-
-//         // If no profile exists, redirect to onboarding
-//         // check non blocking way after 2 seconds
-//         setTimeout(() => {
-//           if (profileError && profileError.code === 'PGRST116') {
-//             // console.log('No profile found, redirecting to onboarding')
-//             return NextResponse.redirect(`${origin}/onboarding`)
-//           }
-//         }, 2000)
-        
-
-//         if (profileError && profileError.code !== 'PGRST116') {
-//           console.error('Profile check error:', profileError)
-//           // Continue anyway, let the client handle it
-//         }
-
-//         // If profile exists, redirect to intended destination
-//         if (profile) {
-//           // console.log('Profile exists, redirecting to:', next)
-//           return NextResponse.redirect(`${origin}${next}`)
-//         }
-
-//         // Fallback: redirect to dashboard if no profile check conclusive
-//         // console.log('Fallback redirect to dashboard')
-//         return NextResponse.redirect(`${origin}/dashboard`)
-//       }
-      
-//     } catch (error) {
-//       console.error('Unexpected error in auth callback:', error)
-//       const errorParams = new URLSearchParams({
-//         error: 'unexpected_error',
-//         message: 'An unexpected error occurred during authentication'
-//       })
-//       return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//     }
-//   }
-
-//   // No code parameter - invalid callback
-//   console.error('No code parameter received')
-//   const errorParams = new URLSearchParams({
-//     error: 'invalid_callback',
-//     message: 'Invalid authentication callback'
-//   })
-//   return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-// }
 
 // app/auth/callback/route.ts
 import { createClient } from '@/utils/supabase/server';
@@ -50296,7 +49897,7 @@ export async function GET(request: Request) {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/lookup/page.tsx -->
+<!-- path: app/dashboard/lookup/page.tsx -->
 ```typescript
 'use client';
 
@@ -50525,7 +50126,7 @@ export default function LookupTypesPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/route-manager/page.tsx -->
+<!-- path: app/dashboard/route-manager/page.tsx -->
 ```typescript
 // path: app/dashboard/route-manager/page.tsx
 'use client';
@@ -50703,7 +50304,7 @@ export default function RouteManagerPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/rings/[id]/page copy.tsx -->
+<!-- path: app/dashboard/rings/[id]/page copy.tsx -->
 ```typescript
 // path: app/dashboard/rings/[id]/page.tsx
 "use client";
@@ -50808,7 +50409,7 @@ export default function RingMapPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/rings/[id]/page.tsx -->
+<!-- path: app/dashboard/rings/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/rings/[id]/page.tsx
 "use client";
@@ -50917,7 +50518,7 @@ export default function RingMapPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/rings/page.tsx -->
+<!-- path: app/dashboard/rings/page.tsx -->
 ```typescript
 // path: app/dashboard/rings/page.tsx
 'use client';
@@ -51082,7 +50683,7 @@ export default RingsPage;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/page.tsx -->
+<!-- path: app/dashboard/page.tsx -->
 ```typescript
 "use client";
 
@@ -51097,7 +50698,7 @@ export default function DashboardPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/diagrams/page.tsx -->
+<!-- path: app/dashboard/diagrams/page.tsx -->
 ```typescript
 "use client";
 
@@ -51155,7 +50756,7 @@ export default function Home() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/categories/page.tsx -->
+<!-- path: app/dashboard/categories/page.tsx -->
 ```typescript
 'use client';
 
@@ -51458,7 +51059,7 @@ export default function CategoriesPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/maintenance-areas/page.tsx -->
+<!-- path: app/dashboard/maintenance-areas/page.tsx -->
 ```typescript
 // components/maintenance-areas/MaintenanceAreasPage.tsx
 'use client';
@@ -51682,7 +51283,7 @@ export default function MaintenanceAreasPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/employees/page.tsx -->
+<!-- path: app/dashboard/employees/page.tsx -->
 ```typescript
 // app/dashboard/employees/page.tsx
 'use client';
@@ -51914,7 +51515,7 @@ const EmployeesPage = () => {
 export default EmployeesPage;
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/designations/page.tsx -->
+<!-- path: app/dashboard/designations/page.tsx -->
 ```typescript
 'use client';
 
@@ -52178,7 +51779,7 @@ export default function DesignationManagerPage() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/doc/page.tsx -->
+<!-- path: app/dashboard/doc/page.tsx -->
 ```typescript
 "use client";
 
@@ -52563,7 +52164,7 @@ function WorkflowCard({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/layout.tsx -->
+<!-- path: app/dashboard/layout.tsx -->
 ```typescript
 "use client";
 
@@ -52644,7 +52245,7 @@ export default function DashboardLayout({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/ofc/[id]/page.tsx -->
+<!-- path: app/dashboard/ofc/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/ofc/[id]/page.tsx
 "use client";
@@ -52846,7 +52447,7 @@ export default function OfcCableDetailsPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/ofc/page.tsx -->
+<!-- path: app/dashboard/ofc/page.tsx -->
 ```typescript
 'use client';
 
@@ -53275,7 +52876,7 @@ export default OfcPage;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/systems/[id]/page.tsx -->
+<!-- path: app/dashboard/systems/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/systems/[id]/page.tsx
 "use client";
@@ -53325,7 +52926,7 @@ export default function SystemDetailsPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/systems/page.tsx -->
+<!-- path: app/dashboard/systems/page.tsx -->
 ```typescript
 // path: app/dashboard/systems/page.tsx
 
@@ -53506,7 +53107,7 @@ export default function SystemsPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/nodes/page.tsx -->
+<!-- path: app/dashboard/nodes/page.tsx -->
 ```typescript
 'use client';
 
@@ -53776,7 +53377,7 @@ export default NodesPage;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/dashboard/users/page.tsx -->
+<!-- path: app/dashboard/users/page.tsx -->
 ```typescript
 'use client';
 
@@ -54085,7 +53686,7 @@ export default AdminUsersPage;
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/layout.tsx -->
+<!-- path: app/layout.tsx -->
 ```typescript
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -54173,7 +53774,7 @@ export default function RootLayout({
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/onboarding/page.tsx -->
+<!-- path: app/onboarding/page.tsx -->
 ```typescript
 "use client";
 import Link from "next/link";
@@ -54218,7 +53819,7 @@ export default function OnboardingPage() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/onboarding/layout.tsx -->
+<!-- path: app/onboarding/layout.tsx -->
 ```typescript
 // app/onboarding/layout.tsx
 "use client"
@@ -54236,7 +53837,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/onboarding/onboarding-form-enhanced.tsx -->
+<!-- path: app/onboarding/onboarding-form-enhanced.tsx -->
 ```typescript
 // path: app/onboarding/onboarding-form-enhanced.tsx
 
@@ -54497,7 +54098,7 @@ export default function OnboardingFormEnhanced() {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/manifest.ts -->
+<!-- path: app/manifest.ts -->
 ```typescript
 import type { MetadataRoute } from "next";
  
@@ -54555,7 +54156,7 @@ export default function manifest(): MetadataRoute.Manifest {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/bsnl/page.tsx -->
+<!-- path: app/bsnl/page.tsx -->
 ```typescript
 // path: app/bsnl/page.tsx
 "use client"
@@ -54720,7 +54321,7 @@ export default function ScalableFiberNetworkDashboard() {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/app/globals.css -->
+<!-- path: app/globals.css -->
 ```css
 @import "tailwindcss";
 
@@ -54772,7 +54373,7 @@ body {
 }
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/middleware.ts -->
+<!-- path: middleware.ts -->
 ```typescript
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
@@ -54797,7 +54398,7 @@ export const config = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/package.json -->
+<!-- path: package.json -->
 ```json
 {
   "name": "hnvtx",
@@ -54913,7 +54514,7 @@ export const config = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/employee-details-config.tsx -->
+<!-- path: config/employee-details-config.tsx -->
 ```typescript
 // ==== EMPLOYEE DETAILS MODAL CONFIGURATION ====
 
@@ -55077,7 +54678,7 @@ export const EmployeeDetailsModal = ({
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/areas.ts -->
+<!-- path: config/areas.ts -->
 ```typescript
 // config/areas.ts
 
@@ -55150,7 +54751,7 @@ export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/column-orders.ts -->
+<!-- path: config/column-orders.ts -->
 ```typescript
 export const desiredCpanConnectionColumnOrder = [
     "customer_name",
@@ -55483,7 +55084,7 @@ export const desiredCpanConnectionColumnOrder = [
   ];
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/designations.ts -->
+<!-- path: config/designations.ts -->
 ```typescript
 // config/designations.ts
 
@@ -55525,7 +55126,7 @@ export const designationConfig: EntityConfig<DesignationWithRelations> = {
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/ofc-details-config.tsx -->
+<!-- path: config/ofc-details-config.tsx -->
 ```typescript
 // ==== OFC DETAILS MODAL CONFIGURATION ====
 import { 
@@ -55648,7 +55249,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
   
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/helper-types.ts -->
+<!-- path: config/helper-types.ts -->
 ```typescript
 // config/helpers.ts
 
@@ -55724,7 +55325,7 @@ export type UploadMetaMap = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/node-details-config.tsx -->
+<!-- path: config/node-details-config.tsx -->
 ```typescript
 // ==== NODE DETAILS MODAL CONFIGURATION ====
 import { 
@@ -55823,7 +55424,7 @@ export const NodeDetailsModal = ({ node, onClose, isOpen }: { node: V_nodes_comp
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/NodesTableColumns.tsx -->
+<!-- path: config/table-columns/NodesTableColumns.tsx -->
 ```typescript
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
@@ -55876,7 +55477,7 @@ export const NodesTableColumns = (data: V_nodes_completeRowSchema[]) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/OfcDetailsTableColumns.tsx -->
+<!-- path: config/table-columns/OfcDetailsTableColumns.tsx -->
 ```typescript
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -56001,7 +55602,7 @@ export const OfcDetailsTableColumns = (
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/UsersTableColumns.tsx -->
+<!-- path: config/table-columns/UsersTableColumns.tsx -->
 ```typescript
 import Image from 'next/image';
 import {StatusBadge} from '@/components/common/ui/badges/StatusBadge';
@@ -56053,7 +55654,7 @@ export const UserProfileColumns = (data:V_user_profiles_extendedRowSchema[]) => 
 };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/RingsTableColumns.tsx -->
+<!-- path: config/table-columns/RingsTableColumns.tsx -->
 ```typescript
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
@@ -56134,7 +55735,7 @@ export const RingsColumns = (data: V_rings_with_countRowSchema[]) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/SystemsTableColumns.tsx -->
+<!-- path: config/table-columns/SystemsTableColumns.tsx -->
 ```typescript
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -56231,7 +55832,7 @@ export const SystemsTableColumns = (data: Row<'v_systems_complete'>[]) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-columns/OfcTableColumns.tsx -->
+<!-- path: config/table-columns/OfcTableColumns.tsx -->
 ```typescript
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -56305,7 +55906,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/helper-functions.ts -->
+<!-- path: config/helper-functions.ts -->
 ```typescript
 // Helper: normalize various Excel/CSV date representations to 'YYYY-MM-DD' or null
 export const toPgDate = (value: unknown): string | null => {
@@ -56487,7 +56088,7 @@ export function inferDynamicColumnWidth(
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/user-details-config.tsx -->
+<!-- path: config/user-details-config.tsx -->
 ```typescript
 // ==== USER DETAILS MODAL CONFIGURATION ====
 import { 
@@ -56653,7 +56254,7 @@ import { UserRole } from '@/types/user-roles';
   };
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/constants.ts -->
+<!-- path: config/constants.ts -->
 ```typescript
 export const DEFAULTS = {
   DEBOUNCE_DELAY: 400,
@@ -56663,7 +56264,7 @@ export const DEFAULTS = {
 
 ```
 
-<!-- path: /home/au/Desktop/gitClones/new_hnvtx/hnvtx/config/table-column-keys.ts -->
+<!-- path: config/table-column-keys.ts -->
 ```typescript
 import { toPgBoolean, toPgDate, toTitleCase } from '@/config/helper-functions';
 import {
