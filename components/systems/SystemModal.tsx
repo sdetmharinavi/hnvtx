@@ -8,7 +8,7 @@ import { useTableQuery } from '@/hooks/database';
 import { useRpcMutation } from '@/hooks/database/rpc-queries';
 import type { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
 import { createClient } from '@/utils/supabase/client';
-import { useForm } from 'react-hook-form';
+import { useForm, FieldErrors } from 'react-hook-form'; // Import FieldErrors
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Modal } from '@/components/common/ui';
 import { FormCard, FormDateInput, FormInput, FormIPAddressInput, FormSearchableSelect, FormSwitch, FormTextarea } from '@/components/common/form';
@@ -44,7 +44,7 @@ interface SystemModalProps {
 export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, refetch }) => {
   const supabase = createClient();
   const isEditMode = !!rowData;
-  const [step, setStep] = useState(1); // State for wizard step
+  const [step, setStep] = useState(1);
 
   const { data: systemTypes = [] } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, category', filters: { category: 'SYSTEM_TYPES' } });
   const { data: nodes = [] } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
@@ -86,7 +86,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     setTimeout(() => {
         reset(createDefaultFormValues());
         setStep(1);
-    }, 200); // Delay reset to allow modal close animation
+    }, 200);
   }, [onClose, reset]);
 
   useEffect(() => {
@@ -150,6 +150,17 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     };
     upsertSystemMutation.mutate(payload);
   }, [isEditMode, rowData, upsertSystemMutation, isRingBasedSystem, isSdhSystem, isVmuxSystem]);
+  
+  // **THE FIX: Create the onInvalid handler.**
+  const onInvalidSubmit = (errors: FieldErrors<SystemFormValues>) => {
+    toast.error("Validation failed. Please check required fields on all steps.");
+    // If the error is not in the current step, switch to step 1 to show it.
+    const step1Fields: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
+    const hasErrorInStep1 = Object.keys(errors).some(key => step1Fields.includes(key as keyof SystemFormValues));
+    if (hasErrorInStep1 && step !== 1) {
+        setStep(1);
+    }
+  };
 
   const handleNext = async () => {
     const fieldsToValidate: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
@@ -158,8 +169,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
       if (needsStep2) {
         setStep(2);
       } else {
-        // If no second step is needed, submit the form directly.
-        handleSubmit(onValidSubmit)();
+        handleSubmit(onValidSubmit, onInvalidSubmit)();
       }
     } else {
       toast.error("Please fill in all required fields to continue.");
@@ -233,11 +243,10 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     ? 'Edit System'
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
-
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
-        onSubmit={handleSubmit(onValidSubmit)}
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
         isLoading={upsertSystemMutation.isPending || isSubmitting}
         standalone
