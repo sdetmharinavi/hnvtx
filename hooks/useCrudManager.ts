@@ -26,6 +26,7 @@ export type RecordWithId = {
   name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  employee_name?: string | null; // <-- ADDED for type safety
   [key: string]: unknown;
 };
 
@@ -105,7 +106,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     currentPage,
     pageLimit,
     searchQuery: debouncedSearch,
-    filters: combinedFilters, // <<< THE FIX IS HERE
+    filters: combinedFilters,
   });
 
   // --- MUTATIONS ---
@@ -208,7 +209,9 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   );
 
   // --- DELETE HANDLERS ---
+  // **THE FIX IS HERE: Added a check for 'employee_name'.**
   const getDisplayName = useCallback((record: RecordWithId): string => {
+    if (record.employee_name) return String(record.employee_name);
     if (record.name) return String(record.name);
     if (record.first_name && record.last_name) {
       return `${record.first_name} ${record.last_name}`;
