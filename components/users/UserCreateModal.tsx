@@ -14,13 +14,13 @@ import { FormCard, FormInput } from '@/components/common/form';
 import { v4 as uuidv4 } from 'uuid';
 
 const userSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.uuid().optional(),
   email: z.email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   role: z.string().min(1, 'Role is required'),
-  email_confirm: z.boolean().catch(false), // ✅ ensures boolean
+  email_confirm: z.boolean().catch(false),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -47,7 +47,7 @@ export function UserCreateModal({
       first_name: '',
       last_name: '',
       role: 'viewer',
-      email_confirm: false, // ✅ always boolean
+      email_confirm: false,
     },
   });
 
@@ -78,12 +78,13 @@ export function UserCreateModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create New User" visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+      className="transparent bg-gray-700 rounded-2xl">
       <FormCard
         title="Create New User"
         onCancel={onClose}
         onSubmit={handleSubmit(onValidSubmit)}
         isLoading={isLoading}
+        standalone
       >
         <div className="space-y-4">
           {/* Optional ID */}

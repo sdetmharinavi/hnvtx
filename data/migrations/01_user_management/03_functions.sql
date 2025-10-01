@@ -274,7 +274,7 @@ BEGIN
 END;
 $$;
 
--- USER CREATION FUNCTION
+-- USER CREATION FUNCTION (UPDATED)
 CREATE OR REPLACE FUNCTION public.create_public_profile_for_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
@@ -288,7 +288,8 @@ BEGIN
             NEW.raw_user_meta_data->>'phone_number',
             CASE WHEN NEW.raw_user_meta_data->>'date_of_birth' ~ '^\d{4}-\d{2}-\d{2}$' THEN (NEW.raw_user_meta_data->>'date_of_birth')::date ELSE NULL END,
             COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
-            COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb),
+            -- **THE FIX: Add the needsOnboarding flag to preferences**
+            COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
             'active'
         );
     END IF;

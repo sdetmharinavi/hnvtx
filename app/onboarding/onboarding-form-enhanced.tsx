@@ -32,6 +32,9 @@ const preferencesSchema = z
   .object({
     language: z.string().optional().nullable(),
     theme: z.string().optional().nullable(),
+    // ADDED: Include our new flags in the schema
+    needsOnboarding: z.boolean().optional().nullable(),
+    showOnboardingPrompt: z.boolean().optional().nullable(),
   })
   .nullable();
 
@@ -81,8 +84,6 @@ export default function OnboardingFormEnhanced() {
     onSuccess: (data) => {
       toast.success("Profile updated successfully!");
       refetch();
-      // After a successful save, reset the form state with the new data
-      // to make sure 'isDirty' becomes false.
       reset(data[0] as OnboardingFormData);
     },
     onError: (error) => {
@@ -95,7 +96,6 @@ export default function OnboardingFormEnhanced() {
 
   useEffect(() => {
     if (profile) {
-      // If a profile exists (even a placeholder), reset the form with its data.
       reset({
         first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
         last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
@@ -107,8 +107,6 @@ export default function OnboardingFormEnhanced() {
         preferences: toObject(profile.preferences),
       });
     } else if (!isProfileLoading) {
-      // If loading is finished and there is still no profile,
-      // reset to a blank form. This prevents getting stuck.
       reset({
         first_name: "",
         last_name: "",
@@ -129,11 +127,18 @@ export default function OnboardingFormEnhanced() {
     }
 
     const updates: Partial<User_profilesUpdateSchema> = {};
-    // This logic now correctly handles nested dirty fields
     for (const key in dirtyFields) {
       const fieldName = key as keyof OnboardingFormData;
       updates[fieldName] = data[fieldName];
     }
+
+    // **THE FIX: Always update preferences to set needsOnboarding to false**
+    const newPreferences = {
+      ...toObject(profile?.preferences),
+      ...toObject(data.preferences), // Include any other preference changes from the form
+      needsOnboarding: false,
+    };
+    updates.preferences = newPreferences;
 
     if (Object.keys(updates).length > 0) {
       updateProfile({ id: user.id, data: updates });
@@ -167,7 +172,6 @@ export default function OnboardingFormEnhanced() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-3xl mx-auto'>
-      {/* Avatar and URL */}
       <div className='flex items-center gap-4'>
         <Image src={avatarUrl || "/default-avatar.png"} alt='Profile' width={64} height={64} className='w-16 h-16 rounded-full object-cover bg-gray-200' />
         <div className='flex-1'>
@@ -203,7 +207,6 @@ export default function OnboardingFormEnhanced() {
         </div>
       </div>
 
-      {/* Address Section */}
       <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
         <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Address Information</h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -230,7 +233,6 @@ export default function OnboardingFormEnhanced() {
         </div>
       </div>
 
-      {/* Preferences Section */}
       <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
         <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>

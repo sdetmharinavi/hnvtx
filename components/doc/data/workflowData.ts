@@ -14,27 +14,27 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To manage user registration, login, session handling, and role-based access control (RBAC).",
     workflows: [
       {
-        title: "Workflow A: New User Registration & Onboarding",
+        title: "Workflow A: New User Registration & Onboarding Prompt",
         userSteps: [
           "User fills out the form on `/signup` and submits.",
           "User receives a verification email and clicks the link.",
-          "User is redirected to the app, logged in, and immediately taken to the `/onboarding` page.",
-          "User fills in their first name, last name, and other details, then saves.",
-          "User can now access the main dashboard.",
+          "User is redirected to the `/dashboard` page.",
+          "A welcome popup appears, prompting them to complete their profile.",
+          "User can choose to 'Update Profile', 'Maybe Later', or 'Don't show again'.",
         ],
         uiSteps: [
           "On submit, user is redirected to `/verify-email`.",
-          "After email verification, the `/onboarding` page is shown, not the dashboard.",
-          "After saving onboarding form, user is redirected to `/dashboard`.",
+          "After email verification, the `/auth/callback` route sends the user to `/dashboard`.",
+          "On the dashboard, the `OnboardingPromptModal` appears if the profile is incomplete.",
         ],
         techSteps: [
           "`signUp` calls `supabase.auth.signUp`.",
-          "DB Trigger `on_auth_user_created` inserts into `user_profiles` with a default `first_name` of 'Placeholder'.",
-          "Upon returning to the app after verification, the `Protected` component checks the user's profile.",
-          "The `useUserProfileCheck` hook inside `Protected` finds the 'Placeholder' name.",
-          "The `Protected` component's logic redirects the user to `/onboarding` instead of allowing access to the dashboard.",
-          "The `OnboardingFormEnhanced` component updates the `user_profiles` table, removing the placeholder name.",
-          "On subsequent visits, the `Protected` component sees a complete profile and grants access to the dashboard.",
+          "DB Trigger `on_auth_user_created` inserts a `user_profiles` record and adds `{\"needsOnboarding\": true}` to the `preferences` JSONB column.",
+          "The `app/dashboard/page.tsx` component uses the `useGetMyUserDetails` hook.",
+          "A `useEffect` checks if `profile.preferences.needsOnboarding` is `true` and if `profile.preferences.showOnboardingPrompt` is not `false`.",
+          "If conditions are met, the modal's state is set to open.",
+          "Clicking 'Don't show again' updates the `preferences` column, setting `showOnboardingPrompt: false`.",
+          "Clicking 'Update Profile' navigates the user to the `/onboarding` page.",
         ],
       },
       {
@@ -49,12 +49,11 @@ export const workflowSections: WorkflowSection[] = [
         ],
         techSteps: [
           "`signIn` function in `useAuth` calls `supabase.auth.signInWithPassword`.",
-          // THIS STEP IS NOW MORE ACCURATE
-          "The hook verifies that the response contains **no error** AND a valid **session object**.",
-          "If verification fails (e.g., invalid credentials), an error toast is shown and the function returns `success: false`.",
+          "The hook verifies that the response contains no error AND a valid session object.",
+          "If verification fails, an error toast is shown and the function returns `success: false`.",
           "If successful, Supabase returns a session with a JWT, which is stored in cookies.",
           "The `middleware.ts` refreshes the user's auth token on subsequent requests.",
-          "The `useAuthStore` (Zustand) is updated by the `onAuthStateChange` listener, making the user session globally available in the frontend.",
+          "The `useAuthStore` (Zustand) is updated by the `onAuthStateChange` listener, making the user session globally available.",
         ],
       },
       {
@@ -65,9 +64,29 @@ export const workflowSections: WorkflowSection[] = [
           "An admin action updates the `role` column in the `public.user_profiles` table.",
           "A database trigger (`sync_user_role_trigger`) fires on update.",
           "This trigger updates the `raw_app_meta_data` JSONB column in the corresponding `auth.users` table, setting the new role.",
-          "The user's JWT is now minted with the new role claim, which is used by database Row-Level Security (RLS) policies to grant access.",
+          "The user's JWT is now minted with the new role claim, which is used by RLS policies to grant access.",
         ],
       },
+      {
+        title: "Workflow D: Existing User Profile Update",
+        userSteps: [
+            "User clicks on their avatar in the header and selects 'Update Profile'.",
+            "User is taken to the `/onboarding` page, which acts as a profile editor.",
+            "User changes their details and clicks 'Update Profile'."
+        ],
+        uiSteps: [
+            "The form on the `/onboarding` page is pre-populated with the user's existing data.",
+            "A toast notification confirms that the profile has been updated successfully.",
+            "The user remains on the profile page to make further changes.",
+        ],
+        techSteps: [
+            "The `AuthButton` component contains a `<Link>` that navigates to `/onboarding`.",
+            "The `OnboardingFormEnhanced` component fetches the user's profile using the `useGetMyUserDetails` hook.",
+            "An `useEffect` populates the form fields with the fetched data.",
+            "On submit, `OnboardingFormEnhanced` calls the `useTableUpdate` mutation, which updates the `user_profiles` record and sets `needsOnboarding` to `false` within the `preferences` column.",
+            "The `isDirty` state from `react-hook-form` ensures the update only happens if changes were actually made."
+        ]
+      }
     ],
   },
   {

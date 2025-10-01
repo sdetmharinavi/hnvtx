@@ -11,13 +11,32 @@ import { HoverMenu } from "@/components/navigation/sidebar-components/HoverMenu"
 import { MobileSidebar } from "@/components/navigation/sidebar-components/MobileSidebar";
 import { SidebarProps, NavItem as NavItemType, sidebarVariants, contentVariants } from "@/components/navigation/sidebar-components/sidebar-types";
 import NavItems from "./sidebar-components/NavItems";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiHelpCircle, FiMenu, FiX } from "react-icons/fi";
+import { UserRole } from "@/types/user-roles";
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: SidebarProps) => {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
   const isMobile = useIsMobile();
+
+  // Define the Help NavItem data
+  const helpNavItem: NavItemType = {
+    id: 'help',
+    label: 'Help',
+    icon: <FiHelpCircle className="h-5 w-5" />,
+    href: '/dashboard/doc',
+    roles: [
+      UserRole.ADMIN,
+      UserRole.VIEWER,
+      UserRole.AUTHENTICATED,
+      UserRole.CPANADMIN,
+      UserRole.MAANADMIN,
+      UserRole.SDHADMIN,
+      UserRole.VMUXADMIN,
+      UserRole.MNGADMIN,
+    ],
+  };
 
   // Close mobile sidebar on route changes
   useEffect(() => {
@@ -84,6 +103,17 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
           ))}
         </nav>
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
+      </div>
+
+      {/* --- ADDED: Help section at the bottom --- */}
+      <div className="py-2 border-t border-gray-200 dark:border-gray-700">
+        <NavItem
+          item={helpNavItem}
+          isCollapsed={isCollapsed}
+          expandedItems={expandedItems}
+          toggleExpanded={toggleExpanded}
+          setHoveredItem={setHoveredItem}
+        />
       </div>
 
       <HoverMenu hoveredItem={hoveredItem} setHoveredItem={setHoveredItem} />

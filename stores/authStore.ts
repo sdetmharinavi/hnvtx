@@ -1,7 +1,7 @@
 // stores/authStore.ts
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { User } from '@supabase/supabase-js';
+import { AuthError, User } from '@supabase/supabase-js';
 
 export type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -58,28 +58,59 @@ export const useAuthStore = create<AuthStore>()(
           });
         },
 
+        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
+        //   if (get().authState !== 'loading') {
+        //     set({ authState: 'loading' });
+        //   }
+
+        //   try {
+        //     const result = await action();
+        //     // The onAuthStateChange listener is the primary driver for state changes.
+        //     // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
+        //     if (get().authState === 'loading') {
+        //       const finalUser = get().user;
+        //       set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
+        //     }
+        //     return result;
+        //   } catch (error) {
+        //     // // On error, let onAuthStateChange handle the state, or fall back.
+        //     // const finalUser = get().user;
+        //     // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+        //     // throw error;
+        //     // On any error within the action, assume the session might be invalid.
+        //     // Set the state directly to 'unauthenticated'.
+        //     set({ authState: 'unauthenticated', user: null }); // Also clear the user
+        //     throw error;
+        //   }
+        // },
+
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-          if (get().authState !== 'loading') {
+          const previousAuthState = get().authState;
+          if (previousAuthState !== 'loading') {
             set({ authState: 'loading' });
           }
 
           try {
             const result = await action();
-            // The onAuthStateChange listener is the primary driver for state changes.
-            // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
+            // Only revert state if it's still loading, to avoid race conditions
+            // with onAuthStateChange listener.
             if (get().authState === 'loading') {
               const finalUser = get().user;
               set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
             }
             return result;
           } catch (error) {
-            // // On error, let onAuthStateChange handle the state, or fall back.
-            // const finalUser = get().user;
-            // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
-            // throw error;
-            // On any error within the action, assume the session might be invalid.
-            // Set the state directly to 'unauthenticated'.
-            set({ authState: 'unauthenticated', user: null }); // Also clear the user
+            // **REFINED ERROR HANDLING**
+            const isAuthError = error instanceof AuthError && error.status === 401;
+
+            if (isAuthError) {
+              // It's a real authentication error, so log the user out.
+              set({ authState: 'unauthenticated', user: null });
+            } else {
+              // It's a network or other error, revert to the previous state.
+              set({ authState: previousAuthState });
+            }
+            // Re-throw the error to be handled by the caller.
             throw error;
           }
         },
