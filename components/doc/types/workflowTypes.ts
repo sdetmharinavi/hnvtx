@@ -1,8 +1,11 @@
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
+
+export type WorkflowIcon = LucideIcon | IconType;
 
 export interface WorkflowSection {
   value: string;
-  icon: LucideIcon;
+  icon: WorkflowIcon;
   title: string;
   subtitle: string;
   gradient: string;

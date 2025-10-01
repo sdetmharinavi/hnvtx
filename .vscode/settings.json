@@ -58,6 +58,8 @@
       "psql",
       "radiolink",
       "reauthentication",
+      "refetched",
+      "refetches",
       "refreshable",
       "regconfig",
       "roleid",

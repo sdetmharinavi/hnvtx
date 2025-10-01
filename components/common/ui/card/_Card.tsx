@@ -43,10 +43,10 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     ...props
   }, ref) => {
     const variantClasses = {
-      default: 'bg-white border border-gray-200 shadow-sm',
-      outlined: 'bg-white border-2 border-gray-300',
-      elevated: 'bg-white shadow-lg border border-gray-100',
-      ghost: 'bg-transparent'
+      default: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-gray-900/20',
+      outlined: 'bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600',
+      elevated: 'bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700',
+      ghost: 'bg-transparent dark:bg-transparent'
     };
 
     const sizeClasses = {
@@ -81,13 +81,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       <Component
         ref={ref}
         className={cn(
-          'transition-all duration-200',
+          'transition-all duration-200 text-gray-900 dark:text-gray-100',
           variantClasses[variant],
           sizeClasses[size],
           paddingClasses[padding],
           roundedClasses[rounded],
           clickable || onClick ? 'cursor-pointer' : '',
-          hover && (clickable || onClick) ? 'hover:shadow-md hover:border-gray-300' : '',
+          hover && (clickable || onClick) ? 'hover:shadow-md hover:border-gray-300 dark:hover:border-gray-500 dark:hover:shadow-gray-900/30' : '',
           className
         )}
         onClick={onClick}
@@ -103,19 +103,25 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
 Card.displayName = 'Card';
 
 const CardHeader = ({ children, className }: CardHeaderProps) => (
-  <div className={cn('border-b border-gray-200 pb-3 mb-4', className)}>
+  <div className={cn(
+    'border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 text-gray-900 dark:text-gray-100', 
+    className
+  )}>
     {children}
   </div>
 );
 
 const CardBody = ({ children, className }: CardBodyProps) => (
-  <div className={cn('flex-1', className)}>
+  <div className={cn('flex-1 text-gray-700 dark:text-gray-300', className)}>
     {children}
   </div>
 );
 
 const CardFooter = ({ children, className }: CardFooterProps) => (
-  <div className={cn('border-t border-gray-200 pt-3 mt-4', className)}>
+  <div className={cn(
+    'border-t border-gray-200 dark:border-gray-700 pt-3 mt-4 text-gray-600 dark:text-gray-400', 
+    className
+  )}>
     {children}
   </div>
 );

@@ -80,6 +80,49 @@ export function toTitleCase(str: string): string {
     .trim();
 }
 
+/**
+ * Generates a smart code from a name based on practical rules.
+ * - Multi-word: "Base Transceiver Station" -> "BTS"
+ * - Single long word: "Exchange" -> "EXC"
+ * - Single short word: "Node" -> "NODE"
+ * - Handles hyphens: "Point-to-Point" -> "PTP"
+ * @param name The input string.
+ * @returns The generated uppercase code.
+ */
+export function generateCodeFromName(name: string | null | undefined): string {
+  if (!name || typeof name !== 'string') return '';
+
+  // Clean up and split by spaces, underscores, or hyphens
+  const words = name
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(word => word.length > 0);
+
+  if (words.length === 0) {
+    return '';
+  }
+
+  // Case 1: Multiple words -> create an acronym
+  if (words.length > 1) {
+    return words
+      .map(word => word.charAt(0))
+      .join('')
+      .toLowerCase();
+  }
+
+  // Case 2: A single word
+  const singleWord = words[0];
+
+  // If the word is short (like an existing acronym), use the whole word.
+  if (singleWord.length <= 4) {
+    return singleWord.toLowerCase();
+  }
+
+  // If it's a longer word, create a 3-letter abbreviation.
+  return singleWord.substring(0, 3).toLowerCase();
+}
+
+
 export function inferExcelFormat(
   columnName: string
 ): "text" | "number" | "date" | "currency" | "percentage" | "json" {
@@ -174,4 +217,3 @@ export function inferDynamicColumnWidth(
   // add padding and clamp
   return Math.min(Math.max(Math.ceil(maxWidth) + PADDING, MIN_WIDTH), MAX_WIDTH);
 }
-

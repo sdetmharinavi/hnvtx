@@ -224,7 +224,7 @@ useEffect(() => {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isEditing ? "Edit Category" : "Create New Category"} visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+      className="transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">

@@ -10,7 +10,7 @@ export function NoCategoriesState({ error, isLoading }: { error?: Error; isLoadi
   const router = useRouter();
   
   return (
-    <Card className="p-8 text-center">
+    <Card className="p-8 text-center ">
       <p className="mb-4 text-gray-500 dark:text-gray-400">
         {isLoading ? "Loading categories..." : "No categories found."}
       </p>

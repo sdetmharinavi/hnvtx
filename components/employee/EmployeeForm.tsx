@@ -122,7 +122,7 @@ const EmployeeForm = ({
       title={employee ? 'Edit Employee' : 'Add New Employee'}
       size="full"
       visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+      className="transparent h-0 w-0"
     >
       <FormCard
         title={employee ? 'Edit Employee' : 'Add New Employee'}

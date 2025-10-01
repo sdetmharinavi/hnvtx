@@ -4,10 +4,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "../common/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form/FormControls";
 import { useForm } from "react-hook-form";
 import { maintenance_areasInsertSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
+import { generateCodeFromName } from "@/config/helper-functions";
 
 export function AreaFormModal({
   isOpen,
@@ -18,6 +19,8 @@ export function AreaFormModal({
   areaTypes,
   isLoading
 }: AreaFormModalProps) {
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
+  const isEditMode = !!area;
 
   const {
     register,
@@ -25,71 +28,43 @@ export function AreaFormModal({
     formState: { errors },
     reset,
     control,
+    watch,
+    setValue,
   } = useForm<Maintenance_areasInsertSchema>({
     resolver: zodResolver(maintenance_areasInsertSchema),
     defaultValues: {
-      name: "",
-      code: "",
-      area_type_id: null,
-      parent_id: null,
-      contact_person: null,
-      contact_number: null,
-      email: null,
-      address: null,
-      latitude: null,
-      longitude: null,
-      status: true
+      name: "", code: "", area_type_id: null, parent_id: null,
+      contact_person: null, contact_number: null, email: null,
+      address: null, latitude: null, longitude: null, status: true
     },
   });
 
-  const [isInitialized, setIsInitialized] = useState(false);
+  const watchedName = watch('name');
 
-  // Initialize form data when modal opens or area changes
   useEffect(() => {
-    if (isOpen && !isInitialized) {
+    if (isOpen) {
+      setIsCodeManuallyEdited(isEditMode);
       if (area) {
-        reset({
-          name: area.name,
-          code: area.code,
-          area_type_id: area.area_type_id,
-          parent_id: area.parent_id,
-          contact_person: area.contact_person,
-          contact_number: area.contact_number,
-          email: area.email,
-          address: area.address,
-          latitude: area.latitude,
-          longitude: area.longitude,
-          status: area.status ?? true
-        });
+        reset({ ...area, status: area.status ?? true });
       } else {
         reset({
-          name: "",
-          code: "",
-          area_type_id: null,
-          parent_id: null,
-          contact_person: null,
-          contact_number: null,
-          email: null,
-          address: null,
-          latitude: null,
-          longitude: null,
-          status: true
+          name: "", code: "", area_type_id: null, parent_id: null,
+          contact_person: null, contact_number: null, email: null,
+          address: null, latitude: null, longitude: null, status: true
         });
       }
-      setIsInitialized(true);
     }
-  }, [area, isOpen, isInitialized, reset]);
+  }, [area, isOpen, reset, isEditMode]);
 
-  // Reset initialization when modal closes
   useEffect(() => {
-    if (!isOpen) {
-      setIsInitialized(false);
+    if (!isCodeManuallyEdited && !isEditMode) {
+      const generatedCode = generateCodeFromName(watchedName);
+      setValue('code', generatedCode, { shouldValidate: true });
     }
-  }, [isOpen]);
+  }, [watchedName, isCodeManuallyEdited, isEditMode, setValue]);
 
   const availableParents = useMemo(() => {
     if (!area) return allAreas;
-    
     const getDescendantIds = (areaId: string, areas: MaintenanceArea[]): Set<string> => {
       const descendants = new Set<string>([areaId]);
       const children = areas.filter(a => a.parent_id === areaId);
@@ -99,7 +74,6 @@ export function AreaFormModal({
       });
       return descendants;
     };
-    
     const excludeIds = getDescendantIds(area.id, allAreas);
     return allAreas.filter(a => !excludeIds.has(a.id));
   }, [area, allAreas]);
@@ -111,131 +85,135 @@ export function AreaFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-lg bg-white p-6 dark:bg-gray-800">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {area ? "Edit Area" : "Add New Area"}
-          </h2>
-          <button 
-            onClick={onClose} 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            disabled={isLoading}
-            aria-label="Close modal"
-          >
-            ×
-          </button>
-        </div>
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-0 h-0 transparent">
         <FormCard 
           onSubmit={handleSubmit(onValidSubmit)} 
           title={area ? "Edit Area" : "Add New Area"} 
           onCancel={onClose}
           isLoading={isLoading}
-          heightClass="max-h-[calc(90vh-140px)]"
+          heightClass="max-h-[85vh] overflow-y-auto"
+          standalone
         >
-          {/* Name Field */}
-          <FormInput
-            name="name"
-            label="Area Name"
-            register={register}
-            error={errors.name}
-            required
-            disabled={isLoading}
-          />
-          
-          {/* Code Field */}
-          <FormInput
-            name="code"
-            label="Area Code"
-            register={register}
-            error={errors.code}
-            disabled={isLoading}
-          />
-          
-          {/* Area Type Field */}
-          <FormSearchableSelect
-            name="area_type_id"
-            label="Area Type"
-            control={control}
-            error={errors.area_type_id}
-            disabled={isLoading}
-            options={areaTypes
-              .filter(type => type.name !== "DEFAULT")
-              .map(type => ({ value: type.id, label: type.name }))
-            }
-          />
-          
-          {/* Parent Area Field */}
-          <FormSearchableSelect
-            name="parent_id"
-            label="Parent Area"
-            control={control}
-            error={errors.parent_id}
-            disabled={isLoading}
-            options={availableParents.map(a => ({ value: a.id, label: a.name }))}
-          />
-          
-          {/* Contact Person Field */}
-          <FormInput
-            name="contact_person"
-            label="Contact Person"
-            register={register}
-            error={errors.contact_person}
-            disabled={isLoading}
-          />
-          
-          {/* Contact Number Field */}
-          <FormInput
-            name="contact_number"
-            label="Contact Number"
-            register={register}
-            error={errors.contact_number}
-            disabled={isLoading}
-          />
-          
-          {/* Email Field */}
-          <FormInput
-            name="email"
-            label="Email Address"
-            register={register}
-            error={errors.email}
-            disabled={isLoading}
-          />
-          
-          {/* Address Field */}
-          <FormTextarea
-            name="address"
-            label="Address"
-            control={control}
-            error={errors.address}
-            disabled={isLoading}
-          />
-          
-          {/* Coordinates Fields */}
-          <FormInput
-            name="latitude"
-            label="Latitude"
-            register={register}
-            error={errors.latitude}
-            disabled={isLoading}
-          />
-          <FormInput
-            name="longitude"
-            label="Longitude"
-            register={register}
-            error={errors.longitude}
-            disabled={isLoading}
-          />
-          
-          {/* Status Field */}
-          <FormSwitch
-            name="status"
-            label="Active"
-            control={control}
-            error={errors.status}
-            className="mt-2"
-          />
+          {/* Basic Information Section */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="name" 
+                label="Area Name" 
+                register={register} 
+                error={errors.name} 
+                required 
+                disabled={isLoading} 
+              />
+              
+              <FormInput
+                name="code"
+                label="Area Code"
+                register={register}
+                error={errors.code}
+                disabled={isLoading}
+                onChange={(e) => {
+                  setIsCodeManuallyEdited(true);
+                  register('code').onChange(e);
+                }}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormSearchableSelect
+                name="area_type_id"
+                label="Area Type"
+                control={control}
+                error={errors.area_type_id}
+                disabled={isLoading}
+                options={areaTypes.filter(type => type.name !== "DEFAULT").map(type => ({ value: type.id, label: type.name }))}
+              />
+              
+              <FormSearchableSelect
+                name="parent_id"
+                label="Parent Area"
+                control={control}
+                error={errors.parent_id}
+                disabled={isLoading}
+                options={availableParents.map(a => ({ value: a.id, label: a.name }))}
+              />
+            </div>
+          </div>
+
+          {/* Contact Information Section */}
+          <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Contact Information</h3>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="contact_person" 
+                label="Contact Person" 
+                register={register} 
+                error={errors.contact_person} 
+                disabled={isLoading} 
+              />
+              
+              <FormInput 
+                name="contact_number" 
+                label="Contact Number" 
+                register={register} 
+                error={errors.contact_number} 
+                disabled={isLoading} 
+              />
+            </div>
+            
+            <FormInput 
+              name="email" 
+              label="Email Address" 
+              register={register} 
+              error={errors.email} 
+              disabled={isLoading} 
+            />
+          </div>
+
+          {/* Location Information Section */}
+          <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Location Details</h3>
+            
+            <FormTextarea 
+              name="address" 
+              label="Address" 
+              control={control} 
+              error={errors.address} 
+              disabled={isLoading} 
+            />
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="latitude" 
+                label="Latitude" 
+                register={register} 
+                error={errors.latitude} 
+                disabled={isLoading} 
+                placeholder="e.g., 22.5726"
+              />
+              
+              <FormInput 
+                name="longitude" 
+                label="Longitude" 
+                register={register} 
+                error={errors.longitude} 
+                disabled={isLoading} 
+                placeholder="e.g., 88.3639"
+              />
+            </div>
+          </div>
+
+          {/* Status Section */}
+          <div className="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <FormSwitch 
+              name="status" 
+              label="Active Status" 
+              control={control} 
+              error={errors.status} 
+            />
+          </div>
         </FormCard>
       </div>
     </div>
