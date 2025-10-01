@@ -7,7 +7,6 @@ import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,7 +65,6 @@ const toObject = (data: unknown): Record<string, unknown> => {
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
-  const router = useRouter();
 
   const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetMyUserDetails();
 
@@ -74,7 +72,7 @@ export default function OnboardingFormEnhanced() {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, isDirty, dirtyFields },
+    formState: { errors, isDirty, dirtyFields },
     watch,
   } = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingFormSchema),
@@ -129,14 +127,17 @@ export default function OnboardingFormEnhanced() {
     const updates: Partial<User_profilesUpdateSchema> = {};
     for (const key in dirtyFields) {
       const fieldName = key as keyof OnboardingFormData;
-      updates[fieldName] = data[fieldName];
+      // Skip preferences, we will handle it separately
+      if (fieldName !== 'preferences') {
+        updates[fieldName] = data[fieldName];
+      }
     }
 
-    // **THE FIX: Always update preferences to set needsOnboarding to false**
+    // **THE FIX: Intelligently merge preferences**
     const newPreferences = {
-      ...toObject(profile?.preferences),
-      ...toObject(data.preferences), // Include any other preference changes from the form
-      needsOnboarding: false,
+      ...toObject(profile?.preferences), // Start with existing preferences
+      ...toObject(data.preferences),      // Overwrite with any form changes
+      needsOnboarding: false,            // Explicitly set onboarding to false
     };
     updates.preferences = newPreferences;
 

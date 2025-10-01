@@ -4,7 +4,6 @@ import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { createAdmin } from '@/utils/supabase/admin';
 import { createClient } from '@/utils/supabase/server';
-import type { User } from '@supabase/supabase-js';
 
 const pgHost = process.env.PGHOST;
 const pgUser = process.env.PGUSER;
