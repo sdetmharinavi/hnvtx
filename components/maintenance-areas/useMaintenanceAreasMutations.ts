@@ -2,21 +2,47 @@
 import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { Maintenance_areasInsertSchema, Maintenance_areasUpdateSchema } from "@/schemas/zod-schemas";
+import { toast } from "sonner"; // <-- Import toast
 
 export function useMaintenanceAreasMutations(
   supabase: ReturnType<typeof createClient>,
   onSuccess: () => void
 ) {
-  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { onSuccess });
-  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { onSuccess });
-  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { onSuccess });
+  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for creation failures.**
+    onError: (error) => {
+      toast.error(`Failed to create area: ${error.message}`);
+    }
+  });
+
+  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for update failures.**
+    onError: (error) => {
+      toast.error(`Failed to update area: ${error.message}`);
+    }
+  });
+
+  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for status toggle failures.**
+    onError: (error) => {
+      toast.error(`Failed to toggle status: ${error.message}`);
+    }
+  });
 
   const handleFormSubmit = (
     data: Maintenance_areasInsertSchema,
     editingArea?: { id: string } | null
   ) => {
     if (editingArea?.id) {
-      updateAreaMutation.mutate({ id: editingArea.id, data: data as Maintenance_areasUpdateSchema });
+      const { id, ...updateData } = data;
+      
+      updateAreaMutation.mutate({ 
+        id: editingArea.id, 
+        data: updateData as Maintenance_areasUpdateSchema 
+      });
     } else {
       createAreaMutation.mutate(data);
     }

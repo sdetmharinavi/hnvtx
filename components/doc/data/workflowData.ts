@@ -2,6 +2,7 @@ import { ShieldCheck, Database, Route, GitBranch, GitCommit, Users, Cpu, BellRin
 import { WorkflowSection } from "../types/workflowTypes";
 import { FaDiagramNext } from "react-icons/fa6";
 import { BsPeople } from "react-icons/bs";
+import { ImUserTie } from "react-icons/im";
 
 export const workflowSections: WorkflowSection[] = [
   {
@@ -128,6 +129,41 @@ export const workflowSections: WorkflowSection[] = [
           "The page uses the `EntityManagementComponent` with `areaConfig`, which defines the parent-child relationship via the `parent_id` foreign key field.",
           "Data is fetched using `useTableWithRelations` to include nested `parent_area` and `child_areas` data in a single query.",
           "The `AreaFormModal` uses `useTableInsert` or `useTableUpdate` to modify records in the `maintenance_areas` table.",
+        ],
+      },
+    ],
+  },
+  {
+    value: 'designations_crud',
+    icon: ImUserTie,
+    title: 'Designation Management',
+    subtitle: 'Organizing employee roles in a hierarchy',
+    gradient: 'from-cyan-500 to-sky-600',
+    iconColor: 'text-cyan-400',
+    bgGlow: 'bg-cyan-500/10',
+    color: 'cyan',
+    purpose: 'To establish a hierarchical structure for employee roles, enabling clear reporting lines and organizational charts. This feature is crucial for building an accurate representation of the company structure.',
+    workflows: [
+      {
+        title: 'Workflow: Managing a Designation Hierarchy',
+        userSteps: [
+          "Admin navigates to `/dashboard/designations`.",
+          "Clicks 'Add New Designation' to create a top-level role (e.g., 'General Manager') without selecting a parent.",
+          "Clicks 'Add New' again to create a child role (e.g., 'Deputy Manager') and selects 'General Manager' from the 'Parent Designation' dropdown.",
+          "User toggles between 'Tree' and 'List' view to visualize the structure.",
+          "Admin clicks the 'Delete' icon on a role.",
+        ],
+        uiSteps: [
+          'The `EntityManagementComponent` is the main layout, displaying designations in either a nested tree structure or a flat list.',
+          'The `DesignationFormModal` appears for creating or editing. It intelligently filters the `Parent Designation` dropdown to prevent a designation from being its own child or grandchild (a circular dependency).',
+          'A `ConfirmModal` appears before any deletion to ensure the action is intentional.',
+        ],
+        techSteps: [
+          'The page is powered by the generic `EntityManagementComponent`, configured with `designationConfig`. This config object specifies `isHierarchical: true` and sets `parent_id` as the relational key.',
+          'Data is fetched using the `useTableWithRelations` hook, which performs a self-join on the `employee_designations` table to get the `parent_designation` object for each record.',
+          'The `useEntityManagement` hook processes the flat list into a nested tree structure for the UI by matching `id` and `parent_id` fields.',
+          'When creating or editing, the `DesignationFormModal` uses the `useTableInsert` or `useTableUpdate` mutation to save data directly to the `employee_designations` table.',
+          'The `useDelete` hook (via `useDeleteManager`) handles deletion by calling `supabase.from("employee_designations").delete()`. Postgres handles the `ON DELETE SET NULL` constraint for any children of the deleted designation.',
         ],
       },
     ],

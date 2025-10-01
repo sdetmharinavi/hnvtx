@@ -21,18 +21,12 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   toggleStatusMutation: {
     mutate: (variables: ToggleStatusVariables) => void;
     isPending: boolean;
-    // Additional properties that might come from useMutation
-    data?: unknown;
-    error?: unknown;
-    isError?: boolean;
-    isSuccess?: boolean;
-    isIdle?: boolean;
-    reset?: () => void;
-    variables?: ToggleStatusVariables;
   };
   onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;
+  selectedEntityId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
@@ -42,14 +36,15 @@ export function EntityManagementComponent<T extends BaseEntity>({
   onEdit,
   onDelete,
   onCreateNew,
+  selectedEntityId,
+  onSelect,
 }: EntityManagementComponentProps<T>) {
+  const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
-  // Selected entity is now managed by the useEntityManagement hook
   const [expandedEntities] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
 
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
@@ -61,39 +56,42 @@ export function EntityManagementComponent<T extends BaseEntity>({
     });
   }, [toggleStatusMutation]);
 
-  const handleEntitySelectWithPanel = (id: string, entity: T) => {
-    if (handleEntitySelect) {
-      handleEntitySelect(id, entity);
-    }
-  };
-
   const handleCloseDetailsPanel = useCallback(() => {
     setShowDetailsPanel(false);
-  }, []);
+    onSelect(null);
+  }, [onSelect]);
 
-  
+  // **THE FIX IS HERE:** Removed `handleOpenEditForm` from the destructuring
   const {
     filteredEntities,
     hierarchicalEntities,
     selectedEntity,
     handleEntitySelect,
     handleOpenCreateForm,
-    handleOpenEditForm,
     toggleExpanded,
   } = useEntityManagement<T>({
     entitiesQuery,
-    config: {
-      ...config,
-      isHierarchical: config.isHierarchical || false,
-    },
+    config: { ...config, isHierarchical: config.isHierarchical || false },
     onEdit,
     onDelete,
     onToggleStatus: handleToggleStatus,
     onCreateNew,
+    selectedEntityId,
+    onSelect,
   });
-
-
+  
   const IconComponent = config.icon;
+  
+  const handleItemSelect = (id: string) => {
+    handleEntitySelect(id);
+    setShowDetailsPanel(true);
+  };
+  
+  const handleOpenEditForm = useCallback(() => {
+    if (selectedEntity) {
+      onEdit(selectedEntity);
+    }
+  }, [selectedEntity, onEdit]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -115,9 +113,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
-        {/* Left Panel - List */}
         <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
           <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <SearchAndFilters
@@ -130,51 +126,26 @@ export function EntityManagementComponent<T extends BaseEntity>({
               onClearFilters={() => setFilters({})}
               config={config}
             />
-            {config.isHierarchical && (
-              <ViewModeToggle
-                viewMode={viewMode}
-                onChange={setViewMode}
-              />
-            )}
+            {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
           </div>
 
           <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
             {entitiesQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Loading {config.entityPluralName}...
-                  </p>
-                </div>
-              </div>
+              <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
             ) : entitiesQuery.isError ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 inline-block mb-4">
-                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-red-600 dark:text-red-400">
-                    Error loading {config.entityPluralName}
-                  </p>
-                </div>
-              </div>
+              <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
             ) : filteredEntities.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No {config.entityPluralName} found.
-                  </p>
-                  <button
-                    onClick={handleOpenCreateForm}
-                    className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                  >
-                    <FiPlus className="h-4 w-4 mr-2" />
-                    Add First {config.entityDisplayName}
-                  </button>
+              <div className="flex items-center justify-center py-12 text-center">
+                 <div>
+                    <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400">No {config.entityPluralName.toLowerCase()} found.</p>
+                    <button
+                        onClick={handleOpenCreateForm}
+                        className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                    >
+                        <FiPlus className="h-4 w-4 mr-2" />
+                        Add First {config.entityDisplayName}
+                    </button>
                 </div>
               </div>
             ) : config.isHierarchical && viewMode === "tree" ? (
@@ -185,9 +156,9 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     entity={entity}
                     config={config}
                     level={0}
-                    selectedEntityId={selectedEntity?.id ?? null}
+                    selectedEntityId={selectedEntityId}
                     expandedEntities={expandedEntities}
-                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    onSelect={handleItemSelect}
                     onToggleExpand={(id) => toggleExpanded(id)}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
@@ -201,8 +172,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     key={entity.id}
                     entity={entity}
                     config={config}
-                    isSelected={entity.id === selectedEntity?.id}
-                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    isSelected={entity.id === selectedEntityId}
+                    onSelect={() => handleItemSelect(entity.id)}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
                   />
@@ -212,45 +183,31 @@ export function EntityManagementComponent<T extends BaseEntity>({
           </div>
         </div>
 
-        {/* Right Panel - Details */}
         <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
-          {/* Mobile Details Header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
-              <button
-                onClick={handleCloseDetailsPanel}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={handleCloseDetailsPanel} className="p-2 rounded-md text-gray-400">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
           </div>
-
-          {/* Desktop Details Header */}
           <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              {config.entityDisplayName} Details
-            </h2>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
           </div>
-
           <div className="flex-1 overflow-y-auto">
             {selectedEntity ? (
-              <EntityDetailsPanel
-                entity={selectedEntity}
-                config={config}
+              <EntityDetailsPanel 
+                entity={selectedEntity} 
+                config={config} 
                 onEdit={handleOpenEditForm}
-                onDelete={onDelete}
+                onDelete={onDelete} 
               />
             ) : (
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-center">
+              <div className="flex items-center justify-center h-full p-8 text-center">
+                <div>
                   <FiInfo className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Select a {config.entityDisplayName.toLowerCase()} to view details
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">Select a {config.entityDisplayName.toLowerCase()} to view details</p>
                 </div>
               </div>
             )}

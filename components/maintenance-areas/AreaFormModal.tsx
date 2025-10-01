@@ -1,4 +1,4 @@
-// components/AreaFormModal.tsx
+// components/maintenance-areas/AreaFormModal.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -45,7 +45,21 @@ export function AreaFormModal({
     if (isOpen) {
       setIsCodeManuallyEdited(isEditMode);
       if (area) {
-        reset({ ...area, status: area.status ?? true });
+        // **THE FIX: Manually map fields from the 'area' prop to what the form schema expects.**
+        // This avoids passing unexpected nested objects (like `parent_area`) to the form state.
+        reset({
+          name: area.name,
+          code: area.code,
+          area_type_id: area.area_type_id,
+          parent_id: area.parent_id, // Use the ID directly, not the nested object
+          contact_person: area.contact_person,
+          contact_number: area.contact_number,
+          email: area.email,
+          address: area.address,
+          latitude: area.latitude,
+          longitude: area.longitude,
+          status: area.status ?? true,
+        });
       } else {
         reset({
           name: "", code: "", area_type_id: null, parent_id: null,

@@ -48,7 +48,7 @@ export interface EntityConfig<T extends BaseEntity> {
   }>;
 }
 
-// Interface for the hook props
+// **THE FIX: Update the hook's props interface**
 export interface UseEntityManagementProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<T[], Error>;
   config: EntityConfig<T>;
@@ -56,6 +56,9 @@ export interface UseEntityManagementProps<T extends BaseEntity> {
   onDelete: (entity: { id: string; name: string }) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   onCreateNew: () => void;
+  // Add the new props to make it a controlled component
+  selectedEntityId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 // Updated component interfaces
@@ -70,4 +73,3 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
     onToggleStatus: (e: React.MouseEvent, entity: T) => void;
     isLoading: boolean;
   }
-

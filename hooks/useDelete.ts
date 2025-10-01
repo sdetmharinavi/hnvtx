@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTableDelete } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { TableName } from "@/hooks/database";
+import { toast } from "sonner"; // <-- Import toast
 
 export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSuccess?: () => void }) => {
   const supabase = createClient();
@@ -11,6 +12,11 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
     onSuccess: () => {
       onSuccess?.();
       setItemToDelete(null);
+    },
+    // **THE FIX: Add an onError handler to show a toast on failure.**
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
+      setItemToDelete(null); // Clear the item even on failure
     },
   });
 
