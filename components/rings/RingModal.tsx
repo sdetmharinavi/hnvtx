@@ -3,8 +3,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { createClient } from "@/utils/supabase/client";
-import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
@@ -14,15 +12,15 @@ import {
   FormSwitch,
   FormTextarea,
 } from "@/components/common/form/FormControls";
-import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema, RingsUpdateSchema } from "@/schemas/zod-schemas";
-
+import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema } from "@/schemas/zod-schemas";
 
 interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingRing?: RingsRowSchema | null;
-  onCreated?: (ring: RingsRowSchema) => void;
-  onUpdated?: (ring: RingsRowSchema) => void;
+  // **THE FIX: Use a single onSubmit handler**
+  onSubmit: (data: RingsInsertSchema) => void; 
+  isLoading: boolean; // Receive loading state from parent
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
@@ -31,15 +29,15 @@ export function RingModal({
   isOpen,
   onClose,
   editingRing,
-  onCreated,
-  onUpdated,
+  onSubmit, // Use the new onSubmit prop
+  isLoading,
   ringTypes,
   maintenanceAreas,
 }: RingModalProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     control,
   } = useForm<RingsInsertSchema>({
@@ -53,40 +51,20 @@ export function RingModal({
     },
   });
 
-  const supabase = createClient();
-  const { mutate: insertRing, isPending: creating } = useTableInsert(
-    supabase,
-    "rings"
-  );
-  const { mutate: updateRing, isPending: updating } = useTableUpdate(
-    supabase,
-    "rings"
-  );
+  // REMOVED: Internal mutation hooks are no longer needed
+  // const supabase = createClient();
+  // const { mutate: insertRing, isPending: creating } = useTableInsert(supabase, "rings");
+  // const { mutate: updateRing, isPending: updating } = useTableUpdate(supabase, "rings");
 
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
-  // Memoized options for selects
   const ringTypeOptions: Option[] = useMemo(
-    () =>
-      (ringTypes || []).map(
-        (rt) =>
-          ({
-            value: rt.id,
-            label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
-          } as Option)
-      ),
+    () => (ringTypes || []).map((rt) => ({ value: rt.id, label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}` })),
     [ringTypes]
   );
 
   const maintenanceAreaOptions: Option[] = useMemo(
-    () =>
-      (maintenanceAreas || []).map(
-        (a) =>
-          ({
-            value: a.id,
-            label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
-          } as Option)
-      ),
+    () => (maintenanceAreas || []).map((a) => ({ value: a.id, label: `${a.name}${a.code ? ` (${a.code})` : ""}` })),
     [maintenanceAreas]
   );
 
@@ -102,58 +80,23 @@ export function RingModal({
       });
     } else {
       reset({
-        name: "",
-        description: null,
-        status: true,
-        ring_type_id: null,
-        maintenance_terminal_id: null,
+        name: "", description: null, status: true, ring_type_id: null, maintenance_terminal_id: null,
       });
     }
   }, [isOpen, editingRing, reset]);
 
-  const handleClose = useCallback(() => {
-    if (creating || updating) return;
-    onClose();
-  }, [creating, updating, onClose]);
-
+  // **THE FIX: The form's submit handler now just calls the prop.**
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
-      const submitData = {
-        name: formData.name.trim(),
-        description: formData.description,
-        status: formData.status,
-        ring_type_id: formData.ring_type_id,
-        maintenance_terminal_id: formData.maintenance_terminal_id,
-      };
-
-      if (isEdit && editingRing) {
-        updateRing(
-          { id: editingRing.id, data: submitData as Partial<RingsUpdateSchema> },
-          {
-            onSuccess: (data: unknown) => {
-              onUpdated?.(Array.isArray(data) ? data[0] : data);
-              onClose();
-            },
-          }
-        );
-      } else {
-        insertRing(submitData as RingsInsertSchema, {
-          onSuccess: (data: unknown) => {
-            onCreated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-          },
-        });
-      }
+      onSubmit(formData);
     },
-    [isEdit, editingRing, updateRing, insertRing, onUpdated, onCreated, onClose]
+    [onSubmit]
   );
-
-  const submitting = creating || updating || isSubmitting;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={onClose}
       title={isEdit ? "Edit Ring" : "Add Ring"}
       visible={false}
       className="transparent bg-gray-700 rounded-2xl"
@@ -162,7 +105,8 @@ export function RingModal({
         onSubmit={handleSubmit(onValidSubmit)}
         heightClass="min-h-calc(90vh - 200px)"
         title={isEdit ? "Edit Ring" : "Add Ring"}
-        onCancel={handleClose}
+        onCancel={onClose}
+        isLoading={isLoading} // Use loading state from props
         standalone={true}
       >
         <FormInput
@@ -170,7 +114,7 @@ export function RingModal({
           label="Name"
           register={register}
           error={errors.name}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Enter ring name"
         />
         <FormSearchableSelect
@@ -178,7 +122,7 @@ export function RingModal({
           label="Ring Type"
           control={control}
           error={errors.ring_type_id}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Select ring type"
           options={ringTypeOptions}
         />
@@ -188,7 +132,7 @@ export function RingModal({
           label="Maintenance Terminal"
           control={control}
           error={errors.maintenance_terminal_id}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Select maintenance terminal"
           options={maintenanceAreaOptions}
         />
@@ -198,7 +142,7 @@ export function RingModal({
           label="Description"
           control={control}
           error={errors.description}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Optional description"
         />
         <FormSwitch

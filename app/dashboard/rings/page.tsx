@@ -4,7 +4,7 @@
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
-import { RingSystemsModal } from '@/components/rings/RingSystemsModal'; // <-- Import the new modal
+import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { RingsFilters } from '@/components/rings/RingsFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
@@ -12,13 +12,13 @@ import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { V_ringsRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/zod-schemas'; // Import InsertSchema
 import { createClient } from '@/utils/supabase/client';
-import { useMemo, useCallback, useState } from 'react'; // <-- Import useState
+import { useMemo, useCallback, useState } from 'react';
 import { GiLinkedRings } from 'react-icons/gi';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { FaNetworkWired } from 'react-icons/fa'; // <-- A suitable icon
+import { FaNetworkWired } from 'react-icons/fa';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -42,12 +42,11 @@ const RingsPage = () => {
   const router = useRouter();
   const supabase = createClient();
   
-  // ADDED: State to manage the new RingSystemsModal
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
-    data: rings, totalCount, activeCount, inactiveCount, isLoading, refetch,
+    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
@@ -76,7 +75,6 @@ const RingsPage = () => {
     }
   }, [router]);
 
-  // ADDED: Handler to open the new modal
   const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
     setSelectedRingForSystems(record);
     setIsSystemsModalOpen(true);
@@ -88,7 +86,6 @@ const RingsPage = () => {
       onView: handleView,
       onDelete: crudActions.handleDelete,
     });
-    // Add our new custom action
     standardActions.unshift({
       key: 'manage-systems',
       label: 'Manage Systems',
@@ -131,17 +128,17 @@ const RingsPage = () => {
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
       
-      {/* Modals */}
-      
+      {/* **THE FIX: Pass the correct props to the now "dumb" component.** */}
       <RingModal
-        isOpen={editModal.isOpen} onClose={editModal.close} editingRing={editModal.record as RingsRowSchema | null}
-        onCreated={crudActions.handleSave as (ring: RingsRowSchema) => void}
-        onUpdated={crudActions.handleSave as (ring: RingsRowSchema) => void}
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        editingRing={editModal.record as RingsRowSchema | null}
+        onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
+        isLoading={isMutating}
         ringTypes={ringTypes.map(rt => ({ id: rt.id, name: rt.name, code: rt.code }))}
         maintenanceAreas={maintenanceAreas.map(ma => ({ id: ma.id, name: ma.name, code: ma.code }))}
       />
 
-      {/* ADDED: The new modal instance */}
       <RingSystemsModal
         isOpen={isSystemsModalOpen}
         onClose={() => setIsSystemsModalOpen(false)}
