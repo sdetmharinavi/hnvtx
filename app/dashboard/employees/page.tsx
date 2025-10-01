@@ -1,7 +1,7 @@
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -15,6 +15,8 @@ import {
   V_employeesRowSchema,
   EmployeesInsertSchema,
   EmployeesRowSchema,
+  Employee_designationsRowSchema,
+  Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -23,7 +25,6 @@ import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
 
-// 1. ADAPTER HOOK: Makes our paged employee data query compatible with useCrudManager.
 const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
@@ -33,7 +34,6 @@ const useEmployeesData = (
   const searchFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (searchQuery) {
-      // CORRECTED: Pass a structured object for the OR condition
       newFilters.or = {
         employee_name: searchQuery,
         employee_pers_no: searchQuery,
@@ -66,33 +66,21 @@ const useEmployeesData = (
 };
 
 const EmployeesPage = () => {
-  // 2. USE THE CRUD MANAGER: All state and logic is now centralized here.
+  const supabase = createClient();
+  const [showFilters, setShowFilters] = useState(false);
+  
   const {
     data: employees,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    isFetching,
-    isMutating,
-    error,
-    refetch,
-    pagination,
-    search,
-    filters,
-    editModal,
-    viewModal,
-    bulkActions,
-    deleteModal,
-    actions: crudActions,
+    totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, error, refetch,
+    pagination, search, filters, editModal, viewModal, bulkActions, deleteModal, actions: crudActions,
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
   });
 
-  const supabase = createClient();
-  const { data: designations = [] } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
-  const { data: maintenanceAreas = [] } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
+  // **THE FIX: Restore the dedicated queries to fetch the full data structures.**
+  const { data: designations = [] } = useTableQuery<"employee_designations", Employee_designationsRowSchema[]>(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
+  const { data: maintenanceAreas = [] } = useTableQuery<"maintenance_areas", Maintenance_areasRowSchema[]>(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
 
   const columns = useMemo(() => getEmployeeTableColumns({
     designationMap: Object.fromEntries(designations.map(d => [d.id, d.name])),
@@ -111,10 +99,7 @@ const EmployeesPage = () => {
   
   const headerActions = useStandardHeaderActions<'employees'>({
     data: employees as EmployeesRowSchema[],
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
     exportConfig: { tableName: 'employees' },
@@ -126,7 +111,6 @@ const EmployeesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // NEW: Define a stable function with useCallback
   const handleSaveEmployee = useCallback((data: EmployeesInsertSchema) => {
     crudActions.handleSave(data);
   }, [crudActions]);
@@ -143,9 +127,9 @@ const EmployeesPage = () => {
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions}
-        // isLoading={isLoading}
+        isLoading={isLoading}
       />
-
+      
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
@@ -160,8 +144,8 @@ const EmployeesPage = () => {
         tableName="v_employees"
         data={employees}
         columns={columns}
-        loading={isLoading} // <-- For initial skeleton
-        isFetching={isFetching || isMutating} // <-- For background overlay
+        loading={isLoading}
+        isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows) => {
@@ -185,22 +169,19 @@ const EmployeesPage = () => {
             searchQuery={search.searchQuery}
             filters={filters.filters}
             onSearchChange={search.setSearchQuery}
-            // REVISED: Pass setFilters directly
             setFilters={filters.setFilters} 
             designations={designations}
             maintenanceAreas={maintenanceAreas}
-            showFilters={true} // You can manage this with a state if needed
-            onFilterToggle={() => {}}
+            showFilters={showFilters}
+            onFilterToggle={() => setShowFilters(!showFilters)}
           />
         }
       />
       
-      {/* Modals remain the same */}
       <EmployeeForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         employee={editModal.record}
-        // Pass the stable function as the prop
         onSubmit={handleSaveEmployee}
         onCancel={editModal.close}
         isLoading={isMutating}

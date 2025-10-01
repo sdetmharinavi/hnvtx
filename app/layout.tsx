@@ -73,6 +73,26 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontHeading.variable} antialiased`}
       >
+         {/* **THE FIX: Inline script to prevent theme flashing** */}
+         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const storedState = localStorage.getItem('theme-storage');
+                  if (storedState) {
+                    const theme = JSON.parse(storedState).state.theme;
+                    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                      document.documentElement.classList.add('dark');
+                    }
+                  }
+                } catch (e) {
+                  console.error('Failed to apply initial theme from localStorage', e);
+                }
+              })();
+            `,
+          }}
+        />
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>

@@ -1,48 +1,32 @@
 "use client";
 
 import { useEffect } from "react";
-import { useThemeStore, hydrateThemeStore, Theme } from "@/stores/themeStore";
+import { useThemeStore, Theme } from "@/stores/themeStore";
 
 export default function ThemeProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { theme, hydrated } = useThemeStore();
+  const theme = useThemeStore((state) => state.theme);
 
-  // Hydrate theme from localStorage on mount
+  // This useEffect now only needs to react to subsequent theme changes.
   useEffect(() => {
-    // Add class to disable transitions during initial load
-    document.documentElement.classList.add("no-transition");
-
-    hydrateThemeStore();
-
-    // Re-enable transitions after a short delay
-    setTimeout(() => {
-      document.documentElement.classList.remove("no-transition");
-    }, 50);
-  }, []);
-
-  // Apply theme when hydrated or theme changes
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const applyTheme = (theme: Theme) => {
+    const applyTheme = (themeToApply: Theme) => {
+      const root = document.documentElement;
+      
       const isDark =
-        theme === "dark" ||
-        (theme === "system" &&
+        themeToApply === "dark" ||
+        (themeToApply === "system" &&
           window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-      if (isDark) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+      // Simply toggle the class. No need for transition management.
+      root.classList.toggle("dark", isDark);
     };
 
     applyTheme(theme);
 
-    // Listen for system theme changes
+    // If the theme is 'system', we still need to listen for OS-level changes.
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => applyTheme("system");
@@ -50,7 +34,7 @@ export default function ThemeProvider({
       mediaQuery.addEventListener("change", handleChange);
       return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [theme, hydrated]);
+  }, [theme]);
 
   return <>{children}</>;
 }
