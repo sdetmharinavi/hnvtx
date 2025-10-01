@@ -1,10 +1,18 @@
 // config/designations.ts
-
-import { DesignationWithRelations } from "@/app/dashboard/designations/page";
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
+import { z } from 'zod';
+import { employee_designationsRowSchema } from "@/schemas/zod-schemas";
 
+// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
+export type Designation = z.infer<typeof employee_designationsRowSchema>;
 
+export interface DesignationWithRelations extends Designation {
+  parent_designation: DesignationWithRelations | null;
+  child_designations: DesignationWithRelations[];
+}
+
+// --- CONFIGURATION (Unchanged) ---
 export const designationConfig: EntityConfig<DesignationWithRelations> = {
   entityName: 'designation',
   entityDisplayName: 'Designation',

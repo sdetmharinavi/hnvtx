@@ -1,4 +1,4 @@
-// components/maintenance-areas/MaintenanceAreasPage.tsx
+// app/dashboard/maintenance-areas/page.tsx
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
@@ -26,17 +26,12 @@ import { toast } from 'sonner';
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
-  // State management
-  const [filters, setFilters] = useState<{
-    status?: string;
-    areaType?: string;
-  }>({});
+  const [filters, setFilters] = useState<{ status?: string; areaType?: string; }>({});
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingArea, setEditingArea] =
     useState<MaintenanceAreaWithRelations | null>(null);
 
-  // Data queries
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
@@ -44,7 +39,12 @@ export default function MaintenanceAreasPage() {
     return f;
   }, [filters]);
 
-  const areasQuery = useTableWithRelations(
+  // **THE FIX (for "No parent" display): The `.select()` method has been removed.**
+  // useTableWithRelations now correctly returns the full nested objects for relations.
+  const areasQuery = useTableWithRelations<
+    'maintenance_areas',
+    MaintenanceAreaWithRelations[]
+  >(
     supabase,
     'maintenance_areas',
     [
@@ -55,25 +55,16 @@ export default function MaintenanceAreasPage() {
     {
       filters: serverFilters,
       orderBy: [{ column: 'name', ascending: true }],
-      select: (data) => {
-        return data.map(item => ({
-          ...item,
-          area_type: item.area_type_id || null,
-          parent_area: item.parent_id || null,
-          child_areas: item.id || []
-        })) as MaintenanceAreaWithRelations[];
-      }
     }
   );
 
-  const { isLoading, error, refetch } = areasQuery;
+  const { refetch, error, data } = areasQuery;
 
   const { data: areaTypes = [] } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
     orderBy: [{ column: 'name', ascending: true }],
   });
 
-  // Data mutations
   const {
     createAreaMutation,
     updateAreaMutation,
@@ -95,17 +86,11 @@ export default function MaintenanceAreasPage() {
     },
   });
 
-  // Derived state
   const allAreas = useMemo(
     () => (areasQuery.data as MaintenanceAreaWithRelations[]) || [],
     [areasQuery.data]
   );
-  const selectedArea = useMemo(
-    () => allAreas.find((area) => area.id === selectedAreaId) || null,
-    [selectedAreaId, allAreas]
-  );
-
-  // Event handlers
+  
   const handleOpenCreateForm = () => {
     setEditingArea(null);
     setFormOpen(true);
@@ -115,31 +100,19 @@ export default function MaintenanceAreasPage() {
     setEditingArea(area);
     setFormOpen(true);
   };
-
-  // --- Define header content using the hook ---
+  
   const headerActions = useStandardHeaderActions({
     data: allAreas,
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    // onAddNew: handleOpenCreateForm,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: handleOpenCreateForm,
     isLoading: areasQuery.isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
 
   const headerStats = [
     { value: allAreas.length, label: 'Total Areas' },
-    {
-      value: allAreas.filter((r) => r.status).length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: allAreas.filter((r) => !r.status).length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
+    { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
@@ -157,6 +130,12 @@ export default function MaintenanceAreasPage() {
     );
   }
 
+  const isLoading =
+    areasQuery.isLoading ||
+    createAreaMutation.isPending ||
+    updateAreaMutation.isPending ||
+    toggleStatusMutation.isPending;
+
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
       <PageHeader
@@ -171,18 +150,14 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
-        toggleStatusMutation={{
-          mutate: toggleStatusMutation.mutate,
-          isPending: toggleStatusMutation.isPending,
-          error: toggleStatusMutation.error,
-          data: toggleStatusMutation.data
-        }}
+        toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
+        selectedEntityId={selectedAreaId}
+        onSelect={setSelectedAreaId}
       />
 
-      {/* Modals */}
       {isFormOpen && (
         <AreaFormModal
           isOpen={isFormOpen}
@@ -209,10 +184,7 @@ export default function MaintenanceAreasPage() {
         cancelText="Cancel"
         type="danger"
         showIcon
-        closeOnBackdrop
-        closeOnEscape
         loading={deleteManager.isPending}
-        size="md"
       />
     </div>
   );

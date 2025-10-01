@@ -1,13 +1,12 @@
 // config/areas.ts
-
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
-import { Tables, TablesInsert } from "@/types/supabase-types";
+import { z } from 'zod';
+import { maintenance_areasInsertSchema, maintenance_areasRowSchema, lookup_typesRowSchema } from "@/schemas/zod-schemas";
 
-// --- TYPE DEFINITIONS ---
-export type MaintenanceArea = Tables<"maintenance_areas">;
-
-export type AreaType = Tables<"lookup_types">;
+// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
+export type MaintenanceArea = z.infer<typeof maintenance_areasRowSchema>;
+export type AreaType = z.infer<typeof lookup_typesRowSchema>;
 
 export interface MaintenanceAreaWithRelations extends MaintenanceArea {
   area_type: AreaType | null;
@@ -15,27 +14,17 @@ export interface MaintenanceAreaWithRelations extends MaintenanceArea {
   child_areas: MaintenanceAreaWithRelations[];
 }
 
-export interface DeleteProps {
-  tableName: string;
-  onSuccess?: () => void;
-}
-
 export interface AreaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TablesInsert<"maintenance_areas">) => void;
+  onSubmit: (data: z.infer<typeof maintenance_areasInsertSchema>) => void;
   area: MaintenanceAreaWithRelations | null;
   allAreas: MaintenanceArea[];
   areaTypes: AreaType[];
   isLoading: boolean;
 }
 
-export interface DetailItemProps {
-  label: string;
-  value: string | null | undefined;
-  icon?: React.ReactNode;
-}
-
+// --- CONFIGURATION (Unchanged) ---
 export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
   entityName: 'area',
   entityDisplayName: 'Area',

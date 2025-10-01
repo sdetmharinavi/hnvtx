@@ -5,7 +5,7 @@ import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header/PageHeader';
 import { useStandardHeaderActions } from '@/components/common/page-header/hooks/useStandardHeaderActions';
 import { DesignationFormModal } from '@/components/designations/DesignationFormModal';
-import { designationConfig } from '@/config/designations';
+import { designationConfig, DesignationWithRelations } from '@/config/designations';
 import {
   Filters,
   useTableInsert,
@@ -13,7 +13,6 @@ import {
   useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
-// BaseEntity type not needed anymore
 import { useDelete } from '@/hooks/useDelete';
 import {
   Employee_designationsInsertSchema,
@@ -24,37 +23,21 @@ import { useMemo, useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
 import { toast } from 'sonner';
 
-export interface DesignationWithRelations
-  extends Omit<Employee_designationsInsertSchema, 'id'> {
-  id: string;
-  parent_designation: DesignationWithRelations | null;
-  child_designations: DesignationWithRelations[];
-  status: boolean | null;
-}
-
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
-  // State management
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [filters, setFilters] = useState<{ status?: string }>({});
-  const [selectedDesignationId, setSelectedDesignationId] = useState<
-    string | null
-  >(null);
+  const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [editingDesignation, setEditingDesignation] =
-    useState<DesignationWithRelations | null>(null);
-  // Data queries
+  const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
+  
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
     return f;
   }, [filters]);
 
-  const designationsQuery = useTableWithRelations<
-    'employee_designations',
-    DesignationWithRelations[]
-  >(
+  const designationsQuery = useTableWithRelations<'employee_designations', DesignationWithRelations[]>(
     supabase,
     'employee_designations',
     ['parent_designation:parent_id(id, name)'],
@@ -65,44 +48,26 @@ export default function DesignationManagerPage() {
   );
 
   const { refetch, error, data } = designationsQuery;
-
   const totalCount = data?.length || 0;
 
-  // Data mutations
   const onMutationSuccess = () => {
     designationsQuery.refetch();
     setFormOpen(false);
     setEditingDesignation(null);
   };
 
-  const createDesignationMutation = useTableInsert(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  );
-  const updateDesignationMutation = useTableUpdate(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  );
-  const toggleStatusMutation = useToggleStatus(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  ) as unknown as {
+  // **THE FIX: Pass the 'supabase' client as the first argument to the hooks.**
+  const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
     mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
     isPending: boolean;
   };
   
-  // Create a properly typed mutate function
   const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
-    return toggleStatusMutation.mutate({
-      ...variables,
-      nameField: 'status' // Ensure nameField is always 'status' for this table
-    });
+    return toggleStatusMutation.mutate({ ...variables, nameField: 'status' });
   };
   
-  // Extract the properties we need for EntityManagementComponent
   const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDelete({
@@ -115,13 +80,11 @@ export default function DesignationManagerPage() {
     },
   });
 
-  // Derived state
   const allDesignations = useMemo(
     () => (designationsQuery.data as DesignationWithRelations[]) || [],
     [designationsQuery.data]
   );
 
-  // Event handlers
   const handleOpenCreateForm = () => {
     setEditingDesignation(null);
     setFormOpen(true);
@@ -130,7 +93,6 @@ export default function DesignationManagerPage() {
   const handleOpenEditForm = (designation: DesignationWithRelations) => {
     setEditingDesignation(designation);
     setFormOpen(true);
-    console.log(designation);
   };
 
   const handleFormSubmit = (data: Employee_designationsInsertSchema) => {
@@ -144,59 +106,28 @@ export default function DesignationManagerPage() {
     }
   };
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
     data: designationsQuery.data?.map((d) => ({
-      id: d.id,
-      name: d.name,
-      created_at: d.created_at ?? null,
-      updated_at: d.updated_at ?? null,
-      parent_id: d.parent_id ?? null,
-      status: d.status ?? null,
+      id: d.id, name: d.name, created_at: d.created_at ?? null,
+      updated_at: d.updated_at ?? null, parent_id: d.parent_id ?? null, status: d.status ?? null,
     })),
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    // onAddNew: placeholder ToDo,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: handleOpenCreateForm,
     isLoading: designationsQuery.isLoading,
     exportConfig: { tableName: 'employee_designations' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Designations' },
-    {
-      value: allDesignations.filter((r) => r.status).length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: allDesignations.filter((r) => !r.status).length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: allDesignations.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
+    { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
-  const isLoading =
-    designationsQuery.isLoading ||
-    createDesignationMutation.isPending ||
-    updateDesignationMutation.isPending ||
-    toggleStatusMutation.isPending;
+  const isLoading = designationsQuery.isLoading || createDesignationMutation.isPending || updateDesignationMutation.isPending || toggleStatusMutation.isPending;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
@@ -216,9 +147,10 @@ export default function DesignationManagerPage() {
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
+        selectedEntityId={selectedDesignationId}
+        onSelect={setSelectedDesignationId}
       />
 
-      {/* Modals */}
       {isFormOpen && (
         <DesignationFormModal
           isOpen={isFormOpen}
@@ -226,17 +158,10 @@ export default function DesignationManagerPage() {
           onSubmit={handleFormSubmit}
           designation={editingDesignation}
           allDesignations={allDesignations.map((d) => ({
-            id: d.id ?? '',
-            name: d.name,
-            created_at: d.created_at ?? null,
-            updated_at: d.updated_at ?? null,
-            parent_id: d.parent_id ?? null,
-            status: d.status ?? null,
+            id: d.id ?? '', name: d.name, created_at: d.created_at ?? null, updated_at: d.updated_at ?? null,
+            parent_id: d.parent_id ?? null, status: d.status ?? null,
           }))}
-          isLoading={
-            createDesignationMutation.isPending ||
-            updateDesignationMutation.isPending
-          }
+          isLoading={createDesignationMutation.isPending || updateDesignationMutation.isPending}
         />
       )}
       <ConfirmModal
@@ -249,10 +174,7 @@ export default function DesignationManagerPage() {
         cancelText="Cancel"
         type="danger"
         showIcon
-        closeOnBackdrop
-        closeOnEscape
         loading={deleteManager.isPending}
-        size="md"
       />
     </div>
   );
