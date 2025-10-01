@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { ChevronDown, Filter, Search } from 'lucide-react';
-import { SearchFilters } from './types';
+import { ChevronDown, Filter, Search, ChevronUp } from 'lucide-react'; // Import ChevronUp
+import { SearchFilters } from '@/components/bsnl/types';
 
 interface AdvancedSearchBarProps {
   filters: SearchFilters;
@@ -57,7 +57,7 @@ export function AdvancedSearchBar({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
             <select
-              value={filters.status?.[0] || ''} // Defensive check
+              value={filters.status?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, status: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
@@ -69,34 +69,36 @@ export function AdvancedSearchBar({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">System/Cable Type</label>
             <select
-              value={filters.type?.[0] || ''} // Defensive check
+              value={filters.type?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, type: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Types</option>
+              {/* THE FIX: Added key prop */}
               {typeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
             <select
-              value={filters.region?.[0] || ''} // Defensive check
+              value={filters.region?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, region: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Regions</option>
+              {/* THE FIX: Added key prop */}
               {regionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Node Type</label>
             <select
-              // CORRECTED: Use `nodeType` instead of `district`
-              value={filters.nodeType?.[0] || ''} // Defensive check
+              value={filters.nodeType?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, nodeType: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Node Types</option>
+              {/* THE FIX: Added key prop */}
               {nodeTypeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -105,7 +107,3 @@ export function AdvancedSearchBar({
     </div>
   );
 }
-
-const ChevronUp = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m18 15-6-6-6 6"/></svg>
-);
