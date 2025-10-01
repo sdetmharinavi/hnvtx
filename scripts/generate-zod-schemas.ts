@@ -271,17 +271,21 @@ class TypeScriptToZodConverter {
     ruleTableName?: string,
     actualTableName?: string
   ): boolean {
-    if (!ruleTableName || !actualTableName) {
-      return !ruleTableName; // If no rule table name specified, it matches any table
+    // If no table name is specified in the rule, it's a global rule that matches any table.
+    if (!ruleTableName) {
+      return true;
+    }
+    // If the actual table name is missing, it cannot match a specific rule.
+    if (!actualTableName) {
+      return false;
     }
 
-    // Convert both to lowercase for case-insensitive matching
+    // Convert both to lowercase for case-insensitive exact matching.
     const ruleLower = ruleTableName.toLowerCase();
     const actualLower = actualTableName.toLowerCase();
 
-    // Check if the actual table name contains the rule table name
-    // This allows "user_profiles" to match with "user"
-    return actualLower.includes(ruleLower);
+    // **RECOMMENDATION: Use exact matching instead of includes()**
+    return actualLower === ruleLower;
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {

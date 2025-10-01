@@ -11,6 +11,7 @@ import {
   FiCpu,
   FiMapPin,
   FiList,
+  FiHelpCircle,
 } from 'react-icons/fi';
 import { FaDiagramNext } from 'react-icons/fa6';
 import { BsPeople } from 'react-icons/bs';

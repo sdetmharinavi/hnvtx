@@ -48,23 +48,21 @@ export default function DashboardHeader({
                   ) : (
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
                       <span className="text-sm font-medium text-white">
-                        {user.user_metadata?.name?.[0] || "U"}
+                        {user.user_metadata?.first_name?.[0] || "U"}
                       </span>
                     </div>
                   )}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {user.user_metadata?.name || "User"}
+                    {user.user_metadata?.first_name || "User"}
                   </span>
                 </Link>
 
-                {/* Dropdown AuthButton - Responsive positioning */}
+                {/* Dropdown AuthButton - SIMPLIFIED and CORRECTED positioning */}
                 <div
-                  className="absolute top-full right-0 mt-2 mr-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 
-                    sm:left-0 sm:right-auto"
+                  className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
                 >
                   <div
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 
-                      w-auto min-w-64 sm:w-auto"
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 w-auto min-w-64"
                   >
                     <AuthButton />
                   </div>

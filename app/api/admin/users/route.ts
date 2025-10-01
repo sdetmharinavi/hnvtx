@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { createAdmin } from '@/utils/supabase/admin';
+import { createClient } from '@/utils/supabase/server';
+import type { User } from '@supabase/supabase-js';
 
 const pgHost = process.env.PGHOST;
 const pgUser = process.env.PGUSER;
@@ -44,17 +46,6 @@ export async function POST(req: Request) {
           }),
         ]
       );
-      console.log('USER PAYLOAD:', {
-        id: userData.id,
-        email: userData.email,
-        password: userData.password,
-        email_confirm: userData.email_confirm,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        role: userData.role,
-        status: userData.status,
-      });
-
       await client.query('COMMIT');
 
       return NextResponse.json({ user: rows[0] });
@@ -76,12 +67,38 @@ export async function POST(req: Request) {
 // This function handles deleting users
 export async function DELETE(req: Request) {
   try {
+    // **STEP 1: AUTHORIZATION CHECK (CORRECTED)**
+    const supabase = await createClient(); // Creates a server client in the context of the user making the request
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden: Authentication required.' }, { status: 401 });
+    }
+
+    // **THE FIX: Call the is_super_admin() RPC function to securely check the user's status.**
+    const { data: isSuperAdmin, error: rpcError } = await supabase.rpc('is_super_admin');
+
+    console.log("isSuperAdmin", isSuperAdmin);
+    console.log("rpcError", rpcError);
+    
+
+    if (rpcError) {
+      console.error('RPC error checking admin status:', rpcError);
+      return NextResponse.json({ error: 'Could not verify user permissions.' }, { status: 500 });
+    }
+
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to perform this action.' }, { status: 403 });
+    }
+    
+    // If the check passes, proceed with the deletion logic.
     const { userIds } = await req.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
     }
 
+    // **STEP 2: ADMIN ACTION**
     const supabaseAdmin = createAdmin();
     const deletionErrors: { id: string; error: string }[] = [];
 
@@ -100,7 +117,6 @@ export async function DELETE(req: Request) {
       }, { status: 500 });
     }
     
-    // The ON DELETE CASCADE on the user_profiles table will handle the rest automatically.
     return NextResponse.json({ message: 'Users deleted successfully' });
 
   } catch (err: unknown) {

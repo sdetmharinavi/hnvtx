@@ -1,54 +1,54 @@
+// hooks/useOutdatedBrowserCheck.tsx
 import { useEffect, useState } from 'react';
 
 const LOCAL_KEY = 'isOutdatedBrowser';
 
 function detectOutdatedBrowser(): boolean {
-  const ua = navigator.userAgent;
-  let isOutdated = false;
-
-  const isIE = /MSIE|Trident/.test(ua);
-  const legacyEdgeMatch = ua.match(/Edge\/(\d+)/);
-  const chromeMatch = ua.match(/Chrome\/(\d+)/);
-  const firefoxMatch = ua.match(/Firefox\/(\d+)/);
-  const safariMatch = ua.match(/Version\/(\d+).+Safari/);
-  const edgeMatch = ua.match(/Edg\/(\d+)/);
-
-  if (isIE) {
-    isOutdated = true;
-  } else if (legacyEdgeMatch) {
-    const version = parseInt(legacyEdgeMatch[1]);
-    if (version < 80) isOutdated = true;
-  } else if (chromeMatch) {
-    const version = parseInt(chromeMatch[1]);
-    if (version < 110) isOutdated = true;
-  } else if (firefoxMatch) {
-    const version = parseInt(firefoxMatch[1]);
-    if (version < 100) isOutdated = true;
-  } else if (safariMatch) {
-    const version = parseInt(safariMatch[1]);
-    if (version < 15) isOutdated = true;
-  } else if (edgeMatch) {
-    const version = parseInt(edgeMatch[1]);
-    if (version < 110) isOutdated = true;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
   }
-
+  
+  // **Priority 1: Feature Detection**
   const missingFeatures = [
-    () => typeof Promise !== 'function' || typeof Symbol !== 'function',
-    () => !CSS.supports('display', 'flex'),
+    () => typeof Promise?.allSettled !== 'function', // ES2020
+    () => typeof window.crypto?.subtle === 'undefined', // Web Crypto API
+    () => !CSS.supports('display', 'grid'),
     () => !CSS.supports('position', 'sticky'),
-    () => !CSS.supports('backdrop-filter', 'blur(1px)'),
-    () => typeof IntersectionObserver === 'undefined',
-    () => typeof localStorage === 'undefined',
-    () => typeof sessionStorage === 'undefined',
+    () => !('IntersectionObserver' in window),
+    () => !('localStorage' in window),
+    () => !('structuredClone' in window), // A more modern feature
   ].some(fn => fn());
 
-  return isOutdated || missingFeatures;
+  if (missingFeatures) {
+    return true;
+  }
+
+  // **Priority 2: User-Agent Sniffing as a fallback for known legacy browsers**
+  const ua = navigator.userAgent;
+
+  // Rule out Internet Explorer immediately
+  const isIE = /MSIE|Trident/.test(ua);
+  if (isIE) {
+    return true;
+  }
+  
+  // Check for very old versions of other browsers
+  const legacyEdgeMatch = ua.match(/Edge\/(\d+)/); // Non-Chromium Edge
+  if (legacyEdgeMatch && parseInt(legacyEdgeMatch[1]) < 18) {
+    return true;
+  }
+
+  // At this point, the browser is likely modern enough.
+  return false;
 }
 
 export function useOutdatedBrowserCheck(): boolean | null {
   const [isOutdated, setIsOutdated] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Only run on the client
+    if (typeof window === 'undefined') return;
+
     const cached = localStorage.getItem(LOCAL_KEY);
     if (cached !== null) {
       setIsOutdated(cached === 'true');

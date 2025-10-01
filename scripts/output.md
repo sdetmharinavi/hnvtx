@@ -11,11 +11,11 @@ export default config;
 <!-- path: stores/authStore.ts -->
 ```typescript
 // stores/authStore.ts
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { User } from "@supabase/supabase-js";
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { User } from '@supabase/supabase-js';
 
-export type AuthState = "loading" | "authenticated" | "unauthenticated";
+export type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
 interface AuthStore {
   // Auth State
@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthStore>()(
       (set, get) => ({
         // Initial State
         user: null,
-        authState: "loading",
+        authState: 'loading',
 
         // Actions
         setUser: (user) => {
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthStore>()(
           if (user?.id !== currentUser?.id) {
             set({
               user,
-              authState: user ? "authenticated" : "unauthenticated",
+              authState: user ? 'authenticated' : 'unauthenticated',
             });
           }
         },
@@ -66,40 +66,44 @@ export const useAuthStore = create<AuthStore>()(
         logout: () => {
           set({
             user: null,
-            authState: "unauthenticated",
+            authState: 'unauthenticated',
           });
         },
 
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-          if (get().authState !== "loading") {
-            set({ authState: "loading" });
+          if (get().authState !== 'loading') {
+            set({ authState: 'loading' });
           }
-        
+
           try {
             const result = await action();
             // The onAuthStateChange listener is the primary driver for state changes.
             // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
-            if (get().authState === "loading") {
+            if (get().authState === 'loading') {
               const finalUser = get().user;
-              set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+              set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
             }
             return result;
           } catch (error) {
-            // On error, let onAuthStateChange handle the state, or fall back.
-            const finalUser = get().user;
-            set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+            // // On error, let onAuthStateChange handle the state, or fall back.
+            // const finalUser = get().user;
+            // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+            // throw error;
+            // On any error within the action, assume the session might be invalid.
+            // Set the state directly to 'unauthenticated'.
+            set({ authState: 'unauthenticated', user: null }); // Also clear the user
             throw error;
           }
         },
 
         // Getters
         isLoading: () => {
-          return get().authState === "loading";
+          return get().authState === 'loading';
         },
 
         isAuthenticated: () => {
           const { user, authState } = get();
-          return user !== null && authState === "authenticated";
+          return user !== null && authState === 'authenticated';
         },
 
         getUserId: () => {
@@ -108,11 +112,11 @@ export const useAuthStore = create<AuthStore>()(
         },
       }),
       {
-        name: "AuthenticationStore",
+        name: 'AuthenticationStore',
       }
     ),
     {
-      name: "auth-store",
+      name: 'auth-store',
       partialize: (state) => ({
         user: state.user,
         authState: state.authState,
@@ -1423,15 +1427,14 @@ WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
 <!-- path: data/migrations/03_network_systems/02_views.sql -->
 ```sql
--- Path: migrations/03_network_systems/02_views.sql
--- Description: Defines denormalized views for the Network Systems module.
+-- path: data/migrations/03_network_systems/02_views.sql
+-- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
   n.name AS node_name,
-  -- ADDED: Join to get the node_type_name for filtering
   lt_node_type.name AS node_type_name,
   n.latitude,
   n.longitude,
@@ -1442,14 +1445,10 @@ SELECT
   rbs.ring_id,
   ring_area.name AS ring_logical_area_name,
   ss.gne AS sdh_gne,
-  vs.vm_id AS vmux_vm_id,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN s.status THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN NOT s.status THEN 1 ELSE 0 END) OVER() AS inactive_count
+  vs.vm_id AS vmux_vm_id
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
-  -- ADDED: Join to lookup_types via nodes to get the node's type
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
@@ -1474,10 +1473,7 @@ SELECT
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer,
   -- VMUX details
-  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN sc.status THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN NOT sc.status THEN 1 ELSE 0 END) OVER() AS inactive_count
+  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -1529,10 +1525,7 @@ SELECT
   ofc_type.name AS ofc_type_name,
   na.name AS sn_name,
   s.system_name AS system_name,
-  nb.name AS en_name,
-  count(*) OVER()::integer AS total_count,
-  sum(CASE WHEN oc.status THEN 1 ELSE 0 END) OVER()::integer AS active_count,
-  sum(CASE WHEN NOT oc.status THEN 1 ELSE 0 END) OVER()::integer AS inactive_count
+  nb.name AS en_name
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
@@ -1542,7 +1535,7 @@ FROM public.ofc_connections oc
   LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id;
 
 
--- View for Ring Map Node Data [CORRECTED join logic and removed placeholder columns]
+-- View for Ring Map Node Data
 CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
 SELECT
     n.id,
@@ -1567,7 +1560,7 @@ JOIN
 LEFT JOIN
     public.lookup_types lt ON n.node_type_id = lt.id;
 
--- View for rings with joined data and aggregate counts [CORRECTED to calculate actual node count]
+-- View for rings with joined data
 CREATE OR REPLACE VIEW public.v_rings WITH (security_invoker = true) AS
 SELECT
   r.id,
@@ -1581,10 +1574,7 @@ SELECT
   (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
   lt_ring.name AS ring_type_name,
   lt_ring.code AS ring_type_code,
-  ma.name AS maintenance_area_name,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN r.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN r.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ma.name AS maintenance_area_name
 FROM public.rings r
 LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
@@ -1877,8 +1867,8 @@ GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) T
 
 <!-- path: data/migrations/03_network_systems/05_rls_and_grants.sql -->
 ```sql
--- Path: migrations/03_network_systems/05_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module.
+-- path: data/migrations/03_network_systems/05_rls_and_grants.sql
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [UPDATED VIEW NAMES]
 
 -- =================================================================
 -- PART 1: GENERIC GRANTS AND RLS SETUP FOR ALL SYSTEM TABLES
@@ -2044,7 +2034,7 @@ END;
 $$;
 
 -- =================================================================
--- Section 4: View-Level Grants
+-- Section 4: View-Level Grants [UPDATED VIEW NAMES]
 -- =================================================================
 DO $$
 BEGIN
@@ -2052,7 +2042,6 @@ BEGIN
   GRANT SELECT ON public.v_system_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_ring_nodes TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
   GRANT SELECT ON public.v_rings TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  -- v_ofc_connections_complete is also defined here and needs grants
   GRANT SELECT ON public.v_ofc_connections_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';
@@ -3705,8 +3694,8 @@ $$;
 
 <!-- path: data/migrations/02_core_infrastructure/06_rls_and_grants.sql -->
 ```sql
--- Path: migrations/02_core_infrastructure/06_rls_and_grants.sql
--- Description: Applies a baseline set of RLS policies and grants to core tables.
+-- path: data/migrations/02_core_infrastructure/06_rls_and_grants.sql
+-- Description: Applies a baseline set of RLS policies and grants to core tables. [UPDATED VIEW NAMES]
 
 DO $$
 DECLARE
@@ -3777,7 +3766,7 @@ BEGIN
 END;
 $$;
 
--- CORRECTED SECTION: Added grants for specific admin roles to all relevant views in this module.
+-- CORRECTED SECTION: Grants now reference the renamed views.
 DO $$
 BEGIN
   GRANT SELECT ON public.v_lookup_types TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
@@ -3794,65 +3783,50 @@ $$;
 
 <!-- path: data/migrations/02_core_infrastructure/03_views.sql -->
 ```sql
--- Path: migrations/02_core_infrastructure/03_views.sql
--- Description: Defines denormalized views for the Core Infrastructure module. [CORRECTED]
+-- path: data/migrations/02_core_infrastructure/03_views.sql
+-- Description: Defines denormalized views for the Core Infrastructure module. [PERFORMANCE OPTIMIZED]
 
--- View for lookup_types with aggregate counts
+-- View for lookup_types
 CREATE OR REPLACE VIEW public.v_lookup_types WITH (security_invoker = true) AS
 SELECT
-  lt.*,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN lt.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN lt.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  lt.*
 FROM public.lookup_types lt;
 
--- View for maintenance_areas with joined data and aggregate counts
+-- View for maintenance_areas with joined data
 CREATE OR REPLACE VIEW public.v_maintenance_areas WITH (security_invoker = true) AS
 SELECT
   ma.*,
   lt_ma.name AS maintenance_area_type_name,
-  lt_ma.code AS maintenance_area_type_code,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN ma.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN ma.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  lt_ma.code AS maintenance_area_type_code
 FROM public.maintenance_areas ma
 LEFT JOIN public.lookup_types lt_ma ON ma.area_type_id = lt_ma.id;
 
--- View for employee_designations with aggregate counts
+-- View for employee_designations
 CREATE OR REPLACE VIEW public.v_employee_designations WITH (security_invoker = true) AS
 SELECT
-  ed.*,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN ed.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN ed.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ed.*
 FROM public.employee_designations ed;
 
--- View for employees with joined data and aggregate counts
+-- View for employees with joined data
 CREATE OR REPLACE VIEW public.v_employees WITH (security_invoker = true) AS
 SELECT
   e.*,
-  ed.name AS employee_designation_name,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN e.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN e.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ed.name AS employee_designation_name
 FROM public.employees e
 LEFT JOIN public.employee_designations ed ON e.employee_designation_id = ed.id;
 
--- View for nodes with joined data and aggregate counts
+-- View for nodes with joined data
 CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_invoker = true) AS
 SELECT
   n.*,
   lt_node.name AS node_type_name,
   lt_node.code AS node_type_code,
-  ma.name AS maintenance_area_name,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN n.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN n.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ma.name AS maintenance_area_name
 FROM public.nodes n
 LEFT JOIN public.lookup_types lt_node ON n.node_type_id = lt_node.id
 LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id;
 
--- View for ofc_cables with joined data and aggregate counts
+-- View for ofc_cables with joined data
 CREATE OR REPLACE VIEW public.v_ofc_cables_complete WITH (security_invoker = true) AS
 SELECT
   ofc.*,
@@ -3865,10 +3839,7 @@ SELECT
   lt_ofc_owner.name AS ofc_owner_name,
   lt_ofc_owner.code AS ofc_owner_code,
   ma.name AS maintenance_area_name,
-  ma.code AS maintenance_area_code,
-  count(*) OVER() AS total_count,
-  sum(CASE WHEN ofc.status = true THEN 1 ELSE 0 END) OVER() AS active_count,
-  sum(CASE WHEN ofc.status = false THEN 1 ELSE 0 END) OVER() AS inactive_count
+  ma.code AS maintenance_area_code
 FROM public.ofc_cables ofc
 LEFT JOIN public.nodes sn ON ofc.sn_id = sn.id
 LEFT JOIN public.nodes en ON ofc.en_id = en.id
@@ -7263,19 +7234,15 @@ export const v_cable_utilizationRowSchema = z.object({
 });
 
 export const v_employee_designationsRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_employeesRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   employee_addr: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   employee_contact: z.string().nullable(),
@@ -7287,11 +7254,9 @@ export const v_employeesRowSchema = z.object({
   employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   employee_pers_no: z.string().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -7318,23 +7283,19 @@ export const v_junction_closures_completeRowSchema = z.object({
 });
 
 export const v_lookup_typesRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   category: z.string().nullable(),
   code: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   is_system_default: z.boolean().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sort_order: z.number().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_maintenance_areasRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   area_type_id: z.uuid().nullable(),
   code: z.string().nullable(),
@@ -7343,7 +7304,6 @@ export const v_maintenance_areasRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   email: z.email().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_area_type_code: z.string().nullable(),
@@ -7351,15 +7311,12 @@ export const v_maintenance_areasRowSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   parent_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_nodes_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -7370,12 +7327,10 @@ export const v_nodes_completeRowSchema = z.object({
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ofc_cables_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   asset_no: z.string().nullable(),
   capacity: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
@@ -7385,7 +7340,6 @@ export const v_ofc_cables_completeRowSchema = z.object({
   en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_code: z.string().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
@@ -7401,14 +7355,12 @@ export const v_ofc_cables_completeRowSchema = z.object({
   sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   transnet_id: z.uuid().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ofc_connections_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   connection_category: z.string().nullable(),
   connection_type: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -7421,7 +7373,6 @@ export const v_ofc_connections_completeRowSchema = z.object({
   fiber_no_sn: z.number().nullable(),
   fiber_role: z.string().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   logical_path_id: z.uuid().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   ofc_id: z.uuid().nullable(),
@@ -7440,7 +7391,6 @@ export const v_ofc_connections_completeRowSchema = z.object({
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   updated_fiber_no_en: z.number().nullable(),
   updated_fiber_no_sn: z.number().nullable(),
@@ -7461,11 +7411,9 @@ export const v_ring_nodesRowSchema = z.object({
 });
 
 export const v_ringsRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -7473,13 +7421,11 @@ export const v_ringsRowSchema = z.object({
   ring_type_id: z.uuid().nullable(),
   ring_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  total_count: z.number().int().min(0).nullable(),
   total_nodes: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_system_connections_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
@@ -7494,7 +7440,6 @@ export const v_system_connections_completeRowSchema = z.object({
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   sdh_a_customer: z.string().nullable(),
@@ -7515,7 +7460,6 @@ export const v_system_connections_completeRowSchema = z.object({
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   vmux_c_code: z.string().nullable(),
@@ -7540,11 +7484,9 @@ export const v_system_ring_paths_detailedRowSchema = z.object({
 });
 
 export const v_systems_completeRowSchema = z.object({
-  active_count: z.number().int().min(0).nullable(),
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  inactive_count: z.number().int().min(0).nullable(),
   ip_address: z.string().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
@@ -7565,7 +7507,6 @@ export const v_systems_completeRowSchema = z.object({
   system_type_code: z.string().nullable(),
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  total_count: z.number().int().min(0).nullable(),
   updated_at: z.iso.datetime().nullable(),
   vmux_vm_id: z.uuid().nullable(),
 });
@@ -13156,10 +13097,10 @@ export type { UserRole, SuperAdminStatus, UserPermissions }
 // path: hooks/useDeleteManager.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useTableBulkOperations } from '@/hooks/database'; // CORRECTED: Import bulk operations
+import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-import { hasDetails } from '@/types/error-types';
+import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers'; // <-- IMPORT THE CORRECT HOOK
 
 interface DeleteItem {
   id: string;
@@ -13169,7 +13110,6 @@ interface DeleteItem {
 
 interface BulkDeleteFilter {
   column: string;
-  // CORRECTED: Changed 'unknown' to a more specific, type-safe union
   value: string | number | boolean | null;
   displayName: string;
 }
@@ -13185,7 +13125,17 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
 
   const supabase = createClient();
-  const { mutate: bulkDelete, isPending } = useTableBulkOperations(supabase, tableName).bulkDelete;
+
+  // --- THE FIX: USE THE CORRECT MUTATION BASED ON TABLE NAME ---
+
+  // 1. Get the generic bulk delete for all other tables.
+  const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(supabase, tableName).bulkDelete;
+  
+  // 2. Get the specific, API-driven user delete mutation.
+  const { mutate: userDelete, isPending: isUserDeletePending } = useAdminBulkDeleteUsers();
+
+  // 3. The overall loading state depends on which mutation is active.
+  const isPending = isGenericDeletePending || isUserDeletePending;
 
   const deleteSingle = useCallback((item: DeleteItem) => {
     setItemsToDelete([item]);
@@ -13204,40 +13154,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setBulkFilter(filter);
     setIsConfirmModalOpen(true);
   }, []);
-  
-
-  const handleConfirm = useCallback(async () => {
-    if (itemsToDelete.length > 0) {
-        const idsToDelete = itemsToDelete.map(item => item.id);
-        bulkDelete({ ids: idsToDelete }, {
-            onSuccess: () => {
-              const successMessage = itemsToDelete.length === 1
-                ? `Successfully deleted "${itemsToDelete[0].name}"`
-                : `Successfully deleted ${itemsToDelete.length} items.`;
-              toast.success(successMessage);
-              onSuccess?.();
-            },
-            onError: (err) => toast.error(`Deletion failed: ${err.message}`),
-            onSettled: () => {
-                setIsConfirmModalOpen(false);
-                setItemsToDelete([]);
-            }
-        });
-    } else if (bulkFilter) {
-        // This is now type-safe because bulkFilter.value is no longer 'unknown'
-        bulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, {
-            onSuccess: () => {
-              toast.success(`Successfully deleted all items in "${bulkFilter.displayName}"`);
-              onSuccess?.();
-            },
-            onError: (err) => toast.error(`Bulk deletion failed: ${err.message}`),
-            onSettled: () => {
-                setIsConfirmModalOpen(false);
-                setBulkFilter(null);
-            }
-        });
-    }
-  }, [itemsToDelete, bulkFilter, bulkDelete, onSuccess]);
 
   const handleCancel = useCallback(() => {
     setIsConfirmModalOpen(false);
@@ -13245,12 +13161,51 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setBulkFilter(null);
   }, []);
 
+  const handleConfirm = useCallback(async () => {
+    const mutationOptions = {
+      onSuccess: () => {
+        const successMessage = itemsToDelete.length === 1
+          ? `Successfully deleted "${itemsToDelete[0].name}"`
+          : itemsToDelete.length > 1
+            ? `Successfully deleted ${itemsToDelete.length} items.`
+            : `Successfully performed bulk delete.`;
+        toast.success(successMessage);
+        onSuccess?.();
+      },
+      onError: (err: Error) => toast.error(`Deletion failed: ${err.message}`),
+      onSettled: () => {
+        setIsConfirmModalOpen(false);
+        setItemsToDelete([]);
+        setBulkFilter(null);
+      }
+    };
+
+    // 4. THE CORE LOGIC: Check the table name and call the appropriate mutation.
+    if (tableName === 'user_profiles') {
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map(item => item.id);
+        userDelete({ user_ids: idsToDelete }, mutationOptions);
+      } else {
+        toast.error("Bulk delete by filter is not supported for users.");
+        handleCancel();
+      }
+    } else {
+      // For all other tables, use the generic client-side delete.
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map(item => item.id);
+        genericBulkDelete({ ids: idsToDelete }, mutationOptions);
+      } else if (bulkFilter) {
+        genericBulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, mutationOptions);
+      }
+    }
+  }, [tableName, itemsToDelete, onSuccess, userDelete, handleCancel, bulkFilter, genericBulkDelete]);
+
   const getConfirmationMessage = useCallback(() => {
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
-        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This cannot be undone.`;
+        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action is permanent and will remove the user's login access.`;
       }
-      return `Are you sure you want to delete these ${itemsToDelete.length} items? This cannot be undone.`;
+      return `Are you sure you want to delete these ${itemsToDelete.length} items? This action is permanent.`;
     }
     if (bulkFilter) {
       return `Are you sure you want to delete all items in "${bulkFilter.displayName}"? This cannot be undone.`;
@@ -13401,8 +13356,8 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
   // Toggle all items selection
   const toggleAllSelection = useCallback((allIds: T[]) => {
     setSelectedItems(prev => {
-      if (prev.size === allIds.length && allIds.length > 0) {
-        return new Set(); // Clear all if all are selected
+      if (prev.size === allIds.length) {
+        return new Set(); // Clear selection
       } else {
         return new Set(allIds); // Select all
       }
@@ -14238,6 +14193,12 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
       });
   }, [tableName, overrides, omit, columnWidths]);
 
+  // const columnsKeys = columns.map((col) => col.key);
+
+  // useEffect(() => {
+  //   console.log(`columns for ${tableName}`, columnsKeys);
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   return columns;
 }
@@ -14824,33 +14785,29 @@ export const useAdminUpdateUserProfile = () => {
 
 // Hook to bulk delete users
 export const useAdminBulkDeleteUsers = () => {
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      params: AdminBulkDeleteUsersFunction
-    ): Promise<boolean> => {
-      const { data, error } = await supabase.rpc(
-        "admin_bulk_delete_users",
-        params
-      );
+    mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIds: params.user_ids }),
+      });
 
-      if (error) {
-        throw new Error(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete users.');
       }
-
-      return data || false;
     },
     onSuccess: (_, variables) => {
       toast.success(
         `Successfully deleted ${variables.user_ids.length} user(s)`
       );
-
-      // Invalidate all user lists
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-
-      // Remove individual user queries from cache
       variables.user_ids.forEach((userId) => {
         queryClient.removeQueries({ queryKey: adminUserKeys.detail(userId) });
       });
@@ -14860,6 +14817,7 @@ export const useAdminBulkDeleteUsers = () => {
     },
   });
 };
+
 
 // Hook to bulk update user roles
 export const useAdminBulkUpdateUserRole = () => {
@@ -17791,6 +17749,9 @@ export function haversineDistance(
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
+// // Usage
+// const minDist = haversineDistance(22.5726, 88.3639, 28.7041, 77.1025);
+// console.log(`Distance: ${minDist.toFixed(2)} km`);
 
 ```
 
@@ -25374,14 +25335,14 @@ export default function OAuthProviders({
 <!-- path: components/auth/OAuthButton.tsx -->
 ```typescript
 // components/auth/OAuthButton.tsx
+/* @refresh reset */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { FaGoogle } from "react-icons/fa";
 import { LoadingSpinner } from "../common/ui/LoadingSpinner/LoadingSpinner";
 
-// Debug helper
 const debug = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
     console.log("[OAuthButton]", ...args);
@@ -25413,25 +25374,27 @@ export function OAuthButton({
   const { signInWithGoogle, authState } = useAuth();
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
+  
+  // THE FIX: Use ref to track if action is in progress
+  const isProcessingRef = useRef(false);
 
-  // Handle OAuth sign-in
+  // THE FIX: Remove authState and isLocalLoading from dependencies
+  // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
     debug("handleGoogleSignIn called");
 
-    // Prevent multiple clicks during loading
-    if (isLocalLoading || authState === "loading") {
-      debug("Already loading, ignoring click");
+    // Prevent multiple clicks - check ref instead of state
+    if (isProcessingRef.current) {
+      debug("Already processing, ignoring click");
       return;
     }
 
     try {
       debug("Setting loading state");
+      isProcessingRef.current = true;
       setIsLocalLoading(true);
       setIsOAuthInProgress(true);
       sessionStorage.setItem("oauth_in_progress", "true");
-
-      // Force a re-render to show loading state
-      await new Promise((resolve) => setTimeout(resolve, 0));
 
       debug("Calling signInWithGoogle");
       await signInWithGoogle();
@@ -25440,38 +25403,24 @@ export function OAuthButton({
       debug("OAuth error:", error);
       sessionStorage.removeItem("oauth_in_progress");
       setIsOAuthInProgress(false);
-      throw error;
     } finally {
       debug("Cleaning up");
+      isProcessingRef.current = false;
       setIsLocalLoading(false);
       sessionStorage.removeItem("oauth_in_progress");
     }
-  }, [isLocalLoading, authState, signInWithGoogle]);
+  }, [signInWithGoogle]); // Only signInWithGoogle in deps
 
   // Check for OAuth in progress on mount
   useEffect(() => {
-    const checkOAuthStatus = () => {
-      const inProgress = sessionStorage.getItem("oauth_in_progress") === "true";
-      setIsOAuthInProgress(inProgress);
-    };
-
-    // Check immediately
-    checkOAuthStatus();
-
-    // Set up storage event listener for cross-tab sync
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "oauth_in_progress") {
-        checkOAuthStatus();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+    const inProgress = sessionStorage.getItem("oauth_in_progress") === "true";
+    if (inProgress) {
+      setIsOAuthInProgress(true);
+    }
+  }, []); // Run once on mount
 
   // Combine all loading states
-  const isLoading =
-    isLocalLoading || authState === "loading" || isOAuthInProgress;
+  const isLoading = isLocalLoading || authState === "loading" || isOAuthInProgress;
   const isButtonDisabled = disabled || isLoading;
   const config = providerConfig[provider as keyof typeof providerConfig];
 
@@ -25488,20 +25437,11 @@ export function OAuthButton({
       disabled={isButtonDisabled}
       data-loading={isLoading}
       className={[
-        // Base layout and spacing
         "relative flex items-center justify-center gap-3 w-full px-6 py-3 rounded-xl",
         "font-semibold text-sm tracking-wide overflow-hidden",
-
-        // Enhanced transitions and animations
         "transition-all duration-300 ease-out transform-gpu",
-
-        // Background with gradient and glassmorphism effect
         config.bgColor || "bg-white border-2 border-gray-200/50",
-
-        // Text styling
         config.textColor || "text-gray-700",
-
-        // Interactive states with improved feedback
         isButtonDisabled
           ? "opacity-60 cursor-not-allowed scale-100"
           : [
@@ -25511,10 +25451,7 @@ export function OAuthButton({
               "focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:ring-offset-2",
               "hover:border-blue-300/60",
             ].join(" "),
-
-        // Loading state animation
         isLoading && "animate-pulse",
-
         className,
       ]
         .filter(Boolean)
@@ -25525,32 +25462,27 @@ export function OAuthButton({
         transform: "translateZ(0)",
         backfaceVisibility: "hidden",
         WebkitFontSmoothing: "antialiased",
-        // Subtle gradient overlay
         background: isButtonDisabled
           ? undefined
-          : `linear-gradient(135deg, ${
-              config.bgColor || "rgba(255, 255, 255, 0.95)"
-            }, ${config.bgColor || "rgba(249, 250, 251, 0.95)"})`,
-        // Subtle inset shadow for depth
+          : `linear-gradient(135deg, ${config.bgColor || "rgba(255, 255, 255, 0.95)"}, ${
+              config.bgColor || "rgba(249, 250, 251, 0.95)"
+            })`,
         boxShadow: isButtonDisabled
           ? undefined
           : "inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)",
       }}
     >
-      {/* Shimmer effect overlay for loading state */}
       {isLoading && (
         <div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"
+          className="absolute inset-0 animate-shimmer"
           style={{
-            animation: "shimmer 1.5s infinite",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
             backgroundSize: "200% 100%",
+            animation: "shimmer 1.5s infinite",
           }}
         />
       )}
 
-      {/* Icon container with enhanced styling */}
       <div
         className={[
           "flex items-center justify-center min-w-[24px] h-6 relative z-10",
@@ -25560,10 +25492,7 @@ export function OAuthButton({
       >
         {isLoading ? (
           <div className="relative">
-            <LoadingSpinner
-              size="sm"
-              className="h-5 w-5 text-current opacity-80"
-            />
+            <LoadingSpinner size="sm" className="h-5 w-5 text-current opacity-80" />
             <div className="absolute inset-0 animate-ping">
               <div className="h-5 w-5 rounded-full bg-current opacity-20" />
             </div>
@@ -25573,7 +25502,6 @@ export function OAuthButton({
         )}
       </div>
 
-      {/* Text with enhanced typography */}
       <span
         className={[
           "relative z-10 whitespace-nowrap select-none",
@@ -25604,35 +25532,12 @@ export function OAuthButton({
         )}
       </span>
 
-      {/* Subtle highlight effect */}
       {!isButtonDisabled && !isLoading && (
         <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       )}
     </button>
   );
 }
-<style jsx>{`
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  @keyframes bounce {
-    0%,
-    80%,
-    100% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(-4px);
-    }
-  }
-`}</style>;
-
 ```
 
 <!-- path: components/auth/privacy.tsx -->
@@ -26876,6 +26781,643 @@ export default function PolyfillLoader() {
  
   return null; // No UI needed
 }
+```
+
+<!-- path: components/doc/AccordionTriggerContent.tsx -->
+```typescript
+import { WorkflowSection } from "@/components/doc/types/workflowTypes";
+import { ChevronRight } from "lucide-react";
+
+
+interface AccordionTriggerContentProps {
+  section: WorkflowSection;
+  isOpen: boolean;
+}
+
+export default function AccordionTriggerContent({ 
+  section, 
+  isOpen 
+}: AccordionTriggerContentProps) {
+  const Icon = section.icon;
+  
+  return (
+    <div className={`w-full flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-sm border border-gray-800 hover:border-${section.color}-500/50 transition-all duration-300 ${isOpen ? `border-${section.color}-500/50 shadow-lg shadow-${section.color}-500/20` : ""}`}>
+      <div className={`p-3 rounded-xl bg-gradient-to-br ${section.gradient} ${section.bgGlow}`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <div className="flex-1 text-left">
+        <h3 className="text-xl font-semibold text-gray-100 group-hover:text-white transition-colors">
+          {section.title}
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">{section.subtitle}</p>
+      </div>
+      <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isOpen ? "rotate-90" : ""}`} />
+    </div>
+  );
+}
+```
+
+<!-- path: components/doc/WorkflowCard.tsx -->
+```typescript
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/ui/card/card';
+import { ScrollArea } from '@/components/common/ui/scroll-area';
+import { WorkflowCardProps } from '@/components/doc/types/workflowTypes';
+import WorkflowSection from '@/components/doc/WorkflowSection';
+import { Workflow } from 'lucide-react';
+
+export default function WorkflowCard({ purpose, workflows, color }: WorkflowCardProps) {
+  const colorMap = {
+    violet: {
+      border: 'border-violet-500/30',
+      glow: 'shadow-violet-500/10',
+      badge: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+      icon: 'text-violet-400',
+    },
+    blue: {
+      border: 'border-blue-500/30',
+      glow: 'shadow-blue-500/10',
+      badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+      icon: 'text-blue-400',
+    },
+    teal: {
+      border: 'border-teal-500/30',
+      glow: 'shadow-teal-500/10',
+      badge: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+      icon: 'text-teal-400',
+    },
+    cyan: {
+      border: 'border-cyan-500/30',
+      glow: 'shadow-cyan-500/10',
+      badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+      icon: 'text-cyan-400',
+    },
+    orange: {
+      border: 'border-orange-500/30',
+      glow: 'shadow-orange-500/10',
+      badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+      icon: 'text-orange-400',
+    },
+    yellow: {
+      border: 'border-yellow-500/30',
+      glow: 'shadow-yellow-500/10',
+      badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+      icon: 'text-yellow-400',
+    },
+  };
+
+  const colors = colorMap[color];
+
+  return (
+    <Card
+      className={`mt-4 bg-gradient-to-br from-gray-900/90 to-gray-800/50 backdrop-blur-sm border ${colors.border} ${colors.glow} shadow-2xl`}
+    >
+      <CardHeader className="pb-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg">
+            <Workflow className={`w-5 h-5 ${colors.icon}`} />
+          </div>
+          <div className="flex-1">
+            <CardTitle className="text-lg text-gray-100 mb-2">Purpose</CardTitle>
+            <p className="text-gray-400 text-sm leading-relaxed">{purpose}</p>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        <ScrollArea className="h-[600px] rounded-xl border border-gray-800/50 bg-gray-950/50 backdrop-blur-sm">
+          <div className="p-6 space-y-8">
+            {workflows.map((workflow, index) => (
+              <WorkflowSection
+                key={index}
+                workflow={workflow}
+                index={index}
+                colors={colors}
+                isLast={index === workflows.length - 1}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}
+
+```
+
+<!-- path: components/doc/HeaderSection.tsx -->
+```typescript
+import { Workflow } from "lucide-react";
+
+export default function HeaderSection() {
+  return (
+    <div className="text-center space-y-4 mb-12">
+      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500/20 to-cyan-500/20 rounded-full border border-violet-500/30 backdrop-blur-sm">
+        <Workflow className="w-4 h-4 text-violet-400" />
+        <span className="text-sm font-medium text-gray-300">Technical Documentation</span>
+      </div>
+      <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent">
+        System Workflows
+      </h1>
+      <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+        Comprehensive step-by-step user and technical workflows for your application
+      </p>
+    </div>
+  );
+}
+```
+
+<!-- path: components/doc/StepList.tsx -->
+```typescript
+import { LucideIcon } from "lucide-react";
+
+interface StepListProps {
+  icon: LucideIcon;
+  iconColor: string;
+  title: string;
+  steps: string[];
+  stepColor: string;
+  isTechnical?: boolean;
+}
+
+export default function StepList({ 
+  icon: Icon, 
+  iconColor, 
+  title, 
+  steps, 
+  stepColor,
+  isTechnical = false 
+}: StepListProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+        <h4 className="text-sm font-semibold text-gray-200">{title}</h4>
+      </div>
+      <ul className="space-y-2 ml-6">
+        {steps.map((step, index) => (
+          <li key={index} className="text-sm text-gray-400 flex items-start gap-2">
+            <span className={`${stepColor} mt-1`}>•</span>
+            {isTechnical ? (
+              <span dangerouslySetInnerHTML={{ 
+                __html: step.replace(
+                  /`([^`]+)`/g, 
+                  '<code class="bg-gray-800/80 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono border border-gray-700/50">$1</code>'
+                ) 
+              }} />
+            ) : (
+              <span>{step}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+<!-- path: components/doc/data/workflowData.ts -->
+```typescript
+import { ShieldCheck, Database, Route, GitBranch, GitCommit } from 'lucide-react';
+import { WorkflowSection } from '../types/workflowTypes';
+
+export const workflowSections: WorkflowSection[] = [
+  {
+    value: "auth",
+    icon: ShieldCheck,
+    title: "Authentication & Authorization",
+    subtitle: "User registration, login & RBAC",
+    gradient: "from-violet-500 to-purple-600",
+    iconColor: "text-violet-400",
+    bgGlow: "bg-violet-500/10",
+    color: "violet",
+    purpose: "To manage user registration, login, session handling, and role-based access control (RBAC).",
+    workflows: [
+      {
+        title: "Workflow A: New User Registration & Onboarding",
+        userSteps: [
+          "User fills out the form on `/signup` and submits.",
+          "User receives a verification email and clicks the link.",
+          "User is redirected to the app, logged in, and immediately taken to the `/onboarding` page.",
+          "User fills in their first name, last name, and other details, then saves.",
+          "User can now access the main dashboard.",
+        ],
+        uiSteps: [
+          "On submit, user is redirected to `/verify-email`.",
+          "After email verification, the `/onboarding` page is shown, not the dashboard.",
+          "After saving onboarding form, user is redirected to `/dashboard`.",
+        ],
+        techSteps: [
+          "`signUp` calls `supabase.auth.signUp`.",
+          "DB Trigger `on_auth_user_created` inserts into `user_profiles` with a default `first_name` of 'Placeholder'.",
+          "Upon returning to the app after verification, the `Protected` component checks the user's profile.",
+          "The `useUserProfileCheck` hook inside `Protected` finds the 'Placeholder' name.",
+          "The `Protected` component's logic redirects the user to `/onboarding` instead of allowing access to the dashboard.",
+          "The `OnboardingFormEnhanced` component updates the `user_profiles` table, removing the placeholder name.",
+          "On subsequent visits, the `Protected` component sees a complete profile and grants access to the dashboard.",
+        ],
+      },
+      {
+        title: "Workflow B: User Login & Session Management",
+        userSteps: [
+          "User enters credentials on `/login` and clicks 'Sign in'.",
+        ],
+        uiSteps: [
+          "Loading state shown.",
+          "On success, user is redirected to `/dashboard`.",
+          "On failure, an error toast is displayed.",
+        ],
+        techSteps: [
+          "`signIn` function in `useAuth` calls `supabase.auth.signInWithPassword`.",
+          // THIS STEP IS NOW MORE ACCURATE
+          "The hook verifies that the response contains **no error** AND a valid **session object**.",
+          "If verification fails (e.g., invalid credentials), an error toast is shown and the function returns `success: false`.",
+          "If successful, Supabase returns a session with a JWT, which is stored in cookies.",
+          "The `middleware.ts` refreshes the user's auth token on subsequent requests.",
+          "The `useAuthStore` (Zustand) is updated by the `onAuthStateChange` listener, making the user session globally available in the frontend.",
+        ],
+      },
+      {
+        title: "Workflow C: Role Synchronization & RLS",
+        userSteps: ["An admin changes a user's role in the User Management page."],
+        uiSteps: ["The user's permissions are updated for their next session."],
+        techSteps: [
+          "An admin action updates the `role` column in the `public.user_profiles` table.",
+          "A database trigger (`sync_user_role_trigger`) fires on update.",
+          "This trigger updates the `raw_app_meta_data` JSONB column in the corresponding `auth.users` table, setting the new role.",
+          "The user's JWT is now minted with the new role claim, which is used by database Row-Level Security (RLS) policies to grant access.",
+        ],
+      },
+    ],
+  },
+  {
+    value: 'crud',
+    icon: Database,
+    title: 'Standard CRUD Operations',
+    subtitle: 'Users, Nodes, Rings & more',
+    gradient: 'from-blue-500 to-cyan-600',
+    iconColor: 'text-blue-400',
+    bgGlow: 'bg-blue-500/10',
+    color: 'blue',
+    purpose:
+      'To provide a consistent and reusable pattern for managing core data entities across the application.',
+    workflows: [
+      {
+        title: 'Workflow: Viewing & Filtering Data',
+        userSteps: [
+          'User navigates to a data management page like `/dashboard/nodes`.',
+          'User types in the search bar or selects a filter option.',
+        ],
+        uiSteps: [
+          '`PageHeader` shows aggregate stats (total, active, inactive).',
+          '`DataTable` displays the first page of data.',
+          'Table updates in real-time as the user types or selects filters.',
+        ],
+        techSteps: [
+          'The page component uses the `useCrudManager` hook, providing a data-fetching adapter (`useNodesData`).',
+          '`useCrudManager` manages state for pagination, search, and filters.',
+          'The data-fetching hook (`useNodesData`) calls the generic `usePagedData` hook.',
+          '`usePagedData` calls the `get_paged_data` Supabase RPC function, passing filters as a JSONB object.',
+          'The RPC function dynamically builds and executes a secure SQL query against the appropriate view (e.g., `v_nodes_complete`).',
+          'Data is returned to the `DataTable` for rendering.',
+        ],
+      },
+      {
+        title: 'Workflow: Creating or Editing an Entity',
+        userSteps: [
+          "User clicks 'Add New' or the 'Edit' icon on a table row.",
+          "User fills out the form in the modal and clicks 'Save'.",
+        ],
+        uiSteps: [
+          'A modal (`NodeFormModal`) appears with a form for the entity.',
+          'Form fields are validated using Zod schemas (`nodesInsertSchema`).',
+          'On successful save, a toast notification appears and the table refreshes.',
+        ],
+        techSteps: [
+          '`useCrudManager` manages the modal state (`editModal`).',
+          'The form component (`NodeFormModal`) uses `react-hook-form` with `@hookform/resolvers/zod` for validation.',
+          "On submit, `useCrudManager`'s `handleSave` is called.",
+          'This triggers either `useTableInsert` or `useTableUpdate` from `@tanstack/react-query` hooks.',
+          'The hook performs the insert/update operation on the appropriate Supabase table (e.g., `nodes`).',
+          'On mutation success, `react-query` automatically invalidates the relevant query keys, triggering a refetch via `useCrudManager` to update the UI.',
+        ],
+      },
+    ],
+  },
+  {
+    value: 'routes',
+    icon: Route,
+    title: 'OFC & Route Management',
+    subtitle: 'Cable segmentation & fiber splicing',
+    gradient: 'from-teal-500 to-emerald-600',
+    iconColor: 'text-teal-400',
+    bgGlow: 'bg-teal-500/10',
+    color: 'teal',
+    purpose:
+      'An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.',
+    workflows: [
+      {
+        title: 'Workflow A: Visualizing a Route',
+        userSteps: ['User selects an OFC route from the dropdown.'],
+        uiSteps: [
+          'The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).',
+          'A list of `Cable Segments` is displayed below the visualization.',
+        ],
+        techSteps: [
+          "The page component's `useQuery` fetches data from the API route `/api/route/[id]`.",
+          'The API route fetches data from multiple tables: `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
+          'The API returns a consolidated `RouteDetailsPayload` object.',
+        ],
+      },
+      {
+        title: 'Workflow B: Adding a Junction Closure',
+        userSteps: [
+          "User clicks 'Add Junction Closure'.",
+          "User fills in the JC's name and position in the `JcFormModal` and saves.",
+        ],
+        uiSteps: [
+          'The `RouteVisualization` updates to show the new JC on the cable path.',
+          'The `Cable Segments` list is recalculated and re-rendered.',
+        ],
+        techSteps: [
+          'The `JcFormModal` calls the `add_junction_closure` Supabase RPC function.',
+          "This RPC inserts a new record into the `nodes` table (for the JC's physical location) and the `junction_closures` table.",
+          'An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function.',
+          'This function deletes all old segments for that cable and creates new ones based on the new sequence of nodes and JCs, storing them in the `cable_segments` table.',
+          'The frontend refetches the route details, updating the UI.',
+        ],
+      },
+      {
+        title: 'Workflow C: Managing Fiber Splices',
+        userSteps: [
+          'User clicks on an existing JC in the visualization.',
+          "The 'Splice Management' tab becomes active.",
+          'User selects a fiber from one segment and then clicks an available fiber on another segment to create a splice.',
+        ],
+        uiSteps: [
+          'The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.',
+          'UI provides visual cues for selected, available, and used fibers.',
+        ],
+        techSteps: [
+          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC function to fetch the current state of all fibers and splices at the JC node.',
+          "`manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
+          'The frontend query for splicing details is invalidated and refetched, updating the UI.',
+        ],
+      },
+    ],
+  },
+  {
+    value: 'provisioning',
+    icon: GitBranch,
+    title: 'Logical Path & Fiber Provisioning',
+    subtitle: 'End-to-end service provisioning',
+    gradient: 'from-cyan-500 to-blue-600',
+    iconColor: 'text-cyan-400',
+    bgGlow: 'bg-cyan-500/10',
+    color: 'cyan',
+    purpose:
+      'To define an end-to-end logical path over physical cable segments and provision working/protection fibers for a service.',
+    workflows: [
+      {
+        title: 'Workflow A: Building a Logical Path',
+        userSteps: [
+          "User navigates to a System's detail page (`/dashboard/systems/[id]`).",
+          "User clicks 'Initialize Path' to create a logical path record.",
+          "In 'Build Mode', user clicks on nodes in the map to add cable segments to the path.",
+        ],
+        uiSteps: [
+          'The `SystemRingPath` component displays a map of nodes and a list of segments in the path.',
+          'The map highlights nodes in the current path.',
+        ],
+        techSteps: [
+          'Initializing inserts a new record into `logical_fiber_paths`.',
+          'Clicking a node calls the `find_cable_between_nodes` RPC to find the physical `ofc_cables` record.',
+          'A new record is inserted into `logical_path_segments`, linking the `logical_fiber_paths` ID with the `ofc_cables` ID.',
+          'The path is validated in real-time using the `validate_ring_path` RPC.',
+        ],
+      },
+      {
+        title: 'Workflow B: Provisioning Fibers',
+        userSteps: [
+          'Once a valid path is built, the `FiberProvisioning` section appears.',
+          "User selects a 'Working Fiber' and a 'Protection Fiber' from the dropdowns and clicks 'Save Changes'.",
+        ],
+        uiSteps: [
+          'The dropdowns only show fibers that are continuously available across all segments of the logical path.',
+          'After saving, the UI switches to a read-only view showing the provisioned fibers.',
+        ],
+        techSteps: [
+          'The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.',
+          'Saving calls the `provision_ring_path` RPC.',
+          'This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.',
+          'This atomically allocates the fibers to the service.',
+        ],
+      },
+    ],
+  },
+  {
+    value: 'auditing',
+    icon: GitCommit,
+    title: 'Auditing System',
+    subtitle: 'Automatic change tracking & logging',
+    gradient: 'from-orange-500 to-red-600',
+    iconColor: 'text-orange-400',
+    bgGlow: 'bg-orange-500/10',
+    color: 'orange',
+    purpose:
+      'To automatically log all data modifications (INSERT, UPDATE, DELETE) for accountability and history tracking.',
+    workflows: [
+      {
+        title: 'Workflow: Automatic Data Change Logging',
+        userSteps: ["An admin edits and saves an employee's profile."],
+        uiSteps: [
+          'The change is reflected in the UI as usual.',
+          "An admin with permission can view the change log in the 'User Activity' section.",
+        ],
+        techSteps: [
+          'The `UPDATE` operation on the `employees` table completes.',
+          'An `AFTER UPDATE` trigger (`employees_log_trigger`) on the table fires automatically.',
+          'The trigger executes the `log_data_changes()` function.',
+          "This function captures the `OLD` and `NEW` row data, converts them to JSONB, and determines the operation type ('UPDATE').",
+          'It then calls `log_user_activity()`, passing the captured data.',
+          "The `log_user_activity()` function inserts a new record into the `user_activity_logs` table, including the current user's ID (`auth.uid()`) and role (`get_my_role()`).",
+          'The entire process is atomic and happens within the same database transaction as the original update.',
+        ],
+      },
+    ],
+  },
+];
+
+```
+
+<!-- path: components/doc/WorkflowSection.tsx -->
+```typescript
+import { Separator } from "@/components/common/ui/separator";
+import StepList from "@/components/doc/StepList";
+import { WorkflowSectionProps } from "@/components/doc/types/workflowTypes";
+import { User, Monitor, Zap } from "lucide-react";
+
+export default function WorkflowSection({ 
+  workflow, 
+  index, 
+  colors, 
+  isLast 
+}: WorkflowSectionProps) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${colors.badge}`}>
+          Workflow {String.fromCharCode(65 + index)}
+        </div>
+        <h3 className="text-lg font-semibold text-gray-100 flex-1">
+          {workflow.title.replace(/^Workflow [A-Z]: /, '')}
+        </h3>
+      </div>
+
+      <div className="space-y-4 pl-4 border-l-2 border-gray-800/50">
+        {/* User Actions */}
+        <StepList
+          icon={User}
+          iconColor="text-emerald-400"
+          title="User Actions"
+          steps={workflow.userSteps}
+          stepColor="text-emerald-400"
+        />
+
+        {/* UI Response */}
+        <StepList
+          icon={Monitor}
+          iconColor="text-blue-400"
+          title="System Response (UI)"
+          steps={workflow.uiSteps}
+          stepColor="text-blue-400"
+        />
+
+        {/* Technical Flow */}
+        <StepList
+          icon={Zap}
+          iconColor="text-amber-400"
+          title="Technical Flow"
+          steps={workflow.techSteps}
+          stepColor="text-amber-400"
+          isTechnical
+        />
+      </div>
+
+      {!isLast && (
+        <Separator className="bg-gradient-to-r from-transparent via-gray-800 to-transparent my-6" />
+      )}
+    </div>
+  );
+}
+```
+
+<!-- path: components/doc/BackgroundElements.tsx -->
+```typescript
+export default function BackgroundElements() {
+    return (
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+    );
+  }
+```
+
+<!-- path: components/doc/types/workflowTypes.ts -->
+```typescript
+import { LucideIcon } from "lucide-react";
+
+export interface WorkflowSection {
+  value: string;
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  gradient: string;
+  iconColor: string;
+  bgGlow: string;
+  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
+  purpose: string;
+  workflows: Workflow[];
+}
+
+export interface Workflow {
+  title: string;
+  userSteps: string[];
+  uiSteps: string[];
+  techSteps: string[];
+}
+
+export interface WorkflowCardProps {
+  purpose: string;
+  workflows: Workflow[];
+  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
+}
+
+export interface WorkflowSectionProps {
+  workflow: Workflow;
+  index: number;
+  colors: {
+    border: string;
+    glow: string;
+    badge: string;
+    icon: string;
+  };
+  isLast: boolean;
+}
+```
+
+<!-- path: components/doc/WorkflowAccordion.tsx -->
+```typescript
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+  } from "@/components/common/ui/accordion";
+import AccordionTriggerContent from "@/components/doc/AccordionTriggerContent";
+import { WorkflowSection } from "@/components/doc/types/workflowTypes";
+import WorkflowCard from "@/components/doc/WorkflowCard";
+
+  
+  interface WorkflowAccordionProps {
+    sections: WorkflowSection[];
+    open: string | undefined;
+    onValueChange: (value: string | undefined) => void;
+  }
+  
+  export default function WorkflowAccordion({ 
+    sections, 
+    open, 
+    onValueChange 
+  }: WorkflowAccordionProps) {
+    return (
+      <Accordion
+        type="single"
+        collapsible
+        value={open}
+        onValueChange={onValueChange}
+        className="space-y-4"
+      >
+        {sections.map((section) => (
+          <AccordionItem key={section.value} value={section.value} className="border-none">
+            <AccordionTrigger className="hover:no-underline group">
+              <AccordionTriggerContent 
+                section={section}
+                isOpen={open === section.value}
+              />
+            </AccordionTrigger>
+            <AccordionContent>
+              <WorkflowCard
+                purpose={section.purpose}
+                workflows={section.workflows}
+                color={section.color}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    );
+  }
 ```
 
 <!-- path: components/dashboard/MenuButton.tsx -->
@@ -28817,6 +29359,213 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
+
+
+// // Example usage component
+// const ExampleUsage = () => {
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const [selectedId, setSelectedId] = useState(null);
+//   const [viewMode, setViewMode] = useState('list');
+//   const [showFilters, setShowFilters] = useState(false);
+//   const [filters, setFilters] = useState({});
+
+//   // Mock data
+//   const sampleData = [
+//     { id: '1', name: 'Software Engineer', description: 'Develops applications', department: 'Engineering', status: 'active' },
+//     { id: '2', name: 'Product Manager', description: 'Manages product roadmap', department: 'Product', status: 'active' },
+//     { id: '3', name: 'UX Designer', description: 'Designs user experiences', department: 'Design', status: 'inactive' },
+//     { id: '4', name: 'Data Analyst', description: 'Analyzes business data', department: 'Analytics', status: 'active' },
+//   ];
+
+//   const filteredData = sampleData.filter((item) => {
+//     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+//     const matchesStatus = !filters.status || item.status === filters.status;
+//     const matchesDepartment = !filters.department || item.department === filters.department;
+//     return matchesSearch && matchesStatus && matchesDepartment;
+//   });
+
+//   const handleFilterChange = (newFilters) => {
+//     setFilters({ ...filters, ...newFilters });
+//   };
+
+//   const handleClearFilters = () => {
+//     setFilters({});
+//   };
+
+//   const handleItemSelect = (item) => {
+//     setSelectedId(item.id);
+//   };
+
+//   const handleCreateNew = () => {
+//     alert('Create new position');
+//   };
+
+//   const handleSearchChange = (value) => {
+//     setSearchTerm(value);
+//   };
+
+//   const handleToggleFilters = () => {
+//     setShowFilters(!showFilters);
+//   };
+
+//   const handleViewModeChange = (mode) => {
+//     setViewMode(mode);
+//   };
+
+//   const renderListItem = (item, isSelected, onSelect) => (
+//     <div
+//       key={item.id}
+//       onClick={onSelect}
+//       className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
+//         isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600' : ''
+//       }`}
+//     >
+//       <div className="flex justify-between items-start">
+//         <div>
+//           <h3 className="font-medium text-gray-900 dark:text-white">
+//             {item.name}
+//           </h3>
+//           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+//             {item.description}
+//           </p>
+//         </div>
+//         <div className="flex flex-col items-end space-y-1">
+//           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+//             {item.department}
+//           </span>
+//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+//             item.status === 'active' 
+//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+//           }`}>
+//             {item.status}
+//           </span>
+//         </div>
+//       </div>
+//     </div>
+//   );
+
+//   const renderFiltersComponent = (currentFilters, onFilterChange, onClearFilters) => (
+//     <div className="pt-3 space-y-3">
+//       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+//         <div>
+//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//             Status
+//           </label>
+//           <select
+//             value={currentFilters.status || ''}
+//             onChange={(e) => onFilterChange({ status: e.target.value || undefined })}
+//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+//           >
+//             <option value="">All Status</option>
+//             <option value="active">Active</option>
+//             <option value="inactive">Inactive</option>
+//           </select>
+//         </div>
+//         <div>
+//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//             Department
+//           </label>
+//           <select
+//             value={currentFilters.department || ''}
+//             onChange={(e) => onFilterChange({ department: e.target.value || undefined })}
+//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+//           >
+//             <option value="">All Departments</option>
+//             <option value="Engineering">Engineering</option>
+//             <option value="Product">Product</option>
+//             <option value="Design">Design</option>
+//             <option value="Analytics">Analytics</option>
+//           </select>
+//         </div>
+//       </div>
+//       <div className="flex justify-end">
+//         <button
+//           onClick={onClearFilters}
+//           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+//         >
+//           Clear Filters
+//         </button>
+//       </div>
+//     </div>
+//   );
+
+//   const renderDetailsPanelComponent = (item) => (
+//     <div className="p-6">
+//       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+//         {item.name}
+//       </h3>
+//       <div className="space-y-4">
+//         <div>
+//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+//             Description
+//           </label>
+//           <p className="text-gray-900 dark:text-white mt-1">
+//             {item.description}
+//           </p>
+//         </div>
+//         <div>
+//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+//             Department
+//           </label>
+//           <p className="text-gray-900 dark:text-white mt-1">
+//             {item.department}
+//           </p>
+//         </div>
+//         <div>
+//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+//             Status
+//           </label>
+//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
+//             item.status === 'active' 
+//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+//           }`}>
+//             {item.status}
+//           </span>
+//         </div>
+//       </div>
+//       <div className="mt-6 flex space-x-3">
+//         <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+//           Edit
+//         </button>
+//         <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+//           Delete
+//         </button>
+//       </div>
+//     </div>
+//   );
+
+//   return (
+//     <div className="h-screen bg-gray-50 dark:bg-gray-900">
+//       <DataListView
+//         data={filteredData}
+//         searchTerm={searchTerm}
+//         onSearchChange={handleSearchChange}
+//         searchPlaceholder="Search positions..."
+//         showFilters={showFilters}
+//         onToggleFilters={handleToggleFilters}
+//         filters={filters}
+//         onFilterChange={handleFilterChange}
+//         onClearFilters={handleClearFilters}
+//         selectedItemId={selectedId}
+//         onItemSelect={handleItemSelect}
+//         viewMode={viewMode}
+//         onViewModeChange={handleViewModeChange}
+//         detailsTitle="Position Details"
+//         emptyStateTitle="No positions found"
+//         emptyStateDescription="Try adjusting your search criteria."
+//         createButtonText="Add Position"
+//         onCreateNew={handleCreateNew}
+//         renderListItem={renderListItem}
+//         renderFilters={renderFiltersComponent}
+//         renderDetailsPanel={renderDetailsPanelComponent}
+//       />
+//     </div>
+//   );
+// };
+
+// export default ExampleUsage;
 ```
 
 <!-- path: components/common/form/IPAddressInput.tsx -->
@@ -32154,6 +32903,40 @@ export const Switch: React.FC<SwitchProps> = ({
   );
 };
 
+// // Basic usage
+// <Switch checked={isActive} onChange={setIsActive} />
+
+// // With label on left
+// <Switch 
+//   label="Dark Mode" 
+//   labelPosition="left" 
+//   checked={darkMode} 
+//   onChange={setDarkMode} 
+// />
+
+// // With color and status text
+// <Switch
+//   color="success"
+//   showStatusText
+//   checked={isEnabled}
+//   onChange={setIsEnabled}
+// />
+
+// // With icons and custom size
+// <Switch
+//   size="lg"
+//   showIcons
+//   checked={notifications}
+//   onChange={setNotifications}
+// />
+
+// // Disabled switch
+// <Switch
+//   disabled
+//   label="Read-only"
+//   checked={false}
+// />
+
 ```
 
 <!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
@@ -32840,6 +33623,22 @@ export const Label: React.FC<LabelProps> = ({
   );
 };
 
+
+// // Usage
+// // Basic usage
+// <Label htmlFor="email">Email Address</Label>
+
+// // With required field
+// <Label htmlFor="password" required>Password</Label>
+
+// // With tooltip
+// <Label htmlFor="api-key" tooltip="Your unique API identifier">API Key</Label>
+
+// // Custom size and weight
+// <Label htmlFor="name" size="lg" weight="bold">Full Name</Label>
+
+// // Disabled state
+// <Label htmlFor="readonly" disabled>Read-only Field</Label>
 ```
 
 <!-- path: components/common/ui/Button/Button.tsx -->
@@ -44880,15 +45679,28 @@ export type Database = {
       }
       v_employee_designations: {
         Row: {
-          active_count: number | null
           created_at: string | null
           id: string | null
-          inactive_count: number | null
           name: string | null
           parent_id: string | null
           status: boolean | null
-          total_count: number | null
           updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          parent_id?: string | null
+          status?: boolean | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -44909,7 +45721,6 @@ export type Database = {
       }
       v_employees: {
         Row: {
-          active_count: number | null
           created_at: string | null
           employee_addr: string | null
           employee_contact: string | null
@@ -44921,11 +45732,9 @@ export type Database = {
           employee_name: string | null
           employee_pers_no: string | null
           id: string | null
-          inactive_count: number | null
           maintenance_terminal_id: string | null
           remark: string | null
           status: boolean | null
-          total_count: number | null
           updated_at: string | null
         }
         Relationships: [
@@ -45059,25 +45868,45 @@ export type Database = {
       }
       v_lookup_types: {
         Row: {
-          active_count: number | null
           category: string | null
           code: string | null
           created_at: string | null
           description: string | null
           id: string | null
-          inactive_count: number | null
           is_system_default: boolean | null
           name: string | null
           sort_order: number | null
           status: boolean | null
-          total_count: number | null
           updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_system_default?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+          status?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_system_default?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+          status?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       v_maintenance_areas: {
         Row: {
-          active_count: number | null
           address: string | null
           area_type_id: string | null
           code: string | null
@@ -45086,7 +45915,6 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string | null
-          inactive_count: number | null
           latitude: number | null
           longitude: number | null
           maintenance_area_type_code: string | null
@@ -45094,7 +45922,6 @@ export type Database = {
           name: string | null
           parent_id: string | null
           status: boolean | null
-          total_count: number | null
           updated_at: string | null
         }
         Relationships: [
@@ -45130,10 +45957,8 @@ export type Database = {
       }
       v_nodes_complete: {
         Row: {
-          active_count: number | null
           created_at: string | null
           id: string | null
-          inactive_count: number | null
           latitude: number | null
           longitude: number | null
           maintenance_area_name: string | null
@@ -45144,7 +45969,6 @@ export type Database = {
           node_type_name: string | null
           remark: string | null
           status: boolean | null
-          total_count: number | null
           updated_at: string | null
         }
         Relationships: [
@@ -45180,7 +46004,6 @@ export type Database = {
       }
       v_ofc_cables_complete: {
         Row: {
-          active_count: number | null
           asset_no: string | null
           capacity: number | null
           commissioned_on: string | null
@@ -45190,7 +46013,6 @@ export type Database = {
           en_name: string | null
           en_node_type_name: string | null
           id: string | null
-          inactive_count: number | null
           maintenance_area_code: string | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null
@@ -45206,7 +46028,6 @@ export type Database = {
           sn_name: string | null
           sn_node_type_name: string | null
           status: boolean | null
-          total_count: number | null
           transnet_id: string | null
           transnet_rkm: number | null
           updated_at: string | null
@@ -45300,7 +46121,6 @@ export type Database = {
       }
       v_ofc_connections_complete: {
         Row: {
-          active_count: number | null
           connection_category: string | null
           connection_type: string | null
           created_at: string | null
@@ -45313,7 +46133,6 @@ export type Database = {
           fiber_no_sn: number | null
           fiber_role: string | null
           id: string | null
-          inactive_count: number | null
           logical_path_id: string | null
           maintenance_area_name: string | null
           ofc_id: string | null
@@ -45332,7 +46151,6 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           system_name: string | null
-          total_count: number | null
           updated_at: string | null
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
@@ -45477,11 +46295,9 @@ export type Database = {
       }
       v_rings: {
         Row: {
-          active_count: number | null
           created_at: string | null
           description: string | null
           id: string | null
-          inactive_count: number | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null
           name: string | null
@@ -45489,7 +46305,6 @@ export type Database = {
           ring_type_id: string | null
           ring_type_name: string | null
           status: boolean | null
-          total_count: number | null
           total_nodes: number | null
           updated_at: string | null
         }
@@ -45526,7 +46341,6 @@ export type Database = {
       }
       v_system_connections_complete: {
         Row: {
-          active_count: number | null
           bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
@@ -45541,7 +46355,6 @@ export type Database = {
           fiber_in: number | null
           fiber_out: number | null
           id: string | null
-          inactive_count: number | null
           media_type_name: string | null
           remark: string | null
           sdh_a_customer: string | null
@@ -45562,7 +46375,6 @@ export type Database = {
           system_id: string | null
           system_name: string | null
           system_type_name: string | null
-          total_count: number | null
           updated_at: string | null
           vlan: string | null
           vmux_c_code: string | null
@@ -45698,11 +46510,9 @@ export type Database = {
       }
       v_systems_complete: {
         Row: {
-          active_count: number | null
           commissioned_on: string | null
           created_at: string | null
           id: string | null
-          inactive_count: number | null
           ip_address: unknown | null
           latitude: number | null
           longitude: number | null
@@ -45723,7 +46533,6 @@ export type Database = {
           system_type_code: string | null
           system_type_id: string | null
           system_type_name: string | null
-          total_count: number | null
           updated_at: string | null
           vmux_vm_id: string | null
         }
@@ -48109,19 +48918,15 @@ export type V_cable_utilizationRow = {
 };
 
 export type V_employee_designationsRow = {
-    active_count: number | null;
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     name: string | null;
     parent_id: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_employeesRow = {
-    active_count: number | null;
     created_at: string | null;
     employee_addr: string | null;
     employee_contact: string | null;
@@ -48133,11 +48938,9 @@ export type V_employeesRow = {
     employee_name: string | null;
     employee_pers_no: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_terminal_id: string | null;
     remark: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
@@ -48164,23 +48967,19 @@ export type V_junction_closures_completeRow = {
 };
 
 export type V_lookup_typesRow = {
-    active_count: number | null;
     category: string | null;
     code: string | null;
     created_at: string | null;
     description: string | null;
     id: string | null;
-    inactive_count: number | null;
     is_system_default: boolean | null;
     name: string | null;
     sort_order: number | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_maintenance_areasRow = {
-    active_count: number | null;
     address: string | null;
     area_type_id: string | null;
     code: string | null;
@@ -48189,7 +48988,6 @@ export type V_maintenance_areasRow = {
     created_at: string | null;
     email: string | null;
     id: string | null;
-    inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_area_type_code: string | null;
@@ -48197,15 +48995,12 @@ export type V_maintenance_areasRow = {
     name: string | null;
     parent_id: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_nodes_completeRow = {
-    active_count: number | null;
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_area_name: string | null;
@@ -48216,12 +49011,10 @@ export type V_nodes_completeRow = {
     node_type_name: string | null;
     remark: string | null;
     status: boolean | null;
-    total_count: number | null;
     updated_at: string | null;
 };
 
 export type V_ofc_cables_completeRow = {
-    active_count: number | null;
     asset_no: string | null;
     capacity: number | null;
     commissioned_on: string | null;
@@ -48231,7 +49024,6 @@ export type V_ofc_cables_completeRow = {
     en_name: string | null;
     en_node_type_name: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_area_code: string | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
@@ -48247,14 +49039,12 @@ export type V_ofc_cables_completeRow = {
     sn_name: string | null;
     sn_node_type_name: string | null;
     status: boolean | null;
-    total_count: number | null;
     transnet_id: string | null;
     transnet_rkm: number | null;
     updated_at: string | null;
 };
 
 export type V_ofc_connections_completeRow = {
-    active_count: number | null;
     connection_category: string | null;
     connection_type: string | null;
     created_at: string | null;
@@ -48267,7 +49057,6 @@ export type V_ofc_connections_completeRow = {
     fiber_no_sn: number | null;
     fiber_role: string | null;
     id: string | null;
-    inactive_count: number | null;
     logical_path_id: string | null;
     maintenance_area_name: string | null;
     ofc_id: string | null;
@@ -48286,7 +49075,6 @@ export type V_ofc_connections_completeRow = {
     status: boolean | null;
     system_id: string | null;
     system_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
@@ -48307,11 +49095,9 @@ export type V_ring_nodesRow = {
 };
 
 export type V_ringsRow = {
-    active_count: number | null;
     created_at: string | null;
     description: string | null;
     id: string | null;
-    inactive_count: number | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
@@ -48319,13 +49105,11 @@ export type V_ringsRow = {
     ring_type_id: string | null;
     ring_type_name: string | null;
     status: boolean | null;
-    total_count: number | null;
     total_nodes: number | null;
     updated_at: string | null;
 };
 
 export type V_system_connections_completeRow = {
-    active_count: number | null;
     bandwidth_allocated_mbps: number | null;
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
@@ -48340,7 +49124,6 @@ export type V_system_connections_completeRow = {
     fiber_in: number | null;
     fiber_out: number | null;
     id: string | null;
-    inactive_count: number | null;
     media_type_name: string | null;
     remark: string | null;
     sdh_a_customer: string | null;
@@ -48361,7 +49144,6 @@ export type V_system_connections_completeRow = {
     system_id: string | null;
     system_name: string | null;
     system_type_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     vlan: string | null;
     vmux_c_code: string | null;
@@ -48386,11 +49168,9 @@ export type V_system_ring_paths_detailedRow = {
 };
 
 export type V_systems_completeRow = {
-    active_count: number | null;
     commissioned_on: string | null;
     created_at: string | null;
     id: string | null;
-    inactive_count: number | null;
     ip_address: unknown | null;
     latitude: number | null;
     longitude: number | null;
@@ -48411,7 +49191,6 @@ export type V_systems_completeRow = {
     system_type_code: string | null;
     system_type_id: string | null;
     system_type_name: string | null;
-    total_count: number | null;
     updated_at: string | null;
     vmux_vm_id: string | null;
 };
@@ -49013,17 +49792,19 @@ export default function ForgotPasswordPage() {
 
 <!-- path: app/(auth)/signup/page.tsx -->
 ```typescript
+// app/(auth)/signup/page.tsx
+
 'use client';
 
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
-import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { loginSchema } from '@/app/(auth)/login/page';
+import { toast } from 'sonner';
 
 // CORRECTED: Extend the schema from the login page, ensuring consistency.
 const signupSchema = loginSchema
@@ -49080,7 +49861,12 @@ export default function SignUpPage() {
   
     if (success) {
       router.push('/verify-email');
-    } 
+    }
+    
+    if(error){
+      toast.error(error.message);
+    }
+    
   };
 
   return (
@@ -49298,6 +50084,7 @@ export async function POST(req: NextRequest) {
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
+import { createAdmin } from '@/utils/supabase/admin';
 
 const pgHost = process.env.PGHOST;
 const pgUser = process.env.PGUSER;
@@ -49309,6 +50096,7 @@ const pool = new Pool({
   connectionString: `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`,
 });
 
+// This function handles creating users
 export async function POST(req: Request) {
   try {
     const userData = await req.json();
@@ -49362,6 +50150,45 @@ export async function POST(req: Request) {
     console.error('Error inserting user:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// This function handles deleting users
+export async function DELETE(req: Request) {
+  try {
+    const { userIds } = await req.json();
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
+    }
+
+    const supabaseAdmin = createAdmin();
+    const deletionErrors: { id: string; error: string }[] = [];
+
+    for (const id of userIds) {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (error) {
+        console.error(`Failed to delete user ${id}:`, error.message);
+        deletionErrors.push({ id, error: error.message });
+      }
+    }
+
+    if (deletionErrors.length > 0) {
+      return NextResponse.json({
+        message: `Completed with ${deletionErrors.length} errors.`,
+        errors: deletionErrors,
+      }, { status: 500 });
+    }
+    
+    // The ON DELETE CASCADE on the user_profiles table will handle the rest automatically.
+    return NextResponse.json({ message: 'Users deleted successfully' });
+
+  } catch (err: unknown) {
+    console.error('Error processing delete request:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'An unknown error occurred' },
       { status: 500 }
     );
   }
@@ -49862,6 +50689,102 @@ export default function Home() {
 
 <!-- path: app/auth/callback/route.ts -->
 ```typescript
+// // app/auth/callback/route.ts
+// import { createClient } from '@/utils/supabase/server'
+// import { NextResponse } from 'next/server'
+
+// export async function GET(request: Request) {
+//   const { searchParams, origin } = new URL(request.url)
+//   const code = searchParams.get('code')
+//   const next = searchParams.get('next') ?? '/dashboard'
+//   const error = searchParams.get('error')
+//   const errorDescription = searchParams.get('error_description')
+
+//   // console.log('Auth callback received:', { code: !!code, error, errorDescription })
+
+//   // Handle OAuth errors
+//   if (error) {
+//     console.error('OAuth error:', error, errorDescription)
+//     const errorParams = new URLSearchParams({
+//       error: error,
+//       message: errorDescription || 'Authentication failed'
+//     })
+//     return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
+//   }
+
+//   if (code) {
+//     const supabase = await createClient()
+    
+//     try {
+//       // console.log('Exchanging code for session...')
+//       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      
+//       if (exchangeError) {
+//         console.error('Session exchange error:', exchangeError)
+//         const errorParams = new URLSearchParams({
+//           error: 'session_exchange_failed',
+//           message: exchangeError.message
+//         })
+//         return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
+//       }
+
+//       if (data.user) {
+//         // console.log('User authenticated:', data.user.id)
+        
+//         // Check if user has a profile
+//         // console.log('Checking for existing profile...')
+//         const { data: profile, error: profileError } = await supabase
+//           .from('user_profiles')
+//           .select('id')
+//           .eq('id', data.user.id)
+//           .single()
+
+//         // console.log('Profile check result:', { profile: !!profile, error: profileError?.code })
+
+//         // If no profile exists, redirect to onboarding
+//         // check non blocking way after 2 seconds
+//         setTimeout(() => {
+//           if (profileError && profileError.code === 'PGRST116') {
+//             // console.log('No profile found, redirecting to onboarding')
+//             return NextResponse.redirect(`${origin}/onboarding`)
+//           }
+//         }, 2000)
+        
+
+//         if (profileError && profileError.code !== 'PGRST116') {
+//           console.error('Profile check error:', profileError)
+//           // Continue anyway, let the client handle it
+//         }
+
+//         // If profile exists, redirect to intended destination
+//         if (profile) {
+//           // console.log('Profile exists, redirecting to:', next)
+//           return NextResponse.redirect(`${origin}${next}`)
+//         }
+
+//         // Fallback: redirect to dashboard if no profile check conclusive
+//         // console.log('Fallback redirect to dashboard')
+//         return NextResponse.redirect(`${origin}/dashboard`)
+//       }
+      
+//     } catch (error) {
+//       console.error('Unexpected error in auth callback:', error)
+//       const errorParams = new URLSearchParams({
+//         error: 'unexpected_error',
+//         message: 'An unexpected error occurred during authentication'
+//       })
+//       return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
+//     }
+//   }
+
+//   // No code parameter - invalid callback
+//   console.error('No code parameter received')
+//   const errorParams = new URLSearchParams({
+//     error: 'invalid_callback',
+//     message: 'Invalid authentication callback'
+//   })
+//   return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
+// }
 
 // app/auth/callback/route.ts
 import { createClient } from '@/utils/supabase/server';
@@ -51784,384 +52707,33 @@ export default function DesignationManagerPage() {
 "use client";
 
 import { useState } from "react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/common/ui/accordion";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/common/ui/card/card";
-import { ScrollArea } from "@/components/common/ui/scroll-area";
 import { Separator } from "@/components/common/ui/separator";
-import {
-  Workflow,
-  ShieldCheck,
-  Users,
-  Database,
-  Network,
-  FileText,
-  Cable,
-  Route,
-} from "lucide-react";
+import WorkflowAccordion from "@/components/doc/WorkflowAccordion";
+import HeaderSection from "@/components/doc/HeaderSection";
+import BackgroundElements from "@/components/doc/BackgroundElements";
+import { workflowSections } from "@/components/doc/data/workflowData";
 
 export default function Workflows() {
   const [open, setOpen] = useState<string | undefined>("auth");
 
   return (
-    <div className="min-h-screen w-full bg-gray-950 text-gray-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-center text-white">
-          Step-by-step User & Technical Workflows
-        </h1>
-        <Separator className="bg-gray-700" />
+    <div className="min-h-screen w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100 p-4 md:p-8">
+      <BackgroundElements />
+      
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
+        <HeaderSection />
+        
+        <Separator className="bg-gradient-to-r from-transparent via-gray-700 to-transparent h-px" />
 
-        <Accordion
-          type="single"
-          collapsible
-          value={open}
+        <WorkflowAccordion 
+          sections={workflowSections}
+          open={open}
           onValueChange={setOpen}
-          className="space-y-4"
-        >
-          {/* 1. Authentication */}
-          <AccordionItem value="auth">
-            <AccordionTrigger className="text-xl font-semibold">
-              <ShieldCheck className="w-5 h-5 mr-2 text-indigo-400" />
-              Authentication (`/login`, `/signup`, etc.)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="To manage user access, registration, and account recovery securely."
-                workflows={[
-                  {
-                    title: "Workflow A: User Login",
-                    userSteps: [
-                      "User enters email/password on `/login` and clicks Sign in.",
-                    ],
-                    uiSteps: [
-                      "Loading indicator shows, redirect on success.",
-                      "Error toast shown on failure.",
-                    ],
-                    techSteps: [
-                      "`LoginPage.handleSubmit` calls `signIn`.",
-                      "`useAuth` sets Zustand `authState`.",
-                      "Supabase `signInWithPassword` sets cookie.",
-                      "`onAuthStateChange` updates Zustand user/session.",
-                      "Success → dashboard, Fail → toast.",
-                    ],
-                  },
-                  {
-                    title: "Workflow B: User Registration (Sign Up)",
-                    userSteps: [
-                      "User fills signup form → clicks Create account.",
-                    ],
-                    uiSteps: [
-                      "Loading shown → redirect to `/verify-email` + success toast.",
-                    ],
-                    techSteps: [
-                      "`SignUpPage.onSubmit` → calls `signUp`.",
-                      "Supabase `signUp` → unconfirmed user + email sent.",
-                      "DB Trigger `on_auth_user_created` → inserts into `user_profiles`.",
-                      "Router navigates to confirmation.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 2. User Management */}
-          <AccordionItem value="users">
-            <AccordionTrigger className="text-xl font-semibold">
-              <Users className="w-5 h-5 mr-2 text-green-400" />
-              User Management (`/dashboard/users`)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Allows administrators to view, manage, and modify user profiles."
-                workflows={[
-                  {
-                    title: "Workflow A: Viewing & Filtering Users",
-                    userSteps: [
-                      "Admin navigates to `/dashboard/users`.",
-                    ],
-                    uiSteps: [
-                      "`DataTable` shows paginated users.",
-                    ],
-                    techSteps: [
-                      "`AdminUsersPage` → `useCrudManager`.",
-                      "`useUsersData` → RPC `admin_get_all_users_extended`.",
-                      "View returns user data with counts.",
-                      "`DataTable` renders.",
-                    ],
-                  },
-                  {
-                    title: "Workflow B: Creating a New User",
-                    userSteps: ["Admin clicks Add New, fills modal."],
-                    uiSteps: ["Modal opens, form submitted → list updates."],
-                    techSteps: [
-                      "`handleCreateUser` → `useAdminCreateUser` → `/api/admin/users`.",
-                      "Uses Supabase Admin Client with SERVICE_ROLE_KEY.",
-                      "Inserts into `auth.users` and fires trigger to create `user_profiles`.",
-                      "Success → refetch, UI updates.",
-                    ],
-                  },
-                  {
-                    title: "Workflow C: Bulk Updating Roles",
-                    userSteps: ["Admin selects users, sets new role."],
-                    uiSteps: ["Loading → roles updated in table."],
-                    techSteps: [
-                      "`bulkUpdateRole` mutation → RPC `admin_bulk_update_role`.",
-                      "Updates `user_profiles`.",
-                      "Trigger `sync_user_role_trigger` syncs `auth.users` role claims.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 3. Base Structure */}
-          <AccordionItem value="base">
-            <AccordionTrigger className="text-xl font-semibold">
-              <Database className="w-5 h-5 mr-2 text-blue-400" />
-              Base Structure (Nodes, Rings, Areas, Designations)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Manage foundational master data of the network with CRUD flows."
-                workflows={[
-                  {
-                    title: "Example Workflow: Nodes Page (`/dashboard/nodes`)",
-                    userSteps: [
-                      "User navigates to `/dashboard/nodes`.",
-                      "Clicks Add New or Delete.",
-                    ],
-                    uiSteps: [
-                      "Page shows stats header + DataTable.",
-                      "Modal opens for add/edit.",
-                      "ConfirmModal for delete.",
-                    ],
-                    techSteps: [
-                      "`NodesPage` → `useCrudManager` → `usePagedNodesComplete` RPC.",
-                      "`NodeFormModal` uses Zod validation + mutations.",
-                      "Insert/Update/Delete on `nodes` table in Supabase.",
-                      "Success → refetch and refresh UI.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 4. System Details */}
-          <AccordionItem value="systems">
-            <AccordionTrigger className="text-xl font-semibold">
-              <Network className="w-5 h-5 mr-2 text-purple-400" />
-              System Details (`/dashboard/systems/[id]`)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Detailed dashboard for a system and interface for building logical ring paths."
-                workflows={[
-                  {
-                    title: "Workflow: Building Logical Ring Path",
-                    userSteps: [
-                      "User opens system detail page.",
-                      "Clicks Initialize Path, Add Segment, Assign Fibers.",
-                    ],
-                    uiSteps: [
-                      "Shows Initialize Path button if empty.",
-                      "Path builder UI loads.",
-                      "FiberProvisioning dropdowns show available fibers.",
-                    ],
-                    techSteps: [
-                      "`SystemRingPath` queries `logical_fiber_paths`.",
-                      "Insert new record on init.",
-                      "Segments added via `logical_path_segments` table.",
-                      "`get_continuous_available_fibers` RPC → fiber list.",
-                      "`provision_ring_path` RPC → creates working & protection paths.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 5. Diagrams */}
-          <AccordionItem value="diagrams">
-            <AccordionTrigger className="text-xl font-semibold">
-              <FileText className="w-5 h-5 mr-2 text-yellow-400" />
-              Diagrams / File Management (`/dashboard/diagrams`)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Provide document management for network diagrams and files."
-                workflows={[
-                  {
-                    title: "Workflow: Uploading a File",
-                    userSteps: [
-                      "User selects folder, drags file, clicks Upload.",
-                    ],
-                    uiSteps: [
-                      "File shows with progress bar in Uppy UI.",
-                    ],
-                    techSteps: [
-                      "`useFolders` manages folder state.",
-                      "`useUppyUploader` preprocesses images before upload.",
-                      "API `/api/upload` streams file to storage.",
-                      "Success → insert into `files` table with metadata.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 6. OFC Pages */}
-          <AccordionItem value="ofc">
-            <AccordionTrigger className="text-xl font-semibold">
-              <Cable className="w-5 h-5 mr-2 text-red-400" />
-              OFC Cables (`/dashboard/ofc`)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Inventory of all Optical Fiber Cables in the network."
-                workflows={[
-                  {
-                    title: "Workflow A: Viewing & Navigating",
-                    userSteps: ["User opens `/dashboard/ofc`."],
-                    uiSteps: ["Table shows paginated OFC cables."],
-                    techSteps: [
-                      "`OfcPage` → `useOfcData` → `get_paged_ofc_cables_complete` RPC.",
-                    ],
-                  },
-                  {
-                    title: "Workflow B: Searching & Filtering",
-                    userSteps: ["User types search or filter active cables."],
-                    uiSteps: ["Table updates with filtered results."],
-                    techSteps: [
-                      "Filters → `serverFilters` JSON → RPC applies WHERE filters.",
-                    ],
-                  },
-                  {
-                    title: "Workflow C: Creating a New Cable",
-                    userSteps: ["User clicks Add New, fills form."],
-                    uiSteps: ["`OfcForm` modal appears, auto-fills capacity."],
-                    techSteps: [
-                      "Form → `useRouteGeneration` auto-creates unique route_name.",
-                      "Insert into `ofc_cables` table, trigger refetch.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* 7. Route Manager */}
-          <AccordionItem value="routes">
-            <AccordionTrigger className="text-xl font-semibold">
-              <Route className="w-5 h-5 mr-2 text-teal-400" />
-              Route Manager (`/dashboard/route-manager`)
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose="Advanced tool to evolve cable routes with JCs and splicing."
-                workflows={[
-                  {
-                    title: "Workflow A: Adding a Junction Closure",
-                    userSteps: ["User selects route, clicks Add JC."],
-                    uiSteps: ["RouteVisualizer updates with JC position."],
-                    techSteps: [
-                      "`add_junction_closure` RPC inserts JC.",
-                      "Trigger → `create_cable_segments_on_jc_add` recreates segments.",
-                    ],
-                  },
-                  {
-                    title: "Workflow B: Managing Splices in JC",
-                    userSteps: ["User clicks JC, opens Fiber Splice Manager."],
-                    uiSteps: ["UI shows splice matrix, dropdown for fibers."],
-                    techSteps: [
-                      "`get_jc_splicing_details` RPC fetches fibers.",
-                      "`auto_splice_straight` RPC bulk creates splices.",
-                      "`manage_splice` RPC inserts/updates specific splice.",
-                    ],
-                  },
-                ]}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        />
       </div>
     </div>
   );
 }
-
-/* Helper Component to render workflows */
-function WorkflowCard({
-  purpose,
-  workflows,
-}: {
-  purpose: string;
-  workflows: {
-    title: string;
-    userSteps: string[];
-    uiSteps: string[];
-    techSteps: string[];
-  }[];
-}) {
-  return (
-    <Card className="bg-gray-900 border-gray-800">
-      <CardHeader>
-        <CardTitle className="text-gray-200">Purpose</CardTitle>
-      </CardHeader>
-      <CardContent className="text-gray-400">{purpose}</CardContent>
-
-      <ScrollArea className="h-[500px] mt-4 rounded-lg border border-gray-800 bg-gray-950">
-        <div className="p-4 space-y-6">
-          {workflows.map((wf, i) => (
-            <div key={i} className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-                <Workflow className="w-4 h-4 text-indigo-400" /> {wf.title}
-              </h3>
-              <ul className="list-decimal ml-6 space-y-2 text-gray-300">
-                <li>
-                  <strong>User Action:</strong>
-                  <ul className="list-disc ml-6 text-sm text-gray-400 space-y-1">
-                    {wf.userSteps.map((s, j) => (
-                      <li key={j}>{s}</li>
-                    ))}
-                  </ul>
-                </li>
-                <li>
-                  <strong>System Response (UI):</strong>
-                  <ul className="list-disc ml-6 text-sm text-gray-400 space-y-1">
-                    {wf.uiSteps.map((s, j) => (
-                      <li key={j}>{s}</li>
-                    ))}
-                  </ul>
-                </li>
-                <li>
-                  <strong>Technical Flow:</strong>
-                  <ul className="list-disc ml-6 text-sm text-gray-400 space-y-1">
-                    {wf.techSteps.map((s, j) => (
-                      <li key={j}>{s}</li>
-                    ))}
-                  </ul>
-                </li>
-              </ul>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-    </Card>
-  );
-}
-
 ```
 
 <!-- path: app/dashboard/layout.tsx -->
@@ -53936,9 +54508,10 @@ export default function OnboardingFormEnhanced() {
 
   useEffect(() => {
     if (profile) {
+      // If a profile exists (even a placeholder), reset the form with its data.
       reset({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
+        first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
+        last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
         avatar_url: profile.avatar_url,
         date_of_birth: profile.date_of_birth,
         designation: profile.designation,
@@ -53946,8 +54519,21 @@ export default function OnboardingFormEnhanced() {
         address: toObject(profile.address),
         preferences: toObject(profile.preferences),
       });
+    } else if (!isProfileLoading) {
+      // If loading is finished and there is still no profile,
+      // reset to a blank form. This prevents getting stuck.
+      reset({
+        first_name: "",
+        last_name: "",
+        avatar_url: null,
+        date_of_birth: null,
+        designation: null,
+        phone_number: null,
+        address: {},
+        preferences: {},
+      });
     }
-  }, [profile, reset]);
+  }, [profile, isProfileLoading, reset]);
 
   const onSubmit = (data: OnboardingFormData) => {
     if (!isDirty || !user?.id) {
