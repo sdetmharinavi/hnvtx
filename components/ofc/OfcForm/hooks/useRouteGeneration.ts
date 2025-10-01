@@ -1,24 +1,29 @@
 // components/ofc/OfcForm/hooks/useRouteGeneration.ts
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { UseFormSetValue, FieldValues, Path, PathValue } from 'react-hook-form';
 import { useExistingRoutesQuery } from './useExistingRoutesQuery';
 
-interface UseRouteGenerationProps {
+interface UseRouteGenerationProps<T extends FieldValues> {
   startingNodeId: string | null;
   endingNodeId: string | null;
   startingNodeName: string | null;
   endingNodeName: string | null;
   isEdit: boolean;
+  setValue: UseFormSetValue<T>;
 }
 
-export const useRouteGeneration = ({
+export const useRouteGeneration = <T extends FieldValues>({
   startingNodeId,
   endingNodeId,
   startingNodeName,
   endingNodeName,
   isEdit,
-}: UseRouteGenerationProps) => {
+  setValue,
+}: UseRouteGenerationProps<T>) => {
+  
+  // **THE FIX: Removed the unnecessary generic type argument.**
   const { data: existingRoutes, isLoading: existingRoutesLoading } = 
     useExistingRoutesQuery(startingNodeId, endingNodeId);
 
@@ -34,23 +39,41 @@ export const useRouteGeneration = ({
     };
   }, [existingRoutes]);
 
-  // **THE FIX: Calculate the name with useMemo. This is a pure calculation, not a side effect.**
-  const generatedRouteName = useMemo(() => {
-    if (isEdit || existingRoutesLoading || !startingNodeName || !endingNodeName) {
-      return null;
+  useEffect(() => {
+    if (isEdit) {
+      return;
     }
-    return `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
+
+    if (!startingNodeId || !endingNodeId) {
+      setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>);
+      return;
+    }
+    
+    if (existingRoutesLoading) {
+      return;
+    }
+
+    if (startingNodeName && endingNodeName) {
+      const routeName = `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
+      setValue('route_name' as Path<T>, routeName as PathValue<T, Path<T>>, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
   }, [
-    isEdit, 
-    startingNodeName, 
-    endingNodeName, 
-    existingRoutesLoading, 
-    routeData.nextRouteNumber
+    startingNodeId,
+    endingNodeId,
+    startingNodeName,
+    endingNodeName,
+    isEdit,
+    existingRoutesLoading,
+    routeData.nextRouteNumber,
+    setValue,
   ]);
 
   return {
     ...routeData,
     isLoading: existingRoutesLoading,
-    generatedRouteName, // <-- Return the calculated name
+    generatedRouteName: null,
   };
 };

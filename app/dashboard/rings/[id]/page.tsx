@@ -8,7 +8,7 @@ import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { MaanNode, NodeType } from "@/components/map/types/node";
+import { RingMapNode, NodeType } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -18,7 +18,7 @@ export default function RingMapPage() {
 
   const { data: nodes, isLoading, isError, error, refetch } = useRingNodes(ringId);
 
-  const mappedNodes = useMemo((): MaanNode[] => {
+  const mappedNodes = useMemo((): RingMapNode[] => {
     if (!nodes) return [];
     return nodes
       .filter(node => node.lat != null && node.long != null)
@@ -46,7 +46,7 @@ export default function RingMapPage() {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
-    const segments: Array<[MaanNode, MaanNode]> = [];
+    const segments: Array<[RingMapNode, RingMapNode]> = [];
     if (main.length > 1) {
       main.forEach((node, index) => {
         const nextNode = main[(index + 1) % main.length];
@@ -54,7 +54,7 @@ export default function RingMapPage() {
       });
     }
 
-    const spurs: Array<[MaanNode, MaanNode]> = [];
+    const spurs: Array<[RingMapNode, RingMapNode]> = [];
     mappedNodes.filter(node => !node.ring_status).forEach(spurNode => {
       const parentNode = main.find(m => m.order_in_ring === spurNode.order_in_ring);
       if (parentNode) {

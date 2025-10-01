@@ -15025,16 +15025,16 @@ export const useDebugSession = () => {
 ```typescript
 // path: hooks/useORSRouteDistances.ts
 import { useQuery } from '@tanstack/react-query';
-import { MaanNode } from '@/components/map/types/node';
+import { RingMapNode } from '@/components/map/types/node';
 import { useMemo } from 'react';
 
-async function fetchRouteDistances(pairs: Array<[MaanNode, MaanNode]>): Promise<Record<string, string>> {
+async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Promise<Record<string, string>> {
   if (pairs.length === 0) {
     return {};
   }
 
   // Use a Map to ensure unique pairs, preventing duplicate API calls
-  const uniquePairs = new Map<string, [MaanNode, MaanNode]>();
+  const uniquePairs = new Map<string, [RingMapNode, RingMapNode]>();
   pairs.forEach(([startNode, endNode]) => {
     // Sort IDs to create a consistent key regardless of order
     const key = [startNode.id, endNode.id].sort().join('-');
@@ -15082,7 +15082,7 @@ async function fetchRouteDistances(pairs: Array<[MaanNode, MaanNode]>): Promise<
   return distances;
 }
 
-export default function useORSRouteDistances(pairs: Array<[MaanNode, MaanNode]>) {
+export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>) {
   // The queryKey should also be consistently sorted to ensure caching works correctly
   const sortedUniqueKeys = useMemo(() => {
     const keys = pairs.map(p => [p[0].id, p[1].id].sort().join('-'));
@@ -26262,12 +26262,12 @@ import ReactDOM from "react-dom";
 import { useThemeStore } from "@/stores/themeStore";
 import { FiMaximize, FiMinimize } from "react-icons/fi";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { MapNode, MaanNode } from "./types/node";
+import { MapNode, RingMapNode } from "./types/node";
 
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
-  dashedLines?: Array<[MaanNode, MaanNode]>;
+  dashedLines?: Array<[RingMapNode, RingMapNode]>;
   distances?: Record<string, string>;
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;
@@ -26460,12 +26460,12 @@ import ReactDOM from "react-dom";
 import { useThemeStore } from "@/stores/themeStore";
 import { FiMaximize, FiMinimize } from "react-icons/fi";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { MapNode, MaanNode } from "./types/node"; // CORRECTED IMPORT
+import { MapNode, RingMapNode } from "./types/node"; // CORRECTED IMPORT
 
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
-  dashedLines?: Array<[MaanNode, MaanNode]>;
+  dashedLines?: Array<[RingMapNode, RingMapNode]>;
   distances?: Record<string, string>;
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;
@@ -26650,7 +26650,7 @@ export interface MapNode {
 }
 
 // A more specific type that includes all possible fields from your ring data
-export type MaanNode = MapNode & {
+export type RingMapNode = MapNode & {
   ring_id: string | null;
   order_in_ring: number | null;
   ring_status: boolean | null;
@@ -51239,7 +51239,7 @@ import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { MaanNode, NodeType } from "@/components/map/node";
+import { RingMapNode, NodeType } from "@/components/map/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -51249,8 +51249,8 @@ export default function RingMapPage() {
 
   const { data: nodes, isLoading, isError, error, refetch } = useRingNodes(ringId);
 
-  // Map the fetched data to the MaanNode type
-  const mappedNodes = useMemo((): MaanNode[] => {
+  // Map the fetched data to the RingMapNode type
+  const mappedNodes = useMemo((): RingMapNode[] => {
     if (!nodes) return [];
     return nodes.map(node => ({
       id: node.id!,
@@ -51277,7 +51277,7 @@ export default function RingMapPage() {
       return { mainNodes: [], mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
-    const segments: Array<[MaanNode, MaanNode]> = [];
+    const segments: Array<[RingMapNode, RingMapNode]> = [];
     if (main.length > 1) {
       main.forEach((node, index) => {
         const nextNode = main[(index + 1) % main.length];
@@ -51285,7 +51285,7 @@ export default function RingMapPage() {
       });
     }
 
-    const spurs: Array<[MaanNode, MaanNode]> = [];
+    const spurs: Array<[RingMapNode, RingMapNode]> = [];
     mappedNodes.filter(node => !node.ring_status).forEach(spurNode => {
       const parentNode = main.find(m => m.order_in_ring === spurNode.order_in_ring);
       if (parentNode) {
@@ -51344,7 +51344,7 @@ import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { MaanNode, MapNode, NodeType } from "@/components/map/types/node"; // Import both types
+import { RingMapNode, MapNode, NodeType } from "@/components/map/types/node"; // Import both types
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -51354,7 +51354,7 @@ export default function RingMapPage() {
 
   const { data: nodes, isLoading, isError, error, refetch } = useRingNodes(ringId);
 
-  const mappedNodes = useMemo((): MaanNode[] => {
+  const mappedNodes = useMemo((): RingMapNode[] => {
     if (!nodes) return [];
     return nodes
       .filter(node => node.lat != null && node.long != null)
@@ -51382,7 +51382,7 @@ export default function RingMapPage() {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
-    const segments: Array<[MaanNode, MaanNode]> = [];
+    const segments: Array<[RingMapNode, RingMapNode]> = [];
     if (main.length > 1) {
       main.forEach((node, index) => {
         const nextNode = main[(index + 1) % main.length];
@@ -51390,7 +51390,7 @@ export default function RingMapPage() {
       });
     }
 
-    const spurs: Array<[MaanNode, MaanNode]> = [];
+    const spurs: Array<[RingMapNode, RingMapNode]> = [];
     mappedNodes.filter(node => !node.ring_status).forEach(spurNode => {
       const parentNode = main.find(m => m.order_in_ring === spurNode.order_in_ring);
       if (parentNode) {
