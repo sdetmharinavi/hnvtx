@@ -35,14 +35,12 @@ export type NodeRowsWithRelations = NodesRowSchema & {
   } | null;
 };
 
-// 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  // Convert rich filters to simple RPC filters
-    const rpcFilters = useMemo(() => {
+  const rpcFilters = useMemo(() => {
       const convertedFilters = convertRichFiltersToSimpleJson(filters);
       return {
         ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
@@ -52,7 +50,7 @@ const useNodesData = (
 
   const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
-    'v_nodes_complete', // The name of the view
+    'v_nodes_complete',
     {
       filters: rpcFilters,
       limit: pageLimit,
@@ -71,16 +69,14 @@ const useNodesData = (
   };
 };
 
-
 const NodesPage = () => {
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: nodes,
     totalCount,
     activeCount,
     inactiveCount,
     isLoading,
-    // isMutating,
+    isMutating,
     error,
     refetch,
     pagination,
@@ -88,7 +84,6 @@ const NodesPage = () => {
     filters,
     editModal,
     viewModal,
-    // bulkActions,
     deleteModal,
     actions: crudActions,
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
@@ -96,7 +91,6 @@ const NodesPage = () => {
     dataQueryHook: useNodesData,
   });
 
-  // 3. Extract node types from the nodes data
   const nodeTypes = useMemo(() => {
     const uniqueNodeTypes = new Map();
     nodes.forEach((node) => {
@@ -107,38 +101,16 @@ const NodesPage = () => {
         });
       }
     });
-
     return Array.from(uniqueNodeTypes.values());
   }, [nodes]);
 
   const columns = NodesTableColumns(nodes);
-
-  const desiredColumns = [
-    'name',
-    'latitude',
-    'longitude',
-    'node_type_name',
-    'node_type_code',
-    'maintenance_area_name',
-    'maintenance_area_code',
-    'maintenance_area_type_name',
-    'status',
-    'remark',
-    'id',
-    'node_type_id',
-    'maintenance_terminal_id',
-    'created_at',
-    'updated_at',
-    'total_count',
-    'active_count',
-    'inactive_count',
-  ];
-
-  const orderedColumns = useOrderedColumns(columns, desiredColumns);
+  const orderedColumns = useOrderedColumns(columns, [
+    'name', 'latitude', 'longitude', 'node_type_name', 'maintenance_area_name', 'status', 'remark',
+  ]);
 
   const tableActions = useMemo(
-    () =>
-      createStandardActions<V_nodes_completeRowSchema>({
+    () => createStandardActions<V_nodes_completeRowSchema>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -146,57 +118,32 @@ const NodesPage = () => {
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
     data: nodes as NodesRowSchema[],
-    onAddNew: () => {
-      editModal.openAdd();
-    },
-    onRefresh: () => {
-      refetch();
-      toast.success('Refreshed successfully!');
-    },
+    onAddNew: () => { editModal.openAdd(); },
+    onRefresh: () => { refetch(); toast.success('Refreshed successfully!'); },
     isLoading: isLoading,
     exportConfig: { tableName: 'nodes' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Nodes' },
-    {
-      value: activeCount,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: inactiveCount,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="mx-auto space-y-4 p-6">
       <PageHeader
         title="Node Management"
         description="Manage network nodes and their related information."
         icon={<FiCpu />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
+        actions={headerActions}
         isLoading={isLoading}
       />
 
@@ -212,7 +159,7 @@ const NodesPage = () => {
         columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
-        selectable={true} // Assuming you might want bulk actions later
+        selectable={true}
         showColumnsToggle={true}
         pagination={{
           current: pagination.currentPage,
@@ -244,8 +191,9 @@ const NodesPage = () => {
           isOpen={editModal.isOpen}
           onClose={editModal.close}
           editingNode={editModal.record as NodeRowsWithRelations | null}
-          onCreated={crudActions.handleSave}
-          onUpdated={crudActions.handleSave}
+          // **THE FIX: Pass the correct props to the now "dumb" component.**
+          onSubmit={crudActions.handleSave}
+          isLoading={isMutating}
         />
       )}
 
