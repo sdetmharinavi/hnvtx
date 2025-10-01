@@ -2,20 +2,18 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { TableName, TableNames } from "@/config/helper-types";
+import { TableName} from "@/hooks/database/queries-type-helpers";
 import { Tables } from "@/types/supabase-types";
 
-type UploadableTableRow<T extends TableNames> = T extends TableName
-  ? Tables<T>
-  : Record<string, unknown>;
+type UploadableTableRow<T extends TableName> = Tables<T>;
 
-export interface UploadColumnMapping<T extends TableNames> {
+export interface UploadColumnMapping<T extends TableName> {
   excelHeader: string;
   dbKey: keyof UploadableTableRow<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
-export interface UploadConfig<T extends TableNames> {
+export interface UploadConfig<T extends TableName> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
@@ -24,35 +22,26 @@ export interface UploadConfig<T extends TableNames> {
 }
 
 interface UploadConfigState {
-  configs: Record<string, UploadConfig<TableNames>>;
-  setUploadConfig: <T extends TableNames>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<TableNames> | undefined;
+  configs: Record<string, UploadConfig<TableName>>;
+  setUploadConfig: <T extends TableName>(pageKey: string, config: UploadConfig<T>) => void;
+  getUploadConfig: (pageKey: string) => UploadConfig<TableName> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
 
 export const useUploadConfigStore = create<UploadConfigState>()(
-  persist( // `persist` should be the outer wrapper
-    devtools( // `devtools` should be the inner wrapper
+  persist(
+    devtools(
       (set, get) => ({
-        // The store's state is a dictionary of configurations.
         configs: {},
-
         setUploadConfig: (pageKey, config) => {
           if (config?.uploadType === "upsert" && !config.conflictColumn) {
             console.error(`UploadConfig Error...`);
           }
           set((state) => ({
-            configs: {
-              ...state.configs,
-              [pageKey]: config,
-            },
+            configs: { ...state.configs, [pageKey]: config },
           }));
         },
-
-        getUploadConfig: (pageKey) => {
-          return get().configs[pageKey];
-        },
-
+        getUploadConfig: (pageKey) => get().configs[pageKey],
         clearUploadConfig: (pageKey) => {
           set((state) => {
             const newConfigs = { ...state.configs };
@@ -61,14 +50,8 @@ export const useUploadConfigStore = create<UploadConfigState>()(
           });
         },
       }),
-      // The options object for devtools
-      {
-        name: "UploadConfigStore",
-      }
+      { name: "UploadConfigStore" }
     ),
-    // The options object for persist
-    {
-      name: "upload-config-storage", // Use a different key for localStorage
-    }
+    { name: "upload-config-storage" }
   )
 );

@@ -5,6 +5,7 @@ import {
   v_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { z } from 'zod';
+import { bsnlSearchFiltersSchema } from '@/schemas/custom-schemas'; // Import the schema
 
 export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
 export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
@@ -39,12 +40,5 @@ export interface AllocationSaveData {
   };
 }
 
-// CORRECTED: Removed 'district' and ensured 'nodeType' is present.
-export interface SearchFilters {
-  query: string;
-  status: string[];
-  type: string[];
-  region: string[];
-  nodeType: string[]; // This is the correct property for node type filtering.
-  priority: string[];
-}
+// **THE FIX: Infer the type directly from the Zod schema.**
+export type SearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

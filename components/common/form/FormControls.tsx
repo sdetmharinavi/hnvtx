@@ -160,6 +160,10 @@ interface FormSearchableSelectProps<T extends FieldValues>
   searchPlaceholder?: string;
   disabled?: boolean;
   clearable?: boolean;
+  // **NEW PROPS FOR SERVER-SIDE SEARCH**
+  serverSide?: boolean; // When true, options are not filtered client-side
+  onSearch?: (term: string) => void; // Function to trigger a search
+  isLoading?: boolean; // To show a loading indicator
 }
 
 export function FormSearchableSelect<T extends FieldValues>({

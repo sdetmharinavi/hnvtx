@@ -16,7 +16,6 @@ BEGIN
     'vmux_systems', 'vmux_connections'
   ]
   LOOP
-    -- Enable RLS and set table-level grants for all relevant roles
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
@@ -47,31 +46,35 @@ BEGIN
   -- Admin/Super-Admin can do anything
   CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- System-specific admins can access rows matching their designated system type
+  -- **THE FIX: Decouple RLS from hardcoded names.**
+  -- This policy now maps the user's role (e.g., 'cpan_admin') to the system type name ('CPAN')
+  -- and then joins on the ID, making it resilient to name changes.
   CREATE POLICY "Allow full access based on system type" ON public.systems
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (
-    EXISTS (
-        SELECT 1 FROM public.lookup_types lt
-        WHERE lt.id = systems.system_type_id AND lt.category = 'SYSTEM' AND (
-            (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-            (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-            (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-            (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-            (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
+    systems.system_type_id IN (
+      SELECT lt.id
+      FROM public.lookup_types lt
+      WHERE lt.category = 'SYSTEM' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      )
     )
   )
   WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.lookup_types lt
-        WHERE lt.id = systems.system_type_id AND lt.category = 'SYSTEM' AND (
-            (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-            (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-            (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-            (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-            (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
+    systems.system_type_id IN (
+      SELECT lt.id
+      FROM public.lookup_types lt
+      WHERE lt.category = 'SYSTEM' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      )
     )
   );
 END;
@@ -88,32 +91,40 @@ BEGIN
   CREATE POLICY "Allow viewer read-access" ON public.system_connections FOR SELECT TO viewer USING (true);
   CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- System-specific admins can access connections whose parent system matches their type.
+  -- **THE FIX: Apply the same robust pattern here.**
   CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (
     EXISTS (
       SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id AND lt.category = 'SYSTEM' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      WHERE s.id = system_connections.system_id
+      AND s.system_type_id IN (
+        SELECT lt.id
+        FROM public.lookup_types lt
+        WHERE lt.category = 'SYSTEM' AND (
+          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+        )
       )
     )
   )
-  WITH CHECK ( -- Re-use the same logic for INSERTs and UPDATEs
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id AND lt.category = 'SYSTEM' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      WHERE s.id = system_connections.system_id
+      AND s.system_type_id IN (
+        SELECT lt.id
+        FROM public.lookup_types lt
+        WHERE lt.category = 'SYSTEM' AND (
+          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+        )
       )
     )
   );

@@ -1,4 +1,15 @@
 // path: components/map/types/node.ts
+import { z } from 'zod';
+import { v_ring_nodesRowSchema } from '@/schemas/zod-schemas';
+
+// The RingMapNode is the primary, feature-rich node type, derived directly from the view.
+export type RingMapNode = z.infer<typeof v_ring_nodesRowSchema>;
+
+// The MapNode can be a simplified version or a partial type for more generic use cases.
+// For simplicity and type safety, we can often just use RingMapNode everywhere.
+export type MapNode = RingMapNode;
+
+// Enums can remain as they are application-level constants, not direct DB models.
 export enum NodeType {
   EXCHANGE = "EXCHANGE",
   CUSTOMER = "CUSTOMER",
@@ -7,29 +18,3 @@ export enum NodeType {
   CPAN = "CPAN",
   BTS_RUNNING_OVER_RADIOLINK = "BTS(RUNNING OVER RADIOLINK)",
 }
-
-// A generic, standardized interface for any node to be displayed on the map
-export interface MapNode {
-  id: string;
-  name: string;
-  lat: number;
-  long: number;
-  type?: string | null;
-  status?: boolean | null;
-  ip?: string | null;
-  remark?: string | null;
-}
-
-// A more specific type that includes all possible fields from your ring data
-export type MaanNode = MapNode & {
-  ring_id: string | null;
-  order_in_ring: number | null;
-  ring_status: boolean | null;
-  builtup?: string | null;
-  otdr_distance?: number | null;
-  otdr_loss?: number | null;
-  power?: number | null;
-  dom?: Date | null;
-  east_port?: string | null;
-  west_port?: string | null;
-};

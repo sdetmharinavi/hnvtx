@@ -5,20 +5,17 @@ import { Label } from "@/components/common/ui/label/Label";
 import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiX, FiSearch } from "react-icons/fi";
+import { ButtonSpinner } from "../LoadingSpinner";
 
-// The Option interface remains the same
-interface Option {
+export interface Option {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export type { Option };
-
-// The props interface remains the same
 interface SearchableSelectProps {
   options: Option[];
-  value?: string | null; // <-- THE FIX: Now accepts string | null | undefined
+  value?: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -32,11 +29,14 @@ interface SearchableSelectProps {
   error?: boolean;
   sortOptions?: boolean;
   label?: string;
+  serverSide?: boolean;
+  onSearch?: (term: string) => void;
+  isLoading?: boolean;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
-  value = null, // Default to null
+  value = null,
   onChange,
   placeholder = "Select an option",
   searchPlaceholder = "Search options...",
@@ -50,11 +50,13 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   error = false,
   sortOptions = true,
   label = "",
+  serverSide = false,
+  onSearch,
+  isLoading = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
-
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +65,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const filteredOptions = useMemo(() => {
+    if (serverSide) return options;
     const processedOptions = [...options];
     if (sortOptions) {
       processedOptions.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
@@ -71,12 +74,21 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return processedOptions.filter(option =>
       option.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [options, searchTerm, sortOptions]);
+  }, [options, searchTerm, sortOptions, serverSide]);
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = useMemo(() => options.find(option => option.value === value), [options, value]);
   const selectedLabel = selectedOption?.label || "";
-  const hasValue = selectedLabel.length > 0;
+  const hasValue = !!value;
 
+  useEffect(() => {
+    if (serverSide && onSearch) {
+      const handler = setTimeout(() => {
+        onSearch(searchTerm);
+      }, 300);
+      return () => clearTimeout(handler);
+    }
+  }, [searchTerm, serverSide, onSearch]);
+  
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -96,8 +108,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         dropdownRef.current && !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -122,8 +132,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         break;
       case "Escape":
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
         break;
       case "ArrowDown":
         e.preventDefault();
@@ -136,8 +144,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         break;
       case "Tab":
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
         break;
     }
   };
@@ -151,8 +157,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const handleOptionSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
-    setSearchTerm("");
-    setFocusedIndex(-1);
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -161,58 +165,35 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   const toggleDropdown = () => {
-    if (!disabled) {
-      setIsOpen(!isOpen);
-      if (!isOpen) {
-        setSearchTerm("");
-        setFocusedIndex(-1);
-      }
-    }
+    if (!disabled) setIsOpen(!isOpen);
   };
 
   const baseClasses = `relative w-full rounded-md border px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:outline-none transition-colors cursor-pointer ${error ? "border-red-300 dark:border-red-600" : "border-gray-300 dark:border-gray-600"} ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500`} dark:text-white dark:focus-within:ring-blue-600`;
 
   const DropdownContent = (
-    <div
-      ref={dropdownRef}
-      style={dropdownStyle}
-      className="z-[999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
-    >
+    <div ref={dropdownRef} style={dropdownStyle} className="z-[999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
       <div className="p-2 border-b border-gray-200 dark:border-gray-600">
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
-            ref={searchInputRef}
-            type="text"
-            placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setFocusedIndex(-1);
-            }}
+            ref={searchInputRef} type="text" placeholder={searchPlaceholder}
+            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
           />
+          {isLoading && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><ButtonSpinner size="sm" /></div>}
         </div>
       </div>
-      <div
-        className="overflow-y-auto"
-        style={{ maxHeight: `${maxHeight}px` }}
-        role="listbox"
-      >
-        {loading ? (
-          <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">Loading...</div>
-        ) : filteredOptions.length === 0 ? (
+      <div className="overflow-y-auto" style={{ maxHeight: `${maxHeight}px` }} role="listbox">
+        {filteredOptions.length === 0 && !isLoading ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">{noOptionsMessage}</div>
         ) : (
           filteredOptions.map((option, index) => (
             <div
-              key={option.value}
-              ref={(el) => { optionRefs.current[index] = el; }}
-              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"} ${index === focusedIndex ? "bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200" : ""} ${option.value === value ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : ""}`}
+              key={option.value} ref={(el) => { optionRefs.current[index] = el; }}
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"} ${index === focusedIndex ? "bg-blue-100 dark:bg-blue-900/50" : ""} ${option.value === value ? "bg-blue-50 dark:bg-blue-900/30 font-medium" : ""}`}
               onClick={() => !option.disabled && handleOptionSelect(option.value)}
-              role="option"
-              aria-selected={option.value === value}
+              role="option" aria-selected={option.value === value}
             >
               {option.label}
             </div>
@@ -225,27 +206,11 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div ref={triggerRef} className={`relative ${className}`}>
       {label && <Label>{label}</Label>}
-      <div
-        className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`}
-        onClick={toggleDropdown}
-        onKeyDown={handleKeyDown}
-        tabIndex={disabled ? -1 : 0}
-        role="combobox"
-        aria-controls="options-list"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-required={required}
-      >
+      <div className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`} onClick={toggleDropdown} onKeyDown={handleKeyDown} tabIndex={disabled ? -1 : 0} role="combobox" aria-expanded={isOpen}>
         <div className="flex items-center justify-between">
-          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>
-            {selectedLabel || placeholder}
-          </span>
+          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>{selectedLabel || placeholder}</span>
           <div className="flex items-center gap-1">
-            {clearable && value && !disabled && (
-              <button type="button" onClick={handleClear} className="flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
-                <FiX className="w-3 h-3" />
-              </button>
-            )}
+            {clearable && value && !disabled && (<button type="button" onClick={handleClear} className="flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}><FiX className="w-3 h-3" /></button>)}
             <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
           </div>
         </div>

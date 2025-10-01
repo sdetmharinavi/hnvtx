@@ -9,12 +9,12 @@ import ReactDOM from "react-dom";
 import { useThemeStore } from "@/stores/themeStore";
 import { FiMaximize, FiMinimize } from "react-icons/fi";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { MapNode, MaanNode } from "./types/node";
+import { MapNode, RingMapNode } from "./types/node";
 
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
-  dashedLines?: Array<[MaanNode, MaanNode]>;
+  dashedLines?: Array<[RingMapNode, RingMapNode]>;
   distances?: Record<string, string>;
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;

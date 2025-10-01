@@ -1,11 +1,9 @@
-export interface StoredFile {
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  path?: string;
-  uploadedAt: string;
-}
+// components/diagrams/types/storage.ts
+import { z } from 'zod';
+import { filesRowSchema } from '@/schemas/zod-schemas';
+
+// THE FIX: Derive the type from the Zod schema.
+export type StoredFile = z.infer<typeof filesRowSchema>;
 
 export interface UploadProgress {
   [key: number]: number;
