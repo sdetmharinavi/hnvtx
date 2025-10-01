@@ -16,71 +16,74 @@ const pool = new Pool({
   connectionString: `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`,
 });
 
-// This function handles creating users
+// This function handles creating users MANUALLY
 export async function POST(req: Request) {
+  const client = await pool.connect();
   try {
     const userData = await req.json();
     const hashed = await bcrypt.hash(userData.password, 10);
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    // **THE FIX: Remove the manual transaction and the second INSERT.**
+    // We will now rely on the database trigger to create the user profile.
+    
+    const { rows: authUserRows } = await client.query(
+      `
+      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6)
+      RETURNING id, email
+      `,
+      [
+        userData.id,
+        userData.email,
+        hashed,
+        userData.email_confirm ? new Date().toISOString() : null,
+        JSON.stringify({
+          provider: 'email',
+          providers: ['email'],
+          role: userData.role,
+        }),
+        JSON.stringify({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+        }),
+      ]
+    );
 
-      // 1️⃣ Insert into auth.users
-      const { rows } = await client.query(
-        `
-        INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_user_meta_data)
-        VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5)
-        RETURNING id, email
-        `,
-        [
-          userData.id,
-          userData.email,
-          hashed,
-          userData.email_confirm ? new Date().toISOString() : null,
-          JSON.stringify({
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            role: userData.role,
-            status: userData.status,
-          }),
-        ]
-      );
-      await client.query('COMMIT');
-
-      return NextResponse.json({ user: rows[0] });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    const createdAuthUser = authUserRows[0];
+    if (!createdAuthUser) {
+      throw new Error("Failed to create user in auth.users");
     }
+
+    // The database trigger 'on_auth_user_created' will now automatically handle
+    // creating the corresponding record in 'public.user_profiles'.
+
+    return NextResponse.json({ user: createdAuthUser });
+
   } catch (err: unknown) {
     console.error('Error inserting user:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
-      { status: 500 }
-    );
+    const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during user creation.';
+    if (typeof errorMessage === 'string' && errorMessage.includes('duplicate key value violates unique constraint "users_email_key"')) {
+        const { email } = await req.json();
+        return NextResponse.json({ error: `A user with the email "${email}" already exists.` }, { status: 409 });
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  } finally {
+    client.release();
   }
 }
 
-// This function handles deleting users
+
+// DELETE function remains the same
 export async function DELETE(req: Request) {
   try {
-    // **STEP 1: AUTHORIZATION CHECK (CORRECTED)**
-    const supabase = await createClient(); // Creates a server client in the context of the user making the request
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Forbidden: Authentication required.' }, { status: 401 });
     }
 
-    // **THE FIX: Call the is_super_admin() RPC function to securely check the user's status.**
     const { data: isSuperAdmin, error: rpcError } = await supabase.rpc('is_super_admin');
-
-    console.log("isSuperAdmin", isSuperAdmin);
-    console.log("rpcError", rpcError);
-    
 
     if (rpcError) {
       console.error('RPC error checking admin status:', rpcError);
@@ -91,14 +94,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Forbidden: You do not have permission to perform this action.' }, { status: 403 });
     }
     
-    // If the check passes, proceed with the deletion logic.
     const { userIds } = await req.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
     }
 
-    // **STEP 2: ADMIN ACTION**
     const supabaseAdmin = createAdmin();
     const deletionErrors: { id: string; error: string }[] = [];
 

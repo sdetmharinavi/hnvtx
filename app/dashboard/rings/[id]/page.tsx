@@ -1,14 +1,14 @@
 // path: app/dashboard/rings/[id]/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react"; // <-- Import useCallback
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiMap } from "react-icons/fi";
 import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
-import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
+import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { MaanNode, MapNode, NodeType } from "@/components/map/types/node"; // Import both types
+import { MaanNode, NodeType } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -66,11 +66,14 @@ export default function RingMapPage() {
   }, [mappedNodes]);
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
-
-  console.log("distances", distances);
   
-
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
+  
+  // **THE FIX: Wrap the onBack handler in useCallback for a stable reference.**
+  const handleBack = useCallback(() => {
+    router.push('/dashboard/rings');
+  }, [router]);
+
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Loading Ring Map Data..." />;
@@ -83,7 +86,7 @@ export default function RingMapPage() {
         solidLines={mainSegments}
         dashedLines={spurConnections}
         distances={distances}
-        onBack={() => router.push('/dashboard/rings')}
+        onBack={handleBack} // Pass the stable handler
         showControls={true} 
       />
     );
@@ -95,7 +98,7 @@ export default function RingMapPage() {
         title={ringName}
         description="Visualizing the ring topology and connected nodes."
         icon={<FiMap />}
-        actions={[{ label: "Back to Rings List", onClick: () => router.push('/dashboard/rings'), variant: "outline", leftIcon: <FiArrowLeft /> }]}
+        actions={[{ label: "Back to Rings List", onClick: handleBack, variant: "outline", leftIcon: <FiArrowLeft /> }]}
       />
       <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
         {renderContent()}
