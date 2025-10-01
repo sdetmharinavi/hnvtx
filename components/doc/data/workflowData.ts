@@ -1,4 +1,4 @@
-import { ShieldCheck, Database, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
+import { ShieldCheck, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
 import { WorkflowSection } from "../types/workflowTypes";
 import { FaDiagramNext } from "react-icons/fa6";
 import { BsPeople } from "react-icons/bs";
@@ -369,35 +369,75 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.",
     workflows: [
       {
-        title: "Workflow A: Visualizing a Route",
-        userSteps: ["User selects an OFC route from the dropdown."],
-        uiSteps: ["The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).", "A list of `Cable Segments` is displayed below the visualization."],
+        title: 'Workflow A: Managing OFC Cable Records (CRUD)',
+        userSteps: [
+          'Admin navigates to `/dashboard/ofc`.',
+          "Clicks 'Add New' to create a new cable route.",
+          "In the `OfcForm` modal, selects a 'Starting Node' and an 'Ending Node'.",
+          "Fills in other details like OFC Type, Capacity, and Maintenance Area, then clicks 'Create'.",
+          "To edit, admin clicks the 'Edit' icon on a row, modifies the data, and saves.",
+          "To delete, admin clicks the 'Delete' icon and confirms in the popup.",
+        ],
+        uiSteps: [
+          'The `DataTable` displays a list of all existing OFC cables from the `v_ofc_cables_complete` view.',
+          'When start/end nodes are selected in the form, a `route_name` is automatically generated (e.g., "NODE_A⇔NODE_B_1").',
+          'If an OFC Type like "24F Cable" is selected, the `Capacity` field is automatically set to "24" and locked.',
+          'On successful save/delete, a toast notification appears and the table refreshes.',
+        ],
+        techSteps: [
+          'The `OfcPage` uses `useCrudManager` with a `useOfcData` adapter to manage state and data fetching.',
+          'The `useOfcData` adapter calls `usePagedData`, which queries the `v_ofc_cables_complete` view for displaying data.',
+          "The `OfcForm` uses several custom hooks: `useRouteGeneration` to auto-generate the route name by checking for existing routes between the selected nodes, and `useCapacityInference` to auto-fill capacity from the OFC type name.",
+          'On submission, `crudActions.handleSave` is called, which triggers either `useTableInsert` or `useTableUpdate` to write directly to the `ofc_cables` table.',
+          'Deletion is handled by `useDeleteManager`, which shows a `ConfirmModal` and then calls `useTableDelete` to remove the record from the `ofc_cables` table.',
+        ],
+      },
+      {
+        title: 'Workflow B: Visualizing a Route',
+        userSteps: ['User selects an OFC route from the dropdown.'],
+        uiSteps: [
+          'The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).',
+          'A list of `Cable Segments` is displayed below the visualization.',
+        ],
         techSteps: [
           "The page component's `useQuery` fetches data from the API route `/api/route/[id]`.",
-          "The API route fetches data from multiple tables: `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.",
-          "The API returns a consolidated `RouteDetailsPayload` object.",
+          'The API route fetches data from multiple tables: `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
+          'The API returns a consolidated `RouteDetailsPayload` object.',
         ],
       },
       {
-        title: "Workflow B: Adding a Junction Closure",
-        userSteps: ["User clicks 'Add Junction Closure'.", "User fills in the JC's name and position in the `JcFormModal` and saves."],
-        uiSteps: ["The `RouteVisualization` updates to show the new JC on the cable path.", "The `Cable Segments` list is recalculated and re-rendered."],
+        title: 'Workflow C: Adding a Junction Closure',
+        userSteps: [
+          "User clicks 'Add Junction Closure'.",
+          "User fills in the JC's name and position in the `JcFormModal` and saves.",
+        ],
+        uiSteps: [
+          'The `RouteVisualization` updates to show the new JC on the cable path.',
+          'The `Cable Segments` list is recalculated and re-rendered.',
+        ],
         techSteps: [
-          "The `JcFormModal` calls the `add_junction_closure` Supabase RPC function.",
+          'The `JcFormModal` calls the `add_junction_closure` Supabase RPC function.',
           "This RPC inserts a new record into the `nodes` table (for the JC's physical location) and the `junction_closures` table.",
-          "An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function.",
-          "This function deletes all old segments for that cable and creates new ones based on the new sequence of nodes and JCs, storing them in the `cable_segments` table.",
-          "The frontend refetches the route details, updating the UI.",
+          'An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function.',
+          'This function deletes all old segments for that cable and creates new ones based on the new sequence of nodes and JCs, storing them in the `cable_segments` table.',
+          'The frontend refetches the route details, updating the UI.',
         ],
       },
       {
-        title: "Workflow C: Managing Fiber Splices",
-        userSteps: ["User clicks on an existing JC in the visualization.", "The 'Splice Management' tab becomes active.", "User selects a fiber from one segment and then clicks an available fiber on another segment to create a splice."],
-        uiSteps: ["The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.", "UI provides visual cues for selected, available, and used fibers."],
+        title: 'Workflow D: Managing Fiber Splices',
+        userSteps: [
+          'User clicks on an existing JC in the visualization.',
+          "The 'Splice Management' tab becomes active.",
+          'User selects a fiber from one segment and then clicks an available fiber on another segment to create a splice.',
+        ],
+        uiSteps: [
+          'The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.',
+          'UI provides visual cues for selected, available, and used fibers.',
+        ],
         techSteps: [
-          "`FiberSpliceManager` calls the `get_jc_splicing_details` RPC function to fetch the current state of all fibers and splices at the JC node.",
+          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC function to fetch the current state of all fibers and splices at the JC node.',
           "`manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
-          "The frontend query for splicing details is invalidated and refetched, updating the UI.",
+          'The frontend query for splicing details is invalidated and refetched, updating the UI.',
         ],
       },
     ],

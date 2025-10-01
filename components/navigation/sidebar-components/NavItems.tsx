@@ -11,15 +11,13 @@ import {
   FiCpu,
   FiMapPin,
   FiList,
-  FiHelpCircle,
 } from 'react-icons/fi';
 import { FaDiagramNext } from 'react-icons/fa6';
 import { BsPeople } from 'react-icons/bs';
 import { ImUserTie } from 'react-icons/im';
-import { GiElectric, GiLinkedRings, GiWireCoil } from 'react-icons/gi';
+import { GiElectric, GiLinkedRings} from 'react-icons/gi';
 import { AiFillMerge } from 'react-icons/ai';
-import { FaNetworkWired, FaRoute } from 'react-icons/fa';
-import { MdLan } from 'react-icons/md';
+import {FaRoute } from 'react-icons/fa';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -96,17 +94,17 @@ function NavItems() {
             roles: [UserRole.ADMIN],
           },
           {
-            id: 'rings',
-            label: 'Rings',
-            icon: <GiLinkedRings className="h-5 w-5" />,
-            href: '/dashboard/rings',
-            roles: [UserRole.ADMIN],
-          },
-          {
             id: 'nodes',
             label: 'Nodes',
             icon: <FiCpu className="h-5 w-5" />,
             href: '/dashboard/nodes',
+            roles: [UserRole.ADMIN],
+          },
+          {
+            id: 'rings',
+            label: 'Rings',
+            icon: <GiLinkedRings className="h-5 w-5" />,
+            href: '/dashboard/rings',
             roles: [UserRole.ADMIN],
           },
         ],
