@@ -1,6 +1,7 @@
+-- path: data/migrations/06_utilities/03_ofc_route_functions.sql
 -- =================================================================
 -- Section 4: OFC and Splicing Specific Utility Functions
--- [FULLY CORRECTED AND SEGMENT-AWARE]
+-- [FINAL CORRECTED VERSION - 4]
 -- =================================================================
 
 -- Description: Provisions a working and protection fiber pair on a logical path.
@@ -47,7 +48,6 @@ GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UU
 
 
 -- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
--- FIX: This function now accepts SEGMENT IDs, not cable IDs.
 CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(p_jc_id UUID, p_segment1_id UUID, p_segment2_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -79,7 +79,6 @@ GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID)
 
 
 -- Description: RPC function to handle creating, deleting, and updating splices.
--- FIX: This function now accepts SEGMENT IDs.
 CREATE OR REPLACE FUNCTION public.manage_splice(
     p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
     p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
@@ -132,7 +131,6 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
 
 
--- FIX: This function now correctly references the segment IDs in the fiber_splices table.
 -- Description: Get a list of all splices with their full JC and segment details.
 CREATE OR REPLACE FUNCTION public.get_all_splices()
 RETURNS TABLE (
@@ -156,7 +154,7 @@ AS $$
 $$;
 GRANT EXECUTE ON FUNCTION public.get_all_splices() TO authenticated;
 
--- Fetches structured JSON for the splice matrix UI.
+-- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
 CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -165,74 +163,41 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 WITH jc_info AS (
-  -- Step 1: Find the primary JC and its physical node_id
-  SELECT jc.id, n.name, jc.node_id
-  FROM public.junction_closures jc
-  JOIN public.nodes n ON jc.node_id = n.id
-  WHERE jc.id = p_jc_id
-),
-all_jcs_at_node AS (
-  -- Step 2: Find ALL junction closures that share the same physical node_id
-  SELECT id FROM public.junction_closures
-  WHERE node_id = (SELECT node_id FROM jc_info)
-),
-segments_at_jc AS (
-  -- Step 3: Find ALL segments connected to this physical node
-  SELECT
-    cs.id as segment_id,
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
-    cs.fiber_count
-  FROM public.cable_segments cs
-  JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+  SELECT jc.id, n.name, jc.node_id FROM public.junction_closures jc JOIN public.nodes n ON jc.node_id = n.id WHERE jc.id = p_jc_id
+), all_jcs_at_node AS (
+  SELECT id FROM public.junction_closures WHERE node_id = (SELECT node_id FROM jc_info)
+), segments_at_jc AS (
+  SELECT cs.id as segment_id, oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, cs.fiber_count
+  FROM public.cable_segments cs JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
   WHERE cs.start_node_id = (SELECT node_id FROM jc_info) OR cs.end_node_id = (SELECT node_id FROM jc_info)
-),
-fiber_universe AS (
-  -- Step 4: Create a complete list of every fiber in every segment at this node
-  SELECT s.segment_id, series.i as fiber_no
-  FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-),
-splice_info AS (
-  -- Step 5: (THE FIX) Select ALL splices from ALL JCs at this physical node
+), fiber_universe AS (
+  SELECT s.segment_id, series.i as fiber_no FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
+), splice_info AS (
   SELECT
-    fs.id as splice_id,
-    fs.jc_id, -- Keep the original jc_id for reference
-    fs.incoming_segment_id, fs.incoming_fiber_no,
-    fs.outgoing_segment_id, fs.outgoing_fiber_no,
+    fs.id as splice_id, fs.jc_id, fs.incoming_segment_id, fs.incoming_fiber_no, fs.outgoing_segment_id, fs.outgoing_fiber_no,
     (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' FROM cable_segments cs_out JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
     (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' FROM cable_segments cs_in JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs
-  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node) -- <<< THIS IS THE FIX!
+  FROM public.fiber_splices fs WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
 )
--- Final step: Assemble the JSON response
 SELECT jsonb_build_object(
   'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
   'segments_at_jc', (
-    SELECT jsonb_agg(
-      jsonb_build_object(
-        'segment_id', seg.segment_id,
-        'segment_name', seg.segment_name,
-        'fiber_count', seg.fiber_count,
-        'fibers', (
-          SELECT jsonb_agg(
-            jsonb_build_object(
-              'fiber_no', fu.fiber_no,
-              'status', CASE
-                WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming'
-                WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing'
-                ELSE 'available'
-              END,
-              'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
-              'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
-              'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no)
-            ) ORDER BY fu.fiber_no
-          )
-          FROM fiber_universe fu
-          LEFT JOIN splice_info s_in ON fu.segment_id = s_in.incoming_segment_id AND fu.fiber_no = s_in.incoming_fiber_no
-          LEFT JOIN splice_info s_out ON fu.segment_id = s_out.outgoing_segment_id AND fu.fiber_no = s_out.outgoing_fiber_no
-          WHERE fu.segment_id = seg.segment_id
-        )
+    SELECT jsonb_agg(jsonb_build_object(
+      'segment_id', seg.segment_id, 'segment_name', seg.segment_name, 'fiber_count', seg.fiber_count,
+      'fibers', (
+        SELECT jsonb_agg(jsonb_build_object(
+          'fiber_no', fu.fiber_no,
+          'status', CASE WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' ELSE 'available' END,
+          'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
+          'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
+          'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no)
+        ) ORDER BY fu.fiber_no)
+        FROM fiber_universe fu
+        LEFT JOIN splice_info s_in ON fu.segment_id = s_in.incoming_segment_id AND fu.fiber_no = s_in.incoming_fiber_no
+        LEFT JOIN splice_info s_out ON fu.segment_id = s_out.outgoing_segment_id AND fu.fiber_no = s_out.outgoing_fiber_no
+        WHERE fu.segment_id = seg.segment_id
       )
-    )
+    ))
     FROM segments_at_jc seg
   )
 )
@@ -240,7 +205,7 @@ FROM jc_info;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
--- Traces a fiber's path bi-directionally with loop detection.
+-- **THE FIX: Final, correct, robust bi-directional trace function.**
 CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
     step_order BIGINT,
@@ -259,59 +224,60 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    WITH RECURSIVE 
-    -- Trace forward from the starting point
-    path_forward AS (
-        SELECT 1::BIGINT AS step, p_start_segment_id AS segment_id, p_start_fiber_no AS fiber_no, ARRAY[p_start_segment_id] AS path_history
+    WITH RECURSIVE
+    trace_forward AS (
+        -- Anchor: The starting point itself
+        SELECT 0::bigint as step, p_start_segment_id as segment_id, p_start_fiber_no as fiber_no, ARRAY[]::uuid[] as visited_splices
         UNION ALL
+        -- Recursive step: Find the next connection
         SELECT
             p.step + 1,
             CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
             CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
-            p.path_history || CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END
-        FROM path_forward p
-        JOIN public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-        WHERE NOT (CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END = ANY(p.path_history))
-          AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL) AND p.step < 50
+            p.visited_splices || s.id
+        FROM trace_forward p
+        JOIN public.fiber_splices s ON
+            (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR
+            (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE NOT (s.id = ANY(p.visited_splices)) AND p.step < 50
     ),
-    -- Trace backward from the starting point
-    path_backward AS (
-        SELECT 0::BIGINT AS step, p_start_segment_id AS segment_id, p_start_fiber_no AS fiber_no, ARRAY[p_start_segment_id] AS path_history
+    trace_backward AS (
+        -- Anchor: The starting point itself
+        SELECT 0::bigint as step, p_start_segment_id as segment_id, p_start_fiber_no as fiber_no, ARRAY[]::uuid[] as visited_splices
         UNION ALL
+        -- Recursive step: Find the previous connection
         SELECT
             p.step - 1,
             CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
             CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
-            p.path_history || CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END
-        FROM path_backward p
-        JOIN public.fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-        WHERE NOT (CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END = ANY(p.path_history))
-          AND (s.outgoing_segment_id IS NOT NULL AND s.incoming_segment_id IS NOT NULL) AND p.step > -50
+            p.visited_splices || s.id
+        FROM trace_backward p
+        JOIN public.fiber_splices s ON
+            (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR
+            (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE NOT (s.id = ANY(p.visited_splices)) AND p.step > -50
     ),
-    -- Combine both traces, excluding the duplicate start point from the backward trace
-    combined_path AS (
-        SELECT step, segment_id, fiber_no FROM path_forward
+    full_path AS (
+        SELECT step, segment_id, fiber_no FROM trace_forward
         UNION ALL
-        SELECT step, segment_id, fiber_no FROM path_backward WHERE step < 1
+        SELECT step, segment_id, fiber_no FROM trace_backward WHERE step < 0 -- Exclude duplicate start point
     )
-    -- Final selection and data shaping
     SELECT
-        ROW_NUMBER() OVER (ORDER BY cp.step) as step_order,
+        ROW_NUMBER() OVER (ORDER BY fp.step) AS step_order,
         'SEGMENT'::TEXT AS element_type,
         cs.id AS element_id,
         oc.route_name AS element_name,
         (sn.name || ' → ' || en.name)::TEXT AS details,
-        cp.fiber_no AS fiber_in,
-        next_cp.fiber_no AS fiber_out,
+        fp.fiber_no AS fiber_in,
+        LEAD(fp.fiber_no) OVER (ORDER BY fp.step) AS fiber_out,
         cs.distance_km,
         NULL::NUMERIC AS loss_db
     FROM
-        combined_path cp
-    JOIN public.cable_segments cs ON cp.segment_id = cs.id
+        full_path fp
+    JOIN public.cable_segments cs ON fp.segment_id = cs.id
     JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
     JOIN public.nodes sn ON cs.start_node_id = sn.id
     JOIN public.nodes en ON cs.end_node_id = en.id
-    LEFT JOIN (SELECT step, fiber_no FROM combined_path) next_cp ON next_cp.step = cp.step + 1
-    ORDER BY cp.step;
+    ORDER BY fp.step;
 END;
 $$;

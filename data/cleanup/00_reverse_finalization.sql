@@ -1,4 +1,4 @@
--- Path: supabase/cleanup/00_reverse_finalization.sql
+-- path: data/cleanup/00_reverse_finalization.sql
 -- Description: Removes cross-module foreign key constraints first.
 
 ALTER TABLE public.ofc_connections DROP CONSTRAINT IF EXISTS fk_ofc_connections_system;
