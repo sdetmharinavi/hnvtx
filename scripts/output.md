@@ -13,7 +13,7 @@ export default config;
 // stores/authStore.ts
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { User } from '@supabase/supabase-js';
+import { AuthError, User } from '@supabase/supabase-js';
 
 export type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -71,27 +71,32 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-          if (get().authState !== 'loading') {
+          const previousAuthState = get().authState;
+          if (previousAuthState !== 'loading') {
             set({ authState: 'loading' });
           }
 
           try {
             const result = await action();
-            // The onAuthStateChange listener is the primary driver for state changes.
-            // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
+            // Only revert state if it's still loading, to avoid race conditions
+            // with onAuthStateChange listener.
             if (get().authState === 'loading') {
               const finalUser = get().user;
               set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
             }
             return result;
           } catch (error) {
-            // // On error, let onAuthStateChange handle the state, or fall back.
-            // const finalUser = get().user;
-            // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
-            // throw error;
-            // On any error within the action, assume the session might be invalid.
-            // Set the state directly to 'unauthenticated'.
-            set({ authState: 'unauthenticated', user: null }); // Also clear the user
+            // **REFINED ERROR HANDLING**
+            const isAuthError = error instanceof AuthError && error.status === 401;
+
+            if (isAuthError) {
+              // It's a real authentication error, so log the user out.
+              set({ authState: 'unauthenticated', user: null });
+            } else {
+              // It's a network or other error, revert to the previous state.
+              set({ authState: previousAuthState });
+            }
+            // Re-throw the error to be handled by the caller.
             throw error;
           }
         },
@@ -133,20 +138,18 @@ export const useAuthStore = create<AuthStore>()(
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { TableName, TableNames } from "@/config/helper-types";
+import { TableName} from "@/hooks/database/queries-type-helpers";
 import { Tables } from "@/types/supabase-types";
 
-type UploadableTableRow<T extends TableNames> = T extends TableName
-  ? Tables<T>
-  : Record<string, unknown>;
+type UploadableTableRow<T extends TableName> = Tables<T>;
 
-export interface UploadColumnMapping<T extends TableNames> {
+export interface UploadColumnMapping<T extends TableName> {
   excelHeader: string;
   dbKey: keyof UploadableTableRow<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
-export interface UploadConfig<T extends TableNames> {
+export interface UploadConfig<T extends TableName> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
@@ -155,35 +158,26 @@ export interface UploadConfig<T extends TableNames> {
 }
 
 interface UploadConfigState {
-  configs: Record<string, UploadConfig<TableNames>>;
-  setUploadConfig: <T extends TableNames>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<TableNames> | undefined;
+  configs: Record<string, UploadConfig<TableName>>;
+  setUploadConfig: <T extends TableName>(pageKey: string, config: UploadConfig<T>) => void;
+  getUploadConfig: (pageKey: string) => UploadConfig<TableName> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
 
 export const useUploadConfigStore = create<UploadConfigState>()(
-  persist( // `persist` should be the outer wrapper
-    devtools( // `devtools` should be the inner wrapper
+  persist(
+    devtools(
       (set, get) => ({
-        // The store's state is a dictionary of configurations.
         configs: {},
-
         setUploadConfig: (pageKey, config) => {
           if (config?.uploadType === "upsert" && !config.conflictColumn) {
             console.error(`UploadConfig Error...`);
           }
           set((state) => ({
-            configs: {
-              ...state.configs,
-              [pageKey]: config,
-            },
+            configs: { ...state.configs, [pageKey]: config },
           }));
         },
-
-        getUploadConfig: (pageKey) => {
-          return get().configs[pageKey];
-        },
-
+        getUploadConfig: (pageKey) => get().configs[pageKey],
         clearUploadConfig: (pageKey) => {
           set((state) => {
             const newConfigs = { ...state.configs };
@@ -192,15 +186,9 @@ export const useUploadConfigStore = create<UploadConfigState>()(
           });
         },
       }),
-      // The options object for devtools
-      {
-        name: "UploadConfigStore",
-      }
+      { name: "UploadConfigStore" }
     ),
-    // The options object for persist
-    {
-      name: "upload-config-storage", // Use a different key for localStorage
-    }
+    { name: "upload-config-storage" }
   )
 );
 ```
@@ -208,55 +196,28 @@ export const useUploadConfigStore = create<UploadConfigState>()(
 <!-- path: stores/themeStore.ts -->
 ```typescript
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type Theme = "light" | "dark" | "system";
 
 interface ThemeState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  hydrated: boolean;
-  setHydrated: (hydrated: boolean) => void;
 }
 
-export const useThemeStore = create<ThemeState>()((set, get) => ({
-  // NEVER access localStorage in initial state - always use default
-  theme: "system", // Default value, no localStorage access
-  hydrated: false,
-
-  setTheme: (newTheme: Theme) => {
-    set({ theme: newTheme });
-    // Only access localStorage in actions (client-side)
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("theme-storage", newTheme);
-      } catch (error) {
-        console.warn("Failed to save theme:", error);
-      }
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      theme: "system", // Default value
+      setTheme: (newTheme: Theme) => {
+        set({ theme: newTheme });
+      },
+    }),
+    {
+      name: "theme-storage", // localStorage key
     }
-  },
-
-  setHydrated: (hydrated: boolean) => set({ hydrated }),
-}));
-
-// Client-side hydration function
-export const hydrateThemeStore = () => {
-  if (typeof window === "undefined") return;
-
-  try {
-    const storedTheme = localStorage.getItem("theme-storage");
-    if (storedTheme && ["light", "dark", "system"].includes(storedTheme)) {
-      useThemeStore.setState({
-        theme: storedTheme as Theme,
-        hydrated: true,
-      });
-    } else {
-      useThemeStore.setState({ hydrated: true });
-    }
-  } catch (error) {
-    console.warn("Failed to load theme:", error);
-    useThemeStore.setState({ hydrated: true });
-  }
-};
+  )
+);
 ```
 
 <!-- path: providers/QueryProvider.tsx -->
@@ -341,48 +302,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 "use client";
 
 import { useEffect } from "react";
-import { useThemeStore, hydrateThemeStore, Theme } from "@/stores/themeStore";
+import { useThemeStore, Theme } from "@/stores/themeStore";
 
 export default function ThemeProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { theme, hydrated } = useThemeStore();
+  const theme = useThemeStore((state) => state.theme);
 
-  // Hydrate theme from localStorage on mount
+  // This useEffect now only needs to react to subsequent theme changes.
   useEffect(() => {
-    // Add class to disable transitions during initial load
-    document.documentElement.classList.add("no-transition");
-
-    hydrateThemeStore();
-
-    // Re-enable transitions after a short delay
-    setTimeout(() => {
-      document.documentElement.classList.remove("no-transition");
-    }, 50);
-  }, []);
-
-  // Apply theme when hydrated or theme changes
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const applyTheme = (theme: Theme) => {
+    const applyTheme = (themeToApply: Theme) => {
+      const root = document.documentElement;
+      
       const isDark =
-        theme === "dark" ||
-        (theme === "system" &&
+        themeToApply === "dark" ||
+        (themeToApply === "system" &&
           window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-      if (isDark) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+      // Simply toggle the class. No need for transition management.
+      root.classList.toggle("dark", isDark);
     };
 
     applyTheme(theme);
 
-    // Listen for system theme changes
+    // If the theme is 'system', we still need to listen for OS-level changes.
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => applyTheme("system");
@@ -390,7 +335,7 @@ export default function ThemeProvider({
       mediaQuery.addEventListener("change", handleChange);
       return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [theme, hydrated]);
+  }, [theme]);
 
   return <>{children}</>;
 }
@@ -1036,17 +981,21 @@ class TypeScriptToZodConverter {
     ruleTableName?: string,
     actualTableName?: string
   ): boolean {
-    if (!ruleTableName || !actualTableName) {
-      return !ruleTableName; // If no rule table name specified, it matches any table
+    // If no table name is specified in the rule, it's a global rule that matches any table.
+    if (!ruleTableName) {
+      return true;
+    }
+    // If the actual table name is missing, it cannot match a specific rule.
+    if (!actualTableName) {
+      return false;
     }
 
-    // Convert both to lowercase for case-insensitive matching
+    // Convert both to lowercase for case-insensitive exact matching.
     const ruleLower = ruleTableName.toLowerCase();
     const actualLower = actualTableName.toLowerCase();
 
-    // Check if the actual table name contains the rule table name
-    // This allows "user_profiles" to match with "user"
-    return actualLower.includes(ruleLower);
+    // **RECOMMENDATION: Use exact matching instead of includes()**
+    return actualLower === ruleLower;
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {
@@ -1885,7 +1834,6 @@ BEGIN
     'vmux_systems', 'vmux_connections'
   ]
   LOOP
-    -- Enable RLS and set table-level grants for all relevant roles
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
@@ -1916,31 +1864,35 @@ BEGIN
   -- Admin/Super-Admin can do anything
   CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- System-specific admins can access rows matching their designated system type
+  -- **THE FIX: Decouple RLS from hardcoded names.**
+  -- This policy now maps the user's role (e.g., 'cpan_admin') to the system type name ('CPAN')
+  -- and then joins on the ID, making it resilient to name changes.
   CREATE POLICY "Allow full access based on system type" ON public.systems
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (
-    EXISTS (
-        SELECT 1 FROM public.lookup_types lt
-        WHERE lt.id = systems.system_type_id AND lt.category = 'SYSTEM' AND (
-            (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-            (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-            (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-            (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-            (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
+    systems.system_type_id IN (
+      SELECT lt.id
+      FROM public.lookup_types lt
+      WHERE lt.category = 'SYSTEM' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      )
     )
   )
   WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.lookup_types lt
-        WHERE lt.id = systems.system_type_id AND lt.category = 'SYSTEM' AND (
-            (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-            (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-            (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-            (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-            (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
+    systems.system_type_id IN (
+      SELECT lt.id
+      FROM public.lookup_types lt
+      WHERE lt.category = 'SYSTEM' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      )
     )
   );
 END;
@@ -1957,32 +1909,40 @@ BEGIN
   CREATE POLICY "Allow viewer read-access" ON public.system_connections FOR SELECT TO viewer USING (true);
   CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- System-specific admins can access connections whose parent system matches their type.
+  -- **THE FIX: Apply the same robust pattern here.**
   CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (
     EXISTS (
       SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id AND lt.category = 'SYSTEM' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      WHERE s.id = system_connections.system_id
+      AND s.system_type_id IN (
+        SELECT lt.id
+        FROM public.lookup_types lt
+        WHERE lt.category = 'SYSTEM' AND (
+          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+        )
       )
     )
   )
-  WITH CHECK ( -- Re-use the same logic for INSERTs and UPDATEs
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id AND lt.category = 'SYSTEM' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+      WHERE s.id = system_connections.system_id
+      AND s.system_type_id IN (
+        SELECT lt.id
+        FROM public.lookup_types lt
+        WHERE lt.category = 'SYSTEM' AND (
+          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
+          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
+          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
+        )
       )
     )
   );
@@ -2373,6 +2333,37 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated;
 ```
 
+<!-- path: data/migrations/06_utilities/07_search_nodes.sql -->
+```sql
+-- path: migrations/06_utilities/07_search_nodes.sql
+-- Description: Creates a function to search nodes for dropdowns with pagination and filtering.
+
+CREATE OR REPLACE FUNCTION public.search_nodes_for_select(
+    p_search_term TEXT DEFAULT '',
+    p_limit INT DEFAULT 20
+)
+RETURNS TABLE (id UUID, name TEXT)
+LANGUAGE plpgsql
+SECURITY INVOKER
+STABLE
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT n.id, n.name
+    FROM public.v_nodes_complete n
+    WHERE n.status = true
+      AND (
+        p_search_term = '' OR
+        n.name ILIKE ('%' || p_search_term || '%')
+      )
+    ORDER BY n.name
+    LIMIT p_limit;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.search_nodes_for_select(TEXT, INT) TO authenticated;
+```
+
 <!-- path: data/migrations/06_utilities/04_no_pagination_specialized_function.sql -->
 ```sql
 -- =================================================================
@@ -2573,6 +2564,51 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated;
+```
+
+<!-- path: data/migrations/06_utilities/06_dashboard_bsnl.sql -->
+```sql
+-- path: migrations/06_utilities/05_dashboard_functions.sql
+-- Description: Contains functions for dashboard aggregations.
+
+CREATE OR REPLACE FUNCTION public.get_dashboard_overview()
+RETURNS JSONB LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+    result jsonb;
+    v_user_activity jsonb;
+BEGIN
+    -- **THE FIX: Check if the user_activity_logs table exists before querying it.**
+    IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'user_activity_logs'
+    ) THEN
+        SELECT jsonb_agg(jsonb_build_object('date', day::date, 'count', COALESCE(activity_count, 0)) ORDER BY day)
+        INTO v_user_activity
+        FROM generate_series(CURRENT_DATE - interval '29 days', CURRENT_DATE, '1 day') as s(day) 
+        LEFT JOIN (
+            SELECT created_at::date as activity_date, COUNT(*) as activity_count 
+            FROM public.user_activity_logs 
+            WHERE created_at >= CURRENT_DATE - interval '29 days' 
+            GROUP BY activity_date
+        ) as activity ON s.day = activity.activity_date;
+    ELSE
+        -- If the table doesn't exist, return an empty JSON array.
+        v_user_activity := '[]'::jsonb;
+    END IF;
+
+    SELECT jsonb_build_object(
+        'system_status_counts', (SELECT jsonb_object_agg(CASE WHEN status THEN 'Active' ELSE 'Inactive' END, count) FROM (SELECT status, COUNT(*) as count FROM public.systems GROUP BY status) as s),
+        'node_status_counts', (SELECT jsonb_object_agg(CASE WHEN status THEN 'Active' ELSE 'Inactive' END, count) FROM (SELECT status, COUNT(*) as count FROM public.nodes GROUP BY status) as n),
+        'path_operational_status', (SELECT jsonb_object_agg(lt.name, p.count) FROM (SELECT operational_status_id, COUNT(*) as count FROM public.logical_fiber_paths WHERE operational_status_id IS NOT NULL GROUP BY operational_status_id) as p JOIN lookup_types lt ON p.operational_status_id = lt.id),
+        'cable_utilization_summary', (SELECT jsonb_build_object('average_utilization_percent', ROUND(AVG(utilization_percent)::numeric, 2), 'high_utilization_count', COUNT(*) FILTER (WHERE utilization_percent > 80), 'total_cables', COUNT(*)) FROM public.v_cable_utilization),
+        'user_activity_last_30_days', v_user_activity, -- Use the safely-fetched activity data
+        'systems_per_maintenance_area', (SELECT jsonb_object_agg(ma.name, s.system_count) FROM (SELECT maintenance_terminal_id, COUNT(id) as system_count FROM public.systems WHERE maintenance_terminal_id IS NOT NULL GROUP BY maintenance_terminal_id) as s JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id)
+    ) INTO result;
+
+    RETURN result;
+END; 
+$$;
+GRANT EXECUTE ON FUNCTION public.get_dashboard_overview() TO authenticated;
 ```
 
 <!-- path: data/migrations/06_utilities/02_paged_functions.sql -->
@@ -3669,7 +3705,7 @@ BEGIN
 END;
 $$;
 
--- USER CREATION FUNCTION
+-- USER CREATION FUNCTION (UPDATED)
 CREATE OR REPLACE FUNCTION public.create_public_profile_for_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
@@ -3683,7 +3719,8 @@ BEGIN
             NEW.raw_user_meta_data->>'phone_number',
             CASE WHEN NEW.raw_user_meta_data->>'date_of_birth' ~ '^\d{4}-\d{2}-\d{2}$' THEN (NEW.raw_user_meta_data->>'date_of_birth')::date ELSE NULL END,
             COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
-            COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb),
+            -- **THE FIX: Add the needsOnboarding flag to preferences**
+            COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
             'active'
         );
     END IF;
@@ -4092,7 +4129,8 @@ CREATE TABLE IF NOT EXISTS public.ofc_cables (
 -- OFC Connection Details (Fiber connections between nodes)
 CREATE TABLE IF NOT EXISTS public.ofc_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ofc_id UUID REFERENCES public.ofc_cables (id) NOT NULL,
+  -- **THE FIX: Added ON DELETE CASCADE to this line.**
+  ofc_id UUID REFERENCES public.ofc_cables (id) ON DELETE CASCADE NOT NULL,
   fiber_no_sn INTEGER NOT NULL,
   fiber_no_en INTEGER NOT NULL,
   updated_fiber_no_sn INTEGER,
@@ -4140,6 +4178,49 @@ CREATE TABLE IF NOT EXISTS public.files (
   file_url TEXT NOT NULL,
   uploaded_at TIMESTAMPTZ DEFAULT NOW()
 );
+```
+
+<!-- path: data/migrations/02_core_infrastructure/07_triggers_ofc_connections.sql -->
+```sql
+-- Path: migrations/02_core_infrastructure/07_triggers_ofc_connections.sql
+-- Description: Creates a trigger to automatically populate ofc_connections when a new ofc_cable is inserted.
+
+-- 1. Define the trigger function
+CREATE OR REPLACE FUNCTION public.create_initial_connections_for_cable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER -- Use definer to ensure it can write to ofc_connections
+SET search_path = public
+AS $$
+DECLARE
+    i INT;
+BEGIN
+    -- Loop from 1 to the capacity of the newly inserted cable
+    FOR i IN 1..NEW.capacity LOOP
+        -- Insert a new record into ofc_connections for each fiber
+        INSERT INTO public.ofc_connections (
+            ofc_id,
+            fiber_no_sn,
+            fiber_no_en
+        )
+        VALUES (
+            NEW.id,
+            i,
+            i
+        );
+    END LOOP;
+    RETURN NEW;
+END;
+$$;
+
+-- 2. Create and attach the trigger to the ofc_cables table
+DROP TRIGGER IF EXISTS on_ofc_cable_created ON public.ofc_cables; -- for idempotency
+CREATE TRIGGER on_ofc_cable_created
+AFTER INSERT ON public.ofc_cables
+FOR EACH ROW
+EXECUTE FUNCTION public.create_initial_connections_for_cable();
+
+COMMENT ON TRIGGER on_ofc_cable_created ON public.ofc_cables IS 'Automatically creates individual fiber records in ofc_connections upon the creation of a new ofc_cable.';
 ```
 
 <!-- path: data/migrations/04_advanced_ofc/02_views.sql -->
@@ -5396,6 +5477,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   images: {
     qualities: [25, 50, 75, 90, 100],
+    // **Add modern formats for automatic optimization**
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -6090,7 +6173,7 @@ export const authSso_providersUpdateSchema = z.object({
 });
 
 export const authUsersRowSchema = z.object({
-  aud: z.string().min(1).nullable(),
+  aud: z.string().nullable(),
   banned_until: z.string().nullable(),
   confirmation_sent_at: z.iso.datetime().nullable(),
   confirmation_token: z.jwt().nullable(),
@@ -6123,12 +6206,12 @@ export const authUsersRowSchema = z.object({
   reauthentication_token: z.jwt().nullable(),
   recovery_sent_at: z.iso.datetime().nullable(),
   recovery_token: z.jwt().nullable(),
-  role: z.enum(UserRole).nullable(),
+  role: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
 export const authUsersInsertSchema = z.object({
-  aud: z.string().min(1).nullable().optional(),
+  aud: z.string().nullable().optional(),
   banned_until: z.string().nullable().optional(),
   confirmation_sent_at: z.iso.datetime().nullable().optional(),
   confirmation_token: z.jwt().nullable().optional(),
@@ -6161,12 +6244,12 @@ export const authUsersInsertSchema = z.object({
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
   recovery_token: z.jwt().nullable().optional(),
-  role: z.enum(UserRole).nullable().optional(),
+  role: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const authUsersUpdateSchema = z.object({
-  aud: z.string().min(1).nullable().optional(),
+  aud: z.string().nullable().optional(),
   banned_until: z.string().nullable().optional(),
   confirmation_sent_at: z.iso.datetime().nullable().optional(),
   confirmation_token: z.jwt().nullable().optional(),
@@ -6199,7 +6282,7 @@ export const authUsersUpdateSchema = z.object({
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
   recovery_token: z.jwt().nullable().optional(),
-  role: z.enum(UserRole).nullable().optional(),
+  role: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -7138,7 +7221,7 @@ export const user_profilesRowSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   preferences: z.any().nullable(),
-  role: z.enum(UserRole).nullable(),
+  role: z.string().nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -7154,7 +7237,7 @@ export const user_profilesInsertSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   preferences: z.any().nullable().optional(),
-  role: z.enum(UserRole).nullable().optional(),
+  role: z.string().nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -7170,7 +7253,7 @@ export const user_profilesUpdateSchema = z.object({
   last_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   preferences: z.any().nullable().optional(),
-  role: z.enum(UserRole).nullable().optional(),
+  role: z.string().nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -7536,7 +7619,7 @@ export const v_user_profiles_extendedRowSchema = z.object({
   preferences: z.any().nullable(),
   raw_app_meta_data: z.any().nullable(),
   raw_user_meta_data: z.any().nullable(),
-  role: z.enum(UserRole).nullable(),
+  role: z.string().nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -7874,57 +7957,57 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 
 <!-- path: hooks/useOutdatedBrowserCheck.tsx -->
 ```typescript
+// hooks/useOutdatedBrowserCheck.tsx
 import { useEffect, useState } from 'react';
 
 const LOCAL_KEY = 'isOutdatedBrowser';
 
 function detectOutdatedBrowser(): boolean {
-  const ua = navigator.userAgent;
-  let isOutdated = false;
-
-  const isIE = /MSIE|Trident/.test(ua);
-  const legacyEdgeMatch = ua.match(/Edge\/(\d+)/);
-  const chromeMatch = ua.match(/Chrome\/(\d+)/);
-  const firefoxMatch = ua.match(/Firefox\/(\d+)/);
-  const safariMatch = ua.match(/Version\/(\d+).+Safari/);
-  const edgeMatch = ua.match(/Edg\/(\d+)/);
-
-  if (isIE) {
-    isOutdated = true;
-  } else if (legacyEdgeMatch) {
-    const version = parseInt(legacyEdgeMatch[1]);
-    if (version < 80) isOutdated = true;
-  } else if (chromeMatch) {
-    const version = parseInt(chromeMatch[1]);
-    if (version < 110) isOutdated = true;
-  } else if (firefoxMatch) {
-    const version = parseInt(firefoxMatch[1]);
-    if (version < 100) isOutdated = true;
-  } else if (safariMatch) {
-    const version = parseInt(safariMatch[1]);
-    if (version < 15) isOutdated = true;
-  } else if (edgeMatch) {
-    const version = parseInt(edgeMatch[1]);
-    if (version < 110) isOutdated = true;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
   }
-
+  
+  // **Priority 1: Feature Detection**
   const missingFeatures = [
-    () => typeof Promise !== 'function' || typeof Symbol !== 'function',
-    () => !CSS.supports('display', 'flex'),
+    () => typeof Promise?.allSettled !== 'function', // ES2020
+    () => typeof window.crypto?.subtle === 'undefined', // Web Crypto API
+    () => !CSS.supports('display', 'grid'),
     () => !CSS.supports('position', 'sticky'),
-    () => !CSS.supports('backdrop-filter', 'blur(1px)'),
-    () => typeof IntersectionObserver === 'undefined',
-    () => typeof localStorage === 'undefined',
-    () => typeof sessionStorage === 'undefined',
+    () => !('IntersectionObserver' in window),
+    () => !('localStorage' in window),
+    () => !('structuredClone' in window), // A more modern feature
   ].some(fn => fn());
 
-  return isOutdated || missingFeatures;
+  if (missingFeatures) {
+    return true;
+  }
+
+  // **Priority 2: User-Agent Sniffing as a fallback for known legacy browsers**
+  const ua = navigator.userAgent;
+
+  // Rule out Internet Explorer immediately
+  const isIE = /MSIE|Trident/.test(ua);
+  if (isIE) {
+    return true;
+  }
+  
+  // Check for very old versions of other browsers
+  const legacyEdgeMatch = ua.match(/Edge\/(\d+)/); // Non-Chromium Edge
+  if (legacyEdgeMatch && parseInt(legacyEdgeMatch[1]) < 18) {
+    return true;
+  }
+
+  // At this point, the browser is likely modern enough.
+  return false;
 }
 
 export function useOutdatedBrowserCheck(): boolean | null {
   const [isOutdated, setIsOutdated] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Only run on the client
+    if (typeof window === 'undefined') return;
+
     const cached = localStorage.getItem(LOCAL_KEY);
     if (cached !== null) {
       setIsOutdated(cached === 'true');
@@ -7938,7 +8021,6 @@ export function useOutdatedBrowserCheck(): boolean | null {
 
   return isOutdated;
 }
-
 ```
 
 <!-- path: hooks/useEntityManagement.ts -->
@@ -7948,22 +8030,32 @@ export function useOutdatedBrowserCheck(): boolean | null {
 import { BaseEntity, EntityWithChildren, isHierarchicalEntity, UseEntityManagementProps } from "@/components/common/entity-management/types";
 import { useCallback, useMemo, useState } from "react";
 
-export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, config, onEdit, onDelete, onToggleStatus, onCreateNew }: UseEntityManagementProps<T>) {
+export function useEntityManagement<T extends BaseEntity>({
+  entitiesQuery,
+  config,
+  onEdit, // Prop is received but not used directly in the hook's logic
+  onDelete,
+  onCreateNew,
+  selectedEntityId,
+  onSelect,
+  onToggleStatus,
+}: UseEntityManagementProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"tree" | "list">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<T | null>(null);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
   const allEntities = useMemo(() => entitiesQuery.data || [], [entitiesQuery.data]);
 
-  // Search functionality
+  const selectedEntity = useMemo(() => {
+    return allEntities.find(e => e.id === selectedEntityId) || null;
+  }, [allEntities, selectedEntityId]);
+
+
   const searchedEntities = useMemo(() => {
     if (!searchTerm) return allEntities;
-
     return allEntities.filter((entity) =>
       config.searchFields.some((field) => {
         const value = entity[field];
@@ -7972,15 +8064,11 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     );
   }, [allEntities, searchTerm, config.searchFields]);
 
-  // Filter functionality
   const filteredEntities = useMemo(() => {
     return searchedEntities.filter((entity) => {
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
-
-        // Safely access the property using type assertion
         const entityValue = key in entity ? entity[key as keyof T] : undefined;
-        
         if (key === "status") {
           return entityValue !== undefined && entityValue?.toString() === value;
         }
@@ -7989,63 +8077,40 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     });
   }, [searchedEntities, filters]);
 
-  // Build hierarchical structure for tree view
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
     if (!config.isHierarchical) return filteredEntities.map((entity) => ({ ...entity, children: [] }));
-
-    // Create a map to store entities with their children
     const entityMap = new Map<string, EntityWithChildren<T>>();
-
-    // Initialize all entities with empty children arrays
     filteredEntities.forEach((entity) => {
       entityMap.set(entity.id, { ...entity, children: [] });
     });
-
     const rootEntities: EntityWithChildren<T>[] = [];
-
-    // Build the hierarchy
     filteredEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
-
       if (isHierarchicalEntity(entity) && entity.parent_id) {
-        // This entity has a parent, add it to parent's children
         const parent = entityMap.get(entity.parent_id);
         if (parent) {
           parent.children.push(entityWithChildren);
         } else {
-          // Parent not in filtered results, treat as root
           rootEntities.push(entityWithChildren);
         }
       } else {
-        // This is a root entity
         rootEntities.push(entityWithChildren);
       }
     });
-
     return rootEntities;
   }, [filteredEntities, config.isHierarchical]);
 
-  // Event handlers
-  const handleEntitySelect = useCallback((id: string, entity?: T) => {
-    setSelectedEntityId(id);
-    if (entity) {
-      setSelectedEntity(entity);
-    } else {
-      const foundEntity = allEntities.find(e => e.id === id) || null;
-      setSelectedEntity(foundEntity);
-    }
+  const handleEntitySelect = useCallback((id: string) => {
+    onSelect(id);
     setShowDetailsPanel(true);
-  }, [allEntities]);
+  }, [onSelect]);
 
   const toggleExpanded = (id: string) => {
     setExpandedEntities((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
       return newSet;
     });
   };
@@ -8054,20 +8119,13 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     onCreateNew();
   };
 
-  const handleOpenEditForm = useCallback(() => {
-    if (selectedEntity) {
-      onEdit(selectedEntity);
-    }
-  }, [selectedEntity, onEdit]);
-
   return {
     // State
     searchTerm,
     viewMode,
     showFilters,
     filters,
-    selectedEntityId,
-    selectedEntity,
+    selectedEntity, // This is the selected entity object
     showDetailsPanel,
     expandedEntities,
 
@@ -8085,12 +8143,10 @@ export function useEntityManagement<T extends BaseEntity>({ entitiesQuery, confi
     handleEntitySelect,
     toggleExpanded,
     handleOpenCreateForm,
-    handleOpenEditForm,
     onToggleStatus,
     onDelete,
   };
 }
-
 ```
 
 <!-- path: hooks/useDelete.ts -->
@@ -8099,6 +8155,7 @@ import { useState } from "react";
 import { useTableDelete } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { TableName } from "@/hooks/database";
+import { toast } from "sonner"; // <-- Import toast
 
 export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSuccess?: () => void }) => {
   const supabase = createClient();
@@ -8108,6 +8165,11 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
     onSuccess: () => {
       onSuccess?.();
       setItemToDelete(null);
+    },
+    // **THE FIX: Add an onError handler to show a toast on failure.**
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
+      setItemToDelete(null); // Clear the item even on failure
     },
   });
 
@@ -10918,257 +10980,104 @@ export const tableQueryUtils = {
 <!-- path: hooks/database/queries-type-helpers.ts -->
 ```typescript
 // hooks/database/queries-type-helpers.ts
-
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
 import { Database, Tables, TablesInsert, TablesUpdate } from "@/types/supabase-types";
-import { tableNames } from '@/types/flattened-types';
+import { tableNames } from '@/types/flattened-types'; // Import auto-generated names
 
-// --- TYPE HELPERS ---
+// --- TYPE HELPERS DERIVED FROM SUPABASE ---
 
-// The type to include Date as a possible type
-export type TableInsertWithDates<T extends TableName> = {
-  [K in keyof TablesInsert<T>]?: TablesInsert<T>[K] | Date | null;
-};
-
-export type TableUpdateWithDates<T extends TableName> = {
-  [K in keyof TablesUpdate<T>]?: TablesUpdate<T>[K] | Date | null;
-};
-
-// A table is a source that can be read from and written to.
 export type TableName = keyof Database["public"]["Tables"];
-
-// Auth tables are tables that can only be read from.
-export type AuthTable = keyof Database["auth"]["Tables"];
-
-// A view is a source that can only be read from.
 export type ViewName = keyof Database["public"]["Views"];
-
-// A generic type for any readable source (table or view).
 export type TableOrViewName = TableName | ViewName;
-
-// A generic type for any readable source (table or view).
+export type AuthTable = keyof Database["auth"]["Tables"];
 export type AuthTableOrViewName = AuthTable | ViewName | TableName;
 
-// Helper function to check if the table name is a table (not a view)
-// CORRECTED: This is now robust and automated. No more manual updates needed.
-export const isTableName = (name: AuthTableOrViewName): name is TableName => {
-  // The 'as readonly string[]' assertion helps TypeScript understand the imported const array
-  return (tableNames as readonly string[]).includes(name as string);
+// Helper to check if a name is a table (and not a view)
+export const isTableName = (name: TableOrViewName): name is TableName => {
+  return (tableNames as readonly string[]).includes(name);
 };
 
+// Generic row types for any read operation
+export type Row<T extends TableOrViewName> = T extends TableName
+  ? Tables<T>
+  : T extends ViewName
+  ? Database["public"]["Views"][T]["Row"]
+  : never;
 
-// Table-specific types for mutation operations (insert, update, delete).
 export type TableRow<T extends TableName> = Tables<T>;
 export type TableInsert<T extends TableName> = TablesInsert<T>;
 export type TableUpdate<T extends TableName> = TablesUpdate<T>;
+export type TableInsertWithDates<T extends TableName> = { [K in keyof TablesInsert<T>]?: TablesInsert<T>[K] | Date | null; };
+export type TableUpdateWithDates<T extends TableName> = { [K in keyof TablesUpdate<T>]?: TablesUpdate<T>[K] | Date | null; };
 
-// A generic row type for any read operation (works with both tables and views).
-export type Row<T extends AuthTableOrViewName> = T extends TableName ? Tables<T> : T extends ViewName ? Database["public"]["Views"][T]["Row"] : T extends AuthTable ? Database["auth"]["Tables"][T]["Row"] : never;
-
-// RPC function type helpers.
+// RPC function type helpers
 export type RpcFunctionName = keyof Database["public"]["Functions"];
 export type RpcFunctionArgs<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Args"];
 export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Returns"];
 
-// --- ADVANCED TYPES FOR HOOK OPTIONS ---
+// --- ADVANCED TYPES FOR HOOK OPTIONS (Unchanged) ---
 
 export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
-
 export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
-
-// The corrected Filters type definition
 export type Filters = {
-  /** A special key for creating OR conditions across multiple columns.
-      Can be either:
-      - A record where keys are column names and values are search terms
-      - A PostgREST OR syntax string
-      Example: { or: { employee_name: 'John', employee_pers_no: 'John' } }
-      Example: { or: '(system_name.ilike.*search*,node_name.ilike.*search*)' }
-  */
   or?: Record<string, string> | string;
-  /** All other filter properties */
   [key: string]: FilterValue | Record<string, string> | string | undefined;
 };
-
-
-
-export type OrderBy = {
-  column: string;
-  ascending?: boolean;
-  nullsFirst?: boolean;
-  foreignTable?: string;
-};
-
-export // Updated OrderBy interface to support optional type hints
-interface EnhancedOrderBy {
-  column: string;
-  ascending?: boolean;
-  nullsFirst?: boolean;
-  foreignTable?: string;
-  dataType?: 'text' | 'numeric' | 'date' | 'timestamp' | 'boolean' | 'json';
-}
-
-export type DeduplicationOptions = {
-  columns: string[];
-  orderBy?: OrderBy[];
-};
-
-export type AggregationOptions = {
-  count?: boolean | string;
-  sum?: string[];
-  avg?: string[];
-  min?: string[];
-  max?: string[];
-  groupBy?: string[];
-};
-
-export type PerformanceOptions = {
-  useIndex?: string;
-  explain?: boolean;
-  timeout?: number;
-  connection?: "read" | "write";
-};
-
-// The shape of data returned by queries, potentially with a total count.
+export type OrderBy = { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; };
+export interface EnhancedOrderBy { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; dataType?: 'text' | 'numeric' | 'date' | 'timestamp' | 'boolean' | 'json'; }
+export type DeduplicationOptions = { columns: string[]; orderBy?: OrderBy[]; };
+export type AggregationOptions = { count?: boolean | string; sum?: string[]; avg?: string[]; min?: string[]; max?: string[]; groupBy?: string[]; };
+export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout?: number; connection?: "read" | "write"; };
 export type RowWithCount<T> = T & { total_count?: number };
 
-// --- HOOK OPTIONS INTERFACES ---
-
-// Options for querying multiple records from tables OR views.
+// --- HOOK OPTIONS INTERFACES (Unchanged) ---
 export interface UseTableQueryOptions<T extends TableOrViewName, TData = RowWithCount<Row<T>>[]> extends Omit<UseQueryOptions<RowWithCount<Row<T>>[], Error, TData>, "queryKey" | "queryFn"> {
-  columns?: string;
-  filters?: Filters;
-  orderBy?: OrderBy[];
-  limit?: number;
-  offset?: number;
-  deduplication?: DeduplicationOptions;
-  aggregation?: AggregationOptions;
-  performance?: PerformanceOptions;
-  includeCount?: boolean;
+  columns?: string; filters?: Filters; orderBy?: OrderBy[]; limit?: number; offset?: number; deduplication?: DeduplicationOptions; aggregation?: AggregationOptions; performance?: PerformanceOptions; includeCount?: boolean;
 }
-
-// Options for infinite scrolling over tables OR views.
-export type InfiniteQueryPage<T extends TableOrViewName> = {
-  data: Row<T>[];
-  nextCursor?: number;
-  count?: number;
-};
-
-export interface UseTableInfiniteQueryOptions<T extends TableOrViewName, TData = InfiniteData<InfiniteQueryPage<T>>>
-  extends Omit<UseInfiniteQueryOptions<InfiniteQueryPage<T>, Error, TData, readonly unknown[], number | undefined>, "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"> {
-  columns?: string;
-  filters?: Filters;
-  orderBy?: OrderBy[];
-  pageSize?: number;
-  performance?: PerformanceOptions;
+export type InfiniteQueryPage<T extends TableOrViewName> = { data: Row<T>[]; nextCursor?: number; count?: number; };
+export interface UseTableInfiniteQueryOptions<T extends TableOrViewName, TData = InfiniteData<InfiniteQueryPage<T>>> extends Omit<UseInfiniteQueryOptions<InfiniteQueryPage<T>, Error, TData, readonly unknown[], number | undefined>, "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"> {
+  columns?: string; filters?: Filters; orderBy?: OrderBy[]; pageSize?: number; performance?: PerformanceOptions;
 }
-
-// Options for querying a single record from a table OR view.
 export interface UseTableRecordOptions<T extends TableOrViewName, TData = Row<T> | null> extends Omit<UseQueryOptions<Row<T> | null, Error, TData>, "queryKey" | "queryFn"> {
-  columns?: string;
-  performance?: PerformanceOptions;
+  columns?: string; performance?: PerformanceOptions;
 }
-
-// Options for getting unique values from a table OR view.
 export interface UseUniqueValuesOptions<T extends TableOrViewName, TData = unknown[]> extends Omit<UseQueryOptions<unknown[], Error, TData>, "queryKey" | "queryFn"> {
-  tableName: T;
-  filters?: Filters;
-  orderBy?: OrderBy[];
-  limit?: number;
-  performance?: PerformanceOptions;
+  tableName: T; filters?: Filters; orderBy?: OrderBy[]; limit?: number; performance?: PerformanceOptions;
 }
-
 export interface UseRpcQueryOptions<T extends RpcFunctionName, TData = RpcFunctionReturns<T>> extends Omit<UseQueryOptions<RpcFunctionReturns<T>, Error, TData>, "queryKey" | "queryFn"> {
   performance?: PerformanceOptions;
 }
-
-// Options for mutations, which apply ONLY to tables.
 export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, TContext = unknown> extends Omit<UseMutationOptions<TData, Error, TVariables, TContext>, "mutationFn"> {
-  invalidateQueries?: boolean;
-  optimisticUpdate?: boolean;
-  batchSize?: number;
+  invalidateQueries?: boolean; optimisticUpdate?: boolean; batchSize?: number;
 }
+export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
 
-export interface OptimisticContext {
-  previousData?: [readonly unknown[], unknown][];
-}
-
-// export type PagedSystemsCompleteResult = Array<Database["public"]["Functions"]["get_paged_v_systems_complete"]["Returns"][number]> | null;
-
-// export type UsePagedSystemsCompleteOptions = {
-//   limit?: number;
-//   offset?: number;
-//   orderBy?: string;
-//   orderDir?: "asc" | "desc";
-//   filters?: Json;
-//   queryOptions?: Omit<UseQueryOptions<PagedSystemsCompleteResult>, "queryKey" | "queryFn">;
-// };
-
-// --- TYPES FOR EXCEL UPLOAD HOOK ---
-
-/**
- * Defines how to map a column from the Excel file to a database column.
- * @template T - The name of the table to upload to.
- */
+// ... (Excel Upload types remain the same) ...
 export interface UploadColumnMapping<T extends TableName> {
-  /** The exact header name in the Excel file (e.g., "Product Name"). */
-  excelHeader: string;
-  /** The corresponding key in the database table (e.g., "product_name"). */
-  dbKey: keyof TableInsert<T> & string;
-  /** An optional function to transform the cell's value before uploading. */
-  transform?: (value: unknown) => unknown;
-  /** If true, the value must be non-empty after transform; otherwise the row is rejected. */
-  required?: boolean;
+    excelHeader: string;
+    dbKey: keyof TableInsert<T> & string;
+    transform?: (value: unknown) => unknown;
+    required?: boolean;
 }
-
-/**
- * Specifies the type of upload operation to perform.
- * - 'insert': Adds all rows as new records. Fails if a record violates a unique constraint.
- * - 'upsert': Inserts new records or updates existing ones based on a conflict column.
- */
 export type UploadType = "insert" | "upsert";
-
-/**
- * Options required to initiate an Excel file upload.
- * @template T - The name of the table to upload to.
- */
 export interface UploadOptions<T extends TableName> {
-  /** The file object from a file input element. */
-  file: File;
-  /** An array defining how to map Excel columns to database columns. */
-  columns: UploadColumnMapping<T>[];
-  /** The type of database operation to perform. Defaults to 'upsert'. */
-  uploadType?: UploadType;
-  /**
-   * The database column to use for conflict resolution in an 'upsert' operation.
-   * This is REQUIRED for 'upsert'.
-   * e.g., 'id' or 'sku' if you want to update rows with matching IDs or SKUs.
-   */
-  conflictColumn?: keyof TableInsert<T> & string;
+    file: File;
+    columns: UploadColumnMapping<T>[];
+    uploadType?: UploadType;
+    conflictColumn?: keyof TableInsert<T> & string;
 }
-
-/**
- * The result of a successful upload operation.
- */
 export interface UploadResult {
-  successCount: number;
-  errorCount: number;
-  totalRows: number;
-  errors: { rowIndex: number; data: unknown; error: string }[];
+    successCount: number;
+    errorCount: number;
+    totalRows: number;
+    errors: { rowIndex: number; data: unknown; error: string }[];
 }
-
-/**
- * Configuration options for the useExcelUpload hook itself.
- * @template T - The name of the table to upload to.
- */
 export interface UseExcelUploadOptions<T extends TableName> {
-  onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
-  onError?: (error: Error, variables: UploadOptions<T>) => void;
-  showToasts?: boolean;
-  batchSize?: number;
+    onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
+    onError?: (error: Error, variables: UploadOptions<T>) => void;
+    showToasts?: boolean;
+    batchSize?: number;
 }
-
-// Define a type for the function's return data for full type safety
 export type DashboardOverviewData = {
   system_status_counts: { [key: string]: number };
   node_status_counts: { [key: string]: number };
@@ -13423,6 +13332,7 @@ export type RecordWithId = {
   name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  employee_name?: string | null; // <-- ADDED for type safety
   [key: string]: unknown;
 };
 
@@ -13502,7 +13412,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
     currentPage,
     pageLimit,
     searchQuery: debouncedSearch,
-    filters: combinedFilters, // <<< THE FIX IS HERE
+    filters: combinedFilters,
   });
 
   // --- MUTATIONS ---
@@ -13605,7 +13515,9 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   );
 
   // --- DELETE HANDLERS ---
+  // **THE FIX IS HERE: Added a check for 'employee_name'.**
   const getDisplayName = useCallback((record: RecordWithId): string => {
+    if (record.employee_name) return String(record.employee_name);
     if (record.name) return String(record.name);
     if (record.first_name && record.last_name) {
       return `${record.first_name} ${record.last_name}`;
@@ -14192,13 +14104,6 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
         return { ...defaultConfig, ...columnOverride };
       });
   }, [tableName, overrides, omit, columnWidths]);
-
-  // const columnsKeys = columns.map((col) => col.key);
-
-  // useEffect(() => {
-  //   console.log(`columns for ${tableName}`, columnsKeys);
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
 
   return columns;
 }
@@ -17749,9 +17654,6 @@ export function haversineDistance(
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
-// // Usage
-// const minDist = haversineDistance(22.5726, 88.3639, 28.7041, 77.1025);
-// console.log(`Distance: ${minDist.toFixed(2)} km`);
 
 ```
 
@@ -18153,13 +18055,6 @@ export function useLookupTypes(initialCategory = "") {
 }
 ```
 
-<!-- path: components/lookup/lookup-types.ts -->
-```typescript
-export interface LookupTypesPageProps {
-    initialCategory?: string;
-  }
-```
-
 <!-- path: components/lookup/LookupModal.tsx -->
 ```typescript
 "use client";
@@ -18172,10 +18067,11 @@ import { lookup_typesInsertSchema, Lookup_typesInsertSchema, Lookup_typesRowSche
 import { snakeToTitleCase } from "@/utils/formatters";
 import { createClient } from "@/utils/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
+import { generateCodeFromName } from "@/config/helper-functions";
 
 interface LookupModalProps {
   isOpen: boolean;
@@ -18187,17 +18083,14 @@ interface LookupModalProps {
   categories?: Lookup_typesRowSchema[];
 }
 
-// Add this function to extract unique categories
 const getUniqueCategories = (data?: Lookup_typesRowSchema[]) => {
   if (!data) return [];
-
   const categoriesSet = new Set<string>();
   data.forEach(item => {
     if (item.category) {
       categoriesSet.add(item.category);
     }
   });
-
   return Array.from(categoriesSet).sort();
 };
 
@@ -18210,55 +18103,36 @@ export function LookupModal({
   category,
   categories,
 }: LookupModalProps) {
-  // Database hooks
   const supabase = createClient();
   const { mutate: createLookup } = useTableInsert(supabase, "lookup_types");
   const { mutate: updateLookup } = useTableUpdate(supabase, "lookup_types");
 
-  // console.log("categories", categories);
-
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
   const isEditMode = Boolean(editingLookup);
-
-  // Extract unique categories
   const uniqueCategories = getUniqueCategories(categories);
-  // console.log("uniqueCategories", uniqueCategories);
 
-  // Create a form-specific schema
   const lookupTypeFormSchema = lookup_typesInsertSchema.pick({
-    category: true,
-    code: true,
-    description: true,
-    name: true,
-    sort_order: true,
-    is_system_default: true,
-    status: true,
+    category: true, code: true, description: true, name: true,
+    sort_order: true, is_system_default: true, status: true,
   });
   type LookupTypeFormData = z.infer<typeof lookupTypeFormSchema>;
 
-  // react-hook-form setup with better default values
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-    watch,
-    setValue,
+    register, handleSubmit, formState: { errors, isSubmitting },
+    reset, watch, setValue,
   } = useForm<LookupTypeFormData>({
     resolver: zodResolver(lookupTypeFormSchema),
     defaultValues: {
-      category: "",
-      code: "",
-      description: "",
-      name: "",
-      sort_order: 0,
-      is_system_default: false,
-      status: true,
+      category: "", code: "", description: "", name: "",
+      sort_order: 0, is_system_default: false, status: true,
     },
   });
+  
+  const watchedName = watch('name');
 
-  // Reset form when modal opens/closes or editing changes
   useEffect(() => {
     if (isOpen) {
+      setIsCodeManuallyEdited(isEditMode); // Lock auto-generation in edit mode initially
       const resetData: LookupTypeFormData = {
         category: editingLookup?.category || category || "",
         code: editingLookup?.code || "",
@@ -18268,332 +18142,108 @@ export function LookupModal({
         is_system_default: editingLookup?.is_system_default || false,
         status: editingLookup?.status !== false,
       };
-
       reset(resetData);
     }
-  }, [isOpen, editingLookup, category, reset]); // Ensure setValue is not in this array if you have it
+  }, [isOpen, editingLookup, category, reset, isEditMode]);
+
+  useEffect(() => {
+    if (!isCodeManuallyEdited && !isEditMode) {
+      const generatedCode = generateCodeFromName(watchedName);
+      setValue('code', generatedCode, { shouldValidate: true });
+    }
+  }, [watchedName, isCodeManuallyEdited, isEditMode, setValue]);
 
   const onValidSubmit = useCallback(
-    async (data: LookupTypeFormData) => {
-      try {
-        const submissionData: LookupTypeFormData = {
-          ...data,
-          code: data.code?.trim() || null,
-          description: data.description?.trim() || null,
-          name: data.name?.trim(),
-          category: data.category?.trim(),
-        };
-
-        if (isEditMode && editingLookup?.id) {
-          // Update existing lookup
-          updateLookup(
-            {
-              id: editingLookup.id,
-              data: submissionData,
-            },
-            {
-              onSuccess: (updatedData) => {
-                onLookupUpdated?.(updatedData as Lookup_typesUpdateSchema);
-                onClose();
-              },
-              onError: (error) => {
-                console.error("Error updating lookup type:", error);
-                toast.error("Failed to update lookup type");
-              },
-            }
-          );
-        } else {
-          // Create new lookup
-          createLookup(submissionData, {
-            onSuccess: (createdData) => {
-              onLookupCreated?.(createdData as unknown as Lookup_typesInsertSchema);
-              onClose();
-            },
-            onError: (error) => {
-              console.error("Error creating lookup type:", error);
-              toast.error("Failed to create lookup type");
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Error submitting lookup type:", error);
-        toast.error("Failed to submit lookup type");
+    (data: LookupTypeFormData) => {
+      const submissionData = { ...data, code: data.code?.trim() || null, description: data.description?.trim() || null, name: data.name?.trim(), category: data.category?.trim(), };
+      if (isEditMode && editingLookup?.id) {
+        updateLookup({ id: editingLookup.id, data: submissionData }, {
+          onSuccess: (updatedData) => { onLookupUpdated?.(updatedData as Lookup_typesUpdateSchema); onClose(); },
+          onError: (error) => toast.error(`Failed to update lookup type: ${error.message}`),
+        });
+      } else {
+        createLookup(submissionData, {
+          onSuccess: (createdData) => { onLookupCreated?.(createdData as unknown as Lookup_typesInsertSchema); onClose(); },
+          onError: (error) => toast.error(`Failed to create lookup type: ${error.message}`),
+        });
       }
     },
-    [
-      isEditMode,
-      editingLookup,
-      updateLookup,
-      createLookup,
-      onLookupUpdated,
-      onLookupCreated,
-      onClose,
-    ]
+    [isEditMode, editingLookup, updateLookup, createLookup, onLookupUpdated, onLookupCreated, onClose]
   );
 
   const modalTitle = isEditMode ? "Edit Lookup Type" : "Add Lookup Type";
-  const submitButtonText = isEditMode
-    ? isSubmitting
-      ? "Updating..."
-      : "Update Lookup Type"
-    : isSubmitting
-    ? "Creating..."
-    : "Create Lookup Type";
-
-  const canSubmit = Boolean(
-    watch("category")?.trim() && watch("name")?.trim() && !isSubmitting
-  );
-
-  // Watch values for debugging
+  const submitButtonText = isEditMode ? (isSubmitting ? "Updating..." : "Update") : (isSubmitting ? "Creating..." : "Create");
+  const canSubmit = Boolean(watch("category")?.trim() && watch("name")?.trim() && !isSubmitting);
   const watchedCategory = watch("category");
-  const watchedName = watch("name");
   const watchedCode = watch("code");
 
-  // console.log("category prop:", category);
-  // console.log("editingLookup:", editingLookup);
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Category <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-
+            <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Category <span className="text-red-500 dark:text-red-400">*</span></label>
             {isEditMode || category ? (
-              // Read-only category in edit mode or when category is provided
-              <div className="space-y-1">
-                <Input
-                  type="text"
-                  {...register("category")}
-                  readOnly
-                  className="bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                  value={watchedCategory || ""}
-                />
-                {errors.category && (
-                  <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                    {errors.category.message}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {isEditMode
-                    ? "Category cannot be changed when editing"
-                    : "Category is set from parent"}
-                </p>
-              </div>
+              <Input type="text" {...register("category")} readOnly className="bg-gray-50 dark:bg-gray-700" value={watchedCategory || ""} />
             ) : (
-              // Category selection for create mode
-              <div className="space-y-2">
-                <select
-                  {...register("category")}
-                  className={`w-full rounded-md border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                    errors.category
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-300 dark:border-gray-600"
-                  }`}
-                  disabled={isSubmitting}
-                  value={watchedCategory || ""}
-                  onChange={(e) => setValue("category", e.target.value)}
-                >
-                  <option value="">Select category...</option>
-                  {uniqueCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {snakeToTitleCase(cat)}
-                    </option>
-                  ))}
-                </select>
-
-                {errors.category && (
-                  <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                    {errors.category.message}
-                  </p>
-                )}
-              </div>
+              <select {...register("category")} className="w-full rounded-md border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none border-gray-300 dark:border-gray-600" disabled={isSubmitting} value={watchedCategory || ""} onChange={(e) => setValue("category", e.target.value)}>
+                <option value="">Select category...</option>
+                {uniqueCategories.map((cat) => (<option key={cat} value={cat}>{snakeToTitleCase(cat)}</option>))}
+              </select>
             )}
+            {errors.category && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.category.message}</p>}
           </div>
-
-          {/* Name Field */}
           <div className="md:col-span-2">
-            <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Name <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <Input
-              type="text"
-              {...register("name")}
-              placeholder="Enter lookup name"
-              disabled={isSubmitting}
-              value={watchedName || ""}
-              onChange={(e) => setValue("name", e.target.value)}
-              className={`${
-                errors.name ? "border-red-300 dark:border-red-600" : ""
-              } dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder-gray-400`}
-            />
-            {errors.name && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                {errors.name.message}
-              </p>
-            )}
+            <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Name <span className="text-red-500 dark:text-red-400">*</span></label>
+            <Input type="text" {...register("name")} placeholder="Enter lookup name" disabled={isSubmitting} className="dark:bg-gray-800" />
+            {errors.name && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.name.message}</p>}
           </div>
-
-          {/* Code Field */}
           <div>
-            <label htmlFor="code" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Code
-            </label>
+            <label htmlFor="code" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Code</label>
             <Input
               type="text"
               id="code"
               {...register("code")}
-              placeholder="Enter code (optional)"
+              placeholder="Auto-generated or manual"
               value={watchedCode || ""}
               disabled={isSubmitting}
-              onChange={(e) => setValue("code", e.target.value)}
-              className={`${
-                errors.code ? "border-red-300 dark:border-red-600" : ""
-              } dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder-gray-400`}
+              onChange={(e) => {
+                setIsCodeManuallyEdited(true);
+                setValue("code", e.target.value);
+              }}
+              className="dark:bg-gray-800"
             />
-            {errors.code && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                {errors.code.message}
-              </p>
-            )}
+            {errors.code && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.code.message}</p>}
           </div>
-
-          {/* Sort Order Field */}
           <div>
-            <label htmlFor="sort_order" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Sort Order
-            </label>
-            <Input
-              type="number"
-              id="sort_order"
-              {...register("sort_order", { valueAsNumber: true })}
-              placeholder="0"
-              disabled={isSubmitting}
-              min="0"
-              className={`${
-                errors.sort_order ? "border-red-300 dark:border-red-600" : ""
-              } dark:bg-gray-800 dark:border-gray-600 dark:text-white`}
-            />
-            {errors.sort_order && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                {errors.sort_order.message}
-              </p>
-            )}
+            <label htmlFor="sort_order" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Sort Order</label>
+            <Input type="number" id="sort_order" {...register("sort_order", { valueAsNumber: true })} placeholder="0" disabled={isSubmitting} min="0" className="dark:bg-gray-800" />
+            {errors.sort_order && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.sort_order.message}</p>}
           </div>
-
-          {/* Description Field */}
           <div className="md:col-span-2">
-            <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Description
-            </label>
-            <textarea
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
-              rows={3}
-              {...register("description")}
-              placeholder="Enter description (optional)"
-              disabled={isSubmitting}
-            />
-            {errors.description && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                {errors.description.message}
-              </p>
-            )}
+            <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+            <textarea className="w-full rounded-md border dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2" rows={3} {...register("description")} placeholder="Enter description (optional)" disabled={isSubmitting} />
+            {errors.description && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors.description.message}</p>}
           </div>
-
-          {/* Checkboxes */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_system_default"
-                {...register("is_system_default")}
-                disabled={
-                  isSubmitting ||
-                  (isEditMode && !!editingLookup?.is_system_default)
-                }
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400 dark:ring-offset-gray-800"
-              />
-              <label
-                htmlFor="is_system_default"
-                className="ml-2 text-sm text-gray-700 dark:text-gray-300"
-              >
-                System Default
-                {isEditMode && editingLookup?.is_system_default && (
-                  <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                    (cannot be changed)
-                  </span>
-                )}
-              </label>
+              <input type="checkbox" id="is_system_default" {...register("is_system_default")} disabled={isSubmitting || (isEditMode && !!editingLookup?.is_system_default)} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
+              <label htmlFor="is_system_default" className="ml-2 text-sm text-gray-700 dark:text-gray-300">System Default</label>
             </div>
-
             <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="status"
-                {...register("status")}
-                disabled={isSubmitting}
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400 dark:ring-offset-gray-800"
-              />
-              <label
-                htmlFor="status"
-                className="ml-2 text-sm text-gray-700 dark:text-gray-300"
-              >
-                Active Status
-              </label>
+              <input type="checkbox" id="status" {...register("status")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
+              <label htmlFor="status" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Status</label>
             </div>
           </div>
         </div>
-
-        {/* Information Cards */}
-        {isEditMode ? (
-          <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
-            <h4 className="mb-1 text-sm font-medium text-amber-900 dark:text-amber-200">
-              Edit Mode Notes:
-            </h4>
-            <ul className="space-y-1 text-xs text-amber-800 dark:text-amber-200/80">
-              <li>• Category field cannot be changed after creation</li>
-              <li>• System default status cannot be removed once set</li>
-              <li>• Updated timestamp will be set automatically</li>
-            </ul>
-          </div>
-        ) : (
-          <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
-            <h4 className="mb-1 text-sm font-medium text-blue-900 dark:text-blue-200">
-              {category ? "Adding to Lookup" : "Creating New Lookup Type"}
-            </h4>
-            <ul className="space-y-1 text-xs text-blue-800 dark:text-blue-200/80">
-              <li>• Timestamps will be set automatically</li>
-              <li>• ID will be generated automatically</li>
-              {!category && (
-                <li>• Select an existing category or create a new one</li>
-              )}
-            </ul>
-          </div>
-        )}
-
-        {/* Form Actions */}
         <div className="flex justify-end gap-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="dark:border-gray-600 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!canSubmit}>
-            {submitButtonText}
-          </Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button type="submit" disabled={!canSubmit}>{submitButtonText}</Button>
         </div>
       </form>
     </Modal>
   );
 }
-
 ```
 
 <!-- path: components/lookup/LookupTypesEmptyStates.tsx -->
@@ -18610,7 +18260,7 @@ export function NoCategoriesState({ error, isLoading }: { error?: Error; isLoadi
   const router = useRouter();
   
   return (
-    <Card className="p-8 text-center">
+    <Card className="p-8 text-center ">
       <p className="mb-4 text-gray-500 dark:text-gray-400">
         {isLoading ? "Loading categories..." : "No categories found."}
       </p>
@@ -19000,13 +18650,32 @@ import { HoverMenu } from "@/components/navigation/sidebar-components/HoverMenu"
 import { MobileSidebar } from "@/components/navigation/sidebar-components/MobileSidebar";
 import { SidebarProps, NavItem as NavItemType, sidebarVariants, contentVariants } from "@/components/navigation/sidebar-components/sidebar-types";
 import NavItems from "./sidebar-components/NavItems";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiHelpCircle, FiMenu, FiX } from "react-icons/fi";
+import { UserRole } from "@/types/user-roles";
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: SidebarProps) => {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
   const isMobile = useIsMobile();
+
+  // Define the Help NavItem data
+  const helpNavItem: NavItemType = {
+    id: 'help',
+    label: 'Help',
+    icon: <FiHelpCircle className="h-5 w-5" />,
+    href: '/dashboard/doc',
+    roles: [
+      UserRole.ADMIN,
+      UserRole.VIEWER,
+      UserRole.AUTHENTICATED,
+      UserRole.CPANADMIN,
+      UserRole.MAANADMIN,
+      UserRole.SDHADMIN,
+      UserRole.VMUXADMIN,
+      UserRole.MNGADMIN,
+    ],
+  };
 
   // Close mobile sidebar on route changes
   useEffect(() => {
@@ -19073,6 +18742,17 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
           ))}
         </nav>
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
+      </div>
+
+      {/* --- ADDED: Help section at the bottom --- */}
+      <div className="py-2 border-t border-gray-200 dark:border-gray-700">
+        <NavItem
+          item={helpNavItem}
+          isCollapsed={isCollapsed}
+          expandedItems={expandedItems}
+          toggleExpanded={toggleExpanded}
+          setHoveredItem={setHoveredItem}
+        />
       </div>
 
       <HoverMenu hoveredItem={hoveredItem} setHoveredItem={setHoveredItem} />
@@ -19422,10 +19102,9 @@ import {
 import { FaDiagramNext } from 'react-icons/fa6';
 import { BsPeople } from 'react-icons/bs';
 import { ImUserTie } from 'react-icons/im';
-import { GiElectric, GiLinkedRings, GiWireCoil } from 'react-icons/gi';
+import { GiElectric, GiLinkedRings} from 'react-icons/gi';
 import { AiFillMerge } from 'react-icons/ai';
-import { FaNetworkWired, FaRoute } from 'react-icons/fa';
-import { MdLan } from 'react-icons/md';
+import {FaRoute } from 'react-icons/fa';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -19502,17 +19181,17 @@ function NavItems() {
             roles: [UserRole.ADMIN],
           },
           {
-            id: 'rings',
-            label: 'Rings',
-            icon: <GiLinkedRings className="h-5 w-5" />,
-            href: '/dashboard/rings',
-            roles: [UserRole.ADMIN],
-          },
-          {
             id: 'nodes',
             label: 'Nodes',
             icon: <FiCpu className="h-5 w-5" />,
             href: '/dashboard/nodes',
+            roles: [UserRole.ADMIN],
+          },
+          {
+            id: 'rings',
+            label: 'Rings',
+            icon: <GiLinkedRings className="h-5 w-5" />,
+            href: '/dashboard/rings',
             roles: [UserRole.ADMIN],
           },
         ],
@@ -22112,8 +21791,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { createClient } from "@/utils/supabase/client";
-import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
@@ -22123,15 +21800,15 @@ import {
   FormSwitch,
   FormTextarea,
 } from "@/components/common/form/FormControls";
-import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema, RingsUpdateSchema } from "@/schemas/zod-schemas";
-
+import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema } from "@/schemas/zod-schemas";
 
 interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingRing?: RingsRowSchema | null;
-  onCreated?: (ring: RingsRowSchema) => void;
-  onUpdated?: (ring: RingsRowSchema) => void;
+  // **THE FIX: Use a single onSubmit handler**
+  onSubmit: (data: RingsInsertSchema) => void; 
+  isLoading: boolean; // Receive loading state from parent
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
@@ -22140,15 +21817,15 @@ export function RingModal({
   isOpen,
   onClose,
   editingRing,
-  onCreated,
-  onUpdated,
+  onSubmit, // Use the new onSubmit prop
+  isLoading,
   ringTypes,
   maintenanceAreas,
 }: RingModalProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     control,
   } = useForm<RingsInsertSchema>({
@@ -22162,40 +21839,20 @@ export function RingModal({
     },
   });
 
-  const supabase = createClient();
-  const { mutate: insertRing, isPending: creating } = useTableInsert(
-    supabase,
-    "rings"
-  );
-  const { mutate: updateRing, isPending: updating } = useTableUpdate(
-    supabase,
-    "rings"
-  );
+  // REMOVED: Internal mutation hooks are no longer needed
+  // const supabase = createClient();
+  // const { mutate: insertRing, isPending: creating } = useTableInsert(supabase, "rings");
+  // const { mutate: updateRing, isPending: updating } = useTableUpdate(supabase, "rings");
 
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
-  // Memoized options for selects
   const ringTypeOptions: Option[] = useMemo(
-    () =>
-      (ringTypes || []).map(
-        (rt) =>
-          ({
-            value: rt.id,
-            label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
-          } as Option)
-      ),
+    () => (ringTypes || []).map((rt) => ({ value: rt.id, label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}` })),
     [ringTypes]
   );
 
   const maintenanceAreaOptions: Option[] = useMemo(
-    () =>
-      (maintenanceAreas || []).map(
-        (a) =>
-          ({
-            value: a.id,
-            label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
-          } as Option)
-      ),
+    () => (maintenanceAreas || []).map((a) => ({ value: a.id, label: `${a.name}${a.code ? ` (${a.code})` : ""}` })),
     [maintenanceAreas]
   );
 
@@ -22211,58 +21868,23 @@ export function RingModal({
       });
     } else {
       reset({
-        name: "",
-        description: null,
-        status: true,
-        ring_type_id: null,
-        maintenance_terminal_id: null,
+        name: "", description: null, status: true, ring_type_id: null, maintenance_terminal_id: null,
       });
     }
   }, [isOpen, editingRing, reset]);
 
-  const handleClose = useCallback(() => {
-    if (creating || updating) return;
-    onClose();
-  }, [creating, updating, onClose]);
-
+  // **THE FIX: The form's submit handler now just calls the prop.**
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
-      const submitData = {
-        name: formData.name.trim(),
-        description: formData.description,
-        status: formData.status,
-        ring_type_id: formData.ring_type_id,
-        maintenance_terminal_id: formData.maintenance_terminal_id,
-      };
-
-      if (isEdit && editingRing) {
-        updateRing(
-          { id: editingRing.id, data: submitData as Partial<RingsUpdateSchema> },
-          {
-            onSuccess: (data: unknown) => {
-              onUpdated?.(Array.isArray(data) ? data[0] : data);
-              onClose();
-            },
-          }
-        );
-      } else {
-        insertRing(submitData as RingsInsertSchema, {
-          onSuccess: (data: unknown) => {
-            onCreated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-          },
-        });
-      }
+      onSubmit(formData);
     },
-    [isEdit, editingRing, updateRing, insertRing, onUpdated, onCreated, onClose]
+    [onSubmit]
   );
-
-  const submitting = creating || updating || isSubmitting;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={onClose}
       title={isEdit ? "Edit Ring" : "Add Ring"}
       visible={false}
       className="transparent bg-gray-700 rounded-2xl"
@@ -22271,7 +21893,8 @@ export function RingModal({
         onSubmit={handleSubmit(onValidSubmit)}
         heightClass="min-h-calc(90vh - 200px)"
         title={isEdit ? "Edit Ring" : "Add Ring"}
-        onCancel={handleClose}
+        onCancel={onClose}
+        isLoading={isLoading} // Use loading state from props
         standalone={true}
       >
         <FormInput
@@ -22279,7 +21902,7 @@ export function RingModal({
           label="Name"
           register={register}
           error={errors.name}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Enter ring name"
         />
         <FormSearchableSelect
@@ -22287,7 +21910,7 @@ export function RingModal({
           label="Ring Type"
           control={control}
           error={errors.ring_type_id}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Select ring type"
           options={ringTypeOptions}
         />
@@ -22297,7 +21920,7 @@ export function RingModal({
           label="Maintenance Terminal"
           control={control}
           error={errors.maintenance_terminal_id}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Select maintenance terminal"
           options={maintenanceAreaOptions}
         />
@@ -22307,7 +21930,7 @@ export function RingModal({
           label="Description"
           control={control}
           error={errors.description}
-          disabled={submitting}
+          disabled={isLoading}
           placeholder="Optional description"
         />
         <FormSwitch
@@ -23749,14 +23372,12 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
 
 <!-- path: components/diagrams/types/storage.ts -->
 ```typescript
-export interface StoredFile {
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  path?: string;
-  uploadedAt: string;
-}
+// components/diagrams/types/storage.ts
+import { z } from 'zod';
+import { filesRowSchema } from '@/schemas/zod-schemas';
+
+// THE FIX: Derive the type from the Zod schema.
+export type StoredFile = z.infer<typeof filesRowSchema>;
 
 export interface UploadProgress {
   [key: number]: number;
@@ -24772,7 +24393,7 @@ useEffect(() => {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isEditing ? "Edit Category" : "Create New Category"} visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+      className="transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -24869,16 +24490,20 @@ useEffect(() => {
 
 <!-- path: components/categories/categories-types.ts -->
 ```typescript
-import { Database } from "@/types/supabase-types";
+// components/categories/categories-types.ts
+import { z } from 'zod';
+import { lookup_typesRowSchema } from '@/schemas/zod-schemas';
 
-export type Categories = Database["public"]["Tables"]["lookup_types"]["Row"];
+// THE FIX: Derive all types from the Zod schema
+export type Categories = z.infer<typeof lookup_typesRowSchema>;
+
 export type GroupedLookupsByCategory = Record<string, Categories[]>;
 
 export interface CategoryInfo {
     name: string;
     lookupCount: number;
     hasSystemDefaults: boolean;
-  }
+}
 ```
 
 <!-- path: components/categories/utils.ts -->
@@ -25274,6 +24899,83 @@ export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
 };
 ```
 
+<!-- path: components/auth/OnboardingPromptModal.tsx -->
+```typescript
+// components/auth/OnboardingPromptModal.tsx
+"use client";
+
+import { motion } from "framer-motion";
+import { FiUserCheck, FiArrowRight, FiX } from "react-icons/fi";
+import { Button } from "@/components/common/ui";
+
+interface OnboardingPromptModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onGoToProfile: () => void;
+  onDismissPermanently: () => void;
+  userName?: string;
+}
+
+export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
+  isOpen,
+  onClose,
+  onGoToProfile,
+  onDismissPermanently,
+  userName,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center sm:justify-end">
+      <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="relative w-full max-w-sm p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+            <FiUserCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Complete Your Profile
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Welcome, {userName}! Help us get to know you better by adding a few more details.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={onGoToProfile}
+            className="w-full sm:flex-1"
+            variant="primary"
+            rightIcon={<FiArrowRight />}
+          >
+            Update Profile
+          </Button>
+          <Button
+            onClick={onClose}
+            className="w-full sm:flex-1"
+            variant="outline"
+          >
+            Maybe Later
+          </Button>
+        </div>
+        <button
+          onClick={onDismissPermanently}
+          className="w-full text-center text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mt-4"
+        >
+          Don't show this again
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+```
+
 <!-- path: components/auth/OAuthProviders.tsx -->
 ```typescript
 // components/auth/OAuthProviders.tsx
@@ -25587,151 +25289,7 @@ export default Privacy;
 
 <!-- path: components/auth/Protected.tsx -->
 ```typescript
-// "use client";
-
-// import { useState, useEffect, useRef } from "react";
-// import { useRouter } from "next/navigation";
-// import { useUserPermissionsExtended } from "@/hooks/useRoleFunctions";
-// import { UserRole } from "@/types/user-roles";
-// import { UnauthorizedModal } from "./UnauthorizedModal";
-// import { useAuthStore } from "@/stores/authStore";
-
-// interface ProtectedProps {
-//   children: React.ReactNode;
-//   allowedRoles?: UserRole[];
-//   redirectTo?: string;
-//   fallbackComponent?: React.ReactNode;
-// }
-
-// type AuthState = "loading" | "authenticated" | "unauthenticated" | "unauthorized";
-
-// export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, redirectTo = "/login", fallbackComponent }) => {
-//   const { role, isSuperAdmin, isLoading: isLoadingRole, canAccess } = useUserPermissionsExtended();
-//   const authState = useAuthStore((state) => state.authState);
-//   const user = useAuthStore((state) => state.user);
-//   const setAuthState = useAuthStore((state) => state.setAuthState);
-//   const router = useRouter();
-  
-//   const [authStateExtended, setAuthStateExtended] = useState<AuthState>("loading");
-//   const hasRedirected = useRef(false);
-//   const [loadingStartTime] = useState(Date.now());
-//   const isOAuthFlow = useRef(false);
-//   const recheckTimeout = useRef<NodeJS.Timeout | null>(null);
-
-//   // Clean up timeouts on unmount
-//   useEffect(() => {
-//     return () => {
-//       if (recheckTimeout.current) {
-//         clearTimeout(recheckTimeout.current);
-//       }
-//     };
-//   }, []);
-
-//   // Detect OAuth callback flow (runs only once)
-//   useEffect(() => {
-//     const urlParams = new URLSearchParams(window.location.search);
-//     const pathname = window.location.pathname;
-//     const hasOAuthCode = urlParams.has('code');
-//     const isCallbackPath = pathname.includes('/auth/callback');
-//     const hasOAuthState = urlParams.has('state');
-//     isOAuthFlow.current = hasOAuthCode || isCallbackPath || hasOAuthState;
-//   }, []);
-
-//   useEffect(() => {
-//     // console.log("🔍 Protection Logic Debug:", {
-//     //   authState,
-//     //   user,
-//     //   isLoadingRole,
-//     //   allowedRoles,
-//     //   hasRedirected: hasRedirected.current,
-//     //   isOAuthFlow: isOAuthFlow.current,
-//     //   "user === null": user === null,
-//     //   "authState === 'loading'": authState === "loading",
-//     //   "timeElapsed": Date.now() - loadingStartTime
-//     // });
-
-//     // Clear any pending timeout
-//     if (recheckTimeout.current) {
-//       clearTimeout(recheckTimeout.current);
-//       recheckTimeout.current = null;
-//     }
-
-//     // If auth is explicitly unauthenticated, handle it
-//     if (authState === "unauthenticated") {
-//       // Only update state if it's not already unauthenticated to prevent unnecessary re-renders
-//       if (authStateExtended !== "unauthenticated") {
-//         setAuthStateExtended("unauthenticated");
-//       }
-//       // Don't call handleUnauthenticated here - we'll handle the redirect in the render phase
-//       return;
-//     }
-
-//     // Enhanced timeout for loading state
-//     const timeElapsed = Date.now() - loadingStartTime;
-//     const maxTimeout = isOAuthFlow.current ? 4000 : 2000;
-
-//     if (authState === "loading" && user === null && timeElapsed > maxTimeout) {
-//       // console.log("🚨 TIMEOUT: Force setting unauthenticated after", maxTimeout, "ms");
-//       setAuthState("unauthenticated");
-//       return;
-//     }
-
-//     // Only wait for role loading if we have role restrictions AND auth is complete
-//     const shouldWaitForRole = allowedRoles && allowedRoles.length > 0 && isLoadingRole;
-    
-//     if (authState === "loading" || shouldWaitForRole) {
-//       setAuthStateExtended("loading");
-//       return;
-//     }
-
-//     // If we reach here, auth should be resolved
-//     if (authState === "authenticated" && user) {
-//       // Reset hasRedirected when we successfully authenticate
-//       hasRedirected.current = false;
-      
-//       // Check role-based permissions if roles are specified
-//       if (allowedRoles && allowedRoles.length > 0) {
-//         if (canAccess(allowedRoles) || isSuperAdmin) {
-//           setAuthStateExtended("authenticated");
-//         } else {
-//           setAuthStateExtended("unauthorized");
-//         }
-//       } else {
-//         // No role restrictions, just authenticated
-//         setAuthStateExtended("authenticated");
-//       }
-//     }
-//   }, [authState, allowedRoles, canAccess, user, setAuthState, router, redirectTo, isLoadingRole, loadingStartTime]);
-
-//   // Don't render anything until we've determined the auth state
-//   if (authStateExtended === "loading") {
-//     return null; // Or <PageSpinner /> if you prefer
-//   }
-
-//   // Handle unauthenticated state
-//   if (authStateExtended === "unauthenticated") {
-//     // Use a timeout to prevent flash of content
-//     const handleRedirect = () => {
-//       if (!hasRedirected.current) {
-//         hasRedirected.current = true;
-//         router.replace(redirectTo);
-//       }
-//     };
-    
-//     // Queue the redirect to the next tick to ensure we don't block rendering
-//     setTimeout(handleRedirect, 0);
-//     return null; // Or <PageSpinner /> if you prefer
-//   }
-
-//   // Handle unauthorized state
-//   if (authStateExtended === "unauthorized") {
-//     return fallbackComponent || <UnauthorizedModal allowedRoles={allowedRoles || []} currentRole={role} />;
-//   }
-
-//   // If we get here, user is authenticated and authorized
-//   return <>{children}</>;
-// };
-
+// components/auth/Protected.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -25744,7 +25302,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 
-// A new, dedicated hook to check the user's profile status
+// This hook checks the user's profile to see if they need to complete onboarding.
 const useUserProfileCheck = (userId?: string) => {
   const supabase = createClient();
   return useQuery({
@@ -25753,11 +25311,12 @@ const useUserProfileCheck = (userId?: string) => {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('first_name, last_name')
+        .select('first_name, preferences') // Only fetch what's needed for the check
         .eq('id', userId)
         .single();
+
       if (error) {
-        // PostgREST 'PGRST116' means no rows found, which is a valid state for a new user
+        // 'PGRST116' means no rows found, which is a valid state for a brand new user
         if (error.code === 'PGRST116') return null; 
         throw error;
       }
@@ -25781,9 +25340,8 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
   const router = useRouter();
   const hasRedirected = useRef(false);
 
-  // Use the new hook to check the profile
-  const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useUserProfileCheck(user?.id);
-  const { isSuperAdmin, canAccess, isLoading: isRoleLoading } = useUserPermissionsExtended();
+  const { data: profile, isLoading: isProfileLoading, isError: isProfileError, error: profileError } = useUserProfileCheck(user?.id);
+  const { isSuperAdmin, canAccess, isLoading: isRoleLoading, isError: isRoleError, error: roleError } = useUserPermissionsExtended();
 
   useEffect(() => {
     // Unauthenticated: Redirect to login if not already done
@@ -25793,19 +25351,18 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
       return;
     }
 
-    // Authenticated: Check for onboarding completion
+    // Authenticated: Check for onboarding completion once all data is loaded
     if (authState === 'authenticated' && !isProfileLoading && !isRoleLoading) {
-      // Condition 1: No profile exists OR it's a placeholder created by the trigger.
-      // This indicates the user must complete onboarding.
-      if (!profile || profile.first_name === 'Placeholder') {
-        // Avoid redirecting if already on the onboarding page
+      const needsOnboarding = (profile?.preferences)?.needsOnboarding === true;
+
+      if (needsOnboarding) {
         if (window.location.pathname !== '/onboarding') {
           router.replace('/onboarding');
         }
         return;
       }
 
-      // Condition 2: Profile is complete, now check role-based access.
+      // If onboarding is complete, check role-based access
       if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
         // The UnauthorizedModal will be rendered below.
         return;
@@ -25813,7 +25370,6 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
     }
   }, [
     authState,
-    user,
     profile,
     isProfileLoading,
     isRoleLoading,
@@ -25828,37 +25384,46 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
   if (authState === 'loading' || isProfileLoading || isRoleLoading) {
     return <PageSpinner text="Verifying session..." />;
   }
+  
+  // **THE FIX: Add an explicit check for any error state.**
+  if (isRoleError || isProfileError) {
+    const errorMessage = roleError?.message || profileError?.message || "Could not verify your user permissions or profile.";
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="p-8 text-center bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
+          <h3 className="text-xl font-semibold text-red-700 dark:text-red-300">Authentication Error</h3>
+          <p className="mt-2 text-red-600 dark:text-red-400">{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (authState === 'unauthenticated') {
-    // Return a spinner while the redirect is in progress
     return <PageSpinner text="Redirecting..." />;
   }
 
   if (authState === 'authenticated' && user) {
-    // If the profile is still loading or doesn't exist yet, show a spinner.
-    // This handles the brief period after login before the profile is available.
+    // If profile is still loading, it's safer to wait
     if (isProfileLoading) return <PageSpinner text="Loading user profile..." />;
 
-    // If profile exists and is not a placeholder, check role permissions
-    if (profile && profile.first_name !== 'Placeholder') {
+    const needsOnboarding = (profile?.preferences)?.needsOnboarding === true;
+    
+    // The useEffect will handle the redirect, show a spinner in the meantime
+    if (needsOnboarding) {
+        return <PageSpinner text="Finalizing session..." />;
+    }
+
+    // If profile is loaded and onboarding is complete, check roles
+    if (profile) {
       if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
         return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={user.role} />;
       }
+      // If authorized, render the children
       return <>{children}</>;
-    }
-
-    // If the logic determined the user needs onboarding, the effect will redirect them.
-    // In the meantime, we can show a loading state.
-    if (!profile || profile.first_name === 'Placeholder') {
-        return <PageSpinner text="Redirecting to onboarding..." />;
-    }
-
-    if(isProfileError){
-      return <PageSpinner text="Redirecting to onboarding..." />;
     }
   }
 
-  // Fallback for any other state
+  // Fallback for any other unexpected state
   return <PageSpinner text="Finalizing..." />;
 };
 ```
@@ -25908,7 +25473,7 @@ export default function AuthButton() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {user.user_metadata?.name || user.email?.split('@')[0] || 'User'}
+                {user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name || user.email?.split('@')[0] || 'User'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {user.email}
@@ -25961,16 +25526,17 @@ export default function AuthButton() {
 
 <!-- path: components/maintenance-areas/AreaFormModal.tsx -->
 ```typescript
-// components/AreaFormModal.tsx
+// components/maintenance-areas/AreaFormModal.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { MaintenanceArea, AreaFormModalProps } from "@/config/areas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "../common/form/FormCard";
+import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form/FormControls";
 import { useForm } from "react-hook-form";
 import { maintenance_areasInsertSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
+import { generateCodeFromName } from "@/config/helper-functions";
 
 export function AreaFormModal({
   isOpen,
@@ -25981,6 +25547,8 @@ export function AreaFormModal({
   areaTypes,
   isLoading
 }: AreaFormModalProps) {
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
+  const isEditMode = !!area;
 
   const {
     register,
@@ -25988,71 +25556,57 @@ export function AreaFormModal({
     formState: { errors },
     reset,
     control,
+    watch,
+    setValue,
   } = useForm<Maintenance_areasInsertSchema>({
     resolver: zodResolver(maintenance_areasInsertSchema),
     defaultValues: {
-      name: "",
-      code: "",
-      area_type_id: null,
-      parent_id: null,
-      contact_person: null,
-      contact_number: null,
-      email: null,
-      address: null,
-      latitude: null,
-      longitude: null,
-      status: true
+      name: "", code: "", area_type_id: null, parent_id: null,
+      contact_person: null, contact_number: null, email: null,
+      address: null, latitude: null, longitude: null, status: true
     },
   });
 
-  const [isInitialized, setIsInitialized] = useState(false);
+  const watchedName = watch('name');
 
-  // Initialize form data when modal opens or area changes
   useEffect(() => {
-    if (isOpen && !isInitialized) {
+    if (isOpen) {
+      setIsCodeManuallyEdited(isEditMode);
       if (area) {
+        // **THE FIX: Manually map fields from the 'area' prop to what the form schema expects.**
+        // This avoids passing unexpected nested objects (like `parent_area`) to the form state.
         reset({
           name: area.name,
           code: area.code,
           area_type_id: area.area_type_id,
-          parent_id: area.parent_id,
+          parent_id: area.parent_id, // Use the ID directly, not the nested object
           contact_person: area.contact_person,
           contact_number: area.contact_number,
           email: area.email,
           address: area.address,
           latitude: area.latitude,
           longitude: area.longitude,
-          status: area.status ?? true
+          status: area.status ?? true,
         });
       } else {
         reset({
-          name: "",
-          code: "",
-          area_type_id: null,
-          parent_id: null,
-          contact_person: null,
-          contact_number: null,
-          email: null,
-          address: null,
-          latitude: null,
-          longitude: null,
-          status: true
+          name: "", code: "", area_type_id: null, parent_id: null,
+          contact_person: null, contact_number: null, email: null,
+          address: null, latitude: null, longitude: null, status: true
         });
       }
-      setIsInitialized(true);
     }
-  }, [area, isOpen, isInitialized, reset]);
+  }, [area, isOpen, reset, isEditMode]);
 
-  // Reset initialization when modal closes
   useEffect(() => {
-    if (!isOpen) {
-      setIsInitialized(false);
+    if (!isCodeManuallyEdited && !isEditMode) {
+      const generatedCode = generateCodeFromName(watchedName);
+      setValue('code', generatedCode, { shouldValidate: true });
     }
-  }, [isOpen]);
+  }, [watchedName, isCodeManuallyEdited, isEditMode, setValue]);
 
   const availableParents = useMemo(() => {
     if (!area) return allAreas;
-    
     const getDescendantIds = (areaId: string, areas: MaintenanceArea[]): Set<string> => {
       const descendants = new Set<string>([areaId]);
       const children = areas.filter(a => a.parent_id === areaId);
@@ -26062,7 +25616,6 @@ export function AreaFormModal({
       });
       return descendants;
     };
-    
     const excludeIds = getDescendantIds(area.id, allAreas);
     return allAreas.filter(a => !excludeIds.has(a.id));
   }, [area, allAreas]);
@@ -26074,131 +25627,135 @@ export function AreaFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-lg bg-white p-6 dark:bg-gray-800">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {area ? "Edit Area" : "Add New Area"}
-          </h2>
-          <button 
-            onClick={onClose} 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            disabled={isLoading}
-            aria-label="Close modal"
-          >
-            ×
-          </button>
-        </div>
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-0 h-0 transparent">
         <FormCard 
           onSubmit={handleSubmit(onValidSubmit)} 
           title={area ? "Edit Area" : "Add New Area"} 
           onCancel={onClose}
           isLoading={isLoading}
-          heightClass="max-h-[calc(90vh-140px)]"
+          heightClass="max-h-[85vh] overflow-y-auto"
+          standalone
         >
-          {/* Name Field */}
-          <FormInput
-            name="name"
-            label="Area Name"
-            register={register}
-            error={errors.name}
-            required
-            disabled={isLoading}
-          />
-          
-          {/* Code Field */}
-          <FormInput
-            name="code"
-            label="Area Code"
-            register={register}
-            error={errors.code}
-            disabled={isLoading}
-          />
-          
-          {/* Area Type Field */}
-          <FormSearchableSelect
-            name="area_type_id"
-            label="Area Type"
-            control={control}
-            error={errors.area_type_id}
-            disabled={isLoading}
-            options={areaTypes
-              .filter(type => type.name !== "DEFAULT")
-              .map(type => ({ value: type.id, label: type.name }))
-            }
-          />
-          
-          {/* Parent Area Field */}
-          <FormSearchableSelect
-            name="parent_id"
-            label="Parent Area"
-            control={control}
-            error={errors.parent_id}
-            disabled={isLoading}
-            options={availableParents.map(a => ({ value: a.id, label: a.name }))}
-          />
-          
-          {/* Contact Person Field */}
-          <FormInput
-            name="contact_person"
-            label="Contact Person"
-            register={register}
-            error={errors.contact_person}
-            disabled={isLoading}
-          />
-          
-          {/* Contact Number Field */}
-          <FormInput
-            name="contact_number"
-            label="Contact Number"
-            register={register}
-            error={errors.contact_number}
-            disabled={isLoading}
-          />
-          
-          {/* Email Field */}
-          <FormInput
-            name="email"
-            label="Email Address"
-            register={register}
-            error={errors.email}
-            disabled={isLoading}
-          />
-          
-          {/* Address Field */}
-          <FormTextarea
-            name="address"
-            label="Address"
-            control={control}
-            error={errors.address}
-            disabled={isLoading}
-          />
-          
-          {/* Coordinates Fields */}
-          <FormInput
-            name="latitude"
-            label="Latitude"
-            register={register}
-            error={errors.latitude}
-            disabled={isLoading}
-          />
-          <FormInput
-            name="longitude"
-            label="Longitude"
-            register={register}
-            error={errors.longitude}
-            disabled={isLoading}
-          />
-          
-          {/* Status Field */}
-          <FormSwitch
-            name="status"
-            label="Active"
-            control={control}
-            error={errors.status}
-            className="mt-2"
-          />
+          {/* Basic Information Section */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="name" 
+                label="Area Name" 
+                register={register} 
+                error={errors.name} 
+                required 
+                disabled={isLoading} 
+              />
+              
+              <FormInput
+                name="code"
+                label="Area Code"
+                register={register}
+                error={errors.code}
+                disabled={isLoading}
+                onChange={(e) => {
+                  setIsCodeManuallyEdited(true);
+                  register('code').onChange(e);
+                }}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormSearchableSelect
+                name="area_type_id"
+                label="Area Type"
+                control={control}
+                error={errors.area_type_id}
+                disabled={isLoading}
+                options={areaTypes.filter(type => type.name !== "DEFAULT").map(type => ({ value: type.id, label: type.name }))}
+              />
+              
+              <FormSearchableSelect
+                name="parent_id"
+                label="Parent Area"
+                control={control}
+                error={errors.parent_id}
+                disabled={isLoading}
+                options={availableParents.map(a => ({ value: a.id, label: a.name }))}
+              />
+            </div>
+          </div>
+
+          {/* Contact Information Section */}
+          <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Contact Information</h3>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="contact_person" 
+                label="Contact Person" 
+                register={register} 
+                error={errors.contact_person} 
+                disabled={isLoading} 
+              />
+              
+              <FormInput 
+                name="contact_number" 
+                label="Contact Number" 
+                register={register} 
+                error={errors.contact_number} 
+                disabled={isLoading} 
+              />
+            </div>
+            
+            <FormInput 
+              name="email" 
+              label="Email Address" 
+              register={register} 
+              error={errors.email} 
+              disabled={isLoading} 
+            />
+          </div>
+
+          {/* Location Information Section */}
+          <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Location Details</h3>
+            
+            <FormTextarea 
+              name="address" 
+              label="Address" 
+              control={control} 
+              error={errors.address} 
+              disabled={isLoading} 
+            />
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput 
+                name="latitude" 
+                label="Latitude" 
+                register={register} 
+                error={errors.latitude} 
+                disabled={isLoading} 
+                placeholder="e.g., 22.5726"
+              />
+              
+              <FormInput 
+                name="longitude" 
+                label="Longitude" 
+                register={register} 
+                error={errors.longitude} 
+                disabled={isLoading} 
+                placeholder="e.g., 88.3639"
+              />
+            </div>
+          </div>
+
+          {/* Status Section */}
+          <div className="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <FormSwitch 
+              name="status" 
+              label="Active Status" 
+              control={control} 
+              error={errors.status} 
+            />
+          </div>
         </FormCard>
       </div>
     </div>
@@ -26212,21 +25769,47 @@ export function AreaFormModal({
 import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { Maintenance_areasInsertSchema, Maintenance_areasUpdateSchema } from "@/schemas/zod-schemas";
+import { toast } from "sonner"; // <-- Import toast
 
 export function useMaintenanceAreasMutations(
   supabase: ReturnType<typeof createClient>,
   onSuccess: () => void
 ) {
-  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { onSuccess });
-  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { onSuccess });
-  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { onSuccess });
+  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for creation failures.**
+    onError: (error) => {
+      toast.error(`Failed to create area: ${error.message}`);
+    }
+  });
+
+  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for update failures.**
+    onError: (error) => {
+      toast.error(`Failed to update area: ${error.message}`);
+    }
+  });
+
+  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
+    onSuccess,
+    // **THE FIX: Add an onError handler for status toggle failures.**
+    onError: (error) => {
+      toast.error(`Failed to toggle status: ${error.message}`);
+    }
+  });
 
   const handleFormSubmit = (
     data: Maintenance_areasInsertSchema,
     editingArea?: { id: string } | null
   ) => {
     if (editingArea?.id) {
-      updateAreaMutation.mutate({ id: editingArea.id, data: data as Maintenance_areasUpdateSchema });
+      const { id, ...updateData } = data;
+      
+      updateAreaMutation.mutate({ 
+        id: editingArea.id, 
+        data: updateData as Maintenance_areasUpdateSchema 
+      });
     } else {
       createAreaMutation.mutate(data);
     }
@@ -26447,187 +26030,20 @@ export default function ClientRingMap({
 }
 ```
 
-<!-- path: components/map/ClientRingMapCopy.tsx -->
-```typescript
-// path: components/map/ClientRingMap.tsx
-"use client";
-
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import L, { LatLngBounds } from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { useState, useRef, useEffect, useMemo } from "react";
-import ReactDOM from "react-dom";
-import { useThemeStore } from "@/stores/themeStore";
-import { FiMaximize, FiMinimize } from "react-icons/fi";
-import { getNodeIcon } from "@/utils/getNodeIcons";
-import { MapNode, RingMapNode } from "./types/node"; // CORRECTED IMPORT
-
-interface ClientRingMapProps {
-  nodes: MapNode[];
-  solidLines?: Array<[MapNode, MapNode]>;
-  dashedLines?: Array<[RingMapNode, RingMapNode]>;
-  distances?: Record<string, string>;
-  highlightedNodeIds?: string[];
-  onNodeClick?: (nodeId: string) => void;
-  onBack?: () => void;
-}
-
-const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
-  const map = useMap();
-  useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 100);
-    return () => clearTimeout(timer);
-  }, [isFullScreen, map]);
-  return null;
-};
-
-const FullscreenControl = ({ isFullScreen, setIsFullScreen }: { isFullScreen: boolean; setIsFullScreen: (fs: boolean) => void }) => {
-  const map = useMap();
-  useEffect(() => {
-    const Fullscreen = L.Control.extend({
-      onAdd: function() {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-        container.style.backgroundColor = 'white';
-        container.style.width = '34px';
-        container.style.height = '34px';
-        container.style.borderRadius = '4px';
-        container.style.cursor = 'pointer';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
-        container.title = isFullScreen ? "Exit Full Screen" : "Enter Full Screen";
-        
-        const iconHTML = isFullScreen 
-          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
-        
-        container.innerHTML = iconHTML;
-
-        L.DomEvent.on(container, 'click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          setIsFullScreen(!isFullScreen);
-        });
-        return container;
-      },
-    });
-    const control = new Fullscreen({ position: 'topleft' });
-    control.addTo(map);
-    return () => { control.remove(); };
-  }, [map, isFullScreen, setIsFullScreen]);
-  return null;
-};
-
-export default function ClientRingMap({
-  nodes,
-  solidLines = [],
-  dashedLines = [],
-  distances = {},
-  onBack,
-  highlightedNodeIds = [],
-  onNodeClick,
-}: ClientRingMapProps) {
-  const { theme } = useThemeStore();
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [showAllNodePopups, setShowAllNodePopups] = useState(false);
-  const [showAllLinePopups, setShowAllLinePopups] = useState(false);
-  
-  const mapRef = useRef<L.Map>(null);
-  const markerRefs = useRef<{ [key: string]: L.Marker }>({});
-  const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
-
-  useEffect(() => {
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    });
-  }, []);
-
-  useEffect(() => {
-    Object.values(markerRefs.current).forEach(marker => showAllNodePopups ? marker.openPopup() : marker.closePopup());
-  }, [showAllNodePopups]);
-
-  useEffect(() => {
-    Object.values(polylineRefs.current).forEach(polyline => showAllLinePopups ? polyline.openPopup() : polyline.closePopup());
-  }, [showAllLinePopups]);
-
-  if (nodes.length === 0) return <div className='py-10 text-center'>No nodes to display</div>;
-
-  const bounds = useMemo(() => {
-    if (nodes.length === 0) return null;
-    const lats = nodes.map((n) => n.lat);
-    const lngs = nodes.map((n) => n.long);
-    return new LatLngBounds([Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]);
-  }, [nodes]);
-
-  const mapUrl = theme === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const mapAttribution = "&copy; OpenStreetMap contributors &copy; CARTO";
-  const mapContainerClass = isFullScreen ? "fixed inset-0 z-[100]" : "relative h-full w-full rounded-lg overflow-hidden";
-
-  return (
-    <div className={mapContainerClass}>
-      <div className='absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white'>
-        {onBack && <button onClick={onBack} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>← Back to List</button>}
-        <button onClick={() => setShowAllNodePopups(!showAllNodePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
-          <span className={showAllNodePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllNodePopups ? "Hide" : "Show"} Node Info
-        </button>
-        <button onClick={() => setShowAllLinePopups(!showAllLinePopups)} className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors'>
-          <span className={showAllLinePopups ? "text-green-500" : "text-red-500"}>●</span> {showAllLinePopups ? "Hide" : "Show"} Line Info
-        </button>
-      </div>
-
-      <MapContainer center={bounds?.getCenter() || [22.57, 88.36]} bounds={bounds || undefined} zoom={13} ref={mapRef} style={{ height: "100%", width: "100%" }} className='z-0'>
-        <MapController isFullScreen={isFullScreen} />
-        <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
-        <TileLayer url={mapUrl} attribution={mapAttribution} />
-        
-        {solidLines.map(([start, end]) => (
-          <Polyline key={`solid-${start.id}-${end.id}`} positions={[[start.lat, start.long], [end.lat, end.long]]} color={theme === "dark" ? "#3b82f6" : "#2563eb"} weight={4} opacity={0.8} ref={(el) => { if (el) polylineRefs.current[`solid-${start.id}-${end.id}`] = el; }}>
-            <Popup autoClose={false} closeOnClick={false} className={theme === "dark" ? "dark-popup" : ""}>
-              <div className='text-sm'>
-                <p>{start.name} → {end.name}</p>
-                <p>Road Distance: {distances[`${start.id}-${end.id}`] ?? "..."}</p>
-              </div>
-            </Popup>
-          </Polyline>
-        ))}
-
-        {dashedLines.map(([source, target]) => (
-          <Polyline key={`dashed-${source.id}-${target.id}`} positions={[[source.lat, source.long], [target.lat, target.long]]} color={theme === "dark" ? "#ef4444" : "#dc2626"} weight={2.5} opacity={0.7} dashArray='6' ref={(el) => { if (el) polylineRefs.current[`dashed-${source.id}-${target.id}`] = el; }}>
-            <Popup autoClose={false} closeOnClick={false} className={theme === "dark" ? "dark-popup" : ""}>
-              <div className='text-sm'>
-                <p>{source.name} ↔ {target.name}</p>
-                <p>Road Distance: {distances[`${source.id}-${target.id}`] ?? "..."}</p>
-              </div>
-            </Popup>
-          </Polyline>
-        ))}
-
-        {nodes.map((node) => {
-          const isHighlighted = highlightedNodeIds.includes(node.id);
-          const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
-          return (
-            <Marker key={node.id} position={[node.lat, node.long]} icon={getNodeIcon(node.type, isHighlighted)} eventHandlers={{ click: () => onNodeClick?.(node.id) }} ref={(el) => { if (el) markerRefs.current[node.id] = el; }}>
-              <Popup autoClose={false} closeOnClick={false} className={theme === "dark" ? "dark-popup" : ""}>
-                <div className='text-sm'>
-                  <h4 className='font-bold'>{node.name}</h4>
-                  <p>Type: {node.type}</p>
-                  <p>IP: {displayIp}</p>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
-  );
-}
-```
-
 <!-- path: components/map/types/node.ts -->
 ```typescript
 // path: components/map/types/node.ts
+import { z } from 'zod';
+import { v_ring_nodesRowSchema } from '@/schemas/zod-schemas';
+
+// The RingMapNode is the primary, feature-rich node type, derived directly from the view.
+export type RingMapNode = z.infer<typeof v_ring_nodesRowSchema>;
+
+// The MapNode can be a simplified version or a partial type for more generic use cases.
+// For simplicity and type safety, we can often just use RingMapNode everywhere.
+export type MapNode = RingMapNode;
+
+// Enums can remain as they are application-level constants, not direct DB models.
 export enum NodeType {
   EXCHANGE = "EXCHANGE",
   CUSTOMER = "CUSTOMER",
@@ -26636,32 +26052,6 @@ export enum NodeType {
   CPAN = "CPAN",
   BTS_RUNNING_OVER_RADIOLINK = "BTS(RUNNING OVER RADIOLINK)",
 }
-
-// A generic, standardized interface for any node to be displayed on the map
-export interface MapNode {
-  id: string;
-  name: string;
-  lat: number;
-  long: number;
-  type?: string | null;
-  status?: boolean | null;
-  ip?: string | null;
-  remark?: string | null;
-}
-
-// A more specific type that includes all possible fields from your ring data
-export type RingMapNode = MapNode & {
-  ring_id: string | null;
-  order_in_ring: number | null;
-  ring_status: boolean | null;
-  builtup?: string | null;
-  otdr_distance?: number | null;
-  otdr_loss?: number | null;
-  power?: number | null;
-  dom?: Date | null;
-  east_port?: string | null;
-  west_port?: string | null;
-};
 ```
 
 <!-- path: components/designations/DesignationFormModal.tsx -->
@@ -26977,8 +26367,11 @@ export default function StepList({
 
 <!-- path: components/doc/data/workflowData.ts -->
 ```typescript
-import { ShieldCheck, Database, Route, GitBranch, GitCommit } from 'lucide-react';
-import { WorkflowSection } from '../types/workflowTypes';
+import { ShieldCheck, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
+import { WorkflowSection } from "../types/workflowTypes";
+import { FaDiagramNext } from "react-icons/fa6";
+import { BsPeople } from "react-icons/bs";
+import { ImUserTie } from "react-icons/im";
 
 export const workflowSections: WorkflowSection[] = [
   {
@@ -26993,47 +26386,36 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To manage user registration, login, session handling, and role-based access control (RBAC).",
     workflows: [
       {
-        title: "Workflow A: New User Registration & Onboarding",
+        title: "Workflow A: New User Registration & Onboarding Prompt",
         userSteps: [
           "User fills out the form on `/signup` and submits.",
           "User receives a verification email and clicks the link.",
-          "User is redirected to the app, logged in, and immediately taken to the `/onboarding` page.",
-          "User fills in their first name, last name, and other details, then saves.",
-          "User can now access the main dashboard.",
+          "User will log in and redirected to the `/dashboard` page.",
+          "A welcome popup appears, prompting them to complete their profile.",
+          "User can choose to 'Update Profile', 'Maybe Later', or 'Don't show again'.",
         ],
-        uiSteps: [
-          "On submit, user is redirected to `/verify-email`.",
-          "After email verification, the `/onboarding` page is shown, not the dashboard.",
-          "After saving onboarding form, user is redirected to `/dashboard`.",
-        ],
+        uiSteps: ["On submit, user is redirected to `/verify-email`.", "After email verification, the `/auth/callback` route sends the user to `/dashboard`.", "On the dashboard, the `OnboardingPromptModal` appears if the profile is incomplete."],
         techSteps: [
           "`signUp` calls `supabase.auth.signUp`.",
-          "DB Trigger `on_auth_user_created` inserts into `user_profiles` with a default `first_name` of 'Placeholder'.",
-          "Upon returning to the app after verification, the `Protected` component checks the user's profile.",
-          "The `useUserProfileCheck` hook inside `Protected` finds the 'Placeholder' name.",
-          "The `Protected` component's logic redirects the user to `/onboarding` instead of allowing access to the dashboard.",
-          "The `OnboardingFormEnhanced` component updates the `user_profiles` table, removing the placeholder name.",
-          "On subsequent visits, the `Protected` component sees a complete profile and grants access to the dashboard.",
+          'DB Trigger `on_auth_user_created` inserts a `user_profiles` record and adds `{"needsOnboarding": true}` to the `preferences` JSONB column.',
+          "The `app/dashboard/page.tsx` component uses the `useGetMyUserDetails` hook.",
+          "A `useEffect` checks if `profile.preferences.needsOnboarding` is `true` and if `profile.preferences.showOnboardingPrompt` is not `false`.",
+          "If conditions are met, the modal's state is set to open.",
+          "Clicking 'Don't show again' updates the `preferences` column, setting `showOnboardingPrompt: false`.",
+          "Clicking 'Update Profile' navigates the user to the `/onboarding` page.",
         ],
       },
       {
         title: "Workflow B: User Login & Session Management",
-        userSteps: [
-          "User enters credentials on `/login` and clicks 'Sign in'.",
-        ],
-        uiSteps: [
-          "Loading state shown.",
-          "On success, user is redirected to `/dashboard`.",
-          "On failure, an error toast is displayed.",
-        ],
+        userSteps: ["User enters credentials on `/login` and clicks 'Sign in'."],
+        uiSteps: ["Loading state shown.", "On success, user is redirected to `/dashboard`.", "On failure, an error toast is displayed."],
         techSteps: [
           "`signIn` function in `useAuth` calls `supabase.auth.signInWithPassword`.",
-          // THIS STEP IS NOW MORE ACCURATE
-          "The hook verifies that the response contains **no error** AND a valid **session object**.",
-          "If verification fails (e.g., invalid credentials), an error toast is shown and the function returns `success: false`.",
+          "The hook verifies that the response contains no error AND a valid session object.",
+          "If verification fails, an error toast is shown and the function returns `success: false`.",
           "If successful, Supabase returns a session with a JWT, which is stored in cookies.",
           "The `middleware.ts` refreshes the user's auth token on subsequent requests.",
-          "The `useAuthStore` (Zustand) is updated by the `onAuthStateChange` listener, making the user session globally available in the frontend.",
+          "The `useAuthStore` (Zustand) is updated by the `onAuthStateChange` listener, making the user session globally available.",
         ],
       },
       {
@@ -27044,203 +26426,476 @@ export const workflowSections: WorkflowSection[] = [
           "An admin action updates the `role` column in the `public.user_profiles` table.",
           "A database trigger (`sync_user_role_trigger`) fires on update.",
           "This trigger updates the `raw_app_meta_data` JSONB column in the corresponding `auth.users` table, setting the new role.",
-          "The user's JWT is now minted with the new role claim, which is used by database Row-Level Security (RLS) policies to grant access.",
+          "The user's JWT is now minted with the new role claim, which is used by RLS policies to grant access.",
+        ],
+      },
+      {
+        title: "Workflow D: Existing User Profile Update",
+        userSteps: ["User clicks on their avatar in the header and selects 'Update Profile'.", "User is taken to the `/onboarding` page, which acts as a profile editor.", "User changes their details and clicks 'Update Profile'."],
+        uiSteps: ["The form on the `/onboarding` page is pre-populated with the user's existing data.", "A toast notification confirms that the profile has been updated successfully.", "The user remains on the profile page to make further changes."],
+        techSteps: [
+          "The `AuthButton` component contains a `<Link>` that navigates to `/onboarding`.",
+          "The `OnboardingFormEnhanced` component fetches the user's profile using the `useGetMyUserDetails` hook.",
+          "An `useEffect` populates the form fields with the fetched data.",
+          "On submit, `OnboardingFormEnhanced` calls the `useTableUpdate` mutation, which updates the `user_profiles` record and sets `needsOnboarding` to `false` within the `preferences` column.",
+          "The `isDirty` state from `react-hook-form` ensures the update only happens if changes were actually made.",
         ],
       },
     ],
   },
   {
-    value: 'crud',
-    icon: Database,
-    title: 'Standard CRUD Operations',
-    subtitle: 'Users, Nodes, Rings & more',
-    gradient: 'from-blue-500 to-cyan-600',
-    iconColor: 'text-blue-400',
-    bgGlow: 'bg-blue-500/10',
-    color: 'blue',
-    purpose:
-      'To provide a consistent and reusable pattern for managing core data entities across the application.',
+    value: "base_structure",
+    icon: Server,
+    title: "Base Structure Setup",
+    subtitle: "Categories, Lookups, Areas & Designations",
+    gradient: "from-gray-500 to-slate-600",
+    iconColor: "text-gray-400",
+    bgGlow: "bg-gray-500/10",
+    color: "yellow", // Using a distinct color
+    purpose: "To configure the foundational data that categorizes and organizes all other entities in the system. This setup is typically performed by an administrator before regular data entry begins.",
     workflows: [
       {
-        title: 'Workflow: Viewing & Filtering Data',
+        title: "Workflow A: Managing Categories & Lookups",
         userSteps: [
-          'User navigates to a data management page like `/dashboard/nodes`.',
-          'User types in the search bar or selects a filter option.',
+          "Admin goes to `/dashboard/categories` and creates a new category (e.g., 'NODE_TYPES'). This acts as a grouping for dropdown options.",
+          "Admin then navigates to `/dashboard/lookup` and selects the newly created 'Node Types' category.",
+          "Clicks 'Add New' to open the `LookupModal`.",
+          "Admin adds a new lookup type, filling in the details:",
+          "  - **Name:** 'Base Transceiver Station' (The human-readable text shown in dropdowns).",
+          "  - **Code:** 'BTS' (A short, unique code for this type, useful for display or logic).",
+          "  - **Sort Order:** '10' (A number to control the display order in lists; lower numbers appear first).",
+          "  - **System Default:** Left unchecked. This flag is reserved for critical, system-required types and prevents their deletion.",
+          "Admin saves the new lookup type.",
         ],
         uiSteps: [
-          '`PageHeader` shows aggregate stats (total, active, inactive).',
-          '`DataTable` displays the first page of data.',
-          'Table updates in real-time as the user types or selects filters.',
+          "The Categories page allows creating and renaming high-level categories.",
+          "On the Lookups page, a category must be selected to view or add types.",
+          "The `DataTable` lists all lookup types for the selected category, ordered by the `sort_order` value.",
+          "If a lookup type has `is_system_default` set to `true`, its Edit and Delete buttons are disabled in the UI to prevent accidental modification.",
         ],
         techSteps: [
-          'The page component uses the `useCrudManager` hook, providing a data-fetching adapter (`useNodesData`).',
-          '`useCrudManager` manages state for pagination, search, and filters.',
-          'The data-fetching hook (`useNodesData`) calls the generic `usePagedData` hook.',
-          '`usePagedData` calls the `get_paged_data` Supabase RPC function, passing filters as a JSONB object.',
-          'The RPC function dynamically builds and executes a secure SQL query against the appropriate view (e.g., `v_nodes_complete`).',
-          'Data is returned to the `DataTable` for rendering.',
+          "A **Category** is not a separate table; it's a distinct value in the `category` column of the `lookup_types` table. It acts as the primary grouping key.",
+          "A **Lookup Type** is a single row in the `lookup_types` table.",
+          "The **`name`** field is the primary value displayed to users in dropdowns and tables.",
+          "The **`code`** field provides a concise, alternative identifier. It's often used for badges or in places where a full name is too long.",
+          "The **`sort_order`** field dictates the ordering of items when fetched for dropdowns. This allows for a custom order that isn't alphabetical (e.g., 'High', 'Medium', 'Low').",
+          "The **`is_system_default`** flag is a protective measure. When `true`, UI controls for editing and deleting are disabled. This prevents an admin from deleting a lookup type that the application's internal logic depends on (e.g., a status type like 'Active' or 'Pending').",
+          "All dropdowns for types (e.g., Node Type, Ring Type) are populated by querying the `lookup_types` table with a `WHERE category = ?` clause and ordering by `sort_order`.",
         ],
       },
       {
-        title: 'Workflow: Creating or Editing an Entity',
+        title: "Workflow B: Managing Maintenance Areas",
         userSteps: [
-          "User clicks 'Add New' or the 'Edit' icon on a table row.",
-          "User fills out the form in the modal and clicks 'Save'.",
+          "Admin navigates to `/dashboard/maintenance-areas`.",
+          "Clicks 'Add New' and fills out the `AreaFormModal` to create a top-level area (e.g., a Zone).",
+          "Admin then creates another area (e.g., a Terminal), but this time selects the newly created Zone as its 'Parent Area', establishing a hierarchy.",
         ],
         uiSteps: [
-          'A modal (`NodeFormModal`) appears with a form for the entity.',
-          'Form fields are validated using Zod schemas (`nodesInsertSchema`).',
-          'On successful save, a toast notification appears and the table refreshes.',
+          "The `EntityManagementComponent` displays the areas in a hierarchical tree view or a simple list view.",
+          "The form modal for an area dynamically filters the 'Parent Area' dropdown to prevent a user from making an area its own child (circular dependency).",
         ],
         techSteps: [
-          '`useCrudManager` manages the modal state (`editModal`).',
-          'The form component (`NodeFormModal`) uses `react-hook-form` with `@hookform/resolvers/zod` for validation.',
-          "On submit, `useCrudManager`'s `handleSave` is called.",
-          'This triggers either `useTableInsert` or `useTableUpdate` from `@tanstack/react-query` hooks.',
-          'The hook performs the insert/update operation on the appropriate Supabase table (e.g., `nodes`).',
-          'On mutation success, `react-query` automatically invalidates the relevant query keys, triggering a refetch via `useCrudManager` to update the UI.',
+          "The page uses the `EntityManagementComponent` with `areaConfig`, which defines the parent-child relationship via the `parent_id` foreign key field.",
+          "Data is fetched using `useTableWithRelations` to include nested `parent_area` and `child_areas` data in a single query.",
+          "The `AreaFormModal` uses `useTableInsert` or `useTableUpdate` to modify records in the `maintenance_areas` table.",
         ],
       },
     ],
   },
   {
-    value: 'routes',
+    value: 'designations_crud',
+    icon: ImUserTie,
+    title: 'Designation Management',
+    subtitle: 'Organizing employee roles in a hierarchy',
+    gradient: 'from-cyan-500 to-sky-600',
+    iconColor: 'text-cyan-400',
+    bgGlow: 'bg-cyan-500/10',
+    color: 'cyan',
+    purpose: 'To establish a hierarchical structure for employee roles, enabling clear reporting lines and organizational charts. This feature is crucial for building an accurate representation of the company structure.',
+    workflows: [
+      {
+        title: 'Workflow: Managing a Designation Hierarchy',
+        userSteps: [
+          "Admin navigates to `/dashboard/designations`.",
+          "Clicks 'Add New Designation' to create a top-level role (e.g., 'General Manager') without selecting a parent.",
+          "Clicks 'Add New' again to create a child role (e.g., 'Deputy Manager') and selects 'General Manager' from the 'Parent Designation' dropdown.",
+          "User toggles between 'Tree' and 'List' view to visualize the structure.",
+          "Admin clicks the 'Delete' icon on a role.",
+        ],
+        uiSteps: [
+          'The `EntityManagementComponent` is the main layout, displaying designations in either a nested tree structure or a flat list.',
+          'The `DesignationFormModal` appears for creating or editing. It intelligently filters the `Parent Designation` dropdown to prevent a designation from being its own child or grandchild (a circular dependency).',
+          'A `ConfirmModal` appears before any deletion to ensure the action is intentional.',
+        ],
+        techSteps: [
+          'The page is powered by the generic `EntityManagementComponent`, configured with `designationConfig`. This config object specifies `isHierarchical: true` and sets `parent_id` as the relational key.',
+          'Data is fetched using the `useTableWithRelations` hook, which performs a self-join on the `employee_designations` table to get the `parent_designation` object for each record.',
+          'The `useEntityManagement` hook processes the flat list into a nested tree structure for the UI by matching `id` and `parent_id` fields.',
+          'When creating or editing, the `DesignationFormModal` uses the `useTableInsert` or `useTableUpdate` mutation to save data directly to the `employee_designations` table.',
+          'The `useDelete` hook (via `useDeleteManager`) handles deletion by calling `supabase.from("employee_designations").delete()`. Postgres handles the `ON DELETE SET NULL` constraint for any children of the deleted designation.',
+        ],
+      },
+    ],
+  },
+  {
+    value: "employees_crud",
+    icon: BsPeople,
+    title: "Employee Management",
+    subtitle: "Managing employee records and roles",
+    gradient: "from-sky-500 to-blue-600",
+    iconColor: "text-sky-400",
+    bgGlow: "bg-sky-500/10",
+    color: "cyan",
+    purpose: "To maintain a central database of all employees, their designations, contact information, and assigned maintenance areas.",
+    workflows: [
+      {
+        title: "Workflow: Managing Employee Records",
+        userSteps: ["Admin navigates to `/dashboard/employees`.", "Clicks 'Add New' to open the `EmployeeForm`.", "Fills in employee details, selecting a pre-configured Designation and Maintenance Area.", "Saves the new employee record."],
+        uiSteps: ["The `DataTable` on the page lists all employees.", "The form modal provides dropdowns for selecting related data like designations.", "On success, a toast appears, and the employee list is refreshed."],
+        techSteps: [
+          "The page uses `useCrudManager` configured for the `employees` table.",
+          "The `EmployeeForm` uses `useTableInsert` or `useTableUpdate` to save data to the `employees` table.",
+          "The `employee_designation_id` and `maintenance_terminal_id` fields are foreign keys linking to their respective tables.",
+          "The main data table queries the `v_employees` view to efficiently join and display the names of the designation and maintenance area.",
+        ],
+      },
+    ],
+  },
+  {
+    value: "diagrams_crud",
+    icon: FaDiagramNext,
+    title: "Diagrams & File Management",
+    subtitle: "Uploading and organizing network diagrams",
+    gradient: "from-rose-500 to-pink-600",
+    iconColor: "text-rose-400",
+    bgGlow: "bg-rose-500/10",
+    color: "orange", // Using a distinct color
+    purpose: "To provide a centralized repository for uploading, storing, and accessing network diagrams, schematics, and other related documents.",
+    workflows: [
+      {
+        title: "Workflow: Uploading a Diagram",
+        userSteps: ["User navigates to the `/dashboard/diagrams` page.", "Creates a new folder or selects an existing one.", "Drags a file into the upload area or clicks 'Select Files'.", "Clicks the 'Upload' button."],
+        uiSteps: ["The `FileUploader` component provides the main interface.", "A list of selected files appears before uploading.", "A success toast confirms the upload, and the file appears in the `FileTable` under the selected folder."],
+        techSteps: [
+          "The `useFolders` hook fetches and manages folder state from the `folders` table.",
+          "The `useUppyUploader` hook handles the client-side file processing, including optimizations.",
+          "Uppy uploads the file to a serverless API route at `/api/upload` (not shown, but assumed).",
+          "The API route uploads the file to Supabase Storage.",
+          "On `upload-success`, the `useUppyUploader` hook calls the `useUploadFile` mutation, which inserts a new record into the `files` table, linking the file metadata to the `folder_id` and `user_id`.",
+        ],
+      },
+    ],
+  },
+  {
+    value: "users_crud",
+    icon: Users,
+    title: "User CRUD Operations",
+    subtitle: "Creating, updating, and deleting users",
+    gradient: "from-blue-500 to-cyan-600",
+    iconColor: "text-blue-400",
+    bgGlow: "bg-blue-500/10",
+    color: "blue",
+    purpose: "To provide administrators with the tools to manage user accounts, assign roles, and control access.",
+    workflows: [
+      {
+        title: 'Workflow A: Viewing & Filtering Users',
+        userSteps: [
+          'Admin navigates to the `/dashboard/users` page.',
+          'Admin uses the search bar and filter dropdowns to find specific users.',
+        ],
+        uiSteps: [
+          'The `DataTable` displays a paginated list of users from the `v_user_profiles_extended` view.',
+          'The `UserFilters` component updates the view as the admin types or selects filters.',
+        ],
+        techSteps: [
+          'The `AdminUsersPage` uses a `useCrudManager` hook with a `useUsersData` adapter.',
+          'The `useUsersData` adapter calls the `admin_get_all_users_extended` Supabase RPC.',
+          'The RPC function performs a server-side search and filter on the `v_user_profiles_extended` view and returns the paginated results.',
+        ],
+      },
+      {
+        title: 'Workflow B: Creating a New User (Admin)',
+        userSteps: [
+          "Admin clicks 'Add New'.",
+          "Fills in the user's details (name, email, password, role) in the `UserCreateModal`.",
+          "Clicks 'Create User'.",
+        ],
+        uiSteps: [
+          'The modal appears for data entry.',
+          'On success, a toast notification is shown, the modal closes, and the user list refreshes.',
+        ],
+        techSteps: [
+          'The `handleCreateUser` function calls the `createUser` mutation from `useAdminUserOperations` hook.',
+          'This mutation sends a `POST` request to the `/api/admin/users` serverless function.',
+          'The API route manually hashes the password and inserts a single new record directly into the `auth.users` table.',
+          'Crucially, this `INSERT` operation causes the `on_auth_user_created` database trigger to fire.',
+          'The trigger function is now the single source of truth for profile creation; it automatically reads the metadata from the new `auth.users` record and inserts a corresponding row into `public.user_profiles`.',
+          'The frontend invalidates the user list query to show the new user.',
+        ],
+      },
+      {
+        title: 'Workflow C: Editing a User',
+        userSteps: [
+          "Admin clicks the 'Edit' icon on a user row.",
+          "Modifies user details (e.g., name, role, status) in the `UserProfileEditModal`.",
+          "Clicks 'Save Changes'.",
+        ],
+        uiSteps: [
+          'The modal opens, pre-filled with the selected user’s data.',
+          'On success, a toast is shown, and the UI updates with the new information.',
+        ],
+        techSteps: [
+          'The `onEdit` handler from `useCrudManager` opens the modal with the user record.',
+          'Submitting the form calls the `updateProfile` mutation from the `useAdminUpdateUserProfile` hook.',
+          'This mutation calls the `admin_update_user_profile` RPC, which updates the `user_profiles` table.',
+          'If the role is changed, a database trigger syncs it to the `auth.users` table.',
+          'The user list query is invalidated and refetched.',
+        ],
+      },
+      {
+        title: 'Workflow D: Deleting a User',
+        userSteps: [
+          "Admin selects one or more users using the checkboxes.",
+          "Clicks the 'Delete' button in the `BulkActions` toolbar.",
+          "Confirms the deletion in the `ConfirmModal`.",
+        ],
+        uiSteps: [
+          'A confirmation modal appears to prevent accidental deletion.',
+          'On success, a toast is shown, and the user(s) are removed from the table.',
+        ],
+        techSteps: [
+          'The `handleBulkDelete` function calls the `bulkDelete` mutation from `useAdminUserOperations`.',
+          'This mutation sends a `DELETE` request to the `/api/admin/users` endpoint with the selected user IDs.',
+          'The API route first verifies the requester is a super admin, then uses a privileged Supabase client to call `supabase.auth.admin.deleteUser()` for each ID.',
+          'The `ON DELETE CASCADE` constraint on the `user_profiles` table automatically removes the corresponding profile.',
+          'The user list query is invalidated to refresh the UI.',
+        ],
+      },
+    ],
+  },
+  {
+    value: "nodes_crud",
+    icon: Cpu,
+    title: "Node CRUD Operations",
+    subtitle: "Managing physical network locations",
+    gradient: "from-emerald-500 to-teal-600",
+    iconColor: "text-emerald-400",
+    bgGlow: "bg-emerald-500/10",
+    color: "teal",
+    purpose: "To create, view, update, and delete network nodes, which represent physical sites like exchanges, BTS towers, or junction points.",
+    workflows: [
+      {
+        title: "Workflow A: Viewing & Filtering Nodes",
+        userSteps: ["User navigates to the `/dashboard/nodes` page.", "User types a node name in the search bar or selects a node type from the dropdown."],
+        uiSteps: ["The `DataTable` displays a list of nodes from the `v_nodes_complete` view.", "The list updates automatically as the user interacts with the filters."],
+        techSteps: [
+          "The `NodesPage` uses `useCrudManager` with a `useNodesData` adapter.",
+          "The `useNodesData` adapter calls the `get_paged_data` RPC function with the specified filters.",
+          "The RPC function queries the `v_nodes_complete` view to get the data along with related names (e.g., maintenance area name).",
+        ],
+      },
+      {
+        title: "Workflow B: Creating or Editing a Node",
+        userSteps: ["User clicks 'Add New' or the 'Edit' icon on a node row.", "Fills out the node details (name, type, location, etc.) in the `NodeFormModal`.", "Clicks 'Save'."],
+        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
+        techSteps: [
+          "`useCrudManager` opens the `NodeFormModal` with either `null` (for create) or the selected node data (for edit).",
+          "On form submission, `handleSave` is called, which triggers either the `useTableInsert` or `useTableUpdate` hook.",
+          "The mutation sends a request directly to the Supabase `nodes` table.",
+          "TanStack Query invalidates the `v_nodes_complete` view query, causing the UI to refetch and display the changes.",
+        ],
+      },
+      {
+        title: "Workflow C: Deleting a Node",
+        userSteps: ["User clicks the 'Delete' icon on a node row.", "Confirms the action in the `ConfirmModal`."],
+        uiSteps: ["A confirmation prompt appears.", "On success, a toast is shown, and the node is removed from the table."],
+        techSteps: [
+          "`crudActions.handleDelete` is called, which uses `useDeleteManager`.",
+          "`useDeleteManager` triggers the `ConfirmModal`.",
+          "On confirmation, a `useTableDelete` mutation is called, which sends a `DELETE` request to the Supabase `nodes` table for the specified ID.",
+          "The query for `v_nodes_complete` is invalidated, refreshing the UI.",
+        ],
+      },
+    ],
+  },
+  {
+    value: "rings_crud",
+    icon: BellRing,
+    title: "Ring CRUD Operations",
+    subtitle: "Defining and managing logical network rings",
+    gradient: "from-orange-500 to-amber-600",
+    iconColor: "text-orange-400",
+    bgGlow: "bg-orange-500/10",
+    color: "orange",
+    purpose: "To manage logical network rings, which group various systems together to form a resilient communication path.",
+    workflows: [
+      {
+        title: "Workflow A: Viewing & Filtering Rings",
+        userSteps: ["User navigates to the `/dashboard/rings` page.", "User types a ring name in the search bar."],
+        uiSteps: ["The `DataTable` displays a list of rings from the `v_rings` view, showing details like total nodes and maintenance area."],
+        techSteps: ["The `RingsPage` uses `useCrudManager` with a `useRingsData` adapter.", "The `useRingsData` adapter calls the `get_paged_data` RPC, which queries the `v_rings` view."],
+      },
+      {
+        title: "Workflow B: Creating or Editing a Ring",
+        userSteps: ["User clicks 'Add New' or 'Edit'.", "Fills out the ring's name, type, and maintenance terminal in the `RingModal`.", "Clicks 'Save'."],
+        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
+        techSteps: ["`useCrudManager` opens the `RingModal`.", "On submission, `handleSave` triggers `useTableInsert` or `useTableUpdate` on the `rings` table.", "The query for the `v_rings` view is invalidated, refreshing the UI."],
+      },
+      {
+        title: "Workflow C: Associating Systems with a Ring",
+        userSteps: ["User clicks the 'Manage Systems' icon on a ring row.", "In the `RingSystemsModal`, user moves systems from the 'Available' list to the 'Associated' list.", "User clicks 'Save Changes'."],
+        uiSteps: ["A dual-listbox modal appears, showing systems in the same maintenance area.", "On success, a toast is shown, the modal closes, and the 'Total Nodes' count in the table updates."],
+        techSteps: [
+          "The `handleManageSystems` handler opens the `RingSystemsModal`.",
+          "The modal fetches associated systems (from `v_systems_complete` where `ring_id` matches) and available systems (from `v_systems_complete` where `ring_id` is null and `maintenance_terminal_id` matches).",
+          "Saving triggers the `updateMutation`, which calls the `update_ring_system_associations` RPC function.",
+          "This RPC function deletes old associations and inserts the new list of system IDs into the `ring_based_systems` junction table.",
+          "The `v_rings` view query is invalidated, causing the 'Total Nodes' count to update.",
+        ],
+      },
+    ],
+  },
+  {
+    value: "routes",
     icon: Route,
-    title: 'OFC & Route Management',
-    subtitle: 'Cable segmentation & fiber splicing',
-    gradient: 'from-teal-500 to-emerald-600',
-    iconColor: 'text-teal-400',
-    bgGlow: 'bg-teal-500/10',
-    color: 'teal',
-    purpose:
-      'An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.',
+    title: "OFC & Route Management",
+    subtitle: "Cable segmentation & fiber splicing",
+    gradient: "from-teal-500 to-emerald-600",
+    iconColor: "text-teal-400",
+    bgGlow: "bg-teal-500/10",
+    color: "teal",
+    purpose: "An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.",
     workflows: [
       {
-        title: 'Workflow A: Visualizing a Route',
-        userSteps: ['User selects an OFC route from the dropdown.'],
+        title: 'Workflow A: Managing OFC Cable Records (CRUD)',
+        userSteps: [
+          'Admin navigates to `/dashboard/ofc`.',
+          "Clicks 'Add New' to create a new cable route.",
+          "Fills in details like nodes, type, and capacity, then clicks 'Create'.",
+          "To edit, admin clicks the 'Edit' icon on a row, modifies data, and saves.",
+          "To delete, admin clicks the 'Delete' icon and confirms in the popup.",
+        ],
+        uiSteps: [
+          'The `DataTable` displays a list of all existing OFC cables.',
+          'A `route_name` is automatically generated when start and end nodes are selected.',
+          'On successful save/delete, a toast notification appears and the table refreshes.',
+        ],
+        techSteps: [
+          'The `OfcPage` uses `useCrudManager` to manage state and data fetching.',
+          'Creating a record calls the `useTableInsert` hook to write to the `ofc_cables` table.',
+          'An `AFTER INSERT` trigger on `ofc_cables` automatically populates the `ofc_connections` table with records for each fiber.',
+          'Editing calls the `useTableUpdate` hook to update the `ofc_cables` record.',
+          // **UPDATED DOCUMENTATION STEP**
+          'Deleting calls the `useTableDelete` hook to remove a record from `ofc_cables`.',
+          'The `ON DELETE CASCADE` constraint on the `ofc_connections` table\'s `ofc_id` foreign key ensures that PostgreSQL automatically deletes all associated fiber connection records in the same transaction.',
+        ],
+      },
+      {
+        title: 'Workflow B: Visualizing a Route',
+        userSteps: ['User selects an OFC route from the dropdown in the Route Manager.'],
         uiSteps: [
           'The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).',
           'A list of `Cable Segments` is displayed below the visualization.',
         ],
         techSteps: [
           "The page component's `useQuery` fetches data from the API route `/api/route/[id]`.",
-          'The API route fetches data from multiple tables: `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
+          'The API route fetches data from multiple tables, including `v_ofc_cables_complete` and `cable_segments`.',
           'The API returns a consolidated `RouteDetailsPayload` object.',
         ],
       },
       {
-        title: 'Workflow B: Adding a Junction Closure',
+        title: 'Workflow C: Adding a Junction Closure',
         userSteps: [
-          "User clicks 'Add Junction Closure'.",
-          "User fills in the JC's name and position in the `JcFormModal` and saves.",
+          "User clicks 'Add Junction Closure' in the Route Manager.",
+          "Fills in the JC's name and position and saves.",
         ],
         uiSteps: [
           'The `RouteVisualization` updates to show the new JC on the cable path.',
           'The `Cable Segments` list is recalculated and re-rendered.',
         ],
         techSteps: [
-          'The `JcFormModal` calls the `add_junction_closure` Supabase RPC function.',
-          "This RPC inserts a new record into the `nodes` table (for the JC's physical location) and the `junction_closures` table.",
-          'An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function.',
-          'This function deletes all old segments for that cable and creates new ones based on the new sequence of nodes and JCs, storing them in the `cable_segments` table.',
+          'The form calls the `add_junction_closure` Supabase RPC function.',
+          'This RPC inserts records into the `nodes` and `junction_closures` tables.',
+          'An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function, which rebuilds the records in the `cable_segments` table.',
           'The frontend refetches the route details, updating the UI.',
         ],
       },
       {
-        title: 'Workflow C: Managing Fiber Splices',
+        title: 'Workflow D: Managing Fiber Splices',
         userSteps: [
           'User clicks on an existing JC in the visualization.',
-          "The 'Splice Management' tab becomes active.",
-          'User selects a fiber from one segment and then clicks an available fiber on another segment to create a splice.',
+          "User selects a fiber from one segment and then clicks an available fiber on another to create a splice.",
         ],
         uiSteps: [
           'The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.',
           'UI provides visual cues for selected, available, and used fibers.',
         ],
         techSteps: [
-          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC function to fetch the current state of all fibers and splices at the JC node.',
-          "`manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
+          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC to fetch the current splice state.',
+          "A `manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
           'The frontend query for splicing details is invalidated and refetched, updating the UI.',
         ],
       },
     ],
   },
   {
-    value: 'provisioning',
+    value: "provisioning",
     icon: GitBranch,
-    title: 'Logical Path & Fiber Provisioning',
-    subtitle: 'End-to-end service provisioning',
-    gradient: 'from-cyan-500 to-blue-600',
-    iconColor: 'text-cyan-400',
-    bgGlow: 'bg-cyan-500/10',
-    color: 'cyan',
-    purpose:
-      'To define an end-to-end logical path over physical cable segments and provision working/protection fibers for a service.',
+    title: "Logical Path & Fiber Provisioning",
+    subtitle: "End-to-end service provisioning",
+    gradient: "from-cyan-500 to-blue-600",
+    iconColor: "text-cyan-400",
+    bgGlow: "bg-cyan-500/10",
+    color: "cyan",
+    purpose: "To define an end-to-end logical path over physical cable segments and provision working/protection fibers for a service.",
     workflows: [
       {
-        title: 'Workflow A: Building a Logical Path',
-        userSteps: [
-          "User navigates to a System's detail page (`/dashboard/systems/[id]`).",
-          "User clicks 'Initialize Path' to create a logical path record.",
-          "In 'Build Mode', user clicks on nodes in the map to add cable segments to the path.",
-        ],
-        uiSteps: [
-          'The `SystemRingPath` component displays a map of nodes and a list of segments in the path.',
-          'The map highlights nodes in the current path.',
-        ],
+        title: "Workflow A: Building a Logical Path",
+        userSteps: ["User navigates to a System's detail page (`/dashboard/systems/[id]`).", "User clicks 'Initialize Path' to create a logical path record.", "In 'Build Mode', user clicks on nodes in the map to add cable segments to the path."],
+        uiSteps: ["The `SystemRingPath` component displays a map of nodes and a list of segments in the path.", "The map highlights nodes in the current path."],
         techSteps: [
-          'Initializing inserts a new record into `logical_fiber_paths`.',
-          'Clicking a node calls the `find_cable_between_nodes` RPC to find the physical `ofc_cables` record.',
-          'A new record is inserted into `logical_path_segments`, linking the `logical_fiber_paths` ID with the `ofc_cables` ID.',
-          'The path is validated in real-time using the `validate_ring_path` RPC.',
+          "Initializing inserts a new record into `logical_fiber_paths`.",
+          "Clicking a node calls the `find_cable_between_nodes` RPC to find the physical `ofc_cables` record.",
+          "A new record is inserted into `logical_path_segments`, linking the `logical_fiber_paths` ID with the `ofc_cables` ID.",
+          "The path is validated in real-time using the `validate_ring_path` RPC.",
         ],
       },
       {
-        title: 'Workflow B: Provisioning Fibers',
-        userSteps: [
-          'Once a valid path is built, the `FiberProvisioning` section appears.',
-          "User selects a 'Working Fiber' and a 'Protection Fiber' from the dropdowns and clicks 'Save Changes'.",
-        ],
-        uiSteps: [
-          'The dropdowns only show fibers that are continuously available across all segments of the logical path.',
-          'After saving, the UI switches to a read-only view showing the provisioned fibers.',
-        ],
+        title: "Workflow B: Provisioning Fibers",
+        userSteps: ["Once a valid path is built, the `FiberProvisioning` section appears.", "User selects a 'Working Fiber' and a 'Protection Fiber' from the dropdowns and clicks 'Save Changes'."],
+        uiSteps: ["The dropdowns only show fibers that are continuously available across all segments of the logical path.", "After saving, the UI switches to a read-only view showing the provisioned fibers."],
         techSteps: [
-          'The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.',
-          'Saving calls the `provision_ring_path` RPC.',
-          'This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.',
-          'This atomically allocates the fibers to the service.',
+          "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.",
+          "Saving calls the `provision_ring_path` RPC.",
+          "This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.",
+          "This atomically allocates the fibers to the service.",
         ],
       },
     ],
   },
   {
-    value: 'auditing',
+    value: "auditing",
     icon: GitCommit,
-    title: 'Auditing System',
-    subtitle: 'Automatic change tracking & logging',
-    gradient: 'from-orange-500 to-red-600',
-    iconColor: 'text-orange-400',
-    bgGlow: 'bg-orange-500/10',
-    color: 'orange',
-    purpose:
-      'To automatically log all data modifications (INSERT, UPDATE, DELETE) for accountability and history tracking.',
+    title: "Auditing System",
+    subtitle: "Automatic change tracking & logging",
+    gradient: "from-orange-500 to-red-600",
+    iconColor: "text-orange-400",
+    bgGlow: "bg-orange-500/10",
+    color: "orange",
+    purpose: "To automatically log all data modifications (INSERT, UPDATE, DELETE) for accountability and history tracking.",
     workflows: [
       {
-        title: 'Workflow: Automatic Data Change Logging',
+        title: "Workflow: Automatic Data Change Logging",
         userSteps: ["An admin edits and saves an employee's profile."],
-        uiSteps: [
-          'The change is reflected in the UI as usual.',
-          "An admin with permission can view the change log in the 'User Activity' section.",
-        ],
+        uiSteps: ["The change is reflected in the UI as usual.", "An admin with permission can view the change log in the 'User Activity' section."],
         techSteps: [
-          'The `UPDATE` operation on the `employees` table completes.',
-          'An `AFTER UPDATE` trigger (`employees_log_trigger`) on the table fires automatically.',
-          'The trigger executes the `log_data_changes()` function.',
+          "The `UPDATE` operation on the `employees` table completes.",
+          "An `AFTER UPDATE` trigger (`employees_log_trigger`) on the table fires automatically.",
+          "The trigger executes the `log_data_changes()` function.",
           "This function captures the `OLD` and `NEW` row data, converts them to JSONB, and determines the operation type ('UPDATE').",
-          'It then calls `log_user_activity()`, passing the captured data.',
+          "It then calls `log_user_activity()`, passing the captured data.",
           "The `log_user_activity()` function inserts a new record into the `user_activity_logs` table, including the current user's ID (`auth.uid()`) and role (`get_my_role()`).",
-          'The entire process is atomic and happens within the same database transaction as the original update.',
+          "The entire process is atomic and happens within the same database transaction as the original update.",
         ],
       },
     ],
@@ -27325,11 +26980,14 @@ export default function BackgroundElements() {
 
 <!-- path: components/doc/types/workflowTypes.ts -->
 ```typescript
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
+
+export type WorkflowIcon = LucideIcon | IconType;
 
 export interface WorkflowSection {
   value: string;
-  icon: LucideIcon;
+  icon: WorkflowIcon;
   title: string;
   subtitle: string;
   gradient: string;
@@ -27608,23 +27266,21 @@ export default function DashboardHeader({
                   ) : (
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
                       <span className="text-sm font-medium text-white">
-                        {user.user_metadata?.name?.[0] || "U"}
+                        {user.user_metadata?.first_name?.[0] || "U"}
                       </span>
                     </div>
                   )}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {user.user_metadata?.name || "User"}
+                    {user.user_metadata?.first_name || "User"}
                   </span>
                 </Link>
 
-                {/* Dropdown AuthButton - Responsive positioning */}
+                {/* Dropdown AuthButton - SIMPLIFIED and CORRECTED positioning */}
                 <div
-                  className="absolute top-full right-0 mt-2 mr-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 
-                    sm:left-0 sm:right-auto"
+                  className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
                 >
                   <div
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 
-                      w-auto min-w-64 sm:w-auto"
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 w-auto min-w-64"
                   >
                     <AuthButton />
                   </div>
@@ -27638,7 +27294,6 @@ export default function DashboardHeader({
     </header>
   );
 }
-
 ```
 
 <!-- path: components/dashboard/DashboardContent.tsx -->
@@ -27803,18 +27458,12 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   toggleStatusMutation: {
     mutate: (variables: ToggleStatusVariables) => void;
     isPending: boolean;
-    // Additional properties that might come from useMutation
-    data?: unknown;
-    error?: unknown;
-    isError?: boolean;
-    isSuccess?: boolean;
-    isIdle?: boolean;
-    reset?: () => void;
-    variables?: ToggleStatusVariables;
   };
   onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;
+  selectedEntityId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
@@ -27824,14 +27473,15 @@ export function EntityManagementComponent<T extends BaseEntity>({
   onEdit,
   onDelete,
   onCreateNew,
+  selectedEntityId,
+  onSelect,
 }: EntityManagementComponentProps<T>) {
+  const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
-  // Selected entity is now managed by the useEntityManagement hook
   const [expandedEntities] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
 
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
@@ -27843,39 +27493,42 @@ export function EntityManagementComponent<T extends BaseEntity>({
     });
   }, [toggleStatusMutation]);
 
-  const handleEntitySelectWithPanel = (id: string, entity: T) => {
-    if (handleEntitySelect) {
-      handleEntitySelect(id, entity);
-    }
-  };
-
   const handleCloseDetailsPanel = useCallback(() => {
     setShowDetailsPanel(false);
-  }, []);
+    onSelect(null);
+  }, [onSelect]);
 
-  
+  // **THE FIX IS HERE:** Removed `handleOpenEditForm` from the destructuring
   const {
     filteredEntities,
     hierarchicalEntities,
     selectedEntity,
     handleEntitySelect,
     handleOpenCreateForm,
-    handleOpenEditForm,
     toggleExpanded,
   } = useEntityManagement<T>({
     entitiesQuery,
-    config: {
-      ...config,
-      isHierarchical: config.isHierarchical || false,
-    },
+    config: { ...config, isHierarchical: config.isHierarchical || false },
     onEdit,
     onDelete,
     onToggleStatus: handleToggleStatus,
     onCreateNew,
+    selectedEntityId,
+    onSelect,
   });
-
-
+  
   const IconComponent = config.icon;
+  
+  const handleItemSelect = (id: string) => {
+    handleEntitySelect(id);
+    setShowDetailsPanel(true);
+  };
+  
+  const handleOpenEditForm = useCallback(() => {
+    if (selectedEntity) {
+      onEdit(selectedEntity);
+    }
+  }, [selectedEntity, onEdit]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -27897,9 +27550,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
-        {/* Left Panel - List */}
         <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
           <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <SearchAndFilters
@@ -27912,51 +27563,26 @@ export function EntityManagementComponent<T extends BaseEntity>({
               onClearFilters={() => setFilters({})}
               config={config}
             />
-            {config.isHierarchical && (
-              <ViewModeToggle
-                viewMode={viewMode}
-                onChange={setViewMode}
-              />
-            )}
+            {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
           </div>
 
           <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
             {entitiesQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Loading {config.entityPluralName}...
-                  </p>
-                </div>
-              </div>
+              <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
             ) : entitiesQuery.isError ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 inline-block mb-4">
-                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-red-600 dark:text-red-400">
-                    Error loading {config.entityPluralName}
-                  </p>
-                </div>
-              </div>
+              <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
             ) : filteredEntities.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No {config.entityPluralName} found.
-                  </p>
-                  <button
-                    onClick={handleOpenCreateForm}
-                    className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                  >
-                    <FiPlus className="h-4 w-4 mr-2" />
-                    Add First {config.entityDisplayName}
-                  </button>
+              <div className="flex items-center justify-center py-12 text-center">
+                 <div>
+                    <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400">No {config.entityPluralName.toLowerCase()} found.</p>
+                    <button
+                        onClick={handleOpenCreateForm}
+                        className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                    >
+                        <FiPlus className="h-4 w-4 mr-2" />
+                        Add First {config.entityDisplayName}
+                    </button>
                 </div>
               </div>
             ) : config.isHierarchical && viewMode === "tree" ? (
@@ -27967,9 +27593,9 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     entity={entity}
                     config={config}
                     level={0}
-                    selectedEntityId={selectedEntity?.id ?? null}
+                    selectedEntityId={selectedEntityId}
                     expandedEntities={expandedEntities}
-                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    onSelect={handleItemSelect}
                     onToggleExpand={(id) => toggleExpanded(id)}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
@@ -27983,8 +27609,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     key={entity.id}
                     entity={entity}
                     config={config}
-                    isSelected={entity.id === selectedEntity?.id}
-                    onSelect={(id) => handleEntitySelectWithPanel(id, entity)}
+                    isSelected={entity.id === selectedEntityId}
+                    onSelect={() => handleItemSelect(entity.id)}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
                   />
@@ -27994,45 +27620,31 @@ export function EntityManagementComponent<T extends BaseEntity>({
           </div>
         </div>
 
-        {/* Right Panel - Details */}
         <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
-          {/* Mobile Details Header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
-              <button
-                onClick={handleCloseDetailsPanel}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={handleCloseDetailsPanel} className="p-2 rounded-md text-gray-400">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
           </div>
-
-          {/* Desktop Details Header */}
           <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              {config.entityDisplayName} Details
-            </h2>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
           </div>
-
           <div className="flex-1 overflow-y-auto">
             {selectedEntity ? (
-              <EntityDetailsPanel
-                entity={selectedEntity}
-                config={config}
+              <EntityDetailsPanel 
+                entity={selectedEntity} 
+                config={config} 
                 onEdit={handleOpenEditForm}
-                onDelete={onDelete}
+                onDelete={onDelete} 
               />
             ) : (
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-center">
+              <div className="flex items-center justify-center h-full p-8 text-center">
+                <div>
                   <FiInfo className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Select a {config.entityDisplayName.toLowerCase()} to view details
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">Select a {config.entityDisplayName.toLowerCase()} to view details</p>
                 </div>
               </div>
             )}
@@ -28198,7 +27810,7 @@ export interface EntityConfig<T extends BaseEntity> {
   }>;
 }
 
-// Interface for the hook props
+// **THE FIX: Update the hook's props interface**
 export interface UseEntityManagementProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<T[], Error>;
   config: EntityConfig<T>;
@@ -28206,6 +27818,9 @@ export interface UseEntityManagementProps<T extends BaseEntity> {
   onDelete: (entity: { id: string; name: string }) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   onCreateNew: () => void;
+  // Add the new props to make it a controlled component
+  selectedEntityId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 // Updated component interfaces
@@ -28220,8 +27835,6 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
     onToggleStatus: (e: React.MouseEvent, entity: T) => void;
     isLoading: boolean;
   }
-
-
 ```
 
 <!-- path: components/common/entity-management/EntityTreeItem.tsx -->
@@ -29359,213 +28972,6 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
-
-
-// // Example usage component
-// const ExampleUsage = () => {
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [selectedId, setSelectedId] = useState(null);
-//   const [viewMode, setViewMode] = useState('list');
-//   const [showFilters, setShowFilters] = useState(false);
-//   const [filters, setFilters] = useState({});
-
-//   // Mock data
-//   const sampleData = [
-//     { id: '1', name: 'Software Engineer', description: 'Develops applications', department: 'Engineering', status: 'active' },
-//     { id: '2', name: 'Product Manager', description: 'Manages product roadmap', department: 'Product', status: 'active' },
-//     { id: '3', name: 'UX Designer', description: 'Designs user experiences', department: 'Design', status: 'inactive' },
-//     { id: '4', name: 'Data Analyst', description: 'Analyzes business data', department: 'Analytics', status: 'active' },
-//   ];
-
-//   const filteredData = sampleData.filter((item) => {
-//     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-//     const matchesStatus = !filters.status || item.status === filters.status;
-//     const matchesDepartment = !filters.department || item.department === filters.department;
-//     return matchesSearch && matchesStatus && matchesDepartment;
-//   });
-
-//   const handleFilterChange = (newFilters) => {
-//     setFilters({ ...filters, ...newFilters });
-//   };
-
-//   const handleClearFilters = () => {
-//     setFilters({});
-//   };
-
-//   const handleItemSelect = (item) => {
-//     setSelectedId(item.id);
-//   };
-
-//   const handleCreateNew = () => {
-//     alert('Create new position');
-//   };
-
-//   const handleSearchChange = (value) => {
-//     setSearchTerm(value);
-//   };
-
-//   const handleToggleFilters = () => {
-//     setShowFilters(!showFilters);
-//   };
-
-//   const handleViewModeChange = (mode) => {
-//     setViewMode(mode);
-//   };
-
-//   const renderListItem = (item, isSelected, onSelect) => (
-//     <div
-//       key={item.id}
-//       onClick={onSelect}
-//       className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-//         isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600' : ''
-//       }`}
-//     >
-//       <div className="flex justify-between items-start">
-//         <div>
-//           <h3 className="font-medium text-gray-900 dark:text-white">
-//             {item.name}
-//           </h3>
-//           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div className="flex flex-col items-end space-y-1">
-//           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-//             {item.department}
-//           </span>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   const renderFiltersComponent = (currentFilters, onFilterChange, onClearFilters) => (
-//     <div className="pt-3 space-y-3">
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Status
-//           </label>
-//           <select
-//             value={currentFilters.status || ''}
-//             onChange={(e) => onFilterChange({ status: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Status</option>
-//             <option value="active">Active</option>
-//             <option value="inactive">Inactive</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Department
-//           </label>
-//           <select
-//             value={currentFilters.department || ''}
-//             onChange={(e) => onFilterChange({ department: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Departments</option>
-//             <option value="Engineering">Engineering</option>
-//             <option value="Product">Product</option>
-//             <option value="Design">Design</option>
-//             <option value="Analytics">Analytics</option>
-//           </select>
-//         </div>
-//       </div>
-//       <div className="flex justify-end">
-//         <button
-//           onClick={onClearFilters}
-//           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-//         >
-//           Clear Filters
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   const renderDetailsPanelComponent = (item) => (
-//     <div className="p-6">
-//       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-//         {item.name}
-//       </h3>
-//       <div className="space-y-4">
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Description
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Department
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.department}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Status
-//           </label>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//       <div className="mt-6 flex space-x-3">
-//         <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-//           Edit
-//         </button>
-//         <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-//           Delete
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   return (
-//     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-//       <DataListView
-//         data={filteredData}
-//         searchTerm={searchTerm}
-//         onSearchChange={handleSearchChange}
-//         searchPlaceholder="Search positions..."
-//         showFilters={showFilters}
-//         onToggleFilters={handleToggleFilters}
-//         filters={filters}
-//         onFilterChange={handleFilterChange}
-//         onClearFilters={handleClearFilters}
-//         selectedItemId={selectedId}
-//         onItemSelect={handleItemSelect}
-//         viewMode={viewMode}
-//         onViewModeChange={handleViewModeChange}
-//         detailsTitle="Position Details"
-//         emptyStateTitle="No positions found"
-//         emptyStateDescription="Try adjusting your search criteria."
-//         createButtonText="Add Position"
-//         onCreateNew={handleCreateNew}
-//         renderListItem={renderListItem}
-//         renderFilters={renderFiltersComponent}
-//         renderDetailsPanel={renderDetailsPanelComponent}
-//       />
-//     </div>
-//   );
-// };
-
-// export default ExampleUsage;
 ```
 
 <!-- path: components/common/form/IPAddressInput.tsx -->
@@ -29992,6 +29398,10 @@ interface FormSearchableSelectProps<T extends FieldValues>
   searchPlaceholder?: string;
   disabled?: boolean;
   clearable?: boolean;
+  // **NEW PROPS FOR SERVER-SIDE SEARCH**
+  serverSide?: boolean; // When true, options are not filtered client-side
+  onSearch?: (term: string) => void; // Function to trigger a search
+  isLoading?: boolean; // To show a loading indicator
 }
 
 export function FormSearchableSelect<T extends FieldValues>({
@@ -32902,41 +32312,6 @@ export const Switch: React.FC<SwitchProps> = ({
     </div>
   );
 };
-
-// // Basic usage
-// <Switch checked={isActive} onChange={setIsActive} />
-
-// // With label on left
-// <Switch 
-//   label="Dark Mode" 
-//   labelPosition="left" 
-//   checked={darkMode} 
-//   onChange={setDarkMode} 
-// />
-
-// // With color and status text
-// <Switch
-//   color="success"
-//   showStatusText
-//   checked={isEnabled}
-//   onChange={setIsEnabled}
-// />
-
-// // With icons and custom size
-// <Switch
-//   size="lg"
-//   showIcons
-//   checked={notifications}
-//   onChange={setNotifications}
-// />
-
-// // Disabled switch
-// <Switch
-//   disabled
-//   label="Read-only"
-//   checked={false}
-// />
-
 ```
 
 <!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
@@ -33419,6 +32794,123 @@ export { ScrollArea, ScrollBar }
 
 <!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
+// "use client";
+
+// import { useThemeStore, Theme } from "@/stores/themeStore";
+// import { useState, useRef, useEffect } from "react";
+// import { FiChevronDown, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
+
+// export default function ThemeToggle() {
+//   const { theme, setTheme, hydrated } = useThemeStore();
+//   const [isOpen, setIsOpen] = useState(false);
+//   const dropdownRef = useRef<HTMLDivElement>(null);
+//   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+//   const options = [
+//     { value: "light" as Theme, icon: <FiSun size={16} />, label: "Light" },
+//     { value: "dark" as Theme, icon: <FiMoon size={16} />, label: "Dark" },
+//     { value: "system" as Theme, icon: <FiMonitor size={16} />, label: "System" },
+//   ];
+
+//   const currentOption = options.find((opt) => opt.value === theme);
+
+//   useEffect(() => {
+//     return () => {
+//       if (timeoutRef.current) {
+//         clearTimeout(timeoutRef.current);
+//       }
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       if (
+//         dropdownRef.current &&
+//         !dropdownRef.current.contains(event.target as Node)
+//       ) {
+//         setIsOpen(false);
+//       }
+//     };
+
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
+
+//   const handleMouseEnter = () => {
+//     if (timeoutRef.current) {
+//       clearTimeout(timeoutRef.current);
+//     }
+//     setIsOpen(true);
+//   };
+
+//   const handleMouseLeave = () => {
+//     timeoutRef.current = setTimeout(() => {
+//       setIsOpen(false);
+//     }, 300);
+//   };
+
+//   const handleOptionClick = (value: Theme) => {
+//     setTheme(value);
+//     setIsOpen(false);
+//     if (timeoutRef.current) {
+//       clearTimeout(timeoutRef.current);
+//     }
+//   };
+
+//   // Show loading state until hydrated
+//   if (!hydrated) {
+//     return (
+//       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+//     );
+//   }
+
+//   return (
+//     <div
+//       ref={dropdownRef}
+//       className="relative"
+//       onMouseEnter={handleMouseEnter}
+//       onMouseLeave={handleMouseLeave}
+//     >
+//       <button
+//         onClick={() => setIsOpen(!isOpen)}
+//         className="flex items-center gap-2 rounded-lg bg-gray-200 px-3 py-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+//         aria-expanded={isOpen}
+//       >
+//         {currentOption?.icon}
+//         <span className="text-sm">{currentOption?.label}</span>
+//         <FiChevronDown
+//           size={16}
+//           className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+//         />
+//       </button>
+
+//       {isOpen && (
+//         <div
+//           className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+//           onMouseEnter={handleMouseEnter}
+//           onMouseLeave={handleMouseLeave}
+//         >
+//           {options.map((opt) => (
+//             <button
+//               key={opt.value}
+//               onClick={() => handleOptionClick(opt.value)}
+//               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 dark:text-white ${
+//                 theme === opt.value
+//                   ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+//                   : "hover:bg-gray-100 dark:hover:bg-gray-700"
+//               }`}
+//             >
+//               {opt.icon}
+//               <span>{opt.label}</span>
+//             </button>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 "use client";
 
 import { useThemeStore, Theme } from "@/stores/themeStore";
@@ -33426,10 +32918,17 @@ import { useState, useRef, useEffect } from "react";
 import { FiChevronDown, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
 
 export default function ThemeToggle() {
-  const { theme, setTheme, hydrated } = useThemeStore();
+  const { theme, setTheme } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false); // **THE FIX**
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // **THE FIX: Only render the real UI after the component has mounted on the client.**
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
 
   const options = [
     { value: "light" as Theme, icon: <FiSun size={16} />, label: "Light" },
@@ -33482,8 +32981,8 @@ export default function ThemeToggle() {
     }
   };
 
-  // Show loading state until hydrated
-  if (!hydrated) {
+  // **THE FIX: Show loading skeleton until the component has mounted.**
+  if (!hasMounted) {
     return (
       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
     );
@@ -33623,22 +33122,6 @@ export const Label: React.FC<LabelProps> = ({
   );
 };
 
-
-// // Usage
-// // Basic usage
-// <Label htmlFor="email">Email Address</Label>
-
-// // With required field
-// <Label htmlFor="password" required>Password</Label>
-
-// // With tooltip
-// <Label htmlFor="api-key" tooltip="Your unique API identifier">API Key</Label>
-
-// // Custom size and weight
-// <Label htmlFor="name" size="lg" weight="bold">Full Name</Label>
-
-// // Disabled state
-// <Label htmlFor="readonly" disabled>Read-only Field</Label>
 ```
 
 <!-- path: components/common/ui/Button/Button.tsx -->
@@ -34128,20 +33611,17 @@ import { Label } from "@/components/common/ui/label/Label";
 import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiX, FiSearch } from "react-icons/fi";
+import { ButtonSpinner } from "../LoadingSpinner";
 
-// The Option interface remains the same
-interface Option {
+export interface Option {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export type { Option };
-
-// The props interface remains the same
 interface SearchableSelectProps {
   options: Option[];
-  value?: string | null; // <-- THE FIX: Now accepts string | null | undefined
+  value?: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -34155,11 +33635,14 @@ interface SearchableSelectProps {
   error?: boolean;
   sortOptions?: boolean;
   label?: string;
+  serverSide?: boolean;
+  onSearch?: (term: string) => void;
+  isLoading?: boolean;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
-  value = null, // Default to null
+  value = null,
   onChange,
   placeholder = "Select an option",
   searchPlaceholder = "Search options...",
@@ -34173,11 +33656,13 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   error = false,
   sortOptions = true,
   label = "",
+  serverSide = false,
+  onSearch,
+  isLoading = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
-
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -34186,6 +33671,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const filteredOptions = useMemo(() => {
+    if (serverSide) return options;
     const processedOptions = [...options];
     if (sortOptions) {
       processedOptions.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
@@ -34194,12 +33680,21 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return processedOptions.filter(option =>
       option.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [options, searchTerm, sortOptions]);
+  }, [options, searchTerm, sortOptions, serverSide]);
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = useMemo(() => options.find(option => option.value === value), [options, value]);
   const selectedLabel = selectedOption?.label || "";
-  const hasValue = selectedLabel.length > 0;
+  const hasValue = !!value;
 
+  useEffect(() => {
+    if (serverSide && onSearch) {
+      const handler = setTimeout(() => {
+        onSearch(searchTerm);
+      }, 300);
+      return () => clearTimeout(handler);
+    }
+  }, [searchTerm, serverSide, onSearch]);
+  
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -34219,8 +33714,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         dropdownRef.current && !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -34245,8 +33738,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         break;
       case "Escape":
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
         break;
       case "ArrowDown":
         e.preventDefault();
@@ -34259,8 +33750,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         break;
       case "Tab":
         setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
         break;
     }
   };
@@ -34274,8 +33763,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const handleOptionSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
-    setSearchTerm("");
-    setFocusedIndex(-1);
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -34284,58 +33771,35 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   const toggleDropdown = () => {
-    if (!disabled) {
-      setIsOpen(!isOpen);
-      if (!isOpen) {
-        setSearchTerm("");
-        setFocusedIndex(-1);
-      }
-    }
+    if (!disabled) setIsOpen(!isOpen);
   };
 
   const baseClasses = `relative w-full rounded-md border px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:outline-none transition-colors cursor-pointer ${error ? "border-red-300 dark:border-red-600" : "border-gray-300 dark:border-gray-600"} ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500`} dark:text-white dark:focus-within:ring-blue-600`;
 
   const DropdownContent = (
-    <div
-      ref={dropdownRef}
-      style={dropdownStyle}
-      className="z-[999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
-    >
+    <div ref={dropdownRef} style={dropdownStyle} className="z-[999] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
       <div className="p-2 border-b border-gray-200 dark:border-gray-600">
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
-            ref={searchInputRef}
-            type="text"
-            placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setFocusedIndex(-1);
-            }}
+            ref={searchInputRef} type="text" placeholder={searchPlaceholder}
+            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
           />
+          {isLoading && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><ButtonSpinner size="sm" /></div>}
         </div>
       </div>
-      <div
-        className="overflow-y-auto"
-        style={{ maxHeight: `${maxHeight}px` }}
-        role="listbox"
-      >
-        {loading ? (
-          <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">Loading...</div>
-        ) : filteredOptions.length === 0 ? (
+      <div className="overflow-y-auto" style={{ maxHeight: `${maxHeight}px` }} role="listbox">
+        {filteredOptions.length === 0 && !isLoading ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">{noOptionsMessage}</div>
         ) : (
           filteredOptions.map((option, index) => (
             <div
-              key={option.value}
-              ref={(el) => { optionRefs.current[index] = el; }}
-              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"} ${index === focusedIndex ? "bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200" : ""} ${option.value === value ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : ""}`}
+              key={option.value} ref={(el) => { optionRefs.current[index] = el; }}
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"} ${index === focusedIndex ? "bg-blue-100 dark:bg-blue-900/50" : ""} ${option.value === value ? "bg-blue-50 dark:bg-blue-900/30 font-medium" : ""}`}
               onClick={() => !option.disabled && handleOptionSelect(option.value)}
-              role="option"
-              aria-selected={option.value === value}
+              role="option" aria-selected={option.value === value}
             >
               {option.label}
             </div>
@@ -34348,27 +33812,11 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div ref={triggerRef} className={`relative ${className}`}>
       {label && <Label>{label}</Label>}
-      <div
-        className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`}
-        onClick={toggleDropdown}
-        onKeyDown={handleKeyDown}
-        tabIndex={disabled ? -1 : 0}
-        role="combobox"
-        aria-controls="options-list"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-required={required}
-      >
+      <div className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`} onClick={toggleDropdown} onKeyDown={handleKeyDown} tabIndex={disabled ? -1 : 0} role="combobox" aria-expanded={isOpen}>
         <div className="flex items-center justify-between">
-          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>
-            {selectedLabel || placeholder}
-          </span>
+          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>{selectedLabel || placeholder}</span>
           <div className="flex items-center gap-1">
-            {clearable && value && !disabled && (
-              <button type="button" onClick={handleClear} className="flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
-                <FiX className="w-3 h-3" />
-              </button>
-            )}
+            {clearable && value && !disabled && (<button type="button" onClick={handleClear} className="flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}><FiX className="w-3 h-3" /></button>)}
             <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
           </div>
         </div>
@@ -34693,10 +34141,10 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     ...props
   }, ref) => {
     const variantClasses = {
-      default: 'bg-white border border-gray-200 shadow-sm',
-      outlined: 'bg-white border-2 border-gray-300',
-      elevated: 'bg-white shadow-lg border border-gray-100',
-      ghost: 'bg-transparent'
+      default: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-gray-900/20',
+      outlined: 'bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600',
+      elevated: 'bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700',
+      ghost: 'bg-transparent dark:bg-transparent'
     };
 
     const sizeClasses = {
@@ -34731,13 +34179,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       <Component
         ref={ref}
         className={cn(
-          'transition-all duration-200',
+          'transition-all duration-200 text-gray-900 dark:text-gray-100',
           variantClasses[variant],
           sizeClasses[size],
           paddingClasses[padding],
           roundedClasses[rounded],
           clickable || onClick ? 'cursor-pointer' : '',
-          hover && (clickable || onClick) ? 'hover:shadow-md hover:border-gray-300' : '',
+          hover && (clickable || onClick) ? 'hover:shadow-md hover:border-gray-300 dark:hover:border-gray-500 dark:hover:shadow-gray-900/30' : '',
           className
         )}
         onClick={onClick}
@@ -34753,19 +34201,25 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
 Card.displayName = 'Card';
 
 const CardHeader = ({ children, className }: CardHeaderProps) => (
-  <div className={cn('border-b border-gray-200 pb-3 mb-4', className)}>
+  <div className={cn(
+    'border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 text-gray-900 dark:text-gray-100', 
+    className
+  )}>
     {children}
   </div>
 );
 
 const CardBody = ({ children, className }: CardBodyProps) => (
-  <div className={cn('flex-1', className)}>
+  <div className={cn('flex-1 text-gray-700 dark:text-gray-300', className)}>
     {children}
   </div>
 );
 
 const CardFooter = ({ children, className }: CardFooterProps) => (
-  <div className={cn('border-t border-gray-200 pt-3 mt-4', className)}>
+  <div className={cn(
+    'border-t border-gray-200 dark:border-gray-700 pt-3 mt-4 text-gray-600 dark:text-gray-400', 
+    className
+  )}>
     {children}
   </div>
 );
@@ -36106,7 +35560,9 @@ export default TruncateTooltip;
 
 <!-- path: components/ofc/ofc-types.ts -->
 ```typescript
-import { V_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
+// components/ofc/ofc-types.ts
+import { z } from 'zod';
+import { v_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
 export interface OfcCablesFilters {
   search: string;
@@ -36115,18 +35571,7 @@ export interface OfcCablesFilters {
   maintenance_terminal_id: string;
 }
 
-// FIX: This type now correctly includes the optional 'total_count' field 
-// which is added by the useTableQuery hook when `includeCount` is true.
-export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
-  // total_count?: number;
-  // active_count?: number;
-  // inactive_count?: number;
-  // NOTE: These fields exist on the base table `ofc_cables` and are used by
-  // `OfcForm` for initializing edit state, but they are not present in the
-  // generated View Row type. Keep them optional to avoid lying about what the
-  // view guarantees while allowing the component to reference them safely.
-  // sn_id?: string | null;
-  // en_id?: string | null;
+export type OfcCablesWithRelations = z.infer<typeof v_ofc_cables_completeRowSchema> & {
   ofc_type: {
     id: string;
     name: string;
@@ -36136,7 +35581,6 @@ export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
     name: string;
   } | null;
 };
-
 
 ```
 
@@ -36271,6 +35715,8 @@ interface RouteConfigurationSectionProps {
   startingNodeOptions: Option[];
   endingNodeOptions: Option[];
   routeName: string;
+  onNodeSearch: (term: string) => void; // <-- ADDED
+  isNodeSearchLoading: boolean;        // <-- ADDED
 }
 
 const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
@@ -36279,17 +35725,11 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
   startingNodeOptions,
   endingNodeOptions,
   routeName,
+  onNodeSearch,          // <-- ADDED
+  isNodeSearchLoading,   // <-- ADDED
 }) => {
-  // console.log('startingNodeOptions', startingNodeOptions);
-  // console.log('endingNodeOptions', endingNodeOptions);
-  // console.log('control', control);
-
   return (
-    <FormSection
-      title="Route Configuration"
-      icon={Zap}
-      iconColor="text-blue-600"
-    >
+    <FormSection title="Route Configuration" icon={Zap} iconColor="text-blue-600">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormSearchableSelect
           name="sn_id"
@@ -36298,13 +35738,14 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
           options={startingNodeOptions}
           error={errors.sn_id}
           placeholder="Select starting node"
-          searchPlaceholder="Search starting nodes..."
-          aria-describedby="sn-id-help"
+          searchPlaceholder="Search nodes..."
+          required
+          // **THE FIX: Add server-side search props**
+          serverSide={true}
+          onSearch={onNodeSearch}
+          isLoading={isNodeSearchLoading}
         />
-        <div id="sn-id-help" className="sr-only">
-          Select the starting point for this fiber optic cable route
-        </div>
-
+        
         <FormSearchableSelect
           name="en_id"
           label="Ending Node"
@@ -36312,23 +35753,20 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
           options={endingNodeOptions}
           error={errors.en_id}
           placeholder="Select ending node"
-          searchPlaceholder="Search ending nodes..."
-          aria-describedby="en-id-help"
+          searchPlaceholder="Search nodes..."
+          required
+          // **THE FIX: Add server-side search props**
+          serverSide={true}
+          onSearch={onNodeSearch}
+          isLoading={isNodeSearchLoading}
         />
-        <div id="en-id-help" className="sr-only">
-          Select the ending point for this fiber optic cable route
-        </div>
       </div>
 
       {routeName && (
         <div className="mt-6 space-y-2">
-          <Label className="text-gray-700 dark:text-gray-300 font-medium">
-            Generated Route Name
-          </Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">Generated Route Name</Label>
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md px-3 py-2">
-            <span className="text-blue-900 dark:text-blue-100 font-mono text-sm">
-              {routeName}
-            </span>
+            <span className="text-blue-900 dark:text-blue-100 font-mono text-sm">{routeName}</span>
           </div>
         </div>
       )}
@@ -36337,7 +35775,6 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
 };
 
 export default RouteConfigurationSection;
-
 ```
 
 <!-- path: components/ofc/OfcForm/FormSection.tsx -->
@@ -36371,6 +35808,79 @@ const FormSection: React.FC<FormSectionProps> = ({
 export default FormSection;
 ```
 
+<!-- path: components/ofc/OfcForm/hooks/useNodeSearch.ts -->
+```typescript
+// components/ofc/OfcForm/hooks/useNodeSearch.ts
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+
+export const useNodeSearch = (searchTerm: string) => {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['node-search', searchTerm],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('search_nodes_for_select', {
+        p_search_term: searchTerm,
+        p_limit: 50 // Limit the results to a reasonable number for a dropdown
+      });
+      if (error) throw error;
+      
+      // **THE FIX: Add explicit type for the 'node' parameter.**
+      return data.map((node: { id: string; name: string }) => ({ value: node.id, label: node.name }));
+    },
+    enabled: !!searchTerm, // Only run the query when the user is searching
+    staleTime: 60 * 1000, // Cache results for 1 minute
+  });
+};
+```
+
+<!-- path: components/ofc/OfcForm/hooks/useExistingRoutesQuery.ts -->
+```typescript
+// components/ofc/OfcForm/hooks/useExistingRoutesQuery.ts
+'use client';
+
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+
+/**
+ * A specialized hook to query for existing OFC cables between two specific nodes.
+ * @param startingNodeId The ID of the starting node.
+ * @param endingNodeId The ID of the ending node.
+ * @returns An object containing the fetched routes and a loading state.
+ */
+export const useExistingRoutesQuery = (startingNodeId: string | null, endingNodeId: string | null) => {
+  const supabase = createClient();
+
+  // The specific 'or' filter string for this query.
+  const orFilter = useMemo(() => {
+    if (!startingNodeId || !endingNodeId) return null;
+    // This creates the PostgREST filter `or=(and(sn_id.eq.val1,en_id.eq.val2),and(sn_id.eq.val2,en_id.eq.val1))`
+    return `and(sn_id.eq.${startingNodeId},en_id.eq.${endingNodeId}),and(sn_id.eq.${endingNodeId},en_id.eq.${startingNodeId})`;
+  }, [startingNodeId, endingNodeId]);
+
+  return useQuery({
+    queryKey: ['existing-routes', { start: startingNodeId, end: endingNodeId }],
+    queryFn: async () => {
+      if (!orFilter) return []; // Don't query if nodes aren't selected
+
+      const { data, error } = await supabase
+        .from('ofc_cables')
+        .select('id, route_name')
+        .or(orFilter);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orFilter, // Only run the query when the filter is ready
+    staleTime: 30000,
+  });
+};
+```
+
 <!-- path: components/ofc/OfcForm/hooks/useOfcFormData.ts -->
 ```typescript
 // components/ofc/OfcForm/hooks/useOfcFormData.ts
@@ -36395,6 +35905,7 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       en_id: '',
       route_name: '',
       ofc_type_id: '',
+      ofc_owner_id: '', // <-- THE FIX: Added missing required field
       capacity: 0,
       current_rkm: null,
       transnet_rkm: null,
@@ -36413,6 +35924,7 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
     defaultValues,
   });
 
+  // ... (rest of the hook remains the same)
   // Reset form when ofcCable changes or when switching from edit to create mode
   useEffect(() => {
     if (isEdit && ofcCable) {
@@ -36421,6 +35933,7 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
         en_id: ofcCable.en_id || '',
         route_name: ofcCable.route_name || '',
         ofc_type_id: ofcCable.ofc_type_id || '',
+        ofc_owner_id: ofcCable.ofc_owner_id || '', // <-- THE FIX: Populate owner ID
         capacity: ofcCable.capacity || 0,
         current_rkm: ofcCable.current_rkm || 0,
         transnet_rkm: ofcCable.transnet_rkm || 0,
@@ -36444,6 +35957,7 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       en_id: ofcCable.en_id || '',
       route_name: ofcCable.route_name || '',
       ofc_type_id: ofcCable.ofc_type_id || '',
+      ofc_owner_id: ofcCable.ofc_owner_id || '', // <-- THE FIX: Populate owner ID
       capacity: ofcCable.capacity || 0,
       current_rkm: ofcCable.current_rkm || 0,
       transnet_rkm: ofcCable.transnet_rkm || 0,
@@ -36508,9 +36022,9 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
     }
   }, [ofcCableData, form, defaultValues, ofcCable?.route_name, isEdit]);
 
+
   return { form, isEdit };
 };
-
 ```
 
 <!-- path: components/ofc/OfcForm/hooks/useCapacityInference.ts -->
@@ -36586,18 +36100,18 @@ export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
 
 <!-- path: components/ofc/OfcForm/hooks/useRouteGeneration.ts -->
 ```typescript
+// components/ofc/OfcForm/hooks/useRouteGeneration.ts
 'use client';
 
-// components/ofc/OfcForm/hooks/useRouteGeneration.ts
-import { useEffect, useMemo, useRef } from 'react';
-import { Filters, useTableQuery } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
+import { useEffect, useMemo } from 'react';
 import { UseFormSetValue, FieldValues, Path, PathValue } from 'react-hook-form';
+import { useExistingRoutesQuery } from './useExistingRoutesQuery';
 
 interface UseRouteGenerationProps<T extends FieldValues> {
   startingNodeId: string | null;
   endingNodeId: string | null;
-  nodesData: Array<{ id: string; name: string }> | undefined;
+  startingNodeName: string | null;
+  endingNodeName: string | null;
   isEdit: boolean;
   setValue: UseFormSetValue<T>;
 }
@@ -36605,124 +36119,45 @@ interface UseRouteGenerationProps<T extends FieldValues> {
 export const useRouteGeneration = <T extends FieldValues>({
   startingNodeId,
   endingNodeId,
-  nodesData,
+  startingNodeName,
+  endingNodeName,
   isEdit,
   setValue,
 }: UseRouteGenerationProps<T>) => {
-  // Use refs to track previous values and prevent unnecessary updates
-  const prevStartingNodeId = useRef<string | null>(null);
-  const prevEndingNodeId = useRef<string | null>(null);
-  const prevIsEdit = useRef<boolean>(isEdit);
-  const isInitialMount = useRef(true);
-  const supabase = createClient();
-
-  const serverFilters = useMemo(() => {
-    if (!startingNodeId || !endingNodeId) {
-      return null; // Return null instead of empty object
-    }
-
-    const f: Filters = {
-      or: `and(sn_id.eq."${startingNodeId}",en_id.eq."${endingNodeId}"),and(sn_id.eq."${endingNodeId}",en_id.eq."${startingNodeId}")`,
-    };
-    return f;
-  }, [startingNodeId, endingNodeId]);
-  // Fetch existing routes between selected nodes
-  const { data: existingRoutes, isLoading: existingRoutesLoading } =
-    useTableQuery(supabase, 'ofc_cables', {
-      filters: serverFilters || {}, // Use empty object as fallback
-      columns: 'id, route_name',
-      includeCount: true,
-      enabled: Boolean(startingNodeId && endingNodeId && serverFilters), // More explicit enabled condition
-      staleTime: 30000, // 30 seconds cache
-    });
-
-  // console.log('Existing Routes:', existingRoutes);
-  // console.log('Starting Node ID:', startingNodeId);
-  // console.log('Ending Node ID:', endingNodeId);
+  
+  // **THE FIX: Removed the unnecessary generic type argument.**
+  const { data: existingRoutes, isLoading: existingRoutesLoading } = 
+    useExistingRoutesQuery(startingNodeId, endingNodeId);
 
   const routeData = useMemo(() => {
     const routes = existingRoutes || [];
-    const routeCount = Array.isArray(routes) ? routes.length : 0;
+    const routeCount = routes.length;
     const nextRouteNumber = routeCount + 1;
 
     return {
-      existingRoutes: routes.map(
-        (route: unknown) => (route as { route_name: string }).route_name
-      ),
+      existingRoutes: routes.map(route => route.route_name),
       routeCount,
       nextRouteNumber,
     };
   }, [existingRoutes]);
 
-  // Auto-generate route name for new cables
   useEffect(() => {
-    // Skip if this is the initial mount and we're in edit mode
-    if (isInitialMount.current) {
-      if (isEdit) {
-        isInitialMount.current = false;
-        return;
-      }
-      isInitialMount.current = false;
-    }
-
-    // Skip if nothing has changed
-    if (
-      startingNodeId === prevStartingNodeId.current &&
-      endingNodeId === prevEndingNodeId.current &&
-      isEdit === prevIsEdit.current
-    ) {
+    if (isEdit) {
       return;
     }
 
-    // Get current values before updating refs
-    const prevStart = prevStartingNodeId.current;
-    const prevEnd = prevEndingNodeId.current;
-    const prevEdit = prevIsEdit.current;
-
-    // Update refs with current values
-    prevStartingNodeId.current = startingNodeId;
-    prevEndingNodeId.current = endingNodeId;
-    prevIsEdit.current = isEdit;
-
-    // Skip if we're in edit mode and the route name is already set
-    if (isEdit && startingNodeId && endingNodeId) {
+    if (!startingNodeId || !endingNodeId) {
+      setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>);
       return;
     }
-
-    // Only proceed if we have both nodes selected and we're not in edit mode
-    if (!startingNodeId || !endingNodeId || isEdit) {
-      // Only clear if we're not in the middle of a node change
-      if ((!startingNodeId || !endingNodeId) && !existingRoutesLoading) {
-        setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-      }
+    
+    if (existingRoutesLoading) {
       return;
     }
-
-    const startingNodeName = nodesData?.find(
-      (node) => node.id === startingNodeId
-    )?.name;
-    const endingNodeName = nodesData?.find(
-      (node) => node.id === endingNodeId
-    )?.name;
 
     if (startingNodeName && endingNodeName) {
-      // Only update if the nodes have actually changed
-      if (
-        prevStart !== startingNodeId ||
-        prevEnd !== endingNodeId ||
-        prevEdit !== isEdit
-      ) {
-        const routeName = `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
-        setValue('route_name' as Path<T>, routeName as PathValue<T, Path<T>>, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-      }
-    } else if (!existingRoutesLoading) {
-      setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>, {
+      const routeName = `${startingNodeName}⇔${endingNodeName}_${routeData.nextRouteNumber}`;
+      setValue('route_name' as Path<T>, routeName as PathValue<T, Path<T>>, {
         shouldValidate: true,
         shouldDirty: true,
       });
@@ -36730,27 +36165,28 @@ export const useRouteGeneration = <T extends FieldValues>({
   }, [
     startingNodeId,
     endingNodeId,
-    routeData.nextRouteNumber,
+    startingNodeName,
+    endingNodeName,
     isEdit,
-    setValue,
-    nodesData,
     existingRoutesLoading,
+    routeData.nextRouteNumber,
+    setValue,
   ]);
 
   return {
     ...routeData,
     isLoading: existingRoutesLoading,
+    generatedRouteName: null,
   };
 };
-
 ```
 
 <!-- path: components/ofc/OfcForm/OfcForm.tsx -->
 ```typescript
 // Main OfcForm component
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { usePagedData, useTableQuery } from '@/hooks/database';
+import { useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
@@ -36758,18 +36194,19 @@ import { useOfcFormData } from './hooks/useOfcFormData';
 import { OFC_FORM_CONFIG } from '@/components/ofc/OfcForm/constants/ofcFormConfig';
 import { useRouteGeneration } from '@/components/ofc/OfcForm/hooks/useRouteGeneration';
 import { useCapacityInference } from '@/components/ofc/OfcForm/hooks/useCapacityInference';
+import { useNodeSearch } from './hooks/useNodeSearch';
 import LoadingOverlay from '@/components/ofc/OfcForm/LoadingOverlay';
 import ExistingRoutesAlert from '@/components/ofc/OfcForm/ExistingRoutesAlert';
 import RouteConfigurationSection from '@/components/ofc/OfcForm/RouteConfigurationSection';
 import CableSpecificationsSection from '@/components/ofc/OfcForm/CableSpecificationsSection';
 import MaintenanceSection from '@/components/ofc/OfcForm/MaintenanceSection';
-import { PathValue } from 'react-hook-form';
+import { PathValue, FieldErrors } from 'react-hook-form';
 import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
 import {
   Ofc_cablesInsertSchema,
   Ofc_cablesRowSchema,
-  V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
+import { toast } from 'sonner';
 
 interface OfcFormProps {
   ofcCable?: OfcCablesWithRelations;
@@ -36797,154 +36234,100 @@ const OfcForm: React.FC<OfcFormProps> = ({
     formState: { errors },
   } = form;
 
-  // Watch critical form values
+  const [nodeSearchTerm, setNodeSearchTerm] = useState('');
+  const { data: searchedNodes, isLoading: isNodeSearchLoading } = useNodeSearch(nodeSearchTerm);
+  
   const startingNodeId = watch('sn_id');
   const endingNodeId = watch('en_id');
   const routeName = watch('route_name');
   const currentOfcTypeId = watch('ofc_type_id');
 
-  // Data fetching with optimized queries
-  const { data: nodesData, isLoading: nodesLoading } = usePagedData<V_nodes_completeRowSchema>(
-    supabase,
-    'v_nodes_complete',
-    {
-      filters: {
-        status: true,
-        or: [
-          `node_type_name IN ('${OFC_FORM_CONFIG.ALLOWED_NODE_TYPES.join(
-            "','"
-          )}')`,
-        ],
-      },
-      limit: OFC_FORM_CONFIG.NODES_FETCH_LIMIT,
-    }
-  );
-
-  const { data: ofcTypesData, isLoading: ofcTypesLoading } = useTableQuery(
-    supabase,
-    'lookup_types',
-    {
-      filters: {
-        category: { operator: 'eq', value: 'OFC_TYPES' },
-        name: { operator: 'neq', value: 'DEFAULT' },
-      },
-      orderBy: [{ column: 'name', ascending: true }],
-      columns: 'id, name',
-      staleTime: OFC_FORM_CONFIG.CACHE_TIME,
-    }
-  );
-
-  const {
-    data: maintenanceTerminalsData,
-    isLoading: maintenanceTerminalsLoading,
-  } = useTableQuery(supabase, 'maintenance_areas', {
-    filters: { status: true },
-    orderBy: [{ column: 'name', ascending: true }],
-    columns: 'id, name',
-    staleTime: OFC_FORM_CONFIG.CACHE_TIME,
+  const { data: ofcTypesData, isLoading: ofcTypesLoading } = useTableQuery(supabase, 'lookup_types', {
+    filters: { category: { operator: 'eq', value: 'OFC_TYPES' }, name: { operator: 'neq', value: 'DEFAULT' } },
+    orderBy: [{ column: 'name', ascending: true }], columns: 'id, name', staleTime: OFC_FORM_CONFIG.CACHE_TIME,
+  });
+  
+  const { data: ofcOwnersData, isLoading: ofcOwnersLoading } = useTableQuery(supabase, 'lookup_types', {
+    filters: { category: { operator: 'eq', value: 'OFC_OWNERS' }, name: { operator: 'neq', value: 'DEFAULT' } },
+    orderBy: [{ column: 'name', ascending: true }], columns: 'id, name', staleTime: OFC_FORM_CONFIG.CACHE_TIME,
   });
 
-  // Custom hooks for complex logic
-  // Create a type-safe wrapper for setValue
-  const setValueWithType = <K extends keyof Ofc_cablesInsertSchema>(
-    name: K,
-    value: Ofc_cablesInsertSchema[K],
-    options?: { shouldValidate?: boolean }
-  ) => {
+  const { data: maintenanceTerminalsData, isLoading: maintenanceTerminalsLoading } = useTableQuery(supabase, 'maintenance_areas', {
+    filters: { status: true }, orderBy: [{ column: 'name', ascending: true }], columns: 'id, name', staleTime: OFC_FORM_CONFIG.CACHE_TIME,
+  });
+
+  const allKnownNodes = useMemo(() => {
+    const nodeMap = new Map<string, { id: string; name: string }>();
+    if (ofcCable) {
+      if (ofcCable.sn_id && ofcCable.sn_name) nodeMap.set(ofcCable.sn_id, { id: ofcCable.sn_id, name: ofcCable.sn_name });
+      if (ofcCable.en_id && ofcCable.en_name) nodeMap.set(ofcCable.en_id, { id: ofcCable.en_id, name: ofcCable.en_name });
+    }
+    if (searchedNodes) {
+      searchedNodes.forEach((node: Option) => nodeMap.set(node.value, { id: node.value, name: node.label }));
+    }
+    return Array.from(nodeMap.values());
+  }, [ofcCable, searchedNodes]);
+
+  const startingNodeName = useMemo(() => allKnownNodes.find(n => n.id === startingNodeId)?.name || null, [allKnownNodes, startingNodeId]);
+  const endingNodeName = useMemo(() => allKnownNodes.find(n => n.id === endingNodeId)?.name || null, [allKnownNodes, endingNodeId]);
+
+  const setValueWithType = <K extends keyof Ofc_cablesInsertSchema>(name: K, value: Ofc_cablesInsertSchema[K], options?: { shouldValidate?: boolean }) => {
     setValue(name, value as PathValue<Ofc_cablesInsertSchema, K>, options);
   };
 
-  const { existingRoutes, isLoading: routeGenerationLoading } =
+  const { existingRoutes, isLoading: routeGenerationLoading, generatedRouteName } =
     useRouteGeneration<Ofc_cablesRowSchema>({
-      startingNodeId,
-      endingNodeId,
-      nodesData: nodesData?.data as Array<{ id: string; name: string }> | undefined,
-      isEdit,
-      setValue: setValueWithType,
+      startingNodeId, endingNodeId, startingNodeName, endingNodeName, isEdit, setValue: setValueWithType,
     });
-
+    
+  useEffect(() => {
+    if (generatedRouteName !== null) {
+      setValue('route_name', generatedRouteName, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [generatedRouteName, setValue]);
+  
   const { isCapacityLocked } = useCapacityInference<Ofc_cablesInsertSchema>({
     currentOfcTypeId,
-    ofcTypeOptions:
-      ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [],
+    ofcTypeOptions: ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [],
     setValue: setValueWithType,
   });
 
-  // Memoized options to prevent unnecessary re-renders
-  const nodeOptions = useMemo(
-    (): Option[] =>
-      nodesData?.data.map((node: V_nodes_completeRowSchema) => ({
-        value: String(node.id),
-        label: node.name || `Node ${node.id}`,
-      })) || [],
-    [nodesData]
-  );
+  const nodeOptions = useMemo((): Option[] => searchedNodes || [], [searchedNodes]);
+  const startingNodeOptions = useMemo(() => nodeOptions.filter((option) => option.value !== endingNodeId), [nodeOptions, endingNodeId]);
+  const endingNodeOptions = useMemo(() => nodeOptions.filter((option) => option.value !== startingNodeId), [nodeOptions, startingNodeId]);
+  const ofcTypeOptions = useMemo((): Option[] => ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [], [ofcTypesData]);
+  const ofcOwnerOptions = useMemo((): Option[] => ofcOwnersData?.map((owner) => ({ value: owner.id, label: owner.name })) || [], [ofcOwnersData]);
+  const maintenanceTerminalOptions = useMemo((): Option[] => maintenanceTerminalsData?.map((terminal) => ({ value: terminal.id, label: terminal.name })) || [], [maintenanceTerminalsData]);
 
-  const startingNodeOptions = useMemo(
-    () => nodeOptions.filter((option) => option.value !== endingNodeId),
-    [nodeOptions, endingNodeId]
-  );
+  const isLoading = ofcTypesLoading || maintenanceTerminalsLoading || pageLoading || routeGenerationLoading || ofcOwnersLoading;
 
-  const endingNodeOptions = useMemo(
-    () => nodeOptions.filter((option) => option.value !== startingNodeId),
-    [nodeOptions, startingNodeId]
-  );
-
-  const ofcTypeOptions = useMemo(
-    (): Option[] =>
-      ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [],
-    [ofcTypesData]
-  );
-
-  const maintenanceTerminalOptions = useMemo(
-    (): Option[] =>
-      maintenanceTerminalsData?.map((terminal) => ({
-        value: terminal.id,
-        label: terminal.name,
-      })) || [],
-    [maintenanceTerminalsData]
-  );
-
-  // Loading state aggregation
-  const isLoading =
-    nodesLoading ||
-    ofcTypesLoading ||
-    maintenanceTerminalsLoading ||
-    pageLoading ||
-    routeGenerationLoading;
-
-  const onValidSubmit = (data: Ofc_cablesInsertSchema) => {
-    onSubmit(data as Ofc_cablesInsertSchema);
+  const onValidSubmit = (data: Ofc_cablesInsertSchema) => { onSubmit(data as Ofc_cablesInsertSchema); };
+  
+  const onInvalidSubmit = (errors: FieldErrors<Ofc_cablesInsertSchema>) => {
+    toast.error("Validation failed. Please check the highlighted fields.");
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+      const element = document.getElementsByName(firstErrorField)[0];
+      element?.focus({ preventScroll: true });
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
         key={isEdit ? ofcCable?.id ?? 'edit' : 'new'}
         title={isEdit ? 'Edit Optical Fiber Cable' : 'Add Optical Fiber Cable'}
-        subtitle={
-          isEdit
-            ? 'Update the cable details below'
-            : 'Fill in the Optical Fiber Cable details below'
-        }
+        subtitle={isEdit ? 'Update the cable details below' : 'Fill in the Optical Fiber Cable details below'}
         isLoading={isLoading}
         onCancel={onClose}
-        onSubmit={handleSubmit(onValidSubmit)}
-        submitText={
-          isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'
-        }
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        submitText={isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'}
         standalone
       >
         <div className="p-6 relative">
-          {isLoading && <LoadingOverlay />}
-
+          {(isLoading || isNodeSearchLoading) && <LoadingOverlay />}
           <ExistingRoutesAlert routes={existingRoutes} />
-
           <div className="space-y-8">
             <RouteConfigurationSection
               control={control}
@@ -36952,8 +36335,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
               startingNodeOptions={startingNodeOptions}
               endingNodeOptions={endingNodeOptions}
               routeName={routeName}
+              onNodeSearch={setNodeSearchTerm}
+              isNodeSearchLoading={isNodeSearchLoading}
             />
-
             <CableSpecificationsSection
               control={control}
               register={register}
@@ -36961,9 +36345,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
               setValue={setValue}
               watch={watch}
               ofcTypeOptions={ofcTypeOptions}
+              ofcOwnerOptions={ofcOwnerOptions}
               isCapacityLocked={isCapacityLocked}
             />
-
             <MaintenanceSection
               control={control}
               errors={errors}
@@ -36977,7 +36361,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
 };
 
 export default OfcForm;
-
 ```
 
 <!-- path: components/ofc/OfcForm/types/ofcForm.types.ts -->
@@ -37036,6 +36419,7 @@ interface CableSpecificationsSectionProps {
   setValue: UseFormSetValue<Ofc_cablesInsertSchema>;
   watch: UseFormWatch<Ofc_cablesInsertSchema>;
   ofcTypeOptions: Option[];
+  ofcOwnerOptions: Option[]; // <-- ADDED
   isCapacityLocked: boolean;
 }
 
@@ -37046,6 +36430,7 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
   setValue,
   watch,
   ofcTypeOptions,
+  ofcOwnerOptions, // <-- ADDED
   isCapacityLocked,
 }) => {
   const currentStatus = watch('status');
@@ -37075,6 +36460,18 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
           searchPlaceholder="Search OFC types..."
         />
 
+        {/* **THE FIX: Added the OFC Owner dropdown** */}
+        <FormSearchableSelect
+            name="ofc_owner_id"
+            label="OFC Owner"
+            control={control}
+            options={ofcOwnerOptions}
+            error={errors.ofc_owner_id}
+            placeholder="Select OFC owner"
+            searchPlaceholder="Search owners..."
+            required
+        />
+        
         <div className="space-y-2">
           {isCapacityLocked ? (
             <FormInput
@@ -37172,7 +36569,6 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
 };
 
 export default CableSpecificationsSection;
-
 ```
 
 <!-- path: components/ofc/OfcForm/ExistingRoutesAlert.tsx -->
@@ -39141,6 +38537,7 @@ import {
   v_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { z } from 'zod';
+import { bsnlSearchFiltersSchema } from '@/schemas/custom-schemas'; // Import the schema
 
 export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
 export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
@@ -39175,15 +38572,8 @@ export interface AllocationSaveData {
   };
 }
 
-// CORRECTED: Removed 'district' and ensured 'nodeType' is present.
-export interface SearchFilters {
-  query: string;
-  status: string[];
-  type: string[];
-  region: string[];
-  nodeType: string[]; // This is the correct property for node type filtering.
-  priority: string[];
-}
+// **THE FIX: Infer the type directly from the Zod schema.**
+export type SearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;
 ```
 
 <!-- path: components/bsnl/NewAllocationModal.tsx -->
@@ -39449,73 +38839,51 @@ export default AdvancedAllocationModal;
 "use client";
 
 import { useMemo } from 'react';
-import { useTableQuery, Filters } from '@/hooks/database';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { BsnlNode, BsnlCable, BsnlSystem, SearchFilters } from './types';
+
+interface BsnlDashboardData {
+  nodes: BsnlNode[];
+  ofcCables: BsnlCable[];
+  systems: BsnlSystem[];
+}
 
 export function useBsnlDashboardData(filters: SearchFilters) {
   const supabase = createClient();
 
-  const nodeFilters = useMemo(() => {
-    const f: Filters = { status: true };
-    // CORRECTED: Check if filters.nodeType exists before accessing .length
-    if (filters.nodeType && filters.nodeType.length > 0) {
-      f.node_type_name = { operator: 'in', value: filters.nodeType };
-    }
-    return f;
-  }, [filters.nodeType]);
-  
-  const systemFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.query) { f.or = { system_name: filters.query, node_name: filters.query }; }
-    if (filters.status && filters.status.length > 0) { f.status = filters.status[0] === 'active'; }
-    if (filters.type && filters.type.length > 0) { f.system_type_name = { operator: 'in', value: filters.type }; }
-    if (filters.region && filters.region.length > 0) { f.system_maintenance_terminal_name = { operator: 'in', value: filters.region }; }
-    if (filters.nodeType && filters.nodeType.length > 0) { f.node_type_name = { operator: 'in', value: filters.nodeType }; }
-    return f;
-  }, [filters]);
+  const queryParams = useMemo(() => ({
+    p_query: filters.query || null,
+    p_status: filters.status.length > 0 ? filters.status[0] === 'active' : null,
+    p_system_types: filters.type.length > 0 ? filters.type : null,
+    p_cable_types: filters.type.length > 0 ? filters.type : null,
+    p_regions: filters.region.length > 0 ? filters.region : null,
+    p_node_types: filters.nodeType.length > 0 ? filters.nodeType : null,
+  }), [filters]);
 
-  const cableFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.query) { f.or = { route_name: filters.query, asset_no: filters.query }; }
-    if (filters.status && filters.status.length > 0) { f.status = filters.status[0] === 'active'; }
-    if (filters.type && filters.type.length > 0) { f.ofc_type_name = { operator: 'in', value: filters.type }; }
-    if (filters.region && filters.region.length > 0) { f.maintenance_area_name = { operator: 'in', value: filters.region }; }
-    if (filters.nodeType && filters.nodeType.length > 0) {
-      const types = filters.nodeType.map(n => `'${n}'`).join(',');
-      f.or = `(sn_node_type_name.in.(${types}),en_node_type_name.in.(${types}))`;
-    }
-    return f;
-  }, [filters]);
+  const { data, isLoading, isError, error, refetch } = useQuery<BsnlDashboardData>({
+    queryKey: ['bsnl-dashboard-data', queryParams],
+    queryFn: async () => {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_bsnl_dashboard_data', queryParams);
 
-  const { data: nodesData, isLoading: isLoadingNodes, isError: isErrorNodes, error: errorNodes, refetch: refetchNodes } = 
-    useTableQuery(supabase, 'v_nodes_complete', { filters: nodeFilters });
-  
-  const { data: cablesData, isLoading: isLoadingCables, isError: isErrorCables, error: errorCables, refetch: refetchCables } = 
-    useTableQuery(supabase, 'v_ofc_cables_complete', { filters: cableFilters });
-  
-  const { data: systemsData, isLoading: isLoadingSystems, isError: isErrorSystems, error: errorSystems, refetch: refetchSystems } = 
-    useTableQuery(supabase, 'v_systems_complete', { filters: systemFilters });
+      if (rpcError) {
+        throw new Error(`Failed to fetch dashboard data: ${rpcError.message}`);
+      }
 
-  const isLoading = isLoadingNodes || isLoadingCables || isLoadingSystems;
-  const isError = isErrorNodes || isErrorCables || isErrorSystems;
-  const error = errorNodes || errorCables || errorSystems;
+      // The RPC returns a single JSON object with the keys we defined.
+      return rpcData as BsnlDashboardData;
+    },
+    // Set a longer stale time for this heavy query
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  const data = useMemo(() => ({
-    nodes: (nodesData as BsnlNode[]) || [],
-    ofcCables: (cablesData as BsnlCable[]) || [],
-    systems: (systemsData as BsnlSystem[]) || [],
-  }), [nodesData, cablesData, systemsData]);
-  
-  const refetchAll = async () => {
-    await Promise.all([
-      refetchNodes(),
-      refetchCables(),
-      refetchSystems(),
-    ]);
+  return { 
+    data: data ?? { nodes: [], ofcCables: [], systems: [] }, 
+    isLoading, 
+    isError, 
+    error, 
+    refetchAll: refetch 
   };
-
-  return { data, isLoading, isError, error, refetchAll };
 }
 ```
 
@@ -39974,8 +39342,8 @@ export const DashboardStatsGrid: React.FC = () => {
 "use client";
 
 import { useState } from 'react';
-import { ChevronDown, Filter, Search } from 'lucide-react';
-import { SearchFilters } from './types';
+import { ChevronDown, Filter, Search, ChevronUp } from 'lucide-react'; // Import ChevronUp
+import { SearchFilters } from '@/components/bsnl/types';
 
 interface AdvancedSearchBarProps {
   filters: SearchFilters;
@@ -40030,7 +39398,7 @@ export function AdvancedSearchBar({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
             <select
-              value={filters.status?.[0] || ''} // Defensive check
+              value={filters.status?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, status: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
@@ -40042,34 +39410,36 @@ export function AdvancedSearchBar({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">System/Cable Type</label>
             <select
-              value={filters.type?.[0] || ''} // Defensive check
+              value={filters.type?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, type: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Types</option>
+              {/* THE FIX: Added key prop */}
               {typeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
             <select
-              value={filters.region?.[0] || ''} // Defensive check
+              value={filters.region?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, region: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Regions</option>
+              {/* THE FIX: Added key prop */}
               {regionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Node Type</label>
             <select
-              // CORRECTED: Use `nodeType` instead of `district`
-              value={filters.nodeType?.[0] || ''} // Defensive check
+              value={filters.nodeType?.[0] || ''}
               onChange={(e) => onFiltersChange({ ...filters, nodeType: e.target.value ? [e.target.value] : [] })}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Node Types</option>
+              {/* THE FIX: Added key prop */}
               {nodeTypeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -40078,10 +39448,6 @@ export function AdvancedSearchBar({
     </div>
   );
 }
-
-const ChevronUp = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m18 15-6-6-6 6"/></svg>
-);
 ```
 
 <!-- path: components/systems/CreatePathModal.tsx -->
@@ -40606,7 +39972,7 @@ import { useTableQuery } from '@/hooks/database';
 import { useRpcMutation } from '@/hooks/database/rpc-queries';
 import type { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
 import { createClient } from '@/utils/supabase/client';
-import { useForm } from 'react-hook-form';
+import { useForm, FieldErrors } from 'react-hook-form'; // Import FieldErrors
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Modal } from '@/components/common/ui';
 import { FormCard, FormDateInput, FormInput, FormIPAddressInput, FormSearchableSelect, FormSwitch, FormTextarea } from '@/components/common/form';
@@ -40642,7 +40008,7 @@ interface SystemModalProps {
 export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, refetch }) => {
   const supabase = createClient();
   const isEditMode = !!rowData;
-  const [step, setStep] = useState(1); // State for wizard step
+  const [step, setStep] = useState(1);
 
   const { data: systemTypes = [] } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, category', filters: { category: 'SYSTEM_TYPES' } });
   const { data: nodes = [] } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
@@ -40684,7 +40050,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     setTimeout(() => {
         reset(createDefaultFormValues());
         setStep(1);
-    }, 200); // Delay reset to allow modal close animation
+    }, 200);
   }, [onClose, reset]);
 
   useEffect(() => {
@@ -40748,6 +40114,17 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     };
     upsertSystemMutation.mutate(payload);
   }, [isEditMode, rowData, upsertSystemMutation, isRingBasedSystem, isSdhSystem, isVmuxSystem]);
+  
+  // **THE FIX: Create the onInvalid handler.**
+  const onInvalidSubmit = (errors: FieldErrors<SystemFormValues>) => {
+    toast.error("Validation failed. Please check required fields on all steps.");
+    // If the error is not in the current step, switch to step 1 to show it.
+    const step1Fields: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
+    const hasErrorInStep1 = Object.keys(errors).some(key => step1Fields.includes(key as keyof SystemFormValues));
+    if (hasErrorInStep1 && step !== 1) {
+        setStep(1);
+    }
+  };
 
   const handleNext = async () => {
     const fieldsToValidate: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
@@ -40756,8 +40133,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
       if (needsStep2) {
         setStep(2);
       } else {
-        // If no second step is needed, submit the form directly.
-        handleSubmit(onValidSubmit)();
+        handleSubmit(onValidSubmit, onInvalidSubmit)();
       }
     } else {
       toast.error("Please fill in all required fields to continue.");
@@ -40831,11 +40207,10 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     ? 'Edit System'
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
-
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
-        onSubmit={handleSubmit(onValidSubmit)}
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
         isLoading={upsertSystemMutation.isPending || isSubmitting}
         standalone
@@ -41088,12 +40463,7 @@ export const NodesFilters = NodesFiltersComponent;
 
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/common/ui/Modal';
-import { createClient } from '@/utils/supabase/client';
-import {
-  useTableInsert,
-  useTableUpdate,
-  useTableQuery,
-} from '@/hooks/database';
+import { useTableQuery } from '@/hooks/database';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormCard } from '@/components/common/form/FormCard';
@@ -41103,36 +40473,35 @@ import {
   FormSwitch,
   FormTextarea,
 } from '@/components/common/form/FormControls';
-import { Option } from '@/components/common/ui/select/SearchableSelect';
 import {
   NodesInsertSchema,
   nodesInsertSchema,
   NodesRowSchema,
-  NodesUpdateSchema,
 } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
 
 interface NodeFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingNode?: NodesRowSchema | null;
-  onCreated?: (node: NodesRowSchema) => void;
-  onUpdated?: (node: NodesRowSchema) => void;
+  onSubmit: (data: NodesInsertSchema) => void; // <-- THE FIX: Single onSubmit handler
+  isLoading: boolean; // <-- THE FIX: Receive loading state from parent
 }
 
 export function NodeFormModal({
   isOpen,
   onClose,
   editingNode,
-  onCreated,
-  onUpdated,
+  onSubmit,
+  isLoading,
 }: NodeFormModalProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     control,
-  } = useForm({
+  } = useForm<NodesInsertSchema>({
     resolver: zodResolver(nodesInsertSchema),
     defaultValues: {
       name: '',
@@ -41146,18 +40515,8 @@ export function NodeFormModal({
   });
 
   const supabase = createClient();
-  const { mutate: insertNode, isPending: creating } = useTableInsert(
-    supabase,
-    'nodes'
-  );
-  const { mutate: updateNode, isPending: updating } = useTableUpdate(
-    supabase,
-    'nodes'
-  );
-
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
-  // Fetch node types, rings, and maintenance areas
   const { data: nodeTypes = [] } = useTableQuery(supabase, 'lookup_types', {
     filters: {
       category: { operator: 'eq', value: 'NODE_TYPES' },
@@ -41183,8 +40542,7 @@ export function NodeFormModal({
         latitude: editingNode.latitude,
         longitude: editingNode.longitude,
         maintenance_terminal_id: editingNode.maintenance_terminal_id ?? null,
-        remark:
-          typeof editingNode.remark === 'string' ? editingNode.remark : null,
+        remark: typeof editingNode.remark === 'string' ? editingNode.remark : null,
         status: editingNode.status ?? true,
       });
     } else {
@@ -41200,156 +40558,80 @@ export function NodeFormModal({
     }
   }, [isOpen, editingNode, reset]);
 
-  const handleClose = useCallback(() => {
-    if (creating || updating) return;
-    onClose();
-  }, [creating, updating, onClose]);
-
+  // THE FIX: The form's submit handler now just calls the prop.
   const onValidSubmit = useCallback(
     (formData: NodesInsertSchema) => {
-      const cleanNumber = (val: unknown) =>
-        typeof val === 'number' && !Number.isNaN(val) ? val : null;
-
-      const submitData = {
-        name: formData.name.trim(),
-        node_type_id: formData.node_type_id,
-        latitude: cleanNumber(formData.latitude),
-        longitude: cleanNumber(formData.longitude),
-        maintenance_terminal_id: formData.maintenance_terminal_id,
-        remark: formData.remark,
-        status: formData.status,
-      };
-
-      if (isEdit && editingNode) {
-        updateNode(
-          {
-            id: editingNode.id,
-            data: submitData as Partial<NodesUpdateSchema>,
-          },
-          {
-            onSuccess: (data: unknown) => {
-              onUpdated?.(Array.isArray(data) ? data[0] : data);
-              onClose();
-            },
-          }
-        );
-      } else {
-        insertNode(submitData as NodesInsertSchema, {
-          onSuccess: (data: unknown) => {
-            onCreated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-          },
-        });
-      }
+      onSubmit(formData);
     },
-    [isEdit, editingNode, updateNode, insertNode, onUpdated, onCreated, onClose]
+    [onSubmit]
   );
-
-  const submitting = creating || updating || isSubmitting;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={onClose}
       title={''}
       size="full"
       visible={false}
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
     >
-      <FormCard
-        title={isEdit ? 'Edit Node' : 'Add Node'}
-        onSubmit={handleSubmit(onValidSubmit)}
-        onCancel={handleClose}
-        standalone
-      >
-        {/* Name */}
-        <FormInput
-          name="name"
-          label="Node Name"
-          register={register}
-          error={errors.name}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
+      <div className="h-full w-full overflow-y-auto">
+        <div className="min-h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
+          <div className="w-full max-w-5xl">
+            <FormCard
+              title={isEdit ? 'Edit Node' : 'Add Node'}
+              onSubmit={handleSubmit(onValidSubmit)}
+              onCancel={onClose}
+              isLoading={isLoading} // <-- Use the loading state from props
+              standalone
+            >
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="md:col-span-2">
+                      <FormInput name="name" label="Node Name" register={register} error={errors.name} disabled={isLoading} placeholder="Enter node name" />
+                    </div>
+                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
+                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
+                  </div>
+                </div>
 
-        {/* Node Type */}
-        <FormSearchableSelect
-          name="node_type_id"
-          label="Node Type"
-          control={control}
-          options={nodeTypes.map(
-            (type) =>
-              ({
-                value: type.id,
-                label: type.name,
-              } as Option)
-          )}
-          error={errors.node_type_id}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Location Coordinates
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    <FormInput name="latitude" label="Latitude" register={register} error={errors.latitude} disabled={isLoading} type="number" step="any" placeholder="e.g., 22.5726" />
+                    <FormInput name="longitude" label="Longitude" register={register} error={errors.longitude} disabled={isLoading} type="number" step="any" placeholder="e.g., 88.3639" />
+                  </div>
+                </div>
 
-        {/* Maintenance Terminal */}
-        <FormSearchableSelect
-          name="maintenance_terminal_id"
-          label="Maintenance Terminal"
-          control={control}
-          options={maintenanceAreas.map(
-            (mt) =>
-              ({
-                value: mt.id,
-                label: mt.name,
-              } as Option)
-          )}
-          error={errors.maintenance_terminal_id}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Coordinates */}
-        <FormInput
-          name="latitude"
-          label="Latitude"
-          register={register}
-          error={errors.latitude}
-          disabled={submitting}
-          type="number"
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        <FormInput
-          name="longitude"
-          label="Longitude"
-          register={register}
-          error={errors.longitude}
-          disabled={submitting}
-          type="number"
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Remark */}
-        <FormTextarea
-          name="remark"
-          label="Remark"
-          control={control}
-          error={errors.remark}
-          disabled={submitting}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-
-        {/* Status */}
-        <FormSwitch
-          name="status"
-          label="Status"
-          control={control}
-          error={errors.status}
-          className="dark:bg-gray-900 dark:text-gray-100"
-        />
-      </FormCard>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Additional Information
+                  </h3>
+                  <div className="space-y-4 md:space-y-6">
+                    <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} disabled={isLoading} placeholder="Add any additional notes or remarks" rows={4} />
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Node Status</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enable or disable this node</p>
+                      </div>
+                      <FormSwitch name="status" label="" control={control} error={errors.status} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </FormCard>
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 }
-
 ```
 
 <!-- path: components/users/UserFilters.tsx -->
@@ -41629,37 +40911,42 @@ import {
 import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
 import Image from 'next/image';
-import { useForm, Controller} from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FormInput, FormDateInput } from '../common/form/FormControls'; // Import your new controls
+import { FormInput, FormDateInput } from '../common/form/FormControls';
 import { Input, Label, Modal } from '@/components/common/ui';
-import { FormCard } from '@/components/common/form/FormCard';
-import {
-  User_profilesUpdateSchema,
-  user_profilesUpdateSchema,
-} from '@/schemas/zod-schemas';
+import { FormCard } from '@/components/common/form';
+import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
+import { z } from 'zod';
 
-export type UserProfile = Omit<User_profilesUpdateSchema, "address" | "preferences"> & {
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zip_code?: string;
-  } | null;
-  preferences?: {
-    language?: string;
-    theme?: string;
-  } | null;
-};
+// **THE FIX: Define types based on the Zod schema, not manually.**
+const addressSchema = z.object({
+    street: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    zip_code: z.string().optional().nullable(),
+}).nullable();
+
+const preferencesSchema = z.object({
+    language: z.string().optional().nullable(),
+    theme: z.string().optional().nullable(),
+}).nullable();
+
+// Extend the auto-generated schema to handle nested objects for the form
+const userProfileFormSchema = user_profilesUpdateSchema.extend({
+    address: addressSchema,
+    preferences: preferencesSchema,
+});
+
+type UserProfileFormData = z.infer<typeof userProfileFormSchema>;
 
 interface UserProfileEditProps {
-  user: UserProfile | null;
+  user: UserProfileFormData | null; // The component now accepts the Zod-inferred type
   onClose: () => void;
-  onSave?: () => void; // Optional callback for when save is successful
+  onSave?: () => void;
   isOpen: boolean;
 }
 
-// Helper to safely parse JSON-like data
 const toObject = (val: unknown): Record<string, unknown> => {
   if (!val) return {};
   if (typeof val === 'object') return val as Record<string, unknown>;
@@ -41672,7 +40959,6 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   onClose,
   onSave,
 }) => {
-  // === React Hook Form Setup ===
   const {
     register,
     handleSubmit,
@@ -41680,20 +40966,11 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     reset,
     control,
     watch,
-  } = useForm<UserProfile>({
-    resolver: zodResolver(  user_profilesUpdateSchema),
-    // Initialize with empty defaults. We will populate it with an effect.
+  } = useForm<UserProfileFormData>({
+    resolver: zodResolver(userProfileFormSchema),
     defaultValues: {
-      first_name: user?.first_name,
-      last_name: user?.last_name,
-      avatar_url: user?.avatar_url,
-      phone_number: user?.phone_number,
-      date_of_birth: user?.date_of_birth,
-      address: user?.address ? toObject(user.address) : {},
-      preferences: user?.preferences ? toObject(user.preferences) : {},
-      role: user?.role,
-      designation: user?.designation,
-      status: user?.status,
+      first_name: '', last_name: '', avatar_url: null, phone_number: null, date_of_birth: null,
+      address: {}, preferences: {}, role: UserRole.VIEWER, designation: null, status: 'inactive',
     },
   });
 
@@ -41701,231 +40978,84 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     if (!isOpen) return;
     if (user) {
       reset({
-        first_name: user?.first_name,
-        last_name: user?.last_name,
-        avatar_url: user?.avatar_url,
-        phone_number: user?.phone_number,
-        date_of_birth: user?.date_of_birth,
-        address: user?.address ? toObject(user.address) : {},
-        preferences: user?.preferences ? toObject(user.preferences) : {},
-        role: user?.role,
-        designation: user?.designation,
-        status: user?.status,
+        ...user,
+        address: toObject(user.address),
+        preferences: toObject(user.preferences),
       });
     } else {
-      // If the modal is opened for a new user, reset to blank fields
       reset({
-        first_name: '',
-        last_name: '',
-        avatar_url: null,
-        phone_number: null,
-        date_of_birth: null,
-        address: null,
-        preferences: null,
-        role: UserRole.VIEWER,
-        designation: null,
-        status: 'inactive',
+        first_name: '', last_name: '', avatar_url: null, phone_number: null, date_of_birth: null,
+        address: {}, preferences: {}, role: UserRole.VIEWER, designation: null, status: 'inactive',
       });
     }
   }, [isOpen, reset, user]);
 
-  // Watch the avatar_url for live preview
   const avatarUrl = watch('avatar_url');
-
-  // === Data Fetching and Mutation Hooks ===
   const { data: currentUserRole } = useGetMyRole();
   const { data: isSuperAdmin } = useIsSuperAdmin();
   const updateProfile = useAdminUpdateUserProfile();
 
-  // === Form Submission Handler ===
-  const onValidSubmit = async (data: UserProfile) => {
-    if (!isDirty) {
+  const onValidSubmit = async (data: UserProfileFormData) => {
+    if (!isDirty || !user?.id) {
       toast.info('No changes to save.');
       onClose();
       return;
     }
-
-    // Create the update payload only with changed fields
-    const updateParams: { user_id: string; [key: string]: unknown } = {
-      user_id: user?.id || '',
-    };
-
-    (Object.keys(data) as Array<keyof UserProfile>).forEach(
-      (key) => {
-        if (
-          JSON.stringify(data[key]) !==
-          JSON.stringify((user as UserProfile)[key])
-        ) {
-          // Special handling for date to ensure correct format
-          if (key === 'date_of_birth' && data.date_of_birth) {
-            updateParams[`update_${key}`] = data.date_of_birth;
-          } else {
-            updateParams[`update_${key}`] = data[key];
-          }
-        }
-      }
-    );
+    
+    // The payload now perfectly matches the expected type for the RPC function
+    const updateParams: { user_id: string; [key: string]: unknown } = { user_id: user.id };
+    
+    (Object.keys(data) as Array<keyof UserProfileFormData>).forEach(key => {
+      updateParams[`update_${key}`] = data[key];
+    });
 
     try {
       await updateProfile.mutateAsync(updateParams);
-      onSave?.(); // Call the parent's onSave to trigger refetch
+      onSave?.();
     } catch (error) {
-      // The hook itself will show a toast error message
       console.error('Update failed:', error);
     }
     onClose();
   };
 
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="full" visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
-      <FormCard
-        onSubmit={handleSubmit(onValidSubmit)}
-        isLoading={isSubmitting}
-        title="Edit User Profile"
-        onCancel={onClose}
-      >
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="full" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+      <FormCard onSubmit={handleSubmit(onValidSubmit)} isLoading={isSubmitting} title="Edit User Profile" onCancel={onClose}>
         <div className="p-6 space-y-6">
-          {/* Profile Image & URL */}
           <div className="flex items-center gap-4">
-            <Image
-              src={avatarUrl || '/default-avatar.png'}
-              alt="Profile"
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-full object-cover bg-gray-200"
-            />
+            <Image src={avatarUrl || '/default-avatar.png'} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover bg-gray-200" />
             <div className="flex-1">
-              <FormInput
-                name="avatar_url"
-                label="Avatar URL"
-                register={register}
-                error={errors.avatar_url}
-                placeholder="https://example.com/avatar.jpg"
-              />
+              <FormInput name="avatar_url" label="Avatar URL" register={register} error={errors.avatar_url} placeholder="https://example.com/avatar.jpg" />
             </div>
           </div>
 
-          {/* Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              name="first_name"
-              label="First Name"
-              register={register}
-              error={errors.first_name}
-              required
-            />
-            <FormInput
-              name="last_name"
-              label="Last Name"
-              register={register}
-              error={errors.last_name}
-              required
-            />
+            <FormInput name="first_name" label="First Name" register={register} error={errors.first_name} required />
+            <FormInput name="last_name" label="Last Name" register={register} error={errors.last_name} required />
           </div>
 
-          {/* Contact */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              name="phone_number"
-              label="Phone Number"
-              register={register}
-              error={errors.phone_number}
-              type="tel"
-            />
-            <FormDateInput
-              name="date_of_birth"
-              label="Date of Birth"
-              control={control}
-              error={errors.date_of_birth}
-              placeholder="YYYY-MM-DD"
-              pickerProps={{
-                maxDate: new Date(),
-                dateFormat: 'yyyy-MM-dd',
-                showMonthDropdown: true,
-                showYearDropdown: true,
-                yearDropdownItemNumber: 100,
-                scrollableYearDropdown: true,
-                withPortal: true,
-                popperPlacement: 'bottom-start',
-              }}
-            />
+            <FormInput name="phone_number" label="Phone Number" register={register} error={errors.phone_number} type="tel" />
+            <FormDateInput name="date_of_birth" label="Date of Birth" control={control} error={errors.date_of_birth} placeholder="YYYY-MM-DD" />
           </div>
 
-          {/* Designation */}
-          <FormInput
-            name="designation"
-            label="Designation"
-            register={register}
-            error={errors.designation}
-            placeholder="e.g., Senior Engineer"
-          />
-
-          {/* *** THE FIX IS HERE: Use Controller for Address Fields *** */}
+          <FormInput name="designation" label="Designation" register={register} error={errors.designation} placeholder="e.g., Senior Engineer" />
+          
           <div>
             <Label>Address</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
-              <Controller
-                name="address.street"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="Street Address"
-                    error={errors.address?.street?.message}
-                  />
-                )}
-              />
-              <Controller
-                name="address.city"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="City"
-                    error={errors.address?.city?.message}
-                  />
-                )}
-              />
-              <Controller
-                name="address.state"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="State/Province"
-                    error={errors.address?.state?.message}
-                  />
-                )}
-              />
-              <Controller
-                name="address.zip_code"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="ZIP/Postal Code"
-                    error={errors.address?.zip_code?.message}
-                  />
-                )}
-              />
+              <Input {...register("address.street")} placeholder="Street Address" error={errors.address?.street?.message} />
+              <Input {...register("address.city")} placeholder="City" error={errors.address?.city?.message} />
+              <Input {...register("address.state")} placeholder="State/Province" error={errors.address?.state?.message} />
+              <Input {...register("address.zip_code")} placeholder="ZIP/Postal Code" error={errors.address?.zip_code?.message} />
             </div>
           </div>
-          {/* Users Preferences */}
+          
           <div>
             <Label>Preferences</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
               <Label>Language</Label>
-              <select
-                id="language"
-                {...register('preferences.language')}
-                className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-              >
+              <select {...register('preferences.language')} className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
                 <option value="en">English</option>
               </select>
             </div>
@@ -41933,35 +41063,17 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
 
           {(isSuperAdmin || currentUserRole === 'admin') && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <FiShield className="text-orange-500" /> Administrative Settings
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"><FiShield className="text-orange-500" /> Administrative Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="role" required>
-                    Role
-                  </Label>
-                  <select
-                    id="role"
-                    {...register('role')}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                  >
-                    {Object.values(UserRole).map((role) => (
-                      <option key={role} value={role}>
-                        {role.replace(/_/g, ' ').toUpperCase()}
-                      </option>
-                    ))}
+                  <Label htmlFor="role" required>Role</Label>
+                  <select id="role" {...register('role')} className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                    {Object.values(UserRole).map((role) => (<option key={role} value={role}>{role.replace(/_/g, ' ').toUpperCase()}</option>))}
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="status" required>
-                    Status
-                  </Label>
-                  <select
-                    id="status"
-                    {...register('status')}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                  >
+                  <Label htmlFor="status" required>Status</Label>
+                  <select id="status" {...register('status')} className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="suspended">Suspended</option>
@@ -41977,7 +41089,6 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
 };
 
 export default UserProfileEditModal;
-
 ```
 
 <!-- path: components/users/UserCreateModal.tsx -->
@@ -41998,13 +41109,13 @@ import { FormCard, FormInput } from '@/components/common/form';
 import { v4 as uuidv4 } from 'uuid';
 
 const userSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.uuid().optional(),
   email: z.email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   role: z.string().min(1, 'Role is required'),
-  email_confirm: z.boolean().catch(false), // ✅ ensures boolean
+  email_confirm: z.boolean().catch(false),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -42031,7 +41142,7 @@ export function UserCreateModal({
       first_name: '',
       last_name: '',
       role: 'viewer',
-      email_confirm: false, // ✅ always boolean
+      email_confirm: false,
     },
   });
 
@@ -42062,12 +41173,13 @@ export function UserCreateModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create New User" visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+      className="transparent bg-gray-700 rounded-2xl">
       <FormCard
         title="Create New User"
         onCancel={onClose}
         onSubmit={handleSubmit(onValidSubmit)}
         isLoading={isLoading}
+        standalone
       >
         <div className="space-y-4">
           {/* Optional ID */}
@@ -42713,7 +41825,7 @@ const EmployeeForm = ({
       title={employee ? 'Edit Employee' : 'Add New Employee'}
       size="full"
       visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+      className="transparent h-0 w-0"
     >
       <FormCard
         title={employee ? 'Edit Employee' : 'Add New Employee'}
@@ -50085,6 +49197,7 @@ import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { createAdmin } from '@/utils/supabase/admin';
+import { createClient } from '@/utils/supabase/server';
 
 const pgHost = process.env.PGHOST;
 const pgUser = process.env.PGUSER;
@@ -50096,68 +49209,84 @@ const pool = new Pool({
   connectionString: `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`,
 });
 
-// This function handles creating users
+// This function handles creating users MANUALLY
 export async function POST(req: Request) {
+  const client = await pool.connect();
   try {
     const userData = await req.json();
     const hashed = await bcrypt.hash(userData.password, 10);
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    // **THE FIX: Remove the manual transaction and the second INSERT.**
+    // We will now rely on the database trigger to create the user profile.
+    
+    const { rows: authUserRows } = await client.query(
+      `
+      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6)
+      RETURNING id, email
+      `,
+      [
+        userData.id,
+        userData.email,
+        hashed,
+        userData.email_confirm ? new Date().toISOString() : null,
+        JSON.stringify({
+          provider: 'email',
+          providers: ['email'],
+          role: userData.role,
+        }),
+        JSON.stringify({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+        }),
+      ]
+    );
 
-      // 1️⃣ Insert into auth.users
-      const { rows } = await client.query(
-        `
-        INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_user_meta_data)
-        VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5)
-        RETURNING id, email
-        `,
-        [
-          userData.id,
-          userData.email,
-          hashed,
-          userData.email_confirm ? new Date().toISOString() : null,
-          JSON.stringify({
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            role: userData.role,
-            status: userData.status,
-          }),
-        ]
-      );
-      console.log('USER PAYLOAD:', {
-        id: userData.id,
-        email: userData.email,
-        password: userData.password,
-        email_confirm: userData.email_confirm,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        role: userData.role,
-        status: userData.status,
-      });
-
-      await client.query('COMMIT');
-
-      return NextResponse.json({ user: rows[0] });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    const createdAuthUser = authUserRows[0];
+    if (!createdAuthUser) {
+      throw new Error("Failed to create user in auth.users");
     }
+
+    // The database trigger 'on_auth_user_created' will now automatically handle
+    // creating the corresponding record in 'public.user_profiles'.
+
+    return NextResponse.json({ user: createdAuthUser });
+
   } catch (err: unknown) {
     console.error('Error inserting user:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
-      { status: 500 }
-    );
+    const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during user creation.';
+    if (typeof errorMessage === 'string' && errorMessage.includes('duplicate key value violates unique constraint "users_email_key"')) {
+        const { email } = await req.json();
+        return NextResponse.json({ error: `A user with the email "${email}" already exists.` }, { status: 409 });
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  } finally {
+    client.release();
   }
 }
 
-// This function handles deleting users
+
+// DELETE function remains the same
 export async function DELETE(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden: Authentication required.' }, { status: 401 });
+    }
+
+    const { data: isSuperAdmin, error: rpcError } = await supabase.rpc('is_super_admin');
+
+    if (rpcError) {
+      console.error('RPC error checking admin status:', rpcError);
+      return NextResponse.json({ error: 'Could not verify user permissions.' }, { status: 500 });
+    }
+
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to perform this action.' }, { status: 403 });
+    }
+    
     const { userIds } = await req.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -50182,7 +49311,6 @@ export async function DELETE(req: Request) {
       }, { status: 500 });
     }
     
-    // The ON DELETE CASCADE on the user_profiles table will handle the rest automatically.
     return NextResponse.json({ message: 'Users deleted successfully' });
 
   } catch (err: unknown) {
@@ -50193,7 +49321,6 @@ export async function DELETE(req: Request) {
     );
   }
 }
-
 ```
 
 <!-- path: app/api/route/[id]/route.ts -->
@@ -50689,103 +49816,6 @@ export default function Home() {
 
 <!-- path: app/auth/callback/route.ts -->
 ```typescript
-// // app/auth/callback/route.ts
-// import { createClient } from '@/utils/supabase/server'
-// import { NextResponse } from 'next/server'
-
-// export async function GET(request: Request) {
-//   const { searchParams, origin } = new URL(request.url)
-//   const code = searchParams.get('code')
-//   const next = searchParams.get('next') ?? '/dashboard'
-//   const error = searchParams.get('error')
-//   const errorDescription = searchParams.get('error_description')
-
-//   // console.log('Auth callback received:', { code: !!code, error, errorDescription })
-
-//   // Handle OAuth errors
-//   if (error) {
-//     console.error('OAuth error:', error, errorDescription)
-//     const errorParams = new URLSearchParams({
-//       error: error,
-//       message: errorDescription || 'Authentication failed'
-//     })
-//     return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//   }
-
-//   if (code) {
-//     const supabase = await createClient()
-    
-//     try {
-//       // console.log('Exchanging code for session...')
-//       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      
-//       if (exchangeError) {
-//         console.error('Session exchange error:', exchangeError)
-//         const errorParams = new URLSearchParams({
-//           error: 'session_exchange_failed',
-//           message: exchangeError.message
-//         })
-//         return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//       }
-
-//       if (data.user) {
-//         // console.log('User authenticated:', data.user.id)
-        
-//         // Check if user has a profile
-//         // console.log('Checking for existing profile...')
-//         const { data: profile, error: profileError } = await supabase
-//           .from('user_profiles')
-//           .select('id')
-//           .eq('id', data.user.id)
-//           .single()
-
-//         // console.log('Profile check result:', { profile: !!profile, error: profileError?.code })
-
-//         // If no profile exists, redirect to onboarding
-//         // check non blocking way after 2 seconds
-//         setTimeout(() => {
-//           if (profileError && profileError.code === 'PGRST116') {
-//             // console.log('No profile found, redirecting to onboarding')
-//             return NextResponse.redirect(`${origin}/onboarding`)
-//           }
-//         }, 2000)
-        
-
-//         if (profileError && profileError.code !== 'PGRST116') {
-//           console.error('Profile check error:', profileError)
-//           // Continue anyway, let the client handle it
-//         }
-
-//         // If profile exists, redirect to intended destination
-//         if (profile) {
-//           // console.log('Profile exists, redirecting to:', next)
-//           return NextResponse.redirect(`${origin}${next}`)
-//         }
-
-//         // Fallback: redirect to dashboard if no profile check conclusive
-//         // console.log('Fallback redirect to dashboard')
-//         return NextResponse.redirect(`${origin}/dashboard`)
-//       }
-      
-//     } catch (error) {
-//       console.error('Unexpected error in auth callback:', error)
-//       const errorParams = new URLSearchParams({
-//         error: 'unexpected_error',
-//         message: 'An unexpected error occurred during authentication'
-//       })
-//       return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//     }
-//   }
-
-//   // No code parameter - invalid callback
-//   console.error('No code parameter received')
-//   const errorParams = new URLSearchParams({
-//     error: 'invalid_callback',
-//     message: 'Invalid authentication callback'
-//   })
-//   return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-// }
-
 // app/auth/callback/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
@@ -51227,124 +50257,19 @@ export default function RouteManagerPage() {
 }
 ```
 
-<!-- path: app/dashboard/rings/[id]/page copy.tsx -->
-```typescript
-// path: app/dashboard/rings/[id]/page.tsx
-"use client";
-
-import { useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiMap } from "react-icons/fi";
-import { useRingNodes } from "@/hooks/database/ring-map-queries";
-import ClientRingMap from "@/components/map/ClientRingMap";
-import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
-import { PageHeader } from "@/components/common/page-header";
-import { RingMapNode, NodeType } from "@/components/map/node";
-import useORSRouteDistances from "@/hooks/useORSRouteDistances";
-
-export default function RingMapPage() {
-  const params = useParams();
-  const router = useRouter();
-  const ringId = params.id as string;
-
-  const { data: nodes, isLoading, isError, error, refetch } = useRingNodes(ringId);
-
-  // Map the fetched data to the RingMapNode type
-  const mappedNodes = useMemo((): RingMapNode[] => {
-    if (!nodes) return [];
-    return nodes.map(node => ({
-      id: node.id!,
-      ring_id: node.ring_id,
-      name: node.name!,
-      lat: node.lat!,
-      long: node.long!,
-      order_in_ring: node.order_in_ring,
-      type: node.type as NodeType | string | null,
-      ring_status: node.ring_status,
-      ip: node.ip,
-      remark: node.remark,
-    }));
-  }, [nodes]);
-
-  // Perform the business logic to determine main nodes and connection types
-  const { mainNodes, mainSegments, spurConnections, allPairs } = useMemo(() => {
-    const ringStatusNodes = mappedNodes.filter(node => node.ring_status);
-    
-    const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes.filter(n => n.type === NodeType.MAAN))
-      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-
-    if (main.length === 0) {
-      return { mainNodes: [], mainSegments: [], spurConnections: [], allPairs: [] };
-    }
-
-    const segments: Array<[RingMapNode, RingMapNode]> = [];
-    if (main.length > 1) {
-      main.forEach((node, index) => {
-        const nextNode = main[(index + 1) % main.length];
-        segments.push([node, nextNode]);
-      });
-    }
-
-    const spurs: Array<[RingMapNode, RingMapNode]> = [];
-    mappedNodes.filter(node => !node.ring_status).forEach(spurNode => {
-      const parentNode = main.find(m => m.order_in_ring === spurNode.order_in_ring);
-      if (parentNode) {
-        spurs.push([parentNode, spurNode]);
-      }
-    });
-
-    return { mainNodes: main, mainSegments: segments, spurConnections: spurs, allPairs: [...segments, ...spurs] };
-  }, [mappedNodes]);
-
-  const { data: distances = {} } = useORSRouteDistances(allPairs);
-
-  const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
-
-  const renderContent = () => {
-    if (isLoading) return <PageSpinner text="Loading Ring Map Data..." />;
-    if (isError) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]} />;
-    if (mappedNodes.length === 0) return <div className="text-center py-12"><FiMap className="mx-auto h-12 w-12 text-gray-400" /> <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Nodes Found</h3></div>;
-
-    return (
-      <ClientRingMap
-        nodes={mappedNodes}
-        mainSegments={mainSegments}
-        spurConnections={spurConnections}
-        distances={distances}
-        onBack={() => router.push('/dashboard/rings')}
-      />
-    );
-  };
-
-  return (
-    <div className="p-4 md:p-6 space-y-6">
-      <PageHeader
-        title={ringName}
-        description="Visualizing the ring topology and connected nodes."
-        icon={<FiMap />}
-        actions={[{ label: "Back to Rings List", onClick: () => router.push('/dashboard/rings'), variant: "outline", leftIcon: <FiArrowLeft /> }]}
-      />
-      <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
-        {renderContent()}
-      </div>
-    </div>
-  );
-}
-```
-
 <!-- path: app/dashboard/rings/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/rings/[id]/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react"; // <-- Import useCallback
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiMap } from "react-icons/fi";
 import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
-import { PageSpinner, ErrorDisplay, Button } from "@/components/common/ui";
+import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { RingMapNode, MapNode, NodeType } from "@/components/map/types/node"; // Import both types
+import { RingMapNode, NodeType } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -51402,11 +50327,14 @@ export default function RingMapPage() {
   }, [mappedNodes]);
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
-
-  console.log("distances", distances);
   
-
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
+  
+  // **THE FIX: Wrap the onBack handler in useCallback for a stable reference.**
+  const handleBack = useCallback(() => {
+    router.push('/dashboard/rings');
+  }, [router]);
+
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Loading Ring Map Data..." />;
@@ -51419,7 +50347,7 @@ export default function RingMapPage() {
         solidLines={mainSegments}
         dashedLines={spurConnections}
         distances={distances}
-        onBack={() => router.push('/dashboard/rings')}
+        onBack={handleBack} // Pass the stable handler
         showControls={true} 
       />
     );
@@ -51431,7 +50359,7 @@ export default function RingMapPage() {
         title={ringName}
         description="Visualizing the ring topology and connected nodes."
         icon={<FiMap />}
-        actions={[{ label: "Back to Rings List", onClick: () => router.push('/dashboard/rings'), variant: "outline", leftIcon: <FiArrowLeft /> }]}
+        actions={[{ label: "Back to Rings List", onClick: handleBack, variant: "outline", leftIcon: <FiArrowLeft /> }]}
       />
       <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
         {renderContent()}
@@ -51449,7 +50377,7 @@ export default function RingMapPage() {
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
-import { RingSystemsModal } from '@/components/rings/RingSystemsModal'; // <-- Import the new modal
+import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { RingsFilters } from '@/components/rings/RingsFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
@@ -51457,13 +50385,13 @@ import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { V_ringsRowSchema, RingsRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/zod-schemas'; // Import InsertSchema
 import { createClient } from '@/utils/supabase/client';
-import { useMemo, useCallback, useState } from 'react'; // <-- Import useState
+import { useMemo, useCallback, useState } from 'react';
 import { GiLinkedRings } from 'react-icons/gi';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { FaNetworkWired } from 'react-icons/fa'; // <-- A suitable icon
+import { FaNetworkWired } from 'react-icons/fa';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -51487,12 +50415,11 @@ const RingsPage = () => {
   const router = useRouter();
   const supabase = createClient();
   
-  // ADDED: State to manage the new RingSystemsModal
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
-    data: rings, totalCount, activeCount, inactiveCount, isLoading, refetch,
+    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
@@ -51521,7 +50448,6 @@ const RingsPage = () => {
     }
   }, [router]);
 
-  // ADDED: Handler to open the new modal
   const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
     setSelectedRingForSystems(record);
     setIsSystemsModalOpen(true);
@@ -51533,7 +50459,6 @@ const RingsPage = () => {
       onView: handleView,
       onDelete: crudActions.handleDelete,
     });
-    // Add our new custom action
     standardActions.unshift({
       key: 'manage-systems',
       label: 'Manage Systems',
@@ -51576,17 +50501,17 @@ const RingsPage = () => {
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
       
-      {/* Modals */}
-      
+      {/* **THE FIX: Pass the correct props to the now "dumb" component.** */}
       <RingModal
-        isOpen={editModal.isOpen} onClose={editModal.close} editingRing={editModal.record as RingsRowSchema | null}
-        onCreated={crudActions.handleSave as (ring: RingsRowSchema) => void}
-        onUpdated={crudActions.handleSave as (ring: RingsRowSchema) => void}
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        editingRing={editModal.record as RingsRowSchema | null}
+        onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
+        isLoading={isMutating}
         ringTypes={ringTypes.map(rt => ({ id: rt.id, name: rt.name, code: rt.code }))}
         maintenanceAreas={maintenanceAreas.map(ma => ({ id: ma.id, name: ma.name, code: ma.code }))}
       />
 
-      {/* ADDED: The new modal instance */}
       <RingSystemsModal
         isOpen={isSystemsModalOpen}
         onClose={() => setIsSystemsModalOpen(false)}
@@ -51608,17 +50533,81 @@ export default RingsPage;
 
 <!-- path: app/dashboard/page.tsx -->
 ```typescript
+// app/dashboard/page.tsx
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
+import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+import { useTableUpdate } from "@/hooks/database";
+import { createClient } from "@/utils/supabase/client";
+import { OnboardingPromptModal } from "@/components/auth/OnboardingPromptModal";
 import ScalableFiberNetworkDashboard from "@/app/bsnl/page";
-
-
+import { toast } from "sonner";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const { data: profile, isLoading: isProfileLoading, refetch } = useGetMyUserDetails();
+  const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
 
-  return <ScalableFiberNetworkDashboard />
+  const [isPromptOpen, setIsPromptOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isProfileLoading && profile) {
+      // **THE FIX: Check the 'needsOnboarding' flag directly from the user's preferences.**
+      // This is the reliable source of truth.
+      const needsOnboarding = (profile.preferences as any)?.needsOnboarding === true;
+      const hasDismissedPrompt = (profile.preferences as any)?.showOnboardingPrompt === false;
+
+      if (needsOnboarding && !hasDismissedPrompt) {
+        setIsPromptOpen(true);
+      }
+    }
+  }, [profile, isProfileLoading]);
+
+  const handleGoToProfile = () => {
+    setIsPromptOpen(false);
+    router.push('/onboarding');
+  };
+
+  const handleDismissTemporarily = () => {
+    setIsPromptOpen(false);
+  };
+
+  const handleDismissPermanently = () => {
+    if (user?.id && profile) {
+      const currentPreferences = (profile.preferences as object) || {};
+      const newPreferences = { ...currentPreferences, showOnboardingPrompt: false };
+      
+      updateProfile({ id: user.id, data: { preferences: newPreferences } }, {
+        onSuccess: () => {
+          toast.success("Preference saved. We won't ask again.");
+          // Manually update the local profile state to prevent the prompt from reappearing before a full refetch
+          refetch(); 
+        },
+        onError: (error) => {
+          toast.error(`Failed to save preference: ${error.message}`);
+        }
+      });
+    }
+    setIsPromptOpen(false);
+  };
+
+  return (
+    <>
+      <ScalableFiberNetworkDashboard />
+      <OnboardingPromptModal
+        isOpen={isPromptOpen}
+        onClose={handleDismissTemporarily}
+        onGoToProfile={handleGoToProfile}
+        onDismissPermanently={handleDismissPermanently}
+        userName={(profile?.first_name && profile.first_name !== 'Placeholder') ? profile.first_name : 'there'}
+      />
+    </>
+  );
 }
-
 ```
 
 <!-- path: app/dashboard/diagrams/page.tsx -->
@@ -51984,7 +50973,7 @@ export default function CategoriesPage() {
 
 <!-- path: app/dashboard/maintenance-areas/page.tsx -->
 ```typescript
-// components/maintenance-areas/MaintenanceAreasPage.tsx
+// app/dashboard/maintenance-areas/page.tsx
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
@@ -52012,17 +51001,12 @@ import { toast } from 'sonner';
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
-  // State management
-  const [filters, setFilters] = useState<{
-    status?: string;
-    areaType?: string;
-  }>({});
+  const [filters, setFilters] = useState<{ status?: string; areaType?: string; }>({});
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingArea, setEditingArea] =
     useState<MaintenanceAreaWithRelations | null>(null);
 
-  // Data queries
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
@@ -52030,7 +51014,12 @@ export default function MaintenanceAreasPage() {
     return f;
   }, [filters]);
 
-  const areasQuery = useTableWithRelations(
+  // **THE FIX (for "No parent" display): The `.select()` method has been removed.**
+  // useTableWithRelations now correctly returns the full nested objects for relations.
+  const areasQuery = useTableWithRelations<
+    'maintenance_areas',
+    MaintenanceAreaWithRelations[]
+  >(
     supabase,
     'maintenance_areas',
     [
@@ -52041,25 +51030,16 @@ export default function MaintenanceAreasPage() {
     {
       filters: serverFilters,
       orderBy: [{ column: 'name', ascending: true }],
-      select: (data) => {
-        return data.map(item => ({
-          ...item,
-          area_type: item.area_type_id || null,
-          parent_area: item.parent_id || null,
-          child_areas: item.id || []
-        })) as MaintenanceAreaWithRelations[];
-      }
     }
   );
 
-  const { isLoading, error, refetch } = areasQuery;
+  const { refetch, error, data } = areasQuery;
 
   const { data: areaTypes = [] } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
     orderBy: [{ column: 'name', ascending: true }],
   });
 
-  // Data mutations
   const {
     createAreaMutation,
     updateAreaMutation,
@@ -52081,17 +51061,11 @@ export default function MaintenanceAreasPage() {
     },
   });
 
-  // Derived state
   const allAreas = useMemo(
     () => (areasQuery.data as MaintenanceAreaWithRelations[]) || [],
     [areasQuery.data]
   );
-  const selectedArea = useMemo(
-    () => allAreas.find((area) => area.id === selectedAreaId) || null,
-    [selectedAreaId, allAreas]
-  );
-
-  // Event handlers
+  
   const handleOpenCreateForm = () => {
     setEditingArea(null);
     setFormOpen(true);
@@ -52101,31 +51075,19 @@ export default function MaintenanceAreasPage() {
     setEditingArea(area);
     setFormOpen(true);
   };
-
-  // --- Define header content using the hook ---
+  
   const headerActions = useStandardHeaderActions({
     data: allAreas,
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    // onAddNew: handleOpenCreateForm,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: handleOpenCreateForm,
     isLoading: areasQuery.isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
 
   const headerStats = [
     { value: allAreas.length, label: 'Total Areas' },
-    {
-      value: allAreas.filter((r) => r.status).length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: allAreas.filter((r) => !r.status).length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
+    { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
@@ -52143,6 +51105,12 @@ export default function MaintenanceAreasPage() {
     );
   }
 
+  const isLoading =
+    areasQuery.isLoading ||
+    createAreaMutation.isPending ||
+    updateAreaMutation.isPending ||
+    toggleStatusMutation.isPending;
+
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
       <PageHeader
@@ -52157,18 +51125,14 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
-        toggleStatusMutation={{
-          mutate: toggleStatusMutation.mutate,
-          isPending: toggleStatusMutation.isPending,
-          error: toggleStatusMutation.error,
-          data: toggleStatusMutation.data
-        }}
+        toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
+        selectedEntityId={selectedAreaId}
+        onSelect={setSelectedAreaId}
       />
 
-      {/* Modals */}
       {isFormOpen && (
         <AreaFormModal
           isOpen={isFormOpen}
@@ -52195,15 +51159,11 @@ export default function MaintenanceAreasPage() {
         cancelText="Cancel"
         type="danger"
         showIcon
-        closeOnBackdrop
-        closeOnEscape
         loading={deleteManager.isPending}
-        size="md"
       />
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/employees/page.tsx -->
@@ -52211,7 +51171,7 @@ export default function MaintenanceAreasPage() {
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -52225,6 +51185,8 @@ import {
   V_employeesRowSchema,
   EmployeesInsertSchema,
   EmployeesRowSchema,
+  Employee_designationsRowSchema,
+  Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -52233,7 +51195,6 @@ import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
 
-// 1. ADAPTER HOOK: Makes our paged employee data query compatible with useCrudManager.
 const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
@@ -52243,7 +51204,6 @@ const useEmployeesData = (
   const searchFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (searchQuery) {
-      // CORRECTED: Pass a structured object for the OR condition
       newFilters.or = {
         employee_name: searchQuery,
         employee_pers_no: searchQuery,
@@ -52276,33 +51236,21 @@ const useEmployeesData = (
 };
 
 const EmployeesPage = () => {
-  // 2. USE THE CRUD MANAGER: All state and logic is now centralized here.
+  const supabase = createClient();
+  const [showFilters, setShowFilters] = useState(false);
+  
   const {
     data: employees,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    isFetching,
-    isMutating,
-    error,
-    refetch,
-    pagination,
-    search,
-    filters,
-    editModal,
-    viewModal,
-    bulkActions,
-    deleteModal,
-    actions: crudActions,
+    totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, error, refetch,
+    pagination, search, filters, editModal, viewModal, bulkActions, deleteModal, actions: crudActions,
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
   });
 
-  const supabase = createClient();
-  const { data: designations = [] } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
-  const { data: maintenanceAreas = [] } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
+  // **THE FIX: Restore the dedicated queries to fetch the full data structures.**
+  const { data: designations = [] } = useTableQuery<"employee_designations", Employee_designationsRowSchema[]>(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
+  const { data: maintenanceAreas = [] } = useTableQuery<"maintenance_areas", Maintenance_areasRowSchema[]>(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
 
   const columns = useMemo(() => getEmployeeTableColumns({
     designationMap: Object.fromEntries(designations.map(d => [d.id, d.name])),
@@ -52321,10 +51269,7 @@ const EmployeesPage = () => {
   
   const headerActions = useStandardHeaderActions<'employees'>({
     data: employees as EmployeesRowSchema[],
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
     exportConfig: { tableName: 'employees' },
@@ -52336,7 +51281,6 @@ const EmployeesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // NEW: Define a stable function with useCallback
   const handleSaveEmployee = useCallback((data: EmployeesInsertSchema) => {
     crudActions.handleSave(data);
   }, [crudActions]);
@@ -52353,9 +51297,9 @@ const EmployeesPage = () => {
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions}
-        // isLoading={isLoading}
+        isLoading={isLoading}
       />
-
+      
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
@@ -52370,8 +51314,8 @@ const EmployeesPage = () => {
         tableName="v_employees"
         data={employees}
         columns={columns}
-        loading={isLoading} // <-- For initial skeleton
-        isFetching={isFetching || isMutating} // <-- For background overlay
+        loading={isLoading}
+        isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows) => {
@@ -52395,22 +51339,19 @@ const EmployeesPage = () => {
             searchQuery={search.searchQuery}
             filters={filters.filters}
             onSearchChange={search.setSearchQuery}
-            // REVISED: Pass setFilters directly
             setFilters={filters.setFilters} 
             designations={designations}
             maintenanceAreas={maintenanceAreas}
-            showFilters={true} // You can manage this with a state if needed
-            onFilterToggle={() => {}}
+            showFilters={showFilters}
+            onFilterToggle={() => setShowFilters(!showFilters)}
           />
         }
       />
       
-      {/* Modals remain the same */}
       <EmployeeForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         employee={editModal.record}
-        // Pass the stable function as the prop
         onSubmit={handleSaveEmployee}
         onCancel={editModal.close}
         isLoading={isMutating}
@@ -52447,7 +51388,7 @@ import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header/PageHeader';
 import { useStandardHeaderActions } from '@/components/common/page-header/hooks/useStandardHeaderActions';
 import { DesignationFormModal } from '@/components/designations/DesignationFormModal';
-import { designationConfig } from '@/config/designations';
+import { designationConfig, DesignationWithRelations } from '@/config/designations';
 import {
   Filters,
   useTableInsert,
@@ -52455,7 +51396,6 @@ import {
   useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
-// BaseEntity type not needed anymore
 import { useDelete } from '@/hooks/useDelete';
 import {
   Employee_designationsInsertSchema,
@@ -52466,37 +51406,21 @@ import { useMemo, useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
 import { toast } from 'sonner';
 
-export interface DesignationWithRelations
-  extends Omit<Employee_designationsInsertSchema, 'id'> {
-  id: string;
-  parent_designation: DesignationWithRelations | null;
-  child_designations: DesignationWithRelations[];
-  status: boolean | null;
-}
-
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
-  // State management
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [filters, setFilters] = useState<{ status?: string }>({});
-  const [selectedDesignationId, setSelectedDesignationId] = useState<
-    string | null
-  >(null);
+  const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [editingDesignation, setEditingDesignation] =
-    useState<DesignationWithRelations | null>(null);
-  // Data queries
+  const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
+  
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
     return f;
   }, [filters]);
 
-  const designationsQuery = useTableWithRelations<
-    'employee_designations',
-    DesignationWithRelations[]
-  >(
+  const designationsQuery = useTableWithRelations<'employee_designations', DesignationWithRelations[]>(
     supabase,
     'employee_designations',
     ['parent_designation:parent_id(id, name)'],
@@ -52507,44 +51431,26 @@ export default function DesignationManagerPage() {
   );
 
   const { refetch, error, data } = designationsQuery;
-
   const totalCount = data?.length || 0;
 
-  // Data mutations
   const onMutationSuccess = () => {
     designationsQuery.refetch();
     setFormOpen(false);
     setEditingDesignation(null);
   };
 
-  const createDesignationMutation = useTableInsert(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  );
-  const updateDesignationMutation = useTableUpdate(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  );
-  const toggleStatusMutation = useToggleStatus(
-    supabase,
-    'employee_designations',
-    { onSuccess: onMutationSuccess }
-  ) as unknown as {
+  // **THE FIX: Pass the 'supabase' client as the first argument to the hooks.**
+  const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
     mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
     isPending: boolean;
   };
   
-  // Create a properly typed mutate function
   const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
-    return toggleStatusMutation.mutate({
-      ...variables,
-      nameField: 'status' // Ensure nameField is always 'status' for this table
-    });
+    return toggleStatusMutation.mutate({ ...variables, nameField: 'status' });
   };
   
-  // Extract the properties we need for EntityManagementComponent
   const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDelete({
@@ -52557,13 +51463,11 @@ export default function DesignationManagerPage() {
     },
   });
 
-  // Derived state
   const allDesignations = useMemo(
     () => (designationsQuery.data as DesignationWithRelations[]) || [],
     [designationsQuery.data]
   );
 
-  // Event handlers
   const handleOpenCreateForm = () => {
     setEditingDesignation(null);
     setFormOpen(true);
@@ -52572,7 +51476,6 @@ export default function DesignationManagerPage() {
   const handleOpenEditForm = (designation: DesignationWithRelations) => {
     setEditingDesignation(designation);
     setFormOpen(true);
-    console.log(designation);
   };
 
   const handleFormSubmit = (data: Employee_designationsInsertSchema) => {
@@ -52586,59 +51489,28 @@ export default function DesignationManagerPage() {
     }
   };
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
     data: designationsQuery.data?.map((d) => ({
-      id: d.id,
-      name: d.name,
-      created_at: d.created_at ?? null,
-      updated_at: d.updated_at ?? null,
-      parent_id: d.parent_id ?? null,
-      status: d.status ?? null,
+      id: d.id, name: d.name, created_at: d.created_at ?? null,
+      updated_at: d.updated_at ?? null, parent_id: d.parent_id ?? null, status: d.status ?? null,
     })),
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    // onAddNew: placeholder ToDo,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: handleOpenCreateForm,
     isLoading: designationsQuery.isLoading,
     exportConfig: { tableName: 'employee_designations' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Designations' },
-    {
-      value: allDesignations.filter((r) => r.status).length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: allDesignations.filter((r) => !r.status).length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: allDesignations.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
+    { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
-  const isLoading =
-    designationsQuery.isLoading ||
-    createDesignationMutation.isPending ||
-    updateDesignationMutation.isPending ||
-    toggleStatusMutation.isPending;
+  const isLoading = designationsQuery.isLoading || createDesignationMutation.isPending || updateDesignationMutation.isPending || toggleStatusMutation.isPending;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
@@ -52658,9 +51530,10 @@ export default function DesignationManagerPage() {
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
+        selectedEntityId={selectedDesignationId}
+        onSelect={setSelectedDesignationId}
       />
 
-      {/* Modals */}
       {isFormOpen && (
         <DesignationFormModal
           isOpen={isFormOpen}
@@ -52668,17 +51541,10 @@ export default function DesignationManagerPage() {
           onSubmit={handleFormSubmit}
           designation={editingDesignation}
           allDesignations={allDesignations.map((d) => ({
-            id: d.id ?? '',
-            name: d.name,
-            created_at: d.created_at ?? null,
-            updated_at: d.updated_at ?? null,
-            parent_id: d.parent_id ?? null,
-            status: d.status ?? null,
+            id: d.id ?? '', name: d.name, created_at: d.created_at ?? null, updated_at: d.updated_at ?? null,
+            parent_id: d.parent_id ?? null, status: d.status ?? null,
           }))}
-          isLoading={
-            createDesignationMutation.isPending ||
-            updateDesignationMutation.isPending
-          }
+          isLoading={createDesignationMutation.isPending || updateDesignationMutation.isPending}
         />
       )}
       <ConfirmModal
@@ -52691,15 +51557,11 @@ export default function DesignationManagerPage() {
         cancelText="Cancel"
         type="danger"
         showIcon
-        closeOnBackdrop
-        closeOnEscape
         loading={deleteManager.isPending}
-        size="md"
       />
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/doc/page.tsx -->
@@ -53718,14 +52580,12 @@ export type NodeRowsWithRelations = NodesRowSchema & {
   } | null;
 };
 
-// 1. ADAPTER HOOK: Makes `useNodesData` compatible with `useCrudManager`
 const useNodesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  // Convert rich filters to simple RPC filters
-    const rpcFilters = useMemo(() => {
+  const rpcFilters = useMemo(() => {
       const convertedFilters = convertRichFiltersToSimpleJson(filters);
       return {
         ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
@@ -53735,7 +52595,7 @@ const useNodesData = (
 
   const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
-    'v_nodes_complete', // The name of the view
+    'v_nodes_complete',
     {
       filters: rpcFilters,
       limit: pageLimit,
@@ -53754,16 +52614,14 @@ const useNodesData = (
   };
 };
 
-
 const NodesPage = () => {
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: nodes,
     totalCount,
     activeCount,
     inactiveCount,
     isLoading,
-    // isMutating,
+    isMutating,
     error,
     refetch,
     pagination,
@@ -53771,7 +52629,6 @@ const NodesPage = () => {
     filters,
     editModal,
     viewModal,
-    // bulkActions,
     deleteModal,
     actions: crudActions,
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
@@ -53779,7 +52636,6 @@ const NodesPage = () => {
     dataQueryHook: useNodesData,
   });
 
-  // 3. Extract node types from the nodes data
   const nodeTypes = useMemo(() => {
     const uniqueNodeTypes = new Map();
     nodes.forEach((node) => {
@@ -53790,38 +52646,16 @@ const NodesPage = () => {
         });
       }
     });
-
     return Array.from(uniqueNodeTypes.values());
   }, [nodes]);
 
   const columns = NodesTableColumns(nodes);
-
-  const desiredColumns = [
-    'name',
-    'latitude',
-    'longitude',
-    'node_type_name',
-    'node_type_code',
-    'maintenance_area_name',
-    'maintenance_area_code',
-    'maintenance_area_type_name',
-    'status',
-    'remark',
-    'id',
-    'node_type_id',
-    'maintenance_terminal_id',
-    'created_at',
-    'updated_at',
-    'total_count',
-    'active_count',
-    'inactive_count',
-  ];
-
-  const orderedColumns = useOrderedColumns(columns, desiredColumns);
+  const orderedColumns = useOrderedColumns(columns, [
+    'name', 'latitude', 'longitude', 'node_type_name', 'maintenance_area_name', 'status', 'remark',
+  ]);
 
   const tableActions = useMemo(
-    () =>
-      createStandardActions<V_nodes_completeRowSchema>({
+    () => createStandardActions<V_nodes_completeRowSchema>({
         onEdit: editModal.openEdit,
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
@@ -53829,57 +52663,32 @@ const NodesPage = () => {
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions({
     data: nodes as NodesRowSchema[],
-    onAddNew: () => {
-      editModal.openAdd();
-    },
-    onRefresh: () => {
-      refetch();
-      toast.success('Refreshed successfully!');
-    },
+    onAddNew: () => { editModal.openAdd(); },
+    onRefresh: () => { refetch(); toast.success('Refreshed successfully!'); },
     isLoading: isLoading,
     exportConfig: { tableName: 'nodes' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Nodes' },
-    {
-      value: activeCount,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: inactiveCount,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="mx-auto space-y-4 p-6">
       <PageHeader
         title="Node Management"
         description="Manage network nodes and their related information."
         icon={<FiCpu />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
+        actions={headerActions}
         isLoading={isLoading}
       />
 
@@ -53895,7 +52704,7 @@ const NodesPage = () => {
         columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
-        selectable={true} // Assuming you might want bulk actions later
+        selectable={true}
         showColumnsToggle={true}
         pagination={{
           current: pagination.currentPage,
@@ -53927,8 +52736,9 @@ const NodesPage = () => {
           isOpen={editModal.isOpen}
           onClose={editModal.close}
           editingNode={editModal.record as NodeRowsWithRelations | null}
-          onCreated={crudActions.handleSave}
-          onUpdated={crudActions.handleSave}
+          // **THE FIX: Pass the correct props to the now "dumb" component.**
+          onSubmit={crudActions.handleSave}
+          isLoading={isMutating}
         />
       )}
 
@@ -53946,7 +52756,6 @@ const NodesPage = () => {
 };
 
 export default NodesPage;
-
 ```
 
 <!-- path: app/dashboard/users/page.tsx -->
@@ -54335,6 +53144,26 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontHeading.variable} antialiased`}
       >
+         {/* **THE FIX: Inline script to prevent theme flashing** */}
+         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const storedState = localStorage.getItem('theme-storage');
+                  if (storedState) {
+                    const theme = JSON.parse(storedState).state.theme;
+                    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                      document.documentElement.classList.add('dark');
+                    }
+                  }
+                } catch (e) {
+                  console.error('Failed to apply initial theme from localStorage', e);
+                }
+              })();
+            `,
+          }}
+        />
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
@@ -54420,7 +53249,6 @@ import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54445,6 +53273,9 @@ const preferencesSchema = z
   .object({
     language: z.string().optional().nullable(),
     theme: z.string().optional().nullable(),
+    // ADDED: Include our new flags in the schema
+    needsOnboarding: z.boolean().optional().nullable(),
+    showOnboardingPrompt: z.boolean().optional().nullable(),
   })
   .nullable();
 
@@ -54476,7 +53307,6 @@ const toObject = (data: unknown): Record<string, unknown> => {
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
-  const router = useRouter();
 
   const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetMyUserDetails();
 
@@ -54484,7 +53314,7 @@ export default function OnboardingFormEnhanced() {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, isDirty, dirtyFields },
+    formState: { errors, isDirty, dirtyFields },
     watch,
   } = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingFormSchema),
@@ -54494,8 +53324,6 @@ export default function OnboardingFormEnhanced() {
     onSuccess: (data) => {
       toast.success("Profile updated successfully!");
       refetch();
-      // After a successful save, reset the form state with the new data
-      // to make sure 'isDirty' becomes false.
       reset(data[0] as OnboardingFormData);
     },
     onError: (error) => {
@@ -54508,7 +53336,6 @@ export default function OnboardingFormEnhanced() {
 
   useEffect(() => {
     if (profile) {
-      // If a profile exists (even a placeholder), reset the form with its data.
       reset({
         first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
         last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
@@ -54520,8 +53347,6 @@ export default function OnboardingFormEnhanced() {
         preferences: toObject(profile.preferences),
       });
     } else if (!isProfileLoading) {
-      // If loading is finished and there is still no profile,
-      // reset to a blank form. This prevents getting stuck.
       reset({
         first_name: "",
         last_name: "",
@@ -54542,11 +53367,21 @@ export default function OnboardingFormEnhanced() {
     }
 
     const updates: Partial<User_profilesUpdateSchema> = {};
-    // This logic now correctly handles nested dirty fields
     for (const key in dirtyFields) {
       const fieldName = key as keyof OnboardingFormData;
-      updates[fieldName] = data[fieldName];
+      // Skip preferences, we will handle it separately
+      if (fieldName !== 'preferences') {
+        updates[fieldName] = data[fieldName];
+      }
     }
+
+    // **THE FIX: Intelligently merge preferences**
+    const newPreferences = {
+      ...toObject(profile?.preferences), // Start with existing preferences
+      ...toObject(data.preferences),      // Overwrite with any form changes
+      needsOnboarding: false,            // Explicitly set onboarding to false
+    };
+    updates.preferences = newPreferences;
 
     if (Object.keys(updates).length > 0) {
       updateProfile({ id: user.id, data: updates });
@@ -54580,7 +53415,6 @@ export default function OnboardingFormEnhanced() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-3xl mx-auto'>
-      {/* Avatar and URL */}
       <div className='flex items-center gap-4'>
         <Image src={avatarUrl || "/default-avatar.png"} alt='Profile' width={64} height={64} className='w-16 h-16 rounded-full object-cover bg-gray-200' />
         <div className='flex-1'>
@@ -54616,7 +53450,6 @@ export default function OnboardingFormEnhanced() {
         </div>
       </div>
 
-      {/* Address Section */}
       <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
         <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Address Information</h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -54643,7 +53476,6 @@ export default function OnboardingFormEnhanced() {
         </div>
       </div>
 
-      {/* Preferences Section */}
       <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
         <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -55267,15 +54099,14 @@ export const EmployeeDetailsModal = ({
 <!-- path: config/areas.ts -->
 ```typescript
 // config/areas.ts
-
+import { z } from 'zod';
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
-import { Tables, TablesInsert } from "@/types/supabase-types";
+import { maintenance_areasInsertSchema, maintenance_areasRowSchema, lookup_typesRowSchema } from "@/schemas/zod-schemas";
 
-// --- TYPE DEFINITIONS ---
-export type MaintenanceArea = Tables<"maintenance_areas">;
-
-export type AreaType = Tables<"lookup_types">;
+// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
+export type MaintenanceArea = z.infer<typeof maintenance_areasRowSchema>;
+export type AreaType = z.infer<typeof lookup_typesRowSchema>;
 
 export interface MaintenanceAreaWithRelations extends MaintenanceArea {
   area_type: AreaType | null;
@@ -55283,54 +54114,32 @@ export interface MaintenanceAreaWithRelations extends MaintenanceArea {
   child_areas: MaintenanceAreaWithRelations[];
 }
 
-export interface DeleteProps {
-  tableName: string;
-  onSuccess?: () => void;
-}
-
 export interface AreaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TablesInsert<"maintenance_areas">) => void;
+  onSubmit: (data: z.infer<typeof maintenance_areasInsertSchema>) => void;
   area: MaintenanceAreaWithRelations | null;
   allAreas: MaintenanceArea[];
   areaTypes: AreaType[];
   isLoading: boolean;
 }
 
-export interface DetailItemProps {
-  label: string;
-  value: string | null | undefined;
-  icon?: React.ReactNode;
-}
-
+// --- CONFIGURATION (Unchanged) ---
 export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
-  entityName: 'area',
-  entityDisplayName: 'Area',
-  entityPluralName: 'Areas',
-  parentField: 'parent_area',
-  icon: FiBriefcase,
-  isHierarchical: true,
+  entityName: 'area', entityDisplayName: 'Area', entityPluralName: 'Areas',
+  parentField: 'parent_area', icon: FiBriefcase, isHierarchical: true,
   searchFields: ['name'],
   detailFields: [
     { key: 'name', label: 'Name', type: 'text' },
     { key: 'status', label: 'Status', type: 'status' },
-    { 
-      key: 'parent_area', 
-      label: 'Parent Area', 
-      type: 'parent' 
-    },
+    { key: 'parent_area', label: 'Parent Area', type: 'parent' },
     { key: 'created_at', label: 'Created At', type: 'date' },
   ],
   filterOptions: [
     {
-      key: 'status',
-      label: 'Status',
-      type: 'select',
+      key: 'status', label: 'Status', type: 'select',
       options: [
-        { value: '', label: 'All Status' },
-        { value: 'true', label: 'Active' },
-        { value: 'false', label: 'Inactive' },
+        { value: '', label: 'All Status' }, { value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' },
       ],
     },
   ],
@@ -55673,39 +54482,35 @@ export const desiredCpanConnectionColumnOrder = [
 <!-- path: config/designations.ts -->
 ```typescript
 // config/designations.ts
-
-import { DesignationWithRelations } from "@/app/dashboard/designations/page";
+import { z } from 'zod';
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
+import { employee_designationsRowSchema } from "@/schemas/zod-schemas";
 
+// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
+export type Designation = z.infer<typeof employee_designationsRowSchema>;
 
+export interface DesignationWithRelations extends Designation {
+  parent_designation: DesignationWithRelations | null;
+  child_designations: DesignationWithRelations[];
+}
+
+// --- CONFIGURATION (Unchanged) ---
 export const designationConfig: EntityConfig<DesignationWithRelations> = {
-  entityName: 'designation',
-  entityDisplayName: 'Designation',
-  entityPluralName: 'Designations',
-  parentField: 'parent_designation',
-  icon: FiBriefcase,
-  isHierarchical: true,
+  entityName: 'designation', entityDisplayName: 'Designation', entityPluralName: 'Designations',
+  parentField: 'parent_designation', icon: FiBriefcase, isHierarchical: true,
   searchFields: ['name'],
   detailFields: [
     { key: 'name', label: 'Name', type: 'text' },
     { key: 'status', label: 'Status', type: 'status' },
-    { 
-      key: 'parent_designation', 
-      label: 'Parent Designation', 
-      type: 'parent' 
-    },
+    { key: 'parent_designation', label: 'Parent Designation', type: 'parent' },
     { key: 'created_at', label: 'Created At', type: 'date' },
   ],
   filterOptions: [
     {
-      key: 'status',
-      label: 'Status',
-      type: 'select',
+      key: 'status', label: 'Status', type: 'select',
       options: [
-        { value: '', label: 'All Status' },
-        { value: 'true', label: 'Active' },
-        { value: 'false', label: 'Inactive' },
+        { value: '', label: 'All Status' }, { value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' },
       ],
     },
   ],
@@ -55833,82 +54638,6 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
     );
   };
   
-```
-
-<!-- path: config/helper-types.ts -->
-```typescript
-// config/helpers.ts
-
-import { Database, Tables } from "@/types/supabase-types";
-import { TABLES, VIEWS } from "@/config/table-column-keys";
-
-// Database schema types
-export type ViewName = keyof Database["public"]["Views"];
-export type TableName = keyof Database["public"]["Tables"];
-
-export type TableNames = keyof typeof TABLES;
-export type ViewNames = keyof typeof VIEWS;
-
-export type TableOrViewName = TableName | ViewName;
-
-export type CurrentTableName = keyof typeof TABLES;
-
-// A generic Row type helper that works for both tables and views
-export type GenericRow<T extends TableOrViewName> = T extends TableName
-  ? Tables<T>
-  : T extends ViewName
-  ? Database["public"]["Views"][T]["Row"]
-  : never;
-
-// This Mapped Type now correctly includes both Tables and Views.
-export type AllColumnKeys = {
-  [K in TableName]: (keyof Tables<K> & string)[];
-} & {
-  // Add a mapped type for Views. This merges the view keys into the type.
-  [K in ViewName]: (keyof Database["public"]["Views"][K]["Row"] & string)[];
-};
-
-
-
-export type ExcelFormat =
-  | "text"
-  | "number"
-  | "date"
-  | "currency"
-  | "percentage";
-export type ColumnTransform = (value: unknown) => unknown;
-
-export type ColumnMeta = {
-  title?: string;
-  excelHeader?: string;
-  excelFormat?: ExcelFormat;
-  transform?: ColumnTransform;
-};
-
-export type TableMetaMap = {
-  [K in TableName]?: Partial<Record<keyof Tables<K> & string, ColumnMeta>>;
-};
-
-export type UploadTableMeta<T extends TableName> = {
-  uploadType: "insert" | "upsert";
-  conflictColumn?: keyof Tables<T> & string;
-  isUploadEnabled?: boolean;
-};
-
-export type UploadMetaMap = {
-  [K in TableName]?: UploadTableMeta<K>;
-};
-
-// export function toTitleCase(str: string): string {
-//   return str
-//     .replace(/_/g, " ")
-//     .replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
-// }
-
-
-
-
-
 ```
 
 <!-- path: config/node-details-config.tsx -->
@@ -56576,6 +55305,49 @@ export function toTitleCase(str: string): string {
     .trim();
 }
 
+/**
+ * Generates a smart code from a name based on practical rules.
+ * - Multi-word: "Base Transceiver Station" -> "BTS"
+ * - Single long word: "Exchange" -> "EXC"
+ * - Single short word: "Node" -> "NODE"
+ * - Handles hyphens: "Point-to-Point" -> "PTP"
+ * @param name The input string.
+ * @returns The generated uppercase code.
+ */
+export function generateCodeFromName(name: string | null | undefined): string {
+  if (!name || typeof name !== 'string') return '';
+
+  // Clean up and split by spaces, underscores, or hyphens
+  const words = name
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(word => word.length > 0);
+
+  if (words.length === 0) {
+    return '';
+  }
+
+  // Case 1: Multiple words -> create an acronym
+  if (words.length > 1) {
+    return words
+      .map(word => word.charAt(0))
+      .join('')
+      .toLowerCase();
+  }
+
+  // Case 2: A single word
+  const singleWord = words[0];
+
+  // If the word is short (like an existing acronym), use the whole word.
+  if (singleWord.length <= 4) {
+    return singleWord.toLowerCase();
+  }
+
+  // If it's a longer word, create a 3-letter abbreviation.
+  return singleWord.substring(0, 3).toLowerCase();
+}
+
+
 export function inferExcelFormat(
   columnName: string
 ): "text" | "number" | "date" | "currency" | "percentage" | "json" {
@@ -56670,8 +55442,6 @@ export function inferDynamicColumnWidth(
   // add padding and clamp
   return Math.min(Math.max(Math.ceil(maxWidth) + PADDING, MIN_WIDTH), MAX_WIDTH);
 }
-
-
 ```
 
 <!-- path: config/user-details-config.tsx -->

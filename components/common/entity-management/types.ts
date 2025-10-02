@@ -52,7 +52,6 @@ export interface EntityConfig<T extends BaseEntity> {
 export interface UseEntityManagementProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<T[], Error>;
   config: EntityConfig<T>;
-  onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   onCreateNew: () => void;
