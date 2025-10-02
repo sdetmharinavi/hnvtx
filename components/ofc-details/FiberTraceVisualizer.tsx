@@ -9,7 +9,7 @@ interface FiberTraceVisualizerProps {
 }
 
 export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData }) => {
-    // FIX: Check for empty array and show a user-friendly message.
+  // Handle empty or invalid trace data
   if (!traceData || traceData.length === 0) {
     return (
         <div className="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -20,8 +20,28 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
     );
   }
 
+  // **RECOMMENDATION: Construct the full path string for the header.**
+  const fullPathArray = [
+    // Get the start node from the very first segment's details
+    traceData[0].details.split(' → ')[0],
+    // Get all the end nodes from each segment in the path
+    ...traceData.map(segment => segment.details.split(' → ')[1])
+  ];
+  const fullPathString = fullPathArray.join(' → ');
+
   return (
     <div className="p-4 font-sans">
+      {/* NEW: Header section to display the full path */}
+      <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+        <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2 flex items-center">
+          <MapPin className="w-4 h-4 mr-2" />
+          Complete Fiber Path
+        </h3>
+        <p className="text-base font-medium text-gray-800 dark:text-gray-100 leading-tight">
+          {fullPathString}
+        </p>
+      </div>
+
       <ol className="relative border-l-2 border-blue-200 dark:border-blue-800 ml-4">
         {traceData.map((segment, index) => {
           const [startNode, endNode] = segment.details.split(' → ');

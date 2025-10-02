@@ -1,4 +1,4 @@
--- Path: supabase/cleanup/99_reverse_setup.sql
+-- path: data/cleanup/99_reverse_setup.sql
 -- Description: Drops all custom database roles. This must be run last.
 
 DO $$
