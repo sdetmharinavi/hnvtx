@@ -18,6 +18,8 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: "theme-storage", // localStorage key
+      // **RECOMMENDATION: Add partialize to ensure consistent storage format**
+      partialize: (state) => ({ theme: state.theme }),
     }
   )
 );

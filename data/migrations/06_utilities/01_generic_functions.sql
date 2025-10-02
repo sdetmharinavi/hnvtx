@@ -1,4 +1,4 @@
--- Path: migrations/06_utilities/01_generic_functions.sql
+-- path: data/migrations/06_utilities/01_generic_functions.sql
 -- Description: A collection of generic, reusable utility functions for querying, pagination, and data manipulation.
 
 -- =================================================================
@@ -18,14 +18,13 @@ DECLARE
   cleaned_query TEXT;
   result_json JSON;
 BEGIN
-  cleaned_query := lower(trim(sql_query));
-  IF cleaned_query LIKE 'insert %' OR cleaned_query LIKE 'update %' OR cleaned_query LIKE 'delete %' OR
-     cleaned_query LIKE 'truncate %' OR cleaned_query LIKE 'drop %' OR cleaned_query LIKE 'create %' OR
-     cleaned_query LIKE 'alter %' OR cleaned_query LIKE 'grant %' OR cleaned_query LIKE 'revoke %' OR
-     cleaned_query LIKE 'set %'
-  THEN
+  -- **RECOMMENDATION: Use a regex to ensure the query is read-only.**
+  -- This checks if the trimmed query starts with 'select', 'with', or 'call' (case-insensitive).
+  cleaned_query := trim(lower(sql_query));
+  IF cleaned_query !~ '^(select|with|call)\s' THEN
     RAISE EXCEPTION 'Only read-only statements (SELECT, WITH, CALL) are allowed.';
   END IF;
+
   EXECUTE 'SELECT json_agg(t) FROM (' || sql_query || ') t' INTO result_json;
   RETURN json_build_object('result', COALESCE(result_json, '[]'::json));
 EXCEPTION WHEN OTHERS THEN

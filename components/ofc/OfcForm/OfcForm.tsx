@@ -1,5 +1,5 @@
 // Main OfcForm component
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
@@ -86,9 +86,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const startingNodeName = useMemo(() => allKnownNodes.find(n => n.id === startingNodeId)?.name || null, [allKnownNodes, startingNodeId]);
   const endingNodeName = useMemo(() => allKnownNodes.find(n => n.id === endingNodeId)?.name || null, [allKnownNodes, endingNodeId]);
 
-  const setValueWithType = <K extends keyof Ofc_cablesInsertSchema>(name: K, value: Ofc_cablesInsertSchema[K], options?: { shouldValidate?: boolean }) => {
+  const setValueWithType = useCallback(<K extends keyof Ofc_cablesInsertSchema>(name: K, value: Ofc_cablesInsertSchema[K], options?: { shouldValidate?: boolean }) => {
     setValue(name, value as PathValue<Ofc_cablesInsertSchema, K>, options);
-  };
+  }, [setValue]);
 
   const { existingRoutes, isLoading: routeGenerationLoading, generatedRouteName } =
     useRouteGeneration<Ofc_cablesRowSchema>({

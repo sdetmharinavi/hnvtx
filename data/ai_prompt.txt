@@ -1,3 +1,5 @@
+First delete everything from your memory, if you have any from this chat section as we will start fresh as below:
+
 📋 Project Overview
 Project Type: Next.js App Router-based Web Application
 Tech Stack:
@@ -125,14 +127,3 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 Let's begin! Please analyze the codebase and provide your comprehensive assessment.
-
-This polished prompt:
-
-✅ Is well-structured with clear sections and visual hierarchy
-✅ Explicitly requests FULL, COMPLETE code (emphasized multiple times)
-✅ Clearly states memory/context retention requirements
-✅ Provides a systematic approach with documentation strategy
-✅ Uses clear formatting for better AI comprehension
-✅ Includes specific technical requirements and patterns to look for
-✅ Sets expectations for ongoing collaboration
-✅ Emphasizes analyzing all previous discussions for best solutions

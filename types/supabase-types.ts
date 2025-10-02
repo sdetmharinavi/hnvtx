@@ -3908,6 +3908,17 @@ export type Database = {
           splice_id: string
         }[]
       }
+      get_bsnl_dashboard_data: {
+        Args: {
+          p_cable_types?: string[]
+          p_node_types?: string[]
+          p_query?: string
+          p_regions?: string[]
+          p_status?: boolean
+          p_system_types?: string[]
+        }
+        Returns: Json
+      }
       get_continuous_available_fibers: {
         Args: { p_path_id: string }
         Returns: {
@@ -4082,6 +4093,13 @@ export type Database = {
       recalculate_segments_for_cable: {
         Args: { p_cable_id: string }
         Returns: undefined
+      }
+      search_nodes_for_select: {
+        Args: { p_limit?: number; p_search_term?: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
       }
       trace_fiber_path: {
         Args: { p_start_fiber_no: number; p_start_segment_id: string }

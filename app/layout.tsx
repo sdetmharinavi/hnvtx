@@ -6,9 +6,7 @@ import PolyfillLoader from "@/components/polyfills/PolyfillLoader";
 import { ToastProvider } from "@/providers/ToastProvider";
 import ThemeProvider from "@/providers/ThemeProvider";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 
 // Load the main body font (Inter)
 const fontSans = localFont({
@@ -69,25 +67,38 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${fontSans.variable} ${fontHeading.variable} antialiased`}
-      >
-         {/* **THE FIX: Inline script to prevent theme flashing** */}
-         <script
+    <html lang='en' suppressHydrationWarning>
+      <body className={`${fontSans.variable} ${fontHeading.variable} antialiased`}>
+        {/* **THE FIX: Inline script to prevent theme flashing** */}
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  const storedState = localStorage.getItem('theme-storage');
-                  if (storedState) {
-                    const theme = JSON.parse(storedState).state.theme;
-                    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                      document.documentElement.classList.add('dark');
+                  let theme = 'system'; // Default to system
+                  const storedValue = localStorage.getItem('theme-storage');
+
+                  if (storedValue) {
+                    // Try to parse as JSON (new format)
+                    try {
+                      const parsed = JSON.parse(storedValue);
+                      if (parsed && parsed.state && typeof parsed.state.theme === 'string') {
+                        theme = parsed.state.theme;
+                      }
+                    } catch (e) {
+                      // If parsing fails, it might be the old raw string format
+                      if (typeof storedValue === 'string' && ['light', 'dark', 'system'].includes(storedValue)) {
+                        theme = storedValue;
+                      }
                     }
                   }
+                  
+                  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                  }
                 } catch (e) {
-                  console.error('Failed to apply initial theme from localStorage', e);
+                  console.error('Failed to apply initial theme', e);
                 }
               })();
             `,

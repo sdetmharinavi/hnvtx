@@ -6,7 +6,6 @@ import { useCallback, useMemo, useState } from "react";
 export function useEntityManagement<T extends BaseEntity>({
   entitiesQuery,
   config,
-  onEdit, // Prop is received but not used directly in the hook's logic
   onDelete,
   onCreateNew,
   selectedEntityId,
