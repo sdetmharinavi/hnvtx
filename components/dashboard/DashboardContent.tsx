@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import ColumnManagementProvider from "./ColumnManagementProvider";
 import DashboardHeader from "./DashboardHeader";
 import Sidebar from "../navigation/sidebar";
+import { usePathname } from "next/navigation";
 
 
 interface DashboardContentProps {
@@ -19,6 +20,11 @@ function DashboardContent({
   isMobile,
   showColumnManagement,
 }: DashboardContentProps) {
+  // Get page route
+  const pathname = usePathname();
+  // Check if the current page is the dashboard
+  const isDashboard = pathname === "/dashboard";
+
   return (
       <ColumnManagementProvider
         data={children as Record<string, unknown>[] | null}
@@ -41,7 +47,7 @@ function DashboardContent({
           <DashboardHeader onMenuClick={() => setIsCollapsed(false)} />
 
           {/* Main Content */}
-          <main>
+          <main className={isDashboard ? "" : "p-4"} >
             <div className="mx-auto max-w-full">
               {children as ReactNode}
             </div>
