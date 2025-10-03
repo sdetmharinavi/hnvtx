@@ -12,11 +12,11 @@ import { DataTableProps } from "@/components/table/datatable-types";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
-import { AuthTableOrViewName } from "@/hooks/database";
+import { TableOrViewName } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DEFAULTS } from "@/config/constants";
 
-interface TableToolbarProps<T extends AuthTableOrViewName>
+interface TableToolbarProps<T extends TableOrViewName>
   extends Pick<
     DataTableProps<T>,
     | "searchable"
@@ -43,7 +43,7 @@ interface TableToolbarProps<T extends AuthTableOrViewName>
   isExporting: boolean;
 }
 
-export function TableToolbar<T extends AuthTableOrViewName>({
+export function TableToolbar<T extends TableOrViewName>({
   title,
   searchable,
   filterable,

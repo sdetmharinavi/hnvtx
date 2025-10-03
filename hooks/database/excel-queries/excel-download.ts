@@ -1,12 +1,12 @@
 
-import { AuthTableOrViewName, isTableName, Row, TableName, ViewName } from "../queries-type-helpers";
+import { TableOrViewName, isTableName, Row, ViewName, PublicTableName, PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
 import * as ExcelJS from "exceljs";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { useMutation } from "@tanstack/react-query";
-import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelDownloadResult, formatCellValue, getDefaultStyles, RPCConfig, sanitizeFileName, UseExcelDownloadOptions } from "./excel-helpers";
+import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelDownloadResult, formatCellValue, getDefaultStyles, RPCConfig, sanitizeFileName, UseExcelDownloadOptions } from "@/hooks/database/excel-queries/excel-helpers";
 import { toast } from "sonner";
-import { applyFilters } from "../utility-functions";
+import { applyFilters } from "@/hooks/database/utility-functions";
 
 // Extended types for new functionality
 interface OrderByOption {
@@ -14,20 +14,20 @@ column: string;
 ascending?: boolean;
 }
 
-interface EnhancedDownloadOptions<T extends AuthTableOrViewName> extends DownloadOptions<T> {
+interface EnhancedDownloadOptions<T extends TableOrViewName> extends DownloadOptions<T> {
 orderBy?: OrderByOption[];
 wrapText?: boolean;
 autoFitColumns?: boolean;
 }
 
-interface EnhancedUseExcelDownloadOptions<T extends AuthTableOrViewName> extends UseExcelDownloadOptions<T> {
+interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName> extends UseExcelDownloadOptions<T> {
 defaultOrderBy?: OrderByOption[];
 defaultWrapText?: boolean;
 defaultAutoFitColumns?: boolean;
 }
 
 // Hook for RPC-based downloads with full type safety
-export function useRPCExcelDownload<T extends AuthTableOrViewName>(
+export function useRPCExcelDownload<T extends TableOrViewName>(
   supabase: SupabaseClient<Database>,
   options?: EnhancedUseExcelDownloadOptions<T>
 ) {
@@ -300,7 +300,7 @@ export function useRPCExcelDownload<T extends AuthTableOrViewName>(
 }
 
 // Hook for traditional table/view downloads with enhanced features
-export function useTableExcelDownload<T extends AuthTableOrViewName>(
+export function useTableExcelDownload<T extends PublicTableOrViewName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
   options?: EnhancedUseExcelDownloadOptions<T>
@@ -359,7 +359,7 @@ export function useTableExcelDownload<T extends AuthTableOrViewName>(
           .map((col) => col.dataIndex)
           .join(",");
         let query = isTableName(tableName)
-          ? supabase.from(tableName as TableName).select(selectFields)
+          ? supabase.from(tableName as PublicTableName).select(selectFields)
           : supabase.from(tableName as ViewName).select(selectFields);
 
         if (filters) query = applyFilters(query, filters);

@@ -1,11 +1,11 @@
 // @/components/table/TableFilterPanel.tsx
 import React, { useState, useEffect } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
+import { TableOrViewName, Row, Filters } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DEFAULTS } from "@/config/constants";
 
-interface TableFilterPanelProps<T extends AuthTableOrViewName> {
+interface TableFilterPanelProps<T extends TableOrViewName> {
   columns: Column<Row<T>>[];
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
@@ -36,7 +36,7 @@ const DebouncedInput = ({ value, onChange, placeholder, className }: { value: st
     );
 };
 
-export function TableFilterPanel<T extends AuthTableOrViewName>({
+export function TableFilterPanel<T extends TableOrViewName>({
   columns,
   filters,
   setFilters,

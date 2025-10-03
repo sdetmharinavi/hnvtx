@@ -13,7 +13,7 @@ import {
   TableFilterPanel,
 } from './';
 import { DataTableProps, SortConfig } from '@/components/table/datatable-types';
-import { AuthTableOrViewName, Row, Filters } from '@/hooks/database';
+import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
 import {
   Column,
   DownloadOptions,
@@ -22,11 +22,11 @@ import {
 import { cn } from '@/lib/utils';
 
 // Define a type for your row that guarantees a unique identifier
-type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
+type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
 // --- State Management with useReducer ---
 
-type TableState<T extends AuthTableOrViewName> = {
+type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
   sortConfig: SortConfig<Row<T>> | null;
   filters: Filters;
@@ -53,12 +53,12 @@ type BaseTableAction<R> =
   | { type: 'TOGGLE_FILTERS'; payload?: boolean };
 
 // Table-specific action type that extends the base with table-aware actions
-type TableAction<T extends AuthTableOrViewName> =
+type TableAction<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
   | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
   | { type: 'SET_FILTERS'; payload: Filters };
 
-function tableReducer<T extends AuthTableOrViewName>(
+function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
   action: TableAction<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
@@ -98,7 +98,7 @@ function tableReducer<T extends AuthTableOrViewName>(
   }
 }
 
-export function DataTable<T extends AuthTableOrViewName>({
+export function DataTable<T extends PublicTableOrViewName>({
   data = [],
   tableName,
   columns,

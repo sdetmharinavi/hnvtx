@@ -1,9 +1,9 @@
 // @/components/table/TableColumnSelector.tsx
 import React, { useEffect, useRef } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { AuthTableOrViewName, Row } from "@/hooks/database";
+import { TableOrViewName, Row } from "@/hooks/database";
 
-interface TableColumnSelectorProps<T extends AuthTableOrViewName> {
+interface TableColumnSelectorProps<T extends TableOrViewName> {
   columns: Column<Row<T>>[];
   visibleColumns: string[];
   setVisibleColumns: (columns: string[]) => void;
@@ -11,7 +11,7 @@ interface TableColumnSelectorProps<T extends AuthTableOrViewName> {
   setShowColumnSelector: (show: boolean) => void;
 }
 
-export function TableColumnSelector<T extends AuthTableOrViewName>({
+export function TableColumnSelector<T extends TableOrViewName>({
   columns,
   visibleColumns,
   setVisibleColumns,

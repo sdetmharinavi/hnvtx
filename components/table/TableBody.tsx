@@ -2,16 +2,16 @@
 import React, { useRef, useEffect } from "react";
 import { FiEdit3, FiCheck, FiX } from "react-icons/fi";
 import { DataTableProps, TableAction } from "@/components/table/datatable-types";
-import { AuthTableOrViewName, Row } from "@/hooks/database";
+import { TableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
  
 
 // Define a type for your row that guarantees a unique identifier
-type DataRow<T extends AuthTableOrViewName> = Row<T> & { id: string | number };
+type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
 
-interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "striped" | "hoverable" | "loading" | "emptyText"> {
+interface TableBodyProps<T extends TableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "striped" | "hoverable" | "loading" | "emptyText"> {
   actions?: TableAction<T>[];
   processedData: DataRow<T>[];
   visibleColumns: Column<Row<T>>[];
@@ -27,7 +27,7 @@ interface TableBodyProps<T extends AuthTableOrViewName> extends Pick<DataTablePr
   isLoading: boolean;
 }
 
-interface TableRowProps<T extends AuthTableOrViewName> extends Omit<TableBodyProps<T>, 'processedData' | 'loading' | 'emptyText'> {
+interface TableRowProps<T extends TableOrViewName> extends Omit<TableBodyProps<T>, 'processedData' | 'loading' | 'emptyText'> {
     record: DataRow<T>;
     rowIndex: number;
     isSelected: boolean;
@@ -36,7 +36,7 @@ interface TableRowProps<T extends AuthTableOrViewName> extends Omit<TableBodyPro
 const densityClasses = { compact: "py-1 px-3", default: "py-3 px-4", comfortable: "py-4 px-6" };
 
 // Base Table Row component (generic). We'll memoize it below with a type assertion to preserve generics.
-function TableRowBase<T extends AuthTableOrViewName>({
+function TableRowBase<T extends TableOrViewName>({
     record,
     rowIndex,
     isSelected,
@@ -170,12 +170,12 @@ function TableRowBase<T extends AuthTableOrViewName>({
 }
 
 // Memoized Table Row component for performance optimization (preserve generics via assertion)
-const MemoizedTableRow = React.memo(TableRowBase) as <T extends AuthTableOrViewName>(
+const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>(
   props: TableRowProps<T>
 ) => React.ReactElement;
 
 // Base TableBody component (generic). We'll memoize with a type assertion below to preserve generics.
-function TableBodyBase<T extends AuthTableOrViewName>({
+function TableBodyBase<T extends TableOrViewName>({
   processedData,
   visibleColumns,
   loading,
@@ -234,6 +234,6 @@ function TableBodyBase<T extends AuthTableOrViewName>({
   );
 }
 
-export const TableBody = React.memo(TableBodyBase) as <T extends AuthTableOrViewName>(
+export const TableBody = React.memo(TableBodyBase) as <T extends TableOrViewName>(
   props: TableBodyProps<T>
 ) => React.ReactElement;
