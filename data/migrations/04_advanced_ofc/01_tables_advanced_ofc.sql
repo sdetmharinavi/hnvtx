@@ -25,6 +25,25 @@ CREATE TABLE IF NOT EXISTS public.cable_segments (
   UNIQUE (original_cable_id, segment_order)
 );
 
+CREATE TABLE IF NOT EXISTS public.fiber_splices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    jc_id UUID NOT NULL REFERENCES public.junction_closures(id) ON DELETE CASCADE,
+    incoming_segment_id UUID NOT NULL REFERENCES public.cable_segments(id) ON DELETE CASCADE,
+    incoming_fiber_no INT NOT NULL,
+    outgoing_segment_id UUID REFERENCES public.cable_segments(id) ON DELETE CASCADE,
+    outgoing_fiber_no INT,
+    splice_type TEXT NOT NULL DEFAULT 'pass_through' CHECK (splice_type IN ('pass_through', 'branch', 'termination')),
+    -- status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'faulty', 'reserved')),
+    logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
+    loss_db NUMERIC(5, 2),
+    -- otdr_length_km NUMERIC(10, 3),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT unique_incoming_fiber_in_jc UNIQUE (jc_id, incoming_segment_id, incoming_fiber_no),
+    CONSTRAINT unique_outgoing_fiber_in_jc UNIQUE (jc_id, outgoing_segment_id, outgoing_fiber_no)
+);
+COMMENT ON TABLE public.fiber_splices IS 'Tracks individual fiber connections (splices) between cable segments within a junction closure.';
+
 CREATE TABLE IF NOT EXISTS public.logical_fiber_paths (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   path_name TEXT,
@@ -57,22 +76,3 @@ CREATE TABLE IF NOT EXISTS public.logical_path_segments (
   UNIQUE (logical_path_id, path_order)
 );
 
--- FIX: This table now correctly references cable_segments, not ofc_cables.
-CREATE TABLE IF NOT EXISTS public.fiber_splices (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    jc_id UUID NOT NULL REFERENCES public.junction_closures(id) ON DELETE CASCADE,
-    incoming_segment_id UUID NOT NULL REFERENCES public.cable_segments(id) ON DELETE CASCADE,
-    incoming_fiber_no INT NOT NULL,
-    outgoing_segment_id UUID REFERENCES public.cable_segments(id) ON DELETE CASCADE,
-    outgoing_fiber_no INT,
-    splice_type TEXT NOT NULL DEFAULT 'pass_through' CHECK (splice_type IN ('pass_through', 'branch', 'termination')),
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'faulty', 'reserved')),
-    logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
-    loss_db NUMERIC(5, 2),
-    otdr_length_km NUMERIC(10, 3),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    CONSTRAINT unique_incoming_fiber_in_jc UNIQUE (jc_id, incoming_segment_id, incoming_fiber_no),
-    CONSTRAINT unique_outgoing_fiber_in_jc UNIQUE (jc_id, outgoing_segment_id, outgoing_fiber_no)
-);
-COMMENT ON TABLE public.fiber_splices IS 'Tracks individual fiber connections (splices) between cable segments within a junction closure.';

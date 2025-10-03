@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { junction_closuresInsertSchema } from '@/schemas/zod-schemas';
 import { Filters, useTableQuery } from '@/hooks/database';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { Equipment } from '@/schemas/custom-schemas';
+import { JointBox } from '@/schemas/custom-schemas';
 
 
 interface JcFormModalProps {
@@ -20,7 +20,7 @@ interface JcFormModalProps {
   onClose: () => void;
   onSave: () => void; // Callback to trigger a refetch
   routeId: string | null;
-  editingJc: Equipment | null;
+  editingJc: JointBox | null;
   rkm: number | null;
 }
 
@@ -65,7 +65,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     if (isOpen) {
       if (editingJc) {
         // For planned equipment, we need to map the fields appropriately
-        // Since Equipment doesn't have node_id, we'll need to handle this differently
+        // Since JointBox doesn't have node_id, we'll need to handle this differently
         reset({
           node_id: editingJc.node_id,
           position_km: editingJc.attributes.position_on_route
@@ -146,7 +146,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         insertError = result.error;
       }
 
-      console.log('Function result:', { jcData, insertError });
+      // console.log('Function result:', { jcData, insertError });
 
       if (insertError) {
         console.error('Database error:', insertError);
@@ -183,10 +183,10 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     }
   };
 
-  console.log('=== JcFormModal RENDERED ===');
-  console.log('isOpen:', isOpen);
-  console.log('routeId:', routeId);
-  console.log('editingJc:', editingJc);
+  // console.log('=== JcFormModal RENDERED ===');
+  // console.log('isOpen:', isOpen);
+  // console.log('routeId:', routeId);
+  // console.log('editingJc:', editingJc);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >

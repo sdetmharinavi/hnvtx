@@ -132,95 +132,76 @@ DECLARE
     v_end_fiber INT;
     path_segments RECORD;
 BEGIN
-    IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
-        v_splice := NEW;
-    ELSIF (TG_OP = 'DELETE') THEN
-        v_splice := OLD;
-    END IF;
-
-    -- On DELETE, find all related segments and reset them before exiting.
     IF (TG_OP = 'DELETE') THEN
-        FOR path_segments IN (
-            WITH RECURSIVE full_path AS (
-                (SELECT OLD.incoming_segment_id as segment_id, OLD.incoming_fiber_no as fiber_no, ARRAY[OLD.id] as visited
-                UNION ALL
-                SELECT
-                    CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
-                    CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
-                    p.visited || s.id
-                FROM full_path p JOIN fiber_splices s ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)) AND s.id <> OLD.id
-                WHERE NOT (s.id = ANY(p.visited)))
-                UNION ALL
-                (SELECT OLD.outgoing_segment_id, OLD.outgoing_fiber_no, ARRAY[OLD.id]
-                UNION ALL
-                SELECT
-                    CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
-                    CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
-                    p.visited || s.id
-                FROM full_path p JOIN fiber_splices s ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)) AND s.id <> OLD.id
-                WHERE NOT (s.id = ANY(p.visited)))
-            )
-            SELECT cs.original_cable_id, fp.fiber_no FROM full_path fp JOIN cable_segments cs ON fp.segment_id = cs.id
-        )
-        LOOP
-            UPDATE public.ofc_connections
-            SET updated_fiber_no_sn = fiber_no_sn, updated_fiber_no_en = fiber_no_en
-            WHERE ofc_id = path_segments.original_cable_id AND fiber_no_sn = path_segments.fiber_no;
-        END LOOP;
+        -- When a splice is deleted, reset the connections on both sides to their original state
+        UPDATE public.ofc_connections SET updated_fiber_no_sn = fiber_no_sn, updated_fiber_no_en = fiber_no_en
+        WHERE ofc_id = (SELECT original_cable_id FROM public.cable_segments WHERE id = OLD.incoming_segment_id)
+          AND fiber_no_sn = OLD.incoming_fiber_no;
+
+        IF OLD.outgoing_segment_id IS NOT NULL THEN
+             UPDATE public.ofc_connections SET updated_fiber_no_sn = fiber_no_sn, updated_fiber_no_en = fiber_no_en
+             WHERE ofc_id = (SELECT original_cable_id FROM public.cable_segments WHERE id = OLD.outgoing_segment_id)
+               AND fiber_no_sn = OLD.outgoing_fiber_no;
+        END IF;
         RETURN OLD;
     END IF;
 
-    -- For INSERT/UPDATE, find the ultimate start and end of the path
-    SELECT fiber_no INTO v_start_fiber FROM (
-        WITH RECURSIVE trace AS (
-            SELECT 1 as step, v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited
-            UNION ALL
-            SELECT p.step + 1,
-                   CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
-                   CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
-                   p.visited || s.id
-            FROM trace p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-            WHERE NOT (s.id = ANY(p.visited))
-        ) SELECT fiber_no FROM trace ORDER BY step DESC LIMIT 1
-    ) AS backwards;
-    
-    IF v_splice.outgoing_segment_id IS NULL THEN
-        v_end_fiber := 0;
-    ELSE
-        SELECT fiber_no INTO v_end_fiber FROM (
-            WITH RECURSIVE trace AS (
-                SELECT 1 as step, v_splice.outgoing_segment_id as segment_id, v_splice.outgoing_fiber_no as fiber_no, ARRAY[v_splice.id] as visited
-                UNION ALL
-                SELECT p.step + 1,
-                       CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
-                       CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
-                       p.visited || s.id
-                FROM trace p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-                WHERE NOT (s.id = ANY(p.visited))
-            ) SELECT fiber_no FROM trace ORDER BY step DESC LIMIT 1
-        ) AS forwards;
-        IF NOT FOUND THEN v_end_fiber := 0; END IF;
-    END IF;
+    -- For INSERT or UPDATE
+    v_splice := NEW;
 
-    -- Update all connections in the newly formed logical path
-    FOR path_segments IN (
-        WITH RECURSIVE full_path AS (
-            (SELECT v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited
+    -- Trace backwards to find the ultimate start fiber
+    WITH RECURSIVE trace_to_start AS (
+        SELECT 1 as step, v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
+        UNION ALL
+        SELECT
+            p.step + 1,
+            CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
+            CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
+            p.visited_splices || s.id
+        FROM trace_to_start p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        WHERE NOT (s.id = ANY(p.visited_splices))
+    )
+    SELECT fiber_no INTO v_start_fiber FROM trace_to_start ORDER BY step DESC LIMIT 1;
+    
+    -- Trace forwards to find the ultimate end fiber
+    IF v_splice.outgoing_segment_id IS NULL THEN
+        v_end_fiber := 0; -- A terminated fiber
+    ELSE
+        WITH RECURSIVE trace_to_end AS (
+            SELECT 1 as step, v_splice.outgoing_segment_id as segment_id, v_splice.outgoing_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
             UNION ALL
             SELECT
+                p.step + 1,
                 CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
                 CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
-                p.visited || s.id
-            FROM full_path p JOIN fiber_splices s ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no))
-            WHERE NOT (s.id = ANY(p.visited)))
+                p.visited_splices || s.id
+            FROM trace_to_end p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+            WHERE NOT (s.id = ANY(p.visited_splices))
         )
-        SELECT cs.original_cable_id, fp.fiber_no FROM full_path fp JOIN cable_segments cs ON fp.segment_id = cs.id
+        SELECT fiber_no INTO v_end_fiber FROM trace_to_end ORDER BY step DESC LIMIT 1;
+        IF NOT FOUND THEN v_end_fiber := 0; END IF; -- Path terminates at the end
+    END IF;
+
+    -- Update all connections that are part of this logical path
+    WITH RECURSIVE full_path AS (
+        SELECT 1 as step, v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
+        UNION ALL
+        SELECT
+            p.step + 1,
+            CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
+            CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
+            p.visited_splices || s.id
+        FROM full_path p JOIN fiber_splices s ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no))
+        WHERE NOT (s.id = ANY(p.visited_splices))
     )
-    LOOP
-        UPDATE public.ofc_connections
-        SET updated_fiber_no_sn = v_start_fiber, updated_fiber_no_en = v_end_fiber
-        WHERE ofc_id = path_segments.original_cable_id AND fiber_no_sn = path_segments.fiber_no;
-    END LOOP;
+    UPDATE public.ofc_connections
+    SET
+        updated_fiber_no_sn = v_start_fiber,
+        updated_fiber_no_en = v_end_fiber
+    WHERE (ofc_id, fiber_no_sn) IN (
+        SELECT cs.original_cable_id, fp.fiber_no
+        FROM full_path fp JOIN cable_segments cs ON fp.segment_id = cs.id
+    );
 
     RETURN NEW;
 END;
@@ -230,7 +211,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.manage_splice(
     p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
     p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
-    p_splice_type TEXT DEFAULT 'pass_through', p_otdr_length_km NUMERIC DEFAULT NULL
+    p_splice_type TEXT DEFAULT 'pass_through', p_loss_db NUMERIC DEFAULT NULL
 )
 RETURNS RECORD
 LANGUAGE plpgsql
@@ -241,14 +222,14 @@ DECLARE
     result RECORD;
 BEGIN
     IF p_action = 'create' THEN
-        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type, otdr_length_km)
-        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, p_splice_type, p_otdr_length_km)
+        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type, loss_db)
+        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, p_splice_type, p_loss_db)
         RETURNING id, 'created' INTO result;
     ELSIF p_action = 'delete' THEN
         DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
         IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
     ELSIF p_action = 'update_otdr' THEN
-        UPDATE public.fiber_splices SET otdr_length_km = p_otdr_length_km, updated_at = now()
+        UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
         WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
         IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
     ELSE
@@ -436,34 +417,94 @@ $$;
 GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
 
 -- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
-CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(p_jc_id UUID, p_segment1_id UUID, p_segment2_id UUID)
+CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(
+    p_jc_id UUID, 
+    p_segment1_id UUID, 
+    p_segment2_id UUID,
+    p_loss_db NUMERIC DEFAULT 0
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    segment1_fibers INT; segment2_fibers INT; i INT; splice_count INT := 0;
-    available_fibers_s1 INT[]; available_fibers_s2 INT[];
+    segment1_fibers INT; 
+    segment2_fibers INT; 
+    i INT; 
+    splice_count INT := 0;
+    available_fibers_s1 INT[]; 
+    available_fibers_s2 INT[];
 BEGIN
+    -- Get fiber counts for both segments
     SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
     SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
-    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN RAISE EXCEPTION 'One or both segments not found.'; END IF;
+    
+    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN 
+        RAISE EXCEPTION 'One or both segments not found.'; 
+    END IF;
 
-    SELECT array_agg(s.i) INTO available_fibers_s1 FROM generate_series(1, segment1_fibers) s(i)
-    WHERE NOT EXISTS (SELECT 1 FROM public.fiber_splices fs WHERE fs.jc_id = p_jc_id AND ((fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)));
-    SELECT array_agg(s.i) INTO available_fibers_s2 FROM generate_series(1, segment2_fibers) s(i)
-    WHERE NOT EXISTS (SELECT 1 FROM public.fiber_splices fs WHERE fs.jc_id = p_jc_id AND ((fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)));
+    -- Find available fibers in segment 1
+    SELECT array_agg(s.i) INTO available_fibers_s1 
+    FROM generate_series(1, segment1_fibers) s(i)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
+        AND (
+            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) 
+            OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)
+        )
+    );
+    
+    -- Find available fibers in segment 2
+    SELECT array_agg(s.i) INTO available_fibers_s2 
+    FROM generate_series(1, segment2_fibers) s(i)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
+        AND (
+            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) 
+            OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)
+        )
+    );
 
+    -- Create splices for each available fiber pair
     FOR i IN 1..LEAST(cardinality(available_fibers_s1), cardinality(available_fibers_s2)) LOOP
-        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type)
-        VALUES (p_jc_id, p_segment1_id, available_fibers_s1[i], p_segment2_id, available_fibers_s2[i], 'pass_through');
+        INSERT INTO public.fiber_splices (
+            jc_id, 
+            incoming_segment_id, 
+            incoming_fiber_no, 
+            outgoing_segment_id, 
+            outgoing_fiber_no, 
+            splice_type,
+            loss_db
+        )
+        VALUES (
+            p_jc_id, 
+            p_segment1_id, 
+            available_fibers_s1[i], 
+            p_segment2_id, 
+            available_fibers_s2[i], 
+            'pass_through',
+            p_loss_db
+        );
         splice_count := splice_count + 1;
     END LOOP;
-    RETURN jsonb_build_object('status', 'success', 'splices_created', splice_count);
+    
+    RETURN jsonb_build_object(
+        'status', 'success', 
+        'splices_created', splice_count,
+        'loss_db_applied', p_loss_db
+    );
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID) TO authenticated;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) TO authenticated;
+
+-- Optional: Keep backward compatibility with old function signature
+COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
+'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
 
 -- Description: Get a list of all cable segments present at a specific Junction Closure.
 CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)

@@ -962,11 +962,9 @@ export type Database = {
           jc_id: string
           logical_path_id: string | null
           loss_db: number | null
-          otdr_length_km: number | null
           outgoing_fiber_no: number | null
           outgoing_segment_id: string | null
           splice_type: string
-          status: string
           updated_at: string | null
         }
         Insert: {
@@ -977,11 +975,9 @@ export type Database = {
           jc_id: string
           logical_path_id?: string | null
           loss_db?: number | null
-          otdr_length_km?: number | null
           outgoing_fiber_no?: number | null
           outgoing_segment_id?: string | null
           splice_type?: string
-          status?: string
           updated_at?: string | null
         }
         Update: {
@@ -992,11 +988,9 @@ export type Database = {
           jc_id?: string
           logical_path_id?: string | null
           loss_db?: number | null
-          otdr_length_km?: number | null
           outgoing_fiber_no?: number | null
           outgoing_segment_id?: string | null
           splice_type?: string
-          status?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -3818,25 +3812,15 @@ export type Database = {
           result: Json
         }[]
       }
-      apply_cross_joint_splicing: {
-        Args: {
-          p_fiber_mapping: Json
-          p_incoming_segment_id: string
-          p_jc_id: string
-          p_outgoing_segment_id: string
-        }
-        Returns: number
-      }
-      apply_straight_joint_splicing: {
-        Args: {
-          p_incoming_segment_id: string
-          p_jc_id: string
-          p_outgoing_segment_id: string
-        }
-        Returns: number
-      }
       auto_splice_straight_segments: {
-        Args: { p_jc_id: string; p_segment1_id: string; p_segment2_id: string }
+        Args:
+          | {
+              p_jc_id: string
+              p_loss_db?: number
+              p_segment1_id: string
+              p_segment2_id: string
+            }
+          | { p_jc_id: string; p_segment1_id: string; p_segment2_id: string }
         Returns: Json
       }
       build_where_clause: {
@@ -3855,29 +3839,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      commit_route_evolution: {
-        Args: { p_planned_equipment: Json; p_route_id: string }
-        Returns: Json
-      }
-      create_cable_segments_on_jc_add: {
-        Args: { p_jc_id: string; p_ofc_cable_id: string }
-        Returns: {
-          distance_km: number
-          end_node_id: string
-          fiber_count: number
-          segment_id: string
-          segment_order: number
-          start_node_id: string
-        }[]
-      }
-      create_initial_fiber_connections: {
-        Args: { p_segment_id: string }
-        Returns: number
-      }
-      delete_path_segment_and_reorder: {
-        Args: { p_path_id: string; p_segment_id: string }
-        Returns: undefined
-      }
       deprovision_logical_path: {
         Args: { p_path_id: string }
         Returns: undefined
@@ -3891,21 +3852,6 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
-        }[]
-      }
-      get_all_splices: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          incoming_fiber_no: number
-          incoming_segment_id: string
-          jc_id: string
-          jc_name: string
-          jc_position_km: number
-          loss_db: number
-          otdr_length_km: number
-          outgoing_fiber_no: number
-          outgoing_segment_id: string
-          splice_id: string
         }[]
       }
       get_bsnl_dashboard_data: {
@@ -3935,23 +3881,6 @@ export type Database = {
           active_count: number
           inactive_count: number
           total_count: number
-        }[]
-      }
-      get_fiber_path: {
-        Args: {
-          p_end_node_id: string
-          p_fiber_number: number
-          p_start_node_id: string
-        }
-        Returns: {
-          connection_type: string
-          distance_km: number
-          end_node_id: string
-          fiber_no_en: number
-          fiber_no_sn: number
-          segment_id: string
-          segment_order: number
-          start_node_id: string
         }[]
       }
       get_jc_splicing_details: {
@@ -4008,15 +3937,6 @@ export type Database = {
         }
         Returns: Json
       }
-      get_segments_at_jc: {
-        Args: { p_jc_id: string }
-        Returns: {
-          fiber_count: number
-          id: string
-          original_cable_name: string
-          segment_order: number
-        }[]
-      }
       get_system_path_details: {
         Args: { p_path_id: string }
         Returns: {
@@ -4056,26 +3976,13 @@ export type Database = {
           p_incoming_fiber_no?: number
           p_incoming_segment_id?: string
           p_jc_id: string
-          p_otdr_length_km?: number
+          p_loss_db?: number
           p_outgoing_fiber_no?: number
           p_outgoing_segment_id?: string
           p_splice_id?: string
           p_splice_type?: string
         }
         Returns: Record<string, unknown>
-      }
-      provision_logical_path: {
-        Args: {
-          p_path_name: string
-          p_physical_path_id: string
-          p_protection_fiber_no: number
-          p_system_id: string
-          p_working_fiber_no: number
-        }
-        Returns: {
-          protection_path_id: string
-          working_path_id: string
-        }[]
       }
       provision_ring_path: {
         Args: {

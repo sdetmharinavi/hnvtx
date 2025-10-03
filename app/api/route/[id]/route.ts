@@ -4,7 +4,7 @@ import z from 'zod';
 
 // It is NOT a database model, but an API contract.
 const evolutionCommitPayloadSchema = z.object({
-    plannedEquipment: z.array(z.object({
+    plannedJointBoxes: z.array(z.object({
       name: z.string(),
       latitude: z.number(),
       longitude: z.number(),
@@ -12,17 +12,17 @@ const evolutionCommitPayloadSchema = z.object({
         position_on_route: z.number().min(0).max(100),
       }),
     })),
-    // plannedSegments: z.array(z.object({
-    //   segment_order: z.number(),
-    //   start_node_id: z.string(),
-    //   end_node_id: z.string(),
-    //   fiber_count: z.number(),
-    //   distance_km: z.number(),
-    // })),
-    // plannedSplices: z.array(z.object({
-    //   fiber_count: z.number(),
-    //   distance_km: z.number(),
-    // })),
+    plannedSegments: z.array(z.object({
+      segment_order: z.number(),
+      start_node_id: z.string(),
+      end_node_id: z.string(),
+      fiber_count: z.number(),
+      distance_km: z.number(),
+    })),
+    plannedSplices: z.array(z.object({
+      fiber_count: z.number(),
+      distance_km: z.number(),
+    })),
   });
   
   // Infer the TypeScript type from the schema.
@@ -58,7 +58,7 @@ export async function GET(
 
     if (jcError) throw new Error(`JC fetch error: ${jcError.message}`);
 
-    const equipment = (jcData || []).map(jc => ({
+    const jointBoxes = (jcData || []).map(jc => ({
       ...jc,
       status: 'existing' as const,
       attributes: {
@@ -84,12 +84,19 @@ export async function GET(
         // Add the nested objects the client side logic expects for start/end sites
         start_site: { id: routeData.sn_id, name: routeData.sn_name },
         end_site: { id: routeData.en_id, name: routeData.en_name },
-        evolution_status: segmentData && segmentData.length > 1 ? 'fully_segmented' : (equipment.length > 0 ? 'with_jcs' : 'simple')
+        evolution_status: segmentData && segmentData.length > 1 ? 'fully_segmented' : (jointBoxes.length > 0 ? 'with_jcs' : 'simple')
       },
-      equipment,
+      jointBoxes,
       segments: segmentData || [],
       splices: [] // Placeholder for splices
     };
+
+    // console.log("routeData", routeData);
+    // console.log("jcData", jcData);
+    // console.log("jointBoxes", jointBoxes);
+    // console.log("segmentData", segmentData);
+    // console.log("payload", payload);
+
 
     return NextResponse.json(payload);
 
@@ -116,14 +123,14 @@ export async function POST(
       // Validate the incoming payload against our strict Zod schema
       const validationResult = evolutionCommitPayloadSchema.safeParse(payload);
       if (!validationResult.success) {
-        return NextResponse.json({ error: 'Invalid payload structure.', details: validationResult.error.flatten() }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid payload structure.', details: z.treeifyError(validationResult.error) }, { status: 400 });
       }
   
       const supabase = await createClient();
   
       const { data, error } = await supabase.rpc('commit_route_evolution', {
         p_route_id: routeId,
-        p_planned_equipment: validationResult.data.plannedEquipment,
+        p_planned_equipment: validationResult.data.plannedJointBoxes,
       });
       
       if (error) throw error;

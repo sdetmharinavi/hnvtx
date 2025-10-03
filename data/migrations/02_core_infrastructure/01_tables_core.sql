@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS public.ofc_cables (
 -- OFC Connection Details (Fiber connections between nodes)
 CREATE TABLE IF NOT EXISTS public.ofc_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- **THE FIX: Added ON DELETE CASCADE to this line.**
+  -- **Added ON DELETE CASCADE to this line.**
   ofc_id UUID REFERENCES public.ofc_cables (id) ON DELETE CASCADE NOT NULL,
   fiber_no_sn INTEGER NOT NULL,
   fiber_no_en INTEGER NOT NULL,

@@ -756,11 +756,9 @@ export type Fiber_splicesRow = {
     jc_id: string;
     logical_path_id: string | null;
     loss_db: number | null;
-    otdr_length_km: number | null;
     outgoing_fiber_no: number | null;
     outgoing_segment_id: string | null;
     splice_type: string;
-    status: string;
     updated_at: string | null;
 };
 
@@ -772,11 +770,9 @@ export type Fiber_splicesInsert = {
     jc_id: string;
     logical_path_id?: string | null;
     loss_db?: number | null;
-    otdr_length_km?: number | null;
     outgoing_fiber_no?: number | null;
     outgoing_segment_id?: string | null;
     splice_type?: string;
-    status?: string;
     updated_at?: string | null;
 };
 
@@ -788,11 +784,9 @@ export type Fiber_splicesUpdate = {
     jc_id?: string;
     logical_path_id?: string | null;
     loss_db?: number | null;
-    otdr_length_km?: number | null;
     outgoing_fiber_no?: number | null;
     outgoing_segment_id?: string | null;
     splice_type?: string;
-    status?: string;
     updated_at?: string | null;
 };
 

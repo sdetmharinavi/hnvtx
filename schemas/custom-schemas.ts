@@ -1,6 +1,4 @@
-// path: schemas/custom-schemas.ts
-// This file is for custom, composed, or derived Zod schemas.
-// It IMPORTS from the auto-generated `zod-schemas.ts` to maintain a single source of truth.
+// schemas/custom-schemas.ts
 
 import { z } from 'zod';
 import {
@@ -8,7 +6,7 @@ import {
   cable_segmentsRowSchema,
   junction_closuresRowSchema,
   fiber_splicesRowSchema,
-  nodesRowSchema, // Import nodes schema for site definitions
+  nodesRowSchema,
 } from '@/schemas/zod-schemas';
 
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
@@ -18,6 +16,8 @@ export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema.pick({
   id: true,
   route_name: true,
   capacity: true,
+}).extend({
+  ofc_connections: z.array(z.object({ id: z.uuid() })),
 });
 export type OfcForSelection = z.infer<typeof ofcForSelectionSchema>;
 
@@ -33,7 +33,7 @@ const fiberAtSegmentSchema = z.object({
   status: z.enum(['available', 'used_as_incoming', 'used_as_outgoing', 'terminated']),
   connected_to_segment: z.string().nullable(),
   connected_to_fiber: z.number().int().nullable(),
-  splice_id: z.string().uuid().nullable(),
+  splice_id: z.uuid().nullable(),
 });
 
 const segmentAtJcSchema = z.object({
@@ -88,7 +88,7 @@ export const cableRouteSchema = relaxed_v_ofc_cables_completeRowSchema.extend({
 });
 export type CableRoute = z.infer<typeof cableRouteSchema>;
 
-export const equipmentSchema = relaxed_junction_closuresRowSchema.extend({
+export const jointBoxSchema = relaxed_junction_closuresRowSchema.extend({
     node: z.object({ name: nodesRowSchema.shape.name.nullable() }).nullable(),
     status: z.enum(['existing', 'planned']),
     attributes: z.object({
@@ -96,11 +96,11 @@ export const equipmentSchema = relaxed_junction_closuresRowSchema.extend({
         name: z.string().optional(),
     }),
 });
-export type Equipment = z.infer<typeof equipmentSchema>;
+export type JointBox = z.infer<typeof jointBoxSchema>;
 
 export const routeDetailsPayloadSchema = z.object({
     route: cableRouteSchema,
-    equipment: z.array(equipmentSchema),
+    jointBoxes: z.array(jointBoxSchema),
     segments: z.array(cableSegmentSchema),
     splices: z.array(fiberSpliceSchema),
 });
@@ -110,7 +110,7 @@ export type RouteDetailsPayload = z.infer<typeof routeDetailsPayloadSchema>;
 export const fiberTraceSegmentSchema = z.object({
   step_order: z.number(),
   element_type: z.string(),
-  element_id: z.string().uuid(),
+  element_id: z.uuid(),
   element_name: z.string(),
   details: z.string(),
   fiber_in: z.number().nullable(),
