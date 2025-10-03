@@ -75,7 +75,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         onFocus={show}
         onBlur={hide}
         tabIndex={isOverflowing ? 0 : -1}
-        title={isOverflowing ? text : undefined}
         aria-describedby={showTooltip && isOverflowing ? tooltipId : undefined}
       >
         {text}

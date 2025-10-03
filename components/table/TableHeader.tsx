@@ -2,11 +2,11 @@
 import React from "react";
 import { FiArrowUp, FiArrowDown } from "react-icons/fi";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
-import { AuthTableOrViewName, Row } from "@/hooks/database";
+import { Row, TableOrViewName } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 
-interface TableHeaderProps<T extends AuthTableOrViewName>
+interface TableHeaderProps<T extends TableOrViewName>
   extends Pick<
     DataTableProps<T>,
     "columns" | "selectable" | "sortable" | "bordered" | "density" | "actions"
@@ -28,7 +28,7 @@ const densityClasses = {
 };
 
 function TableHeaderBase<
-  T extends AuthTableOrViewName
+  T extends TableOrViewName
 >({
   visibleColumns,
   selectable,
@@ -150,6 +150,6 @@ function TableHeaderBase<
   );
 }
 
-export const TableHeader = React.memo(TableHeaderBase) as <T extends AuthTableOrViewName>(
+export const TableHeader = React.memo(TableHeaderBase) as <T extends TableOrViewName>(
   props: TableHeaderProps<T>
 ) => React.ReactElement;

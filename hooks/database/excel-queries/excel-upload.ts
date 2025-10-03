@@ -1,9 +1,9 @@
 import * as XLSX from "xlsx";
-import { TableInsert, TableName, UploadOptions, UseExcelUploadOptions } from "../queries-type-helpers";
+import { TableInsert, PublicTableName, UploadOptions, UseExcelUploadOptions } from "@/hooks/database/queries-type-helpers";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { EnhancedUploadResult, generateUUID, logColumnTransformation, logRowProcessing, ProcessingLog, validateValue, ValidationError } from "./excel-helpers";
+import { EnhancedUploadResult, generateUUID, logColumnTransformation, logRowProcessing, ProcessingLog, validateValue, ValidationError } from "@/hooks/database/excel-queries/excel-helpers";
 import { toast } from "sonner";
 
 //================================================================================
@@ -59,7 +59,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
    * Enhanced React hook for uploading data from an Excel file to a Supabase table using 'xlsx'.
    * Includes comprehensive logging and error tracking.
    */
-  export function useExcelUpload<T extends TableName>(
+  export function useExcelUpload<T extends PublicTableName>(
     supabase: SupabaseClient<Database>,
     tableName: T,
     options?: UseExcelUploadOptions<T>

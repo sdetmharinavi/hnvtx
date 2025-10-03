@@ -1,35 +1,55 @@
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database, Tables, TablesInsert, TablesUpdate } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types'; // Import auto-generated names
 
 // --- TYPE HELPERS DERIVED FROM SUPABASE ---
 
-export type TableName = keyof Database["public"]["Tables"];
+export type PublicTableName = keyof Database["public"]["Tables"];
+export type AuthTableName = keyof Database["auth"]["Tables"];
+export type TableName = PublicTableName | AuthTableName;
+export type PublicTableOrViewName = PublicTableName | ViewName;
 export type ViewName = keyof Database["public"]["Views"];
 export type TableOrViewName = TableName | ViewName;
-export type AuthTable = keyof Database["auth"]["Tables"];
-export type AuthTableOrViewName = AuthTable | ViewName | TableName;
 
 // Helper to check if a name is a table (and not a view)
 export const isTableName = (name: TableOrViewName): name is TableName => {
   return (tableNames as readonly string[]).includes(name);
 };
 
+
 // Generic row types for any read operation
-export type Row<T extends TableOrViewName> = T extends TableName
-  ? Tables<T>
-  : T extends ViewName
+export type Row<T extends TableOrViewName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Row"]
+  : T extends keyof Database["public"]["Views"]
   ? Database["public"]["Views"][T]["Row"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Row"]
   : never;
 
-export type TableRow<T extends TableName> = Tables<T>;
-export type TableInsert<T extends TableName> = TablesInsert<T>;
-export type TableUpdate<T extends TableName> = TablesUpdate<T>;
-export type TableInsertWithDates<T extends TableName> = { [K in keyof TablesInsert<T>]?: TablesInsert<T>[K] | Date | null; };
-export type TableUpdateWithDates<T extends TableName> = { [K in keyof TablesUpdate<T>]?: TablesUpdate<T>[K] | Date | null; };
+export type TableRow<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Row"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Row"]
+  : never;
 
-// RPC function type helpers
+export type TableInsert<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Insert"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Insert"]
+  : never;
+
+export type TableUpdate<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Update"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Update"]
+  : never;
+
+// These types now correctly infer from the robust types above.
+export type TableInsertWithDates<T extends TableName> = { [K in keyof TableInsert<T>]?: TableInsert<T>[K] | Date | null; };
+export type TableUpdateWithDates<T extends TableName> = { [K in keyof TableUpdate<T>]?: TableUpdate<T>[K] | Date | null; };
+
+// RPC function type helpers (unchanged)
 export type RpcFunctionName = keyof Database["public"]["Functions"];
 export type RpcFunctionArgs<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Args"];
 export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Returns"];

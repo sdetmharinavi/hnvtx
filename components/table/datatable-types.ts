@@ -1,8 +1,8 @@
 // @/components/table/types.ts
-import { AuthTableOrViewName, Row, Filters } from "@/hooks/database";
+import { TableOrViewName, Row, Filters } from "@/hooks/database";
 import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries/excel-helpers";
 
-export interface TableAction<T extends AuthTableOrViewName> {
+export interface TableAction<T extends TableOrViewName> {
   key: string;
   label: string;
   icon?: React.ReactNode;
@@ -14,7 +14,7 @@ export interface TableAction<T extends AuthTableOrViewName> {
   [key: string]: unknown;
 }
 
-export interface DownloadOptions<T extends AuthTableOrViewName> {
+export interface DownloadOptions<T extends TableOrViewName> {
   fileName?: string;
   filters?: Filters;
   columns?: Column<Row<T>>[];
@@ -24,7 +24,7 @@ export interface DownloadOptions<T extends AuthTableOrViewName> {
   rpcConfig?: RPCConfig;
 }
 
-export interface DataTableProps<T extends AuthTableOrViewName> {
+export interface DataTableProps<T extends TableOrViewName> {
   data: Row<T>[];
   tableName: T;
   columns: Column<Row<T>>[];
@@ -80,4 +80,4 @@ export interface SortConfig<T> {
   direction: SortDirection;
 }
 
-export type TablePaginationProps = Pick<DataTableProps<AuthTableOrViewName>, 'pagination' | 'bordered'>;
+export type TablePaginationProps = Pick<DataTableProps<TableOrViewName>, 'pagination' | 'bordered'>;

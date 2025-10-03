@@ -1,7 +1,7 @@
 // hooks/database/excel-queries.ts
 import * as ExcelJS from "exceljs";
 import { Filters, UploadResult } from "@/hooks/database";
-import { AuthTableOrViewName, Row } from "@/hooks/database";
+import { TableOrViewName, Row } from "@/hooks/database";
 
 //================================================================================
 // TYPES AND INTERFACES
@@ -33,7 +33,7 @@ export interface RPCConfig<TParams = Record<string, unknown>> {
 
 // NOTE: T refers to a table/view name. Columns should describe a Row<T>.
 export interface DownloadOptions<
-  T extends AuthTableOrViewName = AuthTableOrViewName
+  T extends TableOrViewName = TableOrViewName
 > {
   fileName?: string;
   filters?: Filters;
@@ -59,7 +59,7 @@ export interface ExcelDownloadResult {
 }
 
 export interface UseExcelDownloadOptions<
-  T extends AuthTableOrViewName = AuthTableOrViewName
+  T extends TableOrViewName = TableOrViewName
 > {
   onSuccess?: (
     data: ExcelDownloadResult,

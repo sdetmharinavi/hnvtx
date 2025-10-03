@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import { FiX, FiTrash2 } from 'react-icons/fi';
+import { FiTrash2 } from 'react-icons/fi';
 
 import { Modal, Button, PageSpinner, ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { useJcSplicingDetails, useManageSplice } from '@/hooks/database/route-manager-hooks';
 import { Separator } from '@/components/common/ui/separator';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 // --- Type Definitions for Clarity ---
 interface SpliceConnection {
@@ -109,11 +110,11 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                   {spliceConnections.map(splice => (
                     <tr key={splice.id}>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{splice.incoming_segment}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs"><TruncateTooltip text={splice.incoming_segment} /></div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">Fiber #{splice.incoming_fiber}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{splice.outgoing_segment || 'Terminated'}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs"><TruncateTooltip text={splice.outgoing_segment || 'Terminated'} /></div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -143,12 +144,12 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                 <div className="space-y-2">
                   <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Incoming</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.incoming_segment}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words"><TruncateTooltip text={splice.incoming_segment} /></div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Fiber #{splice.incoming_fiber}</div>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Outgoing</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.outgoing_segment || 'Terminated'}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words"><TruncateTooltip text={splice.outgoing_segment || 'Terminated'} /></div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
                   </div>
                   <div>
@@ -177,10 +178,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
 
         <Separator />
 
-        {/* Available Fibers Section */}
+        {/* Available Segments Section */}
         <div>
           <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-            Available Fibers ({availableFibers.length})
+            Available Segments ({availableFibers.length})
           </h4>
           
           {/* Desktop Table View */}
