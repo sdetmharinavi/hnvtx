@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw } from 'lucide-react';
+import { Network, Settings, RefreshCw, Loader2 } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
@@ -21,7 +21,6 @@ export default function ScalableFiberNetworkDashboard() {
   const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   
-  // CORRECTED: The initial state now perfectly matches the SearchFilters interface.
   const [filters, setFilters] = useState<BsnlSearchFilters>(
     bsnlSearchFiltersSchema.parse({
       query: '',
@@ -33,7 +32,7 @@ export default function ScalableFiberNetworkDashboard() {
     })
   );
 
-  const { data, isLoading, isError, error, refetchAll } = useBsnlDashboardData(filters);
+  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
@@ -83,7 +82,10 @@ export default function ScalableFiberNetworkDashboard() {
     { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
   ];
   
-  if (isLoading && data.nodes.length === 0) return <PageSpinner text="Loading Network Dashboard Data..." />;
+  // Only show full page spinner on initial load (no data yet)
+  const isInitialLoad = isLoading && data.nodes.length === 0 && data.systems.length === 0;
+  
+  if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;
 
   return (
@@ -95,12 +97,23 @@ export default function ScalableFiberNetworkDashboard() {
               <Network className="h-8 w-8 text-blue-600 mr-3" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BSNL Fiber Network Dashboard</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{data.systems.length.toLocaleString()} Systems | {data.ofcCables.length.toLocaleString()} Cables</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {data.systems.length.toLocaleString()} Systems | {data.ofcCables.length.toLocaleString()} Cables
+                  {isFetching && <span className="ml-2 inline-flex items-center"><Loader2 className="h-3 w-3 animate-spin" /></span>}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={handleRefresh} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"><RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} /></button>
-              <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"><Settings className="h-5 w-5" /></button>
+              <button 
+                onClick={handleRefresh} 
+                disabled={isFetching}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
+              </button>
+              <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
+                <Settings className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -119,33 +132,64 @@ export default function ScalableFiberNetworkDashboard() {
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
             {(['overview', 'systems', 'allocations'] as BsnlDashboardTab[]).map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}
+              >
                 {tab}
               </button>
             ))}
           </nav>
         </div>
         
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <DashboardStatsGrid />
-            <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <OptimizedNetworkMap nodes={data.nodes} cables={data.ofcCables} selectedSystem={selectedSystem} visibleLayers={{ nodes: true, cables: true, systems: true }} />
+        {/* Overlay loading indicator for subsequent fetches */}
+        <div className="relative">
+          {isFetching && !isInitialLoad && (
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+              <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Updating results...</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <DashboardStatsGrid />
+              <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <OptimizedNetworkMap 
+                  nodes={data.nodes} 
+                  cables={data.ofcCables} 
+                  selectedSystem={selectedSystem} 
+                  visibleLayers={{ nodes: true, cables: true, systems: true }} 
+                />
+              </div>
+            </div>
+          )}
 
-        {activeTab === 'systems' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-            <PaginatedTable data={data.systems} columns={systemColumns} onItemClick={setSelectedSystem} pageSize={50} />
-          </div>
-        )}
+          {activeTab === 'systems' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
+              <PaginatedTable 
+                data={data.systems} 
+                columns={systemColumns} 
+                onItemClick={setSelectedSystem} 
+                pageSize={50} 
+              />
+            </div>
+          )}
 
-        {activeTab === 'allocations' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-            <PaginatedTable data={data.ofcCables} columns={cableColumns} onItemClick={setSelectedCable} pageSize={25} />
-          </div>
-        )}
+          {activeTab === 'allocations' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
+              <PaginatedTable 
+                data={data.ofcCables} 
+                columns={cableColumns} 
+                onItemClick={setSelectedCable} 
+                pageSize={25} 
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <AdvancedAllocationModal

@@ -3,17 +3,17 @@
 
 import { motion } from 'framer-motion';
 import { Trash2, Edit } from 'lucide-react';
-import { RouteDetailsPayload, Equipment } from '@/schemas/custom-schemas';
+import { RouteDetailsPayload, JointBox } from '@/schemas/custom-schemas';
 
 interface RouteVisualizationProps {
     routeDetails: RouteDetailsPayload;
-    onJcClick: (jc: Equipment) => void;
-    onEditJc: (jc: Equipment) => void;
+    onJcClick: (jc: JointBox) => void;
+    onEditJc: (jc: JointBox) => void;
     onDeleteJc: (jcId: string) => void;
 }
 
 export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, onDeleteJc }: RouteVisualizationProps) {
-  const { route, equipment, segments } = routeDetails;
+  const { route, jointBoxes, segments } = routeDetails;
   
   // This is the crucial logic block
   const allPoints = [
@@ -24,10 +24,10 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       position: 0, 
       raw: {} 
     },
-    ...equipment.map(e => ({ 
-        id: e.node_id, // <-- CORRECTED: Use the node_id for matching against segments
+    ...jointBoxes.map(e => ({ 
+        id: e.node_id, // <-- Use the node_id for matching against segments
         name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
-        type: 'equipment' as const, 
+        type: 'jointBox' as const, 
         position: e.attributes?.position_on_route || 0, 
         status: e.status,
         raw: e 
@@ -41,6 +41,8 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
     }
   ].sort((a, b) => a.position - b.position);
 
+  // console.log("allPoints", allPoints);
+
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
       <div className="flex items-center justify-between mb-6">
@@ -53,10 +55,6 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-green-600"></div>
             <span className="text-gray-600 dark:text-gray-400">Existing JC</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span className="text-gray-600 dark:text-gray-400">Planned JC</span>
           </div>
         </div>
       </div>
@@ -99,14 +97,14 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                     </div>
                     
                     <div 
-                      onClick={() => point.type === 'equipment' && onJcClick(point.raw as Equipment)}
+                      onClick={() => point.type === 'jointBox' && onJcClick(point.raw as JointBox)}
                       className={`relative w-6 h-6 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-lg ${
                         point.type === 'site' 
                           ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300' 
                           : point.status === 'existing' 
                             ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300' 
                             : 'bg-yellow-500 border-yellow-200 hover:bg-yellow-600 hover:border-yellow-300'
-                      } ${point.type === 'equipment' ? 'cursor-pointer hover:scale-125 hover:shadow-xl' : 'hover:scale-110'}`}
+                      } ${point.type === 'jointBox' ? 'cursor-pointer hover:scale-125 hover:shadow-xl' : 'hover:scale-110'}`}
                       title={`${point.name} at ${km} km`}
                     >
                       <span className='text-white font-bold text-xs'>
@@ -120,12 +118,12 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                       </p>
                     </div>
                     
-                    {point.type === 'equipment' && (
+                    {point.type === 'jointBox' && (
                       <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            onEditJc(point.raw as Equipment);
+                            onEditJc(point.raw as JointBox);
                           }} 
                           className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
                           title="Edit JC"
@@ -135,7 +133,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteJc((point.raw as Equipment).id!);
+                            onDeleteJc((point.raw as JointBox).id!);
                           }} 
                           className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
                           title="Delete JC"

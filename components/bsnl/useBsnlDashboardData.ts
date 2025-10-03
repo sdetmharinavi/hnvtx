@@ -23,7 +23,7 @@ export function useBsnlDashboardData(filters: SearchFilters) {
     p_node_types: filters.nodeType.length > 0 ? filters.nodeType : null,
   }), [filters]);
 
-  const { data, isLoading, isError, error, refetch } = useQuery<BsnlDashboardData>({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
     queryKey: ['bsnl-dashboard-data', queryParams],
     queryFn: async () => {
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_bsnl_dashboard_data', queryParams);
@@ -37,6 +37,10 @@ export function useBsnlDashboardData(filters: SearchFilters) {
     },
     // Set a longer stale time for this heavy query
     staleTime: 5 * 60 * 1000, // 5 minutes
+    // CRITICAL FIX: Keep previous data while fetching new data
+    placeholderData: (previousData) => previousData,
+    // Alternative for React Query v4 (if you're using older version):
+    // keepPreviousData: true,
   });
 
   return { 
@@ -44,6 +48,7 @@ export function useBsnlDashboardData(filters: SearchFilters) {
     isLoading, 
     isError, 
     error, 
-    refetchAll: refetch 
+    refetchAll: refetch,
+    isFetching 
   };
 }

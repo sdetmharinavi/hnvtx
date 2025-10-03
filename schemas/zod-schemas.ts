@@ -758,11 +758,9 @@ export const fiber_splicesRowSchema = z.object({
   jc_id: z.uuid(),
   logical_path_id: z.uuid().nullable(),
   loss_db: z.number().nullable(),
-  otdr_length_km: z.number().nullable(),
   outgoing_fiber_no: z.number().nullable(),
   outgoing_segment_id: z.uuid().nullable(),
   splice_type: z.string(),
-  status: z.string().min(1, "Status cannot be empty"),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -774,11 +772,9 @@ export const fiber_splicesInsertSchema = z.object({
   jc_id: z.uuid(),
   logical_path_id: z.uuid().nullable().optional(),
   loss_db: z.number().nullable().optional(),
-  otdr_length_km: z.number().nullable().optional(),
   outgoing_fiber_no: z.number().nullable().optional(),
   outgoing_segment_id: z.uuid().nullable().optional(),
   splice_type: z.string().optional(),
-  status: z.string().min(1, "Status cannot be empty").optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -790,11 +786,9 @@ export const fiber_splicesUpdateSchema = z.object({
   jc_id: z.uuid().optional(),
   logical_path_id: z.uuid().nullable().optional(),
   loss_db: z.number().nullable().optional(),
-  otdr_length_km: z.number().nullable().optional(),
   outgoing_fiber_no: z.number().nullable().optional(),
   outgoing_segment_id: z.uuid().nullable().optional(),
   splice_type: z.string().optional(),
-  status: z.string().min(1, "Status cannot be empty").optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
