@@ -115,9 +115,11 @@ SELECT
     n.name,
     n.latitude as lat,
     n.longitude as long,
-    ROW_NUMBER() OVER(PARTITION BY r.id ORDER BY n.name) as order_in_ring, -- Generate a stable order
+    ROW_NUMBER() OVER(PARTITION BY r.id ORDER BY n.name) as order_in_ring,
     lt.name as type,
-    COALESCE(s.status, false) as ring_status, -- A system's status determines if it's part of the main ring path
+    -- [THE FIX] Expose both the ring's status and the system's status for accurate representation.
+    r.status AS ring_status,
+    s.status AS system_status,
     s.ip_address::text as ip,
     n.remark
 FROM

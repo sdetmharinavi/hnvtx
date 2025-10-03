@@ -28,7 +28,6 @@ DROP FUNCTION IF EXISTS public.get_system_path_details(UUID);
 DROP FUNCTION IF EXISTS public.get_continuous_available_fibers(UUID);
 DROP FUNCTION IF EXISTS public.find_cable_between_nodes(UUID, UUID);
 DROP FUNCTION IF EXISTS public.validate_ring_path(UUID);
-DROP FUNCTION IF EXISTS public.provision_ring_path(TEXT, UUID, INT, INT, UUID);
 DROP FUNCTION IF EXISTS public.deprovision_logical_path(UUID);
 DROP FUNCTION IF EXISTS public.provision_logical_path(TEXT, UUID, INT, INT, UUID);
 DROP FUNCTION IF EXISTS public.auto_splice_straight_segments(UUID, UUID, UUID);

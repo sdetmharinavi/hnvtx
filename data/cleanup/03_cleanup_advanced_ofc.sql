@@ -8,7 +8,7 @@ DROP FUNCTION IF EXISTS public.commit_route_evolution(UUID, JSONB);
 DROP FUNCTION IF EXISTS public.delete_path_segment_and_reorder(UUID, UUID);
 
 -- **THE FIX: Add CASCADE to drop dependent triggers automatically.**
-DROP FUNCTION IF EXISTS public.trigger_manage_cable_segments() CASCADE;
+DROP FUNCTION IF EXISTS public.manage_cable_segments() CASCADE;
 DROP FUNCTION IF EXISTS public.update_ofc_connections_from_splice() CASCADE;
 
 -- Drop Views

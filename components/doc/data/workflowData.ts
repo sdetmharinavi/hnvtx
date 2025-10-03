@@ -497,7 +497,7 @@ export const workflowSections: WorkflowSection[] = [
         uiSteps: ["The dropdowns only show fibers that are continuously available across all segments of the logical path.", "After saving, the UI switches to a read-only view showing the provisioned fibers."],
         techSteps: [
           "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.",
-          "Saving calls the `provision_ring_path` RPC.",
+          "Saving calls the `provision_logical_path` RPC.",
           "This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.",
           "This atomically allocates the fibers to the service.",
         ],
