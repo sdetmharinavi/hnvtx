@@ -14,6 +14,7 @@ interface SpliceConnection {
   incoming_fiber: number;
   outgoing_segment: string | null;
   outgoing_fiber: number | null;
+  loss_db: number | null;
 }
 
 interface AvailableFiber {
@@ -53,6 +54,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
             incoming_fiber: fiber.fiber_no,
             outgoing_segment: fiber.connected_to_segment,
             outgoing_fiber: fiber.connected_to_fiber,
+            loss_db: fiber.loss_db,
           });
         } else if (fiber.status === 'available') {
             available.push({
@@ -99,6 +101,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Incoming</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outgoing</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Loss (dB)</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -112,6 +115,9 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{splice.outgoing_segment || 'Terminated'}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{splice.loss_db}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         <Button variant="danger" size="sm" onClick={() => setSpliceToDelete(splice)} leftIcon={<FiTrash2 />}>
@@ -144,6 +150,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Outgoing</div>
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.outgoing_segment || 'Terminated'}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Loss (dB)</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.loss_db}</div>
                   </div>
                 </div>
                 <Button 

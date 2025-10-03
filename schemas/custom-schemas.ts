@@ -34,6 +34,7 @@ const fiberAtSegmentSchema = z.object({
   connected_to_segment: z.string().nullable(),
   connected_to_fiber: z.number().int().nullable(),
   splice_id: z.uuid().nullable(),
+  loss_db: z.number().nullable(),
 });
 
 const segmentAtJcSchema = z.object({
