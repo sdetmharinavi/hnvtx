@@ -48,6 +48,7 @@ export function useRouteDetails(routeId: string | null) {
       return parsed.data;
     },
     enabled: !!routeId,
+    staleTime: 60 * 60 * 1000,
   });
 }
 
@@ -70,6 +71,7 @@ export function useJcSplicingDetails(jcId: string | null) {
       return parsed.data;
     },
     enabled: !!jcId,
+    staleTime: 60 * 60 * 1000,
   });
 }
 

@@ -97,7 +97,7 @@ END;
 $$;
 
 -- This is the trigger function that orchestrates segmentation.
-CREATE OR REPLACE FUNCTION public.trigger_manage_cable_segments()
+CREATE OR REPLACE FUNCTION public.manage_cable_segments()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -130,26 +130,43 @@ DECLARE
     v_splice RECORD;
     v_start_fiber INT;
     v_end_fiber INT;
-    path_segments RECORD;
 BEGIN
+    RAISE NOTICE 'Trigger fired: TG_OP=% on fiber_splices id=%', TG_OP, COALESCE(NEW.id::text, OLD.id::text);
+
     IF (TG_OP = 'DELETE') THEN
-        -- When a splice is deleted, reset the connections on both sides to their original state
-        UPDATE public.ofc_connections SET updated_fiber_no_sn = fiber_no_sn, updated_fiber_no_en = fiber_no_en
+        RAISE NOTICE 'DELETE case: resetting connections for splice_id=% incoming_seg=% outgoing_seg=%',
+            OLD.id, OLD.incoming_segment_id, OLD.outgoing_segment_id;
+
+        UPDATE public.ofc_connections
+        SET updated_fiber_no_sn = fiber_no_sn,
+            updated_fiber_no_en = fiber_no_en
         WHERE ofc_id = (SELECT original_cable_id FROM public.cable_segments WHERE id = OLD.incoming_segment_id)
           AND fiber_no_sn = OLD.incoming_fiber_no;
 
+        GET DIAGNOSTICS v_start_fiber = ROW_COUNT;
+        RAISE NOTICE 'DELETE: updated % incoming rows', v_start_fiber;
+
         IF OLD.outgoing_segment_id IS NOT NULL THEN
-             UPDATE public.ofc_connections SET updated_fiber_no_sn = fiber_no_sn, updated_fiber_no_en = fiber_no_en
+             UPDATE public.ofc_connections
+             SET updated_fiber_no_sn = fiber_no_sn,
+                 updated_fiber_no_en = fiber_no_en
              WHERE ofc_id = (SELECT original_cable_id FROM public.cable_segments WHERE id = OLD.outgoing_segment_id)
                AND fiber_no_sn = OLD.outgoing_fiber_no;
+
+             GET DIAGNOSTICS v_start_fiber = ROW_COUNT;
+             RAISE NOTICE 'DELETE: updated % outgoing rows', v_start_fiber;
         END IF;
+
         RETURN OLD;
     END IF;
 
-    -- For INSERT or UPDATE
+    -- INSERT or UPDATE
     v_splice := NEW;
+    RAISE NOTICE 'INSERT/UPDATE case: splice_id=% incoming_seg=% outgoing_seg=% incoming_fiber_no=% outgoing_fiber_no=%',
+        v_splice.id, v_splice.incoming_segment_id, v_splice.outgoing_segment_id,
+        v_splice.incoming_fiber_no, v_splice.outgoing_fiber_no;
 
-    -- Trace backwards to find the ultimate start fiber
+    -- Trace backwards
     WITH RECURSIVE trace_to_start AS (
         SELECT 1 as step, v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
         UNION ALL
@@ -158,14 +175,24 @@ BEGIN
             CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_segment_id ELSE s.outgoing_segment_id END,
             CASE WHEN p.segment_id = s.outgoing_segment_id THEN s.incoming_fiber_no ELSE s.outgoing_fiber_no END,
             p.visited_splices || s.id
-        FROM trace_to_start p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-        WHERE NOT (s.id = ANY(p.visited_splices))
+        FROM trace_to_start p
+        JOIN fiber_splices s
+          ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no)
+          OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+        -- [THE FIX] Added recursion depth limit
+        WHERE NOT (s.id = ANY(p.visited_splices)) AND p.step < 100
     )
-    SELECT fiber_no INTO v_start_fiber FROM trace_to_start ORDER BY step DESC LIMIT 1;
-    
-    -- Trace forwards to find the ultimate end fiber
+    SELECT fiber_no INTO v_start_fiber
+    FROM trace_to_start
+    ORDER BY step DESC
+    LIMIT 1;
+
+    RAISE NOTICE 'Start fiber resolved: %', v_start_fiber;
+
+    -- Trace forwards
     IF v_splice.outgoing_segment_id IS NULL THEN
-        v_end_fiber := 0; -- A terminated fiber
+        v_end_fiber := 0;
+        RAISE NOTICE 'No outgoing segment → fiber terminates.';
     ELSE
         WITH RECURSIVE trace_to_end AS (
             SELECT 1 as step, v_splice.outgoing_segment_id as segment_id, v_splice.outgoing_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
@@ -175,14 +202,27 @@ BEGIN
                 CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
                 CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
                 p.visited_splices || s.id
-            FROM trace_to_end p JOIN fiber_splices s ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
-            WHERE NOT (s.id = ANY(p.visited_splices))
+            FROM trace_to_end p
+            JOIN fiber_splices s
+              ON (p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no)
+              OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no)
+            -- [THE FIX] Added recursion depth limit
+            WHERE NOT (s.id = ANY(p.visited_splices)) AND p.step < 100
         )
-        SELECT fiber_no INTO v_end_fiber FROM trace_to_end ORDER BY step DESC LIMIT 1;
-        IF NOT FOUND THEN v_end_fiber := 0; END IF; -- Path terminates at the end
+        SELECT fiber_no INTO v_end_fiber
+        FROM trace_to_end
+        ORDER BY step DESC
+        LIMIT 1;
+
+        IF NOT FOUND THEN
+            v_end_fiber := 0;
+            RAISE NOTICE 'Forward trace ended prematurely. Setting end fiber = 0';
+        ELSE
+            RAISE NOTICE 'End fiber resolved: %', v_end_fiber;
+        END IF;
     END IF;
 
-    -- Update all connections that are part of this logical path
+    -- Update all connections in the logical path
     WITH RECURSIVE full_path AS (
         SELECT 1 as step, v_splice.incoming_segment_id as segment_id, v_splice.incoming_fiber_no as fiber_no, ARRAY[v_splice.id] as visited_splices
         UNION ALL
@@ -191,21 +231,29 @@ BEGIN
             CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_segment_id ELSE s.incoming_segment_id END,
             CASE WHEN p.segment_id = s.incoming_segment_id THEN s.outgoing_fiber_no ELSE s.incoming_fiber_no END,
             p.visited_splices || s.id
-        FROM full_path p JOIN fiber_splices s ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no) OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no))
-        WHERE NOT (s.id = ANY(p.visited_splices))
+        FROM full_path p
+        JOIN fiber_splices s
+          ON ((p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no)
+           OR (p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no))
+        -- [THE FIX] Added recursion depth limit
+        WHERE NOT (s.id = ANY(p.visited_splices)) AND p.step < 100
     )
     UPDATE public.ofc_connections
-    SET
-        updated_fiber_no_sn = v_start_fiber,
+    SET updated_fiber_no_sn = v_start_fiber,
         updated_fiber_no_en = v_end_fiber
     WHERE (ofc_id, fiber_no_sn) IN (
         SELECT cs.original_cable_id, fp.fiber_no
-        FROM full_path fp JOIN cable_segments cs ON fp.segment_id = cs.id
+        FROM full_path fp
+        JOIN cable_segments cs ON fp.segment_id = cs.id
     );
+
+    GET DIAGNOSTICS v_start_fiber = ROW_COUNT;
+    RAISE NOTICE 'Updated % rows in ofc_connections for path.', v_start_fiber;
 
     RETURN NEW;
 END;
 $$;
+
 
 -- Description: RPC function to handle creating, deleting, and updating splices.
 CREATE OR REPLACE FUNCTION public.manage_splice(
@@ -228,7 +276,7 @@ BEGIN
     ELSIF p_action = 'delete' THEN
         DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
         IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
-    ELSIF p_action = 'update_otdr' THEN
+    ELSIF p_action = 'update_loss' THEN
         UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
         WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
         IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
@@ -248,17 +296,20 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+-- Fetches info about the requested JC
 WITH jc_info AS (
   SELECT jc.id, n.name, jc.node_id 
   FROM public.junction_closures jc 
   JOIN public.nodes n ON jc.node_id = n.id 
   WHERE jc.id = p_jc_id
-), 
+),
+-- Finds all JCs at the same node 
 all_jcs_at_node AS (
   SELECT id 
   FROM public.junction_closures 
   WHERE node_id = (SELECT node_id FROM jc_info)
 ), 
+-- Finds all segments at the same node 
 segments_at_jc AS (
   SELECT 
     cs.id as segment_id, 
@@ -404,14 +455,16 @@ BEGIN
     FROM
         full_path fp
     JOIN public.cable_segments cs ON fp.segment_id = cs.id
-    JOIN public.ofc_cables oc ON cs.original_cable_id = cs.id
+    -- [CORRECTED JOIN]
+    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
     JOIN public.nodes sn ON cs.start_node_id = sn.id
     JOIN public.nodes en ON cs.end_node_id = en.id
     ORDER BY fp.step;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.trace_path(UUID, UUID, INT, INT) TO authenticated;
+-- [CORRECTED GRANT] The name and parameters now match the function definition above.
+GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
 
 -- Description: Provisions a working and protection fiber pair on a logical path.
 CREATE OR REPLACE FUNCTION public.provision_logical_path(
@@ -431,28 +484,47 @@ DECLARE
     v_protection_path_id UUID;
     v_active_status_id UUID;
 BEGIN
+    -- Get the ID for the 'active' operational status from lookup_types
     SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUSES' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN RAISE EXCEPTION 'Operational status "active" not found in lookup_types.'; END IF;
+    IF v_active_status_id IS NULL THEN
+        RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
+    END IF;
 
+    -- Step 1: Create the "working" logical path record
     INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id)
     VALUES (p_path_name || ' (Working)', p_system_id, 'working', v_active_status_id) RETURNING id INTO v_working_path_id;
 
+    -- Step 2: Create the "protection" logical path record, linking it to the working path
     INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id)
     VALUES (p_path_name || ' (Protection)', p_system_id, 'protection', v_working_path_id, v_active_status_id) RETURNING id INTO v_protection_path_id;
 
-    UPDATE public.ofc_connections SET logical_path_id = v_working_path_id, fiber_role = 'working'
-    WHERE fiber_no_sn = p_working_fiber_no AND ofc_id IN (
-        SELECT lps.ofc_cable_id FROM logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
-    );
+    -- Step 3: Atomically update all ofc_connections for the working fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_working_path_id,
+        fiber_role = 'working'
+    WHERE
+        fiber_no_sn = p_working_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
 
-    UPDATE public.ofc_connections SET logical_path_id = v_protection_path_id, fiber_role = 'protection'
-    WHERE fiber_no_sn = p_protection_fiber_no AND ofc_id IN (
-        SELECT lps.ofc_cable_id FROM logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
-    );
+    -- Step 4: Atomically update all ofc_connections for the protection fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_protection_path_id,
+        fiber_role = 'protection'
+    WHERE
+        fiber_no_sn = p_protection_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
 
+    -- Return the IDs of the newly created paths
     RETURN QUERY SELECT v_working_path_id, v_protection_path_id;
 END;
 $$;
+
 GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
 
 -- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
@@ -570,7 +642,7 @@ CREATE OR REPLACE FUNCTION public.get_all_splices()
 RETURNS TABLE (
     splice_id UUID, jc_id UUID, jc_name TEXT, jc_position_km NUMERIC,
     incoming_segment_id UUID, incoming_fiber_no INT, outgoing_segment_id UUID,
-    outgoing_fiber_no INT, otdr_length_km NUMERIC, loss_db NUMERIC
+    outgoing_fiber_no INT, loss_db NUMERIC
 )
 LANGUAGE sql
 STABLE
@@ -581,7 +653,7 @@ AS $$
         s.id, s.jc_id, n.name, jc.position_km,
         s.incoming_segment_id, s.incoming_fiber_no,
         s.outgoing_segment_id, s.outgoing_fiber_no,
-        s.otdr_length_km, s.loss_db
+        s.loss_db
     FROM public.fiber_splices s
     JOIN public.junction_closures jc ON s.jc_id = jc.id
     JOIN public.nodes n ON jc.node_id = n.id;

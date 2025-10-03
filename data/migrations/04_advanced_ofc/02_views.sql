@@ -81,13 +81,13 @@ SELECT
   oc.id AS cable_id,
   oc.route_name,
   oc.capacity,
-  -- CORRECTED LOGIC: A fiber is used if it's a 'working' fiber with ANY logical_path_id.
-  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL AND conn.fiber_role = 'working') AS used_fibers,
-  -- CORRECTED LOGIC: An available fiber is one without any logical_path_id.
+  -- [THE FIX] A fiber is used if it's assigned to ANY logical path. Role doesn't matter.
+  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL) AS used_fibers,
+  -- This logic remains correct.
   COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NULL) AS available_fibers,
-  -- CORRECTED LOGIC: The percentage calculation now uses the correct 'used_fibers' count.
+  -- [THE FIX] The percentage now correctly reflects all used fibers.
   ROUND(
-    (COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL AND conn.fiber_role = 'working')::DECIMAL / NULLIF(oc.capacity, 0)) * 100, 2
+    (COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL)::DECIMAL / NULLIF(oc.capacity, 0)) * 100, 2
   ) AS utilization_percent
 FROM public.ofc_cables oc
 LEFT JOIN public.ofc_connections conn ON oc.id = conn.ofc_id

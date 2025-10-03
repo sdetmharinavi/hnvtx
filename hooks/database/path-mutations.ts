@@ -84,7 +84,7 @@ export function useProvisionRingPath() {
           protectionFiber: number;
           physicalPathId: string; 
       }) => {
-          const { error } = await supabase.rpc('provision_ring_path', {
+          const { error } = await supabase.rpc('provision_logical_path', {
               p_system_id: variables.systemId,
               p_path_name: variables.pathName,
               p_working_fiber_no: variables.workingFiber,
