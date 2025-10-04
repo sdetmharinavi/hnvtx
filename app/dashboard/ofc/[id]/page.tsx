@@ -69,6 +69,9 @@ export default function OfcCableDetailsPage() {
     dataQueryHook: useOfcConnectionsData,
   });
 
+  console.log("cableConnectionsData", cableConnectionsData);
+  
+
   const { id: cableId } = useParams();
   const router = useRouter();
   const supabase = createClient();
@@ -129,7 +132,7 @@ export default function OfcCableDetailsPage() {
   );
 
   const headerActions = useStandardHeaderActions({
-    data: cableConnectionsData as unknown as Ofc_connectionsRowSchema[],
+    data: cableConnectionsData as Ofc_connectionsRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Connections refreshed!'); },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
@@ -167,12 +170,12 @@ export default function OfcCableDetailsPage() {
       />
       {/* --- END REPLACEMENT --- */}
 
-      <OfcDetailsHeader cable={routeDetails.route as unknown as V_ofc_cables_completeRowSchema} />
+      <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
       <div className='rounded-lg border border-gray-200 dark:border-gray-700 p-4'>
         <DataTable<"v_ofc_connections_complete">
           tableName='v_ofc_connections_complete'
-          data={cableConnectionsData as unknown as Row<"v_ofc_connections_complete">[]}
+          data={cableConnectionsData as Row<"v_ofc_connections_complete">[]}
           columns={orderedColumns}
           loading={isLoading}
           actions={tableActions}

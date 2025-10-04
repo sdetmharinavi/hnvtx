@@ -26,9 +26,18 @@ export const OfcDetailsTableColumns = (
       'system_name',
       'ofc_type_name',
       'ofc_route_name',
+      'fiber_no_sn',
+      'fiber_no_en',
+      'destination_port',
+      'logical_path_id',
+      'ofc_id',
+      'path_segment_order',
+      'source_port',
+      'system_id',
+      'updated_at'
     ],
     overrides: {
-      fiber_no_sn: { 
+      updated_fiber_no_sn: { 
         title: 'End A Fiber', 
         sortable: true, 
         searchable: true,
@@ -38,7 +47,7 @@ export const OfcDetailsTableColumns = (
         //   return String(value);
         // }
       },
-      fiber_no_en: { 
+      updated_fiber_no_en: { 
         title: 'End B Fiber', 
         sortable: true, 
         searchable: true,
@@ -57,6 +66,18 @@ export const OfcDetailsTableColumns = (
         title: 'End B OTDR Distance (km)',
         sortable: true,
         searchable: true,
+      },
+      updated_sn_id: {
+        title: 'End A',
+        render(value, record, index) {
+          return record.sn_name || '';
+        },
+      },
+      updated_en_id: {
+        title: 'End B',
+        render(value, record, index) {
+          return record.en_name || '';
+        },
       },
       en_dom: { title: 'End B D.O.M.', sortable: true, width: '150px', searchable: true, render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) },
       en_power_dbm: {
@@ -81,26 +102,26 @@ export const OfcDetailsTableColumns = (
         searchable: true,
       },
       ofc_type_name: { title: 'Ofc Type', sortable: true, searchable: true },
-      destination_port: {
-        title: 'Destination Port',
-        sortable: true,
-        searchable: true,
-      },
-      logical_path_id: {
-        title: 'Logical Path ID',
-        sortable: true,
-        searchable: true,
-      },
-      ofc_id: { title: 'OFC ID', sortable: true, searchable: true },
-      path_segment_order: {
-        title: 'Path Segment Order',
-        sortable: true,
-        searchable: true,
-      },
+      // destination_port: {
+      //   title: 'Destination Port',
+      //   sortable: true,
+      //   searchable: true,
+      // },
+      // logical_path_id: {
+      //   title: 'Logical Path ID',
+      //   sortable: true,
+      //   searchable: true,
+      // },
+      // ofc_id: { title: 'OFC ID', sortable: true, searchable: true },
+      // path_segment_order: {
+      //   title: 'Path Segment Order',
+      //   sortable: true,
+      //   searchable: true,
+      // },
       remark: { title: 'Remark', sortable: true, searchable: true },
-      source_port: { title: 'Source Port', sortable: true, searchable: true },
-      system_id: { title: 'System ID', sortable: true, searchable: true },
-      updated_at: { title: 'Updated At', sortable: true, searchable: true },
+      // source_port: { title: 'Source Port', sortable: true, searchable: true },
+      // system_id: { title: 'System ID', sortable: true, searchable: true },
+      // updated_at: { title: 'Updated At', sortable: true, searchable: true },
       status: {
         title: 'Status',
         sortable: true,

@@ -12,7 +12,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.manage_cable_segments();
 
 -- **The trigger that updates ofc_connections after a splice change.**
-CREATE TRIGGER trigger_after_splice_change
+CREATE TRIGGER trigger_update_ofc_connections_on_splice
 AFTER INSERT OR UPDATE OR DELETE ON public.fiber_splices
 FOR EACH ROW
 EXECUTE FUNCTION public.update_ofc_connections_from_splice();

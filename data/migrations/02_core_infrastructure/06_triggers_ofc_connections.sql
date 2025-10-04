@@ -18,16 +18,21 @@ BEGIN
             ofc_id,
             fiber_no_sn,
             fiber_no_en,
+            -- Populate with initial logical path info
+            updated_fiber_no_sn,
+            updated_fiber_no_en,
             updated_sn_id,
             updated_en_id
         )
         VALUES (
-            NEW.id,
-            i,
-            i,
-            -- Populate from the parent cable's nodes
-            NEW.sn_id,
-            NEW.en_id
+            NEW.id,      -- Cable ID
+            i,           -- Start fiber number
+            i,           -- End fiber number
+            -- Initial logical path matches the physical path
+            i,           -- updated_fiber_no_sn
+            i,           -- updated_fiber_no_en
+            NEW.sn_id,   -- updated_sn_id
+            NEW.en_id    -- updated_en_id
         );
     END LOOP;
     RETURN NEW;

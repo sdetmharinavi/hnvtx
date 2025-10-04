@@ -758,7 +758,7 @@ export type Fiber_splicesRow = {
     loss_db: number | null;
     outgoing_fiber_no: number | null;
     outgoing_segment_id: string | null;
-    splice_type: string;
+    splice_type_id: string;
     updated_at: string | null;
 };
 
@@ -772,7 +772,7 @@ export type Fiber_splicesInsert = {
     loss_db?: number | null;
     outgoing_fiber_no?: number | null;
     outgoing_segment_id?: string | null;
-    splice_type?: string;
+    splice_type_id: string;
     updated_at?: string | null;
 };
 
@@ -786,7 +786,7 @@ export type Fiber_splicesUpdate = {
     loss_db?: number | null;
     outgoing_fiber_no?: number | null;
     outgoing_segment_id?: string | null;
-    splice_type?: string;
+    splice_type_id?: string;
     updated_at?: string | null;
 };
 
@@ -1219,10 +1219,10 @@ export type Ofc_connectionsRow = {
     status: boolean | null;
     system_id: string | null;
     updated_at: string | null;
-    updated_en_id: string;
+    updated_en_id: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
-    updated_sn_id: string;
+    updated_sn_id: string | null;
 };
 
 export type Ofc_connectionsInsert = {
@@ -1249,10 +1249,10 @@ export type Ofc_connectionsInsert = {
     status?: boolean | null;
     system_id?: string | null;
     updated_at?: string | null;
-    updated_en_id: string;
+    updated_en_id?: string | null;
     updated_fiber_no_en?: number | null;
     updated_fiber_no_sn?: number | null;
-    updated_sn_id: string;
+    updated_sn_id?: string | null;
 };
 
 export type Ofc_connectionsUpdate = {
@@ -1279,10 +1279,10 @@ export type Ofc_connectionsUpdate = {
     status?: boolean | null;
     system_id?: string | null;
     updated_at?: string | null;
-    updated_en_id?: string;
+    updated_en_id?: string | null;
     updated_fiber_no_en?: number | null;
     updated_fiber_no_sn?: number | null;
-    updated_sn_id?: string;
+    updated_sn_id?: string | null;
 };
 
 export type Ring_based_systemsRow = {
@@ -1819,8 +1819,10 @@ export type V_ofc_connections_completeRow = {
     system_id: string | null;
     system_name: string | null;
     updated_at: string | null;
+    updated_en_id: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
+    updated_sn_id: string | null;
 };
 
 export type V_ring_nodesRow = {

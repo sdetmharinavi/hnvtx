@@ -2,16 +2,14 @@ import { toPgBoolean, toPgDate, toTitleCase } from '@/config/helper-functions';
 import {
   ColumnMeta,
   ColumnTransform,
-  GenericRow,
   TableMetaMap,
-  TableName,
   TableNames,
-  TableOrViewName,
   UploadMetaMap,
   UploadTableMeta,
 } from '@/config/helper-types';
 import { Tables } from '@/types/supabase-types';
 import type { UploadConfig } from '@/stores/useUploadConfigStore';
+import { PublicTableName, PublicTableOrViewName, Row } from '@/hooks/database';
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -104,11 +102,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
 };
 
 // Build UI column configs (lightweight structure; consumer can enrich widths/formats)
-export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
+export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
   const keys = TABLE_COLUMN_KEYS[
     tableName as keyof typeof TABLE_COLUMN_KEYS
-  ] as unknown as readonly (keyof GenericRow<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Record<string, ColumnMeta>;
+  ] as unknown as readonly (keyof Row<T> & string)[];
+  const meta = (TABLE_COLUMN_META[tableName as PublicTableName] || {}) as Record<string, ColumnMeta>;
   return keys.map((key) => {
     const m = meta[key] || {};
     const title = m.title ?? toTitleCase(key);
@@ -121,20 +119,16 @@ export function buildColumnConfig<T extends TableOrViewName>(tableName: T) {
   });
 }
 // Build upload config from SSOT
-export function buildUploadConfig<T extends TableNames>(tableName: T) {
-  type RowType = T extends TableName ? Tables<T> : Record<string, unknown>;
+export function buildUploadConfig<T extends PublicTableName>(tableName: T) {
+  type RowType = Tables<T>;
   type ColumnKey = keyof RowType & string;
 
-  const tableColumnKeys = TABLE_COLUMN_KEYS as unknown as Record<TableNames, readonly string[]>;
+  const tableColumnKeys = TABLE_COLUMN_KEYS as Record<string, readonly string[]>;
   const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
-  const meta = (TABLE_COLUMN_META[tableName as TableName] || {}) as Partial<
-    Record<ColumnKey, ColumnMeta>
-  >;
-  const tableMeta = (UPLOAD_TABLE_META as Partial<Record<TableNames, UploadTableMeta<TableName>>>)[
-    tableName
-  ];
+  const meta = (TABLE_COLUMN_META[tableName] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
+  const tableMeta = UPLOAD_TABLE_META[tableName];
   const uploadType = tableMeta?.uploadType ?? 'upsert';
-  const conflictColumn = tableMeta?.conflictColumn as ColumnKey | undefined;
+  const conflictColumn = tableMeta?.conflictColumn;
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
 
   const columnMapping = keys.map((key) => {
@@ -304,7 +298,9 @@ export const TABLE_COLUMN_KEYS = {
     'fiber_no_sn',
     'fiber_no_en',
     'updated_fiber_no_sn',
+    'updated_sn_id',
     'updated_fiber_no_en',
+    'updated_en_id',
     'path_segment_order',
     'connection_type',
     'connection_category',
@@ -525,10 +521,12 @@ export const TABLE_COLUMN_KEYS = {
   v_ofc_connections_complete: [
     'fiber_no_sn',
     'updated_fiber_no_sn',
+    'updated_sn_id',
     'otdr_distance_sn_km',
     'sn_power_dbm',
     'sn_dom',
     'fiber_no_en',
+    'updated_en_id',
     'updated_fiber_no_en',
     'otdr_distance_en_km',
     'en_power_dbm',
@@ -808,7 +806,7 @@ export const TABLES = {
   sfp_based_connections: 'sfp_based_connections',
   // 'cpan_systems' is not in types, removed
   // 'fiber_joint_connections' is not in types, removed
-  fiber_joints: 'fiber_joints',
+  // fiber_joints: 'fiber_joints',
   logical_fiber_paths: 'logical_fiber_paths',
   logical_path_segments: 'logical_path_segments',
   // 'maan_connections' is SFP based connections
@@ -817,13 +815,13 @@ export const TABLES = {
   sdh_node_associations: 'sdh_node_associations',
   sdh_systems: 'sdh_systems',
   system_connections: 'system_connections',
-  user_activity_logs: 'user_activity_logs',
+  // user_activity_logs: 'user_activity_logs',
   vmux_connections: 'vmux_connections',
   vmux_systems: 'vmux_systems',
   files: 'files',
   folders: 'folders',
   ring_based_systems: 'ring_based_systems',
-} as const;
+} as const satisfies Partial<Record<PublicTableName, PublicTableName>>;
 
 // Define views separately
 export const VIEWS = {
