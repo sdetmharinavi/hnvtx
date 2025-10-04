@@ -283,7 +283,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.manage_splice(
     p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
     p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
-    p_splice_type TEXT DEFAULT 'pass_through', p_loss_db NUMERIC DEFAULT NULL
+    p_splice_type_id UUID DEFAULT NULL, p_loss_db NUMERIC DEFAULT NULL
 )
 RETURNS RECORD
 LANGUAGE plpgsql
@@ -292,7 +292,13 @@ SET search_path = public
 AS $$
 DECLARE
     result RECORD;
+    v_splice_type_id UUID;
 BEGIN
+    IF p_splice_type_id IS NULL THEN
+            SELECT public.get_lookup_type_id('SPLICE_TYPE', 'straight') INTO v_splice_type_id;
+        ELSE
+            v_splice_type_id := p_splice_type_id;
+        END IF;
     IF p_action = 'create' THEN
         INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type, loss_db)
         VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, p_splice_type, p_loss_db)
@@ -310,7 +316,7 @@ BEGIN
     RETURN result;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, TEXT, NUMERIC) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, UUID, NUMERIC) TO authenticated;
 
 -- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
 CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
@@ -570,7 +576,13 @@ DECLARE
     splice_count INT := 0;
     available_fibers_s1 INT[]; 
     available_fibers_s2 INT[];
+    v_straight_splice_id UUID;
 BEGIN
+    -- Look up the UUID for the 'straight' splice type once.
+    SELECT public.get_lookup_type_id('SPLICE_TYPE', 'straight') INTO v_straight_splice_id;
+    IF v_straight_splice_id IS NULL THEN
+        RAISE EXCEPTION 'Lookup type "straight" for category "SPLICE_TYPE" not found.';
+    END IF;
     -- Get fiber counts for both segments
     SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
     SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
@@ -611,7 +623,7 @@ BEGIN
             incoming_fiber_no, 
             outgoing_segment_id, 
             outgoing_fiber_no, 
-            splice_type,
+            splice_type_id,
             loss_db
         )
         VALUES (
@@ -620,7 +632,7 @@ BEGIN
             available_fibers_s1[i], 
             p_segment2_id, 
             available_fibers_s2[i], 
-            'pass_through',
+            v_straight_splice_id,
             p_loss_db
         );
         splice_count := splice_count + 1;

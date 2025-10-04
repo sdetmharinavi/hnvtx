@@ -70,6 +70,8 @@ SELECT
   oc.fiber_no_en::integer,
   oc.updated_fiber_no_sn::integer,
   oc.updated_fiber_no_en::integer,
+  oc.updated_sn_id::uuid,
+  oc.updated_en_id::uuid,
   oc.otdr_distance_sn_km::numeric(10,3),
   oc.sn_dom::date,
   oc.sn_power_dbm::numeric(10,3),

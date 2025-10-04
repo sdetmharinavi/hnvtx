@@ -2,18 +2,18 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { TableName} from "@/hooks/database/queries-type-helpers";
+import { PublicTableName} from "@/hooks/database/queries-type-helpers";
 import { Tables } from "@/types/supabase-types";
 
-type UploadableTableRow<T extends TableName> = Tables<T>;
+type UploadableTableRow<T extends PublicTableName> = Tables<T>;
 
-export interface UploadColumnMapping<T extends TableName> {
+export interface UploadColumnMapping<T extends PublicTableName> {
   excelHeader: string;
   dbKey: keyof UploadableTableRow<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
-export interface UploadConfig<T extends TableName> {
+export interface UploadConfig<T extends PublicTableName> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
@@ -22,9 +22,9 @@ export interface UploadConfig<T extends TableName> {
 }
 
 interface UploadConfigState {
-  configs: Record<string, UploadConfig<TableName>>;
-  setUploadConfig: <T extends TableName>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<TableName> | undefined;
+  configs: Record<string, UploadConfig<PublicTableName>>;
+  setUploadConfig: <T extends PublicTableName>(pageKey: string, config: UploadConfig<T>) => void;
+  getUploadConfig: (pageKey: string) => UploadConfig<PublicTableName> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
 

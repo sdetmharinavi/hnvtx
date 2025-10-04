@@ -964,7 +964,7 @@ export type Database = {
           loss_db: number | null
           outgoing_fiber_no: number | null
           outgoing_segment_id: string | null
-          splice_type: string
+          splice_type_id: string
           updated_at: string | null
         }
         Insert: {
@@ -977,7 +977,7 @@ export type Database = {
           loss_db?: number | null
           outgoing_fiber_no?: number | null
           outgoing_segment_id?: string | null
-          splice_type?: string
+          splice_type_id: string
           updated_at?: string | null
         }
         Update: {
@@ -990,7 +990,7 @@ export type Database = {
           loss_db?: number | null
           outgoing_fiber_no?: number | null
           outgoing_segment_id?: string | null
-          splice_type?: string
+          splice_type_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -1048,6 +1048,20 @@ export type Database = {
             columns: ["outgoing_segment_id"]
             isOneToOne: false
             referencedRelation: "v_cable_segments_at_jc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_splice_type_id_fkey"
+            columns: ["splice_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiber_splices_splice_type_id_fkey"
+            columns: ["splice_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -1834,10 +1848,10 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           updated_at: string | null
-          updated_en_id: string
+          updated_en_id: string | null
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
-          updated_sn_id: string
+          updated_sn_id: string | null
         }
         Insert: {
           connection_category?: string
@@ -1863,10 +1877,10 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
-          updated_en_id: string
+          updated_en_id?: string | null
           updated_fiber_no_en?: number | null
           updated_fiber_no_sn?: number | null
-          updated_sn_id: string
+          updated_sn_id?: string | null
         }
         Update: {
           connection_category?: string
@@ -1892,10 +1906,10 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
-          updated_en_id?: string
+          updated_en_id?: string | null
           updated_fiber_no_en?: number | null
           updated_fiber_no_sn?: number | null
-          updated_sn_id?: string
+          updated_sn_id?: string | null
         }
         Relationships: [
           {
@@ -3242,8 +3256,10 @@ export type Database = {
           system_id: string | null
           system_name: string | null
           updated_at: string | null
+          updated_en_id: string | null
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
+          updated_sn_id: string | null
         }
         Relationships: [
           {
@@ -3363,6 +3379,48 @@ export type Database = {
             columns: ["ofc_id"]
             isOneToOne: false
             referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -4050,7 +4108,7 @@ export type Database = {
           p_outgoing_fiber_no?: number
           p_outgoing_segment_id?: string
           p_splice_id?: string
-          p_splice_type?: string
+          p_splice_type_id?: string
         }
         Returns: Record<string, unknown>
       }
