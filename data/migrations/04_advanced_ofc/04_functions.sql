@@ -125,10 +125,8 @@ CREATE OR REPLACE FUNCTION public.trace_logical_fiber_path(
     p_start_fiber_no INT
 )
 RETURNS TABLE (
-    -- The specific physical segment in the path
     original_cable_id UUID,
     original_fiber_no INT,
-    -- The ultimate boundaries of the entire logical path (repeated for each row)
     logical_start_node_id UUID,
     logical_start_fiber_no INT,
     logical_end_node_id UUID,
@@ -139,66 +137,87 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- This CTE-based function traces a fiber's path in both directions from a starting point
-    -- to find its ultimate logical start and end nodes and fibers.
     RETURN QUERY
-    WITH RECURSIVE trace_path AS (
-        -- Base case: The starting point, with step 0
-        SELECT
-            0::bigint as step,
-            p_start_segment_id as segment_id,
-            p_start_fiber_no as fiber_no,
-            ARRAY[p_start_segment_id] as visited_segments
-
-        -- Recursive part: Trace forward
-        UNION ALL
-        SELECT
-            p.step + 1,
-            s.outgoing_segment_id,
-            s.outgoing_fiber_no,
-            p.visited_segments || s.outgoing_segment_id
-        FROM trace_path p
-        JOIN public.fiber_splices s ON p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no
-        WHERE s.outgoing_segment_id IS NOT NULL
-          AND NOT (s.outgoing_segment_id = ANY(p.visited_segments)) AND p.step < 100 -- Safety break
-
-        -- Recursive part: Trace backward
-        UNION ALL
-        SELECT
-            p.step - 1,
-            s.incoming_segment_id,
-            s.incoming_fiber_no,
-            p.visited_segments || s.incoming_segment_id
-        FROM trace_path p
-        JOIN public.fiber_splices s ON p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no
-        WHERE s.incoming_segment_id IS NOT NULL
-          AND NOT (s.incoming_segment_id = ANY(p.visited_segments)) AND p.step > -100 -- Safety break
+    WITH
+    -- Trace forward from the starting point
+    forward_path AS (
+        WITH RECURSIVE trace_forward AS (
+            SELECT
+                0::bigint as step,
+                p_start_segment_id as segment_id,
+                p_start_fiber_no as fiber_no,
+                ARRAY[p_start_segment_id] as visited_segments
+            
+            UNION ALL
+            
+            SELECT
+                p.step + 1,
+                s.outgoing_segment_id,
+                s.outgoing_fiber_no,
+                p.visited_segments || s.outgoing_segment_id
+            FROM trace_forward p
+            JOIN public.fiber_splices s ON p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no
+            WHERE s.outgoing_segment_id IS NOT NULL
+              AND NOT (s.outgoing_segment_id = ANY(p.visited_segments)) 
+              AND p.step < 100
+        )
+        SELECT step, segment_id, fiber_no FROM trace_forward
     ),
-    -- Find the ultimate start and end points of the traced path
-    path_boundaries AS (
-        SELECT
-            -- First segment in the path
-            (SELECT cs.start_node_id FROM public.cable_segments cs WHERE cs.id = first_value(tp.segment_id) OVER (ORDER BY tp.step ASC)) as start_node,
-            (SELECT first_value(tp.fiber_no) OVER (ORDER BY tp.step ASC)) as start_fiber,
-            -- Last segment in the path
-            (SELECT cs.end_node_id FROM public.cable_segments cs WHERE cs.id = first_value(tp.segment_id) OVER (ORDER BY tp.step DESC)) as end_node,
-            (SELECT first_value(tp.fiber_no) OVER (ORDER BY tp.step DESC)) as end_fiber
-        FROM trace_path tp
-        LIMIT 1
+    -- Trace backward from the starting point
+    backward_path AS (
+        WITH RECURSIVE trace_backward AS (
+            SELECT
+                0::bigint as step,
+                p_start_segment_id as segment_id,
+                p_start_fiber_no as fiber_no,
+                ARRAY[p_start_segment_id] as visited_segments
+            
+            UNION ALL
+            
+            SELECT
+                p.step - 1,
+                s.incoming_segment_id,
+                s.incoming_fiber_no,
+                p.visited_segments || s.incoming_segment_id
+            FROM trace_backward p
+            JOIN public.fiber_splices s ON p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no
+            WHERE s.incoming_segment_id IS NOT NULL
+              AND NOT (s.incoming_segment_id = ANY(p.visited_segments)) 
+              AND p.step > -100
+        )
+        SELECT step, segment_id, fiber_no FROM trace_backward
+    ),
+    -- Combine both paths
+    full_path AS (
+        SELECT step, segment_id, fiber_no FROM forward_path
+        UNION
+        SELECT step, segment_id, fiber_no FROM backward_path
     )
-    -- Select all segments that are part of this path and join them with the calculated boundaries
+    -- Calculate boundaries and return results
     SELECT
         cs.original_cable_id,
-        tp.fiber_no AS original_fiber_no,
-        pb.start_node AS logical_start_node_id,
-        pb.start_fiber AS logical_start_fiber_no,
-        pb.end_node AS logical_end_node_id,
-        pb.end_fiber AS logical_end_fiber_no
-    FROM trace_path tp
-    JOIN public.cable_segments cs ON tp.segment_id = cs.id
-    CROSS JOIN path_boundaries pb;
+        fp.fiber_no AS original_fiber_no,
+        boundaries.logical_start_node_id,
+        boundaries.logical_start_fiber_no,
+        boundaries.logical_end_node_id,
+        boundaries.logical_end_fiber_no
+    FROM
+        full_path fp
+        JOIN public.cable_segments cs ON fp.segment_id = cs.id
+        CROSS JOIN (
+            SELECT
+                first_value(cs_details.start_node_id) OVER (ORDER BY fp_details.step ASC) as logical_start_node_id,
+                first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step ASC) as logical_start_fiber_no,
+                first_value(cs_details.end_node_id) OVER (ORDER BY fp_details.step DESC) as logical_end_node_id,
+                first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step DESC) as logical_end_fiber_no
+            FROM
+                full_path fp_details
+                JOIN public.cable_segments cs_details ON fp_details.segment_id = cs_details.id
+            LIMIT 1
+        ) AS boundaries;
 END;
 $$;
+
 GRANT EXECUTE ON FUNCTION public.trace_logical_fiber_path(UUID, INT) TO authenticated;
 
 -- NEW TRIGGER FUNCTION: update_ofc_connections_from_splice
@@ -295,13 +314,13 @@ DECLARE
     v_splice_type_id UUID;
 BEGIN
     IF p_splice_type_id IS NULL THEN
-            SELECT public.get_lookup_type_id('SPLICE_TYPE', 'straight') INTO v_splice_type_id;
+            SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_splice_type_id;
         ELSE
             v_splice_type_id := p_splice_type_id;
         END IF;
     IF p_action = 'create' THEN
-        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type, loss_db)
-        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, p_splice_type, p_loss_db)
+        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
+        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, v_splice_type_id, p_loss_db)
         RETURNING id, 'created' INTO result;
     ELSIF p_action = 'delete' THEN
         DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
@@ -579,9 +598,9 @@ DECLARE
     v_straight_splice_id UUID;
 BEGIN
     -- Look up the UUID for the 'straight' splice type once.
-    SELECT public.get_lookup_type_id('SPLICE_TYPE', 'straight') INTO v_straight_splice_id;
+    SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_straight_splice_id;
     IF v_straight_splice_id IS NULL THEN
-        RAISE EXCEPTION 'Lookup type "straight" for category "SPLICE_TYPE" not found.';
+        RAISE EXCEPTION 'Lookup type "straight" for category "SPLICE_TYPES" not found.';
     END IF;
     -- Get fiber counts for both segments
     SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;

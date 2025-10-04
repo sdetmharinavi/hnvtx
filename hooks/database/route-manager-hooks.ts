@@ -80,14 +80,14 @@ export function useManageSplice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: {
-      action: "create" | "delete";
+      action: "create" | "delete" | "update_loss";
       jcId: string;
       spliceId?: string;
       incomingSegmentId?: string;
       incomingFiberNo?: number;
       outgoingSegmentId?: string;
       outgoingFiberNo?: number;
-      spliceType?: "pass_through" | "branch" | "termination";
+      spliceTypeId?: string;
       lossDb?: number;
     }) => {
       const { data, error } = await supabase.rpc("manage_splice", {
@@ -98,7 +98,7 @@ export function useManageSplice() {
         p_incoming_fiber_no: variables.incomingFiberNo,
         p_outgoing_segment_id: variables.outgoingSegmentId,
         p_outgoing_fiber_no: variables.outgoingFiberNo,
-        p_splice_type: variables.spliceType,
+        p_splice_type_id: variables.spliceTypeId,
         p_loss_db: variables.lossDb || 0,
       });
       if (error) throw error;
