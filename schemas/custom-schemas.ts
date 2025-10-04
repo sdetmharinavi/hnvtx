@@ -116,7 +116,7 @@ export const fiberTraceSegmentSchema = z.object({
   details: z.string(),
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
-  distance_km: z.number(),
+  distance_km: z.number().nullable(),
   loss_db: z.number().nullable(),
 });
 export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
