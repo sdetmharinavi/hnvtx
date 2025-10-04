@@ -17,12 +17,17 @@ BEGIN
         INSERT INTO public.ofc_connections (
             ofc_id,
             fiber_no_sn,
-            fiber_no_en
+            fiber_no_en,
+            updated_sn_id,
+            updated_en_id
         )
         VALUES (
             NEW.id,
             i,
-            i
+            i,
+            -- Populate from the parent cable's nodes
+            NEW.sn_id,
+            NEW.en_id
         );
     END LOOP;
     RETURN NEW;

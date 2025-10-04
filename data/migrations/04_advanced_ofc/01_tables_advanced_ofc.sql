@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.fiber_splices (
     incoming_fiber_no INT NOT NULL,
     outgoing_segment_id UUID REFERENCES public.cable_segments(id) ON DELETE CASCADE,
     outgoing_fiber_no INT,
-    splice_type TEXT NOT NULL DEFAULT 'pass_through' CHECK (splice_type IN ('pass_through', 'branch', 'termination')),
+    splice_type TEXT NOT NULL DEFAULT 'straight' CHECK (splice_type IN ('straight', 'cross', 't_joint')),
     -- status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'faulty', 'reserved')),
     logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
     loss_db NUMERIC(5, 2),

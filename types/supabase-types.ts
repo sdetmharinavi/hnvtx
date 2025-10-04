@@ -1834,8 +1834,10 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           updated_at: string | null
+          updated_en_id: string
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
+          updated_sn_id: string
         }
         Insert: {
           connection_category?: string
@@ -1861,8 +1863,10 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
+          updated_en_id: string
           updated_fiber_no_en?: number | null
           updated_fiber_no_sn?: number | null
+          updated_sn_id: string
         }
         Update: {
           connection_category?: string
@@ -1888,8 +1892,10 @@ export type Database = {
           status?: boolean | null
           system_id?: string | null
           updated_at?: string | null
+          updated_en_id?: string
           updated_fiber_no_en?: number | null
           updated_fiber_no_sn?: number | null
+          updated_sn_id?: string
         }
         Relationships: [
           {
@@ -1967,6 +1973,48 @@ export type Database = {
             columns: ["ofc_id"]
             isOneToOne: false
             referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_en_id_fkey"
+            columns: ["updated_en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_connections_updated_sn_id_fkey"
+            columns: ["updated_sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -3331,6 +3379,7 @@ export type Database = {
           ring_id: string | null
           ring_name: string | null
           ring_status: boolean | null
+          system_status: boolean | null
           type: string | null
         }
         Relationships: []
@@ -3813,14 +3862,12 @@ export type Database = {
         }[]
       }
       auto_splice_straight_segments: {
-        Args:
-          | {
-              p_jc_id: string
-              p_loss_db?: number
-              p_segment1_id: string
-              p_segment2_id: string
-            }
-          | { p_jc_id: string; p_segment1_id: string; p_segment2_id: string }
+        Args: {
+          p_jc_id: string
+          p_loss_db?: number
+          p_segment1_id: string
+          p_segment2_id: string
+        }
         Returns: Json
       }
       build_where_clause: {
@@ -3852,6 +3899,20 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
+        }[]
+      }
+      get_all_splices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          incoming_fiber_no: number
+          incoming_segment_id: string
+          jc_id: string
+          jc_name: string
+          jc_position_km: number
+          loss_db: number
+          outgoing_fiber_no: number
+          outgoing_segment_id: string
+          splice_id: string
         }[]
       }
       get_bsnl_dashboard_data: {
@@ -3937,6 +3998,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_segments_at_jc: {
+        Args: { p_jc_id: string }
+        Returns: {
+          fiber_count: number
+          id: string
+          original_cable_name: string
+          segment_order: number
+        }[]
+      }
       get_system_path_details: {
         Args: { p_path_id: string }
         Returns: {
@@ -3984,7 +4054,7 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
-      provision_ring_path: {
+      provision_logical_path: {
         Args: {
           p_path_name: string
           p_physical_path_id: string
@@ -4020,6 +4090,17 @@ export type Database = {
           fiber_out: number
           loss_db: number
           step_order: number
+        }[]
+      }
+      trace_logical_fiber_path: {
+        Args: { p_start_fiber_no: number; p_start_segment_id: string }
+        Returns: {
+          logical_end_fiber_no: number
+          logical_end_node_id: string
+          logical_start_fiber_no: number
+          logical_start_node_id: string
+          original_cable_id: string
+          original_fiber_no: number
         }[]
       }
       update_ring_system_associations: {

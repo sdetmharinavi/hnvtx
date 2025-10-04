@@ -7,6 +7,7 @@ import { PageSpinner, Button } from '@/components/common/ui';
 import { FiLink, FiX, FiZap } from 'react-icons/fi';
 import { JcSplicingDetails } from '@/schemas/custom-schemas';
 import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVisualizationModal';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 // --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
 type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
@@ -276,7 +277,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             <div className="grid gap-4" style={{ gridTemplateColumns }}>
                 {segments_at_jc.map((segment, index) => (
                     <div key={segment.segment_id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border dark:border-gray-700">
-                        <h4 className="font-bold text-sm mb-2 truncate" title={segment.segment_name}>{segment.segment_name}</h4>
+                        <h4 className="font-bold text-sm mb-2 truncate"><TruncateTooltip text={segment.segment_name} /></h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Fibers: {segment.fiber_count}</p>
                         
                         {index < segments_at_jc.length - 1 && (

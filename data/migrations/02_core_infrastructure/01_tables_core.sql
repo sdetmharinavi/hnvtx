@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS public.ofc_connections (
   fiber_no_en INTEGER NOT NULL,
   updated_fiber_no_sn INTEGER,
   updated_fiber_no_en INTEGER,
+  updated_sn_id UUID REFERENCES public.nodes (id) NOT NULL,
+  updated_en_id UUID REFERENCES public.nodes (id) NOT NULL,
   otdr_distance_sn_km DECIMAL(10, 3),
   sn_dom DATE,
   sn_power_dbm DECIMAL(10, 3),
