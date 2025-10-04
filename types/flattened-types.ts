@@ -1219,8 +1219,10 @@ export type Ofc_connectionsRow = {
     status: boolean | null;
     system_id: string | null;
     updated_at: string | null;
+    updated_en_id: string;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
+    updated_sn_id: string;
 };
 
 export type Ofc_connectionsInsert = {
@@ -1247,8 +1249,10 @@ export type Ofc_connectionsInsert = {
     status?: boolean | null;
     system_id?: string | null;
     updated_at?: string | null;
+    updated_en_id: string;
     updated_fiber_no_en?: number | null;
     updated_fiber_no_sn?: number | null;
+    updated_sn_id: string;
 };
 
 export type Ofc_connectionsUpdate = {
@@ -1275,8 +1279,10 @@ export type Ofc_connectionsUpdate = {
     status?: boolean | null;
     system_id?: string | null;
     updated_at?: string | null;
+    updated_en_id?: string;
     updated_fiber_no_en?: number | null;
     updated_fiber_no_sn?: number | null;
+    updated_sn_id?: string;
 };
 
 export type Ring_based_systemsRow = {
@@ -1828,6 +1834,7 @@ export type V_ring_nodesRow = {
     ring_id: string | null;
     ring_name: string | null;
     ring_status: boolean | null;
+    system_status: boolean | null;
     type: string | null;
 };
 

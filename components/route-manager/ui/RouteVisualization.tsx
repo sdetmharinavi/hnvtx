@@ -4,6 +4,7 @@
 import { motion } from 'framer-motion';
 import { Trash2, Edit } from 'lucide-react';
 import { RouteDetailsPayload, JointBox } from '@/schemas/custom-schemas';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 interface RouteVisualizationProps {
     routeDetails: RouteDetailsPayload;
@@ -182,13 +183,13 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                         #{seg.segment_order}
                       </span>
                       <div className="text-sm">
-                        <span className="font-medium text-gray-800 dark:text-gray-200">{start?.name || 'Unknown'}</span>
+                        <span className="font-medium text-gray-800 dark:text-gray-200"><TruncateTooltip text={start?.name || 'Unknown'} /></span>
                         <span className="mx-3 text-gray-400">
                           <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                           </svg>
                         </span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">{end?.name || 'Unknown'}</span>
+                        <span className="font-medium text-gray-800 dark:text-gray-200"><TruncateTooltip text={end?.name || 'Unknown'} /></span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
