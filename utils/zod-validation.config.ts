@@ -163,7 +163,7 @@ export const defaultValidationConfig: ValidationConfig = {
     {
       fieldName: "transnet_id",
       tableName: "ofc_cables",  // Specific numeric foreign key
-      validation: "z.number().int().positive()",
+      validation: "z.string().nullable()",
       description: "Numeric order ID",
     },
   ],

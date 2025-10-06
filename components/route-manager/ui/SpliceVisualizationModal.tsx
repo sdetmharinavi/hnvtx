@@ -32,7 +32,6 @@ interface SpliceVisualizationModalProps {
 
 export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> = ({ isOpen, onClose, junctionClosureId }) => {
   const { data: spliceDetails, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
-  console.log(spliceDetails);
   const manageSpliceMutation = useManageSplice();
 
   const [spliceToDelete, setSpliceToDelete] = useState<SpliceConnection | null>(null);

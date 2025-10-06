@@ -216,11 +216,6 @@ export default function CategoriesPage() {
       color: 'danger' as const,
     },
   ];
-  console.log(
-    `Rendering ConfirmModal with isOpen: ${JSON.stringify(
-      bulkDeleteManager.isConfirmModalOpen
-    )}`
-  );
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {

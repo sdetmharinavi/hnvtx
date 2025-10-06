@@ -268,9 +268,9 @@ export const logRowProcessing = (
     skipReason,
   };
 
-  console.group(`🔍 Processing Row ${excelRowNumber} (Index: ${rowIndex})`);
-  console.log("📊 Original Data:", originalData);
-  console.log("🔄 Processed Data:", processedData);
+  // console.group(`🔍 Processing Row ${excelRowNumber} (Index: ${rowIndex})`);
+  // console.log("📊 Original Data:", originalData);
+  // console.log("🔄 Processed Data:", processedData);
 
   if (validationErrors.length > 0) {
     console.warn("❌ Validation Errors:", validationErrors);
@@ -292,15 +292,15 @@ export const logColumnTransformation = (
   transformedValue: unknown,
   error?: string
 ): void => {
-  console.log(`🔧 Column "${column}" (Row ${rowIndex + 2}):`);
-  console.log(
-    `   Original: ${JSON.stringify(originalValue)} (${typeof originalValue})`
-  );
-  console.log(
-    `   Transformed: ${JSON.stringify(
-      transformedValue
-    )} (${typeof transformedValue})`
-  );
+  // console.log(`🔧 Column "${column}" (Row ${rowIndex + 2}):`);
+  // console.log(
+  //   `   Original: ${JSON.stringify(originalValue)} (${typeof originalValue})`
+  // );
+  // console.log(
+  //   `   Transformed: ${JSON.stringify(
+  //     transformedValue
+  //   )} (${typeof transformedValue})`
+  // );
 
   if (error) {
     console.error(`   ❌ Error: ${error}`);
