@@ -10,7 +10,7 @@ import {
   useToggleStatus,
   useTableBulkOperations,
   Filters,
-  TableName,
+  PublicTableName,
   TableInsert,
   TableUpdate,
   TableInsertWithDates,
@@ -52,7 +52,7 @@ type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
 type BaseRecord = { id: string | null; [key: string]: unknown };
 
-export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
+export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
@@ -60,7 +60,7 @@ export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
 }
 
 // --- THE HOOK ---
-export function useCrudManager<T extends TableName, V extends BaseRecord>({
+export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
   searchColumn,
@@ -209,7 +209,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   );
 
   // --- DELETE HANDLERS ---
-  // **THE FIX IS HERE: Added a check for 'employee_name'.**
+  // **Added a check for 'employee_name'.**
   const getDisplayName = useCallback((record: RecordWithId): string => {
     if (record.employee_name) return String(record.employee_name);
     if (record.name) return String(record.name);

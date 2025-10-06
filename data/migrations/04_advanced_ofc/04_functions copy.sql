@@ -139,6 +139,308 @@ GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
 -- Section 2: Logical Fiber Path Tracing and Splicing Management
 -- =================================================================
 
+-- Fixed trace_logical_fiber_path function (used by triggers)
+-- Uses temporary tables for better compatibility
+CREATE OR REPLACE FUNCTION public.trace_logical_fiber_path(
+    p_start_segment_id UUID,
+    p_start_fiber_no INT
+)
+RETURNS JSONB -- Returns a JSON object: { "boundaries": { ... }, "physical_fibers": [ ... ] }
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_path_data JSONB;
+BEGIN
+    WITH RECURSIVE full_path_trace AS (
+        -- ANCHOR: The starting point itself.
+        SELECT
+            0 AS step,
+            p_start_segment_id AS segment_id,
+            p_start_fiber_no AS fiber_no,
+            ARRAY[p_start_segment_id] AS visited
+
+        UNION ALL
+
+        -- RECURSIVE STEP: Find the next segment in either direction.
+        SELECT
+            -- If we found a forward connection, increment step. Otherwise, decrement.
+            CASE WHEN fwd.id IS NOT NULL THEN prev.step + 1 ELSE prev.step - 1 END,
+            -- The next segment is either the forward outgoing or the backward incoming.
+            COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id),
+            -- The next fiber number.
+            COALESCE(fwd.outgoing_fiber_no, bwd.incoming_fiber_no),
+            -- Add the new segment to the visited array to prevent cycles.
+            prev.visited || COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id)
+        FROM full_path_trace prev
+        -- Attempt to join to the next FORWARD splice
+        LEFT JOIN public.fiber_splices fwd ON prev.segment_id = fwd.incoming_segment_id AND prev.fiber_no = fwd.incoming_fiber_no
+        -- Attempt to join to the next BACKWARD splice
+        LEFT JOIN public.fiber_splices bwd ON prev.segment_id = bwd.outgoing_segment_id AND prev.fiber_no = bwd.outgoing_fiber_no
+        WHERE
+            -- The recursion must find a path in one direction.
+            (fwd.id IS NOT NULL OR bwd.id IS NOT NULL)
+            -- And the destination segment must not have been visited before.
+            AND NOT (COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id) = ANY(prev.visited))
+            -- Safety break to prevent infinite loops in case of data error
+            AND abs(prev.step) < 100
+    ),
+    path_segments_with_details AS (
+        SELECT
+            fp.step,
+            fp.fiber_no,
+            cs.original_cable_id,
+            cs.start_node_id,
+            cs.end_node_id
+        FROM full_path_trace fp
+        JOIN public.cable_segments cs ON fp.segment_id = cs.id
+    ),
+    path_boundaries AS (
+        SELECT
+            first_value(psd.start_node_id) OVER (ORDER BY psd.step ASC) AS logical_start_node_id,
+            first_value(psd.fiber_no) OVER (ORDER BY psd.step ASC) AS logical_start_fiber_no,
+            first_value(psd.end_node_id) OVER (ORDER BY psd.step DESC) AS logical_end_node_id,
+            first_value(psd.fiber_no) OVER (ORDER BY psd.step DESC) AS logical_end_fiber_no
+        FROM path_segments_with_details psd
+        LIMIT 1
+    )
+    SELECT jsonb_build_object(
+        'boundaries', (SELECT to_jsonb(pb) FROM path_boundaries pb),
+        'physical_fibers', (
+            SELECT jsonb_agg(
+                jsonb_build_object('original_cable_id', psd.original_cable_id, 'fiber_no', psd.fiber_no)
+            )
+            FROM path_segments_with_details psd
+        )
+    ) INTO v_path_data;
+
+    -- Handle the case where the trace finds nothing (i.e., a single, unspliced segment).
+    IF v_path_data IS NULL OR (v_path_data->'boundaries') IS NULL THEN
+        WITH single_segment AS (
+            SELECT
+                cs.start_node_id AS logical_start_node_id,
+                p_start_fiber_no AS logical_start_fiber_no,
+                cs.end_node_id AS logical_end_node_id,
+                p_start_fiber_no AS logical_end_fiber_no,
+                cs.original_cable_id
+            FROM public.cable_segments cs WHERE cs.id = p_start_segment_id
+        )
+        SELECT jsonb_build_object(
+            'boundaries', to_jsonb(ss) - 'original_cable_id', -- remove helper column
+            'physical_fibers', jsonb_build_array(jsonb_build_object('original_cable_id', ss.original_cable_id, 'fiber_no', p_start_fiber_no))
+        )
+        INTO v_path_data
+        FROM single_segment ss;
+    END IF;
+
+    RETURN v_path_data;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.trace_logical_fiber_path(UUID, INT) TO authenticated;
+
+-- whenever a splice is created, updated, or deleted. It uses the trace function
+-- to find the new logical endpoints and applies them to all affected fibers.
+CREATE OR REPLACE FUNCTION public.update_ofc_connections_from_splice()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    trace_result JSONB;
+    boundaries JSONB;
+BEGIN
+    -- Case 1: A splice is CREATED or UPDATED.
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        trace_result := public.trace_logical_fiber_path(NEW.incoming_segment_id, NEW.incoming_fiber_no);
+        boundaries := trace_result -> 'boundaries';
+        
+        IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+            UPDATE public.ofc_connections
+            SET
+                updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                updated_at = NOW()
+            FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+            WHERE ofc_connections.ofc_id = fibers.original_cable_id
+              AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+        END IF;
+
+    -- Case 2: A splice is DELETED.
+    ELSIF (TG_OP = 'DELETE') THEN
+        -- Part A: Update the path that was connected to the 'incoming' side.
+        trace_result := public.trace_logical_fiber_path(OLD.incoming_segment_id, OLD.incoming_fiber_no);
+        boundaries := trace_result -> 'boundaries';
+        IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+             UPDATE public.ofc_connections
+            SET updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                updated_at = NOW()
+            FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+            WHERE ofc_connections.ofc_id = fibers.original_cable_id
+              AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+        END IF;
+
+        -- Part B: If there was an 'outgoing' side, update its new path as well.
+        IF OLD.outgoing_segment_id IS NOT NULL THEN
+            trace_result := public.trace_logical_fiber_path(OLD.outgoing_segment_id, OLD.outgoing_fiber_no);
+            boundaries := trace_result -> 'boundaries';
+            IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+                UPDATE public.ofc_connections
+                SET updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                    updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                    updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                    updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                    updated_at = NOW()
+                FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+                WHERE ofc_connections.ofc_id = fibers.original_cable_id
+                  AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NULL; -- Result is ignored for AFTER triggers.
+END;
+$$;
+
+
+-- Description: RPC function to handle creating, deleting, and updating splices.
+CREATE OR REPLACE FUNCTION public.manage_splice(
+    p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
+    p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
+    p_splice_type_id UUID DEFAULT NULL, p_loss_db NUMERIC DEFAULT NULL
+)
+RETURNS RECORD
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    result RECORD;
+    v_splice_type_id UUID;
+BEGIN
+    IF p_splice_type_id IS NULL THEN
+            SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_splice_type_id;
+        ELSE
+            v_splice_type_id := p_splice_type_id;
+        END IF;
+    IF p_action = 'create' THEN
+        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
+        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, v_splice_type_id, p_loss_db)
+        RETURNING id, 'created' INTO result;
+    ELSIF p_action = 'delete' THEN
+        DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
+    ELSIF p_action = 'update_loss' THEN
+        UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
+        WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
+    ELSE
+        RAISE EXCEPTION 'Invalid action specified.';
+    END IF;
+    RETURN result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, UUID, NUMERIC) TO authenticated;
+
+-- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
+CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+-- Fetches info about the requested JC
+WITH jc_info AS (
+  SELECT jc.id, n.name, jc.node_id 
+  FROM public.junction_closures jc 
+  JOIN public.nodes n ON jc.node_id = n.id 
+  WHERE jc.id = p_jc_id
+),
+-- Finds all JCs at the same node 
+all_jcs_at_node AS (
+  SELECT id 
+  FROM public.junction_closures 
+  WHERE node_id = (SELECT node_id FROM jc_info)
+), 
+-- Finds all segments at the same node 
+segments_at_jc AS (
+  SELECT 
+    cs.id as segment_id, 
+    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
+    cs.fiber_count
+  FROM public.cable_segments cs 
+  JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
+     OR cs.end_node_id = (SELECT node_id FROM jc_info)
+), 
+fiber_universe AS (
+  SELECT s.segment_id, series.i as fiber_no 
+  FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
+), 
+splice_info AS (
+  SELECT
+    fs.id as splice_id, 
+    fs.jc_id, 
+    fs.incoming_segment_id, 
+    fs.incoming_fiber_no, 
+    fs.outgoing_segment_id, 
+    fs.outgoing_fiber_no, 
+    fs.loss_db,
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
+     FROM cable_segments cs_out 
+     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
+     WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
+     FROM cable_segments cs_in 
+     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
+     WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
+  FROM public.fiber_splices fs 
+  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
+)
+SELECT jsonb_build_object(
+  'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
+  'segments_at_jc', (
+    SELECT jsonb_agg(jsonb_build_object(
+      'segment_id', seg.segment_id, 
+      'segment_name', seg.segment_name, 
+      'fiber_count', seg.fiber_count,
+      'fibers', (
+        SELECT jsonb_agg(jsonb_build_object(
+          'fiber_no', fu.fiber_no,
+          'status', CASE 
+            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
+            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
+            ELSE 'available' 
+          END,
+          'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
+          'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
+          'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no),
+          'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
+        ) ORDER BY fu.fiber_no)
+        FROM fiber_universe fu
+        LEFT JOIN splice_info s_in 
+          ON fu.segment_id = s_in.incoming_segment_id 
+          AND fu.fiber_no = s_in.incoming_fiber_no
+        LEFT JOIN splice_info s_out 
+          ON fu.segment_id = s_out.outgoing_segment_id 
+          AND fu.fiber_no = s_out.outgoing_fiber_no
+        WHERE fu.segment_id = seg.segment_id
+      )
+    ))
+    FROM segments_at_jc seg
+  )
+)
+FROM jc_info;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
+
 -- ** Final, correct, robust bi-directional trace function.**
 CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
@@ -287,208 +589,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
-
--- Description: RPC function to handle creating, deleting, and updating splices.
-CREATE OR REPLACE FUNCTION public.manage_splice(
-    p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
-    p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
-    p_splice_type_id UUID DEFAULT NULL, p_loss_db NUMERIC DEFAULT NULL
-)
-RETURNS RECORD
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    result RECORD;
-    v_splice_type_id UUID;
-BEGIN
-    IF p_splice_type_id IS NULL THEN
-            SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_splice_type_id;
-        ELSE
-            v_splice_type_id := p_splice_type_id;
-        END IF;
-    IF p_action = 'create' THEN
-        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
-        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, v_splice_type_id, p_loss_db)
-        RETURNING id, 'created' INTO result;
-    ELSIF p_action = 'delete' THEN
-        DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
-        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
-    ELSIF p_action = 'update_loss' THEN
-        UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
-        WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
-        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
-    ELSE
-        RAISE EXCEPTION 'Invalid action specified.';
-    END IF;
-    RETURN result;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, UUID, NUMERIC) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.update_paths_after_splice(
-    p_fibers_to_update JSONB
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    fiber_record RECORD;
-    trace_result RECORD;
-    physical_fibers_json JSONB;
-    trace_steps INT;
-BEGIN
-    FOR fiber_record IN SELECT * FROM jsonb_to_recordset(p_fibers_to_update) AS x(segment_id UUID, fiber_no INT) LOOP
-        
-        -- Step 1: Trace the full logical path using the robust bi-directional trace function.
-        WITH path_trace AS (
-            SELECT * FROM public.trace_fiber_path(fiber_record.segment_id, fiber_record.fiber_no)
-        ),
-        endpoints AS (
-            SELECT
-                (SELECT cs.start_node_id FROM path_trace pt JOIN public.cable_segments cs ON pt.element_id = cs.id WHERE pt.step_order = 1) as start_node,
-                (SELECT fiber_in FROM path_trace ORDER BY step_order ASC LIMIT 1) as start_fiber,
-                (SELECT cs.end_node_id FROM path_trace pt JOIN public.cable_segments cs ON pt.element_id = cs.id ORDER BY pt.step_order DESC LIMIT 1) as end_node,
-                (SELECT fiber_out FROM path_trace ORDER BY step_order DESC LIMIT 1) as end_fiber
-        ),
-        physical_fibers AS (
-            SELECT jsonb_agg(jsonb_build_object('ofc_id', cs.original_cable_id, 'fiber_no', pt.fiber_in)) as fibers
-            FROM path_trace pt
-            JOIN public.cable_segments cs ON pt.element_id = cs.id
-            WHERE pt.element_type = 'SEGMENT'
-        )
-        SELECT *, (SELECT COUNT(*) FROM path_trace) INTO trace_result FROM endpoints, physical_fibers;
-
-        physical_fibers_json := trace_result.fibers;
-        trace_steps := trace_result.count;
-
-        -- Step 2: Check if the path is a single, unspliced segment.
-        IF trace_steps <= 1 OR physical_fibers_json IS NULL OR jsonb_array_length(physical_fibers_json) <= 1 THEN
-            -- Reset to physical defaults.
-            UPDATE public.ofc_connections conn
-            SET
-                updated_sn_id = cable.sn_id,
-                updated_en_id = cable.en_id,
-                updated_fiber_no_sn = conn.fiber_no_sn,
-                updated_fiber_no_en = conn.fiber_no_en,
-                updated_at = NOW()
-            FROM public.cable_segments cs
-            JOIN public.ofc_cables cable ON cs.original_cable_id = cable.id
-            WHERE cs.id = fiber_record.segment_id AND conn.ofc_id = cs.original_cable_id AND conn.fiber_no_sn = fiber_record.fiber_no;
-        ELSE
-            -- Update all connections in the multi-segment path with the logical endpoints.
-            UPDATE public.ofc_connections
-            SET
-                updated_sn_id       = trace_result.start_node,
-                updated_fiber_no_sn = trace_result.start_fiber,
-                updated_en_id       = trace_result.end_node,
-                updated_fiber_no_en = trace_result.end_fiber,
-                updated_at          = NOW()
-            WHERE (ofc_id, fiber_no_sn) IN (
-                SELECT (val->>'ofc_id')::UUID, (val->>'fiber_no')::INT
-                FROM jsonb_array_elements(physical_fibers_json) AS val
-            );
-        END IF;
-    END LOOP;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.update_paths_after_splice(JSONB) TO authenticated;
-
--- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
-CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
-RETURNS JSONB
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
--- Fetches info about the requested JC
-WITH jc_info AS (
-  SELECT jc.id, n.name, jc.node_id 
-  FROM public.junction_closures jc 
-  JOIN public.nodes n ON jc.node_id = n.id 
-  WHERE jc.id = p_jc_id
-),
--- Finds all JCs at the same node 
-all_jcs_at_node AS (
-  SELECT id 
-  FROM public.junction_closures 
-  WHERE node_id = (SELECT node_id FROM jc_info)
-), 
--- Finds all segments at the same node 
-segments_at_jc AS (
-  SELECT 
-    cs.id as segment_id, 
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
-    cs.fiber_count
-  FROM public.cable_segments cs 
-  JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
-     OR cs.end_node_id = (SELECT node_id FROM jc_info)
-), 
-fiber_universe AS (
-  SELECT s.segment_id, series.i as fiber_no 
-  FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-), 
-splice_info AS (
-  SELECT
-    fs.id as splice_id, 
-    fs.jc_id, 
-    fs.incoming_segment_id, 
-    fs.incoming_fiber_no, 
-    fs.outgoing_segment_id, 
-    fs.outgoing_fiber_no, 
-    fs.loss_db,
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
-     FROM cable_segments cs_out 
-     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
-     WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
-     FROM cable_segments cs_in 
-     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
-     WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs 
-  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
-)
-SELECT jsonb_build_object(
-  'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
-  'segments_at_jc', (
-    SELECT jsonb_agg(jsonb_build_object(
-      'segment_id', seg.segment_id, 
-      'segment_name', seg.segment_name, 
-      'fiber_count', seg.fiber_count,
-      'fibers', (
-        SELECT jsonb_agg(jsonb_build_object(
-          'fiber_no', fu.fiber_no,
-          'status', CASE 
-            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
-            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
-            ELSE 'available' 
-          END,
-          'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
-          'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
-          'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no),
-          'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
-        ) ORDER BY fu.fiber_no)
-        FROM fiber_universe fu
-        LEFT JOIN splice_info s_in 
-          ON fu.segment_id = s_in.incoming_segment_id 
-          AND fu.fiber_no = s_in.incoming_fiber_no
-        LEFT JOIN splice_info s_out 
-          ON fu.segment_id = s_out.outgoing_segment_id 
-          AND fu.fiber_no = s_out.outgoing_fiber_no
-        WHERE fu.segment_id = seg.segment_id
-      )
-    ))
-    FROM segments_at_jc seg
-  )
-)
-FROM jc_info;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
 -- Description: Provisions a working and protection fiber pair on a logical path.
 CREATE OR REPLACE FUNCTION public.provision_logical_path(

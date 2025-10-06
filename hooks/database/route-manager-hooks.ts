@@ -76,8 +76,45 @@ export function useJcSplicingDetails(jcId: string | null) {
 }
 
 /** Hook to call the `manage_splice` RPC function. */
+// export function useManageSplice() {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: async (variables: {
+//       action: "create" | "delete" | "update_loss";
+//       jcId: string;
+//       spliceId?: string;
+//       incomingSegmentId?: string;
+//       incomingFiberNo?: number;
+//       outgoingSegmentId?: string;
+//       outgoingFiberNo?: number;
+//       spliceTypeId?: string;
+//       lossDb?: number;
+//     }) => {
+//       const { data, error } = await supabase.rpc("manage_splice", {
+//         p_action: variables.action,
+//         p_jc_id: variables.jcId,
+//         p_splice_id: variables.spliceId,
+//         p_incoming_segment_id: variables.incomingSegmentId,
+//         p_incoming_fiber_no: variables.incomingFiberNo,
+//         p_outgoing_segment_id: variables.outgoingSegmentId,
+//         p_outgoing_fiber_no: variables.outgoingFiberNo,
+//         p_splice_type_id: variables.spliceTypeId,
+//         p_loss_db: variables.lossDb || 0,
+//       });
+//       if (error) throw error;
+//       return data;
+//     },
+//     onSuccess: (_, variables) => {
+//       toast.success("Splice configuration updated!");
+//       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", variables.jcId] });
+//     },
+//     onError: (err) => toast.error(`Splice Error: ${err.message}`),
+//   });
+// }
+
 export function useManageSplice() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (variables: {
       action: "create" | "delete" | "update_loss";
@@ -90,6 +127,7 @@ export function useManageSplice() {
       spliceTypeId?: string;
       lossDb?: number;
     }) => {
+      // Just call manage_splice - the trigger handles the rest automatically
       const { data, error } = await supabase.rpc("manage_splice", {
         p_action: variables.action,
         p_jc_id: variables.jcId,
@@ -105,12 +143,19 @@ export function useManageSplice() {
       return data;
     },
     onSuccess: (_, variables) => {
-      toast.success("Splice configuration updated!");
+      toast.success("Splice configuration updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", variables.jcId] });
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['route-details'] });
     },
-    onError: (err) => toast.error(`Splice Error: ${err.message}`),
+    onError: (err: Error) => {
+      console.error("Splice management error:", err);
+      toast.error(`Splice Error: ${err.message}`);
+    },
   });
 }
+
+
 
 /** Hook to call the `auto_splice_straight_segments` RPC function. */
 
