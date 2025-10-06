@@ -1152,7 +1152,7 @@ export const ofc_cablesRowSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   sn_id: z.uuid(),
   status: z.boolean().nullable(),
-  transnet_id: z.uuid().nullable(),
+  transnet_id: z.number().int().positive().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1172,7 +1172,7 @@ export const ofc_cablesInsertSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   sn_id: z.uuid(),
   status: z.boolean().nullable().optional(),
-  transnet_id: z.uuid().nullable().optional(),
+  transnet_id: z.number().int().positive().nullable().optional(),
   transnet_rkm: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1192,7 +1192,7 @@ export const ofc_cablesUpdateSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   sn_id: z.uuid().optional(),
   status: z.boolean().nullable().optional(),
-  transnet_id: z.uuid().nullable().optional(),
+  transnet_id: z.number().int().positive().nullable().optional(),
   transnet_rkm: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1782,7 +1782,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  transnet_id: z.uuid().nullable(),
+  transnet_id: z.number().int().positive().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });

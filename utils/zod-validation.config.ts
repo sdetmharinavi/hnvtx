@@ -160,6 +160,12 @@ export const defaultValidationConfig: ValidationConfig = {
       validation: "z.enum(UserRole)",
       description: "User role field using native enum",
     },
+    {
+      fieldName: "transnet_id",
+      tableName: "ofc_cables",  // Specific numeric foreign key
+      validation: "z.number().int().positive()",
+      description: "Numeric order ID",
+    },
   ],
 };
 

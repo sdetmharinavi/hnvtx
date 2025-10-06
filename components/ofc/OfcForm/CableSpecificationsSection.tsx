@@ -27,7 +27,6 @@ interface CableSpecificationsSectionProps {
   setValue: UseFormSetValue<Ofc_cablesInsertSchema>;
   watch: UseFormWatch<Ofc_cablesInsertSchema>;
   ofcTypeOptions: Option[];
-  ofcOwnerOptions: Option[]; // <-- ADDED
   isCapacityLocked: boolean;
 }
 
@@ -38,7 +37,6 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
   setValue,
   watch,
   ofcTypeOptions,
-  ofcOwnerOptions, // <-- ADDED
   isCapacityLocked,
 }) => {
   const currentStatus = watch('status');
@@ -68,18 +66,6 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
           searchPlaceholder="Search OFC types..."
         />
 
-        {/* **THE FIX: Added the OFC Owner dropdown** */}
-        <FormSearchableSelect
-            name="ofc_owner_id"
-            label="OFC Owner"
-            control={control}
-            options={ofcOwnerOptions}
-            error={errors.ofc_owner_id}
-            placeholder="Select OFC owner"
-            searchPlaceholder="Search owners..."
-            required
-        />
-        
         <div className="space-y-2">
           {isCapacityLocked ? (
             <FormInput

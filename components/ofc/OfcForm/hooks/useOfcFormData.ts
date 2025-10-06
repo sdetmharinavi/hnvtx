@@ -20,12 +20,12 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       en_id: '',
       route_name: '',
       ofc_type_id: '',
-      ofc_owner_id: '', // <-- THE FIX: Added missing required field
       capacity: 0,
       current_rkm: null,
       transnet_rkm: null,
       transnet_id: null,
       asset_no: null,
+      ofc_owner_id: '',
       maintenance_terminal_id: null,
       remark: null,
       status: true,
@@ -39,7 +39,6 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
     defaultValues,
   });
 
-  // ... (rest of the hook remains the same)
   // Reset form when ofcCable changes or when switching from edit to create mode
   useEffect(() => {
     if (isEdit && ofcCable) {
@@ -48,11 +47,11 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
         en_id: ofcCable.en_id || '',
         route_name: ofcCable.route_name || '',
         ofc_type_id: ofcCable.ofc_type_id || '',
-        ofc_owner_id: ofcCable.ofc_owner_id || '', // <-- THE FIX: Populate owner ID
         capacity: ofcCable.capacity || 0,
         current_rkm: ofcCable.current_rkm || 0,
         transnet_rkm: ofcCable.transnet_rkm || 0,
-        transnet_id: ofcCable.transnet_id || '',
+        transnet_id: ofcCable.transnet_id || null,
+        ofc_owner_id: ofcCable.ofc_owner_id || '',
         asset_no: ofcCable.asset_no || '',
         maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
         remark: ofcCable.remark || '',
@@ -72,12 +71,12 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       en_id: ofcCable.en_id || '',
       route_name: ofcCable.route_name || '',
       ofc_type_id: ofcCable.ofc_type_id || '',
-      ofc_owner_id: ofcCable.ofc_owner_id || '', // <-- THE FIX: Populate owner ID
       capacity: ofcCable.capacity || 0,
       current_rkm: ofcCable.current_rkm || 0,
       transnet_rkm: ofcCable.transnet_rkm || 0,
-      transnet_id: ofcCable.transnet_id || '',
+      transnet_id: ofcCable.transnet_id || null,
       asset_no: ofcCable.asset_no || '',
+      ofc_owner_id: ofcCable.ofc_owner_id || '',
       maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
       remark: ofcCable.remark || '',
       status: ofcCable.status ?? true,
@@ -136,7 +135,6 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       );
     }
   }, [ofcCableData, form, defaultValues, ofcCable?.route_name, isEdit]);
-
 
   return { form, isEdit };
 };

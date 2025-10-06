@@ -3828,36 +3828,6 @@ export type Database = {
         Args: { new_status: string; user_ids: string[] }
         Returns: boolean
       }
-      admin_get_all_users: {
-        Args: {
-          date_from?: string
-          date_to?: string
-          filter_role?: string
-          filter_status?: string
-          page_limit?: number
-          page_offset?: number
-          search_query?: string
-        }
-        Returns: {
-          address: Json
-          avatar_url: string
-          created_at: string
-          date_of_birth: string
-          designation: string
-          email: string
-          first_name: string
-          id: string
-          is_email_verified: boolean
-          last_name: string
-          last_sign_in_at: string
-          phone_number: string
-          preferences: Json
-          role: string
-          status: string
-          total_count: number
-          updated_at: string
-        }[]
-      }
       admin_get_all_users_extended: {
         Args: {
           date_from?: string
