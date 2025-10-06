@@ -2,12 +2,13 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import { useJcSplicingDetails, useManageSplice, useAutoSplice } from '@/hooks/database/route-manager-hooks';
+import { useJcSplicingDetails, useManageSplice, useAutoSplice, useSyncPathUpdates } from '@/hooks/database/route-manager-hooks';
 import { PageSpinner, Button } from '@/components/common/ui';
-import { FiLink, FiX, FiZap } from 'react-icons/fi';
+import { FiLink, FiX, FiZap, FiRefreshCw } from 'react-icons/fi';
 import { JcSplicingDetails } from '@/schemas/custom-schemas';
 import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVisualizationModal';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { Loader2 } from 'lucide-react';
 
 // --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
 type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
@@ -63,6 +64,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
+    const syncPathUpdatesMutation = useSyncPathUpdates(); // NEW HOOK
 
     const [selectedFiber, setSelectedFiber] = useState<{ segmentId: string; fiberNo: number } | null>(null);
     const [showLossModal, setShowLossModal] = useState(false);
@@ -72,7 +74,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     const [autoSplicePairs, setAutoSplicePairs] = useState<AutoSplicePair[]>([]);
     const [showVisualizationModal, setShowVisualizationModal] = useState(false);
 
-    // Calculate available fiber pairs for auto-splice
+    // (useEffect for auto-splice pairs remains the same)
     useEffect(() => {
         if (pendingSpliceAction?.type === 'auto' && pendingSpliceAction.autoData && spliceDetails) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
@@ -159,7 +161,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 incomingFiberNo,
                 outgoingSegmentId,
                 outgoingFiberNo,
-                spliceType: 'pass_through',
                 lossDb,
             });
             setSelectedFiber(null);
@@ -177,7 +178,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 });
                 resetModal();
             } else {
-                // Individual mode: create splices one by one with individual loss values
                 for (const pair of autoSplicePairs) {
                     const lossDb = parseFloat(pair.lossDb) || 0;
                     await manageSpliceMutation.mutateAsync({
@@ -187,7 +187,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         incomingFiberNo: pair.fiber1No,
                         outgoingSegmentId: segment2Id,
                         outgoingFiberNo: pair.fiber2No,
-                        spliceType: 'pass_through',
                         lossDb,
                     });
                 }
@@ -204,11 +203,16 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
         setAutoSplicePairs([]);
     };
 
-    const handleRemoveSplice = (spliceId: string) => {
-        if (window.confirm("Are you sure you want to remove this splice?") && junctionClosureId) {
-            manageSpliceMutation.mutate({ action: 'delete', jcId: junctionClosureId, spliceId });
-            setSelectedFiber(null);
-        }
+    const handleRemoveSplice = (fiber: FiberAtSegment) => {
+      if (!junctionClosureId || !fiber.splice_id) return;
+      if (window.confirm("Are you sure you want to remove this splice?")) {
+        manageSpliceMutation.mutate({
+          action: 'delete',
+          jcId: junctionClosureId,
+          spliceId: fiber.splice_id,
+        });
+        setSelectedFiber(null);
+      }
     };
 
     if (isLoading) return <PageSpinner text="Loading splice details..." />;
@@ -254,7 +258,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </span>
                 </div>
                 {fiber.splice_id && fiber.status === 'used_as_incoming' && (
-                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber.splice_id!); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
+                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
                         <FiX className="w-3 h-3" />
                     </button>
                 )}
@@ -264,8 +268,26 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">Splice Manager: {junction_closure.name}</h3>
-
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <h3 className="text-xl font-semibold">Splice Manager: {junction_closure.name}</h3>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => setShowVisualizationModal(true)} variant="outline">
+                    View All Splices
+                </Button>
+                {/* NEW SYNC BUTTON */}
+                <Button 
+                    size="sm" 
+                    variant="primary" 
+                    onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
+                    disabled={syncPathUpdatesMutation.isPending}
+                    leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
+                >
+                    {syncPathUpdatesMutation.isPending ? "Syncing..." : "Apply Path Updates"}
+                </Button>
+              </div>
+            </div>
+            
+            {/* ... rest of the component remains the same ... */}
             {selectedFiber && (
                 <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-center">
                     <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -292,12 +314,9 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </div>
                 ))}
             </div>
-            <Button size="xs" onClick={() => setShowVisualizationModal(true)} className="w-full mb-3" variant="outline">
-                <FiZap className="w-3 h-3 mr-1"/> Show Splices
-            </Button>
+
             <SpliceVisualizationModal isOpen={showVisualizationModal} onClose={() => setShowVisualizationModal(false)} junctionClosureId={junctionClosureId} />
 
-            {/* Loss dB Modal */}
             {showLossModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -378,7 +397,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                                 max="10"
                                                 value={lossDbValue}
                                                 onChange={(e) => setLossDbValue(e.target.value)}
-                                                className="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
+                                                className="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
                                                 placeholder="0.3"
                                             />
                                             <Button size="xs" onClick={applyUniformLoss} variant="outline">
