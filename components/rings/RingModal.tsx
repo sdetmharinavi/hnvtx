@@ -18,7 +18,7 @@ interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingRing?: RingsRowSchema | null;
-  // **THE FIX: Use a single onSubmit handler**
+  // ** Use a single onSubmit handler**
   onSubmit: (data: RingsInsertSchema) => void; 
   isLoading: boolean; // Receive loading state from parent
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
@@ -85,7 +85,7 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  // **THE FIX: The form's submit handler now just calls the prop.**
+  // ** The form's submit handler now just calls the prop.**
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
       onSubmit(formData);

@@ -191,7 +191,7 @@ const NodesPage = () => {
           isOpen={editModal.isOpen}
           onClose={editModal.close}
           editingNode={editModal.record as NodeRowsWithRelations | null}
-          // **THE FIX: Pass the correct props to the now "dumb" component.**
+          // ** Pass the correct props to the now "dumb" component.**
           onSubmit={crudActions.handleSave}
           isLoading={isMutating}
         />

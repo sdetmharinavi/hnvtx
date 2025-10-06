@@ -69,7 +69,7 @@ export default function RingMapPage() {
   
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
   
-  // **THE FIX: Wrap the onBack handler in useCallback for a stable reference.**
+  // ** Wrap the onBack handler in useCallback for a stable reference.**
   const handleBack = useCallback(() => {
     router.push('/dashboard/rings');
   }, [router]);

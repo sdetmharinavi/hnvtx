@@ -115,6 +115,26 @@ BEGIN
 END;
 $$;
 
+-- Description: Get a list of all cable segments present at a specific Junction Closure.
+CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)
+RETURNS TABLE (id UUID, original_cable_name TEXT, segment_order INT, fiber_count INT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT
+        cs.id,
+        oc.route_name,
+        cs.segment_order,
+        cs.fiber_count
+    FROM public.v_cable_segments_at_jc v_cs
+    JOIN public.cable_segments cs ON v_cs.id = cs.id
+    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+    WHERE v_cs.jc_node_id = (SELECT node_id FROM public.junction_closures WHERE id = p_jc_id);
+$$;
+GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
+
 -- =================================================================
 -- Section 2: Logical Fiber Path Tracing and Splicing Management
 -- =================================================================
@@ -137,63 +157,81 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    RETURN QUERY
-    WITH
-    -- Trace forward from the starting point
-    forward_path AS (
-        WITH RECURSIVE trace_forward AS (
-            SELECT
-                0::bigint as step,
-                p_start_segment_id as segment_id,
-                p_start_fiber_no as fiber_no,
-                ARRAY[p_start_segment_id] as visited_segments
-            
-            UNION ALL
-            
-            SELECT
-                p.step + 1,
-                s.outgoing_segment_id,
-                s.outgoing_fiber_no,
-                p.visited_segments || s.outgoing_segment_id
-            FROM trace_forward p
-            JOIN public.fiber_splices s ON p.segment_id = s.incoming_segment_id AND p.fiber_no = s.incoming_fiber_no
-            WHERE s.outgoing_segment_id IS NOT NULL
-              AND NOT (s.outgoing_segment_id = ANY(p.visited_segments)) 
-              AND p.step < 100
-        )
-        SELECT step, segment_id, fiber_no FROM trace_forward
-    ),
-    -- Trace backward from the starting point
-    backward_path AS (
-        WITH RECURSIVE trace_backward AS (
-            SELECT
-                0::bigint as step,
-                p_start_segment_id as segment_id,
-                p_start_fiber_no as fiber_no,
-                ARRAY[p_start_segment_id] as visited_segments
-            
-            UNION ALL
-            
-            SELECT
-                p.step - 1,
-                s.incoming_segment_id,
-                s.incoming_fiber_no,
-                p.visited_segments || s.incoming_segment_id
-            FROM trace_backward p
-            JOIN public.fiber_splices s ON p.segment_id = s.outgoing_segment_id AND p.fiber_no = s.outgoing_fiber_no
-            WHERE s.incoming_segment_id IS NOT NULL
-              AND NOT (s.incoming_segment_id = ANY(p.visited_segments)) 
-              AND p.step > -100
-        )
-        SELECT step, segment_id, fiber_no FROM trace_backward
-    ),
-    -- Combine both paths
-    full_path AS (
-        SELECT step, segment_id, fiber_no FROM forward_path
-        UNION
-        SELECT step, segment_id, fiber_no FROM backward_path
+    -- Create temp table for forward trace
+    CREATE TEMP TABLE IF NOT EXISTS temp_forward (
+        step BIGINT,
+        segment_id UUID,
+        fiber_no INT,
+        visited_segments UUID[]
+    ) ON COMMIT DROP;
+    
+    -- Create temp table for backward trace
+    CREATE TEMP TABLE IF NOT EXISTS temp_backward (
+        step BIGINT,
+        segment_id UUID,
+        fiber_no INT,
+        visited_segments UUID[]
+    ) ON COMMIT DROP;
+    
+    -- Trace forward
+    INSERT INTO temp_forward
+    WITH RECURSIVE forward_trace AS (
+        SELECT
+            0::bigint as step,
+            p_start_segment_id as segment_id,
+            p_start_fiber_no as fiber_no,
+            ARRAY[p_start_segment_id] as visited_segments
+        
+        UNION ALL
+        
+        SELECT
+            p.step + 1,
+            s.outgoing_segment_id,
+            s.outgoing_fiber_no,
+            p.visited_segments || s.outgoing_segment_id
+        FROM forward_trace p
+        JOIN public.fiber_splices s 
+            ON p.segment_id = s.incoming_segment_id 
+            AND p.fiber_no = s.incoming_fiber_no
+        WHERE s.outgoing_segment_id IS NOT NULL
+          AND NOT (s.outgoing_segment_id = ANY(p.visited_segments)) 
+          AND p.step < 100
     )
-    -- Calculate boundaries and return results
+    SELECT * FROM forward_trace;
+    
+    -- Trace backward
+    INSERT INTO temp_backward
+    WITH RECURSIVE backward_trace AS (
+        SELECT
+            0::bigint as step,
+            p_start_segment_id as segment_id,
+            p_start_fiber_no as fiber_no,
+            ARRAY[p_start_segment_id] as visited_segments
+        
+        UNION ALL
+        
+        SELECT
+            p.step - 1,
+            s.incoming_segment_id,
+            s.incoming_fiber_no,
+            p.visited_segments || s.incoming_segment_id
+        FROM backward_trace p
+        JOIN public.fiber_splices s 
+            ON p.segment_id = s.outgoing_segment_id 
+            AND p.fiber_no = s.outgoing_fiber_no
+        WHERE s.incoming_segment_id IS NOT NULL
+          AND NOT (s.incoming_segment_id = ANY(p.visited_segments)) 
+          AND p.step > -100
+    )
+    SELECT * FROM backward_trace WHERE step < 0;
+    
+    -- Return combined results
+    RETURN QUERY
+    WITH full_path AS (
+        SELECT step, segment_id, fiber_no FROM temp_forward
+        UNION ALL
+        SELECT step, segment_id, fiber_no FROM temp_backward
+    )
     SELECT
         cs.original_cable_id,
         fp.fiber_no AS original_fiber_no,
@@ -201,20 +239,22 @@ BEGIN
         boundaries.logical_start_fiber_no,
         boundaries.logical_end_node_id,
         boundaries.logical_end_fiber_no
-    FROM
-        full_path fp
-        JOIN public.cable_segments cs ON fp.segment_id = cs.id
-        CROSS JOIN (
-            SELECT
-                first_value(cs_details.start_node_id) OVER (ORDER BY fp_details.step ASC) as logical_start_node_id,
-                first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step ASC) as logical_start_fiber_no,
-                first_value(cs_details.end_node_id) OVER (ORDER BY fp_details.step DESC) as logical_end_node_id,
-                first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step DESC) as logical_end_fiber_no
-            FROM
-                full_path fp_details
-                JOIN public.cable_segments cs_details ON fp_details.segment_id = cs_details.id
-            LIMIT 1
-        ) AS boundaries;
+    FROM full_path fp
+    JOIN public.cable_segments cs ON fp.segment_id = cs.id
+    CROSS JOIN (
+        SELECT
+            first_value(cs_details.start_node_id) OVER (ORDER BY fp_details.step ASC) as logical_start_node_id,
+            first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step ASC) as logical_start_fiber_no,
+            first_value(cs_details.end_node_id) OVER (ORDER BY fp_details.step DESC) as logical_end_node_id,
+            first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step DESC) as logical_end_fiber_no
+        FROM full_path fp_details
+        JOIN public.cable_segments cs_details ON fp_details.segment_id = cs_details.id
+        LIMIT 1
+    ) AS boundaries;
+    
+    -- Cleanup
+    DROP TABLE IF EXISTS temp_forward;
+    DROP TABLE IF EXISTS temp_backward;
 END;
 $$;
 
@@ -430,7 +470,7 @@ FROM jc_info;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
--- **THE FIX: Final, correct, robust bi-directional trace function.**
+-- ** Final, correct, robust bi-directional trace function.**
 CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
     step_order BIGINT,
@@ -448,26 +488,27 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- Step 1: Create a temporary table to store the raw traversal results.
-    CREATE TEMP TABLE temp_path_traversal (
+    -- Create temp table for the path
+    CREATE TEMP TABLE IF NOT EXISTS temp_path_trace (
         step BIGINT,
         current_segment_id UUID,
         current_fiber_no INT,
-        previous_splice_id UUID
+        previous_splice_id UUID,
+        visited_segments UUID[]
     ) ON COMMIT DROP;
-
-    -- Step 2: Trace FORWARD and insert results
-    INSERT INTO temp_path_traversal
+    
+    -- Trace forward
+    INSERT INTO temp_path_trace
     WITH RECURSIVE forward_trace AS (
-        -- Anchor: Start at the given segment
         SELECT
             0::bigint as step,
             p_start_segment_id as current_segment_id,
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
+        
         UNION ALL
-        -- Recursive: Trace forward
+        
         SELECT
             p.step + 1,
             s.outgoing_segment_id,
@@ -475,25 +516,27 @@ BEGIN
             s.id,
             p.visited_segments || s.outgoing_segment_id
         FROM forward_trace p
-        JOIN public.fiber_splices s ON p.current_segment_id = s.incoming_segment_id AND p.current_fiber_no = s.incoming_fiber_no
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.incoming_segment_id 
+            AND p.current_fiber_no = s.incoming_fiber_no
         WHERE s.outgoing_segment_id IS NOT NULL
           AND NOT (s.outgoing_segment_id = ANY(p.visited_segments))
           AND p.step < 100
     )
-    SELECT step, current_segment_id, current_fiber_no, previous_splice_id FROM forward_trace;
-
-    -- Step 3: Trace BACKWARD and insert results (excluding step 0 to avoid duplicate)
-    INSERT INTO temp_path_traversal
+    SELECT * FROM forward_trace;
+    
+    -- Trace backward
+    INSERT INTO temp_path_trace
     WITH RECURSIVE backward_trace AS (
-        -- Anchor: Start at the given segment
         SELECT
             0::bigint as step,
             p_start_segment_id as current_segment_id,
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
+        
         UNION ALL
-        -- Recursive: Trace backward
+        
         SELECT
             p.step - 1,
             s.incoming_segment_id,
@@ -501,36 +544,38 @@ BEGIN
             s.id,
             p.visited_segments || s.incoming_segment_id
         FROM backward_trace p
-        JOIN public.fiber_splices s ON p.current_segment_id = s.outgoing_segment_id AND p.current_fiber_no = s.outgoing_fiber_no
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.outgoing_segment_id 
+            AND p.current_fiber_no = s.outgoing_fiber_no
         WHERE s.incoming_segment_id IS NOT NULL
           AND NOT (s.incoming_segment_id = ANY(p.visited_segments))
           AND p.step > -100
     )
-    SELECT step, current_segment_id, current_fiber_no, previous_splice_id 
-    FROM backward_trace
-    WHERE step < 0;  -- Exclude step 0 to avoid duplicate
-
-    -- Step 4: Now query the temp table to build the final output
+    SELECT * FROM backward_trace WHERE step < 0;
+    
+    -- Return results
     RETURN QUERY
     WITH path_elements AS (
-        -- Select segments
+        -- Segments
         SELECT
-            tpt.step * 2 AS order_key,
+            fp.step * 2 AS order_key,
             'SEGMENT'::text as element_type,
-            tpt.current_segment_id as element_id,
-            tpt.current_fiber_no as fiber_in,
-            tpt.current_fiber_no as fiber_out
-        FROM temp_path_traversal tpt
+            fp.current_segment_id as element_id,
+            fp.current_fiber_no as fiber_in,
+            fp.current_fiber_no as fiber_out
+        FROM temp_path_trace fp
+        
         UNION ALL
-        -- Select splices
+        
+        -- Splices
         SELECT
-            tpt.step * 2 - 1 AS order_key,
+            fp.step * 2 - 1 AS order_key,
             'SPLICE'::text,
-            tpt.previous_splice_id,
-            LAG(tpt.current_fiber_no) OVER (ORDER BY tpt.step) as fiber_in,
-            tpt.current_fiber_no as fiber_out
-        FROM temp_path_traversal tpt
-        WHERE tpt.previous_splice_id IS NOT NULL
+            fp.previous_splice_id,
+            LAG(fp.current_fiber_no) OVER (ORDER BY fp.step) as fiber_in,
+            fp.current_fiber_no as fiber_out
+        FROM temp_path_trace fp
+        WHERE fp.previous_splice_id IS NOT NULL
     )
     SELECT
         ROW_NUMBER() OVER (ORDER BY pe.order_key) AS step_order,
@@ -541,24 +586,34 @@ BEGIN
             WHEN pe.element_type = 'SPLICE' THEN n.name
         END AS element_name,
         CASE
-            WHEN pe.element_type = 'SEGMENT' THEN 'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
-            WHEN pe.element_type = 'SPLICE' THEN 'Junction Closure Splice'
+            WHEN pe.element_type = 'SEGMENT' THEN 
+                'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
+            WHEN pe.element_type = 'SPLICE' THEN 
+                'Junction Closure Splice'
         END AS details,
         pe.fiber_in,
         pe.fiber_out,
         cs.distance_km,
         fs.loss_db
-    FROM
-        path_elements pe
-        LEFT JOIN public.cable_segments cs ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
-        LEFT JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-        LEFT JOIN public.nodes sn ON cs.start_node_id = sn.id
-        LEFT JOIN public.nodes en ON cs.end_node_id = en.id
-        LEFT JOIN public.fiber_splices fs ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
-        LEFT JOIN public.junction_closures jc ON fs.jc_id = jc.id
-        LEFT JOIN public.nodes n ON jc.node_id = n.id
-    ORDER BY
-        pe.order_key;
+    FROM path_elements pe
+    LEFT JOIN public.cable_segments cs 
+        ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
+    LEFT JOIN public.ofc_cables oc 
+        ON cs.original_cable_id = oc.id
+    LEFT JOIN public.nodes sn 
+        ON cs.start_node_id = sn.id
+    LEFT JOIN public.nodes en 
+        ON cs.end_node_id = en.id
+    LEFT JOIN public.fiber_splices fs 
+        ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
+    LEFT JOIN public.junction_closures jc 
+        ON fs.jc_id = jc.id
+    LEFT JOIN public.nodes n 
+        ON jc.node_id = n.id
+    ORDER BY pe.order_key;
+    
+    -- Cleanup
+    DROP TABLE IF EXISTS temp_path_trace;
 END;
 $$;
 
@@ -721,25 +776,7 @@ GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID,
 COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
 'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
 
--- Description: Get a list of all cable segments present at a specific Junction Closure.
-CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)
-RETURNS TABLE (id UUID, original_cable_name TEXT, segment_order INT, fiber_count INT)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT
-        cs.id,
-        oc.route_name,
-        cs.segment_order,
-        cs.fiber_count
-    FROM public.v_cable_segments_at_jc v_cs
-    JOIN public.cable_segments cs ON v_cs.id = cs.id
-    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-    WHERE v_cs.jc_node_id = (SELECT node_id FROM public.junction_closures WHERE id = p_jc_id);
-$$;
-GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
+
 
 -- Description: Get a list of all splices with their full JC and segment details.
 CREATE OR REPLACE FUNCTION public.get_all_splices()

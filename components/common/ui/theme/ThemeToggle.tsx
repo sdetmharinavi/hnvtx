@@ -128,7 +128,7 @@ export default function ThemeToggle() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // **THE FIX: Only render the real UI after the component has mounted on the client.**
+  // ** Only render the real UI after the component has mounted on the client.**
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -185,7 +185,7 @@ export default function ThemeToggle() {
     }
   };
 
-  // **THE FIX: Show loading skeleton until the component has mounted.**
+  // ** Show loading skeleton until the component has mounted.**
   if (!hasMounted) {
     return (
       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />

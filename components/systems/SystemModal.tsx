@@ -151,7 +151,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     upsertSystemMutation.mutate(payload);
   }, [isEditMode, rowData, upsertSystemMutation, isRingBasedSystem, isSdhSystem, isVmuxSystem]);
   
-  // **THE FIX: Create the onInvalid handler.**
+  // ** Create the onInvalid handler.**
   const onInvalidSubmit = (errors: FieldErrors<SystemFormValues>) => {
     toast.error("Validation failed. Please check required fields on all steps.");
     // If the error is not in the current step, switch to step 1 to show it.

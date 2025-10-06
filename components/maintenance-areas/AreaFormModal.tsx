@@ -45,7 +45,7 @@ export function AreaFormModal({
     if (isOpen) {
       setIsCodeManuallyEdited(isEditMode);
       if (area) {
-        // **THE FIX: Manually map fields from the 'area' prop to what the form schema expects.**
+        // ** Manually map fields from the 'area' prop to what the form schema expects.**
         // This avoids passing unexpected nested objects (like `parent_area`) to the form state.
         reset({
           name: area.name,

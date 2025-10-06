@@ -48,7 +48,7 @@ export interface EntityConfig<T extends BaseEntity> {
   }>;
 }
 
-// **THE FIX: Update the hook's props interface**
+// ** Update the hook's props interface**
 export interface UseEntityManagementProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<T[], Error>;
   config: EntityConfig<T>;

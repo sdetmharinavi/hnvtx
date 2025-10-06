@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const userData = await req.json();
     const hashed = await bcrypt.hash(userData.password, 10);
 
-    // **THE FIX: Remove the manual transaction and the second INSERT.**
+    // ** Remove the manual transaction and the second INSERT.**
     // We will now rely on the database trigger to create the user profile.
     
     const { rows: authUserRows } = await client.query(

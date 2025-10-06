@@ -56,7 +56,7 @@ export default function DesignationManagerPage() {
     setEditingDesignation(null);
   };
 
-  // **THE FIX: Pass the 'supabase' client as the first argument to the hooks.**
+  // ** Pass the 'supabase' client as the first argument to the hooks.**
   const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {

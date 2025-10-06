@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isProfileLoading && profile) {
-      // **THE FIX: Check the 'needsOnboarding' flag directly from the user's preferences.**
+      // ** Check the 'needsOnboarding' flag directly from the user's preferences.**
       // This is the reliable source of truth.
       const needsOnboarding = (profile.preferences as any)?.needsOnboarding === true;
       const hasDismissedPrompt = (profile.preferences as any)?.showOnboardingPrompt === false;

@@ -133,7 +133,7 @@ export default function OnboardingFormEnhanced() {
       }
     }
 
-    // **THE FIX: Intelligently merge preferences**
+    // ** Intelligently merge preferences**
     const newPreferences = {
       ...toObject(profile?.preferences), // Start with existing preferences
       ...toObject(data.preferences),      // Overwrite with any form changes

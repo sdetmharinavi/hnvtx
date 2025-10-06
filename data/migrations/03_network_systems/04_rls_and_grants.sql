@@ -46,7 +46,7 @@ BEGIN
   -- Admin/Super-Admin can do anything
   CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- **THE FIX: Decouple RLS from hardcoded names.**
+  -- ** Decouple RLS from hardcoded names.**
   -- This policy now maps the user's role (e.g., 'cpan_admin') to the system type name ('CPAN')
   -- and then joins on the ID, making it resilient to name changes.
   CREATE POLICY "Allow full access based on system type" ON public.systems
@@ -91,7 +91,7 @@ BEGIN
   CREATE POLICY "Allow viewer read-access" ON public.system_connections FOR SELECT TO viewer USING (true);
   CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- **THE FIX: Apply the same robust pattern here.**
+  -- ** Apply the same robust pattern here.**
   CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (

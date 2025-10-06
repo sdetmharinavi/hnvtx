@@ -545,7 +545,7 @@ BEGIN
   -- Admin/Super-Admin can do anything
   CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- **THE FIX: Decouple RLS from hardcoded names.**
+  -- ** Decouple RLS from hardcoded names.**
   -- This policy now maps the user's role (e.g., 'cpan_admin') to the system type name ('CPAN')
   -- and then joins on the ID, making it resilient to name changes.
   CREATE POLICY "Allow full access based on system type" ON public.systems
@@ -590,7 +590,7 @@ BEGIN
   CREATE POLICY "Allow viewer read-access" ON public.system_connections FOR SELECT TO viewer USING (true);
   CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
-  -- **THE FIX: Apply the same robust pattern here.**
+  -- ** Apply the same robust pattern here.**
   CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
   FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
   USING (
@@ -832,7 +832,7 @@ BEGIN
 END;
 $$;
 
--- **THE FIX: Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
+-- ** Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
 -- Helper function to build the WHERE clause dynamically
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
@@ -1408,7 +1408,7 @@ GRANT EXECUTE ON FUNCTION public.search_nodes_for_select(TEXT, INT) TO authentic
 -- These functions build dynamic SQL. They are constructed to be secure
 -- using format() with %I for identifiers and %L for literals.
 
--- **THE FIX: The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
+-- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
 -- This file now only contains the get_paged_data function which depends on them.
 
 CREATE OR REPLACE FUNCTION public.get_paged_data(
@@ -2115,7 +2115,7 @@ BEGIN
             NEW.raw_user_meta_data->>'phone_number',
             CASE WHEN NEW.raw_user_meta_data->>'date_of_birth' ~ '^\d{4}-\d{2}-\d{2}$' THEN (NEW.raw_user_meta_data->>'date_of_birth')::date ELSE NULL END,
             COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
-            -- **THE FIX: Add the needsOnboarding flag to preferences**
+            -- ** Add the needsOnboarding flag to preferences**
             COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
             'active'
         );
@@ -3311,7 +3311,7 @@ FROM jc_info;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
 
--- **THE FIX: Final, correct, robust bi-directional trace function.**
+-- ** Final, correct, robust bi-directional trace function.**
 CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
 RETURNS TABLE (
     step_order BIGINT,

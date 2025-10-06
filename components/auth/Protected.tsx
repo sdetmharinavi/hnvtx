@@ -94,7 +94,7 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
     return <PageSpinner text="Verifying session..." />;
   }
   
-  // **THE FIX: Add an explicit check for any error state.**
+  // ** Add an explicit check for any error state.**
   if (isRoleError || isProfileError) {
     const errorMessage = roleError?.message || profileError?.message || "Could not verify your user permissions or profile.";
     return (
