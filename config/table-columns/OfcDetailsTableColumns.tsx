@@ -16,7 +16,6 @@ export const OfcDetailsTableColumns = (
       'sn_id',
       'en_id',
       'connection_category',
-      // 'connection_type',
       'destination_port',
       'en_name',
       'path_segment_order',
@@ -34,7 +33,23 @@ export const OfcDetailsTableColumns = (
       'path_segment_order',
       'source_port',
       'system_id',
-      'updated_at'
+      'updated_at',
+      'otdr_distance_sn_km',
+      'otdr_distance_en_km',
+      'en_dom',
+      'en_power_dbm',
+      'sn_dom',
+      'sn_power_dbm',
+      'route_loss_db',
+      'connection_type',
+      'ofc_type_name',
+      'ofc_route_name',
+      'remark',
+      'status',
+      'maintenance_area_name',
+      'active_count',
+      'inactive_count',
+      'total_count',
     ],
     overrides: {
       updated_fiber_no_sn: { 
@@ -70,6 +85,8 @@ export const OfcDetailsTableColumns = (
       updated_sn_id: {
         title: 'End A',
         render(value, record, index) {
+          console.log(record);
+          
           return record.updated_sn_name || '';
         },
       },
