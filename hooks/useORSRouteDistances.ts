@@ -61,7 +61,7 @@ export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapN
   // The queryKey should also be consistently sorted to ensure caching works correctly
   const sortedUniqueKeys = useMemo(() => {
     const keys = pairs.map(p => [p[0].id, p[1].id].sort().join('-'));
-    return [...new Set(keys)];
+    return [...new Set(keys)].sort();;
   }, [pairs]);
 
   return useQuery({

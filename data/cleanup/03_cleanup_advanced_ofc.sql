@@ -9,7 +9,6 @@ DROP FUNCTION IF EXISTS public.delete_path_segment_and_reorder(UUID, UUID);
 
 -- ** Add CASCADE to drop dependent triggers automatically.**
 DROP FUNCTION IF EXISTS public.manage_cable_segments() CASCADE;
-DROP FUNCTION IF EXISTS public.update_ofc_connections_from_splice() CASCADE;
 
 -- Drop Views
 DROP VIEW IF EXISTS public.v_junction_closures_complete;
