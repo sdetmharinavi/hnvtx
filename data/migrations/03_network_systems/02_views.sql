@@ -98,14 +98,18 @@ SELECT
   ofc_type.name AS ofc_type_name,
   na.name AS sn_name,
   s.system_name AS system_name,
-  nb.name AS en_name
+  nb.name AS en_name,
+  updated_na.name AS updated_sn_name, -- NEW: The name of the logical start node
+  updated_nb.name AS updated_en_name  -- NEW: The name of the logical end node
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
   LEFT JOIN public.nodes na ON ofc.sn_id = na.id
   LEFT JOIN public.nodes nb ON ofc.en_id = nb.id
   LEFT JOIN public.systems s ON oc.system_id = s.id
-  LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id;
+  LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
+  LEFT JOIN public.nodes updated_na ON oc.updated_sn_id = updated_na.id
+  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id;
 
 
 -- View for Ring Map Node Data

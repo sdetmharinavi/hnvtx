@@ -38,7 +38,7 @@ export default function ScalableFiberNetworkDashboard() {
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
 
   const handleSaveAllocation = (allocationData: AllocationSaveData) => {
-    console.log("Allocation Saved:", allocationData);
+    // console.log("Allocation Saved:", allocationData);
     toast.info("Allocation feature is a work in progress.");
   };
 

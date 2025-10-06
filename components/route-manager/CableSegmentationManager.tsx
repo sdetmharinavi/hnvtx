@@ -89,18 +89,12 @@ export const CableSegmentationManager = ({
       return;
     }
 
-    console.log('=== CABLE SEGMENTATION JC ADD DEBUG ===');
-    console.log('cableId:', cableId);
-    console.log('newJCData:', newJCData);
-
     try {
       const jc = await addJunctionClosure(cableId, newJCData.position_km, newJCData.name);
       if (jc) {
-        console.log('JC created:', jc);
 
         // Create cable segments (this will recreate all segments for the cable)
         const segments = await createCableSegments(jc.id, cableId);
-        console.log('Segments created:', segments);
 
         if (segments.length > 0) {
           // Create initial fiber connections for each segment

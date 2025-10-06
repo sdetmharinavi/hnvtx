@@ -139,128 +139,108 @@ GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
 -- Section 2: Logical Fiber Path Tracing and Splicing Management
 -- =================================================================
 
--- NEW HELPER FUNCTION: This is the core engine for tracing a full logical path.
+-- Fixed trace_logical_fiber_path function (used by triggers)
+-- Uses temporary tables for better compatibility
 CREATE OR REPLACE FUNCTION public.trace_logical_fiber_path(
     p_start_segment_id UUID,
     p_start_fiber_no INT
 )
-RETURNS TABLE (
-    original_cable_id UUID,
-    original_fiber_no INT,
-    logical_start_node_id UUID,
-    logical_start_fiber_no INT,
-    logical_end_node_id UUID,
-    logical_end_fiber_no INT
-)
+RETURNS JSONB -- Returns a JSON object: { "boundaries": { ... }, "physical_fibers": [ ... ] }
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_path_data JSONB;
 BEGIN
-    -- Create temp table for forward trace
-    CREATE TEMP TABLE IF NOT EXISTS temp_forward (
-        step BIGINT,
-        segment_id UUID,
-        fiber_no INT,
-        visited_segments UUID[]
-    ) ON COMMIT DROP;
-    
-    -- Create temp table for backward trace
-    CREATE TEMP TABLE IF NOT EXISTS temp_backward (
-        step BIGINT,
-        segment_id UUID,
-        fiber_no INT,
-        visited_segments UUID[]
-    ) ON COMMIT DROP;
-    
-    -- Trace forward
-    INSERT INTO temp_forward
-    WITH RECURSIVE forward_trace AS (
+    WITH RECURSIVE full_path_trace AS (
+        -- ANCHOR: The starting point itself.
         SELECT
-            0::bigint as step,
-            p_start_segment_id as segment_id,
-            p_start_fiber_no as fiber_no,
-            ARRAY[p_start_segment_id] as visited_segments
-        
+            0 AS step,
+            p_start_segment_id AS segment_id,
+            p_start_fiber_no AS fiber_no,
+            ARRAY[p_start_segment_id] AS visited
+
         UNION ALL
-        
+
+        -- RECURSIVE STEP: Find the next segment in either direction.
         SELECT
-            p.step + 1,
-            s.outgoing_segment_id,
-            s.outgoing_fiber_no,
-            p.visited_segments || s.outgoing_segment_id
-        FROM forward_trace p
-        JOIN public.fiber_splices s 
-            ON p.segment_id = s.incoming_segment_id 
-            AND p.fiber_no = s.incoming_fiber_no
-        WHERE s.outgoing_segment_id IS NOT NULL
-          AND NOT (s.outgoing_segment_id = ANY(p.visited_segments)) 
-          AND p.step < 100
-    )
-    SELECT * FROM forward_trace;
-    
-    -- Trace backward
-    INSERT INTO temp_backward
-    WITH RECURSIVE backward_trace AS (
+            -- If we found a forward connection, increment step. Otherwise, decrement.
+            CASE WHEN fwd.id IS NOT NULL THEN prev.step + 1 ELSE prev.step - 1 END,
+            -- The next segment is either the forward outgoing or the backward incoming.
+            COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id),
+            -- The next fiber number.
+            COALESCE(fwd.outgoing_fiber_no, bwd.incoming_fiber_no),
+            -- Add the new segment to the visited array to prevent cycles.
+            prev.visited || COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id)
+        FROM full_path_trace prev
+        -- Attempt to join to the next FORWARD splice
+        LEFT JOIN public.fiber_splices fwd ON prev.segment_id = fwd.incoming_segment_id AND prev.fiber_no = fwd.incoming_fiber_no
+        -- Attempt to join to the next BACKWARD splice
+        LEFT JOIN public.fiber_splices bwd ON prev.segment_id = bwd.outgoing_segment_id AND prev.fiber_no = bwd.outgoing_fiber_no
+        WHERE
+            -- The recursion must find a path in one direction.
+            (fwd.id IS NOT NULL OR bwd.id IS NOT NULL)
+            -- And the destination segment must not have been visited before.
+            AND NOT (COALESCE(fwd.outgoing_segment_id, bwd.incoming_segment_id) = ANY(prev.visited))
+            -- Safety break to prevent infinite loops in case of data error
+            AND abs(prev.step) < 100
+    ),
+    path_segments_with_details AS (
         SELECT
-            0::bigint as step,
-            p_start_segment_id as segment_id,
-            p_start_fiber_no as fiber_no,
-            ARRAY[p_start_segment_id] as visited_segments
-        
-        UNION ALL
-        
+            fp.step,
+            fp.fiber_no,
+            cs.original_cable_id,
+            cs.start_node_id,
+            cs.end_node_id
+        FROM full_path_trace fp
+        JOIN public.cable_segments cs ON fp.segment_id = cs.id
+    ),
+    path_boundaries AS (
         SELECT
-            p.step - 1,
-            s.incoming_segment_id,
-            s.incoming_fiber_no,
-            p.visited_segments || s.incoming_segment_id
-        FROM backward_trace p
-        JOIN public.fiber_splices s 
-            ON p.segment_id = s.outgoing_segment_id 
-            AND p.fiber_no = s.outgoing_fiber_no
-        WHERE s.incoming_segment_id IS NOT NULL
-          AND NOT (s.incoming_segment_id = ANY(p.visited_segments)) 
-          AND p.step > -100
-    )
-    SELECT * FROM backward_trace WHERE step < 0;
-    
-    -- Return combined results
-    RETURN QUERY
-    WITH full_path AS (
-        SELECT step, segment_id, fiber_no FROM temp_forward
-        UNION ALL
-        SELECT step, segment_id, fiber_no FROM temp_backward
-    )
-    SELECT
-        cs.original_cable_id,
-        fp.fiber_no AS original_fiber_no,
-        boundaries.logical_start_node_id,
-        boundaries.logical_start_fiber_no,
-        boundaries.logical_end_node_id,
-        boundaries.logical_end_fiber_no
-    FROM full_path fp
-    JOIN public.cable_segments cs ON fp.segment_id = cs.id
-    CROSS JOIN (
-        SELECT
-            first_value(cs_details.start_node_id) OVER (ORDER BY fp_details.step ASC) as logical_start_node_id,
-            first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step ASC) as logical_start_fiber_no,
-            first_value(cs_details.end_node_id) OVER (ORDER BY fp_details.step DESC) as logical_end_node_id,
-            first_value(fp_details.fiber_no) OVER (ORDER BY fp_details.step DESC) as logical_end_fiber_no
-        FROM full_path fp_details
-        JOIN public.cable_segments cs_details ON fp_details.segment_id = cs_details.id
+            first_value(psd.start_node_id) OVER (ORDER BY psd.step ASC) AS logical_start_node_id,
+            first_value(psd.fiber_no) OVER (ORDER BY psd.step ASC) AS logical_start_fiber_no,
+            first_value(psd.end_node_id) OVER (ORDER BY psd.step DESC) AS logical_end_node_id,
+            first_value(psd.fiber_no) OVER (ORDER BY psd.step DESC) AS logical_end_fiber_no
+        FROM path_segments_with_details psd
         LIMIT 1
-    ) AS boundaries;
-    
-    -- Cleanup
-    DROP TABLE IF EXISTS temp_forward;
-    DROP TABLE IF EXISTS temp_backward;
+    )
+    SELECT jsonb_build_object(
+        'boundaries', (SELECT to_jsonb(pb) FROM path_boundaries pb),
+        'physical_fibers', (
+            SELECT jsonb_agg(
+                jsonb_build_object('original_cable_id', psd.original_cable_id, 'fiber_no', psd.fiber_no)
+            )
+            FROM path_segments_with_details psd
+        )
+    ) INTO v_path_data;
+
+    -- Handle the case where the trace finds nothing (i.e., a single, unspliced segment).
+    IF v_path_data IS NULL OR (v_path_data->'boundaries') IS NULL THEN
+        WITH single_segment AS (
+            SELECT
+                cs.start_node_id AS logical_start_node_id,
+                p_start_fiber_no AS logical_start_fiber_no,
+                cs.end_node_id AS logical_end_node_id,
+                p_start_fiber_no AS logical_end_fiber_no,
+                cs.original_cable_id
+            FROM public.cable_segments cs WHERE cs.id = p_start_segment_id
+        )
+        SELECT jsonb_build_object(
+            'boundaries', to_jsonb(ss) - 'original_cable_id', -- remove helper column
+            'physical_fibers', jsonb_build_array(jsonb_build_object('original_cable_id', ss.original_cable_id, 'fiber_no', p_start_fiber_no))
+        )
+        INTO v_path_data
+        FROM single_segment ss;
+    END IF;
+
+    RETURN v_path_data;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.trace_logical_fiber_path(UUID, INT) TO authenticated;
 
--- NEW TRIGGER FUNCTION: update_ofc_connections_from_splice
+-- whenever a splice is created, updated, or deleted. It uses the trace function
+-- to find the new logical endpoints and applies them to all affected fibers.
 CREATE OR REPLACE FUNCTION public.update_ofc_connections_from_splice()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -268,72 +248,63 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    path_record RECORD;
+    trace_result JSONB;
+    boundaries JSONB;
 BEGIN
-    -- On INSERT or UPDATE, a new continuous path is formed.
-    -- We only need to trace from one side (e.g., the incoming fiber)
-    -- to find the complete path and update all segments within it.
+    -- Case 1: A splice is CREATED or UPDATED.
     IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
-        -- Create a temporary table to hold the results of the trace
-        CREATE TEMP TABLE temp_path_info AS
-        SELECT * FROM public.trace_logical_fiber_path(NEW.incoming_segment_id, NEW.incoming_fiber_no);
-
-        -- Update all `ofc_connections` rows for every physical fiber in the logical path
-        UPDATE public.ofc_connections c
-        SET
-            updated_fiber_no_sn = tpi.logical_start_fiber_no,
-            updated_sn_id       = tpi.logical_start_node_id,
-            updated_fiber_no_en = tpi.logical_end_fiber_no,
-            updated_en_id       = tpi.logical_end_node_id,
-            updated_at          = NOW()
-        FROM temp_path_info tpi
-        WHERE c.ofc_id = tpi.original_cable_id
-          AND c.fiber_no_sn = tpi.original_fiber_no;
-
-        DROP TABLE temp_path_info;
-    END IF;
-
-    -- On DELETE, a path is broken into two separate logical paths.
-    -- We must trace and update both sides of the break independently.
-    IF (TG_OP = 'DELETE') THEN
-        -- Side 1: The path leading into the deleted splice
-        CREATE TEMP TABLE temp_path_info1 AS
-        SELECT * FROM public.trace_logical_fiber_path(OLD.incoming_segment_id, OLD.incoming_fiber_no);
-
-        UPDATE public.ofc_connections c
-        SET
-            updated_fiber_no_sn = tpi.logical_start_fiber_no,
-            updated_sn_id       = tpi.logical_start_node_id,
-            updated_fiber_no_en = tpi.logical_end_fiber_no,
-            updated_en_id       = tpi.logical_end_node_id,
-            updated_at          = NOW()
-        FROM temp_path_info1 tpi
-        WHERE c.ofc_id = tpi.original_cable_id
-          AND c.fiber_no_sn = tpi.original_fiber_no;
-
-        DROP TABLE temp_path_info1;
-
-        -- Side 2: The path leading away from the deleted splice (if it exists)
-        IF OLD.outgoing_segment_id IS NOT NULL THEN
-            CREATE TEMP TABLE temp_path_info2 AS
-            SELECT * FROM public.trace_logical_fiber_path(OLD.outgoing_segment_id, OLD.outgoing_fiber_no);
-
-            UPDATE public.ofc_connections c
+        trace_result := public.trace_logical_fiber_path(NEW.incoming_segment_id, NEW.incoming_fiber_no);
+        boundaries := trace_result -> 'boundaries';
+        
+        IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+            UPDATE public.ofc_connections
             SET
-                updated_fiber_no_sn = tpi.logical_start_fiber_no,
-                updated_sn_id       = tpi.logical_start_node_id,
-                updated_fiber_no_en = tpi.logical_end_fiber_no,
-                updated_en_id       = tpi.logical_end_node_id,
-                updated_at          = NOW()
-            FROM temp_path_info2 tpi
-            WHERE c.ofc_id = tpi.original_cable_id
-              AND c.fiber_no_sn = tpi.original_fiber_no;
+                updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                updated_at = NOW()
+            FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+            WHERE ofc_connections.ofc_id = fibers.original_cable_id
+              AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+        END IF;
 
-            DROP TABLE temp_path_info2;
+    -- Case 2: A splice is DELETED.
+    ELSIF (TG_OP = 'DELETE') THEN
+        -- Part A: Update the path that was connected to the 'incoming' side.
+        trace_result := public.trace_logical_fiber_path(OLD.incoming_segment_id, OLD.incoming_fiber_no);
+        boundaries := trace_result -> 'boundaries';
+        IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+             UPDATE public.ofc_connections
+            SET updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                updated_at = NOW()
+            FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+            WHERE ofc_connections.ofc_id = fibers.original_cable_id
+              AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+        END IF;
+
+        -- Part B: If there was an 'outgoing' side, update its new path as well.
+        IF OLD.outgoing_segment_id IS NOT NULL THEN
+            trace_result := public.trace_logical_fiber_path(OLD.outgoing_segment_id, OLD.outgoing_fiber_no);
+            boundaries := trace_result -> 'boundaries';
+            IF boundaries IS NOT NULL AND trace_result -> 'physical_fibers' IS NOT NULL THEN
+                UPDATE public.ofc_connections
+                SET updated_sn_id = (boundaries->>'logical_start_node_id')::UUID,
+                    updated_fiber_no_sn = (boundaries->>'logical_start_fiber_no')::INT,
+                    updated_en_id = (boundaries->>'logical_end_node_id')::UUID,
+                    updated_fiber_no_en = (boundaries->>'logical_end_fiber_no')::INT,
+                    updated_at = NOW()
+                FROM jsonb_to_recordset(trace_result -> 'physical_fibers') AS fibers(original_cable_id UUID, fiber_no INT)
+                WHERE ofc_connections.ofc_id = fibers.original_cable_id
+                  AND ofc_connections.fiber_no_sn = fibers.fiber_no;
+            END IF;
         END IF;
     END IF;
 
-    RETURN NULL; -- The result of an AFTER trigger is ignored
+    RETURN NULL; -- Result is ignored for AFTER triggers.
 END;
 $$;
 

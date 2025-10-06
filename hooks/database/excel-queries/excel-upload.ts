@@ -82,12 +82,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           conflictColumn,
         } = uploadOptions;
   
-        console.group("🚀 Excel Upload Process Started");
-        console.log("📁 File:", file.name, `(${file.size} bytes)`);
-        console.log("🎯 Table:", tableName);
-        console.log("📋 Upload Type:", uploadType);
-        console.log("🔑 Conflict Column:", conflictColumn);
-        console.log("📊 Column Mappings:", columns);
+        // console.group("🚀 Excel Upload Process Started");
+        // console.log("📁 File:", file.name, `(${file.size} bytes)`);
+        // console.log("🎯 Table:", tableName);
+        // console.log("📋 Upload Type:", uploadType);
+        // console.log("🔑 Conflict Column:", conflictColumn);
+        // console.log("📊 Column Mappings:", columns);
   
         if (uploadType === "upsert" && !conflictColumn) {
           throw new Error(
@@ -103,11 +103,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         // 1. Parse the Excel file using our xlsx utility function
         const jsonData = await parseExcelFile(file);
   
-        console.log("📊 Raw Excel Data:", {
-          totalRows: jsonData.length,
-          headers: jsonData[0],
-          sampleData: jsonData.slice(1, 4), // Show first 3 data rows
-        });
+        // console.log("📊 Raw Excel Data:", {
+        //   totalRows: jsonData.length,
+        //   headers: jsonData[0],
+        //   sampleData: jsonData.slice(1, 4), // Show first 3 data rows
+        // });
   
         if (!jsonData || jsonData.length < 2) {
           toast.warning(
@@ -128,37 +128,37 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         // 2. Map Excel headers to their column index for efficient lookup
         const excelHeaders: string[] = jsonData[0] as string[];
         const headerMap: Record<string, number> = {};
-        console.log("📝 Excel Headers:", excelHeaders);
+        // console.log("📝 Excel Headers:", excelHeaders);
         
         excelHeaders.forEach((header, index) => {
           const cleanHeader = String(header).trim().toLowerCase();
           headerMap[cleanHeader] = index;
-          console.log(`   [${index}]: "${header}" -> "${cleanHeader}"`);
+          // console.log(`   [${index}]: "${header}" -> "${cleanHeader}"`);
         });
         
         const isFirstColumnId =
           String(excelHeaders?.[0] ?? "").toLowerCase() === "id";
-        console.log("🆔 First column is ID:", isFirstColumnId);
+        // console.log("🆔 First column is ID:", isFirstColumnId);
   
         // 3. Validate that all required columns from the mapping exist in the file
         const getHeaderIndex = (name: string): number | undefined =>
           headerMap[String(name).trim().toLowerCase()];
   
-        console.group("🔍 Column Mapping Validation");
-        for (const mapping of columns) {
-          const idx = getHeaderIndex(mapping.excelHeader);
-          console.log(`📍 "${mapping.excelHeader}" -> "${mapping.dbKey}":`, 
-            idx !== undefined ? `Column ${idx}` : "❌ NOT FOUND");
+        // console.group("🔍 Column Mapping Validation");
+        // for (const mapping of columns) {
+        //   const idx = getHeaderIndex(mapping.excelHeader);
+        //   console.log(`📍 "${mapping.excelHeader}" -> "${mapping.dbKey}":`, 
+        //     idx !== undefined ? `Column ${idx}` : "❌ NOT FOUND");
           
-          // Allow missing 'id' header so we can auto-generate UUIDs during processing
-          if (idx === undefined && mapping.dbKey !== "id") {
-            console.error(`❌ Required column "${mapping.excelHeader}" not found in Excel file`);
-            throw new Error(
-              `Required column "${mapping.excelHeader}" not found in the Excel file.`
-            );
-          }
-        }
-        console.groupEnd();
+        //   // Allow missing 'id' header so we can auto-generate UUIDs during processing
+        //   if (idx === undefined && mapping.dbKey !== "id") {
+        //     console.error(`❌ Required column "${mapping.excelHeader}" not found in Excel file`);
+        //     throw new Error(
+        //       `Required column "${mapping.excelHeader}" not found in the Excel file.`
+        //     );
+        //   }
+        // }
+        // console.groupEnd();
   
         toast.info(
           `Found ${jsonData.length - 1} rows. Preparing data for upload...`
@@ -185,7 +185,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           .map((row, idx) => ({ row: row as unknown[], idx }))
           .filter(({ row }) => !isRowEffectivelyEmpty(row));
   
-        console.log(`🎯 Filtered ${dataRows.length} rows down to ${filteredRows.length} non-empty rows`);
+        // console.log(`🎯 Filtered ${dataRows.length} rows down to ${filteredRows.length} non-empty rows`);
   
         // Initialize upload result early to record pre-insert validation errors
         const uploadResult: EnhancedUploadResult = {
@@ -276,9 +276,9 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             // Guard: only index row when we have a valid column index
             let rawValue = colIndex !== undefined ? row[colIndex] : undefined;
   
-            console.group(`🔧 Processing "${mapping.dbKey}" (Excel: "${mapping.excelHeader}")`);
-            console.log(`📍 Column Index: ${colIndex}`);
-            console.log(`📊 Raw Value:`, rawValue, `(${typeof rawValue})`);
+            // console.group(`🔧 Processing "${mapping.dbKey}" (Excel: "${mapping.excelHeader}")`);
+            // console.log(`📍 Column Index: ${colIndex}`);
+            // console.log(`📊 Raw Value:`, rawValue, `(${typeof rawValue})`);
   
             try {
               // Normalize empty strings to null for UUID-like fields
@@ -289,7 +289,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 (rawValue === "" || rawValue === undefined)
               ) {
                 rawValue = null;
-                console.log("🔄 Normalized empty UUID field to null");
+                // console.log("🔄 Normalized empty UUID field to null");
               }
   
               // Normalize IP address-like fields for inet columns: trim and empty -> null
@@ -303,7 +303,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 if (isIPField && typeof rawValue === "string") {
                   const trimmed = rawValue.trim();
                   rawValue = trimmed === "" ? null : trimmed;
-                  console.log("🌐 Processed IP field:", rawValue);
+                  // console.log("🌐 Processed IP field:", rawValue);
                 }
               }
   
@@ -317,12 +317,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                     String(rawValue).trim() === "")
                 ) {
                   rawValue = generateUUID();
-                  console.log("🆔 Generated UUID for empty ID:", rawValue);
+                  // console.log("🆔 Generated UUID for empty ID:", rawValue);
                 }
                 // If 'id' header is entirely missing, still generate a UUID
                 if (colIndex === undefined) {
                   rawValue = generateUUID();
-                  console.log("🆔 Generated UUID for missing ID column:", rawValue);
+                  // console.log("🆔 Generated UUID for missing ID column:", rawValue);
                 }
               }
   
@@ -331,7 +331,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               if (mapping.transform) {
                 try {
                   finalValue = mapping.transform(rawValue);
-                  console.log("🔧 Transformed value:", finalValue, `(${typeof finalValue})`);
+                  // console.log("🔧 Transformed value:", finalValue, `(${typeof finalValue})`);
                 } catch (transformError) {
                   const errorMsg = transformError instanceof Error 
                     ? transformError.message 
@@ -377,11 +377,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               
               if (typeof assignValue === "string" && assignValue.trim() === "") {
                 assignValue = null;
-                console.log("🧹 Normalized empty string to null");
+                // console.log("🧹 Normalized empty string to null");
               }
               
               processedData[mapping.dbKey] = assignValue;
-              console.log("✅ Final assigned value:", assignValue, `(${typeof assignValue})`);
+              // console.log("✅ Final assigned value:", assignValue, `(${typeof assignValue})`);
   
               logColumnTransformation(
                 i,
@@ -446,11 +446,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         
         console.groupEnd(); // End Row Processing Phase
   
-        console.log(`📊 Processing Summary:`);
-        console.log(`   Total filtered rows: ${filteredRows.length}`);
-        console.log(`   Records to process: ${recordsToProcess.length}`);
-        console.log(`   Skipped rows: ${uploadResult.skippedRows}`);
-        console.log(`   Validation errors: ${allValidationErrors.length}`);
+        // console.log(`📊 Processing Summary:`);
+        // console.log(`   Total filtered rows: ${filteredRows.length}`);
+        // console.log(`   Records to process: ${recordsToProcess.length}`);
+        // console.log(`   Skipped rows: ${uploadResult.skippedRows}`);
+        // console.log(`   Validation errors: ${allValidationErrors.length}`);
   
         // Deduplicate by conflict columns to avoid Postgres error:
         // "ON CONFLICT DO UPDATE command cannot affect row a second time"
@@ -462,7 +462,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
   
-          console.log("🎯 Conflict columns:", conflictCols);
+          // console.log("🎯 Conflict columns:", conflictCols);
   
           if (conflictCols.length > 0) {
             const seen = new Set<string>();
@@ -484,7 +484,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   delete (rec as Record<string, unknown>).id;
                 }
                 deduped.push(rec);
-                console.log("➕ Added record with missing conflict values (no deduplication)");
+                // console.log("➕ Added record with missing conflict values (no deduplication)");
                 continue;
               }
   
@@ -500,17 +500,17 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   delete (rec as Record<string, unknown>).id;
                 }
                 deduped.push(rec);
-                console.log(`➕ Added unique record with key: ${key}`);
+                // console.log(`➕ Added unique record with key: ${key}`);
               } else {
                 duplicateCount++;
-                console.log(`⏭️  Skipped duplicate record with key: ${key}`);
+                // console.log(`⏭️  Skipped duplicate record with key: ${key}`);
               }
             }
             
-            console.log(`📊 Deduplication results:`);
-            console.log(`   Original records: ${recordsToProcess.length}`);
-            console.log(`   After deduplication: ${deduped.length}`);
-            console.log(`   Duplicates removed: ${duplicateCount}`);
+            // console.log(`📊 Deduplication results:`);
+            // console.log(`   Original records: ${recordsToProcess.length}`);
+            // console.log(`   After deduplication: ${deduped.length}`);
+            // console.log(`   Duplicates removed: ${duplicateCount}`);
             
             recordsToProcess = deduped;
           }
@@ -520,10 +520,10 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
   
         // 5. Perform batch upload to Supabase
         uploadResult.totalRows = recordsToProcess.length;
-        console.log(`🚀 Starting Supabase upload for ${uploadResult.totalRows} records`);
+        // console.log(`🚀 Starting Supabase upload for ${uploadResult.totalRows} records`);
   
         if (recordsToProcess.length === 0) {
-          console.log("⚠️ No records to upload after processing");
+          // console.log("⚠️ No records to upload after processing");
           toast.warning("No valid records found to upload after processing.");
           console.groupEnd();
           return uploadResult;
@@ -538,11 +538,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           );
           toast.info(`Uploading batch ${Math.floor(i / batchSize) + 1}... (${progress}%)`);
           
-          console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}:`);
-          console.log(`   Range: ${i} - ${i + batch.length - 1}`);
-          console.log(`   Batch size: ${batch.length}`);
-          console.log(`   Progress: ${progress}%`);
-          console.log("📊 Batch data sample:", batch.slice(0, 2)); // Show first 2 records
+          // console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}:`);
+          // console.log(`   Range: ${i} - ${i + batch.length - 1}`);
+          // console.log(`   Batch size: ${batch.length}`);
+          // console.log(`   Progress: ${progress}%`);
+          // console.log("📊 Batch data sample:", batch.slice(0, 2)); // Show first 2 records
   
           // If using composite conflict keys, upsert rows one-by-one to avoid
           // "ON CONFLICT DO UPDATE command cannot affect row a second time"
@@ -552,11 +552,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             String(conflictColumn).split(",").length > 1;
             
           if (isCompositeConflict) {
-            console.log("🔄 Using individual upserts for composite conflict keys");
+            // console.log("🔄 Using individual upserts for composite conflict keys");
             
             for (let j = 0; j < batch.length; j++) {
               const row = batch[j];
-              console.log(`📝 Upserting individual record ${i + j + 1}:`, row);
+              // console.log(`📝 Upserting individual record ${i + j + 1}:`, row);
               
               try {
                 const { error } = await upsertOne(row as TableInsert<T>, conflictColumn as string);
@@ -575,7 +575,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                     );
                   }
                 } else {
-                  console.log(`✅ Individual upsert successful for record ${i + j + 1}`);
+                  // console.log(`✅ Individual upsert successful for record ${i + j + 1}`);
                   uploadResult.successCount += 1;
                 }
               } catch (unexpectedError) {
@@ -595,15 +595,15 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           }
   
           // Regular batch processing
-          console.log(`🚀 Executing batch ${uploadType} operation`);
+          // console.log(`🚀 Executing batch ${uploadType} operation`);
           
           try {
             let query;
             if (uploadType === "insert") {
-              console.log("➕ Using INSERT operation");
+              // console.log("➕ Using INSERT operation");
               query = insertBatch(batch as TableInsert<T>[]);
             } else {
-              console.log(`🔄 Using UPSERT operation with conflict: ${conflictColumn}`);
+              // console.log(`🔄 Using UPSERT operation with conflict: ${conflictColumn}`);
               query = upsertBatch(batch as TableInsert<T>[], conflictColumn as string);
             }
   
@@ -688,7 +688,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 }
               }
             } else {
-              console.log(`✅ Batch operation successful for ${batch.length} records`);
+              // console.log(`✅ Batch operation successful for ${batch.length} records`);
               uploadResult.successCount += batch.length;
             }
           } catch (unexpectedError) {
@@ -708,19 +708,19 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         console.groupEnd(); // End Supabase Upload Process
   
         // 6. Finalize and report
-        console.group("📊 Upload Results Summary");
-        console.log(`✅ Successful uploads: ${uploadResult.successCount}`);
-        console.log(`❌ Failed uploads: ${uploadResult.errorCount}`);
-        console.log(`⏭️  Skipped rows: ${uploadResult.skippedRows}`);
-        console.log(`📝 Total processing logs: ${processingLogs.length}`);
-        console.log(`⚠️  Total validation errors: ${allValidationErrors.length}`);
+        // console.group("📊 Upload Results Summary");
+        // console.log(`✅ Successful uploads: ${uploadResult.successCount}`);
+        // console.log(`❌ Failed uploads: ${uploadResult.errorCount}`);
+        // console.log(`⏭️  Skipped rows: ${uploadResult.skippedRows}`);
+        // console.log(`📝 Total processing logs: ${processingLogs.length}`);
+        // console.log(`⚠️  Total validation errors: ${allValidationErrors.length}`);
         
         if (uploadResult.errors.length > 0) {
-          console.log("🔍 Upload errors:", uploadResult.errors);
+          // console.log("🔍 Upload errors:", uploadResult.errors);
         }
         
         if (allValidationErrors.length > 0) {
-          console.log("🔍 Validation errors:", allValidationErrors);
+          // console.log("🔍 Validation errors:", allValidationErrors);
         }
         console.groupEnd();
   
@@ -764,7 +764,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               },
               type: "active",
             });
-            console.log("✅ Query cache invalidated successfully");
+            // console.log("✅ Query cache invalidated successfully");
           } catch (err) {
             console.warn("⚠️ Failed to invalidate queries after upload", err);
           }

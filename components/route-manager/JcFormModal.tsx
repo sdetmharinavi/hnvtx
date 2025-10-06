@@ -120,7 +120,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
 
       if (isEditMode && editingJc) {
         // UPDATE existing junction closure
-        console.log('Updating existing JC with ID:', editingJc.id);
         const { data, error } = await supabase
           .from('junction_closures')
           .update({
@@ -134,7 +133,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         insertError = error;
       } else {
         // CREATE new junction closure using the RPC function
-        console.log('Creating new JC');
         const result = await supabase
           .rpc('add_junction_closure', {
             p_node_id: payload.node_id,

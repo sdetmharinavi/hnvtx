@@ -68,8 +68,6 @@ export default function OfcCableDetailsPage() {
     tableName: "ofc_connections",
     dataQueryHook: useOfcConnectionsData,
   });
-
-  console.log("cableConnectionsData", cableConnectionsData);
   
 
   const { id: cableId } = useParams();

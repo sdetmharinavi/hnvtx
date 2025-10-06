@@ -4122,14 +4122,7 @@ export type Database = {
       }
       trace_logical_fiber_path: {
         Args: { p_start_fiber_no: number; p_start_segment_id: string }
-        Returns: {
-          logical_end_fiber_no: number
-          logical_end_node_id: string
-          logical_start_fiber_no: number
-          logical_start_node_id: string
-          original_cable_id: string
-          original_fiber_no: number
-        }[]
+        Returns: Json
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }

@@ -2,96 +2,118 @@
 'use client';
 
 import { FiberTraceSegment } from '@/schemas/custom-schemas';
-import { Cable, GitBranch, MapPin } from 'lucide-react';
+import { Cable, GitBranch, MapPin, Milestone, Route } from 'lucide-react';
 
 interface FiberTraceVisualizerProps {
   traceData: FiberTraceSegment[];
 }
 
+const SegmentStep = ({ item }: { item: FiberTraceSegment }) => {
+  return (
+    <li className="mb-10 ml-8">
+      <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900">
+        <Route className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+      </span>
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-md font-semibold text-gray-900 dark:text-white">{item.element_name}</h3>
+          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            SEGMENT
+          </span>
+        </div>
+        <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">
+          {item.details}
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+          <span><strong>Fiber:</strong> <span className="font-mono">{item.fiber_in}</span></span>
+          <span><strong>Length:</strong> <span className="font-mono">{item.distance_km?.toFixed(2)} km</span></span>
+        </div>
+      </div>
+    </li>
+  );
+};
+
+// Small helper component for rendering a single SPLICE step
+const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment, prevStep: FiberTraceSegment | undefined }) => {
+  // Gracefully handle the case where the first fiber_in is null
+  const fiberIn = item.fiber_in ?? prevStep?.fiber_out;
+
+  return (
+    <li className="mb-10 ml-8">
+      <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 ring-8 ring-white dark:bg-gray-700 dark:ring-gray-900">
+        <GitBranch className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+      </span>
+      <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800/50">
+         <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-md font-semibold text-gray-900 dark:text-white">{item.element_name}</h3>
+           <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+            SPLICE
+          </span>
+        </div>
+        <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">
+          {item.details}
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+          <span><strong>In → Out:</strong> <span className="font-mono font-bold">{fiberIn} → {item.fiber_out}</span></span>
+          <span><strong>Loss:</strong> <span className="font-mono">{item.loss_db?.toFixed(2)} dB</span></span>
+        </div>
+      </div>
+    </li>
+  );
+};
+
 export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData }) => {
-  // Handle empty or invalid trace data
   if (!traceData || traceData.length === 0) {
     return (
-        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            <GitBranch className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <h4 className="mt-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Path Ends Here</h4>
-            <p className="mt-2 text-sm">This fiber is not spliced to any other segment from this point.</p>
-        </div>
+      <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+        <Cable className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+        <h4 className="mt-4 text-lg font-semibold text-gray-800 dark:text-gray-200">No Trace Data</h4>
+        <p className="mt-2 text-sm">Could not find a path for this fiber.</p>
+      </div>
     );
   }
 
-  // **RECOMMENDATION: Construct the full path string for the header.**
-  const fullPathArray = [
-    // Get the start node from the very first segment's details
-    traceData[0].details.split(' → ')[0],
-    // Get all the end nodes from each segment in the path
-    ...traceData.map(segment => segment.details.split(' → ')[1])
-  ];
-  const fullPathString = fullPathArray.join(' → ');
+  // Extract start and end node names from the details of the first and last segments
+  const firstSegment = traceData.find(s => s.element_type === 'SEGMENT');
+  const lastSegment = [...traceData].reverse().find(s => s.element_type === 'SEGMENT');
+  
+  const startNodeName = firstSegment?.details.match(/^(?:Segment \d+ \()(.+?)(?: →)/)?.[1] || 'Unknown Start';
+  const endNodeName = lastSegment?.details.match(/(?:→ )(.+?)(?:\))$/)?.[1] || 'Unknown End';
 
   return (
     <div className="p-4 font-sans">
-      {/* NEW: Header section to display the full path */}
-      <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-        <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2 flex items-center">
-          <MapPin className="w-4 h-4 mr-2" />
-          Complete Fiber Path
-        </h3>
-        <p className="text-base font-medium text-gray-800 dark:text-gray-100 leading-tight">
-          {fullPathString}
-        </p>
-      </div>
-
-      <ol className="relative border-l-2 border-blue-200 dark:border-blue-800 ml-4">
-        {traceData.map((segment, index) => {
-          const [startNode, endNode] = segment.details.split(' → ');
-          const isLastSegment = index === traceData.length - 1;
-
-          return (
-            <li key={`${segment.element_id}-${index}`} className="mb-10 ml-8">
-              {/* Step Icon */}
-              <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-800">
-                <Cable className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-              </span>
-              
-              {/* Segment Info */}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h3 className="text-md font-semibold text-gray-900 dark:text-white">{segment.element_name}</h3>
-                <p className="mb-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                  {segment.details}
-                </p>
-                <div className="flex items-center space-x-4 text-xs text-gray-700 dark:text-gray-300">
-                  <span><strong>Segment:</strong> {segment.step_order}</span>
-                  <span><strong>Fiber In:</strong> {segment.fiber_in}</span>
-                  <span><strong>Length:</strong> {segment.distance_km} km</span>
-                </div>
-              </div>
-
-              {/* Splice/Termination Info */}
-              <div className="mt-3 flex items-center">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 ring-4 ring-white dark:bg-gray-700 dark:ring-gray-800">
-                  <GitBranch className="h-3 w-3 text-gray-500 dark:text-gray-400" />
-                </span>
-                <div className="ml-2 text-xs font-mono text-gray-500 dark:text-gray-400">
-                  {isLastSegment ? (
-                    <span className="font-semibold text-red-600 dark:text-red-400">TERMINATES AT {endNode}</span>
-                  ) : (
-                    <span>
-                      Splice at {endNode}: Fiber <span className="font-bold">{segment.fiber_in}</span> → <span className="font-bold">{segment.fiber_out}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-         <li className="ml-8">
-            <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-green-100 ring-8 ring-white dark:bg-green-900 dark:ring-gray-800">
+      <ol className="relative border-l-2 border-gray-300 dark:border-gray-700 ml-4">
+        {/* START POINT */}
+        <li className="mb-10 ml-8">
+            <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-green-100 ring-8 ring-white dark:bg-green-900 dark:ring-gray-900">
                 <MapPin className="h-4 w-4 text-green-600 dark:text-green-300" />
             </span>
-            <div className="p-4">
-                <h3 className="text-md font-semibold text-gray-900 dark:text-white">Path End</h3>
-            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {startNodeName}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Path Start</p>
+        </li>
+        
+        {/* DYNAMIC PATH STEPS */}
+        {traceData.map((item, index) => {
+          if (item.element_type === 'SEGMENT') {
+            return <SegmentStep key={`${item.element_id}-${index}`} item={item} />;
+          } else if (item.element_type === 'SPLICE') {
+            const prevStep = traceData[index - 1];
+            return <SpliceStep key={`${item.element_id}-${index}`} item={item} prevStep={prevStep} />;
+          }
+          return null;
+        })}
+
+        {/* END POINT */}
+        <li className="ml-8">
+            <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 ring-8 ring-white dark:bg-red-900 dark:ring-gray-900">
+                <Milestone className="h-4 w-4 text-red-600 dark:text-red-300" />
+            </span>
+             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {endNodeName}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Path End</p>
         </li>
       </ol>
     </div>

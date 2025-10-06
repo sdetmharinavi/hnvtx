@@ -70,13 +70,13 @@ export const OfcDetailsTableColumns = (
       updated_sn_id: {
         title: 'End A',
         render(value, record, index) {
-          return record.sn_name || '';
+          return record.updated_sn_name || '';
         },
       },
       updated_en_id: {
         title: 'End B',
         render(value, record, index) {
-          return record.en_name || '';
+          return record.updated_en_name || '';
         },
       },
       en_dom: { title: 'End B D.O.M.', sortable: true, width: '150px', searchable: true, render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) },

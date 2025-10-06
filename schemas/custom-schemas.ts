@@ -57,8 +57,7 @@ export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
 
 const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
   created_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
-  transnet_id: z.string().nullable(),
+  updated_at: z.string().nullable()
 });
 
 const relaxed_junction_closuresRowSchema = junction_closuresRowSchema.extend({
