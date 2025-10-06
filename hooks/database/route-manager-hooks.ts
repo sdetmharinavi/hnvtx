@@ -124,10 +124,9 @@ export function useManageSplice() {
       incomingFiberNo?: number;
       outgoingSegmentId?: string;
       outgoingFiberNo?: number;
-      spliceTypeId?: string;
       lossDb?: number;
     }) => {
-      // Just call manage_splice - the trigger handles the rest automatically
+      // The only job is to call the manage_splice function. The trigger does the rest, atomically.
       const { data, error } = await supabase.rpc("manage_splice", {
         p_action: variables.action,
         p_jc_id: variables.jcId,
@@ -136,24 +135,30 @@ export function useManageSplice() {
         p_incoming_fiber_no: variables.incomingFiberNo,
         p_outgoing_segment_id: variables.outgoingSegmentId,
         p_outgoing_fiber_no: variables.outgoingFiberNo,
-        p_splice_type_id: variables.spliceTypeId,
         p_loss_db: variables.lossDb || 0,
       });
-      if (error) throw error;
+
+      if (error) {
+        throw new Error(`Splice Error: ${error.message}`);
+      }
+      
       return data;
     },
     onSuccess: (_, variables) => {
       toast.success("Splice configuration updated successfully!");
+      // We invalidate all relevant queries to ensure the UI reflects the new state
+      // calculated by the database trigger.
       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", variables.jcId] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['route-details'] });
     },
     onError: (err: Error) => {
-      console.error("Splice management error:", err);
-      toast.error(`Splice Error: ${err.message}`);
+        console.error("Splice management error:", err);
+        toast.error(`${err.message}`);
     },
   });
 }
+
 
 
 
@@ -189,5 +194,28 @@ export function useAutoSplice() {
           queryClient.invalidateQueries({ queryKey: ['jc-splicing-details', variables.jcId] });
       },
       onError: (error) => toast.error(`Auto-splice failed: ${error.message}`),
+  });
+}
+
+/** NEW HOOK for the manual "Apply Path Updates" button */
+export function useSyncPathUpdates() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ jcId }: { jcId: string }) => {
+      // This is now an empty placeholder as the trigger handles everything.
+      // We keep it to maintain the button's functionality, but it does nothing.
+      return Promise.resolve();
+    },
+    onSuccess: (_, { jcId }) => {
+      toast.success("Path data has been refreshed.");
+      // Invalidate everything to ensure the entire UI reflects the new state from the trigger
+      queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", jcId] });
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['route-details'] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Path sync failed: ${err.message}`);
+    }
   });
 }
