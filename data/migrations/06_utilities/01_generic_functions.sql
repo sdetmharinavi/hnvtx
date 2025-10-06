@@ -19,7 +19,7 @@ BEGIN
 END;
 $$;
 
--- **THE FIX: Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
+-- ** Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
 -- Helper function to build the WHERE clause dynamically
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$

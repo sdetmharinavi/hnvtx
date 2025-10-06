@@ -23,8 +23,8 @@ interface NodeFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingNode?: NodesRowSchema | null;
-  onSubmit: (data: NodesInsertSchema) => void; // <-- THE FIX: Single onSubmit handler
-  isLoading: boolean; // <-- THE FIX: Receive loading state from parent
+  onSubmit: (data: NodesInsertSchema) => void; // <--  Single onSubmit handler
+  isLoading: boolean; // <--  Receive loading state from parent
 }
 
 export function NodeFormModal({
@@ -97,7 +97,7 @@ export function NodeFormModal({
     }
   }, [isOpen, editingNode, reset]);
 
-  // THE FIX: The form's submit handler now just calls the prop.
+  //  The form's submit handler now just calls the prop.
   const onValidSubmit = useCallback(
     (formData: NodesInsertSchema) => {
       onSubmit(formData);

@@ -30,7 +30,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const supabase = createClient();
 
-  // --- THE FIX: USE THE CORRECT MUTATION BASED ON TABLE NAME ---
+  // ---  USE THE CORRECT MUTATION BASED ON TABLE NAME ---
 
   // 1. Get the generic bulk delete for all other tables.
   const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(supabase, tableName).bulkDelete;

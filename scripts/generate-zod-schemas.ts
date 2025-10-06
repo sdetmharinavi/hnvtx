@@ -278,7 +278,7 @@ class TypeScriptToZodConverter {
       return false; // Cannot match a specific rule if table name is unknown
     }
   
-    // **THE FIX: Use includes() for partial matching**
+    // ** Use includes() for partial matching**
     return actualTableName.toLowerCase().includes(ruleTableName.toLowerCase());
   }
 

@@ -13,7 +13,7 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
       onSuccess?.();
       setItemToDelete(null);
     },
-    // **THE FIX: Add an onError handler to show a toast on failure.**
+    // ** Add an onError handler to show a toast on failure.**
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
       setItemToDelete(null); // Clear the item even on failure

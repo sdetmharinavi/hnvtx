@@ -69,7 +69,7 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body className={`${fontSans.variable} ${fontHeading.variable} antialiased`}>
-        {/* **THE FIX: Inline script to prevent theme flashing** */}
+        {/* ** Inline script to prevent theme flashing** */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

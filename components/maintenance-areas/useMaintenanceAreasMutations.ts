@@ -10,7 +10,7 @@ export function useMaintenanceAreasMutations(
 ) {
   const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
     onSuccess,
-    // **THE FIX: Add an onError handler for creation failures.**
+    // ** Add an onError handler for creation failures.**
     onError: (error) => {
       toast.error(`Failed to create area: ${error.message}`);
     }
@@ -18,7 +18,7 @@ export function useMaintenanceAreasMutations(
 
   const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
     onSuccess,
-    // **THE FIX: Add an onError handler for update failures.**
+    // ** Add an onError handler for update failures.**
     onError: (error) => {
       toast.error(`Failed to update area: ${error.message}`);
     }
@@ -26,7 +26,7 @@ export function useMaintenanceAreasMutations(
 
   const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
     onSuccess,
-    // **THE FIX: Add an onError handler for status toggle failures.**
+    // ** Add an onError handler for status toggle failures.**
     onError: (error) => {
       toast.error(`Failed to toggle status: ${error.message}`);
     }

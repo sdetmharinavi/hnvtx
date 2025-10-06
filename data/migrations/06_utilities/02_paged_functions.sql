@@ -5,7 +5,7 @@
 -- These functions build dynamic SQL. They are constructed to be secure
 -- using format() with %I for identifiers and %L for literals.
 
--- **THE FIX: The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
+-- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
 -- This file now only contains the get_paged_data function which depends on them.
 
 CREATE OR REPLACE FUNCTION public.get_paged_data(

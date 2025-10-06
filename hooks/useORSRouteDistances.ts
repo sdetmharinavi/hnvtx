@@ -48,7 +48,7 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
 
   results.forEach(result => {
     if (result) {
-      // THE FIX: Create keys for both directions
+      //  Create keys for both directions
       distances[`${result.startId}-${result.endId}`] = result.distance;
       distances[`${result.endId}-${result.startId}`] = result.distance;
     }

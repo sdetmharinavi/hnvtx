@@ -64,7 +64,7 @@ export function useRpcMutation<T extends RpcFunctionName>(
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
-    // THE FIX: The onSuccess callback now correctly accepts all four arguments
+    //  The onSuccess callback now correctly accepts all four arguments
     onSuccess: (data, variables, context, mutation) => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ['table'] });

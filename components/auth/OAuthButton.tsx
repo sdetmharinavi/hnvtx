@@ -39,10 +39,10 @@ export function OAuthButton({
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
   
-  // THE FIX: Use ref to track if action is in progress
+  //  Use ref to track if action is in progress
   const isProcessingRef = useRef(false);
 
-  // THE FIX: Remove authState and isLocalLoading from dependencies
+  //  Remove authState and isLocalLoading from dependencies
   // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
     debug("handleGoogleSignIn called");

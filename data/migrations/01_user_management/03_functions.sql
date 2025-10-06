@@ -288,7 +288,7 @@ BEGIN
             NEW.raw_user_meta_data->>'phone_number',
             CASE WHEN NEW.raw_user_meta_data->>'date_of_birth' ~ '^\d{4}-\d{2}-\d{2}$' THEN (NEW.raw_user_meta_data->>'date_of_birth')::date ELSE NULL END,
             COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
-            -- **THE FIX: Add the needsOnboarding flag to preferences**
+            -- ** Add the needsOnboarding flag to preferences**
             COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
             'active'
         );

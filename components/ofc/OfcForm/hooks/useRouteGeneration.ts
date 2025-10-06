@@ -23,7 +23,7 @@ export const useRouteGeneration = <T extends FieldValues>({
   setValue,
 }: UseRouteGenerationProps<T>) => {
   
-  // **THE FIX: Removed the unnecessary generic type argument.**
+  // ** Removed the unnecessary generic type argument.**
   const { data: existingRoutes, isLoading: existingRoutesLoading } = 
     useExistingRoutesQuery(startingNodeId, endingNodeId);
 

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { filesRowSchema } from '@/schemas/zod-schemas';
 
-// THE FIX: Derive the type from the Zod schema.
+//  Derive the type from the Zod schema.
 export type StoredFile = z.infer<typeof filesRowSchema>;
 
 export interface UploadProgress {

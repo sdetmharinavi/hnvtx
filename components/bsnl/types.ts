@@ -40,5 +40,5 @@ export interface AllocationSaveData {
   };
 }
 
-// **THE FIX: Infer the type directly from the Zod schema.**
+// ** Infer the type directly from the Zod schema.**
 export type SearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

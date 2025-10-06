@@ -78,7 +78,7 @@ const EmployeesPage = () => {
     dataQueryHook: useEmployeesData,
   });
 
-  // **THE FIX: Restore the dedicated queries to fetch the full data structures.**
+  // ** Restore the dedicated queries to fetch the full data structures.**
   const { data: designations = [] } = useTableQuery<"employee_designations", Employee_designationsRowSchema[]>(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
   const { data: maintenanceAreas = [] } = useTableQuery<"maintenance_areas", Maintenance_areasRowSchema[]>(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
 

@@ -74,7 +74,7 @@ export function AdvancedSearchBar({
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Types</option>
-              {/* THE FIX: Added key prop */}
+              {/*  Added key prop */}
               {typeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -86,7 +86,7 @@ export function AdvancedSearchBar({
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Regions</option>
-              {/* THE FIX: Added key prop */}
+              {/*  Added key prop */}
               {regionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -98,7 +98,7 @@ export function AdvancedSearchBar({
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Node Types</option>
-              {/* THE FIX: Added key prop */}
+              {/*  Added key prop */}
               {nodeTypeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>

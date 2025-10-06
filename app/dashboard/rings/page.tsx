@@ -128,7 +128,7 @@ const RingsPage = () => {
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
       
-      {/* **THE FIX: Pass the correct props to the now "dumb" component.** */}
+      {/* ** Pass the correct props to the now "dumb" component.** */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

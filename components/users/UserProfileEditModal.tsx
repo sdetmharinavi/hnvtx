@@ -18,7 +18,7 @@ import { FormCard } from '@/components/common/form';
 import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 
-// **THE FIX: Define types based on the Zod schema, not manually.**
+// ** Define types based on the Zod schema, not manually.**
 const addressSchema = z.object({
     street: z.string().optional().nullable(),
     city: z.string().optional().nullable(),
