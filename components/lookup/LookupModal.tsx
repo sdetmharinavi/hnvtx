@@ -1,3 +1,4 @@
+// path: components/lookup/LookupModal.tsx
 "use client";
 
 import { Button } from "@/components/common/ui/Button";
@@ -55,6 +56,7 @@ export function LookupModal({
   const lookupTypeFormSchema = lookup_typesInsertSchema.pick({
     category: true, code: true, description: true, name: true,
     sort_order: true, is_system_default: true, status: true,
+    is_ring_based: true, is_sdh: true, // ADDED
   });
   type LookupTypeFormData = z.infer<typeof lookupTypeFormSchema>;
 
@@ -66,14 +68,16 @@ export function LookupModal({
     defaultValues: {
       category: "", code: "", description: "", name: "",
       sort_order: 0, is_system_default: false, status: true,
+      is_ring_based: false, is_sdh: false, // ADDED
     },
   });
   
   const watchedName = watch('name');
+  const watchedCategory = watch("category");
 
   useEffect(() => {
     if (isOpen) {
-      setIsCodeManuallyEdited(isEditMode); // Lock auto-generation in edit mode initially
+      setIsCodeManuallyEdited(isEditMode);
       const resetData: LookupTypeFormData = {
         category: editingLookup?.category || category || "",
         code: editingLookup?.code || "",
@@ -82,6 +86,8 @@ export function LookupModal({
         sort_order: editingLookup?.sort_order || 0,
         is_system_default: editingLookup?.is_system_default || false,
         status: editingLookup?.status !== false,
+        is_ring_based: editingLookup?.is_ring_based || false, // ADDED
+        is_sdh: editingLookup?.is_sdh || false, // ADDED
       };
       reset(resetData);
     }
@@ -115,8 +121,10 @@ export function LookupModal({
   const modalTitle = isEditMode ? "Edit Lookup Type" : "Add Lookup Type";
   const submitButtonText = isEditMode ? (isSubmitting ? "Updating..." : "Update") : (isSubmitting ? "Creating..." : "Create");
   const canSubmit = Boolean(watch("category")?.trim() && watch("name")?.trim() && !isSubmitting);
-  const watchedCategory = watch("category");
   const watchedCode = watch("code");
+
+  // Determine if the special system type flags should be shown
+  const showSystemFlags = watchedCategory === 'SYSTEM_TYPES';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent bg-gray-700 rounded-2xl">
@@ -168,13 +176,27 @@ export function LookupModal({
           </div>
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center">
-              <input type="checkbox" id="is_system_default" {...register("is_system_default")} disabled={isSubmitting || (isEditMode && !!editingLookup?.is_system_default)} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
-              <label htmlFor="is_system_default" className="ml-2 text-sm text-gray-700 dark:text-gray-300">System Default</label>
-            </div>
-            <div className="flex items-center">
               <input type="checkbox" id="status" {...register("status")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
               <label htmlFor="status" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Active Status</label>
             </div>
+            <div className="flex items-center">
+              <input type="checkbox" id="is_system_default" {...register("is_system_default")} disabled={isSubmitting || (isEditMode && !!editingLookup?.is_system_default)} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
+              <label htmlFor="is_system_default" className="ml-2 text-sm text-gray-700 dark:text-gray-300">System Default (Cannot be deleted)</label>
+            </div>
+
+            {/* ADDED: Conditional rendering for system type flags */}
+            {showSystemFlags && (
+              <>
+                <div className="flex items-center">
+                  <input type="checkbox" id="is_ring_based" {...register("is_ring_based")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
+                  <label htmlFor="is_ring_based" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Is Ring-Based System</label>
+                </div>
+                <div className="flex items-center">
+                  <input type="checkbox" id="is_sdh" {...register("is_sdh")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
+                  <label htmlFor="is_sdh" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Is SDH System</label>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-4">
