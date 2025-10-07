@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload } from "@/schemas/custom-schemas";
+import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload, FiberTraceSegment, PathToUpdate } from "@/schemas/custom-schemas";
 
 const supabase = createClient();
 
@@ -48,6 +48,7 @@ export function useRouteDetails(routeId: string | null) {
       return parsed.data;
     },
     enabled: !!routeId,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 60 * 1000,
   });
 }
@@ -71,50 +72,14 @@ export function useJcSplicingDetails(jcId: string | null) {
       return parsed.data;
     },
     enabled: !!jcId,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 60 * 1000,
   });
 }
 
 /** Hook to call the `manage_splice` RPC function. */
-// export function useManageSplice() {
-//   const queryClient = useQueryClient();
-//   return useMutation({
-//     mutationFn: async (variables: {
-//       action: "create" | "delete" | "update_loss";
-//       jcId: string;
-//       spliceId?: string;
-//       incomingSegmentId?: string;
-//       incomingFiberNo?: number;
-//       outgoingSegmentId?: string;
-//       outgoingFiberNo?: number;
-//       spliceTypeId?: string;
-//       lossDb?: number;
-//     }) => {
-//       const { data, error } = await supabase.rpc("manage_splice", {
-//         p_action: variables.action,
-//         p_jc_id: variables.jcId,
-//         p_splice_id: variables.spliceId,
-//         p_incoming_segment_id: variables.incomingSegmentId,
-//         p_incoming_fiber_no: variables.incomingFiberNo,
-//         p_outgoing_segment_id: variables.outgoingSegmentId,
-//         p_outgoing_fiber_no: variables.outgoingFiberNo,
-//         p_splice_type_id: variables.spliceTypeId,
-//         p_loss_db: variables.lossDb || 0,
-//       });
-//       if (error) throw error;
-//       return data;
-//     },
-//     onSuccess: (_, variables) => {
-//       toast.success("Splice configuration updated!");
-//       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", variables.jcId] });
-//     },
-//     onError: (err) => toast.error(`Splice Error: ${err.message}`),
-//   });
-// }
-
 export function useManageSplice() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (variables: {
       action: "create" | "delete" | "update_loss";
@@ -124,9 +89,9 @@ export function useManageSplice() {
       incomingFiberNo?: number;
       outgoingSegmentId?: string;
       outgoingFiberNo?: number;
+      spliceTypeId?: string;
       lossDb?: number;
     }) => {
-      // The only job is to call the manage_splice function. The trigger does the rest, atomically.
       const { data, error } = await supabase.rpc("manage_splice", {
         p_action: variables.action,
         p_jc_id: variables.jcId,
@@ -135,31 +100,39 @@ export function useManageSplice() {
         p_incoming_fiber_no: variables.incomingFiberNo,
         p_outgoing_segment_id: variables.outgoingSegmentId,
         p_outgoing_fiber_no: variables.outgoingFiberNo,
+        p_splice_type_id: variables.spliceTypeId,
         p_loss_db: variables.lossDb || 0,
       });
-
-      if (error) {
-        throw new Error(`Splice Error: ${error.message}`);
-      }
-      
+      if (error) throw error;
       return data;
     },
     onSuccess: (_, variables) => {
-      toast.success("Splice configuration updated successfully!");
-      // We invalidate all relevant queries to ensure the UI reflects the new state
-      // calculated by the database trigger.
+      toast.success("Splice configuration updated!");
       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", variables.jcId] });
+    },
+    onError: (err) => toast.error(`Splice Error: ${err.message}`),
+  });
+}
+
+/** NEW HOOK for manually syncing path data from the visualizer. */
+export function useSyncPathFromTrace() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: PathToUpdate) => {
+      const { error } = await supabase.rpc('apply_logical_path_update', payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Path data successfully synced to the database!");
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['route-details'] });
     },
     onError: (err: Error) => {
-        console.error("Splice management error:", err);
-        toast.error(`${err.message}`);
-    },
+      toast.error(`Path sync failed: ${err.message}`);
+    }
   });
 }
-
-
 
 
 /** Hook to call the `auto_splice_straight_segments` RPC function. */

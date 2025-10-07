@@ -175,6 +175,7 @@ export function usePagedData<T>(
     queryKey,
     queryFn,
     enabled: !!viewName && (queryOptions.enabled ?? true),
+    placeholderData: (previousData) => previousData,
     ...queryOptions,
   });
 }

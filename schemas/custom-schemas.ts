@@ -117,8 +117,20 @@ export const fiberTraceSegmentSchema = z.object({
   fiber_out: z.number().nullable(),
   distance_km: z.number().nullable(),
   loss_db: z.number().nullable(),
+  original_cable_id: z.uuid().nullable(),
+  start_node_id: z.uuid().nullable(),
+  end_node_id: z.uuid().nullable(),
 });
 export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
+
+export const pathToUpdateSchema = z.object({
+  p_id: z.uuid(),
+  p_start_node_id: z.uuid(),
+  p_end_node_id: z.uuid(),
+  p_start_fiber_no: z.number(),
+  p_end_fiber_no: z.number(),
+});
+export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 
 // --- For the new trace_fiber_path RPC ---

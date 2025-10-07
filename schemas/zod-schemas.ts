@@ -1820,9 +1820,11 @@ export const v_ofc_connections_completeRowSchema = z.object({
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   updated_en_id: z.uuid().nullable(),
+  updated_en_name: z.iso.datetime().nullable(),
   updated_fiber_no_en: z.number().nullable(),
   updated_fiber_no_sn: z.number().nullable(),
   updated_sn_id: z.uuid().nullable(),
+  updated_sn_name: z.iso.datetime().nullable(),
 });
 
 export const v_ring_nodesRowSchema = z.object({

@@ -77,7 +77,7 @@ export default function OfcCableDetailsPage() {
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number } | null>(null);
+  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number; record?: V_ofc_connections_completeRowSchema } | null>(null);
 
   const { data: cableSegments } = useTableQuery(createClient(), "cable_segments", {
     filters: { original_cable_id: cableId as string },
@@ -112,7 +112,7 @@ export default function OfcCableDetailsPage() {
         onClick: (record: V_ofc_connections_completeRowSchema) => {
           const firstSegment = cableSegments?.find((s) => s.segment_order === 1);
           if (firstSegment && record.fiber_no_sn) {
-            setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn });
+            setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn, record });
           } else {
             toast.error("Cannot trace fiber: No cable segments found for this route or fiber number is missing.");
           }
@@ -193,7 +193,7 @@ export default function OfcCableDetailsPage() {
       </div>
       <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null} onCreated={crudActions.handleSave} onUpdated={crudActions.handleSave} />
       <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title='Confirm Deletion' message={deleteModal.message} type='danger' loading={deleteModal.loading} />
-      <FiberTraceModal isOpen={!!tracingFiber} onClose={() => setTracingFiber(null)} startSegmentId={tracingFiber?.startSegmentId || null} fiberNo={tracingFiber?.fiberNo || null} allCables={allCablesData} />
+      <FiberTraceModal refetch={refetch} isOpen={!!tracingFiber} onClose={() => setTracingFiber(null)} startSegmentId={tracingFiber?.startSegmentId || null} fiberNo={tracingFiber?.fiberNo || null} allCables={allCablesData} record={tracingFiber?.record} />
     </div>
   );
 }
