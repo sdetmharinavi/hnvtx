@@ -1,8 +1,10 @@
+// path: components/doc/data/workflowData.ts
 import { ShieldCheck, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
 import { WorkflowSection } from "../types/workflowTypes";
 import { FaDiagramNext } from "react-icons/fa6";
 import { BsPeople } from "react-icons/bs";
 import { ImUserTie } from "react-icons/im";
+import { FiDatabase } from "react-icons/fi";
 
 export const workflowSections: WorkflowSection[] = [
   {
@@ -29,8 +31,8 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "`signUp` calls `supabase.auth.signUp`.",
           'DB Trigger `on_auth_user_created` inserts a `user_profiles` record and adds `{"needsOnboarding": true}` to the `preferences` JSONB column.',
-          "The `app/dashboard/page.tsx` component uses the `useGetMyUserDetails` hook.",
-          "A `useEffect` checks if `profile.preferences.needsOnboarding` is `true` and if `profile.preferences.showOnboardingPrompt` is not `false`.",
+          "The `app/dashboard/page.tsx` component uses the `useGetMyUserDetails` hook to fetch the user profile.",
+          "A `useEffect` checks if `profile.preferences.needsOnboarding` is `true` and `profile.preferences.showOnboardingPrompt` is not `false`.",
           "If conditions are met, the modal's state is set to open.",
           "Clicking 'Don't show again' updates the `preferences` column, setting `showOnboardingPrompt: false`.",
           "Clicking 'Update Profile' navigates the user to the `/onboarding` page.",
@@ -82,36 +84,31 @@ export const workflowSections: WorkflowSection[] = [
     gradient: "from-gray-500 to-slate-600",
     iconColor: "text-gray-400",
     bgGlow: "bg-gray-500/10",
-    color: "yellow", // Using a distinct color
+    color: "yellow",
     purpose: "To configure the foundational data that categorizes and organizes all other entities in the system. This setup is typically performed by an administrator before regular data entry begins.",
     workflows: [
       {
-        title: "Workflow A: Managing Categories & Lookups",
+        title: "Workflow A: Managing Categories & Lookups with System Flags",
         userSteps: [
-          "Admin goes to `/dashboard/categories` and creates a new category (e.g., 'NODE_TYPES'). This acts as a grouping for dropdown options.",
-          "Admin then navigates to `/dashboard/lookup` and selects the newly created 'Node Types' category.",
-          "Clicks 'Add New' to open the `LookupModal`.",
-          "Admin adds a new lookup type, filling in the details:",
-          "  - **Name:** 'Base Transceiver Station' (The human-readable text shown in dropdowns).",
-          "  - **Code:** 'BTS' (A short, unique code for this type, useful for display or logic).",
-          "  - **Sort Order:** '10' (A number to control the display order in lists; lower numbers appear first).",
-          "  - **System Default:** Left unchecked. This flag is reserved for critical, system-required types and prevents their deletion.",
+          "Admin goes to `/dashboard/categories` and creates a new category (e.g., 'SYSTEM_TYPES').",
+          "Admin navigates to `/dashboard/lookup`, selects the 'System Types' category, and clicks 'Add New'.",
+          "In the `LookupModal`, admin fills in the details for a new system type.",
+          "If the category is 'SYSTEM_TYPES', additional checkboxes appear: 'Is Ring-Based System' and 'Is SDH System'.",
+          "Admin checks 'Is Ring-Based System' for types like 'CPAN' or 'MAAN'.",
           "Admin saves the new lookup type.",
         ],
         uiSteps: [
           "The Categories page allows creating and renaming high-level categories.",
           "On the Lookups page, a category must be selected to view or add types.",
-          "The `DataTable` lists all lookup types for the selected category, ordered by the `sort_order` value.",
-          "If a lookup type has `is_system_default` set to `true`, its Edit and Delete buttons are disabled in the UI to prevent accidental modification.",
+          "The `LookupModal` conditionally displays checkboxes for `is_ring_based` and `is_sdh` only when the `category` is 'SYSTEM_TYPES'.",
         ],
         techSteps: [
-          "A **Category** is not a separate table; it's a distinct value in the `category` column of the `lookup_types` table. It acts as the primary grouping key.",
-          "A **Lookup Type** is a single row in the `lookup_types` table.",
-          "The **`name`** field is the primary value displayed to users in dropdowns and tables.",
-          "The **`code`** field provides a concise, alternative identifier. It's often used for badges or in places where a full name is too long.",
-          "The **`sort_order`** field dictates the ordering of items when fetched for dropdowns. This allows for a custom order that isn't alphabetical (e.g., 'High', 'Medium', 'Low').",
-          "The **`is_system_default`** flag is a protective measure. When `true`, UI controls for editing and deleting are disabled. This prevents an admin from deleting a lookup type that the application's internal logic depends on (e.g., a status type like 'Active' or 'Pending').",
-          "All dropdowns for types (e.g., Node Type, Ring Type) are populated by querying the `lookup_types` table with a `WHERE category = ?` clause and ordering by `sort_order`.",
+          "A **Category** is a distinct value in the `category` column of the `lookup_types` table.",
+          "When creating a new System via the `SystemModal`, the form fetches the selected `system_type_id`'s full record from `lookup_types`.",
+          "The `upsert_system_with_details` database function receives all system parameters.",
+          "Inside the function, it checks the boolean flags on the system type record (e.g., `IF v_system_type_record.is_ring_based = true THEN...`).",
+          "Based on these flags, the function executes conditional `INSERT` or `UPDATE` statements on the appropriate subtype tables (e.g., `ring_based_systems`, `sdh_systems`).",
+          "This flag-based approach makes the system extensible, as new system behaviors can be added just by adding a new boolean flag and a corresponding `IF` block in the function.",
         ],
       },
       {
@@ -209,8 +206,8 @@ export const workflowSections: WorkflowSection[] = [
         uiSteps: ["The `FileUploader` component provides the main interface.", "A list of selected files appears before uploading.", "A success toast confirms the upload, and the file appears in the `FileTable` under the selected folder."],
         techSteps: [
           "The `useFolders` hook fetches and manages folder state from the `folders` table.",
-          "The `useUppyUploader` hook handles the client-side file processing, including optimizations.",
-          "Uppy uploads the file to a serverless API route at `/api/upload` (not shown, but assumed).",
+          "The `useUppyUploader` hook handles the client-side file processing, including image optimizations via `smartCompress`.",
+          "Uppy uploads the file to a serverless API route at `/api/upload`.",
           "The API route uploads the file to Supabase Storage.",
           "On `upload-success`, the `useUppyUploader` hook calls the `useUploadFile` mutation, which inserts a new record into the `files` table, linking the file metadata to the `folder_id` and `user_id`.",
         ],
@@ -260,7 +257,7 @@ export const workflowSections: WorkflowSection[] = [
           'This mutation sends a `POST` request to the `/api/admin/users` serverless function.',
           'The API route manually hashes the password and inserts a single new record directly into the `auth.users` table.',
           'Crucially, this `INSERT` operation causes the `on_auth_user_created` database trigger to fire.',
-          'The trigger function is now the single source of truth for profile creation; it automatically reads the metadata from the new `auth.users` record and inserts a corresponding row into `public.user_profiles`.',
+          'The trigger function is the single source of truth for profile creation; it automatically reads the metadata from the new `auth.users` record and inserts a corresponding row into `public.user_profiles`.',
           'The frontend invalidates the user list query to show the new user.',
         ],
       },
@@ -349,6 +346,61 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+  // ** NEW WORKFLOW SECTION FOR SYSTEMS **
+  {
+    value: "systems_crud",
+    icon: FiDatabase,
+    title: "System CRUD Operations",
+    subtitle: "Managing network equipment and devices",
+    gradient: "from-lime-500 to-green-600",
+    iconColor: "text-lime-400",
+    bgGlow: "bg-lime-500/10",
+    color: "teal",
+    purpose: "To create, view, update, and delete network systems (e.g., CPAN, MAAN, SDH). This workflow leverages a powerful database function to handle different system subtypes from a single form.",
+    workflows: [
+      {
+        title: "Workflow A: Creating a New System",
+        userSteps: [
+          "Admin navigates to `/dashboard/systems` and clicks 'Add New'.",
+          "The `SystemModal` opens to Step 1: 'Basic Information'.",
+          "Admin fills in the required fields: System Name, System Type (e.g., 'CPAN'), and Node/Location.",
+          "Admin clicks 'Next'.",
+          "Because 'CPAN' is a ring-based system, the modal proceeds to Step 2: 'Subtype Details'.",
+          "Admin selects the logical 'Ring' this system belongs to and fills in other details.",
+          "Admin clicks 'Create System'.",
+        ],
+        uiSteps: [
+          "The `SystemModal` is a multi-step form. The fields shown in Step 2 change based on the 'System Type' selected in Step 1.",
+          "A success toast appears, the modal closes, and the systems list is refreshed.",
+        ],
+        techSteps: [
+          "The `onValidSubmit` handler in `SystemModal` is called.",
+          "It constructs a single payload object containing all data from both steps of the form.",
+          "It calls the `upsert_system_with_details` PostgreSQL RPC function via the `useRpcMutation` hook.",
+          "Inside the database, the function first performs an `INSERT` or `UPDATE` on the generic `public.systems` table.",
+          "It then inspects the `system_type_id` and checks its boolean flags (`is_ring_based`, `is_sdh`).",
+          "Based on the flags, it executes conditional `INSERT`/`UPDATE` operations on the appropriate subtype tables (`ring_based_systems`, `sdh_systems`, etc.).",
+          "This entire process occurs within a single database transaction, ensuring data integrity.",
+          "On success, the frontend's `v_systems_complete` query is invalidated and refetched.",
+        ],
+      },
+      {
+        title: "Workflow B: Editing an Existing System",
+        userSteps: [
+          "Admin clicks the 'Edit' icon on a system row in the `DataTable`.",
+          "The `SystemModal` opens, pre-populated with all known data for that system, including its subtype details (e.g., the currently selected Ring).",
+          "Admin changes the IP address and clicks 'Update System'.",
+        ],
+        uiSteps: ["The modal opens with all relevant fields filled out.", "A success toast appears, and the UI updates."],
+        techSteps: [
+          "The `onValidSubmit` handler is called, but this time it includes the `p_id` of the existing system in the payload.",
+          "The `upsert_system_with_details` function is called again.",
+          "The function performs an `ON CONFLICT (id) DO UPDATE` on the `public.systems` table.",
+          "It then performs `ON CONFLICT (system_id) DO UPDATE` on the relevant subtype tables, ensuring all parts of the system record are updated correctly.",
+        ],
+      },
+    ],
+  },
   {
     value: "rings_crud",
     icon: BellRing,
@@ -414,11 +466,9 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           'The `OfcPage` uses `useCrudManager` to manage state and data fetching.',
           'Creating a record calls the `useTableInsert` hook to write to the `ofc_cables` table.',
-          'An `AFTER INSERT` trigger on `ofc_cables` automatically populates the `ofc_connections` table with records for each fiber.',
+          'An `AFTER INSERT` trigger on `ofc_cables` (`create_initial_connections_for_cable`) automatically populates the `ofc_connections` table with records for each fiber.',
           'Editing calls the `useTableUpdate` hook to update the `ofc_cables` record.',
-          // **UPDATED DOCUMENTATION STEP**
-          'Deleting calls the `useTableDelete` hook to remove a record from `ofc_cables`.',
-          'The `ON DELETE CASCADE` constraint on the `ofc_connections` table\'s `ofc_id` foreign key ensures that PostgreSQL automatically deletes all associated fiber connection records in the same transaction.',
+          'Deleting calls the `useTableDelete` hook. The `ON DELETE CASCADE` constraint on the `ofc_connections` table\'s `ofc_id` foreign key ensures PostgreSQL automatically deletes all associated fiber connection records.',
         ],
       },
       {
@@ -429,8 +479,8 @@ export const workflowSections: WorkflowSection[] = [
           'A list of `Cable Segments` is displayed below the visualization.',
         ],
         techSteps: [
-          "The page component's `useQuery` fetches data from the API route `/api/route/[id]`.",
-          'The API route fetches data from multiple tables, including `v_ofc_cables_complete` and `cable_segments`.',
+          "The page component's `useRouteDetails` hook fetches data from the API route `/api/route/[id]`.",
+          'The API route fetches data from multiple tables, including `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
           'The API returns a consolidated `RouteDetailsPayload` object.',
         ],
       },
@@ -447,7 +497,7 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           'The form calls the `add_junction_closure` Supabase RPC function.',
           'This RPC inserts records into the `nodes` and `junction_closures` tables.',
-          'An `AFTER INSERT` trigger on `junction_closures` fires the `recalculate_segments_for_cable` function, which rebuilds the records in the `cable_segments` table.',
+          'An `AFTER INSERT` trigger on `junction_closures` (`manage_cable_segments`) fires the `recalculate_segments_for_cable` function, which rebuilds the records in the `cable_segments` table.',
           'The frontend refetches the route details, updating the UI.',
         ],
       },
@@ -465,6 +515,30 @@ export const workflowSections: WorkflowSection[] = [
           '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC to fetch the current splice state.',
           "A `manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
           'The frontend query for splicing details is invalidated and refetched, updating the UI.',
+        ],
+      },
+      {
+        title: "Workflow E: Fiber Path Tracing & Logical Sync",
+        userSteps: [
+            "User navigates to an OFC Cable's detail page (`/dashboard/ofc/[id]`).",
+            "User clicks the 'Trace' icon on a specific fiber row in the `DataTable`.",
+            "The `FiberTraceModal` opens, showing a visual timeline of the fiber's path through segments and splices.",
+            "User clicks the 'Sync Path to DB' button.",
+        ],
+        uiSteps: [
+            "The `FiberTraceModal` opens and displays the `FiberTraceVisualizer` component.",
+            "The visualizer renders the path, orienting each segment to show a continuous flow (e.g., A → B, B → C, not A → B, C → B).",
+            "A toast confirms that the path data has been successfully synced to the database.",
+            "The modal closes and the `ofc_connections` table in the UI refreshes to show the updated logical start/end nodes.",
+        ],
+        techSteps: [
+            "The `useFiberTrace` hook is called with the fiber's `segment_id` and `fiber_no`.",
+            "This hook calls the `trace_fiber_path` PostgreSQL RPC, which recursively queries the `fiber_splices` table to build the end-to-end path.",
+            "The `FiberTraceVisualizer` receives the raw trace data and uses `useMemo` to create an `orientedTrace`, determining the correct 'from' and 'to' nodes for each step for display.",
+            "Clicking 'Sync' calls the `handleSyncPath` function in the modal.",
+            "This function processes the raw `traceData` to determine the true `pathStartNodeId` and `pathEndNodeId` of the entire logical path.",
+            "It calls the `useSyncPathFromTrace` mutation, which executes the `apply_logical_path_update` RPC.",
+            "This RPC updates the `updated_sn_id`, `updated_en_id`, `updated_fiber_no_sn`, and `updated_fiber_no_en` columns for the specific `ofc_connections` record.",
         ],
       },
     ],

@@ -74,7 +74,8 @@ export default function SystemsPage() {
     searchColumn: 'system_name',
   });
 
-  const { data: systemTypes = [] } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
+  const { data: systemTypesData = { data: [], count: 0 } } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
+  const systemTypes = systemTypesData.data || [];
 
   const handleView = useCallback((system: Row<'v_systems_complete'>) => {
     router.push(`/dashboard/systems/${system.id}`);

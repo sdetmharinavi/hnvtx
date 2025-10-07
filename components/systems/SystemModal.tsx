@@ -46,15 +46,21 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
-  const { data: systemTypes = [] } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, category', filters: { category: 'SYSTEM_TYPES' } });
-  const { data: nodes = [] } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
-  const { data: maintenanceTerminals = [] } = useTableQuery(supabase, 'maintenance_areas', { columns: 'id, name' });
-  const { data: rings = [] } = useTableQuery(supabase, 'rings', { columns: 'id, name' });
+  const { data: systemTypesData = { data: [], count: 0 } } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, code, category', filters: { category: 'SYSTEM_TYPES' } });
+  const { data: nodesData = { data: [], count: 0 } } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
+  const { data: maintenanceTerminalsData = { data: [], count: 0 } } = useTableQuery(supabase, 'maintenance_areas', { columns: 'id, name' });
+  const { data: ringsData = { data: [], count: 0 } } = useTableQuery(supabase, 'rings', { columns: 'id, name' });
 
-  const systemTypeOptions = useMemo(() => systemTypes.map(st => ({ value: st.id, label: st.name })), [systemTypes]);
-  const nodeOptions = useMemo(() => nodes.map(n => ({ value: n.id, label: n.name })), [nodes]);
-  const maintenanceTerminalOptions = useMemo(() => maintenanceTerminals.map(mt => ({ value: mt.id, label: mt.name })), [maintenanceTerminals]);
-  const ringOptions = useMemo(() => rings.map(r => ({ value: r.id, label: r.name })), [rings]);
+  // Extract data arrays for use in useMemo hooks
+  const systemTypes = useMemo(() => systemTypesData.data || [], [systemTypesData.data]);
+  const nodes = useMemo(() => nodesData.data || [], [nodesData.data]);
+  const maintenanceTerminals = useMemo(() => maintenanceTerminalsData.data || [], [maintenanceTerminalsData.data]);
+  const rings = useMemo(() => ringsData.data || [], [ringsData.data]);
+
+  const systemTypeOptions = useMemo(() => systemTypes.map(st => ({ value: st.id, label: st.code ?? 'Unknown' })), [systemTypes]);
+  const nodeOptions = useMemo(() => nodes.map(n => ({ value: n.id, label: n.name ?? 'Unknown' })), [nodes]);
+  const maintenanceTerminalOptions = useMemo(() => maintenanceTerminals.map(mt => ({ value: mt.id, label: mt.name ?? 'Unknown' })), [maintenanceTerminals]);
+  const ringOptions = useMemo(() => rings.map(r => ({ value: r.id, label: r.name ?? 'Unknown' })), [rings]);
 
   const {
     register,
@@ -244,7 +250,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-0 w-0 transparent">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}

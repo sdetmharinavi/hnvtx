@@ -13,6 +13,8 @@ import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/use
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import {
   Filters,
+  PagedQueryResult,
+  Row,
   useTableQuery,
   useTableWithRelations,
 } from '@/hooks/database';
@@ -39,11 +41,9 @@ export default function MaintenanceAreasPage() {
     return f;
   }, [filters]);
 
-  // **THE FIX (for "No parent" display): The `.select()` method has been removed.**
-  // useTableWithRelations now correctly returns the full nested objects for relations.
   const areasQuery = useTableWithRelations<
     'maintenance_areas',
-    MaintenanceAreaWithRelations[]
+    PagedQueryResult<MaintenanceAreaWithRelations>
   >(
     supabase,
     'maintenance_areas',
@@ -60,10 +60,14 @@ export default function MaintenanceAreasPage() {
 
   const { refetch, error, data } = areasQuery;
 
-  const { data: areaTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+  const allAreas = useMemo(() => data?.data || [], [data]);
+  const totalCount = data?.count || 0;
+
+  const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
     orderBy: [{ column: 'name', ascending: true }],
   });
+  const areaTypes = useMemo(() => areaTypesResult?.data || [], [areaTypesResult]);
 
   const {
     createAreaMutation,
@@ -71,7 +75,7 @@ export default function MaintenanceAreasPage() {
     toggleStatusMutation,
     handleFormSubmit,
   } = useMaintenanceAreasMutations(supabase, () => {
-    areasQuery.refetch();
+    refetch();
     setFormOpen(false);
     setEditingArea(null);
   });
@@ -82,15 +86,10 @@ export default function MaintenanceAreasPage() {
       if (selectedAreaId === deleteManager.itemToDelete?.id) {
         setSelectedAreaId(null);
       }
-      areasQuery.refetch();
+      refetch();
     },
   });
 
-  const allAreas = useMemo(
-    () => (areasQuery.data as MaintenanceAreaWithRelations[]) || [],
-    [areasQuery.data]
-  );
-  
   const handleOpenCreateForm = () => {
     setEditingArea(null);
     setFormOpen(true);
@@ -102,7 +101,7 @@ export default function MaintenanceAreasPage() {
   };
   
   const headerActions = useStandardHeaderActions({
-    data: allAreas,
+    data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: handleOpenCreateForm,
     isLoading: areasQuery.isLoading,
@@ -110,7 +109,7 @@ export default function MaintenanceAreasPage() {
   });
 
   const headerStats = [
-    { value: allAreas.length, label: 'Total Areas' },
+    { value: totalCount, label: 'Total Areas' },
     { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
     { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];

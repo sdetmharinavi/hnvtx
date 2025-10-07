@@ -16,7 +16,7 @@ import {
 } from '@/components/lookup/LookupTypesEmptyStates';
 import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
-import { Filters } from '@/hooks/database';
+import { Filters, Row } from '@/hooks/database';
 import { useSorting } from '@/hooks/useSorting';
 import { useMemo } from 'react';
 import { FiList } from 'react-icons/fi';
@@ -183,18 +183,7 @@ export default function LookupTypesPage() {
           </div>
 
           <LookupTypesTable
-            lookups={filteredAndSortedLookupTypes.map((lookup) => ({
-              ...lookup,
-              sort_order: lookup.sort_order ?? null,
-              created_at: lookup.created_at
-                ? new Date(lookup.created_at).toISOString()
-                : null,
-              updated_at: lookup.updated_at
-                ? new Date(lookup.updated_at).toISOString()
-                : null,
-              is_system_default: lookup.is_system_default ?? null,
-              status: lookup.status ?? null,
-            }))}
+            lookups={filteredAndSortedLookupTypes}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}

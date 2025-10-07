@@ -8,6 +8,8 @@ import { DesignationFormModal } from '@/components/designations/DesignationFormM
 import { designationConfig, DesignationWithRelations } from '@/config/designations';
 import {
   Filters,
+  PagedQueryResult,
+  Row,
   useTableInsert,
   useTableUpdate,
   useTableWithRelations,
@@ -37,7 +39,10 @@ export default function DesignationManagerPage() {
     return f;
   }, [filters]);
 
-  const designationsQuery = useTableWithRelations<'employee_designations', DesignationWithRelations[]>(
+  const designationsQuery = useTableWithRelations<
+    'employee_designations',
+    PagedQueryResult<DesignationWithRelations>
+  >(
     supabase,
     'employee_designations',
     ['parent_designation:parent_id(id, name)'],
@@ -48,15 +53,16 @@ export default function DesignationManagerPage() {
   );
 
   const { refetch, error, data } = designationsQuery;
-  const totalCount = data?.length || 0;
+  
+  const allDesignations = useMemo(() => data?.data || [], [data]);
+  const totalCount = data?.count || 0;
 
   const onMutationSuccess = () => {
-    designationsQuery.refetch();
+    refetch();
     setFormOpen(false);
     setEditingDesignation(null);
   };
 
-  // ** Pass the 'supabase' client as the first argument to the hooks.**
   const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
@@ -76,14 +82,9 @@ export default function DesignationManagerPage() {
       if (selectedDesignationId === deleteManager.itemToDelete?.id) {
         setSelectedDesignationId(null);
       }
-      designationsQuery.refetch();
+      refetch();
     },
   });
-
-  const allDesignations = useMemo(
-    () => (designationsQuery.data as DesignationWithRelations[]) || [],
-    [designationsQuery.data]
-  );
 
   const handleOpenCreateForm = () => {
     setEditingDesignation(null);
@@ -107,10 +108,7 @@ export default function DesignationManagerPage() {
   };
 
   const headerActions = useStandardHeaderActions({
-    data: designationsQuery.data?.map((d) => ({
-      id: d.id, name: d.name, created_at: d.created_at ?? null,
-      updated_at: d.updated_at ?? null, parent_id: d.parent_id ?? null, status: d.status ?? null,
-    })),
+    data: allDesignations as Row<'employee_designations'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: handleOpenCreateForm,
     isLoading: designationsQuery.isLoading,
@@ -130,7 +128,7 @@ export default function DesignationManagerPage() {
   const isLoading = designationsQuery.isLoading || createDesignationMutation.isPending || updateDesignationMutation.isPending || toggleStatusMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
         title="Designation Management"
         description="Manage designations and their related information."
