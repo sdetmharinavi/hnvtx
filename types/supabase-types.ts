@@ -1423,6 +1423,8 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_ring_based: boolean | null
+          is_sdh: boolean | null
           is_system_default: boolean | null
           name: string
           sort_order: number | null
@@ -1435,6 +1437,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_ring_based?: boolean | null
+          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name: string
           sort_order?: number | null
@@ -1447,6 +1451,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_ring_based?: boolean | null
+          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string
           sort_order?: number | null
@@ -2977,6 +2983,8 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string | null
+          is_ring_based: boolean | null
+          is_sdh: boolean | null
           is_system_default: boolean | null
           name: string | null
           sort_order: number | null
@@ -2989,6 +2997,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          is_ring_based?: boolean | null
+          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string | null
           sort_order?: number | null
@@ -3001,6 +3011,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          is_ring_based?: boolean | null
+          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string | null
           sort_order?: number | null
@@ -3892,15 +3904,13 @@ export type Database = {
         }[]
       }
       apply_logical_path_update: {
-        Args:
-          | {
-              p_end_fiber_no: number
-              p_end_node_id: string
-              p_physical_fibers: Json
-              p_start_fiber_no: number
-              p_start_node_id: string
-            }
-          | { p_trace_result: Json }
+        Args: {
+          p_end_fiber_no: number
+          p_end_node_id: string
+          p_id: string
+          p_start_fiber_no: number
+          p_start_node_id: string
+        }
         Returns: undefined
       }
       auto_splice_straight_segments: {
@@ -3941,13 +3951,6 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
-        }[]
-      }
-      get_all_fibers_at_jc: {
-        Args: { p_jc_id: string }
-        Returns: {
-          fiber_no: number
-          segment_id: string
         }[]
       }
       get_all_splices: {
@@ -4135,26 +4138,14 @@ export type Database = {
           element_id: string
           element_name: string
           element_type: string
+          end_node_id: string
           fiber_in: number
           fiber_out: number
           loss_db: number
           original_cable_id: string
+          start_node_id: string
           step_order: number
         }[]
-      }
-      update_path_for_fiber: {
-        Args: { p_fiber_no: number; p_segment_id: string }
-        Returns: undefined
-      }
-      update_paths_after_splice: {
-        Args:
-          | { p_fibers_to_update: Json }
-          | { p_fibers_to_update: Json; p_operation: string }
-        Returns: undefined
-      }
-      update_paths_for_jc: {
-        Args: { p_jc_id: string }
-        Returns: undefined
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }

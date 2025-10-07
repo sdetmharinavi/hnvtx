@@ -163,7 +163,7 @@ BEGIN
     WHERE id = p_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.apply_logical_path_update(UUID, UUID, INT, INT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_logical_path_update(UUID, UUID, UUID, INT, INT) TO authenticated;
 
 -- ** Final, correct, robust bi-directional trace function.**
 CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
