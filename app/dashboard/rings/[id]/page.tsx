@@ -1,14 +1,14 @@
 // path: app/dashboard/rings/[id]/page.tsx
 "use client";
 
-import { useMemo, useCallback } from "react"; // <-- Import useCallback
+import { useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiMap } from "react-icons/fi";
 import { useRingNodes } from "@/hooks/database/ring-map-queries";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
-import { RingMapNode, NodeType } from "@/components/map/types/node";
+import { RingMapNode } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
 
 export default function RingMapPage() {
@@ -29,8 +29,10 @@ export default function RingMapPage() {
         lat: node.lat!,
         long: node.long!,
         order_in_ring: node.order_in_ring,
-        type: node.type as NodeType | string | null,
+        type: node.type,
         ring_status: node.ring_status,
+        system_status: node.system_status,
+        ring_name: node.ring_name,
         ip: node.ip,
         remark: node.remark,
       }));
@@ -39,7 +41,7 @@ export default function RingMapPage() {
   const { mainSegments, spurConnections, allPairs } = useMemo(() => {
     const ringStatusNodes = mappedNodes.filter(node => node.ring_status);
     
-    const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes.filter(n => n.type === NodeType.MAAN))
+    const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
     if (main.length === 0) {
@@ -69,7 +71,6 @@ export default function RingMapPage() {
   
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
   
-  // ** Wrap the onBack handler in useCallback for a stable reference.**
   const handleBack = useCallback(() => {
     router.push('/dashboard/rings');
   }, [router]);
@@ -86,7 +87,7 @@ export default function RingMapPage() {
         solidLines={mainSegments}
         dashedLines={spurConnections}
         distances={distances}
-        onBack={handleBack} // Pass the stable handler
+        onBack={handleBack}
         showControls={true} 
       />
     );

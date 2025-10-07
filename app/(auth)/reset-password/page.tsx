@@ -38,6 +38,7 @@ export default function ResetPasswordPage() {
       }
     } catch (error) {
       toast.error("Something went wrong");
+      console.error(error);
       setIsLoading(false);
     }
   };

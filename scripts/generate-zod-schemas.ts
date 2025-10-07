@@ -160,6 +160,16 @@ class TypeScriptToZodConverter {
     fieldName?: string,
     tableName?: string
   ): string {
+    // Check for custom object schema first
+    const customRule = this.config.customRules.find(
+      (rule) =>
+        rule.fieldName === fieldName &&
+        this.matchesTableName(rule.tableName, tableName)
+    );
+    if (customRule && customRule.validation.trim().startsWith('{')) {
+      const objectSchema = `z.object(${customRule.validation})`;
+      return isNullable ? `${objectSchema}.nullable()` : objectSchema;
+    }
     // Handle literal types (enums)
     if (type.includes('"') && type.includes('|')) {
       const literalValues = type.split(' | ').map((v) => v.trim());
@@ -186,7 +196,8 @@ class TypeScriptToZodConverter {
         zodType = 'z.boolean()';
         break;
       case 'Json':
-        zodType = 'z.any()'; // Json type is flexible
+        // **MODIFIED: Also check for custom rules for Json type**
+        zodType = this.getSmartStringValidation(fieldName || '', tableName);
         break;
       case 'null':
         zodType = 'z.null()';
@@ -222,6 +233,10 @@ class TypeScriptToZodConverter {
         this.matchesTableName(rule.tableName, tableName)
     );
     if (customRule) {
+      // **NEW LOGIC: Handle object literal schemas**
+      if (customRule.validation.trim().startsWith('{')) {
+        return `z.object(${customRule.validation})`;
+      }
       return customRule.validation;
     }
 
@@ -307,7 +322,7 @@ class TypeScriptToZodConverter {
   generateZodSchemas(types: TypeInfo[]): string {
     let output = '// Auto-generated Zod schemas from flattened-types.ts\n\n';
     output += 'import { z } from "zod";\n\n';
-    output += 'import { UserRole } from "@/types/user-roles";\n\n';
+    output += 'import { UserRole, JsonSchema } from "@/types/user-roles";\n\n';
 
     // Group types by category
     const tableTypes = types.filter(

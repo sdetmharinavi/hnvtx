@@ -19,17 +19,8 @@ import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 
 // ** Define types based on the Zod schema, not manually.**
-const addressSchema = z.object({
-    street: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    zip_code: z.string().optional().nullable(),
-}).nullable();
-
-const preferencesSchema = z.object({
-    language: z.string().optional().nullable(),
-    theme: z.string().optional().nullable(),
-}).nullable();
+const addressSchema = user_profilesUpdateSchema.shape.address;
+const preferencesSchema = user_profilesUpdateSchema.shape.preferences;
 
 // Extend the auto-generated schema to handle nested objects for the form
 const userProfileFormSchema = user_profilesUpdateSchema.extend({

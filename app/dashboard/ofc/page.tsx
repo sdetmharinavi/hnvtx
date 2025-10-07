@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Filters,
   usePagedData,
   useTableInsert,
   useTableUpdate,
@@ -50,21 +49,8 @@ export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
 const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
+  const { currentPage, pageLimit, filters } = params;
   const supabase = createClient();
-
-  // Build the server filters object that the RPC function expects.
-  // const serverFilters = useMemo(() => {
-  //   const richFilters: Filters = { ...filters };
-  //   if (searchQuery) {
-  //     richFilters.or = {
-  //       route_name: searchQuery,
-  //       asset_no: searchQuery,
-  //       transnet_id: searchQuery,
-  //     };
-  //   }
-  //   return richFilters; // Return Filters type instead of converting to Json
-  // }, [filters, searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
