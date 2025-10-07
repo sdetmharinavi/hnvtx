@@ -54,7 +54,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const endingNodeId = watch('en_id');
   const routeName = watch('route_name');
   const currentOfcTypeId = watch('ofc_type_id');
-  const ofcOwnerId = watch('ofc_owner_id');
 
   // Data fetching with optimized queries
   const { data: nodesData, isLoading: nodesLoading } = usePagedData<V_nodes_completeRowSchema>(
@@ -72,7 +71,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
     }
   );
 
-  const { data: ofcTypesData, isLoading: ofcTypesLoading } = useTableQuery(
+  const { data: ofcTypesResult, isLoading: ofcTypesLoading } = useTableQuery(
     supabase,
     'lookup_types',
     {
@@ -85,9 +84,10 @@ const OfcForm: React.FC<OfcFormProps> = ({
       staleTime: OFC_FORM_CONFIG.CACHE_TIME,
     }
   );
+  const ofcTypesData = ofcTypesResult?.data;
 
   const {
-    data: maintenanceTerminalsData,
+    data: maintenanceTerminalsResult,
     isLoading: maintenanceTerminalsLoading,
   } = useTableQuery(supabase, 'maintenance_areas', {
     filters: { status: true },
@@ -95,9 +95,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
     columns: 'id, name',
     staleTime: OFC_FORM_CONFIG.CACHE_TIME,
   });
+  const maintenanceTerminalsData = maintenanceTerminalsResult?.data;
 
   // Custom hooks for complex logic
-  // Create a type-safe wrapper for setValue
   const setValueWithType = useCallback(
     <K extends keyof Ofc_cablesInsertSchema>(
       name: K,
@@ -112,7 +112,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const startingNodeName = useMemo(() => nodesData?.data.find(node => node.id === startingNodeId)?.name || null, [nodesData, startingNodeId]);
   const endingNodeName = useMemo(() => nodesData?.data.find(node => node.id === endingNodeId)?.name || null, [nodesData, endingNodeId]);
 
-  const { existingRoutes, isLoading: routeGenerationLoading, generatedRouteName } =
+  const { existingRoutes, isLoading: routeGenerationLoading } =
     useRouteGeneration<Ofc_cablesRowSchema>({
       startingNodeId, endingNodeId, startingNodeName, endingNodeName, isEdit, setValue: setValueWithType,
     });
@@ -159,12 +159,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
     [maintenanceTerminalsData]
   );
 
-  // Fetch OFC Owner
   const {
-    data: lookupTypes = [],
+    data: lookupTypesResult,
     isLoading: lookupLoading,
-    error: lookupError,
-    refetch: refetchLookups
   } = useTableQuery(supabase, "lookup_types", {
     orderBy: [{ column: "name", ascending: true }],
     filters: {
@@ -172,6 +169,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
       category: { operator: "eq", value: "OFC_OWNER" },
     }
   });
+  const lookupTypes = lookupTypesResult?.data;
 
   const ownerOptions = useMemo(
     (): Option[] =>
@@ -179,7 +177,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
     [lookupTypes, lookupLoading]
   );
 
-  // Loading state aggregation
   const isLoading =
     nodesLoading ||
     ofcTypesLoading ||
@@ -193,7 +190,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
 
   const onInvalidSubmit: SubmitErrorHandler<Ofc_cablesInsertSchema> = (errors, data) => {
     console.log('Invalid form submission', errors, "Invalid form submission", data);
-
   };
 
   return (

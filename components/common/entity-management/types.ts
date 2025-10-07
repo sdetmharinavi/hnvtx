@@ -1,5 +1,6 @@
 // components/common/entity-management/types.ts
 import { UseQueryResult } from '@tanstack/react-query';
+import { PagedQueryResult } from '@/hooks/database'; // IMPORT THE NEW TYPE
 
 export interface BaseEntity {
   id: string;
@@ -48,17 +49,17 @@ export interface EntityConfig<T extends BaseEntity> {
   }>;
 }
 
-// ** Update the hook's props interface**
 export interface UseEntityManagementProps<T extends BaseEntity> {
-  entitiesQuery: UseQueryResult<T[], Error>;
+  entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
   config: EntityConfig<T>;
   onDelete: (entity: { id: string; name: string }) => void;
+  onEdit: (entity: T) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   onCreateNew: () => void;
-  // Add the new props to make it a controlled component
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
 }
+
 
 // Updated component interfaces
 export interface EntityTreeItemProps<T extends BaseEntity> {

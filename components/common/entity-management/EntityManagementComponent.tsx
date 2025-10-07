@@ -1,4 +1,5 @@
 import type { UseQueryResult } from "@tanstack/react-query";
+import { PagedQueryResult } from "@/hooks/database";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
 import { EntityListItem } from "@/components/common/entity-management/EntityListItem";
 import { EntityTreeItem } from "@/components/common/entity-management/EntityTreeItem";
@@ -17,7 +18,7 @@ type ToggleStatusVariables = {
 
 interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
-  entitiesQuery: UseQueryResult<T[], Error>;
+  entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
   toggleStatusMutation: {
     mutate: (variables: ToggleStatusVariables) => void;
     isPending: boolean;

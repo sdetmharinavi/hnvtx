@@ -19,7 +19,8 @@ export function useEntityManagement<T extends BaseEntity>({
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
-  const allEntities = useMemo(() => entitiesQuery.data || [], [entitiesQuery.data]);
+  // CHANGED: Data is now accessed from the .data property of the query result.
+  const allEntities = useMemo(() => entitiesQuery.data?.data || [], [entitiesQuery.data]);
 
   const selectedEntity = useMemo(() => {
     return allEntities.find(e => e.id === selectedEntityId) || null;

@@ -17,17 +17,17 @@ export function useLookupTypes(initialCategory = "") {
 
   // Database hooks
   const {
-    data: categories = [],
+    data: categoriesResult,
     isLoading: categoriesLoading,
     error: categoriesError,
     refetch: refetchCategories
   } = useDeduplicated(supabase, "lookup_types", {
-    columns: ["category"],
+    columns: ["category", "id"],
     orderBy: [{ column: "created_at", ascending: true }],
   });
 
   const {
-    data: lookupTypes = [],
+    data: lookupTypesResult,
     isLoading: lookupLoading,
     error: lookupError,
     refetch: refetchLookups
@@ -45,6 +45,9 @@ export function useLookupTypes(initialCategory = "") {
   const { mutate: deleteRowsById } = useTableDelete(supabase, "lookup_types");
 
   // Derived state
+  const categories = categoriesResult?.data || [];
+  const lookupTypes = lookupTypesResult?.data || [];
+  
   const hasCategories = categories.length > 0;
   const hasSelectedCategory = !!selectedCategory;
   const isLoading = categoriesLoading || lookupLoading;
@@ -139,8 +142,8 @@ export function useLookupTypes(initialCategory = "") {
       isLoading,
       hasCategories,
       hasSelectedCategory,
-      categoriesError,
-      lookupError
+      categoriesError: categoriesError as Error | null,
+      lookupError: lookupError as Error | null,
     },
     handlers: {
       setSearchTerm,

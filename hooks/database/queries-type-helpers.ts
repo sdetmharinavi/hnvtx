@@ -1,7 +1,13 @@
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
 import { Database } from "@/types/supabase-types";
-import { tableNames } from '@/types/flattened-types'; // Import auto-generated names
+import { tableNames } from '@/types/flattened-types';
+
+// --- Type for a structured query result with a count ---
+export type PagedQueryResult<T> = {
+  data: T[];
+  count: number;
+};
 
 // --- TYPE HELPERS DERIVED FROM SUPABASE ---
 
@@ -70,8 +76,17 @@ export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout
 export type RowWithCount<T> = T & { total_count?: number };
 
 // --- HOOK OPTIONS INTERFACES (Unchanged) ---
-export interface UseTableQueryOptions<T extends TableOrViewName, TData = RowWithCount<Row<T>>[]> extends Omit<UseQueryOptions<RowWithCount<Row<T>>[], Error, TData>, "queryKey" | "queryFn"> {
-  columns?: string; filters?: Filters; orderBy?: OrderBy[]; limit?: number; offset?: number; deduplication?: DeduplicationOptions; aggregation?: AggregationOptions; performance?: PerformanceOptions; includeCount?: boolean;
+export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
+  extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
+  columns?: string;
+  filters?: Filters;
+  orderBy?: OrderBy[];
+  limit?: number;
+  offset?: number;
+  deduplication?: DeduplicationOptions;
+  aggregation?: AggregationOptions;
+  performance?: PerformanceOptions;
+  includeCount?: boolean;
 }
 export type InfiniteQueryPage<T extends TableOrViewName> = { data: Row<T>[]; nextCursor?: number; count?: number; };
 export interface UseTableInfiniteQueryOptions<T extends TableOrViewName, TData = InfiniteData<InfiniteQueryPage<T>>> extends Omit<UseInfiniteQueryOptions<InfiniteQueryPage<T>, Error, TData, readonly unknown[], number | undefined>, "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"> {

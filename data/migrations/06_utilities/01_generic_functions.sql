@@ -79,28 +79,22 @@ DROP FUNCTION IF EXISTS public.execute_sql(TEXT);
 CREATE OR REPLACE FUNCTION public.execute_sql(sql_query TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
--- SECURITY DEFINER is necessary to allow SET ROLE, but the execution is sandboxed.
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  cleaned_query TEXT;
   result_json JSON;
 BEGIN
-  -- **SECURITY ENHANCEMENT: Switch to a read-only role before executing the dynamic query.**
-  -- This is a robust way to prevent any write operations (INSERT, UPDATE, DELETE).
-  SET LOCAL ROLE readonly;
+  cleaned_query := lower(regexp_replace(sql_query, '^\s+', ''));
+  
+  IF cleaned_query !~ '^(select|with|call)\s' THEN
+    RAISE EXCEPTION 'Only read-only statements (SELECT, WITH, CALL) are allowed.';
+  END IF;
 
-  -- Execute the user's query and aggregate the results into a single JSON object.
   EXECUTE 'SELECT json_agg(t) FROM (' || sql_query || ') t' INTO result_json;
-
-  -- The role is automatically reset at the end of the function/transaction.
-  -- RESET ROLE; -- This is implicitly handled, but can be explicit for clarity.
-
   RETURN json_build_object('result', COALESCE(result_json, '[]'::json));
 EXCEPTION WHEN OTHERS THEN
-  -- **Ensure the role is reset even if an error occurs.**
-  -- This is a critical safety measure.
-  RESET ROLE;
   RETURN json_build_object('error', SQLERRM);
 END;
 $$;

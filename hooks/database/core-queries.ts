@@ -17,6 +17,7 @@ import {
   UseTableInfiniteQueryOptions,
   UseTableRecordOptions,
   UseUniqueValuesOptions,
+  PagedQueryResult,
 } from './queries-type-helpers';
 import {
   applyFilters,
@@ -29,11 +30,13 @@ import {
 // Generic table query hook with enhanced features
 export function useTableQuery<
   T extends TableOrViewName,
-  TData = RowWithCount<Row<T>>[]
+  // UPDATED: The default data type is now the new PagedQueryResult
+  TData = PagedQueryResult<Row<T>>
 >(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  options?: UseTableQueryOptions<T, TData>
+  // UPDATED: The options type now reflects the new return shape
+  options?: Omit<UseTableQueryOptions<T, TData>, 'select'> & { select?: (data: PagedQueryResult<Row<T>>) => TData }
 ) {
   const {
     columns = '*',
@@ -48,36 +51,28 @@ export function useTableQuery<
     ...queryOptions
   } = options || {};
 
-  type QueryFnData = RowWithCount<Row<T>>[];
-
   return useQuery({
     queryKey: createQueryKey(
       tableName,
       filters,
       columns,
       orderBy,
-      deduplication, // 5th argument
-      aggregation,   // 6th argument
-      undefined,     // 7th argument (enhancedOrderBy not used here)
-      limit,         // 8th argument
-      offset         // 9th argument
+      deduplication,
+      aggregation,
+      undefined,
+      limit,
+      offset
     ),
-    queryFn: async (): Promise<QueryFnData> => {
+    // UPDATED: The query function now returns the PagedQueryResult shape
+    queryFn: async (): Promise<PagedQueryResult<Row<T>>> => {
+      // Deduplication and aggregation logic remains the same but would need adjustment if they also need counts.
+      // For now, we assume they return a simple array.
       if (deduplication) {
-        const sql = buildDeduplicationQuery(
-          tableName as string,
-          deduplication,
-          filters,
-          orderBy
-        );
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          'execute_sql',
-          { sql_query: sql }
-        );
+        const sql = buildDeduplicationQuery(tableName as string, deduplication, filters, orderBy);
+        const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', { sql_query: sql });
         if (rpcError) throw rpcError;
-        if (rpcData && (rpcData as any).error)
-          throw new Error(`Database RPC Error: ${(rpcData as any).error}`);
-        return (rpcData as any)?.result || [];
+        if (rpcData && (rpcData as any).error) throw new Error(`Database RPC Error: ${(rpcData as any).error}`);
+        return { data: (rpcData as any)?.result || [], count: ((rpcData as any)?.result || []).length };
       }
 
       if (aggregation) {
@@ -88,36 +83,27 @@ export function useTableQuery<
           order_by: (orderBy || []) as unknown as Json,
         });
         if (error) throw error;
-        return (data as any)?.result || [];
+        const resultData = (data as any)?.result || [];
+        return { data: resultData, count: resultData.length };
       }
 
-      // When includeCount is requested, use Supabase's metadata count to support relation selects.
-      // We then project the count back onto each row as `total_count` for backward compatibility.
-      let query = includeCount
-        ? supabase
-            .from(tableName as any)
-            .select(columns as string, { count: 'exact' })
-        : supabase.from(tableName as any).select(columns as string);
+      // Main query logic
+      let query = supabase.from(tableName as any).select(columns as string, { count: includeCount ? 'exact' : undefined });
 
       if (filters) query = applyFilters(query, filters);
       if (orderBy?.length) query = applyOrdering(query, orderBy);
       if (limit !== undefined) query = query.limit(limit);
-      if (offset !== undefined)
-        query = query.range(offset, offset + (limit || 1000) - 1);
-      if (performance?.timeout)
-        query = query.abortSignal(AbortSignal.timeout(performance.timeout));
+      if (offset !== undefined) query = query.range(offset, offset + (limit || 1000) - 1);
+      if (performance?.timeout) query = query.abortSignal(AbortSignal.timeout(performance.timeout));
 
-      const { data, error, count } = (await query) as any;
+      const { data, error, count } = await query;
       if (error) throw error;
-      const rows = (data as unknown as Row<T>[]) || [];
-      if (!includeCount) return rows as unknown as QueryFnData;
-      const total = typeof count === 'number' ? count : 0;
-      // Attach total_count to each row to emulate window-count behavior
-      const withCount = rows.map((r) => ({
-        ...(r as any),
-        total_count: total,
-      }));
-      return withCount as unknown as QueryFnData;
+
+      // UPDATED: Return the new structured object instead of attaching count to each row.
+      return {
+        data: (data as unknown as Row<T>[]) || [],
+        count: includeCount ? (count ?? 0) : (data?.length ?? 0),
+      };
     },
     ...queryOptions,
   });
