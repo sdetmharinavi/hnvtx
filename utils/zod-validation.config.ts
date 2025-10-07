@@ -162,10 +162,23 @@ export const defaultValidationConfig: ValidationConfig = {
     },
     {
       fieldName: "transnet_id",
-      tableName: "ofc_cables",  // Specific numeric foreign key
+      tableName: "ofc_cables",
       validation: "z.string().nullable()",
-      description: "Numeric order ID",
+      description: "Transnet ID is string type",
     },
+    {
+      fieldName: "updated_sn_name",
+      tableName: "v_ofc_connections_complete",
+      validation: "z.string().nullable()",
+      description: "String type",
+    },
+    {
+      fieldName: "updated_en_name",
+      tableName: "v_ofc_connections_complete",
+      validation: "z.string().nullable()",
+      description: "String type",
+    },
+
   ],
 };
 

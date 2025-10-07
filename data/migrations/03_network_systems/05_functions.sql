@@ -25,12 +25,12 @@ SET search_path = public
 AS $$
 DECLARE
     v_system_id UUID;
-    v_system_type_name TEXT;
+    v_system_type_record public.lookup_types; -- Use a record to hold the full lookup type row
 BEGIN
-    -- Get the name of the system type to determine which subtype table to use
-    SELECT name INTO v_system_type_name FROM public.lookup_types WHERE id = p_system_type_id;
+    -- Get the entire lookup_type record to check its properties
+    SELECT * INTO v_system_type_record FROM public.lookup_types WHERE id = p_system_type_id;
 
-    -- Step 1: Upsert the main system record (CORRECTED: Added 'make' column)
+    -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
         id, system_name, system_type_id, node_id, ip_address,
         maintenance_terminal_id, commissioned_on, s_no, remark, status, make
@@ -48,33 +48,28 @@ BEGIN
         s_no = EXCLUDED.s_no,
         remark = EXCLUDED.remark,
         status = EXCLUDED.status,
-        make = EXCLUDED.make, -- CORRECTED: Added 'make' to the update set
+        make = EXCLUDED.make,
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
-    -- Step 2: Handle subtype tables based on the system type name.
-    -- This logic is now separate and allows for multiple conditions to be met.
+    -- Step 2: Handle subtype tables based on the system type's boolean flags.
 
-    -- Handle Ring-Based Systems (CPAN, MAAN, and SDH variants)
-    IF v_system_type_name IN (
-      'Next Gen Optical Transport Network', 'Converged Packet Aggregation Node', 'Multi-Access Aggregation Node', 
-      'Multiprotocol Label Switching', 'Next Generation SDH', 'Optical Transport Network', 
-      'Packet Transport Network', 'Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy'
-    ) THEN
+    -- Handle Ring-Based Systems using the new 'is_ring_based' flag
+    IF v_system_type_record.is_ring_based = true THEN
         INSERT INTO public.ring_based_systems (system_id, ring_id)
         VALUES (v_system_id, p_ring_id)
         ON CONFLICT (system_id) DO UPDATE SET ring_id = EXCLUDED.ring_id;
     END IF;
 
-    -- Handle SDH-Specific Systems (CORRECTED: Removed 'make' from this part)
-    IF v_system_type_name IN ('Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
+    -- Handle SDH-Specific Systems using the new 'is_sdh' flag
+    IF v_system_type_record.is_sdh = true THEN
         INSERT INTO public.sdh_systems (system_id, gne)
         VALUES (v_system_id, p_gne)
         ON CONFLICT (system_id) DO UPDATE SET gne = EXCLUDED.gne;
     END IF;
     
-    -- Handle VMUX-Specific Systems
-    IF v_system_type_name = 'VMUX' THEN
+    -- Handle VMUX-Specific Systems (can also be converted to a flag if more types are added)
+    IF v_system_type_record.name = 'VMUX' THEN
         INSERT INTO public.vmux_systems (system_id, vm_id)
         VALUES (v_system_id, p_vm_id)
         ON CONFLICT (system_id) DO UPDATE SET vm_id = EXCLUDED.vm_id;
