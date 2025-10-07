@@ -1,3 +1,4 @@
+// path: utils/zod-validation.config.ts
 // Configuration for smart Zod validation rules
 export interface ValidationConfig {
   stringRules: StringValidationRule[];
@@ -53,12 +54,12 @@ export const defaultValidationConfig: ValidationConfig = {
       description: "UUID format validation",
     },
     {
-      fieldPatterns: ["url", "website", "link"],
+      fieldPatterns: ["url", "website", "link", "avatar_url"],
       validation: "z.url()",
       description: "URL format validation",
     },
     {
-      fieldPatterns: ["phone", "mobile", "tel"],
+      fieldPatterns: ["phone", "mobile", "tel", "phone_number"],
       validation: 'z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number")',
       description: "International phone number format",
     },
@@ -75,7 +76,7 @@ export const defaultValidationConfig: ValidationConfig = {
     {
       fieldPatterns: ["token", "jwt"],
       validation: "z.jwt()",
-      description: "Token presence validation",
+      description: "JWT format validation",
     },
     {
       fieldPatterns: ["slug"],
@@ -121,7 +122,7 @@ export const defaultValidationConfig: ValidationConfig = {
       description: "Age validation",
     },
     {
-      fieldPatterns: ["count", "quantity", "qty"],
+      fieldPatterns: ["count", "quantity", "qty", "fiber_count"],
       validation: "z.number().int().min(0)",
       description: "Count/quantity validation",
     },
@@ -150,41 +151,38 @@ export const defaultValidationConfig: ValidationConfig = {
   customRules: [
     {
       fieldName: "aud",
-      tableName: "user", // Will match "user_profiles", "users", etc.
+      tableName: "user",
       validation: "z.string().min(1)",
       description: "Supabase auth audience field",
     },
     {
       fieldName: "role",
-      tableName: "user", // Will match "user_profiles", "users", etc.
-      validation: "z.nativeEnum(UserRole)",
+      tableName: "user",
+      // CORRECTED: Use z.enum() for TypeScript enums as per Zod 4 docs
+      validation: "z.enum(UserRole)",
       description: "User role field using native enum",
     },
     {
       fieldName: "transnet_id",
       tableName: "ofc_cables",
-      // Provide only the base type. The script will add .nullable()
-      validation: "z.string()",
+      validation: "z.string()", 
       description: "Transnet ID is a nullable string",
     },
     {
       fieldName: "updated_sn_name",
       tableName: "v_ofc_connections_complete",
-      // Provide only the base type. The script will add .nullable()
-      validation: "z.string()",
-      description: "String type, not datetime",
+      validation: "z.string()", 
+      description: "Ensures the node name is treated as a string",
     },
     {
       fieldName: "updated_en_name",
       tableName: "v_ofc_connections_complete",
-      // Provide only the base type. The script will add .nullable()
-      validation: "z.string()",
-      description: "String type, not datetime",
+      validation: "z.string()", 
+      description: "Ensures the node name is treated as a string",
     },
   ],
 };
 
 export function loadValidationConfig(): ValidationConfig {
-  // You can load from file, environment, or database
   return defaultValidationConfig;
 }

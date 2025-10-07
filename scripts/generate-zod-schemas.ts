@@ -1,4 +1,3 @@
-// path: scripts/generate-zod-schemas.ts
 import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -284,34 +283,25 @@ class TypeScriptToZodConverter {
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {
-    // If pattern starts and ends with ^$, treat it as a full regex.
+    // If pattern starts and ends with ^$, treat as regex
     if (pattern.startsWith('^') && pattern.endsWith('$')) {
-      try {
-        return new RegExp(pattern).test(fieldName);
-      } catch (error) {
-        console.warn(`Invalid regex pattern provided: "${pattern}"`);
-        console.error(error);
-        return false;
-      }
+      return new RegExp(pattern).test(fieldName);
     }
-  
-    // **NEW SAFER LOGIC**
-    // Otherwise, treat the pattern as a whole word and construct a regex
-    // with word boundaries. This prevents `id` from matching `grid`.
-    // It will still correctly match `id`, `user_id`, `_id`.
-    try {
-      // Escape special regex characters in the pattern to treat it as a literal string
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // `\b` matches a word boundary.
-      const wordBoundaryRegex = new RegExp(`\\b${escapedPattern}\\b`);
-      return wordBoundaryRegex.test(fieldName);
-    } catch (error) {
-      // If regex creation fails for any reason, fallback to a simple includes check
-      // and warn the user. This might happen with very complex patterns that are not valid regex.
-      console.warn(`Could not create word-boundary regex from pattern: "${pattern}". Falling back to simple 'includes' check.`);
-      console.error(error);
-      return fieldName.includes(pattern);
+
+    // If pattern contains regex chars, treat as regex
+    if (
+      pattern.includes('*') ||
+      pattern.includes('.') ||
+      pattern.includes('^') ||
+      pattern.includes('$') ||
+      pattern.includes('[') ||
+      pattern.includes(']')
+    ) {
+      return new RegExp(pattern).test(fieldName);
     }
+
+    // Otherwise, simple includes check
+    return fieldName.includes(pattern);
   }
 
   generateZodSchemas(types: TypeInfo[]): string {
