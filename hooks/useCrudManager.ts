@@ -56,6 +56,7 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
+  displayNameField?: keyof V & string;
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
 
@@ -64,6 +65,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   tableName,
   dataQueryHook,
   searchColumn,
+  displayNameField = 'name',
   processDataForSave,
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
@@ -209,16 +211,24 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   // --- DELETE HANDLERS ---
-  // **Added a check for 'employee_name'.**
-  const getDisplayName = useCallback((record: RecordWithId): string => {
-    if (record.employee_name) return String(record.employee_name);
+   //  The display name logic is now configurable and more robust.
+   const getDisplayName = useCallback((record: RecordWithId): string => {
+    // 1. Prioritize the explicitly configured displayNameField.
+    const primaryName = record[displayNameField as string];
+    if (primaryName) return String(primaryName);
+    
+    // 2. Fallback to common naming conventions if the primary one isn't found.
     if (record.name) return String(record.name);
+    if (record.employee_name) return String(record.employee_name);
     if (record.first_name && record.last_name) {
       return `${record.first_name} ${record.last_name}`;
     }
     if (record.first_name) return String(record.first_name);
+
+    // 3. As a final resort, use the ID.
     return String(record.id) || 'Unknown';
-  }, []);
+  }, [displayNameField]);
+
 
   const handleDelete = useCallback(
     (record: RecordWithId) => {
