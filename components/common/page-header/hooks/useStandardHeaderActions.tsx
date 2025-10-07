@@ -1,15 +1,14 @@
 'use client';
 
-import { useCallback } from 'react';
-import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
+import { useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
-import { Filters, Row, TableOrViewName } from '@/hooks/database';
-import { useMemo } from 'react';
+import { Filters, Row, PublicTableOrViewName } from '@/hooks/database';
 import { FiDownload, FiPlus, FiRefreshCw } from 'react-icons/fi';
 
 interface ExportFilterOption {
@@ -18,7 +17,7 @@ interface ExportFilterOption {
   fileName?: string;
 }
 
-interface ExportConfig<T extends TableOrViewName> {
+interface ExportConfig<T extends PublicTableOrViewName> {
   tableName: T;
   maxRows?: number;
   columns?: (keyof Row<T> & string)[]; // Allow specifying a subset of columns for export
@@ -28,7 +27,7 @@ interface ExportConfig<T extends TableOrViewName> {
   fileName?: string;
 }
 
-interface StandardActionsConfig<T extends TableOrViewName> {
+interface StandardActionsConfig<T extends PublicTableOrViewName> {
   onRefresh?: () => void;
   onAddNew?: () => void;
   exportConfig?: ExportConfig<T>;
@@ -36,7 +35,7 @@ interface StandardActionsConfig<T extends TableOrViewName> {
   data?: Row<T>[];
 }
 
-export function useStandardHeaderActions<T extends TableOrViewName>({
+export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   onRefresh,
   onAddNew,
   exportConfig,
