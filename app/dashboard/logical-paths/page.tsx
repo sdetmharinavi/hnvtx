@@ -9,7 +9,6 @@ import { FiGitBranch, FiTrash2, FiEye } from 'react-icons/fi';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
-import { createStandardActions } from '@/components/table/action-helpers';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 
 import { Row, usePagedData } from '@/hooks/database';

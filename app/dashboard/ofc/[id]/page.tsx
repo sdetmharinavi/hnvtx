@@ -110,7 +110,7 @@ export default function OfcCableDetailsPage() {
         label: "Trace Fiber Path",
         icon: <GitCommit className='h-4 w-4' />,
         onClick: (record: V_ofc_connections_completeRowSchema) => {
-          const firstSegment = cableSegments?.find((s) => s.segment_order === 1);
+          const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
           if (firstSegment && record.fiber_no_sn) {
             setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn, record });
           } else {

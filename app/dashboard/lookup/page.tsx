@@ -16,7 +16,7 @@ import {
 } from '@/components/lookup/LookupTypesEmptyStates';
 import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
-import { Filters, Row } from '@/hooks/database';
+import { Filters } from '@/hooks/database';
 import { useSorting } from '@/hooks/useSorting';
 import { useMemo } from 'react';
 import { FiList } from 'react-icons/fi';

@@ -82,7 +82,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     }
   }, [isOpen, editingJc, reset, jcLists, rkm]);
 
-  const jcOptions: Option[] = (jcLists || [])
+  const jcOptions: Option[] = (jcLists?.data || [])
   .filter(d => d.id != null && d.name != null)
   .map((d) => ({
     value: d.id as string,    // We've filtered out nulls, so it's safe to assert

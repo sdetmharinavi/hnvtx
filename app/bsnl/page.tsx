@@ -36,11 +36,15 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
+  const [allocationData, setAllocationData] = useState<AllocationSaveData | null>(null);
 
   const handleSaveAllocation = (allocationData: AllocationSaveData) => {
-    // console.log("Allocation Saved:", allocationData);
+    setAllocationData(allocationData);
     toast.info("Allocation feature is a work in progress.");
   };
+
+  console.log("selectedCable:", selectedCable);
+  console.log("allocationData:", allocationData);
 
   const clearFilters = useCallback(() => {
     setFilters({ query: '', status: [], type: [], region: [], nodeType: [], priority: [] });

@@ -56,10 +56,10 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegment
           Available Cables from {lastSegment?.end_node_name || "Start Node"}
         </label>
         {isLoading && <p>Loading available cables...</p>}
-        {!isLoading && (!availableCables || availableCables.length === 0) && (
+        {!isLoading && (!availableCables?.data || availableCables.data.length === 0) && (
             <p className="text-gray-500">No further connecting cables found.</p>
         )}
-        {availableCables && availableCables.length > 0 && (
+        {availableCables && availableCables.data.length > 0 && (
             <select
                 id="cable-select"
                 className="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -67,7 +67,7 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegment
                 onChange={(e) => setSelectedCableId(e.target.value)}
             >
                 <option value="" disabled>Select a cable...</option>
-                {availableCables?.map((cable) => (
+                {availableCables?.data?.map((cable) => (
                     <option key={cable.id} value={cable.id}>
                         {cable.route_name}
                     </option>

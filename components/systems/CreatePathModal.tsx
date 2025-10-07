@@ -35,7 +35,7 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
   });
 
   const { data: fetchedPathTypes } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'OFC_PATH_TYPES'} });
-  const pathTypes = fetchedPathTypes?.filter(pt => pt.name !== "DEFAULT");
+  const pathTypes = fetchedPathTypes?.data?.filter(pt => pt.name !== "DEFAULT");
   const { data: systems } = useTableQuery(supabase, 'systems', { filters: { id: { operator: 'neq', value: system.id } } });
 
   const { mutate: createPath } = useTableInsert(supabase, 'logical_fiber_paths', {
@@ -83,7 +83,7 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
           render={({ field }) => (
             <SearchableSelect
               label="Destination System"
-              options={systems?.map(s => ({ value: s.id, label: s.system_name || s.id })) || []}
+              options={systems?.data?.map(s => ({ value: s.id, label: s.system_name || s.id })) || []}
               value={field.value || ""}
               onChange={val => field.onChange(val)}
               placeholder="Select destination system..."

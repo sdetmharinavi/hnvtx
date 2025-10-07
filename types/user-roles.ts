@@ -1,5 +1,8 @@
 // types/user-roles.ts
 
+import { Json } from "@/types/supabase-types";
+import z from "zod";
+
 export enum UserRole {
     ADMIN = "admin",
     CPANADMIN = "cpan_admin",
@@ -11,3 +14,14 @@ export enum UserRole {
     AUTHENTICATED = "authenticated",
     ANON = "anon",
 }
+
+export const JsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonSchema),
+    z.record(z.string(), JsonSchema),
+  ])
+);
