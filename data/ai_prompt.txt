@@ -78,7 +78,7 @@ For each issue or recommendation, provide:
 Iterative Improvement Process:
 
 Step-by-Step Implementation: We'll tackle improvements systematically, starting from the project foundation
-Complete Code Delivery: Always provide FULL, COMPLETE code for any component, hook, utility, or file—never partial or truncated code. Also provide full codes of all the affected files due to the changes. After giving full codes, give summary of what changes has been made.
+Complete Code Delivery: Always provide FULL, COMPLETE code for any component, hook, utility, or file—never partial or truncated code. Also provide full codes of all the affected files due to the changes. After giving full codes, give summary of what changes has been made and which files will be affected.
 Testing & Verification: After each implementation, I'll test and confirm functionality
 Documentation Updates: Once verified, we'll update the workflow documentation in components/doc/data/workflowData.ts
 Progressive Enhancement: Build upon verified changes, maintaining context of all previous discussions

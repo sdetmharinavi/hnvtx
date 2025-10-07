@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS public.lookup_types (
   description TEXT,
   sort_order INTEGER DEFAULT 0,
   is_system_default BOOLEAN DEFAULT false,
+  is_ring_based BOOLEAN DEFAULT false,
+  is_sdh BOOLEAN DEFAULT false,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

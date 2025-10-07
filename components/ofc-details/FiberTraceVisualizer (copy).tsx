@@ -2,15 +2,9 @@
 "use client";
 
 import { Button } from "@/components/common/ui";
-import { FiberTraceSegment } from "@/schemas/custom-schemas";
+import { useSyncPathFromTrace, useSyncPathUpdates } from "@/hooks/database/route-manager-hooks";
+import { FiberTraceSegment, PathToUpdate } from "@/schemas/custom-schemas";
 import { Cable, GitBranch, MapPin, Milestone, RefreshCw, Route } from "lucide-react";
-import { useMemo } from "react";
-
-// A new type for our oriented steps to add clarity
-interface OrientedStep extends FiberTraceSegment {
-  oriented_from_node_name: string;
-  oriented_to_node_name: string;
-}
 
 interface FiberTraceVisualizerProps {
   traceData: FiberTraceSegment[];
@@ -18,10 +12,7 @@ interface FiberTraceVisualizerProps {
   isSyncing: boolean;
 }
 
-// Small helper component for rendering a single SEGMENT step with correct orientation
-const SegmentStep = ({ item }: { item: OrientedStep }) => {
-  const detailText = `Segment ${item.step_order} (${item.oriented_from_node_name} → ${item.oriented_to_node_name})`;
-  
+const SegmentStep = ({ item }: { item: FiberTraceSegment }) => {
   return (
     <li className='mb-10 ml-8'>
       <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900'>
@@ -32,7 +23,7 @@ const SegmentStep = ({ item }: { item: OrientedStep }) => {
           <h3 className='text-md font-semibold text-gray-900 dark:text-white'>{item.element_name}</h3>
           <span className='rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-300'>SEGMENT</span>
         </div>
-        <p className='mb-3 text-sm font-normal text-gray-500 dark:text-gray-400'>{detailText}</p>
+        <p className='mb-3 text-sm font-normal text-gray-500 dark:text-gray-400'>{item.details}</p>
         <div className='grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300'>
           <span>
             <strong>Fiber:</strong> <span className='font-mono'>{item.fiber_in}</span>
@@ -48,6 +39,7 @@ const SegmentStep = ({ item }: { item: OrientedStep }) => {
 
 // Small helper component for rendering a single SPLICE step
 const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: FiberTraceSegment | undefined }) => {
+  // Gracefully handle the case where the first fiber_in is null
   const fiberIn = item.fiber_in ?? prevStep?.fiber_out;
 
   return (
@@ -78,80 +70,13 @@ const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: Fib
 };
 
 export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData, onSync, isSyncing }) => {
-  
-  // ** NEW LOGIC: Process the trace data to orient segments correctly **
-  const orientedTrace = useMemo(() => {
-    if (!traceData || traceData.length === 0) {
-      return {
-        steps: [],
-        pathStartNodeName: 'Unknown Start',
-        pathEndNodeName: 'Unknown End',
-      };
-    }
+  const syncPathMutation = useSyncPathFromTrace();
 
-    let currentNodeId: string | null = null;
-    const orientedSteps: OrientedStep[] = [];
-
-    // Create a map of node IDs to names from the details field for easy lookup
-    const nodeNameMap = new Map<string, string>();
-    traceData.forEach(step => {
-      if (step.element_type === 'SEGMENT' && step.details) {
-        const startMatch = step.details.match(/^(?:Segment \d+ \()(.+?)(?: →)/);
-        const endMatch = step.details.match(/(?:→ )(.+?)(?:\))$/);
-        if (step.start_node_id && startMatch?.[1]) nodeNameMap.set(step.start_node_id, startMatch[1]);
-        if (step.end_node_id && endMatch?.[1]) nodeNameMap.set(step.end_node_id, endMatch[1]);
-      }
-    });
-
-    for (const item of traceData) {
-      if (item.element_type === 'SEGMENT') {
-        if (currentNodeId === null) {
-          // This is the first segment, assume its orientation is correct
-          orientedSteps.push({
-            ...item,
-            oriented_from_node_name: nodeNameMap.get(item.start_node_id!) || 'Unknown',
-            oriented_to_node_name: nodeNameMap.get(item.end_node_id!) || 'Unknown',
-          });
-          currentNodeId = item.end_node_id;
-        } else {
-          // For subsequent segments, check if we need to flip the orientation for display
-          if (item.start_node_id === currentNodeId) {
-            // Traversed in forward direction
-            orientedSteps.push({
-              ...item,
-              oriented_from_node_name: nodeNameMap.get(item.start_node_id!) || 'Unknown',
-              oriented_to_node_name: nodeNameMap.get(item.end_node_id!) || 'Unknown',
-            });
-            currentNodeId = item.end_node_id;
-          } else {
-            // Traversed in backward direction, swap for display
-            orientedSteps.push({
-              ...item,
-              oriented_from_node_name: nodeNameMap.get(item.end_node_id!) || 'Unknown',
-              oriented_to_node_name: nodeNameMap.get(item.start_node_id!) || 'Unknown',
-            });
-            currentNodeId = item.start_node_id;
-          }
-        }
-      } else {
-        // Splice steps don't have direction, just pass them through
-        orientedSteps.push({
-          ...item,
-          oriented_from_node_name: '',
-          oriented_to_node_name: '',
-        });
-      }
-    }
-
-    const firstSegment = orientedSteps.find(s => s.element_type === 'SEGMENT');
-    const lastSegment = [...orientedSteps].reverse().find(s => s.element_type === 'SEGMENT');
-    
-    return {
-        steps: orientedSteps,
-        pathStartNodeName: firstSegment?.oriented_from_node_name || "Unknown Start",
-        pathEndNodeName: lastSegment?.oriented_to_node_name || "Unknown End",
-    };
-  }, [traceData]);
+  // Extract start and end node names from the details of the first and last segments
+  const firstSegment = traceData.find((s) => s.element_type === "SEGMENT");
+  const lastSegment = [...traceData].reverse().find((s) => s.element_type === "SEGMENT");
+  const startNodeName = firstSegment?.details.match(/^(?:Segment \d+ \()(.+?)(?: →)/)?.[1] || "Unknown Start";
+  const endNodeName = lastSegment?.details.match(/(?:→ )(.+?)(?:\))$/)?.[1] || "Unknown End";
 
   if (!traceData || traceData.length === 0) {
     return (
@@ -179,16 +104,16 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
           <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-green-100 ring-8 ring-white dark:bg-green-900 dark:ring-gray-900'>
             <MapPin className='h-4 w-4 text-green-600 dark:text-green-300' />
           </span>
-          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{orientedTrace.pathStartNodeName}</h3>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{startNodeName}</h3>
           <p className='text-sm text-gray-500 dark:text-gray-400'>Path Start</p>
         </li>
 
         {/* DYNAMIC PATH STEPS */}
-        {orientedTrace.steps.map((item, index) => {
+        {traceData.map((item, index) => {
           if (item.element_type === "SEGMENT") {
             return <SegmentStep key={`${item.element_id}-${index}`} item={item} />;
           } else if (item.element_type === "SPLICE") {
-            const prevStep = orientedTrace.steps[index - 1];
+            const prevStep = traceData[index - 1];
             return <SpliceStep key={`${item.element_id}-${index}`} item={item} prevStep={prevStep} />;
           }
           return null;
@@ -199,7 +124,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
           <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 ring-8 ring-white dark:bg-red-900 dark:ring-gray-900'>
             <Milestone className='h-4 w-4 text-red-600 dark:text-red-300' />
           </span>
-          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{orientedTrace.pathEndNodeName}</h3>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{endNodeName}</h3>
           <p className='text-sm text-gray-500 dark:text-gray-400'>Path End</p>
         </li>
       </ol>
