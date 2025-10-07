@@ -70,32 +70,6 @@ export const useAuthStore = create<AuthStore>()(
           });
         },
 
-        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-        //   if (get().authState !== 'loading') {
-        //     set({ authState: 'loading' });
-        //   }
-
-        //   try {
-        //     const result = await action();
-        //     // The onAuthStateChange listener is the primary driver for state changes.
-        //     // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
-        //     if (get().authState === 'loading') {
-        //       const finalUser = get().user;
-        //       set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
-        //     }
-        //     return result;
-        //   } catch (error) {
-        //     // // On error, let onAuthStateChange handle the state, or fall back.
-        //     // const finalUser = get().user;
-        //     // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
-        //     // throw error;
-        //     // On any error within the action, assume the session might be invalid.
-        //     // Set the state directly to 'unauthenticated'.
-        //     set({ authState: 'unauthenticated', user: null }); // Also clear the user
-        //     throw error;
-        //   }
-        // },
-
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
           const previousAuthState = get().authState;
           if (previousAuthState !== 'loading') {
@@ -246,66 +220,6 @@ export const useThemeStore = create<ThemeState>()(
     }
   )
 );
-```
-
-<!-- path: providers/ThemeProvider copy.tsx -->
-```typescript
-"use client";
-
-import { useEffect } from "react";
-import { useThemeStore, hydrateThemeStore, Theme } from "@/stores/themeStore";
-
-export default function ThemeProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { theme, hydrated } = useThemeStore();
-
-  // Hydrate theme from localStorage on mount
-  useEffect(() => {
-    // Add class to disable transitions during initial load
-    document.documentElement.classList.add("no-transition");
-
-    hydrateThemeStore();
-
-    // Re-enable transitions after a short delay
-    setTimeout(() => {
-      document.documentElement.classList.remove("no-transition");
-    }, 50);
-  }, []);
-
-  // Apply theme when hydrated or theme changes
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const applyTheme = (theme: Theme) => {
-      const isDark =
-        theme === "dark" ||
-        (theme === "system" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-      if (isDark) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    };
-
-    applyTheme(theme);
-
-    // Listen for system theme changes
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => applyTheme("system");
-
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, [theme, hydrated]);
-
-  return <>{children}</>;
-}
 ```
 
 <!-- path: providers/QueryProvider.tsx -->
@@ -1114,10 +1028,6 @@ class TypeScriptToZodConverter {
         t.name.endsWith('Insert') ||
         t.name.endsWith('Update')
     );
-    // const viewTypes = types.filter(
-    //   (t) =>
-    //     t.name.endsWith('Row') && !tableTypes.some((tt) => tt.name === t.name)
-    // );
     const viewTypes = types.filter(
       (t) => t.name.includes('v_') // or whatever your view naming convention is
     );
@@ -4159,12 +4069,9 @@ CREATE TABLE IF NOT EXISTS public.logical_path_segments (
 ```sql
 -- Ensure a clean state by dropping any old triggers that might exist.
 DROP TRIGGER IF EXISTS on_junction_closure_change ON public.junction_closures;
-DROP TRIGGER IF EXISTS trigger_update_ofc_connections_on_splice ON public.fiber_splices;
 
 
--- Trigger 1: Cable Segmentation
--- Attaches the trigger that automatically recalculates cable segments
--- AFTER a Junction Closure is INSERTED or DELETED.
+-- Trigger 1: Cable Segmentation (This one is correct and remains)
 CREATE TRIGGER on_junction_closure_change
 AFTER INSERT OR DELETE ON public.junction_closures
 FOR EACH ROW
@@ -4172,22 +4079,650 @@ EXECUTE FUNCTION public.manage_cable_segments();
 
 COMMENT ON TRIGGER on_junction_closure_change ON public.junction_closures
 IS 'When a JC is added or removed, this trigger calls a function to recalculate the virtual segments of the affected OFC cable.';
-
-
--- Trigger 2: Logical Path Update
--- Attaches the trigger that updates the 'ofc_connections' table
--- AFTER a splice is INSERTED, UPDATED, or DELETED.
-CREATE TRIGGER trigger_update_ofc_connections_on_splice
-AFTER INSERT OR UPDATE OR DELETE ON public.fiber_splices
-FOR EACH ROW
-EXECUTE FUNCTION public.update_ofc_connections_from_splice();
-
-COMMENT ON TRIGGER trigger_update_ofc_connections_on_splice ON public.fiber_splices
-IS 'After any change to a fiber splice, this trigger calls a function to trace the new logical path(s) and update the logical endpoint information in the ofc_connections table for all affected fibers.';
-
 ```
 
 <!-- path: data/migrations/04_advanced_ofc/04_functions.sql -->
+```sql
+-- path: data/migrations/04_advanced_ofc/04_functions.sql
+-- Description: All functions for cable segmentation, splicing, and fiber path management. [CONSOLIDATED & CORRECTED]
+
+-- =================================================================
+-- Section 1: Junction Closure and Segmentation Management
+-- =================================================================
+
+-- This function is called by the frontend to add a new JC.
+CREATE OR REPLACE FUNCTION public.add_junction_closure(
+  p_ofc_cable_id UUID,
+  p_position_km NUMERIC(10,3),
+  p_node_id UUID
+)
+RETURNS TABLE (
+  id UUID,
+  node_id UUID,
+  ofc_cable_id UUID,
+  position_km NUMERIC(10,3),
+  created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_jc_id UUID;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.nodes WHERE nodes.id = p_node_id) THEN
+    RAISE EXCEPTION 'Node with ID % does not exist', p_node_id;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.ofc_cables WHERE ofc_cables.id = p_ofc_cable_id) THEN
+    RAISE EXCEPTION 'Cable with ID % does not exist', p_ofc_cable_id;
+  END IF;
+
+  INSERT INTO public.junction_closures (node_id, ofc_cable_id, position_km)
+  VALUES (p_node_id, p_ofc_cable_id, p_position_km)
+  RETURNING junction_closures.id INTO v_jc_id;
+
+  RETURN QUERY
+  SELECT jc.id, jc.node_id, jc.ofc_cable_id, jc.position_km, jc.created_at
+  FROM public.junction_closures jc
+  WHERE jc.id = v_jc_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.add_junction_closure(UUID, NUMERIC, UUID) TO authenticated;
+
+-- This function is called by a trigger to non-destructively recalculate segments.
+CREATE OR REPLACE FUNCTION public.recalculate_segments_for_cable(p_cable_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_cable RECORD;
+BEGIN
+  SELECT * INTO v_cable FROM public.ofc_cables WHERE id = p_cable_id;
+  IF NOT FOUND THEN
+    RAISE WARNING 'Cable not found for segmentation: %', p_cable_id;
+    RETURN;
+  END IF;
+
+  DELETE FROM public.cable_segments WHERE original_cable_id = p_cable_id;
+
+  CREATE TEMP TABLE route_points AS
+  SELECT v_cable.sn_id AS point_id, 'node' AS point_type, 0.0 AS position_km
+  UNION ALL
+  SELECT jc.node_id, 'jc', jc.position_km
+  FROM public.junction_closures jc
+  WHERE jc.ofc_cable_id = p_cable_id
+  UNION ALL
+  SELECT v_cable.en_id, 'node', v_cable.current_rkm;
+
+  INSERT INTO public.cable_segments (
+    original_cable_id, segment_order,
+    start_node_id, start_node_type,
+    end_node_id, end_node_type,
+    distance_km, fiber_count
+  )
+  SELECT
+    p_cable_id,
+    ROW_NUMBER() OVER (ORDER BY p_start.position_km),
+    p_start.point_id, p_start.point_type,
+    p_end.point_id, p_end.point_type,
+    p_end.position_km - p_start.position_km,
+    v_cable.capacity
+  FROM route_points p_start
+  JOIN LATERAL (
+    SELECT * FROM route_points p2
+    WHERE p2.position_km > p_start.position_km
+    ORDER BY p2.position_km ASC
+    LIMIT 1
+  ) p_end ON true;
+
+  DROP TABLE route_points;
+END;
+$$;
+
+-- This is the trigger function that orchestrates segmentation.
+CREATE OR REPLACE FUNCTION public.manage_cable_segments()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+-- Description: Get a list of all cable segments present at a specific Junction Closure.
+CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)
+RETURNS TABLE (id UUID, original_cable_name TEXT, segment_order INT, fiber_count INT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT
+        cs.id,
+        oc.route_name,
+        cs.segment_order,
+        cs.fiber_count
+    FROM public.v_cable_segments_at_jc v_cs
+    JOIN public.cable_segments cs ON v_cs.id = cs.id
+    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+    WHERE v_cs.jc_node_id = (SELECT node_id FROM public.junction_closures WHERE id = p_jc_id);
+$$;
+GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
+
+-- =================================================================
+-- Section 2: Logical Fiber Path Tracing and Splicing Management
+-- =================================================================
+
+-- NEW, SIMPLE UPDATE FUNCTION: Takes pre-calculated data from the client and applies it.
+CREATE OR REPLACE FUNCTION public.apply_logical_path_update(
+    p_id UUID,
+    p_start_node_id UUID,
+    p_end_node_id UUID,
+    p_start_fiber_no INT,
+    p_end_fiber_no INT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    UPDATE public.ofc_connections
+    SET
+        updated_sn_id       = p_start_node_id,
+        updated_fiber_no_sn = p_start_fiber_no,
+        updated_en_id       = p_end_node_id,
+        updated_fiber_no_en = p_end_fiber_no,
+        updated_at          = NOW()
+    WHERE id = p_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.apply_logical_path_update(UUID, UUID, INT, INT, UUID) TO authenticated;
+
+-- ** Final, correct, robust bi-directional trace function.**
+CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
+RETURNS TABLE (
+    step_order BIGINT,
+    element_type TEXT,
+    element_id UUID,
+    element_name TEXT,
+    details TEXT,
+    fiber_in INT,
+    fiber_out INT,
+    distance_km NUMERIC,
+    loss_db NUMERIC,
+    original_cable_id UUID,
+    start_node_id UUID,
+    end_node_id UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Create temp table for the path
+    CREATE TEMP TABLE IF NOT EXISTS temp_path_trace (
+        step BIGINT,
+        current_segment_id UUID,
+        current_fiber_no INT,
+        previous_splice_id UUID,
+        visited_segments UUID[]
+    ) ON COMMIT DROP;
+    
+    -- Trace forward
+    INSERT INTO temp_path_trace
+    WITH RECURSIVE forward_trace AS (
+        SELECT
+            0::bigint as step,
+            p_start_segment_id as current_segment_id,
+            p_start_fiber_no as current_fiber_no,
+            NULL::uuid as previous_splice_id,
+            ARRAY[p_start_segment_id] as visited_segments
+        
+        UNION ALL
+        
+        SELECT
+            p.step + 1,
+            s.outgoing_segment_id,
+            s.outgoing_fiber_no,
+            s.id,
+            p.visited_segments || s.outgoing_segment_id
+        FROM forward_trace p
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.incoming_segment_id 
+            AND p.current_fiber_no = s.incoming_fiber_no
+        WHERE s.outgoing_segment_id IS NOT NULL
+          AND NOT (s.outgoing_segment_id = ANY(p.visited_segments))
+          AND p.step < 100
+    )
+    SELECT * FROM forward_trace;
+    
+    -- Trace backward
+    INSERT INTO temp_path_trace
+    WITH RECURSIVE backward_trace AS (
+        SELECT
+            0::bigint as step,
+            p_start_segment_id as current_segment_id,
+            p_start_fiber_no as current_fiber_no,
+            NULL::uuid as previous_splice_id,
+            ARRAY[p_start_segment_id] as visited_segments
+        
+        UNION ALL
+        
+        SELECT
+            p.step - 1,
+            s.incoming_segment_id,
+            s.incoming_fiber_no,
+            s.id,
+            p.visited_segments || s.incoming_segment_id
+        FROM backward_trace p
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.outgoing_segment_id 
+            AND p.current_fiber_no = s.outgoing_fiber_no
+        WHERE s.incoming_segment_id IS NOT NULL
+          AND NOT (s.incoming_segment_id = ANY(p.visited_segments))
+          AND p.step > -100
+    )
+    SELECT * FROM backward_trace WHERE step < 0;
+    
+    -- Return results
+    RETURN QUERY
+    WITH path_elements AS (
+        -- Segments
+        SELECT
+            fp.step * 2 AS order_key,
+            'SEGMENT'::text as element_type,
+            fp.current_segment_id as element_id,
+            fp.current_fiber_no as fiber_in,
+            fp.current_fiber_no as fiber_out
+        FROM temp_path_trace fp
+        
+        UNION ALL
+        
+        -- Splices
+        SELECT
+            fp.step * 2 - 1 AS order_key,
+            'SPLICE'::text,
+            fp.previous_splice_id,
+            LAG(fp.current_fiber_no) OVER (ORDER BY fp.step) as fiber_in,
+            fp.current_fiber_no as fiber_out
+        FROM temp_path_trace fp
+        WHERE fp.previous_splice_id IS NOT NULL
+    )
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY pe.order_key) AS step_order,
+        pe.element_type,
+        pe.element_id,
+        CASE
+            WHEN pe.element_type = 'SEGMENT' THEN oc.route_name
+            WHEN pe.element_type = 'SPLICE' THEN n.name
+        END AS element_name,
+        CASE
+            WHEN pe.element_type = 'SEGMENT' THEN 
+                'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
+            WHEN pe.element_type = 'SPLICE' THEN 
+                'Junction Closure Splice'
+        END AS details,
+        pe.fiber_in,
+        pe.fiber_out,
+        cs.distance_km,
+        fs.loss_db,
+        cs.original_cable_id,
+        cs.start_node_id,     
+        cs.end_node_id        
+    FROM path_elements pe
+    LEFT JOIN public.cable_segments cs 
+        ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
+    LEFT JOIN public.ofc_cables oc 
+        ON cs.original_cable_id = oc.id
+    LEFT JOIN public.nodes sn ON cs.start_node_id = sn.id
+    LEFT JOIN public.nodes en ON cs.end_node_id = en.id
+    LEFT JOIN public.fiber_splices fs 
+        ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
+    LEFT JOIN public.junction_closures jc 
+        ON fs.jc_id = jc.id
+    LEFT JOIN public.nodes n 
+        ON jc.node_id = n.id
+    ORDER BY pe.order_key;
+    
+    -- Cleanup
+    DROP TABLE IF EXISTS temp_path_trace;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
+
+-- Description: RPC function to handle creating, deleting, and updating splices.
+CREATE OR REPLACE FUNCTION public.manage_splice(
+    p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
+    p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
+    p_splice_type_id UUID DEFAULT NULL, p_loss_db NUMERIC DEFAULT NULL
+)
+RETURNS RECORD
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    result RECORD;
+    v_splice_type_id UUID;
+BEGIN
+    IF p_splice_type_id IS NULL THEN
+            SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_splice_type_id;
+        ELSE
+            v_splice_type_id := p_splice_type_id;
+        END IF;
+    IF p_action = 'create' THEN
+        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
+        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, v_splice_type_id, p_loss_db)
+        RETURNING id, 'created' INTO result;
+    ELSIF p_action = 'delete' THEN
+        DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
+    ELSIF p_action = 'update_loss' THEN
+        UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
+        WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
+    ELSE
+        RAISE EXCEPTION 'Invalid action specified.';
+    END IF;
+    RETURN result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, UUID, NUMERIC) TO authenticated;
+
+
+
+-- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
+CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+-- Fetches info about the requested JC
+WITH jc_info AS (
+  SELECT jc.id, n.name, jc.node_id 
+  FROM public.junction_closures jc 
+  JOIN public.nodes n ON jc.node_id = n.id 
+  WHERE jc.id = p_jc_id
+),
+-- Finds all JCs at the same node 
+all_jcs_at_node AS (
+  SELECT id 
+  FROM public.junction_closures 
+  WHERE node_id = (SELECT node_id FROM jc_info)
+), 
+-- Finds all segments at the same node 
+segments_at_jc AS (
+  SELECT 
+    cs.id as segment_id, 
+    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
+    cs.fiber_count
+  FROM public.cable_segments cs 
+  JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
+  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
+     OR cs.end_node_id = (SELECT node_id FROM jc_info)
+), 
+fiber_universe AS (
+  SELECT s.segment_id, series.i as fiber_no 
+  FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
+), 
+splice_info AS (
+  SELECT
+    fs.id as splice_id, 
+    fs.jc_id, 
+    fs.incoming_segment_id, 
+    fs.incoming_fiber_no, 
+    fs.outgoing_segment_id, 
+    fs.outgoing_fiber_no, 
+    fs.loss_db,
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
+     FROM cable_segments cs_out 
+     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
+     WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
+     FROM cable_segments cs_in 
+     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
+     WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
+  FROM public.fiber_splices fs 
+  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
+)
+SELECT jsonb_build_object(
+  'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
+  'segments_at_jc', (
+    SELECT jsonb_agg(jsonb_build_object(
+      'segment_id', seg.segment_id, 
+      'segment_name', seg.segment_name, 
+      'fiber_count', seg.fiber_count,
+      'fibers', (
+        SELECT jsonb_agg(jsonb_build_object(
+          'fiber_no', fu.fiber_no,
+          'status', CASE 
+            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
+            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
+            ELSE 'available' 
+          END,
+          'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
+          'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
+          'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no),
+          'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
+        ) ORDER BY fu.fiber_no)
+        FROM fiber_universe fu
+        LEFT JOIN splice_info s_in 
+          ON fu.segment_id = s_in.incoming_segment_id 
+          AND fu.fiber_no = s_in.incoming_fiber_no
+        LEFT JOIN splice_info s_out 
+          ON fu.segment_id = s_out.outgoing_segment_id 
+          AND fu.fiber_no = s_out.outgoing_fiber_no
+        WHERE fu.segment_id = seg.segment_id
+      )
+    ))
+    FROM segments_at_jc seg
+  )
+)
+FROM jc_info;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
+
+-- Description: Provisions a working and protection fiber pair on a logical path.
+CREATE OR REPLACE FUNCTION public.provision_logical_path(
+    p_path_name TEXT,
+    p_physical_path_id UUID,
+    p_working_fiber_no INT,
+    p_protection_fiber_no INT,
+    p_system_id UUID
+)
+RETURNS TABLE(working_path_id UUID, protection_path_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_working_path_id UUID;
+    v_protection_path_id UUID;
+    v_active_status_id UUID;
+BEGIN
+    -- Get the ID for the 'active' operational status from lookup_types
+    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUSES' AND name = 'active' LIMIT 1;
+    IF v_active_status_id IS NULL THEN
+        RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
+    END IF;
+
+    -- Step 1: Create the "working" logical path record
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id)
+    VALUES (p_path_name || ' (Working)', p_system_id, 'working', v_active_status_id) RETURNING id INTO v_working_path_id;
+
+    -- Step 2: Create the "protection" logical path record, linking it to the working path
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id)
+    VALUES (p_path_name || ' (Protection)', p_system_id, 'protection', v_working_path_id, v_active_status_id) RETURNING id INTO v_protection_path_id;
+
+    -- Step 3: Atomically update all ofc_connections for the working fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_working_path_id,
+        fiber_role = 'working'
+    WHERE
+        fiber_no_sn = p_working_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
+
+    -- Step 4: Atomically update all ofc_connections for the protection fiber across all segments in the path
+    UPDATE public.ofc_connections
+    SET
+        logical_path_id = v_protection_path_id,
+        fiber_role = 'protection'
+    WHERE
+        fiber_no_sn = p_protection_fiber_no AND
+        ofc_id IN (
+            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
+        );
+
+    -- Return the IDs of the newly created paths
+    RETURN QUERY SELECT v_working_path_id, v_protection_path_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
+
+-- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
+CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(
+    p_jc_id UUID, 
+    p_segment1_id UUID, 
+    p_segment2_id UUID,
+    p_loss_db NUMERIC DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    segment1_fibers INT; 
+    segment2_fibers INT; 
+    i INT; 
+    splice_count INT := 0;
+    available_fibers_s1 INT[]; 
+    available_fibers_s2 INT[];
+    v_straight_splice_id UUID;
+BEGIN
+    -- Look up the UUID for the 'straight' splice type once.
+    SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_straight_splice_id;
+    IF v_straight_splice_id IS NULL THEN
+        RAISE EXCEPTION 'Lookup type "straight" for category "SPLICE_TYPES" not found.';
+    END IF;
+    -- Get fiber counts for both segments
+    SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
+    SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
+    
+    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN 
+        RAISE EXCEPTION 'One or both segments not found.'; 
+    END IF;
+
+    -- Find available fibers in segment 1
+    SELECT array_agg(s.i) INTO available_fibers_s1 
+    FROM generate_series(1, segment1_fibers) s(i)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
+        AND (
+            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) 
+            OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)
+        )
+    );
+    
+    -- Find available fibers in segment 2
+    SELECT array_agg(s.i) INTO available_fibers_s2 
+    FROM generate_series(1, segment2_fibers) s(i)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
+        AND (
+            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) 
+            OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)
+        )
+    );
+
+    -- Create splices for each available fiber pair
+    FOR i IN 1..LEAST(cardinality(available_fibers_s1), cardinality(available_fibers_s2)) LOOP
+        INSERT INTO public.fiber_splices (
+            jc_id, 
+            incoming_segment_id, 
+            incoming_fiber_no, 
+            outgoing_segment_id, 
+            outgoing_fiber_no, 
+            splice_type_id,
+            loss_db
+        )
+        VALUES (
+            p_jc_id, 
+            p_segment1_id, 
+            available_fibers_s1[i], 
+            p_segment2_id, 
+            available_fibers_s2[i], 
+            v_straight_splice_id,
+            p_loss_db
+        );
+        splice_count := splice_count + 1;
+    END LOOP;
+    
+    RETURN jsonb_build_object(
+        'status', 'success', 
+        'splices_created', splice_count,
+        'loss_db_applied', p_loss_db
+    );
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) TO authenticated;
+
+-- Optional: Keep backward compatibility with old function signature
+COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
+'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
+
+
+
+-- Description: Get a list of all splices with their full JC and segment details.
+CREATE OR REPLACE FUNCTION public.get_all_splices()
+RETURNS TABLE (
+    splice_id UUID, jc_id UUID, jc_name TEXT, jc_position_km NUMERIC,
+    incoming_segment_id UUID, incoming_fiber_no INT, outgoing_segment_id UUID,
+    outgoing_fiber_no INT, loss_db NUMERIC
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT
+        s.id, s.jc_id, n.name, jc.position_km,
+        s.incoming_segment_id, s.incoming_fiber_no,
+        s.outgoing_segment_id, s.outgoing_fiber_no,
+        s.loss_db
+    FROM public.fiber_splices s
+    JOIN public.junction_closures jc ON s.jc_id = jc.id
+    JOIN public.nodes n ON jc.node_id = n.id;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_all_splices() TO authenticated;
+
+
+```
+
+<!-- path: data/migrations/04_advanced_ofc/04_functions copy.sql -->
 ```sql
 -- path: data/migrations/04_advanced_ofc/04_functions.sql
 -- Description: All functions for cable segmentation, splicing, and fiber path management. [CONSOLIDATED & CORRECTED]
@@ -5133,8 +5668,20 @@ export const fiberTraceSegmentSchema = z.object({
   fiber_out: z.number().nullable(),
   distance_km: z.number().nullable(),
   loss_db: z.number().nullable(),
+  original_cable_id: z.uuid().nullable(),
+  start_node_id: z.uuid().nullable(),
+  end_node_id: z.uuid().nullable(),
 });
 export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
+
+export const pathToUpdateSchema = z.object({
+  p_id: z.uuid(),
+  p_start_node_id: z.uuid(),
+  p_end_node_id: z.uuid(),
+  p_start_fiber_no: z.number(),
+  p_end_fiber_no: z.number(),
+});
+export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 
 // --- For the new trace_fiber_path RPC ---
@@ -6973,9 +7520,11 @@ export const v_ofc_connections_completeRowSchema = z.object({
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   updated_en_id: z.uuid().nullable(),
+  updated_en_name: z.iso.datetime().nullable(),
   updated_fiber_no_en: z.number().nullable(),
   updated_fiber_no_sn: z.number().nullable(),
   updated_sn_id: z.uuid().nullable(),
+  updated_sn_name: z.iso.datetime().nullable(),
 });
 
 export const v_ring_nodesRowSchema = z.object({
@@ -9143,7 +9692,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload } from "@/schemas/custom-schemas";
+import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload, FiberTraceSegment, PathToUpdate } from "@/schemas/custom-schemas";
 
 const supabase = createClient();
 
@@ -9187,6 +9736,7 @@ export function useRouteDetails(routeId: string | null) {
       return parsed.data;
     },
     enabled: !!routeId,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 60 * 1000,
   });
 }
@@ -9210,6 +9760,7 @@ export function useJcSplicingDetails(jcId: string | null) {
       return parsed.data;
     },
     enabled: !!jcId,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 60 * 1000,
   });
 }
@@ -9251,6 +9802,27 @@ export function useManageSplice() {
   });
 }
 
+/** NEW HOOK for manually syncing path data from the visualizer. */
+export function useSyncPathFromTrace() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: PathToUpdate) => {
+      const { error } = await supabase.rpc('apply_logical_path_update', payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Path data successfully synced to the database!");
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['route-details'] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Path sync failed: ${err.message}`);
+    }
+  });
+}
+
+
 /** Hook to call the `auto_splice_straight_segments` RPC function. */
 
 export function useAutoSplice() {
@@ -9286,6 +9858,28 @@ export function useAutoSplice() {
   });
 }
 
+/** NEW HOOK for the manual "Apply Path Updates" button */
+export function useSyncPathUpdates() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ jcId }: { jcId: string }) => {
+      // This is now an empty placeholder as the trigger handles everything.
+      // We keep it to maintain the button's functionality, but it does nothing.
+      return Promise.resolve();
+    },
+    onSuccess: (_, { jcId }) => {
+      toast.success("Path data has been refreshed.");
+      // Invalidate everything to ensure the entire UI reflects the new state from the trigger
+      queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", jcId] });
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['route-details'] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Path sync failed: ${err.message}`);
+    }
+  });
+}
 ```
 
 <!-- path: hooks/database/advanced-bulk-queries.ts -->
@@ -10293,6 +10887,7 @@ export function usePagedData<T>(
     queryKey,
     queryFn,
     enabled: !!viewName && (queryOptions.enabled ?? true),
+    placeholderData: (previousData) => previousData,
     ...queryOptions,
   });
 }
@@ -11694,21 +12289,6 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         const getHeaderIndex = (name: string): number | undefined =>
           headerMap[String(name).trim().toLowerCase()];
   
-        // console.group("🔍 Column Mapping Validation");
-        // for (const mapping of columns) {
-        //   const idx = getHeaderIndex(mapping.excelHeader);
-        //   console.log(`📍 "${mapping.excelHeader}" -> "${mapping.dbKey}":`, 
-        //     idx !== undefined ? `Column ${idx}` : "❌ NOT FOUND");
-          
-        //   // Allow missing 'id' header so we can auto-generate UUIDs during processing
-        //   if (idx === undefined && mapping.dbKey !== "id") {
-        //     console.error(`❌ Required column "${mapping.excelHeader}" not found in Excel file`);
-        //     throw new Error(
-        //       `Required column "${mapping.excelHeader}" not found in the Excel file.`
-        //     );
-        //   }
-        // }
-        // console.groupEnd();
   
         toast.info(
           `Found ${jsonData.length - 1} rows. Preparing data for upload...`
@@ -12835,7 +13415,7 @@ import {
   useToggleStatus,
   useTableBulkOperations,
   Filters,
-  TableName,
+  PublicTableName,
   TableInsert,
   TableUpdate,
   TableInsertWithDates,
@@ -12877,7 +13457,7 @@ type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
 type BaseRecord = { id: string | null; [key: string]: unknown };
 
-export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
+export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
@@ -12885,7 +13465,7 @@ export interface CrudManagerOptions<T extends TableName, V extends BaseRecord> {
 }
 
 // --- THE HOOK ---
-export function useCrudManager<T extends TableName, V extends BaseRecord>({
+export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
   searchColumn,
@@ -13034,7 +13614,7 @@ export function useCrudManager<T extends TableName, V extends BaseRecord>({
   );
 
   // --- DELETE HANDLERS ---
-  // **THE FIX IS HERE: Added a check for 'employee_name'.**
+  // **Added a check for 'employee_name'.**
   const getDisplayName = useCallback((record: RecordWithId): string => {
     if (record.employee_name) return String(record.employee_name);
     if (record.name) return String(record.name);
@@ -13623,13 +14203,6 @@ export function useDynamicColumnConfig<T extends TableOrViewName>(
         return { ...defaultConfig, ...columnOverride };
       });
   }, [tableName, overrides, omit, columnWidths]);
-
-  // const columnsKeys = columns.map((col) => col.key);
-
-  // useEffect(() => {
-  //   console.log(`columns for ${tableName}`, columnsKeys);
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
 
   return columns;
 }
@@ -14517,7 +15090,7 @@ export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapN
   // The queryKey should also be consistently sorted to ensure caching works correctly
   const sortedUniqueKeys = useMemo(() => {
     const keys = pairs.map(p => [p[0].id, p[1].id].sort().join('-'));
-    return [...new Set(keys)];
+    return [...new Set(keys)].sort();;
   }, [pairs]);
 
   return useQuery({
@@ -17186,10 +17759,6 @@ export function haversineDistance(
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
-// // Usage
-// const minDist = haversineDistance(22.5726, 88.3639, 28.7041, 77.1025);
-// console.log(`Distance: ${minDist.toFixed(2)} km`);
-
 ```
 
 <!-- path: utils/renderKeyValueCell.tsx -->
@@ -19364,7 +19933,11 @@ export default CableNotFound;
 import { Modal, PageSpinner } from '@/components/common/ui';
 import { useFiberTrace } from '@/hooks/database/path-queries';
 import { FiberTraceVisualizer } from './FiberTraceVisualizer'; // Import the new visualizer
-import { OfcForSelection } from '@/schemas/custom-schemas';
+import { OfcForSelection, PathToUpdate } from '@/schemas/custom-schemas';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { useCallback } from 'react';
+import { toast } from 'sonner';
+import { useSyncPathFromTrace } from '@/hooks/database/route-manager-hooks';
 
 interface FiberTraceModalProps {
   isOpen: boolean;
@@ -19372,10 +19945,62 @@ interface FiberTraceModalProps {
   startSegmentId: string | null; 
   fiberNo: number | null;
   allCables: OfcForSelection[] | undefined;
+  record?: V_ofc_connections_completeRowSchema;
+  refetch: () => void;
 }
 
-export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, startSegmentId, fiberNo, allCables }) => {
+export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClose, startSegmentId, fiberNo, allCables, record, refetch }) => {
   const { data: traceData, isLoading, isError, error } = useFiberTrace(startSegmentId, fiberNo);
+
+  console.log("traceData", traceData);
+
+  const syncPathMutation = useSyncPathFromTrace();
+
+  // The sync logic now moves into the action definition
+  const handleSyncPath = async () => {
+
+    if (!traceData || !record?.id) {
+      toast.error("Cannot sync: Trace data or record ID is missing.");
+      return;
+    }
+
+      const firstSegment = traceData.find((s) => s.element_type === "SEGMENT");
+      const lastSegment = [...traceData].reverse().find((s) => s.element_type === "SEGMENT");
+      // Find start Node Id and Fiber Number
+      const updated_start_fiber_no = firstSegment?.fiber_in;
+      const updated_end_fiber_no = lastSegment?.fiber_out;
+
+      if (!firstSegment?.start_node_id || !lastSegment?.end_node_id) {
+        toast.error("Cannot sync: Trace is incomplete.");
+        return;
+    }
+
+      // Ensure fiber numbers are valid numbers
+      const startFiberNo = updated_start_fiber_no ?? 0;
+      const endFiberNo = updated_end_fiber_no ?? 0;
+
+      if (startFiberNo === 0 || endFiberNo === 0) {
+        toast.error("Cannot sync: Invalid fiber numbers in trace.");
+        return;
+      }
+
+      // Step 2: Manually construct the payload for the update RPC
+      const payload: PathToUpdate = {
+        p_id: record.id,
+        p_start_node_id: firstSegment.start_node_id,
+        p_start_fiber_no: startFiberNo,
+        p_end_node_id: lastSegment.end_node_id,
+        p_end_fiber_no: endFiberNo,
+      };
+
+      // Step 3: Call the sync mutation with the constructed payload
+      syncPathMutation.mutate(payload, {
+        onSuccess: () => {
+            refetch(); // Refetch the main data table
+            onClose(); // Close the modal on success
+        }
+    });
+  };
 
   const startingCableName = allCables?.find(c => c.id === startSegmentId)?.route_name || 'Selected Route';
 
@@ -19384,7 +20009,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
     if (isError) return <div className="p-4 text-red-500">Error tracing path: {error.message}</div>;
     if (!traceData) return <div className="p-4 text-gray-500">Path could not be traced.</div>;
 
-    return <FiberTraceVisualizer traceData={traceData} />;
+    return <FiberTraceVisualizer traceData={traceData} onSync={handleSyncPath} isSyncing={syncPathMutation.isPending} />;
   };
 
   return (
@@ -19405,34 +20030,38 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
 <!-- path: components/ofc-details/FiberTraceVisualizer.tsx -->
 ```typescript
 // path: components/ofc-details/FiberTraceVisualizer.tsx
-'use client';
+"use client";
 
-import { FiberTraceSegment } from '@/schemas/custom-schemas';
-import { Cable, GitBranch, MapPin, Milestone, Route } from 'lucide-react';
+import { Button } from "@/components/common/ui";
+import { useSyncPathFromTrace, useSyncPathUpdates } from "@/hooks/database/route-manager-hooks";
+import { FiberTraceSegment, PathToUpdate } from "@/schemas/custom-schemas";
+import { Cable, GitBranch, MapPin, Milestone, RefreshCw, Route } from "lucide-react";
 
 interface FiberTraceVisualizerProps {
   traceData: FiberTraceSegment[];
+  onSync: () => void;
+  isSyncing: boolean;
 }
 
 const SegmentStep = ({ item }: { item: FiberTraceSegment }) => {
   return (
-    <li className="mb-10 ml-8">
-      <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900">
-        <Route className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+    <li className='mb-10 ml-8'>
+      <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900'>
+        <Route className='h-4 w-4 text-blue-600 dark:text-blue-300' />
       </span>
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-md font-semibold text-gray-900 dark:text-white">{item.element_name}</h3>
-          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-            SEGMENT
-          </span>
+      <div className='rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800'>
+        <div className='mb-2 flex items-center justify-between'>
+          <h3 className='text-md font-semibold text-gray-900 dark:text-white'>{item.element_name}</h3>
+          <span className='rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-300'>SEGMENT</span>
         </div>
-        <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">
-          {item.details}
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
-          <span><strong>Fiber:</strong> <span className="font-mono">{item.fiber_in}</span></span>
-          <span><strong>Length:</strong> <span className="font-mono">{item.distance_km?.toFixed(2)} km</span></span>
+        <p className='mb-3 text-sm font-normal text-gray-500 dark:text-gray-400'>{item.details}</p>
+        <div className='grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300'>
+          <span>
+            <strong>Fiber:</strong> <span className='font-mono'>{item.fiber_in}</span>
+          </span>
+          <span>
+            <strong>Length:</strong> <span className='font-mono'>{item.distance_km?.toFixed(2)} km</span>
+          </span>
         </div>
       </div>
     </li>
@@ -19440,71 +20069,81 @@ const SegmentStep = ({ item }: { item: FiberTraceSegment }) => {
 };
 
 // Small helper component for rendering a single SPLICE step
-const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment, prevStep: FiberTraceSegment | undefined }) => {
+const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: FiberTraceSegment | undefined }) => {
   // Gracefully handle the case where the first fiber_in is null
   const fiberIn = item.fiber_in ?? prevStep?.fiber_out;
 
   return (
-    <li className="mb-10 ml-8">
-      <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 ring-8 ring-white dark:bg-gray-700 dark:ring-gray-900">
-        <GitBranch className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+    <li className='mb-10 ml-8'>
+      <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 ring-8 ring-white dark:bg-gray-700 dark:ring-gray-900'>
+        <GitBranch className='h-4 w-4 text-gray-600 dark:text-gray-300' />
       </span>
-      <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800/50">
-         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-md font-semibold text-gray-900 dark:text-white">{item.element_name}</h3>
-           <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-            SPLICE
-          </span>
+      <div className='rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800/50'>
+        <div className='mb-2 flex items-center justify-between'>
+          <h3 className='text-md font-semibold text-gray-900 dark:text-white'>{item.element_name}</h3>
+          <span className='rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-300'>SPLICE</span>
         </div>
-        <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">
-          {item.details}
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
-          <span><strong>In → Out:</strong> <span className="font-mono font-bold">{fiberIn} → {item.fiber_out}</span></span>
-          <span><strong>Loss:</strong> <span className="font-mono">{item.loss_db?.toFixed(2)} dB</span></span>
+        <p className='mb-3 text-sm font-normal text-gray-500 dark:text-gray-400'>{item.details}</p>
+        <div className='grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300'>
+          <span>
+            <strong>In → Out:</strong>{" "}
+            <span className='font-mono font-bold'>
+              {fiberIn} → {item.fiber_out}
+            </span>
+          </span>
+          <span>
+            <strong>Loss:</strong> <span className='font-mono'>{item.loss_db?.toFixed(2)} dB</span>
+          </span>
         </div>
       </div>
     </li>
   );
 };
 
-export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData }) => {
+export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData, onSync, isSyncing }) => {
+  const syncPathMutation = useSyncPathFromTrace();
+
+  // Extract start and end node names from the details of the first and last segments
+  const firstSegment = traceData.find((s) => s.element_type === "SEGMENT");
+  const lastSegment = [...traceData].reverse().find((s) => s.element_type === "SEGMENT");
+  const startNodeName = firstSegment?.details.match(/^(?:Segment \d+ \()(.+?)(?: →)/)?.[1] || "Unknown Start";
+  const endNodeName = lastSegment?.details.match(/(?:→ )(.+?)(?:\))$/)?.[1] || "Unknown End";
+
   if (!traceData || traceData.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-        <Cable className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-        <h4 className="mt-4 text-lg font-semibold text-gray-800 dark:text-gray-200">No Trace Data</h4>
-        <p className="mt-2 text-sm">Could not find a path for this fiber.</p>
+      <div className='p-8 text-center text-gray-500 dark:text-gray-400'>
+        <Cable className='mx-auto h-12 w-12 text-gray-400 dark:text-gray-500' />
+        <h4 className='mt-4 text-lg font-semibold text-gray-800 dark:text-gray-200'>No Trace Data</h4>
+        <p className='mt-2 text-sm'>Could not find a path for this fiber.</p>
       </div>
     );
   }
 
-  // Extract start and end node names from the details of the first and last segments
-  const firstSegment = traceData.find(s => s.element_type === 'SEGMENT');
-  const lastSegment = [...traceData].reverse().find(s => s.element_type === 'SEGMENT');
-  
-  const startNodeName = firstSegment?.details.match(/^(?:Segment \d+ \()(.+?)(?: →)/)?.[1] || 'Unknown Start';
-  const endNodeName = lastSegment?.details.match(/(?:→ )(.+?)(?:\))$/)?.[1] || 'Unknown End';
-
   return (
-    <div className="p-4 font-sans">
-      <ol className="relative border-l-2 border-gray-300 dark:border-gray-700 ml-4">
+    <div className='p-4 font-sans relative'>
+      <Button 
+        className='absolute top-0 right-10 z-10 animate-pulse' 
+        onClick={onSync}
+        disabled={isSyncing}
+        leftIcon={isSyncing ? <RefreshCw className="animate-spin" /> : <RefreshCw />}
+      >
+        {isSyncing ? "Syncing..." : "Sync Path to DB"}
+      </Button>
+      <ol className='relative border-l-2 border-gray-300 dark:border-gray-700 ml-4'>
         {/* START POINT */}
-        <li className="mb-10 ml-8">
-            <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-green-100 ring-8 ring-white dark:bg-green-900 dark:ring-gray-900">
-                <MapPin className="h-4 w-4 text-green-600 dark:text-green-300" />
-            </span>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {startNodeName}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Path Start</p>
+        <li className='mb-10 ml-8'>
+          <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-green-100 ring-8 ring-white dark:bg-green-900 dark:ring-gray-900'>
+            <MapPin className='h-4 w-4 text-green-600 dark:text-green-300' />
+          </span>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{startNodeName}</h3>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>Path Start</p>
         </li>
-        
+
         {/* DYNAMIC PATH STEPS */}
         {traceData.map((item, index) => {
-          if (item.element_type === 'SEGMENT') {
+          if (item.element_type === "SEGMENT") {
             return <SegmentStep key={`${item.element_id}-${index}`} item={item} />;
-          } else if (item.element_type === 'SPLICE') {
+          } else if (item.element_type === "SPLICE") {
             const prevStep = traceData[index - 1];
             return <SpliceStep key={`${item.element_id}-${index}`} item={item} prevStep={prevStep} />;
           }
@@ -19512,19 +20151,18 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
         })}
 
         {/* END POINT */}
-        <li className="ml-8">
-            <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 ring-8 ring-white dark:bg-red-900 dark:ring-gray-900">
-                <Milestone className="h-4 w-4 text-red-600 dark:text-red-300" />
-            </span>
-             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {endNodeName}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Path End</p>
+        <li className='ml-8'>
+          <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 ring-8 ring-white dark:bg-red-900 dark:ring-gray-900'>
+            <Milestone className='h-4 w-4 text-red-600 dark:text-red-300' />
+          </span>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{endNodeName}</h3>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>Path End</p>
         </li>
       </ol>
     </div>
   );
 };
+
 ```
 
 <!-- path: components/ofc-details/OfcDetailsHeader.tsx -->
@@ -21535,12 +22173,13 @@ export const queryKeys = {
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import { useJcSplicingDetails, useManageSplice, useAutoSplice } from '@/hooks/database/route-manager-hooks';
+import { useJcSplicingDetails, useManageSplice, useAutoSplice, useSyncPathUpdates } from '@/hooks/database/route-manager-hooks';
 import { PageSpinner, Button } from '@/components/common/ui';
-import { FiLink, FiX, FiZap } from 'react-icons/fi';
+import { FiLink, FiX, FiZap, FiRefreshCw } from 'react-icons/fi';
 import { JcSplicingDetails } from '@/schemas/custom-schemas';
 import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVisualizationModal';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { Loader2 } from 'lucide-react';
 
 // --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
 type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
@@ -21596,6 +22235,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
+    const syncPathUpdatesMutation = useSyncPathUpdates(); // NEW HOOK
 
     const [selectedFiber, setSelectedFiber] = useState<{ segmentId: string; fiberNo: number } | null>(null);
     const [showLossModal, setShowLossModal] = useState(false);
@@ -21605,7 +22245,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     const [autoSplicePairs, setAutoSplicePairs] = useState<AutoSplicePair[]>([]);
     const [showVisualizationModal, setShowVisualizationModal] = useState(false);
 
-    // Calculate available fiber pairs for auto-splice
+    // (useEffect for auto-splice pairs remains the same)
     useEffect(() => {
         if (pendingSpliceAction?.type === 'auto' && pendingSpliceAction.autoData && spliceDetails) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
@@ -21692,7 +22332,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 incomingFiberNo,
                 outgoingSegmentId,
                 outgoingFiberNo,
-                spliceType: 'pass_through',
                 lossDb,
             });
             setSelectedFiber(null);
@@ -21710,7 +22349,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 });
                 resetModal();
             } else {
-                // Individual mode: create splices one by one with individual loss values
                 for (const pair of autoSplicePairs) {
                     const lossDb = parseFloat(pair.lossDb) || 0;
                     await manageSpliceMutation.mutateAsync({
@@ -21720,7 +22358,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         incomingFiberNo: pair.fiber1No,
                         outgoingSegmentId: segment2Id,
                         outgoingFiberNo: pair.fiber2No,
-                        spliceType: 'pass_through',
                         lossDb,
                     });
                 }
@@ -21737,11 +22374,16 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
         setAutoSplicePairs([]);
     };
 
-    const handleRemoveSplice = (spliceId: string) => {
-        if (window.confirm("Are you sure you want to remove this splice?") && junctionClosureId) {
-            manageSpliceMutation.mutate({ action: 'delete', jcId: junctionClosureId, spliceId });
-            setSelectedFiber(null);
-        }
+    const handleRemoveSplice = (fiber: FiberAtSegment) => {
+      if (!junctionClosureId || !fiber.splice_id) return;
+      if (window.confirm("Are you sure you want to remove this splice?")) {
+        manageSpliceMutation.mutate({
+          action: 'delete',
+          jcId: junctionClosureId,
+          spliceId: fiber.splice_id,
+        });
+        setSelectedFiber(null);
+      }
     };
 
     if (isLoading) return <PageSpinner text="Loading splice details..." />;
@@ -21787,7 +22429,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </span>
                 </div>
                 {fiber.splice_id && fiber.status === 'used_as_incoming' && (
-                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber.splice_id!); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
+                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
                         <FiX className="w-3 h-3" />
                     </button>
                 )}
@@ -21797,8 +22439,26 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">Splice Manager: {junction_closure.name}</h3>
-
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <h3 className="text-xl font-semibold">Splice Manager: {junction_closure.name}</h3>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => setShowVisualizationModal(true)} variant="outline">
+                    View All Splices
+                </Button>
+                {/* NEW SYNC BUTTON */}
+                <Button 
+                    size="sm" 
+                    variant="primary" 
+                    onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
+                    disabled={syncPathUpdatesMutation.isPending}
+                    leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
+                >
+                    {syncPathUpdatesMutation.isPending ? "Syncing..." : "Apply Path Updates"}
+                </Button>
+              </div>
+            </div>
+            
+            {/* ... rest of the component remains the same ... */}
             {selectedFiber && (
                 <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-center">
                     <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -21825,12 +22485,9 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </div>
                 ))}
             </div>
-            <Button size="xs" onClick={() => setShowVisualizationModal(true)} className="w-full mb-3" variant="outline">
-                <FiZap className="w-3 h-3 mr-1"/> Show Splices
-            </Button>
+
             <SpliceVisualizationModal isOpen={showVisualizationModal} onClose={() => setShowVisualizationModal(false)} junctionClosureId={junctionClosureId} />
 
-            {/* Loss dB Modal */}
             {showLossModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -21911,7 +22568,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                                 max="10"
                                                 value={lossDbValue}
                                                 onChange={(e) => setLossDbValue(e.target.value)}
-                                                className="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
+                                                className="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
                                                 placeholder="0.3"
                                             />
                                             <Button size="xs" onClick={applyUniformLoss} variant="outline">
@@ -29189,213 +29846,6 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
-
-
-// // Example usage component
-// const ExampleUsage = () => {
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [selectedId, setSelectedId] = useState(null);
-//   const [viewMode, setViewMode] = useState('list');
-//   const [showFilters, setShowFilters] = useState(false);
-//   const [filters, setFilters] = useState({});
-
-//   // Mock data
-//   const sampleData = [
-//     { id: '1', name: 'Software Engineer', description: 'Develops applications', department: 'Engineering', status: 'active' },
-//     { id: '2', name: 'Product Manager', description: 'Manages product roadmap', department: 'Product', status: 'active' },
-//     { id: '3', name: 'UX Designer', description: 'Designs user experiences', department: 'Design', status: 'inactive' },
-//     { id: '4', name: 'Data Analyst', description: 'Analyzes business data', department: 'Analytics', status: 'active' },
-//   ];
-
-//   const filteredData = sampleData.filter((item) => {
-//     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-//     const matchesStatus = !filters.status || item.status === filters.status;
-//     const matchesDepartment = !filters.department || item.department === filters.department;
-//     return matchesSearch && matchesStatus && matchesDepartment;
-//   });
-
-//   const handleFilterChange = (newFilters) => {
-//     setFilters({ ...filters, ...newFilters });
-//   };
-
-//   const handleClearFilters = () => {
-//     setFilters({});
-//   };
-
-//   const handleItemSelect = (item) => {
-//     setSelectedId(item.id);
-//   };
-
-//   const handleCreateNew = () => {
-//     alert('Create new position');
-//   };
-
-//   const handleSearchChange = (value) => {
-//     setSearchTerm(value);
-//   };
-
-//   const handleToggleFilters = () => {
-//     setShowFilters(!showFilters);
-//   };
-
-//   const handleViewModeChange = (mode) => {
-//     setViewMode(mode);
-//   };
-
-//   const renderListItem = (item, isSelected, onSelect) => (
-//     <div
-//       key={item.id}
-//       onClick={onSelect}
-//       className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-//         isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600' : ''
-//       }`}
-//     >
-//       <div className="flex justify-between items-start">
-//         <div>
-//           <h3 className="font-medium text-gray-900 dark:text-white">
-//             {item.name}
-//           </h3>
-//           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div className="flex flex-col items-end space-y-1">
-//           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-//             {item.department}
-//           </span>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   const renderFiltersComponent = (currentFilters, onFilterChange, onClearFilters) => (
-//     <div className="pt-3 space-y-3">
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Status
-//           </label>
-//           <select
-//             value={currentFilters.status || ''}
-//             onChange={(e) => onFilterChange({ status: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Status</option>
-//             <option value="active">Active</option>
-//             <option value="inactive">Inactive</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-//             Department
-//           </label>
-//           <select
-//             value={currentFilters.department || ''}
-//             onChange={(e) => onFilterChange({ department: e.target.value || undefined })}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-//           >
-//             <option value="">All Departments</option>
-//             <option value="Engineering">Engineering</option>
-//             <option value="Product">Product</option>
-//             <option value="Design">Design</option>
-//             <option value="Analytics">Analytics</option>
-//           </select>
-//         </div>
-//       </div>
-//       <div className="flex justify-end">
-//         <button
-//           onClick={onClearFilters}
-//           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-//         >
-//           Clear Filters
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   const renderDetailsPanelComponent = (item) => (
-//     <div className="p-6">
-//       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-//         {item.name}
-//       </h3>
-//       <div className="space-y-4">
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Description
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.description}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Department
-//           </label>
-//           <p className="text-gray-900 dark:text-white mt-1">
-//             {item.department}
-//           </p>
-//         </div>
-//         <div>
-//           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-//             Status
-//           </label>
-//           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
-//             item.status === 'active' 
-//               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-//               : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-//           }`}>
-//             {item.status}
-//           </span>
-//         </div>
-//       </div>
-//       <div className="mt-6 flex space-x-3">
-//         <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-//           Edit
-//         </button>
-//         <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-//           Delete
-//         </button>
-//       </div>
-//     </div>
-//   );
-
-//   return (
-//     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-//       <DataListView
-//         data={filteredData}
-//         searchTerm={searchTerm}
-//         onSearchChange={handleSearchChange}
-//         searchPlaceholder="Search positions..."
-//         showFilters={showFilters}
-//         onToggleFilters={handleToggleFilters}
-//         filters={filters}
-//         onFilterChange={handleFilterChange}
-//         onClearFilters={handleClearFilters}
-//         selectedItemId={selectedId}
-//         onItemSelect={handleItemSelect}
-//         viewMode={viewMode}
-//         onViewModeChange={handleViewModeChange}
-//         detailsTitle="Position Details"
-//         emptyStateTitle="No positions found"
-//         emptyStateDescription="Try adjusting your search criteria."
-//         createButtonText="Add Position"
-//         onCreateNew={handleCreateNew}
-//         renderListItem={renderListItem}
-//         renderFilters={renderFiltersComponent}
-//         renderDetailsPanel={renderDetailsPanelComponent}
-//       />
-//     </div>
-//   );
-// };
-
-// export default ExampleUsage;
 ```
 
 <!-- path: components/common/form/IPAddressInput.tsx -->
@@ -29532,24 +29982,6 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     },
     [allowIPv4, allowIPv6, isValidIPv4, isValidIPv6]
   );
-
-  // const formatIPv6 = (ip: string): string => {
-  //   // Basic IPv6 formatting - expand compressed notation for display
-  //   if (!ip.includes('::')) return ip;
-
-  //   const parts = ip.split('::');
-  //   const leftParts = parts[0] ? parts[0].split(':') : [];
-  //   const rightParts = parts[1] ? parts[1].split(':') : [];
-  //   const missingParts = 8 - leftParts.length - rightParts.length;
-
-  //   const expanded = [
-  //     ...leftParts,
-  //     ...Array(missingParts).fill('0000'),
-  //     ...rightParts,
-  //   ];
-
-  //   return expanded.map((part) => part.padStart(4, '0')).join(':');
-  // };
 
   // Update validation state whenever the prop value changes from the outside (e.g., from react-hook-form)
   useEffect(() => {
@@ -32737,40 +33169,6 @@ export const Switch: React.FC<SwitchProps> = ({
   );
 };
 
-// // Basic usage
-// <Switch checked={isActive} onChange={setIsActive} />
-
-// // With label on left
-// <Switch 
-//   label="Dark Mode" 
-//   labelPosition="left" 
-//   checked={darkMode} 
-//   onChange={setDarkMode} 
-// />
-
-// // With color and status text
-// <Switch
-//   color="success"
-//   showStatusText
-//   checked={isEnabled}
-//   onChange={setIsEnabled}
-// />
-
-// // With icons and custom size
-// <Switch
-//   size="lg"
-//   showIcons
-//   checked={notifications}
-//   onChange={setNotifications}
-// />
-
-// // Disabled switch
-// <Switch
-//   disabled
-//   label="Read-only"
-//   checked={false}
-// />
-
 ```
 
 <!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
@@ -33253,122 +33651,6 @@ export { ScrollArea, ScrollBar }
 
 <!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
-// "use client";
-
-// import { useThemeStore, Theme } from "@/stores/themeStore";
-// import { useState, useRef, useEffect } from "react";
-// import { FiChevronDown, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
-
-// export default function ThemeToggle() {
-//   const { theme, setTheme, hydrated } = useThemeStore();
-//   const [isOpen, setIsOpen] = useState(false);
-//   const dropdownRef = useRef<HTMLDivElement>(null);
-//   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-//   const options = [
-//     { value: "light" as Theme, icon: <FiSun size={16} />, label: "Light" },
-//     { value: "dark" as Theme, icon: <FiMoon size={16} />, label: "Dark" },
-//     { value: "system" as Theme, icon: <FiMonitor size={16} />, label: "System" },
-//   ];
-
-//   const currentOption = options.find((opt) => opt.value === theme);
-
-//   useEffect(() => {
-//     return () => {
-//       if (timeoutRef.current) {
-//         clearTimeout(timeoutRef.current);
-//       }
-//     };
-//   }, []);
-
-//   useEffect(() => {
-//     const handleClickOutside = (event: MouseEvent) => {
-//       if (
-//         dropdownRef.current &&
-//         !dropdownRef.current.contains(event.target as Node)
-//       ) {
-//         setIsOpen(false);
-//       }
-//     };
-
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   const handleMouseEnter = () => {
-//     if (timeoutRef.current) {
-//       clearTimeout(timeoutRef.current);
-//     }
-//     setIsOpen(true);
-//   };
-
-//   const handleMouseLeave = () => {
-//     timeoutRef.current = setTimeout(() => {
-//       setIsOpen(false);
-//     }, 300);
-//   };
-
-//   const handleOptionClick = (value: Theme) => {
-//     setTheme(value);
-//     setIsOpen(false);
-//     if (timeoutRef.current) {
-//       clearTimeout(timeoutRef.current);
-//     }
-//   };
-
-//   // Show loading state until hydrated
-//   if (!hydrated) {
-//     return (
-//       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
-//     );
-//   }
-
-//   return (
-//     <div
-//       ref={dropdownRef}
-//       className="relative"
-//       onMouseEnter={handleMouseEnter}
-//       onMouseLeave={handleMouseLeave}
-//     >
-//       <button
-//         onClick={() => setIsOpen(!isOpen)}
-//         className="flex items-center gap-2 rounded-lg bg-gray-200 px-3 py-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-//         aria-expanded={isOpen}
-//       >
-//         {currentOption?.icon}
-//         <span className="text-sm">{currentOption?.label}</span>
-//         <FiChevronDown
-//           size={16}
-//           className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
-//         />
-//       </button>
-
-//       {isOpen && (
-//         <div
-//           className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-//           onMouseEnter={handleMouseEnter}
-//           onMouseLeave={handleMouseLeave}
-//         >
-//           {options.map((opt) => (
-//             <button
-//               key={opt.value}
-//               onClick={() => handleOptionClick(opt.value)}
-//               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 dark:text-white ${
-//                 theme === opt.value
-//                   ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-//                   : "hover:bg-gray-100 dark:hover:bg-gray-700"
-//               }`}
-//             >
-//               {opt.icon}
-//               <span>{opt.label}</span>
-//             </button>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
 
 "use client";
 
@@ -33580,23 +33862,6 @@ export const Label: React.FC<LabelProps> = ({
     </label>
   );
 };
-
-
-// // Usage
-// // Basic usage
-// <Label htmlFor="email">Email Address</Label>
-
-// // With required field
-// <Label htmlFor="password" required>Password</Label>
-
-// // With tooltip
-// <Label htmlFor="api-key" tooltip="Your unique API identifier">API Key</Label>
-
-// // Custom size and weight
-// <Label htmlFor="name" size="lg" weight="bold">Full Name</Label>
-
-// // Disabled state
-// <Label htmlFor="readonly" disabled>Read-only Field</Label>
 ```
 
 <!-- path: components/common/ui/Button/Button.tsx -->
@@ -45851,9 +46116,11 @@ export type Database = {
           system_name: string | null
           updated_at: string | null
           updated_en_id: string | null
+          updated_en_name: string | null
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
           updated_sn_id: string | null
+          updated_sn_name: string | null
         }
         Relationships: [
           {
@@ -46483,6 +46750,18 @@ export type Database = {
           result: Json
         }[]
       }
+      apply_logical_path_update: {
+        Args:
+          | {
+              p_end_fiber_no: number
+              p_end_node_id: string
+              p_physical_fibers: Json
+              p_start_fiber_no: number
+              p_start_node_id: string
+            }
+          | { p_trace_result: Json }
+        Returns: undefined
+      }
       auto_splice_straight_segments: {
         Args: {
           p_jc_id: string
@@ -46521,6 +46800,13 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
+        }[]
+      }
+      get_all_fibers_at_jc: {
+        Args: { p_jc_id: string }
+        Returns: {
+          fiber_no: number
+          segment_id: string
         }[]
       }
       get_all_splices: {
@@ -46711,12 +46997,23 @@ export type Database = {
           fiber_in: number
           fiber_out: number
           loss_db: number
+          original_cable_id: string
           step_order: number
         }[]
       }
-      trace_logical_fiber_path: {
-        Args: { p_start_fiber_no: number; p_start_segment_id: string }
-        Returns: Json
+      update_path_for_fiber: {
+        Args: { p_fiber_no: number; p_segment_id: string }
+        Returns: undefined
+      }
+      update_paths_after_splice: {
+        Args:
+          | { p_fibers_to_update: Json }
+          | { p_fibers_to_update: Json; p_operation: string }
+        Returns: undefined
+      }
+      update_paths_for_jc: {
+        Args: { p_jc_id: string }
+        Returns: undefined
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
@@ -48746,9 +49043,11 @@ export type V_ofc_connections_completeRow = {
     system_name: string | null;
     updated_at: string | null;
     updated_en_id: string | null;
+    updated_en_name: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
     updated_sn_id: string | null;
+    updated_sn_name: string | null;
 };
 
 export type V_ring_nodesRow = {
@@ -50383,102 +50682,6 @@ export default function Home() {
 
 <!-- path: app/auth/callback/route.ts -->
 ```typescript
-// // app/auth/callback/route.ts
-// import { createClient } from '@/utils/supabase/server'
-// import { NextResponse } from 'next/server'
-
-// export async function GET(request: Request) {
-//   const { searchParams, origin } = new URL(request.url)
-//   const code = searchParams.get('code')
-//   const next = searchParams.get('next') ?? '/dashboard'
-//   const error = searchParams.get('error')
-//   const errorDescription = searchParams.get('error_description')
-
-//   // console.log('Auth callback received:', { code: !!code, error, errorDescription })
-
-//   // Handle OAuth errors
-//   if (error) {
-//     console.error('OAuth error:', error, errorDescription)
-//     const errorParams = new URLSearchParams({
-//       error: error,
-//       message: errorDescription || 'Authentication failed'
-//     })
-//     return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//   }
-
-//   if (code) {
-//     const supabase = await createClient()
-    
-//     try {
-//       // console.log('Exchanging code for session...')
-//       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      
-//       if (exchangeError) {
-//         console.error('Session exchange error:', exchangeError)
-//         const errorParams = new URLSearchParams({
-//           error: 'session_exchange_failed',
-//           message: exchangeError.message
-//         })
-//         return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//       }
-
-//       if (data.user) {
-//         // console.log('User authenticated:', data.user.id)
-        
-//         // Check if user has a profile
-//         // console.log('Checking for existing profile...')
-//         const { data: profile, error: profileError } = await supabase
-//           .from('user_profiles')
-//           .select('id')
-//           .eq('id', data.user.id)
-//           .single()
-
-//         // console.log('Profile check result:', { profile: !!profile, error: profileError?.code })
-
-//         // If no profile exists, redirect to onboarding
-//         // check non blocking way after 2 seconds
-//         setTimeout(() => {
-//           if (profileError && profileError.code === 'PGRST116') {
-//             // console.log('No profile found, redirecting to onboarding')
-//             return NextResponse.redirect(`${origin}/onboarding`)
-//           }
-//         }, 2000)
-        
-
-//         if (profileError && profileError.code !== 'PGRST116') {
-//           console.error('Profile check error:', profileError)
-//           // Continue anyway, let the client handle it
-//         }
-
-//         // If profile exists, redirect to intended destination
-//         if (profile) {
-//           // console.log('Profile exists, redirecting to:', next)
-//           return NextResponse.redirect(`${origin}${next}`)
-//         }
-
-//         // Fallback: redirect to dashboard if no profile check conclusive
-//         // console.log('Fallback redirect to dashboard')
-//         return NextResponse.redirect(`${origin}/dashboard`)
-//       }
-      
-//     } catch (error) {
-//       console.error('Unexpected error in auth callback:', error)
-//       const errorParams = new URLSearchParams({
-//         error: 'unexpected_error',
-//         message: 'An unexpected error occurred during authentication'
-//       })
-//       return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-//     }
-//   }
-
-//   // No code parameter - invalid callback
-//   console.error('No code parameter received')
-//   const errorParams = new URLSearchParams({
-//     error: 'invalid_callback',
-//     message: 'Invalid authentication callback'
-//   })
-//   return NextResponse.redirect(`${origin}/auth/error?${errorParams}`)
-// }
 
 // app/auth/callback/route.ts
 import { createClient } from '@/utils/supabase/server';
@@ -52582,7 +52785,7 @@ export default function OfcCableDetailsPage() {
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number } | null>(null);
+  const [tracingFiber, setTracingFiber] = useState<{ startSegmentId: string; fiberNo: number; record?: V_ofc_connections_completeRowSchema } | null>(null);
 
   const { data: cableSegments } = useTableQuery(createClient(), "cable_segments", {
     filters: { original_cable_id: cableId as string },
@@ -52617,7 +52820,7 @@ export default function OfcCableDetailsPage() {
         onClick: (record: V_ofc_connections_completeRowSchema) => {
           const firstSegment = cableSegments?.find((s) => s.segment_order === 1);
           if (firstSegment && record.fiber_no_sn) {
-            setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn });
+            setTracingFiber({ startSegmentId: firstSegment.id, fiberNo: record.fiber_no_sn, record });
           } else {
             toast.error("Cannot trace fiber: No cable segments found for this route or fiber number is missing.");
           }
@@ -52698,7 +52901,7 @@ export default function OfcCableDetailsPage() {
       </div>
       <OfcConnectionsFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null} onCreated={crudActions.handleSave} onUpdated={crudActions.handleSave} />
       <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title='Confirm Deletion' message={deleteModal.message} type='danger' loading={deleteModal.loading} />
-      <FiberTraceModal isOpen={!!tracingFiber} onClose={() => setTracingFiber(null)} startSegmentId={tracingFiber?.startSegmentId || null} fiberNo={tracingFiber?.fiberNo || null} allCables={allCablesData} />
+      <FiberTraceModal refetch={refetch} isOpen={!!tracingFiber} onClose={() => setTracingFiber(null)} startSegmentId={tracingFiber?.startSegmentId || null} fiberNo={tracingFiber?.fiberNo || null} allCables={allCablesData} record={tracingFiber?.record} />
     </div>
   );
 }
@@ -55820,8 +56023,6 @@ export const OfcDetailsTableColumns = (
       updated_sn_id: {
         title: 'End A',
         render(value, record, index) {
-          console.log(record);
-          
           return record.updated_sn_name || '';
         },
       },
