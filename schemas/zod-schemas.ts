@@ -1158,7 +1158,7 @@ export const ofc_cablesRowSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   sn_id: z.uuid(),
   status: z.boolean().nullable(),
-  transnet_id: z.string().nullable().nullable(),
+  transnet_id: z.string().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1178,7 +1178,7 @@ export const ofc_cablesInsertSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   sn_id: z.uuid(),
   status: z.boolean().nullable().optional(),
-  transnet_id: z.string().nullable().nullable().optional(),
+  transnet_id: z.string().nullable().optional(),
   transnet_rkm: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1198,7 +1198,7 @@ export const ofc_cablesUpdateSchema = z.object({
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   sn_id: z.uuid().optional(),
   status: z.boolean().nullable().optional(),
-  transnet_id: z.string().nullable().nullable().optional(),
+  transnet_id: z.string().nullable().optional(),
   transnet_rkm: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1790,7 +1790,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   sn_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
-  transnet_id: z.string().nullable().nullable(),
+  transnet_id: z.string().nullable(),
   transnet_rkm: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1828,11 +1828,11 @@ export const v_ofc_connections_completeRowSchema = z.object({
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   updated_en_id: z.uuid().nullable(),
-  updated_en_name: z.string().nullable().nullable(),
+  updated_en_name: z.string().nullable(),
   updated_fiber_no_en: z.number().nullable(),
   updated_fiber_no_sn: z.number().nullable(),
   updated_sn_id: z.uuid().nullable(),
-  updated_sn_name: z.string().nullable().nullable(),
+  updated_sn_name: z.string().nullable(),
 });
 
 export const v_ring_nodesRowSchema = z.object({
