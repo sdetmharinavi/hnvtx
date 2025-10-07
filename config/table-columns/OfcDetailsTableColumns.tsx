@@ -85,8 +85,6 @@ export const OfcDetailsTableColumns = (
       updated_sn_id: {
         title: 'End A',
         render(value, record, index) {
-          console.log(record);
-          
           return record.updated_sn_name || '';
         },
       },

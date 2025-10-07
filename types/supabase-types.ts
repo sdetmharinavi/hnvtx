@@ -3257,9 +3257,11 @@ export type Database = {
           system_name: string | null
           updated_at: string | null
           updated_en_id: string | null
+          updated_en_name: string | null
           updated_fiber_no_en: number | null
           updated_fiber_no_sn: number | null
           updated_sn_id: string | null
+          updated_sn_name: string | null
         }
         Relationships: [
           {
@@ -3889,6 +3891,18 @@ export type Database = {
           result: Json
         }[]
       }
+      apply_logical_path_update: {
+        Args:
+          | {
+              p_end_fiber_no: number
+              p_end_node_id: string
+              p_physical_fibers: Json
+              p_start_fiber_no: number
+              p_start_node_id: string
+            }
+          | { p_trace_result: Json }
+        Returns: undefined
+      }
       auto_splice_straight_segments: {
         Args: {
           p_jc_id: string
@@ -3927,6 +3941,13 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
+        }[]
+      }
+      get_all_fibers_at_jc: {
+        Args: { p_jc_id: string }
+        Returns: {
+          fiber_no: number
+          segment_id: string
         }[]
       }
       get_all_splices: {
@@ -4117,12 +4138,23 @@ export type Database = {
           fiber_in: number
           fiber_out: number
           loss_db: number
+          original_cable_id: string
           step_order: number
         }[]
       }
-      trace_logical_fiber_path: {
-        Args: { p_start_fiber_no: number; p_start_segment_id: string }
-        Returns: Json
+      update_path_for_fiber: {
+        Args: { p_fiber_no: number; p_segment_id: string }
+        Returns: undefined
+      }
+      update_paths_after_splice: {
+        Args:
+          | { p_fibers_to_update: Json }
+          | { p_fibers_to_update: Json; p_operation: string }
+        Returns: undefined
+      }
+      update_paths_for_jc: {
+        Args: { p_jc_id: string }
+        Returns: undefined
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }

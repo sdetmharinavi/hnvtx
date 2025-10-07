@@ -1820,9 +1820,11 @@ export type V_ofc_connections_completeRow = {
     system_name: string | null;
     updated_at: string | null;
     updated_en_id: string | null;
+    updated_en_name: string | null;
     updated_fiber_no_en: number | null;
     updated_fiber_no_sn: number | null;
     updated_sn_id: string | null;
+    updated_sn_name: string | null;
 };
 
 export type V_ring_nodesRow = {
