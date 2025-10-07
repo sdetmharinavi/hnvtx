@@ -157,28 +157,30 @@ export const defaultValidationConfig: ValidationConfig = {
     {
       fieldName: "role",
       tableName: "user", // Will match "user_profiles", "users", etc.
-      validation: "z.enum(UserRole)",
+      validation: "z.nativeEnum(UserRole)",
       description: "User role field using native enum",
     },
     {
       fieldName: "transnet_id",
       tableName: "ofc_cables",
-      validation: "z.string().nullable()",
-      description: "Transnet ID is string type",
+      // Provide only the base type. The script will add .nullable()
+      validation: "z.string()",
+      description: "Transnet ID is a nullable string",
     },
     {
       fieldName: "updated_sn_name",
       tableName: "v_ofc_connections_complete",
-      validation: "z.string().nullable()",
-      description: "String type",
+      // Provide only the base type. The script will add .nullable()
+      validation: "z.string()",
+      description: "String type, not datetime",
     },
     {
       fieldName: "updated_en_name",
       tableName: "v_ofc_connections_complete",
-      validation: "z.string().nullable()",
-      description: "String type",
+      // Provide only the base type. The script will add .nullable()
+      validation: "z.string()",
+      description: "String type, not datetime",
     },
-
   ],
 };
 
