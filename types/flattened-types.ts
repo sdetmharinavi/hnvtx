@@ -973,6 +973,8 @@ export type Lookup_typesRow = {
     created_at: string | null;
     description: string | null;
     id: string;
+    is_ring_based: boolean | null;
+    is_sdh: boolean | null;
     is_system_default: boolean | null;
     name: string;
     sort_order: number | null;
@@ -986,6 +988,8 @@ export type Lookup_typesInsert = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_ring_based?: boolean | null;
+    is_sdh?: boolean | null;
     is_system_default?: boolean | null;
     name: string;
     sort_order?: number | null;
@@ -999,6 +1003,8 @@ export type Lookup_typesUpdate = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_ring_based?: boolean | null;
+    is_sdh?: boolean | null;
     is_system_default?: boolean | null;
     name?: string;
     sort_order?: number | null;
@@ -1715,6 +1721,8 @@ export type V_lookup_typesRow = {
     created_at: string | null;
     description: string | null;
     id: string | null;
+    is_ring_based: boolean | null;
+    is_sdh: boolean | null;
     is_system_default: boolean | null;
     name: string | null;
     sort_order: number | null;
