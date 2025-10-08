@@ -34,6 +34,13 @@ FROM public.systems s
 CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT
   sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
+  -- THE FIX: Add the foreign key ID fields required for editing.
+  sc.sn_id,
+  sc.en_id,
+  sc.connected_system_id,
+  sc.media_type_id,
+  sfpc.sfp_type_id,
+  -- Existing human-readable name fields
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
   lt_media.name AS media_type_name, sc.bandwidth_mbps, cs.system_name AS connected_system_name,

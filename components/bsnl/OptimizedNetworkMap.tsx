@@ -1,7 +1,7 @@
 // path: components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
-import React, { useMemo, useState, useEffect, memo, useCallback } from 'react';
+import React, { useMemo, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProps } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
@@ -10,72 +10,44 @@ import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 
-// Component to handle map events like pan and zoom
+// THE FIX: Component props are updated to accept stable callbacks.
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
 
   useEffect(() => {
     const handler = () => {
       try {
-        // Check if map is ready before getting bounds
         if (!map || !map.getBounds || !map.getContainer()) return;
-        
         const newBounds = map.getBounds();
         const newZoom = map.getZoom();
-        
-        // Validate bounds before proceeding
         const sw = newBounds.getSouthWest();
         const ne = newBounds.getNorthEast();
-        
-        if (!isFinite(sw.lat) || !isFinite(sw.lng) || !isFinite(ne.lat) || !isFinite(ne.lng)) {
-          return; // Skip if bounds are invalid
-        }
-        
-        if (!isFinite(newZoom) || newZoom <= 0) {
-          return; // Skip if zoom is invalid
-        }
-        
-        // Only update if bounds or zoom actually changed
+        if (!isFinite(sw.lat) || !isFinite(sw.lng) || !isFinite(ne.lat) || !isFinite(ne.lng)) return;
+        if (!isFinite(newZoom) || newZoom <= 0) return;
         setBounds(newBounds);
-        
         setZoom(newZoom);
       } catch (error) {
-        // Silently ignore errors during map initialization
         console.debug('Map not ready yet:', error);
       }
     };
-    
-    // This forces the map to re-evaluate its size, crucial for the full-screen toggle
+
     const invalidateSize = () => setTimeout(() => {
-      if (map && map.invalidateSize) {
-        map.invalidateSize();
-      }
+      if (map && map.invalidateSize) map.invalidateSize();
     }, 100);
-    
+
     map.on('zoomend moveend', handler);
     window.addEventListener('resize', invalidateSize);
-    
-    // Delay initial call to ensure map is ready
     setTimeout(handler, 100);
-    
-    return () => { 
-      map.off('zoomend moveend', handler); 
+
+    return () => {
+      map.off('zoomend moveend', handler);
       window.removeEventListener('resize', invalidateSize);
     };
-  }, [map, setBounds, setZoom]);
+  }, [map, setBounds, setZoom]); // This effect now correctly depends on stable functions.
 
   return null;
 }
 
-// Helper function to validate coordinates
-const isValidCoordinate = (lat: number | null | undefined, lng: number | null | undefined): boolean => {
-  return lat != null && lng != null && 
-         isFinite(lat) && isFinite(lng) && 
-         lat >= -90 && lat <= 90 && 
-         lng >= -180 && lng <= 180;
-};
-
-// Memoized Map Content Component
 const MapContent = memo<{
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
@@ -122,12 +94,10 @@ const MapContent = memo<{
                   <div className="min-w-48 max-w-72">
                       <h3 className="font-semibold text-base">{node.name}</h3>
                       <p className="text-sm">Type: {node.node_type_code}</p>
-                      {/* <p className="text-sm">Status: {node.status ? 'Active' : 'Inactive'}</p> */}
                       <p className="text-sm">Region: {node.maintenance_area_name}</p>
                       {node.latitude && <p className="text-sm">Lat: {node.latitude}</p>}
                       {node.longitude && <p className="text-sm">Long: {node.longitude}</p>}
                       {node.remark && <p className="text-sm">Remark: {node.remark}</p>}
-
                   </div>
               </Popup>
           </Marker>
@@ -135,17 +105,33 @@ const MapContent = memo<{
     ))}
   </>
 ));
-
 MapContent.displayName = 'MapContent';
 
-export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: true, cables: true, systems: true } }: { nodes: BsnlNode[]; cables: BsnlCable[]; selectedSystem: BsnlSystem | null; visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean }; }) {
-  const [isFullScreen, setIsFullScreen] = useState(false);
+// THE FIX: Updated props for the main component.
+interface OptimizedNetworkMapProps {
+  nodes: BsnlNode[];
+  cables: BsnlCable[];
+  selectedSystem: BsnlSystem | null;
+  visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean };
+  mapBounds: LatLngBounds | null;
+  zoom: number;
+  onBoundsChange: (bounds: LatLngBounds | null) => void;
+  onZoomChange: (zoom: number) => void;
+}
+
+export function OptimizedNetworkMap({
+  nodes,
+  cables,
+  visibleLayers = { nodes: true, cables: true, systems: true },
+  mapBounds,
+  zoom,
+  onBoundsChange,
+  onZoomChange
+}: OptimizedNetworkMapProps) {
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
   const { theme } = useThemeStore();
 
-  // This one-time effect corrects the default icon path issue with Next.js and Leaflet.
   useEffect(() => {
-    // The `_getIconUrl` is a private property not included in the type definitions,
-    // so we cast to a record to safely delete it without using `any`.
     delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
     L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -154,13 +140,10 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
     });
   }, []);
 
-  // Handle body overflow when fullscreen
   useEffect(() => {
     if (isFullScreen) {
       document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = '';
-      };
+      return () => { document.body.style.overflow = ''; };
     }
   }, [isFullScreen]);
 
@@ -171,17 +154,7 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
     if (lats.length === 0 || lngs.length === 0) return null;
     return [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]] as [[number, number], [number, number]];
   }, [nodes]);
-
-  const [zoom, setZoom] = useState(13);
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-
-  const stableSetBounds = useCallback((bounds: LatLngBounds | null) => {
-    setMapBounds(bounds);
-  }, []);
-
-  const stableSetZoom = useCallback((zoom: number) => {
-    setZoom(zoom);
-  }, []);
+  
   const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
   const visibleNodes = useMemo(() => {
@@ -194,20 +167,19 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
         return lat >= mapBounds.getSouth() && lat <= mapBounds.getNorth() && lng >= mapBounds.getWest() && lng <= mapBounds.getEast();
     });
   }, [nodes, mapBounds, zoom, visibleLayers.nodes]);
-  
+
   if (!bounds) return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
 
-  const mapUrl = theme === 'dark' 
+  const mapUrl = theme === 'dark'
     ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-  
+
   const mapAttribution = theme === 'dark'
     ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     : '&copy; OpenStreetMap contributors';
 
   return (
     <>
-      {/* Regular map container */}
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
         <MapContainer key="normal" bounds={bounds} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
           <MapContent
@@ -217,11 +189,10 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
             nodeMap={nodeMap}
             mapUrl={mapUrl}
             mapAttribution={mapAttribution}
-            setMapBounds={stableSetBounds}
-            setZoom={stableSetZoom}
+            setMapBounds={onBoundsChange}
+            setZoom={onZoomChange}
           />
         </MapContainer>
-        
         <button
           onClick={() => setIsFullScreen(true)}
           className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -230,8 +201,6 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
           <Maximize className="h-5 w-5" />
         </button>
       </div>
-
-      {/* Fullscreen overlay */}
       {isFullScreen && (
         <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
           <MapContainer key="fullscreen" bounds={bounds} className="h-full w-full bg-gray-200 dark:bg-gray-800">
@@ -242,11 +211,10 @@ export function OptimizedNetworkMap({ nodes, cables, visibleLayers = { nodes: tr
               nodeMap={nodeMap}
               mapUrl={mapUrl}
               mapAttribution={mapAttribution}
-              setMapBounds={stableSetBounds}
-              setZoom={stableSetZoom}
+              setMapBounds={onBoundsChange}
+              setZoom={onZoomChange}
             />
           </MapContainer>
-          
           <button
             onClick={() => setIsFullScreen(false)}
             className="absolute top-4 right-4 z-[10000] p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

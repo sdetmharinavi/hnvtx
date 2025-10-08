@@ -14,6 +14,7 @@ import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
+import { LatLngBounds } from 'leaflet';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
@@ -35,6 +36,20 @@ export default function ScalableFiberNetworkDashboard() {
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
   const [allocationData, setAllocationData] = useState<AllocationSaveData | null>(null);
+  
+  // State for map interaction
+  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
+  const [zoom, setZoom] = useState(13);
+
+  // THE FIX: Memoize state setters to prevent re-renders in the child map component.
+  const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
+    setMapBounds(bounds);
+  }, []);
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setZoom(newZoom);
+  }, []);
+
 
   const handleSaveAllocation = (allocationData: AllocationSaveData) => {
     setAllocationData(allocationData);
@@ -167,6 +182,10 @@ export default function ScalableFiberNetworkDashboard() {
                   cables={data.ofcCables}
                   selectedSystem={selectedSystem}
                   visibleLayers={{ nodes: true, cables: true, systems: true }}
+                  mapBounds={mapBounds}
+                  zoom={zoom}
+                  onBoundsChange={handleBoundsChange}
+                  onZoomChange={handleZoomChange}
                 />
               </div>
             </div>

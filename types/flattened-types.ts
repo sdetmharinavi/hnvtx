@@ -1902,10 +1902,12 @@ export type V_system_connections_completeRow = {
     bandwidth_allocated_mbps: number | null;
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
+    connected_system_id: string | null;
     connected_system_name: string | null;
     connected_system_type_name: string | null;
     created_at: string | null;
     customer_name: string | null;
+    en_id: string | null;
     en_interface: string | null;
     en_ip: unknown | null;
     en_name: string | null;
@@ -1913,6 +1915,7 @@ export type V_system_connections_completeRow = {
     fiber_in: number | null;
     fiber_out: number | null;
     id: string | null;
+    media_type_id: string | null;
     media_type_name: string | null;
     remark: string | null;
     sdh_a_customer: string | null;
@@ -1924,7 +1927,9 @@ export type V_system_connections_completeRow = {
     sfp_capacity: string | null;
     sfp_port: string | null;
     sfp_serial_no: string | null;
+    sfp_type_id: string | null;
     sfp_type_name: string | null;
+    sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown | null;
     sn_name: string | null;
