@@ -9,47 +9,44 @@ import { useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormDateInput, FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from '@/components/common/form';
-import { SystemConnectionFormData, useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
 const formSchema = system_connectionsInsertSchema.extend({
-  // SFP fields
   sfp_port: z.string().nullable().optional(),
-  sfp_type_id: z.string().uuid().nullable().optional(),
+  sfp_type_id: z.uuid().nullable().optional(),
   sfp_capacity: z.string().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
   customer_name: z.string().nullable().optional(),
   bandwidth_allocated_mbps: z.number().nullable().optional(),
-  // SDH fields
   stm_no: z.string().nullable().optional(),
   carrier: z.string().nullable().optional(),
   a_slot: z.string().nullable().optional(),
   a_customer: z.string().nullable().optional(),
   b_slot: z.string().nullable().optional(),
   b_customer: z.string().nullable().optional(),
-  // VMUX fields
   subscriber: z.string().nullable().optional(),
   c_code: z.string().nullable().optional(),
   channel: z.string().nullable().optional(),
   tk: z.string().nullable().optional(),
-  // Override media_type_id to be required since the database function expects it
-  media_type_id: z.string().uuid(),
+  media_type_id: z.uuid(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   parentSystem: V_systems_completeRowSchema;
   editingConnection: V_system_connections_completeRowSchema | null;
-  refetch: () => void;
+  // THE FIX: Accept onSubmit function and isLoading state from parent.
+  onSubmit: (data: SystemConnectionFormValues) => void;
+  isLoading: boolean;
 }
 
-export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ isOpen, onClose, parentSystem, editingConnection, refetch }) => {
+export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ isOpen, onClose, parentSystem, editingConnection, onSubmit, isLoading }) => {
   const supabase = createClient();
   const isEditMode = !!editingConnection;
 
@@ -61,7 +58,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map(t => ({ value: t.id, label: t.name })), [mediaTypes]);
   const sfpTypeOptions = useMemo(() => sfpTypes.data.map(t => ({ value: t.id, label: t.name })), [sfpTypes]);
 
-  const { control, handleSubmit, register, formState: { errors, isSubmitting }, reset } = useForm<FormValues>({
+  const { control, handleSubmit, register, formState: { errors }, reset } = useForm<SystemConnectionFormValues>({
     resolver: zodResolver(formSchema),
   });
 
@@ -111,67 +108,22 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
       }
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
-
-  const upsertMutation = useUpsertSystemConnection();
-
-  const onValidSubmit = useCallback((formData: FormValues) => {
+  
+  // THE FIX: This function now simply calls the onSubmit prop.
+  const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
     if (!formData.media_type_id) {
       toast.error("Media Type is a required field.");
       return;
     }
-
-    const payload: SystemConnectionFormData = {
-      p_id: isEditMode ? editingConnection.id! : undefined,
-      p_system_id: parentSystem.id!,
-      p_media_type_id: formData.media_type_id,
-      p_status: formData.status ?? true,
-      p_sn_id: formData.sn_id ?? undefined,
-      p_en_id: formData.en_id ?? undefined,
-      p_connected_system_id: formData.connected_system_id ?? undefined,
-      p_sn_ip: formData.sn_ip ?? undefined,
-      p_sn_interface: formData.sn_interface ?? undefined,
-      p_en_ip: formData.en_ip ?? undefined,
-      p_en_interface: formData.en_interface ?? undefined,
-      p_bandwidth_mbps: formData.bandwidth_mbps ?? undefined,
-      p_vlan: formData.vlan ?? undefined,
-      p_commissioned_on: formData.commissioned_on ?? undefined,
-      p_remark: formData.remark ?? undefined,
-      p_sfp_port: formData.sfp_port ?? undefined,
-      p_sfp_type_id: formData.sfp_type_id ?? undefined,
-      p_sfp_capacity: formData.sfp_capacity ?? undefined,
-      p_sfp_serial_no: formData.sfp_serial_no ?? undefined,
-      p_fiber_in: formData.fiber_in ?? undefined,
-      p_fiber_out: formData.fiber_out ?? undefined,
-      p_customer_name: formData.customer_name ?? undefined,
-      p_bandwidth_allocated_mbps: formData.bandwidth_allocated_mbps ?? undefined,
-      p_stm_no: formData.stm_no ?? undefined,
-      p_carrier: formData.carrier ?? undefined,
-      p_a_slot: formData.a_slot ?? undefined,
-      p_a_customer: formData.a_customer ?? undefined,
-      p_b_slot: formData.b_slot ?? undefined,
-      p_b_customer: formData.b_customer ?? undefined,
-      p_subscriber: formData.subscriber ?? undefined,
-      p_c_code: formData.c_code ?? undefined,
-      p_channel: formData.channel ?? undefined,
-      p_tk: formData.tk ?? undefined,
-    };
-
-    upsertMutation.mutate(payload, {
-      onSuccess: () => {
-        refetch();
-        onClose();
-      }
-    });
-  }, [parentSystem.id, isEditMode, editingConnection, upsertMutation, refetch, onClose]);
-
-  const isLoading = isSubmitting || upsertMutation.isPending;
+    onSubmit(formData);
+  }, [onSubmit]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit System Connection" : "Add System Connection"} size="xl">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit)}
         onCancel={onClose}
-        isLoading={isLoading}
+        isLoading={isLoading} // Use loading state from props
         title={isEditMode ? "Edit Connection" : "New Connection"}
         standalone={false}
       >

@@ -373,20 +373,20 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Generate a convenience export object
-    output += '// ============= CONVENIENCE EXPORTS =============\n\n';
-    output += 'export const schemas = {\n';
+    // // Generate a convenience export object
+    // output += '// ============= CONVENIENCE EXPORTS =============\n\n';
+    // output += 'export const schemas = {\n';
 
-    for (const type of types) {
-      if (type.properties.length > 0) {
-        const schemaName = `${type.name
-          .charAt(0)
-          .toLowerCase()}${type.name.slice(1)}Schema`;
-        output += `  ${schemaName},\n`;
-      }
-    }
+    // for (const type of types) {
+    //   if (type.properties.length > 0) {
+    //     const schemaName = `${type.name
+    //       .charAt(0)
+    //       .toLowerCase()}${type.name.slice(1)}Schema`;
+    //     output += `  ${schemaName},\n`;
+    //   }
+    // }
 
-    output += '} as const;\n\n';
+    // output += '} as const;\n\n';
 
     // Generate type exports
     output += '// ============= TYPE EXPORTS =============\n\n';
@@ -477,3 +477,4 @@ async function main() {
 }
 
 main();
+
