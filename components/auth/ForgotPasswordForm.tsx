@@ -3,26 +3,23 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 import { FiMail, FiArrowLeft, FiLoader, FiCheck } from "react-icons/fi";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { isValidEmail } from "@/utils/validationUtils";
 import { ButtonSpinner } from "../common/ui/LoadingSpinner";
-import { useRouter } from "next/navigation";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  // THE FIX: Use component state instead of localStorage to manage UI flow.
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [sentToEmail, setSentToEmail] = useState("");
+
   const { forgotPassword } = useAuth();
-  const router = useRouter();
 
   const validateEmail = isValidEmail(email);
-
-  const isResetEmailSent = () => {
-    return typeof window !== 'undefined' && !!localStorage.getItem("reset_email_sent");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,16 +35,14 @@ export default function ForgotPasswordForm() {
     }
 
     setIsLoading(true);
-    // CORRECTED: Destructure the new return shape
     const { success, error: responseError } = await forgotPassword(email);
     setIsLoading(false);
 
     if (success) {
-      localStorage.setItem("reset_email_sent", email);
+      setSentToEmail(email);
+      setIsEmailSent(true); // Switch to the confirmation view
       setEmail("");
       setError("");
-      // Force a re-render to show the confirmation screen
-      router.refresh(); 
     } else {
       setError(responseError?.message || "Failed to send reset email.");
     }
@@ -56,20 +51,18 @@ export default function ForgotPasswordForm() {
   const handleResendEmail = async () => {
     setIsLoading(true);
     setError("");
-    const sentEmail = localStorage.getItem("reset_email_sent");
-    if (sentEmail) {
-      await forgotPassword(sentEmail);
+    if (sentToEmail) {
+      await forgotPassword(sentToEmail);
     }
     setIsLoading(false);
   };
-  
+
   const clearResetState = () => {
-    localStorage.removeItem("reset_email_sent");
-    router.refresh();
+    setIsEmailSent(false);
+    setSentToEmail("");
   };
 
-
-  if (isResetEmailSent()) {
+  if (isEmailSent) {
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className='w-full max-w-md mx-auto'>
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8'>
@@ -81,7 +74,7 @@ export default function ForgotPasswordForm() {
             <h2 className='text-2xl font-bold text-gray-900 dark:text-white mb-2'>Check Your Email</h2>
 
             <p className='text-gray-600 dark:text-gray-400 mb-6'>
-              We&apos;ve sent a password reset link to <span className="font-medium text-gray-800 dark:text-gray-200">{localStorage.getItem("reset_email_sent")}</span>.
+              We&apos;ve sent a password reset link to <span className="font-medium text-gray-800 dark:text-gray-200">{sentToEmail}</span>.
             </p>
 
             <div className='space-y-4'>
@@ -108,7 +101,7 @@ export default function ForgotPasswordForm() {
                 className='w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'>
                 Use a different email address
               </motion.button>
-              
+
               <Link
                 href='/login'
                 className='inline-flex items-center justify-center w-full text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium transition-colors'
