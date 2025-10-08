@@ -4,7 +4,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import { FiDatabase, FiPlus } from 'react-icons/fi';
+import { FiDatabase } from 'react-icons/fi';
 import { toast } from 'sonner';
 import {
   PageHeader,
