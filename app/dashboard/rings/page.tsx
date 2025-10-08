@@ -52,13 +52,15 @@ const RingsPage = () => {
     tableName: 'rings', dataQueryHook: useRingsData,
   });
 
-  const { data: ringTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+  const { data: ringTypesData } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: 'RING_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
     orderBy: [{ column: 'name' }]
   });
-  const { data: maintenanceAreas = [] } = useTableQuery(supabase, 'maintenance_areas', {
+  const ringTypes = ringTypesData?.data || [];
+  const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', {
     filters: { status: true }, orderBy: [{ column: 'name' }]
   });
+  const maintenanceAreas = maintenanceAreasData?.data || [];
 
   const columns = RingsColumns(rings);
   const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
