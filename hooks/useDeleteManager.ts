@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers'; // <-- IMPORT THE CORRECT HOOK
+import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers';
 
 interface DeleteItem {
   id: string;
@@ -30,15 +30,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const supabase = createClient();
 
-  // ---  USE THE CORRECT MUTATION BASED ON TABLE NAME ---
-
-  // 1. Get the generic bulk delete for all other tables.
   const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(supabase, tableName).bulkDelete;
-  
-  // 2. Get the specific, API-driven user delete mutation.
   const { mutate: userDelete, isPending: isUserDeletePending } = useAdminBulkDeleteUsers();
-
-  // 3. The overall loading state depends on which mutation is active.
   const isPending = isGenericDeletePending || isUserDeletePending;
 
   const deleteSingle = useCallback((item: DeleteItem) => {
@@ -84,7 +77,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       }
     };
 
-    // 4. THE CORE LOGIC: Check the table name and call the appropriate mutation.
     if (tableName === 'user_profiles') {
       if (itemsToDelete.length > 0) {
         const idsToDelete = itemsToDelete.map(item => item.id);
@@ -94,7 +86,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         handleCancel();
       }
     } else {
-      // For all other tables, use the generic client-side delete.
       if (itemsToDelete.length > 0) {
         const idsToDelete = itemsToDelete.map(item => item.id);
         genericBulkDelete({ ids: idsToDelete }, mutationOptions);
@@ -107,7 +98,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const getConfirmationMessage = useCallback(() => {
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
-        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action is permanent and will remove the user's login access.`;
+        // THE FIX: Use a generic, safe message.
+        return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action cannot be undone.`;
       }
       return `Are you sure you want to delete these ${itemsToDelete.length} items? This action is permanent.`;
     }
@@ -126,6 +118,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     isConfirmModalOpen,
     isPending,
     confirmationMessage: getConfirmationMessage(),
-    deleteConfig: { items: itemsToDelete, filter: bulkFilter },
+    itemToDelete: itemsToDelete[0] ?? null, // Keep for single-item context
   };
 }

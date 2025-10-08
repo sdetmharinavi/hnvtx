@@ -3604,10 +3604,12 @@ export type Database = {
           bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
+          connected_system_id: string | null
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
           customer_name: string | null
+          en_id: string | null
           en_interface: string | null
           en_ip: unknown | null
           en_name: string | null
@@ -3615,6 +3617,7 @@ export type Database = {
           fiber_in: number | null
           fiber_out: number | null
           id: string | null
+          media_type_id: string | null
           media_type_name: string | null
           remark: string | null
           sdh_a_customer: string | null
@@ -3626,7 +3629,9 @@ export type Database = {
           sfp_capacity: string | null
           sfp_port: string | null
           sfp_serial_no: string | null
+          sfp_type_id: string | null
           sfp_type_name: string | null
+          sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown | null
           sn_name: string | null
@@ -3643,6 +3648,76 @@ export type Database = {
           vmux_tk: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
+            columns: ["sfp_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
+            columns: ["sfp_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_media_type_id_fkey"
+            columns: ["media_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_media_type_id_fkey"
+            columns: ["media_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "system_connections_system_id_fkey"
             columns: ["system_id"]

@@ -76,10 +76,10 @@ export default function SystemConnectionsPage() {
   } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
     tableName: 'system_connections',
     dataQueryHook: useSystemConnectionsData,
-    displayNameField: 'id',
+    // THE FIX: Provide an array of fields to try for the display name.
+    displayNameField: ['customer_name', 'connected_system_name', 'system_name'],
   });
 
-  // FIXED: Call the hook directly at the top level instead of inside useMemo
   const columns = SystemConnectionsTableColumns(connections);
 
   const tableActions = useMemo(
