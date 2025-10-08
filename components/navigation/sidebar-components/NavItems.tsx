@@ -2,23 +2,23 @@ import { UserRole } from '@/types/user-roles';
 import { NavItem as NavItemType } from '@/components/navigation/sidebar-components/sidebar-types';
 import { useMemo } from 'react';
 import {
-  FiDatabase,
   FiHome,
   FiMap,
   FiUsers,
-  FiServer,
   FiLayers,
   FiCpu,
   FiMapPin,
   FiList,
   FiGitBranch,
 } from 'react-icons/fi';
-import { FaDiagramNext } from 'react-icons/fa6';
+import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
 import { ImUserTie } from 'react-icons/im';
 import { GiElectric, GiLinkedRings} from 'react-icons/gi';
+import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
 import {FaRoute } from 'react-icons/fa';
+import { BiSitemap } from 'react-icons/bi';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -55,7 +55,7 @@ function NavItems() {
       {
         id: 'base-menu',
         label: 'Base Structure',
-        icon: <FiServer className="h-5 w-5" />,
+        icon: <BiSitemap className="h-5 w-5" />,
         roles: [
           UserRole.ADMIN,
           UserRole.VIEWER,
@@ -150,14 +150,14 @@ function NavItems() {
       {
         id: 'systems',
         label: 'Systems',
-        icon: <FiDatabase className="h-5 w-5" />,
+        icon: <GoServer className="h-5 w-5" />,
         href: '/dashboard/systems',
         roles: [UserRole.ADMIN],
       },
       {
         id: 'diagrams',
         label: 'Diagrams',
-        icon: <FaDiagramNext className="h-5 w-5" />,
+        icon: <TfiLayoutMediaOverlayAlt className="h-5 w-5" />,
         href: '/dashboard/diagrams',
         roles: [UserRole.ADMIN],
       },

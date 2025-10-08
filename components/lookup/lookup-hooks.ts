@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useDeduplicated, useTableDelete, useTableQuery, useToggleStatus } from "@/hooks/database";
-import { Lookup_typesUpdateSchema } from "@/schemas/zod-schemas";
+import { Lookup_typesUpdateSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 
 export function useLookupTypes(initialCategory = "") {
   const router = useRouter();
@@ -22,9 +22,11 @@ export function useLookupTypes(initialCategory = "") {
     error: categoriesError,
     refetch: refetchCategories
   } = useDeduplicated(supabase, "lookup_types", {
-    columns: ["category", "id"],
-    orderBy: [{ column: "created_at", ascending: true }],
+    // CORRECTED: Deduplicate by 'category' only to get a unique list of categories.
+    columns: ["category"], 
+    orderBy: [{ column: "category", ascending: true }],
   });
+  const categories = categoriesResult?.data || [];
 
   const {
     data: lookupTypesResult,
@@ -40,13 +42,10 @@ export function useLookupTypes(initialCategory = "") {
       })
     }
   });
+  const lookupTypes = lookupTypesResult?.data || [];
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, "lookup_types");
   const { mutate: deleteRowsById } = useTableDelete(supabase, "lookup_types");
-
-  // Derived state
-  const categories = categoriesResult?.data || [];
-  const lookupTypes = lookupTypesResult?.data || [];
   
   const hasCategories = categories.length > 0;
   const hasSelectedCategory = !!selectedCategory;
@@ -137,7 +136,7 @@ export function useLookupTypes(initialCategory = "") {
       isLookupModalOpen,
       searchTerm,
       editingLookup,
-      categories,
+      categories: categories as Lookup_typesRowSchema[],
       lookupTypes: filteredLookups,
       isLoading,
       hasCategories,

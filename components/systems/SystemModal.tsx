@@ -8,7 +8,7 @@ import { useTableQuery } from '@/hooks/database';
 import { useRpcMutation } from '@/hooks/database/rpc-queries';
 import type { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
 import { createClient } from '@/utils/supabase/client';
-import { useForm, FieldErrors } from 'react-hook-form'; // Import FieldErrors
+import { useForm, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Modal } from '@/components/common/ui';
 import { FormCard, FormDateInput, FormInput, FormIPAddressInput, FormSearchableSelect, FormSwitch, FormTextarea } from '@/components/common/form';
@@ -29,9 +29,9 @@ const createDefaultFormValues = (): SystemFormValues => ({
   s_no: '',
   status: true,
   ring_id: null,
-  gne: '',
+  gne: null,
   make: '',
-  vm_id: '',
+  vm_id: null,
 });
 
 interface SystemModalProps {
@@ -46,21 +46,27 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
-  const { data: systemTypesData = { data: [], count: 0 } } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, code, category', filters: { category: 'SYSTEM_TYPES' } });
-  const { data: nodesData = { data: [], count: 0 } } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
-  const { data: maintenanceTerminalsData = { data: [], count: 0 } } = useTableQuery(supabase, 'maintenance_areas', { columns: 'id, name' });
-  const { data: ringsData = { data: [], count: 0 } } = useTableQuery(supabase, 'rings', { columns: 'id, name' });
+  const { data: systemTypesResult = { data: [] } } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, is_ring_based, is_sdh, code', filters: { category: 'SYSTEM_TYPES' }, orderBy: [{ column: 'code', ascending: true }] });
+  const systemTypes = systemTypesResult.data;
 
-  // Extract data arrays for use in useMemo hooks
-  const systemTypes = useMemo(() => systemTypesData.data || [], [systemTypesData.data]);
-  const nodes = useMemo(() => nodesData.data || [], [nodesData.data]);
-  const maintenanceTerminals = useMemo(() => maintenanceTerminalsData.data || [], [maintenanceTerminalsData.data]);
-  const rings = useMemo(() => ringsData.data || [], [ringsData.data]);
+  const { data: nodesResult = { data: [] } } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
+  const nodes = nodesResult.data;
 
-  const systemTypeOptions = useMemo(() => systemTypes.map(st => ({ value: st.id, label: st.code ?? 'Unknown' })), [systemTypes]);
-  const nodeOptions = useMemo(() => nodes.map(n => ({ value: n.id, label: n.name ?? 'Unknown' })), [nodes]);
-  const maintenanceTerminalOptions = useMemo(() => maintenanceTerminals.map(mt => ({ value: mt.id, label: mt.name ?? 'Unknown' })), [maintenanceTerminals]);
-  const ringOptions = useMemo(() => rings.map(r => ({ value: r.id, label: r.name ?? 'Unknown' })), [rings]);
+  const { data: maintenanceTerminalsResult = { data: [] } } = useTableQuery(supabase, 'maintenance_areas', { columns: 'id, name' });
+  const maintenanceTerminals = maintenanceTerminalsResult.data;
+
+  const { data: ringsResult = { data: [] } } = useTableQuery(supabase, 'rings', { columns: 'id, name' });
+  const rings = ringsResult.data;
+
+  const systemTypeOptions = useMemo(() => 
+    systemTypes
+      .filter(st => st.name !== 'DEFAULT')
+      .map(st => ({ value: st.id, label: st.code ?? st.name ?? "" })), 
+  [systemTypes]);
+  
+  const nodeOptions = useMemo(() => nodes.map(n => ({ value: n.id, label: n.name })), [nodes]);
+  const maintenanceTerminalOptions = useMemo(() => maintenanceTerminals.map(mt => ({ value: mt.id, label: mt.name })), [maintenanceTerminals]);
+  const ringOptions = useMemo(() => rings.map(r => ({ value: r.id, label: r.name })), [rings]);
 
   const {
     register,
@@ -82,8 +88,8 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
 
   const selectedSystemType = useMemo(() => systemTypes.find(st => st.id === selectedSystemTypeId), [systemTypes, selectedSystemTypeId]);
 
-  const isRingBasedSystem = useMemo(() => selectedSystemType?.category?.includes('RING_BASED'), [selectedSystemType]);
-  const isSdhSystem = useMemo(() => selectedSystemType?.name.includes('SDH'), [selectedSystemType]);
+  const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based, [selectedSystemType]);
+  const isSdhSystem = useMemo(() => selectedSystemType?.is_sdh, [selectedSystemType]);
   const isVmuxSystem = useMemo(() => selectedSystemType?.name === 'VMUX', [selectedSystemType]);
   const needsStep2 = isRingBasedSystem || isSdhSystem || isVmuxSystem;
 
@@ -108,10 +114,10 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
                 remark: rowData.remark || '',
                 s_no: rowData.s_no || '',
                 status: rowData.status ?? true,
-                ring_id: rowData.ring_id,
-                gne: rowData.sdh_gne,
-                make: rowData.make,
-                vm_id: rowData.vmux_vm_id,
+                ring_id: rowData.ring_id ?? null,
+                gne: rowData.sdh_gne ?? null,
+                make: rowData.make ?? '',
+                vm_id: rowData.vmux_vm_id ?? null,
             });
         } else {
             reset(createDefaultFormValues());
@@ -139,70 +145,86 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
 
   const onValidSubmit = useCallback((formData: SystemFormValues) => {
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+        p_id: isEditMode ? rowData!.id! : undefined,
         p_system_name: formData.system_name!,
         p_system_type_id: formData.system_type_id!,
         p_node_id: formData.node_id!,
         p_status: formData.status ?? true,
         p_ip_address: formData.ip_address || undefined,
         p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
-        p_commissioned_on: formData.commissioned_on ? formData.commissioned_on : undefined,
+        p_commissioned_on: formData.commissioned_on || undefined,
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
-        p_id: isEditMode ? rowData!.id! : undefined,
-        p_ring_id: isRingBasedSystem ? (formData.ring_id || undefined) : undefined,
-        p_gne: isSdhSystem ? (formData.gne || undefined) : undefined,
         p_make: formData.make || undefined,
-        p_vm_id: isVmuxSystem ? (formData.vm_id || undefined) : undefined,
+        p_ring_id: (isRingBasedSystem && formData.ring_id) ? formData.ring_id : undefined,
+        p_gne: (isSdhSystem && formData.gne) ? formData.gne : undefined,
+        p_vm_id: (isVmuxSystem && formData.vm_id) ? formData.vm_id : undefined,
     };
     upsertSystemMutation.mutate(payload);
   }, [isEditMode, rowData, upsertSystemMutation, isRingBasedSystem, isSdhSystem, isVmuxSystem]);
   
-  // ** Create the onInvalid handler.**
   const onInvalidSubmit = (errors: FieldErrors<SystemFormValues>) => {
     toast.error("Validation failed. Please check required fields on all steps.");
-    // If the error is not in the current step, switch to step 1 to show it.
     const step1Fields: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
     const hasErrorInStep1 = Object.keys(errors).some(key => step1Fields.includes(key as keyof SystemFormValues));
     if (hasErrorInStep1 && step !== 1) {
         setStep(1);
     }
   };
-
-  const handleNext = async () => {
+  
+  // SIMPLIFIED: This function now ONLY handles moving to the next step.
+  const handleNext = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault(); // Prevent any default form submission
+    e?.stopPropagation(); // Stop event bubbling
+    
     const fieldsToValidate: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
       if (needsStep2) {
         setStep(2);
-      } else {
-        handleSubmit(onValidSubmit, onInvalidSubmit)();
       }
+      // The 'else' block that caused auto-submission is now removed.
     } else {
       toast.error("Please fill in all required fields to continue.");
     }
   };
 
-  const renderFooter = () => (
-    <div className="flex justify-end gap-2">
-      {step > 1 && (
-        <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isSubmitting || upsertSystemMutation.isPending}>
-          Back
-        </Button>
-      )}
-      <Button type="button" variant="secondary" onClick={handleClose} disabled={isSubmitting || upsertSystemMutation.isPending}>
-        Cancel
-      </Button>
-      {step === 1 ? (
-        <Button type="button" onClick={handleNext} disabled={isSubmitting}>
-          {needsStep2 ? 'Next' : (isEditMode ? 'Update System' : 'Create System')}
-        </Button>
-      ) : (
-        <Button type="submit" disabled={isSubmitting || upsertSystemMutation.isPending}>
+  // CORRECTED: The footer logic is now explicit and separates navigation from submission.
+  const renderFooter = () => {
+    const isSubmittingAll = isSubmitting || upsertSystemMutation.isPending;
+    
+    // Case 1: We are on Step 1 AND the selected type requires more info.
+    if (step === 1 && needsStep2) {
+      return (
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={handleClose} disabled={isSubmittingAll}>Cancel</Button>
+          <Button type="button" onClick={handleNext} disabled={isSubmittingAll}>Next</Button>
+        </div>
+      );
+    }
+
+    // Case 2: We are on Step 2.
+    if (step === 2) {
+      return (
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isSubmittingAll}>Back</Button>
+          <Button type="submit" disabled={isSubmittingAll}>
+            {isEditMode ? 'Update System' : 'Create System'}
+          </Button>
+        </div>
+      );
+    }
+    
+    // Case 3 (Default): We are on Step 1 and NO further steps are needed.
+    return (
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={handleClose} disabled={isSubmittingAll}>Cancel</Button>
+        <Button type="submit" disabled={isSubmittingAll}>
           {isEditMode ? 'Update System' : 'Create System'}
         </Button>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const step1Fields = (
     <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
@@ -250,7 +272,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, re
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-0 w-0 transparent">
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
