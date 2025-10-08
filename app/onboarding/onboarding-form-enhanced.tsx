@@ -1,62 +1,23 @@
 // path: app/onboarding/onboarding-form-enhanced.tsx
 
-"use client";
-
-import { useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
-import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
 import { toast } from "sonner";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User_profilesUpdateSchema, user_profilesUpdateSchema } from "@/schemas/zod-schemas";
-
+import { OnboardingFormData, onboardingFormSchema } from "@/schemas/custom-schemas";
+import { User_profilesUpdateSchema } from "@/schemas/zod-schemas";
 import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
-import { z } from "zod";
+import { useEffect } from "react";
+import { UserRole } from "@/types/user-roles";
 import { Input, Label } from "@/components/common/ui";
-
-// NEW: Define specific shapes for nested JSONB fields for robust form validation.
-const addressSchema = z
-  .object({
-    street: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    zip_code: z.string().optional().nullable(),
-    country: z.string().optional().nullable(),
-  })
-  .nullable();
-
-const preferencesSchema = z
-  .object({
-    language: z.string().optional().nullable(),
-    theme: z.string().optional().nullable(),
-    // ADDED: Include our new flags in the schema
-    needsOnboarding: z.boolean().optional().nullable(),
-    showOnboardingPrompt: z.boolean().optional().nullable(),
-  })
-  .nullable();
-
-// NEW: Extend the base schema to include our specific nested shapes.
-const onboardingFormSchema = user_profilesUpdateSchema
-  .pick({
-    first_name: true,
-    last_name: true,
-    avatar_url: true,
-    date_of_birth: true,
-    designation: true,
-    phone_number: true,
-  })
-  .extend({
-    address: addressSchema,
-    preferences: preferencesSchema,
-  });
-
-type OnboardingFormData = z.infer<typeof onboardingFormSchema>;
-
-// Helper to safely cast unknown to a record or return an empty object
 const toObject = (data: unknown): Record<string, unknown> => {
   if (data && typeof data === "object") {
+    return Object.fromEntries(
+      Object.entries(data).map(([key, value]) => [key, typeof value === "object" ? toObject(value) : value])
+    );
     return data as Record<string, unknown>;
   }
   return {};
@@ -82,7 +43,8 @@ export default function OnboardingFormEnhanced() {
     onSuccess: (data) => {
       toast.success("Profile updated successfully!");
       refetch();
-      reset(data[0] as OnboardingFormData);
+      // THE FIX: Cast the reset data to the correct form data type.
+      reset(data[0] as unknown as OnboardingFormData);
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
@@ -124,20 +86,41 @@ export default function OnboardingFormEnhanced() {
       return;
     }
 
+    // THE FIX: Build the 'updates' payload to strictly conform to Partial<User_profilesUpdateSchema>
     const updates: Partial<User_profilesUpdateSchema> = {};
-    for (const key in dirtyFields) {
-      const fieldName = key as keyof OnboardingFormData;
-      // Skip preferences, we will handle it separately
-      if (fieldName !== 'preferences') {
-        updates[fieldName] = data[fieldName];
+    
+    // Iterate over dirty fields to build the payload, handling type conversions for specific fields like 'role'
+    (Object.keys(dirtyFields) as Array<keyof OnboardingFormData>).forEach(key => {
+      if (key === 'address' || key === 'preferences') {
+        // These are JSONB fields, so they are assignable to the `Json` type
+        updates[key] = data[key];
+      } else if (key === 'role') {
+        // Handle role field specifically - convert string to UserRole enum if valid
+        const roleValue = data[key];
+        if (roleValue && typeof roleValue === 'string') {
+          // Try to convert string to UserRole enum value
+          if (Object.values(UserRole).includes(roleValue as UserRole)) {
+            (updates as User_profilesUpdateSchema)[key] = roleValue as UserRole;
+          }
+        } else if (roleValue === null || roleValue === undefined) {
+          (updates as User_profilesUpdateSchema)[key] = roleValue as undefined;
+        }
+      } else if (key in data) {
+        // Handle all other fields - ensure null values are properly handled
+        const value = data[key];
+        if (value === null) {
+          (updates as User_profilesUpdateSchema)[key] = undefined;
+        } else {
+          (updates as User_profilesUpdateSchema)[key] = value;
+        }
       }
-    }
+    });
 
-    // ** Intelligently merge preferences**
+    // Handle preferences separately to ensure needsOnboarding is set
     const newPreferences = {
-      ...toObject(profile?.preferences), // Start with existing preferences
-      ...toObject(data.preferences),      // Overwrite with any form changes
-      needsOnboarding: false,            // Explicitly set onboarding to false
+      ...toObject(profile?.preferences),
+      ...toObject(data.preferences),
+      needsOnboarding: false,
     };
     updates.preferences = newPreferences;
 

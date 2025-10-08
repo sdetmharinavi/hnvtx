@@ -16,7 +16,7 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
+import { Filters, usePagedData, useTableQuery, useRpcMutation, RpcFunctionArgs } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -27,8 +27,8 @@ import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { SystemFormData } from '@/schemas/system-schemas';
 
-// This data hook remains the same
 const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
@@ -68,6 +68,7 @@ const useSystemsData = (
 
 export default function SystemsPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
 
   const {
@@ -80,10 +81,19 @@ export default function SystemsPage() {
     displayNameField: 'system_name'
   });
 
+  // THE FIX: Mutation hook is now in the page component.
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
+    onSuccess: () => {
+      toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
+      refetch();
+      editModal.close();
+    },
+    onError: (err) => toast.error(`Failed to save system: ${err.message}`),
+  });
+
   const { data: systemTypesResult = { data: [] } } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
   const systemTypes = systemTypesResult.data;
 
-  // Handler to navigate to the new provisioning page
   const handleView = useCallback((system: V_systems_completeRowSchema) => {
     if (system.is_ring_based) {
       router.push(`/dashboard/systems/${system.id}`);
@@ -95,7 +105,7 @@ export default function SystemsPage() {
   const tableActions = useMemo(
     () => createStandardActions<V_systems_completeRowSchema>({
         onEdit: editModal.openEdit,
-        onView: handleView, // Use the new handler
+        onView: handleView,
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
       }),
@@ -115,6 +125,32 @@ export default function SystemsPage() {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
+  
+  // THE FIX: New save handler to construct the payload and call the mutation.
+  const handleSave = useCallback((formData: SystemFormData) => {
+    const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
+    const isRingBased = selectedSystemType?.is_ring_based;
+    const isSdh = selectedSystemType?.is_sdh;
+    const isVmux = selectedSystemType?.name === 'VMUX';
+
+    const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+        p_id: editModal.record?.id ?? undefined,
+        p_system_name: formData.system_name!,
+        p_system_type_id: formData.system_type_id!,
+        p_node_id: formData.node_id!,
+        p_status: formData.status ?? true,
+        p_ip_address: formData.ip_address || undefined,
+        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
+        p_commissioned_on: formData.commissioned_on || undefined,
+        p_s_no: formData.s_no || undefined,
+        p_remark: formData.remark || undefined,
+        p_make: formData.make || undefined,
+        p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
+        p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
+        p_vm_id: (isVmux && formData.vm_id) ? formData.vm_id : undefined,
+    };
+    upsertSystemMutation.mutate(payload);
+  }, [editModal.record, upsertSystemMutation, systemTypes]);
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
@@ -169,12 +205,14 @@ export default function SystemsPage() {
           </SearchAndFilters>
         }
       />
-
+      
+      {/* THE FIX: Pass the new handleSave and mutation loading state to the modal */}
       <SystemModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         rowData={editModal.record}
-        refetch={refetch}
+        onSubmit={handleSave}
+        isLoading={upsertSystemMutation.isPending}
       />
 
       <ConfirmModal

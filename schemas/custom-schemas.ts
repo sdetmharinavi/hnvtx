@@ -7,6 +7,7 @@ import {
   junction_closuresRowSchema,
   fiber_splicesRowSchema,
   nodesRowSchema,
+  user_profilesUpdateSchema,
 } from '@/schemas/zod-schemas';
 
 // ============= AUTH & UI-SPECIFIC SCHEMAS =============
@@ -30,6 +31,38 @@ export const passwordWithConfirmationSchema = z.object({
 
 export type PasswordSchema = z.infer<typeof passwordSchema>;
 export type PasswordWithConfirmation = z.infer<typeof passwordWithConfirmationSchema>;
+
+// --- Onboarding Form Specific Schema ---
+// THE FIX: Define the detailed object shapes for our JSONB fields.
+const addressSchema = z
+  .object({
+    street: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    zip_code: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+  })
+  .nullable()
+  .optional();
+
+const preferencesSchema = z
+  .object({
+    language: z.string().optional().nullable(),
+    theme: z.string().optional().nullable(),
+    needsOnboarding: z.boolean().optional().nullable(),
+    showOnboardingPrompt: z.boolean().optional().nullable(),
+  })
+  .nullable()
+  .optional();
+
+export const onboardingFormSchema = user_profilesUpdateSchema.extend({
+  address: addressSchema,
+  preferences: preferencesSchema,
+});
+
+// THE FIX: Use z.input<> to get the type that the form will produce,
+// which is different from the fully parsed output type.
+export type OnboardingFormData = z.input<typeof onboardingFormSchema>;
 
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
 
