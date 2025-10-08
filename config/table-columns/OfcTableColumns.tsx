@@ -9,11 +9,9 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
     data: data,
 
     omit: [
-      'active_count',
       'created_at',
       'en_id',
       'id',
-      'inactive_count',
       'maintenance_area_name',
       'maintenance_terminal_id',
       'ofc_owner_id',
@@ -21,7 +19,6 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       'ofc_type_id',
       'ofc_type_name',
       'sn_id',
-      'total_count',
       'updated_at',
       'status'
     ],

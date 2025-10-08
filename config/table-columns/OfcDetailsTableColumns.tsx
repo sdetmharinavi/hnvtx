@@ -46,10 +46,7 @@ export const OfcDetailsTableColumns = (
       'ofc_route_name',
       'remark',
       'status',
-      'maintenance_area_name',
-      'active_count',
-      'inactive_count',
-      'total_count',
+      'maintenance_area_name'
     ],
     overrides: {
       updated_fiber_no_sn: { 
