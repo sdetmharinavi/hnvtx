@@ -4103,23 +4103,23 @@ export type Database = {
       get_available_cables_for_node: {
         Args: { p_node_id: string }
         Returns: {
-          asset_no: string
+          asset_no: string | null
           capacity: number
-          commissioned_on: string
-          created_at: string
-          current_rkm: number
+          commissioned_on: string | null
+          created_at: string | null
+          current_rkm: number | null
           en_id: string
           id: string
-          maintenance_terminal_id: string
+          maintenance_terminal_id: string | null
           ofc_owner_id: string
           ofc_type_id: string
-          remark: string
+          remark: string | null
           route_name: string
           sn_id: string
-          status: boolean
-          transnet_id: string
-          transnet_rkm: number
-          updated_at: string
+          status: boolean | null
+          transnet_id: string | null
+          transnet_rkm: number | null
+          updated_at: string | null
         }[]
       }
       get_available_fibers_for_cable: {
@@ -4311,6 +4311,62 @@ export type Database = {
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
         Returns: undefined
+      }
+      upsert_system_connection_with_details: {
+        Args: {
+          p_a_customer?: string
+          p_a_slot?: string
+          p_b_customer?: string
+          p_b_slot?: string
+          p_bandwidth_allocated_mbps?: number
+          p_bandwidth_mbps?: number
+          p_c_code?: string
+          p_carrier?: string
+          p_channel?: string
+          p_commissioned_on?: string
+          p_connected_system_id?: string
+          p_customer_name?: string
+          p_en_id?: string
+          p_en_interface?: string
+          p_en_ip?: unknown
+          p_fiber_in?: number
+          p_fiber_out?: number
+          p_id?: string
+          p_media_type_id: string
+          p_remark?: string
+          p_sfp_capacity?: string
+          p_sfp_port?: string
+          p_sfp_serial_no?: string
+          p_sfp_type_id?: string
+          p_sn_id?: string
+          p_sn_interface?: string
+          p_sn_ip?: unknown
+          p_status: boolean
+          p_stm_no?: string
+          p_subscriber?: string
+          p_system_id: string
+          p_tk?: string
+          p_vlan?: string
+        }
+        Returns: {
+          bandwidth_mbps: number | null
+          commissioned_on: string | null
+          connected_system_id: string | null
+          created_at: string | null
+          en_id: string | null
+          en_interface: string | null
+          en_ip: unknown | null
+          id: string
+          media_type_id: string | null
+          remark: string | null
+          sn_id: string | null
+          sn_interface: string | null
+          sn_ip: unknown | null
+          status: boolean | null
+          system_id: string
+          updated_at: string | null
+          vlan: string | null
+        }[]
       }
       upsert_system_with_details: {
         Args: {

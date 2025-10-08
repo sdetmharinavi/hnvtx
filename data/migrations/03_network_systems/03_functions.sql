@@ -82,6 +82,156 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
+    -- Core system_connections fields
+    p_system_id UUID,
+    p_media_type_id UUID,
+    p_status BOOLEAN,
+    p_id UUID DEFAULT NULL,
+    p_sn_id UUID DEFAULT NULL,
+    p_en_id UUID DEFAULT NULL,
+    p_connected_system_id UUID DEFAULT NULL,
+    p_sn_ip INET DEFAULT NULL,
+    p_sn_interface TEXT DEFAULT NULL,
+    p_en_ip INET DEFAULT NULL,
+    p_en_interface TEXT DEFAULT NULL,
+    p_bandwidth_mbps INT DEFAULT NULL,
+    p_vlan TEXT DEFAULT NULL,
+    p_commissioned_on DATE DEFAULT NULL,
+    p_remark TEXT DEFAULT NULL,
+    
+    -- SFP-based connection fields (for CPAN/MAAN)
+    p_sfp_port TEXT DEFAULT NULL,
+    p_sfp_type_id UUID DEFAULT NULL,
+    p_sfp_capacity TEXT DEFAULT NULL,
+    p_sfp_serial_no TEXT DEFAULT NULL,
+    p_fiber_in INT DEFAULT NULL,
+    p_fiber_out INT DEFAULT NULL,
+    p_customer_name TEXT DEFAULT NULL,
+    p_bandwidth_allocated_mbps INT DEFAULT NULL,
+
+    -- SDH connection fields
+    p_stm_no TEXT DEFAULT NULL,
+    p_carrier TEXT DEFAULT NULL,
+    p_a_slot TEXT DEFAULT NULL,
+    p_a_customer TEXT DEFAULT NULL,
+    p_b_slot TEXT DEFAULT NULL,
+    p_b_customer TEXT DEFAULT NULL,
+
+    -- VMUX connection fields
+    p_subscriber TEXT DEFAULT NULL,
+    p_c_code TEXT DEFAULT NULL,
+    p_channel TEXT DEFAULT NULL,
+    p_tk TEXT DEFAULT NULL
+)
+RETURNS SETOF public.system_connections
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_connection_id UUID;
+    v_system_type_record public.lookup_types;
+BEGIN
+    -- Determine the type of the parent system to decide which subtype table to use
+    SELECT lt.* INTO v_system_type_record
+    FROM public.systems s
+    JOIN public.lookup_types lt ON s.system_type_id = lt.id
+    WHERE s.id = p_system_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Parent system with ID % not found', p_system_id;
+    END IF;
+
+    -- Step 1: Upsert the main system_connections record
+    INSERT INTO public.system_connections (
+        id, system_id, media_type_id, status, sn_id, en_id, connected_system_id,
+        sn_ip, sn_interface, en_ip, en_interface, bandwidth_mbps, vlan,
+        commissioned_on, remark, updated_at
+    ) VALUES (
+        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id, p_connected_system_id,
+        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth_mbps, p_vlan,
+        p_commissioned_on, p_remark, NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        media_type_id = EXCLUDED.media_type_id,
+        status = EXCLUDED.status,
+        sn_id = EXCLUDED.sn_id,
+        en_id = EXCLUDED.en_id,
+        connected_system_id = EXCLUDED.connected_system_id,
+        sn_ip = EXCLUDED.sn_ip,
+        sn_interface = EXCLUDED.sn_interface,
+        en_ip = EXCLUDED.en_ip,
+        en_interface = EXCLUDED.en_interface,
+        bandwidth_mbps = EXCLUDED.bandwidth_mbps,
+        vlan = EXCLUDED.vlan,
+        commissioned_on = EXCLUDED.commissioned_on,
+        remark = EXCLUDED.remark,
+        updated_at = NOW()
+    RETURNING id INTO v_connection_id;
+
+    -- Step 2: Handle subtype tables based on the parent system's type flags
+    
+    -- Handle SFP-based connections (CPAN/MAAN)
+    IF v_system_type_record.is_ring_based = true THEN
+        INSERT INTO public.sfp_based_connections (
+            system_connection_id, sfp_port, sfp_type_id, sfp_capacity, sfp_serial_no,
+            fiber_in, fiber_out, customer_name, bandwidth_allocated_mbps
+        ) VALUES (
+            v_connection_id, p_sfp_port, p_sfp_type_id, p_sfp_capacity, p_sfp_serial_no,
+            p_fiber_in, p_fiber_out, p_customer_name, p_bandwidth_allocated_mbps
+        )
+        ON CONFLICT (system_connection_id) DO UPDATE SET
+            sfp_port = EXCLUDED.sfp_port,
+            sfp_type_id = EXCLUDED.sfp_type_id,
+            sfp_capacity = EXCLUDED.sfp_capacity,
+            sfp_serial_no = EXCLUDED.sfp_serial_no,
+            fiber_in = EXCLUDED.fiber_in,
+            fiber_out = EXCLUDED.fiber_out,
+            customer_name = EXCLUDED.customer_name,
+            bandwidth_allocated_mbps = EXCLUDED.bandwidth_allocated_mbps;
+    END IF;
+
+    -- Handle SDH connections
+    IF v_system_type_record.is_sdh = true THEN
+        INSERT INTO public.sdh_connections (
+            system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
+        ) VALUES (
+            v_connection_id, p_stm_no, p_carrier, p_a_slot, p_a_customer, p_b_slot, p_b_customer
+        )
+        ON CONFLICT (system_connection_id) DO UPDATE SET
+            stm_no = EXCLUDED.stm_no,
+            carrier = EXCLUDED.carrier,
+            a_slot = EXCLUDED.a_slot,
+            a_customer = EXCLUDED.a_customer,
+            b_slot = EXCLUDED.b_slot,
+            b_customer = EXCLUDED.b_customer;
+    END IF;
+
+    -- Handle VMUX connections
+    IF v_system_type_record.name = 'VMUX' THEN
+        INSERT INTO public.vmux_connections (
+            system_connection_id, subscriber, c_code, channel, tk
+        ) VALUES (
+            v_connection_id, p_subscriber, p_c_code, p_channel, p_tk
+        )
+        ON CONFLICT (system_connection_id) DO UPDATE SET
+            subscriber = EXCLUDED.subscriber,
+            c_code = EXCLUDED.c_code,
+            channel = EXCLUDED.channel,
+            tk = EXCLUDED.tk;
+    END IF;
+    
+    -- Return the main connection record
+    RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
+    UUID, UUID, BOOLEAN, UUID, UUID, UUID, UUID, INET, TEXT, INET, TEXT, INT, TEXT, DATE, TEXT,
+    TEXT, UUID, TEXT, TEXT, INT, INT, TEXT, INT,
+    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT,
+    TEXT, TEXT, TEXT, TEXT
+) TO authenticated;
+
 -- NEW FUNCTION: To manage system associations for a ring
 CREATE OR REPLACE FUNCTION public.update_ring_system_associations(
     p_ring_id UUID,

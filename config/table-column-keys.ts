@@ -807,6 +807,7 @@ export const TABLES = {
   // 'cpan_systems' is not in types, removed
   // 'fiber_joint_connections' is not in types, removed
   // fiber_joints: 'fiber_joints',
+  fiber_joints: 'fiber_joints',
   logical_fiber_paths: 'logical_fiber_paths',
   logical_path_segments: 'logical_path_segments',
   // 'maan_connections' is SFP based connections
@@ -821,7 +822,7 @@ export const TABLES = {
   files: 'files',
   folders: 'folders',
   ring_based_systems: 'ring_based_systems',
-} as const satisfies Partial<Record<PublicTableName, PublicTableName>>;
+} as const;
 
 // Define views separately
 export const VIEWS = {
