@@ -17,13 +17,12 @@ import {
   employeesInsertSchema,
   EmployeesInsertSchema,
   Maintenance_areasRowSchema,
-  V_employeesRowSchema, // Import the view schema
+  V_employeesRowSchema,
 } from '@/schemas/zod-schemas';
 
 interface EmployeeFormProps {
   isOpen: boolean;
   onClose: () => void;
-  // The form now accepts the record directly from the view
   employee?: V_employeesRowSchema | null;
   onSubmit: (data: EmployeesInsertSchema) => void;
   onCancel: () => void;
@@ -49,7 +48,6 @@ const EmployeeForm = ({
     reset,
   } = useForm<EmployeesInsertSchema>({
     resolver: zodResolver(employeesInsertSchema),
-    // Default values are for the base table insert schema
     defaultValues: {
       employee_name: '',
       employee_pers_no: null,
@@ -61,11 +59,10 @@ const EmployeeForm = ({
       employee_addr: null,
       maintenance_terminal_id: null,
       remark: null,
-      status: true, // Default to true for new employees
+      status: true,
     },
   });
 
-  // This effect correctly maps the view data to the form's state
   useEffect(() => {
     if (isOpen) {
       if (employee) {
@@ -83,7 +80,6 @@ const EmployeeForm = ({
           status: employee.status ?? true,
         });
       } else {
-        // Reset to default for a new entry
         reset({
           employee_name: '',
           employee_pers_no: null,
@@ -111,6 +107,7 @@ const EmployeeForm = ({
     label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
   }));
 
+  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
   const onValidFormSubmit = (data: EmployeesInsertSchema) => {
     onSubmit(data);
   };
@@ -132,7 +129,6 @@ const EmployeeForm = ({
         disableSubmit={isLoading}
         standalone
       >
-        {/* Form fields remain unchanged */}
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormInput

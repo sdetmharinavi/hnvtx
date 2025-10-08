@@ -1,4 +1,4 @@
--- Path: data/migrations/03_network_systems/06_functions.sql
+-- Path: data/migrations/03_network_systems/03_functions.sql
 -- Description: Contains functions for the Network Systems module.
 
 -- The function logic is now restructured to handle all system subtypes correctly.

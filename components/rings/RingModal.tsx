@@ -18,9 +18,8 @@ interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingRing?: RingsRowSchema | null;
-  // ** Use a single onSubmit handler**
-  onSubmit: (data: RingsInsertSchema) => void; 
-  isLoading: boolean; // Receive loading state from parent
+  onSubmit: (data: RingsInsertSchema) => void;
+  isLoading: boolean;
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
@@ -29,7 +28,7 @@ export function RingModal({
   isOpen,
   onClose,
   editingRing,
-  onSubmit, // Use the new onSubmit prop
+  onSubmit,
   isLoading,
   ringTypes,
   maintenanceAreas,
@@ -50,11 +49,6 @@ export function RingModal({
       status: true,
     },
   });
-
-  // REMOVED: Internal mutation hooks are no longer needed
-  // const supabase = createClient();
-  // const { mutate: insertRing, isPending: creating } = useTableInsert(supabase, "rings");
-  // const { mutate: updateRing, isPending: updating } = useTableUpdate(supabase, "rings");
 
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
@@ -85,7 +79,7 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  // ** The form's submit handler now just calls the prop.**
+  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
       onSubmit(formData);
@@ -106,7 +100,7 @@ export function RingModal({
         heightClass="min-h-calc(90vh - 200px)"
         title={isEdit ? "Edit Ring" : "Add Ring"}
         onCancel={onClose}
-        isLoading={isLoading} // Use loading state from props
+        isLoading={isLoading}
         standalone={true}
       >
         <FormInput

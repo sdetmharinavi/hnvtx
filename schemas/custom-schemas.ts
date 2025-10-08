@@ -9,6 +9,28 @@ import {
   nodesRowSchema,
 } from '@/schemas/zod-schemas';
 
+// ============= AUTH & UI-SPECIFIC SCHEMAS =============
+
+// --- Reusable Password Validation Schema ---
+export const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters long")
+  .max(50, "Password must not exceed 50 characters")
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+    "Password must contain an uppercase letter, a lowercase letter, a number, and a special character."
+  );
+
+export const passwordWithConfirmationSchema = z.object({
+  password: passwordSchema,
+  confirmPassword: z.string()
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords must match",
+  path: ["confirmPassword"],
+});
+
+export type PasswordSchema = z.infer<typeof passwordSchema>;
+export type PasswordWithConfirmation = z.infer<typeof passwordWithConfirmationSchema>;
+
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
 
 // --- For useOfcRoutesForSelection hook ---
@@ -133,13 +155,13 @@ export const pathToUpdateSchema = z.object({
 export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 
-// --- For the new trace_fiber_path RPC ---
+// --- BSNL Dashboard Search Filters ---
 export const bsnlSearchFiltersSchema = z.object({
-  query: z.string(),
-  status: z.array(z.string()),
-  type: z.array(z.string()),
-  region: z.array(z.string()),
-  nodeType: z.array(z.string()),
-  priority: z.array(z.string()),
+  query: z.string().optional(),
+  status: z.string().optional(),
+  type: z.string().optional(),
+  region: z.string().optional(),
+  nodeType: z.string().optional(),
+  priority: z.string().optional(),
 });
 export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

@@ -5,7 +5,6 @@ import {
   v_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { z } from 'zod';
-import { bsnlSearchFiltersSchema } from '@/schemas/custom-schemas'; // Import the schema
 
 export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
 export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
@@ -39,6 +38,3 @@ export interface AllocationSaveData {
     taps: { [key: string]: FiberRoutePath[] };
   };
 }
-
-// ** Infer the type directly from the Zod schema.**
-export type SearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

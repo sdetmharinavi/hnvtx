@@ -1,7 +1,7 @@
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -13,10 +13,7 @@ import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_employeesRowSchema,
-  EmployeesInsertSchema,
   EmployeesRowSchema,
-  Employee_designationsRowSchema,
-  Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -68,7 +65,7 @@ const useEmployeesData = (
 const EmployeesPage = () => {
   const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const {
     data: employees,
     totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, error, refetch,
@@ -78,9 +75,12 @@ const EmployeesPage = () => {
     dataQueryHook: useEmployeesData,
   });
 
-  // ** Restore the dedicated queries to fetch the full data structures.**
-  const { data: designations = [] } = useTableQuery<"employee_designations", Employee_designationsRowSchema[]>(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
-  const { data: maintenanceAreas = [] } = useTableQuery<"maintenance_areas", Maintenance_areasRowSchema[]>(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
+  // ** THE FIX: Correctly destructure the object returned by useTableQuery **
+  const { data: designationsData } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
+  const designations = useMemo(() => designationsData?.data || [], [designationsData]);
+  const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
+  const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
+
 
   const columns = useMemo(() => getEmployeeTableColumns({
     designationMap: Object.fromEntries(designations.map(d => [d.id, d.name])),
@@ -96,7 +96,7 @@ const EmployeesPage = () => {
     }) as TableAction<'v_employees'>[],
     [viewModal.open, editModal.openEdit, crudActions.handleToggleStatus, crudActions.handleDelete]
   );
-  
+
   const headerActions = useStandardHeaderActions<'employees'>({
     data: employees as EmployeesRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
@@ -110,10 +110,6 @@ const EmployeesPage = () => {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
-
-  const handleSaveEmployee = useCallback((data: EmployeesInsertSchema) => {
-    crudActions.handleSave(data);
-  }, [crudActions]);
 
   if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
@@ -129,7 +125,7 @@ const EmployeesPage = () => {
         actions={headerActions}
         isLoading={isLoading}
       />
-      
+
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
@@ -169,7 +165,7 @@ const EmployeesPage = () => {
             searchQuery={search.searchQuery}
             filters={filters.filters}
             onSearchChange={search.setSearchQuery}
-            setFilters={filters.setFilters} 
+            setFilters={filters.setFilters}
             designations={designations}
             maintenanceAreas={maintenanceAreas}
             showFilters={showFilters}
@@ -177,12 +173,12 @@ const EmployeesPage = () => {
           />
         }
       />
-      
+
       <EmployeeForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         employee={editModal.record}
-        onSubmit={handleSaveEmployee}
+        onSubmit={crudActions.handleSave}
         onCancel={editModal.close}
         isLoading={isMutating}
         designations={designations}

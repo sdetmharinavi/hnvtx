@@ -12,7 +12,7 @@ import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/zod-schemas'; // Import InsertSchema
+import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useCallback, useState } from 'react';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -41,7 +41,7 @@ const useRingsData = (
 const RingsPage = () => {
   const router = useRouter();
   const supabase = createClient();
-  
+
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
@@ -129,8 +129,8 @@ const RingsPage = () => {
         }}
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
-      
-      {/* ** Pass the correct props to the now "dumb" component.** */}
+
+      {/* ** THE FIX: Pass crudActions.handleSave directly to the onSubmit prop ** */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

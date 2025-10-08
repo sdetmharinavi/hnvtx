@@ -34,7 +34,14 @@ export const defaultValidationConfig: ValidationConfig = {
     },
     {
       fieldPatterns: ['encrypted_password'],
-      validation: 'z.string().min(1, "Password cannot be empty")',
+      // validation: 'z.string().min(1, "Password cannot be empty")',
+      validation: `z.string()
+        .min(6, "Password must be at least 6 characters long")
+        .max(50, "Password must not exceed 50 characters")
+        .regex(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]/,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
+        )`,
       description: 'Passwords just need presence check',
     },
     {
