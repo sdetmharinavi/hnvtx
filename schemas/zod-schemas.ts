@@ -969,6 +969,39 @@ export const logical_path_segmentsUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const logical_pathsRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
+  end_node_id: z.uuid().nullable(),
+  id: z.uuid(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ring_id: z.uuid().nullable(),
+  start_node_id: z.uuid().nullable(),
+  status: z.string().min(1, "Status cannot be empty").nullable(),
+  updated_at: z.iso.datetime().nullable(),
+});
+
+export const logical_pathsInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  end_node_id: z.uuid().nullable().optional(),
+  id: z.uuid().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ring_id: z.uuid().nullable().optional(),
+  start_node_id: z.uuid().nullable().optional(),
+  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const logical_pathsUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  end_node_id: z.uuid().nullable().optional(),
+  id: z.uuid().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  ring_id: z.uuid().nullable().optional(),
+  start_node_id: z.uuid().nullable().optional(),
+  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
 export const lookup_typesRowSchema = z.object({
   category: z.string(),
   code: z.string().nullable(),
@@ -1928,6 +1961,8 @@ export const v_systems_completeRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   ip_address: z.string().nullable(),
+  is_ring_based: z.boolean().nullable(),
+  is_sdh: z.boolean().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
@@ -2062,6 +2097,9 @@ export const schemas = {
   logical_path_segmentsRowSchema,
   logical_path_segmentsInsertSchema,
   logical_path_segmentsUpdateSchema,
+  logical_pathsRowSchema,
+  logical_pathsInsertSchema,
+  logical_pathsUpdateSchema,
   lookup_typesRowSchema,
   lookup_typesInsertSchema,
   lookup_typesUpdateSchema,
@@ -2212,6 +2250,9 @@ export type Logical_fiber_pathsUpdateSchema = z.infer<typeof logical_fiber_paths
 export type Logical_path_segmentsRowSchema = z.infer<typeof logical_path_segmentsRowSchema>;
 export type Logical_path_segmentsInsertSchema = z.infer<typeof logical_path_segmentsInsertSchema>;
 export type Logical_path_segmentsUpdateSchema = z.infer<typeof logical_path_segmentsUpdateSchema>;
+export type Logical_pathsRowSchema = z.infer<typeof logical_pathsRowSchema>;
+export type Logical_pathsInsertSchema = z.infer<typeof logical_pathsInsertSchema>;
+export type Logical_pathsUpdateSchema = z.infer<typeof logical_pathsUpdateSchema>;
 export type Lookup_typesRowSchema = z.infer<typeof lookup_typesRowSchema>;
 export type Lookup_typesInsertSchema = z.infer<typeof lookup_typesInsertSchema>;
 export type Lookup_typesUpdateSchema = z.infer<typeof lookup_typesUpdateSchema>;

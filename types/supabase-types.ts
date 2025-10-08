@@ -1416,6 +1416,103 @@ export type Database = {
           },
         ]
       }
+      logical_paths: {
+        Row: {
+          created_at: string | null
+          end_node_id: string | null
+          id: string
+          name: string
+          ring_id: string | null
+          start_node_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_node_id?: string | null
+          id?: string
+          name: string
+          ring_id?: string | null
+          start_node_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_node_id?: string | null
+          id?: string
+          name?: string
+          ring_id?: string | null
+          start_node_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logical_paths_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["ring_id"]
+          },
+          {
+            foreignKeyName: "logical_paths_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_start_node_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_start_node_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_start_node_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lookup_types: {
         Row: {
           category: string
@@ -3677,6 +3774,8 @@ export type Database = {
           created_at: string | null
           id: string | null
           ip_address: unknown | null
+          is_ring_based: boolean | null
+          is_sdh: boolean | null
           latitude: number | null
           longitude: number | null
           maintenance_terminal_id: string | null
@@ -3913,6 +4012,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_system_to_fibers: {
+        Args:
+          | {
+              p_cable_id: string
+              p_fiber_rx: number
+              p_fiber_tx: number
+              p_logical_path_id: string
+              p_system_id: string
+            }
+          | {
+              p_cable_id: string
+              p_fiber_rx: number
+              p_fiber_tx: number
+              p_system_id: string
+            }
+        Returns: undefined
+      }
       auto_splice_straight_segments: {
         Args: {
           p_jc_id: string
@@ -3942,6 +4058,10 @@ export type Database = {
         Args: { p_path_id: string }
         Returns: undefined
       }
+      deprovision_path: {
+        Args: { p_logical_path_id: string; p_system_id: string }
+        Returns: undefined
+      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json
@@ -3951,6 +4071,19 @@ export type Database = {
         Returns: {
           id: string
           route_name: string
+        }[]
+      }
+      generate_ring_connection_paths: {
+        Args: { p_ring_id: string }
+        Returns: {
+          created_at: string | null
+          end_node_id: string | null
+          id: string
+          name: string
+          ring_id: string | null
+          start_node_id: string | null
+          status: string | null
+          updated_at: string | null
         }[]
       }
       get_all_splices: {
@@ -3965,6 +4098,34 @@ export type Database = {
           outgoing_fiber_no: number
           outgoing_segment_id: string
           splice_id: string
+        }[]
+      }
+      get_available_cables_for_node: {
+        Args: { p_node_id: string }
+        Returns: {
+          asset_no: string
+          capacity: number
+          commissioned_on: string
+          created_at: string
+          current_rkm: number
+          en_id: string
+          id: string
+          maintenance_terminal_id: string
+          ofc_owner_id: string
+          ofc_type_id: string
+          remark: string
+          route_name: string
+          sn_id: string
+          status: boolean
+          transnet_id: string
+          transnet_rkm: number
+          updated_at: string
+        }[]
+      }
+      get_available_fibers_for_cable: {
+        Args: { p_cable_id: string }
+        Returns: {
+          fiber_no: number
         }[]
       }
       get_bsnl_dashboard_data: {

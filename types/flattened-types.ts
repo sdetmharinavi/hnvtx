@@ -967,6 +967,39 @@ export type Logical_path_segmentsUpdate = {
     updated_at?: string | null;
 };
 
+export type Logical_pathsRow = {
+    created_at: string | null;
+    end_node_id: string | null;
+    id: string;
+    name: string;
+    ring_id: string | null;
+    start_node_id: string | null;
+    status: string | null;
+    updated_at: string | null;
+};
+
+export type Logical_pathsInsert = {
+    created_at?: string | null;
+    end_node_id?: string | null;
+    id?: string;
+    name: string;
+    ring_id?: string | null;
+    start_node_id?: string | null;
+    status?: string | null;
+    updated_at?: string | null;
+};
+
+export type Logical_pathsUpdate = {
+    created_at?: string | null;
+    end_node_id?: string | null;
+    id?: string;
+    name?: string;
+    ring_id?: string | null;
+    start_node_id?: string | null;
+    status?: string | null;
+    updated_at?: string | null;
+};
+
 export type Lookup_typesRow = {
     category: string;
     code: string | null;
@@ -1928,6 +1961,8 @@ export type V_systems_completeRow = {
     created_at: string | null;
     id: string | null;
     ip_address: unknown | null;
+    is_ring_based: boolean | null;
+    is_sdh: boolean | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_terminal_id: string | null;
@@ -2024,6 +2059,7 @@ export const tableNames = [
   "junction_closures",
   "logical_fiber_paths",
   "logical_path_segments",
+  "logical_paths",
   "lookup_types",
   "maintenance_areas",
   "management_ports",

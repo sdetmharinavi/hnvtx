@@ -4,31 +4,37 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import { FiDatabase } from 'react-icons/fi';
+import { FiDatabase, FiPlus } from 'react-icons/fi';
 import { toast } from 'sonner';
-
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import {
+  PageHeader,
+  useStandardHeaderActions,
+} from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { Filters, Row, usePagedData, useTableQuery } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
+import {
+  DataQueryHookParams,
+  DataQueryHookReturn,
+  useCrudManager,
+} from '@/hooks/useCrudManager';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 
+// This data hook remains the same
 const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  // This hook now correctly receives and uses the complex `Filters` type
   const searchFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (searchQuery) {
@@ -40,7 +46,6 @@ const useSystemsData = (
     return newFilters;
   }, [filters, searchQuery]);
 
-  // Pass the complex `Filters` object directly to usePagedData
   const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
     'v_systems_complete',
      {
@@ -72,19 +77,25 @@ export default function SystemsPage() {
     tableName: 'systems',
     dataQueryHook: useSystemsData,
     searchColumn: 'system_name',
+    displayNameField: 'system_name'
   });
 
-  const { data: systemTypesData = { data: [], count: 0 } } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
-  const systemTypes = systemTypesData.data || [];
+  const { data: systemTypesResult = { data: [] } } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
+  const systemTypes = systemTypesResult.data;
 
-  const handleView = useCallback((system: Row<'v_systems_complete'>) => {
-    router.push(`/dashboard/systems/${system.id}`);
+  // Handler to navigate to the new provisioning page
+  const handleView = useCallback((system: V_systems_completeRowSchema) => {
+    if (system.is_ring_based) {
+      router.push(`/dashboard/systems/${system.id}`);
+    } else {
+      toast.info("Detailed path provisioning is only available for ring-based systems.");
+    }
   }, [router]);
 
   const tableActions = useMemo(
     () => createStandardActions<V_systems_completeRowSchema>({
         onEdit: editModal.openEdit,
-        onView: handleView,
+        onView: handleView, // Use the new handler
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
       }),
@@ -92,12 +103,18 @@ export default function SystemsPage() {
   );
 
   const headerActions = useStandardHeaderActions({
-    data: systems as V_systems_completeRowSchema[],
+    data: systems,
     onRefresh: () => { refetch(); toast.success('Systems refreshed.'); },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
     exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
   });
+
+  const headerStats = [
+    { value: totalCount, label: 'Total Systems' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+  ];
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
@@ -107,11 +124,7 @@ export default function SystemsPage() {
         title="System Management"
         description="Manage all network systems, including CPAN, MAAN, SDH, and VMUX."
         icon={<FiDatabase />}
-        stats={[
-          { value: totalCount, label: 'Total Systems' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ]}
+        stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
       />
@@ -144,7 +157,7 @@ export default function SystemsPage() {
               filterKey="system_type_name"
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={systemTypes.map(t => ({ value: t.name, label: t.name }))}
+              options={(systemTypes || []).map(t => ({ value: t.name, label: t.name }))}
             />
             <SelectFilter
               label="Status"
