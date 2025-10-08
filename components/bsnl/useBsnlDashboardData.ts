@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { BsnlNode, BsnlCable, BsnlSystem, SearchFilters } from './types';
+import { BsnlNode, BsnlCable, BsnlSystem } from './types';
+import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
@@ -11,16 +12,17 @@ interface BsnlDashboardData {
   systems: BsnlSystem[];
 }
 
-export function useBsnlDashboardData(filters: SearchFilters) {
+export function useBsnlDashboardData(filters: BsnlSearchFilters) {
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
     p_query: filters.query || null,
-    p_status: filters.status.length > 0 ? filters.status[0] === 'active' : null,
-    p_system_types: filters.type.length > 0 ? filters.type : null,
-    p_cable_types: filters.type.length > 0 ? filters.type : null,
-    p_regions: filters.region.length > 0 ? filters.region : null,
-    p_node_types: filters.nodeType.length > 0 ? filters.nodeType : null,
+    p_status: filters.status ? filters.status === 'active' : null,
+    p_system_types: filters.type ? [filters.type] : null,
+    p_cable_types: filters.type ? [filters.type] : null, // Assuming system and cable types are filtered by the same 'type' field
+    p_regions: filters.region ? [filters.region] : null,
+    p_node_types: filters.nodeType ? [filters.nodeType] : null,
+    // p_priority is in the schema but not in the RPC, it can be added here if the RPC is updated
   }), [filters]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
@@ -32,23 +34,20 @@ export function useBsnlDashboardData(filters: SearchFilters) {
         throw new Error(`Failed to fetch dashboard data: ${rpcError.message}`);
       }
 
-      // The RPC returns a single JSON object with the keys we defined.
       return rpcData as BsnlDashboardData;
     },
-    // Set a longer stale time for this heavy query
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    // CRITICAL FIX: Keep previous data while fetching new data
+    staleTime: 5 * 60 * 1000,
+    // THE FIX: Keep displaying the last successful fetch's data while new data is being fetched.
+    // This provides a seamless UX by preventing the UI from showing a loading state on filter changes.
     placeholderData: (previousData) => previousData,
-    // Alternative for React Query v4 (if you're using older version):
-    // keepPreviousData: true,
   });
 
-  return { 
-    data: data ?? { nodes: [], ofcCables: [], systems: [] }, 
-    isLoading, 
-    isError, 
-    error, 
+  return {
+    data: data ?? { nodes: [], ofcCables: [], systems: [] },
+    isLoading,
+    isError,
+    error,
     refetchAll: refetch,
-    isFetching 
+    isFetching
   };
 }

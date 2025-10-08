@@ -13,24 +13,22 @@ import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
 import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
-import { BsnlSearchFilters, bsnlSearchFiltersSchema } from '@/schemas/custom-schemas';
+import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
 export default function ScalableFiberNetworkDashboard() {
   const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
-  
-  const [filters, setFilters] = useState<BsnlSearchFilters>(
-    bsnlSearchFiltersSchema.parse({
-      query: '',
-      status: [],
-      type: [],
-      region: [],
-      nodeType: [],
-      priority: []
-    })
-  );
+
+  const [filters, setFilters] = useState<BsnlSearchFilters>({
+    query: '',
+    status: undefined,
+    type: undefined,
+    region: undefined,
+    nodeType: undefined,
+    priority: undefined
+  });
 
   const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
 
@@ -43,13 +41,17 @@ export default function ScalableFiberNetworkDashboard() {
     toast.info("Allocation feature is a work in progress.");
   };
 
-  console.log("selectedCable:", selectedCable);
-  console.log("allocationData:", allocationData);
-
   const clearFilters = useCallback(() => {
-    setFilters({ query: '', status: [], type: [], region: [], nodeType: [], priority: [] });
+    setFilters({
+      query: '',
+      status: undefined,
+      type: undefined,
+      region: undefined,
+      nodeType: undefined,
+      priority: undefined
+    });
   }, []);
-  
+
   const handleRefresh = async () => {
     toast.info("Refreshing network data...");
     await refetchAll();
@@ -62,9 +64,9 @@ export default function ScalableFiberNetworkDashboard() {
     const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
     const allRegions = [...new Set(data.nodes.map(n => n.maintenance_area_name).filter(Boolean))].sort();
     const allNodeTypes = [...new Set(data.nodes.map(n => n.node_type_name).filter(Boolean))].sort();
-    
-    return { 
-      typeOptions: uniqueTypes as string[], 
+
+    return {
+      typeOptions: uniqueTypes as string[],
       regionOptions: allRegions as string[],
       nodeTypeOptions: allNodeTypes as string[],
     };
@@ -85,10 +87,9 @@ export default function ScalableFiberNetworkDashboard() {
     { key: 'endpoints', label: 'Endpoints', render: (cable: BsnlCable) => <div className="text-sm">{cable.sn_name} → {cable.en_name}</div> },
     { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
   ];
-  
-  // Only show full page spinner on initial load (no data yet)
+
   const isInitialLoad = isLoading && data.nodes.length === 0 && data.systems.length === 0;
-  
+
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;
 
@@ -108,8 +109,8 @@ export default function ScalableFiberNetworkDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button 
-                onClick={handleRefresh} 
+              <button
+                onClick={handleRefresh}
                 disabled={isFetching}
                 className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -124,21 +125,21 @@ export default function ScalableFiberNetworkDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <AdvancedSearchBar 
-          filters={filters} 
-          onFiltersChange={setFilters} 
+        <AdvancedSearchBar
+          filters={filters}
+          onFiltersChange={setFilters}
           onClear={clearFilters}
           typeOptions={typeOptions}
           regionOptions={regionOptions}
           nodeTypeOptions={nodeTypeOptions}
         />
-        
+
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
             {(['overview', 'systems', 'allocations'] as BsnlDashboardTab[]).map((tab) => (
-              <button 
-                key={tab} 
-                onClick={() => setActiveTab(tab)} 
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}
               >
                 {tab}
@@ -146,8 +147,7 @@ export default function ScalableFiberNetworkDashboard() {
             ))}
           </nav>
         </div>
-        
-        {/* Overlay loading indicator for subsequent fetches */}
+
         <div className="relative">
           {isFetching && !isInitialLoad && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
@@ -157,16 +157,16 @@ export default function ScalableFiberNetworkDashboard() {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <DashboardStatsGrid />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <OptimizedNetworkMap 
-                  nodes={data.nodes} 
-                  cables={data.ofcCables} 
-                  selectedSystem={selectedSystem} 
-                  visibleLayers={{ nodes: true, cables: true, systems: true }} 
+                <OptimizedNetworkMap
+                  nodes={data.nodes}
+                  cables={data.ofcCables}
+                  selectedSystem={selectedSystem}
+                  visibleLayers={{ nodes: true, cables: true, systems: true }}
                 />
               </div>
             </div>
@@ -174,22 +174,22 @@ export default function ScalableFiberNetworkDashboard() {
 
           {activeTab === 'systems' && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable 
-                data={data.systems} 
-                columns={systemColumns} 
-                onItemClick={setSelectedSystem} 
-                pageSize={50} 
+              <PaginatedTable
+                data={data.systems}
+                columns={systemColumns}
+                onItemClick={setSelectedSystem}
+                pageSize={50}
               />
             </div>
           )}
 
           {activeTab === 'allocations' && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable 
-                data={data.ofcCables} 
-                columns={cableColumns} 
-                onItemClick={setSelectedCable} 
-                pageSize={25} 
+              <PaginatedTable
+                data={data.ofcCables}
+                columns={cableColumns}
+                onItemClick={setSelectedCable}
+                pageSize={25}
               />
             </div>
           )}

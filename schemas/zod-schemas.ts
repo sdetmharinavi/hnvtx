@@ -531,7 +531,13 @@ export const authUsersRowSchema = z.object({
   email_change_token_current: z.email().nullable(),
   email_change_token_new: z.email().nullable(),
   email_confirmed_at: z.email().nullable(),
-  encrypted_password: z.string().min(1, "Password cannot be empty").nullable(),
+  encrypted_password: z.string()
+        .min(6, "Password must be at least 6 characters long")
+        .max(50, "Password must not exceed 50 characters")
+        .regex(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
+        ).nullable(),
   id: z.uuid(),
   instance_id: z.uuid().nullable(),
   invited_at: z.iso.datetime().nullable(),
@@ -569,7 +575,13 @@ export const authUsersInsertSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string().min(1, "Password cannot be empty").nullable().optional(),
+  encrypted_password: z.string()
+        .min(6, "Password must be at least 6 characters long")
+        .max(50, "Password must not exceed 50 characters")
+        .regex(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
+        ).nullable().optional(),
   id: z.uuid(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),
@@ -607,7 +619,13 @@ export const authUsersUpdateSchema = z.object({
   email_change_token_current: z.email().nullable().optional(),
   email_change_token_new: z.email().nullable().optional(),
   email_confirmed_at: z.email().nullable().optional(),
-  encrypted_password: z.string().min(1, "Password cannot be empty").nullable().optional(),
+  encrypted_password: z.string()
+        .min(6, "Password must be at least 6 characters long")
+        .max(50, "Password must not exceed 50 characters")
+        .regex(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
+        ).nullable().optional(),
   id: z.uuid().optional(),
   instance_id: z.uuid().nullable().optional(),
   invited_at: z.iso.datetime().nullable().optional(),

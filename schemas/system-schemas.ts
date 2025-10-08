@@ -17,9 +17,10 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    ring_id: ring_based_systemsInsertSchema.shape.ring_id.transform((val) => (val === '' ? null : val)).optional(),
-    gne: sdh_systemsInsertSchema.shape.gne.transform((val) => (val === '' ? null : val)).optional(),
-    vm_id: vmux_systemsInsertSchema.shape.vm_id.transform((val) => (val === '' ? null : val)).optional(),
+    // CORRECTED: Use a more robust transformation that handles '', null, and undefined.
+    ring_id: ring_based_systemsInsertSchema.shape.ring_id.transform((val) => val || null).optional(),
+    gne: sdh_systemsInsertSchema.shape.gne.transform((val) => val || null).optional(),
+    vm_id: vmux_systemsInsertSchema.shape.vm_id.transform((val) => val || null).optional(),
   });
 
 // This is the type that will be used by the form state.

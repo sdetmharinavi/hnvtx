@@ -11,8 +11,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { loginSchema } from '@/app/(auth)/login/page';
 import { toast } from 'sonner';
+import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
 
-// CORRECTED: Extend the schema from the login page, ensuring consistency.
+// CORRECTED: Use the central, reusable password schema and correct field names.
 const signupSchema = loginSchema
   .extend({
     firstName: z
@@ -23,12 +24,9 @@ const signupSchema = loginSchema
       .string()
       .min(1, 'Last name is required')
       .max(50, 'Last name must not exceed 50 characters'),
-    confirmPassword: z.string().min(6, 'Confirm password is required'),
   })
-  .refine((data) => data.encrypted_password === data.confirmPassword, {
-    message: 'Passwords must match',
-    path: ['confirmPassword'],
-  });
+  .omit({ encrypted_password: true }) // Remove the weak schema rule
+  .extend(passwordWithConfirmationSchema.shape); // Merge the strong, reusable password schema
 
 type SignupForm = z.infer<typeof signupSchema>;
 
@@ -52,27 +50,27 @@ export default function SignUpPage() {
       firstName: '',
       lastName: '',
       email: '',
-      encrypted_password: '',
+      password: '',
       confirmPassword: '',
     },
   });
 
   const onSubmit = async (data: SignupForm) => {
+    // Pass the correct plaintext password field to the signUp function
     const { success, error } = await signUp({
       email: data.email ?? '',
-      password: data.encrypted_password ?? '',
+      password: data.password,
       firstName: data.firstName,
       lastName: data.lastName,
     });
-  
+
     if (success) {
       router.push('/verify-email');
     }
-    
+
     if(error){
       toast.error(error.message);
     }
-    
   };
 
   return (
@@ -172,13 +170,13 @@ export default function SignUpPage() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                {...register('encrypted_password')}
+                {...register('password')}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Create a password"
               />
-              {errors.encrypted_password && (
+              {errors.password && (
                 <p className="text-red-500 text-sm">
-                  {errors.encrypted_password.message}
+                  {errors.password.message}
                 </p>
               )}
             </div>
