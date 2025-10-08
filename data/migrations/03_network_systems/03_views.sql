@@ -7,6 +7,8 @@ SELECT
   s.*,
   n.name AS node_name,
   lt_node_type.name AS node_type_name,
+  lt_system.is_ring_based,
+  lt_system.is_sdh,
   n.latitude,
   n.longitude,
   lt_system.name AS system_type_name,

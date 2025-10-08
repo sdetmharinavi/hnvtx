@@ -13,7 +13,7 @@ BEGIN
     'systems', 'system_connections', 'management_ports',
     'ring_based_systems', 'sfp_based_connections',
     'sdh_systems', 'sdh_connections', 'sdh_node_associations',
-    'vmux_systems', 'vmux_connections'
+    'vmux_systems', 'vmux_connections', 'logical_paths'
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
