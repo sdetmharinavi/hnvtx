@@ -2,16 +2,7 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_employeesRowSchema } from '@/schemas/zod-schemas';
 
-// Columns for employees table using DataTable component
-// Note: We type columns against Row<"employees">; relation fields are accessed via custom render using any casts.
-type LookupOptions = {
-  designationMap?: Record<string, string>;
-  areaMap?: Record<string, string>;
-};
-
-export const getEmployeeTableColumns = (
-  options?: LookupOptions
-): Column<V_employeesRowSchema>[] => [
+export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
   {
     title: 'Employee',
     dataIndex: 'employee_name',
@@ -34,7 +25,7 @@ export const getEmployeeTableColumns = (
   {
     title: 'Contact',
     dataIndex: 'employee_contact',
-    key: 'contact',
+    key: 'employee_contact',
     width: 220,
     searchable: true,
     render: (_, record: V_employeesRowSchema) => (
@@ -49,8 +40,8 @@ export const getEmployeeTableColumns = (
   },
   {
     title: 'Email',
-    dataIndex: 'employee_contact',
-    key: 'email',
+    dataIndex: 'employee_email',
+    key: 'employee_email',
     width: 220,
     searchable: true,
     render: (_, record: V_employeesRowSchema) => (
@@ -65,23 +56,17 @@ export const getEmployeeTableColumns = (
   },
   {
     title: 'Designation',
-    dataIndex: 'employee_designation_id',
-    key: 'designation',
+    dataIndex: 'employee_designation_name',
+    key: 'employee_designation_name',
     width: 180,
-    render: (_, record: V_employeesRowSchema) => {
-      const id = record?.employee_designation_id as unknown as string | null;
-      return (id && options?.designationMap?.[id]) || 'Not set';
-    },
+    render: (_, record: V_employeesRowSchema) => record.employee_designation_name || 'Not set',
   },
   {
     title: 'Maintenance Area',
-    dataIndex: 'maintenance_terminal_id',
-    key: 'maintenance_area',
+    dataIndex: 'maintenance_area_name',
+    key: 'maintenance_area_name',
     width: 200,
-    render: (_, record: V_employeesRowSchema) => {
-      const id = record?.maintenance_terminal_id as unknown as string | null;
-      return (id && options?.areaMap?.[id]) || 'Not set';
-    },
+    render: (_, record: V_employeesRowSchema) => record.maintenance_area_name || 'Not set',
   },
   {
     title: 'Address',
@@ -96,18 +81,4 @@ export const getEmployeeTableColumns = (
     width: 120,
     render: (value: unknown) => <StatusBadge status={!!value} />,
   },
-  // {
-  //   title: "Created",
-  //   dataIndex: "created_at",
-  //   key: "created_at",
-  //   width: 180,
-  //   render: (value: string | null) => (value ? formatDate(value, { format: "dd/mm/yyyy" }) : "—"),
-  // },
-  // {
-  //   title: "Updated",
-  //   dataIndex: "updated_at",
-  //   key: "updated_at",
-  //   width: 180,
-  //   render: (value: string | null) => (value ? formatDate(value, { format: "dd/mm/yyyy" }) : "—"),
-  // },
 ];

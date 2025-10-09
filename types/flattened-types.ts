@@ -1720,6 +1720,7 @@ export type V_employeesRow = {
     employee_name: string | null;
     employee_pers_no: string | null;
     id: string | null;
+    maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     remark: string | null;
     status: boolean | null;

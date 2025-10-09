@@ -26,9 +26,11 @@ FROM public.employee_designations ed;
 CREATE OR REPLACE VIEW public.v_employees WITH (security_invoker = true) AS
 SELECT
   e.*,
-  ed.name AS employee_designation_name
+  ed.name AS employee_designation_name,
+  ma.name AS maintenance_area_name
 FROM public.employees e
-LEFT JOIN public.employee_designations ed ON e.employee_designation_id = ed.id;
+LEFT JOIN public.employee_designations ed ON e.employee_designation_id = ed.id
+LEFT JOIN public.maintenance_areas ma ON e.maintenance_terminal_id = ma.id;
 
 -- View for nodes with joined data
 CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_invoker = true) AS
