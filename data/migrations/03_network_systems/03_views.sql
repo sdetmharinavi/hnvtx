@@ -108,8 +108,8 @@ SELECT
   na.name AS sn_name,
   s.system_name AS system_name,
   nb.name AS en_name,
-  updated_na.name AS updated_sn_name, -- NEW: The name of the logical start node
-  updated_nb.name AS updated_en_name  -- NEW: The name of the logical end node
+  updated_na.name AS updated_sn_name,
+  updated_nb.name AS updated_en_name
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
