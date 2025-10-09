@@ -6,7 +6,7 @@ DECLARE
     r RECORD;
 BEGIN
     -- Revoke role membership from 'authenticated' before dropping the roles.
-    FOR r IN SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','vmux_admin','mng_admin','viewer']) as role_name
+    FOR r IN SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin','viewer']) as role_name
     LOOP
         EXECUTE format('REVOKE %I FROM authenticated', r.role_name);
     END LOOP;
@@ -18,6 +18,6 @@ DROP ROLE IF EXISTS admin;
 DROP ROLE IF EXISTS cpan_admin;
 DROP ROLE IF EXISTS maan_admin;
 DROP ROLE IF EXISTS sdh_admin;
-DROP ROLE IF EXISTS vmux_admin;
+DROP ROLE IF EXISTS asset_admin;
 DROP ROLE IF EXISTS mng_admin;
 DROP ROLE IF EXISTS viewer;

@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
       'cpan_admin',
       'maan_admin',
       'sdh_admin',
-      'vmux_admin',
+      'asset_admin',
       'mng_admin'
     )
   ),
