@@ -10,6 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { OnboardingPromptModal } from "@/components/auth/OnboardingPromptModal";
 import ScalableFiberNetworkDashboard from "@/app/bsnl/page";
 import { toast } from "sonner";
+import { User_profilesRowSchema } from "@/schemas/zod-schemas";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -23,8 +24,8 @@ export default function DashboardPage() {
     if (!isProfileLoading && profile) {
       // ** Check the 'needsOnboarding' flag directly from the user's preferences.**
       // This is the reliable source of truth.
-      const needsOnboarding = (profile.preferences as any)?.needsOnboarding === true;
-      const hasDismissedPrompt = (profile.preferences as any)?.showOnboardingPrompt === false;
+      const needsOnboarding = (profile.preferences as User_profilesRowSchema["preferences"])?.needsOnboarding === true;
+      const hasDismissedPrompt = (profile.preferences as User_profilesRowSchema["preferences"])?.showOnboardingPrompt === false;
 
       if (needsOnboarding && !hasDismissedPrompt) {
         setIsPromptOpen(true);
@@ -43,7 +44,7 @@ export default function DashboardPage() {
 
   const handleDismissPermanently = () => {
     if (user?.id && profile) {
-      const currentPreferences = (profile.preferences as object) || {};
+      const currentPreferences = (profile.preferences as User_profilesRowSchema["preferences"]) || {};
       const newPreferences = { ...currentPreferences, showOnboardingPrompt: false };
       
       updateProfile({ id: user.id, data: { preferences: newPreferences } }, {

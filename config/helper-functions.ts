@@ -178,21 +178,21 @@ export const toPgBoolean = (value: unknown): boolean | null => {
 
 /**
  * Dynamically calculates the width of a column based on its content.
- * 
+ *
  * @param columnName - The name of the column
  * @param rows - The table data (array of objects from Supabase)
  * @param ctx - Optional CanvasRenderingContext2D for measuring text width
  * @returns A number representing the width in pixels (capped at 300px)
  */
-export function inferDynamicColumnWidth(
+export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
   columnName: string,
-  rows: Record<string, any>[],
+  rows: T[],
   ctx?: CanvasRenderingContext2D
 ): number {
   const MIN_WIDTH = 120;
   const MAX_WIDTH = 400;
   const PADDING = 32; // left + right cell padding
-  
+
   // fallback font if no canvas context provided
   if (!ctx) {
     const canvas = document.createElement("canvas");

@@ -100,7 +100,13 @@ export default function ClientRingMap({
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
   useEffect(() => {
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    // Fix for default marker icons in React Leaflet
+    // We need to delete the private _getIconUrl method to override with custom icons
+    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
+      _getIconUrl?: () => string;
+    };
+    delete iconPrototype._getIconUrl;
+
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
       iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
