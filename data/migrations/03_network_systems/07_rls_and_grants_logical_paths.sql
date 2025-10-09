@@ -14,7 +14,7 @@ GRANT SELECT ON public.logical_paths TO viewer;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO cpan_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO maan_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO sdh_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO vmux_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO asset_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO mng_admin;
 
 -- =================================================================
@@ -50,6 +50,6 @@ USING (true);
 CREATE POLICY "Allow system admins full access"
 ON public.logical_paths
 FOR ALL
-TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
-USING (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'vmux_admin', 'mng_admin'))
-WITH CHECK (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'vmux_admin', 'mng_admin'));
+TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
+USING (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'))
+WITH CHECK (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'));

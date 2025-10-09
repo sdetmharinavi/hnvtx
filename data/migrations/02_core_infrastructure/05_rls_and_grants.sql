@@ -21,7 +21,7 @@ BEGIN
     -- Grant permissions to specific roles
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
-    EXECUTE format('GRANT SELECT ON public.%I TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;', tbl);
+    EXECUTE format('GRANT SELECT ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
     
     -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
@@ -62,7 +62,7 @@ BEGIN
     public.v_employees,
     public.v_nodes_complete,
     public.v_ofc_cables_complete
-  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin, authenticated;
+  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
   RAISE NOTICE 'Applied SELECT grants on core infrastructure views.';
 END;

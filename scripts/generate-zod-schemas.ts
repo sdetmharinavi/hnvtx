@@ -254,7 +254,8 @@ class TypeScriptToZodConverter {
   generateZodSchemas(types: TypeInfo[]): string {
     let output = "// Auto-generated Zod schemas from flattened-types.ts\n\n";
     output += 'import { z } from "zod";\n\n';
-    output += 'import { UserRole, JsonSchema } from "@/types/user-roles";\n\n';
+    output += 'import { UserRole } from "@/types/user-roles";\n\n';
+    output += 'import { JsonSchema } from "@/types/custom";\n\n';
 
     // Group types by category
     const tableTypes = types.filter((t) => t.name.endsWith("Row") || t.name.endsWith("Insert") || t.name.endsWith("Update"));

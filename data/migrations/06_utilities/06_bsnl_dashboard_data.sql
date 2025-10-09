@@ -16,7 +16,7 @@ STABLE
 AS $$
 DECLARE
     v_jwt_role TEXT := auth.jwt() ->> 'role';
-    v_allowed_roles TEXT[] := ARRAY['admin', 'viewer', 'cpan_admin', 'maan_admin', 'sdh_admin', 'vmux_admin', 'mng_admin'];
+    v_allowed_roles TEXT[] := ARRAY['admin', 'viewer', 'cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'];
     v_nodes JSONB;
     v_ofc_cables JSONB;
     v_systems JSONB;

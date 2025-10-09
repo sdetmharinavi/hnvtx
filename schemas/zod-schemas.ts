@@ -2,7 +2,9 @@
 
 import { z } from "zod";
 
-import { UserRole, JsonSchema } from "@/types/user-roles";
+import { UserRole } from "@/types/user-roles";
+
+import { JsonSchema } from "@/types/custom";
 
 // ============= TABLE SCHEMAS =============
 

@@ -69,11 +69,11 @@ FOR SELECT TO authenticated USING (true);
 DO $$
 BEGIN
   -- CORRECTED: Added grants for specific admin roles to all relevant views in this module.
-  GRANT SELECT ON public.v_junction_closures_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
-  GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;
+  GRANT SELECT ON public.v_junction_closures_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   
   RAISE NOTICE 'Applied SELECT grants on advanced OFC views for ALL relevant roles.';
 END;

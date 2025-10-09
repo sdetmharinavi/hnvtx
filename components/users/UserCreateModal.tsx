@@ -149,7 +149,7 @@ export function UserCreateModal({
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="maan_admin">MAAN Admin</SelectItem>
                     <SelectItem value="sdh_admin">SDH Admin</SelectItem>
-                    <SelectItem value="vmux_admin">VMUX Admin</SelectItem>
+                    <SelectItem value="asset_admin">Asset Admin</SelectItem>
                     <SelectItem value="mng_admin">MNG Admin</SelectItem>
                   </SelectContent>
                 </Select>

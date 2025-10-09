@@ -21,7 +21,7 @@ BEGIN
     -- Grant permissions to specific roles
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin;', tbl);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
     
     -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
@@ -44,7 +44,7 @@ BEGIN
   CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
   CREATE POLICY "Allow full access based on system type" ON public.systems
-  FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
+  FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
   USING (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
@@ -52,7 +52,7 @@ BEGIN
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
         (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
       )
     )
@@ -63,7 +63,7 @@ BEGIN
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+        (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
         (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
       )
     )
@@ -78,7 +78,7 @@ BEGIN
   CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 
   CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
-  FOR ALL TO cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin
+  FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
   USING (
     EXISTS (
       SELECT 1 FROM public.systems s
@@ -88,7 +88,7 @@ BEGIN
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
         )
       )
@@ -102,7 +102,7 @@ BEGIN
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'vmux_admin' AND lt.name = 'VMUX') OR
+          (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
         )
       )
@@ -124,7 +124,7 @@ BEGIN
     public.v_ring_nodes,
     public.v_rings,
     public.v_ofc_connections_complete
-  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, vmux_admin, mng_admin, authenticated;
+  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';
 END;
