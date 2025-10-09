@@ -7,17 +7,16 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { OnboardingFormData, onboardingFormSchema } from "@/schemas/custom-schemas";
-import { User_profilesUpdateSchema } from "@/schemas/zod-schemas";
+import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
 import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
 import { useEffect } from "react";
-import { UserRole } from "@/types/user-roles";
 import { Input, Label } from "@/components/common/ui";
-const toObject = (data: unknown): Record<string, unknown> => {
+import { Json } from "@/types/supabase-types";
+
+// THE FIX: This function is now robust. It handles null/undefined/non-object
+// values by returning an empty object, preventing crashes.
+const toObject = (data: Json | null | undefined): Record<string, unknown> => {
   if (data && typeof data === "object") {
-    return Object.fromEntries(
-      Object.entries(data).map(([key, value]) => [key, typeof value === "object" ? toObject(value) : value])
-    );
     return data as Record<string, unknown>;
   }
   return {};
@@ -35,16 +34,15 @@ export default function OnboardingFormEnhanced() {
     reset,
     formState: { errors, isDirty, dirtyFields },
     watch,
-  } = useForm<OnboardingFormData>({
-    resolver: zodResolver(onboardingFormSchema),
+  } = useForm<User_profilesUpdateSchema>({
+    resolver: zodResolver(user_profilesUpdateSchema),
   });
 
   const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(supabase, "user_profiles", {
     onSuccess: (data) => {
       toast.success("Profile updated successfully!");
       refetch();
-      // THE FIX: Cast the reset data to the correct form data type.
-      reset(data[0] as unknown as OnboardingFormData);
+      reset(data[0] as User_profilesUpdateSchema);
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
@@ -80,43 +78,30 @@ export default function OnboardingFormEnhanced() {
     }
   }, [profile, isProfileLoading, reset]);
 
-  const onSubmit = (data: OnboardingFormData) => {
+  const onSubmit = (data: User_profilesUpdateSchema) => {
     if (!isDirty || !user?.id) {
       toast.info("No changes to save.");
       return;
     }
 
-    // THE FIX: Build the 'updates' payload to strictly conform to Partial<User_profilesUpdateSchema>
     const updates: Partial<User_profilesUpdateSchema> = {};
-    
-    // Iterate over dirty fields to build the payload, handling type conversions for specific fields like 'role'
-    (Object.keys(dirtyFields) as Array<keyof OnboardingFormData>).forEach(key => {
-      if (key === 'address' || key === 'preferences') {
-        // These are JSONB fields, so they are assignable to the `Json` type
-        updates[key] = data[key];
-      } else if (key === 'role') {
-        // Handle role field specifically - convert string to UserRole enum if valid
-        const roleValue = data[key];
-        if (roleValue && typeof roleValue === 'string') {
-          // Try to convert string to UserRole enum value
-          if (Object.values(UserRole).includes(roleValue as UserRole)) {
-            (updates as User_profilesUpdateSchema)[key] = roleValue as UserRole;
-          }
-        } else if (roleValue === null || roleValue === undefined) {
-          (updates as User_profilesUpdateSchema)[key] = roleValue as undefined;
-        }
-      } else if (key in data) {
-        // Handle all other fields - ensure null values are properly handled
-        const value = data[key];
-        if (value === null) {
-          (updates as User_profilesUpdateSchema)[key] = undefined;
-        } else {
-          (updates as User_profilesUpdateSchema)[key] = value;
-        }
-      }
-    });
 
-    // Handle preferences separately to ensure needsOnboarding is set
+    // THE FIX: Type-safe iteration over dirty fields without using `any`.
+    // This ensures correctness and adheres to the project's strict linting rules.
+    for (const key in dirtyFields) {
+      if (Object.prototype.hasOwnProperty.call(dirtyFields, key)) {
+        const typedKey = key as keyof User_profilesUpdateSchema;
+
+        const value = data[typedKey];
+        const keyForUpdate = typedKey as keyof User_profilesUpdateSchema;
+
+        // Convert empty strings or undefined to null for database compatibility.
+        // Use targeted type assertion for database update compatibility
+        (updates as Record<string, unknown>)[keyForUpdate] = value === '' || value === undefined ? null : value;
+      }
+    }
+
+
     const newPreferences = {
       ...toObject(profile?.preferences),
       ...toObject(data.preferences),
