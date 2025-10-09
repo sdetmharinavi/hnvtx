@@ -734,18 +734,18 @@ const TABLE_COLUMN_OBJECTS = {
     id: "id",
   },
   v_rings: {
-    id: "id",
     name: "name",
+    total_nodes: "total_nodes",
     description: "description",
-    ring_type_id: "ring_type_id",
     ring_type_name: "ring_type_name",
     ring_type_code: "ring_type_code",
-    maintenance_terminal_id: "maintenance_terminal_id",
     maintenance_area_name: "maintenance_area_name",
-    total_nodes: "total_nodes",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
+    maintenance_terminal_id: "maintenance_terminal_id",
+    ring_type_id: "ring_type_id",
+    id: "id",
   },
   v_system_ring_paths_detailed: {
     created_at: "created_at",
@@ -796,9 +796,10 @@ const TABLE_COLUMN_OBJECTS = {
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
-export const TABLE_COLUMN_KEYS = Object.entries(TABLE_COLUMN_OBJECTS).reduce(
-  (acc, [key, value]) => {
-    acc[key as PublicTableOrViewName] = Object.keys(value) as any;
+export const TABLE_COLUMN_KEYS = (Object.keys(TABLE_COLUMN_OBJECTS) as Array<keyof typeof TABLE_COLUMN_OBJECTS>).reduce(
+  (acc, tableName) => {
+    const value = TABLE_COLUMN_OBJECTS[tableName];
+    acc[tableName] = Object.keys(value) as (keyof Row<typeof tableName>)[];
     return acc;
   },
   {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] }

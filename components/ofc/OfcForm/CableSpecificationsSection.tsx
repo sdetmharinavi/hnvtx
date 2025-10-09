@@ -16,7 +16,7 @@ import {
 import { Switch } from '@/components/common/ui/switch/Switch';
 import { Label } from '@/components/common/ui/label/Label';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { OFC_FORM_CONFIG } from '@/components/ofc/OfcForm/constants/ofcFormConfig';
+import { OFC_FORM_CONFIG } from '@/constants/ofcFormConfig';
 import FormSection from './FormSection';
 import { Ofc_cablesInsertSchema } from '@/schemas/zod-schemas';
 

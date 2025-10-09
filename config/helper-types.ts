@@ -1,8 +1,8 @@
 // config/helpers.ts
 
 import { Database, Tables } from "@/types/supabase-types";
-import { TABLES, VIEWS } from "@/config/table-column-keys";
-import { PublicTableName, PublicTableOrViewName, ViewName } from "@/hooks/database";
+import { TABLES, VIEWS } from "@/constants/table-column-keys";
+import { PublicTableName, ViewName } from "@/hooks/database";
 
 // Database schema types
 

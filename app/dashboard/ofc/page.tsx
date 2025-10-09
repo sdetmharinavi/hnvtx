@@ -22,7 +22,7 @@ import {
   useStandardHeaderActions,
 } from '@/components/common/page-header';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 import {
   DataQueryHookParams,

@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
 import { useOfcFormData } from './hooks/useOfcFormData';
-import { OFC_FORM_CONFIG } from '@/components/ofc/OfcForm/constants/ofcFormConfig';
+import { OFC_FORM_CONFIG } from '@/constants/ofcFormConfig';
 import { useRouteGeneration } from '@/components/ofc/OfcForm/hooks/useRouteGeneration';
 import { useCapacityInference } from '@/components/ofc/OfcForm/hooks/useCapacityInference';
 import LoadingOverlay from '@/components/ofc/OfcForm/LoadingOverlay';

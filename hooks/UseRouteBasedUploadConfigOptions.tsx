@@ -8,7 +8,7 @@ import {
 } from "@/stores/useUploadConfigStore";
 import { useCurrentTableName } from "./useCurrentTableName";
 import { TableNames } from "@/config/helper-types";
-import { buildUploadConfig } from "@/config/table-column-keys";
+import { buildUploadConfig } from "@/constants/table-column-keys";
 
 export interface UseRouteBasedUploadConfigOptions {
   tableName?: TableNames;

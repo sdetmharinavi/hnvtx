@@ -14,7 +14,7 @@ import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
 import { TableOrViewName } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
-import { DEFAULTS } from "@/config/constants";
+import { DEFAULTS } from "@/constants/constants";
 
 interface TableToolbarProps<T extends TableOrViewName>
   extends Pick<

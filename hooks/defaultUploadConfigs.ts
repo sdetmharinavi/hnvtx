@@ -1,5 +1,5 @@
 import { TableNames } from "@/config/helper-types";
-import { buildUploadConfig, TABLES } from "@/config/table-column-keys";
+import { buildUploadConfig, TABLES } from "@/constants/table-column-keys";
 
 // Thin adapter: build per-table upload config from SSOT
 const defaultUploadConfigs = () => {

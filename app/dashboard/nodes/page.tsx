@@ -10,7 +10,7 @@ import { NodesFilters } from '@/components/nodes/NodesFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
-import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import { convertRichFiltersToSimpleJson, usePagedData, Filters } from '@/hooks/database';
 import {

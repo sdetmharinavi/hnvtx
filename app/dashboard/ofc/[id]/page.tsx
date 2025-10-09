@@ -9,7 +9,7 @@ import { DataTable } from "@/components/table";
 import { Row, usePagedData, useTableQuery } from "@/hooks/database";
 import { OfcDetailsTableColumns } from "@/config/table-columns/OfcDetailsTableColumns";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
-import { TABLE_COLUMN_KEYS } from "@/config/table-column-keys";
+import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
