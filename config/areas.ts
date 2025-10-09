@@ -1,30 +1,28 @@
 // config/areas.ts
-import { z } from 'zod';
+
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
-import { maintenance_areasInsertSchema, maintenance_areasRowSchema, lookup_typesRowSchema } from "@/schemas/zod-schemas";
+import { Maintenance_areasRowSchema, Lookup_typesRowSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
 
-// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
-export type MaintenanceArea = z.infer<typeof maintenance_areasRowSchema>;
-export type AreaType = z.infer<typeof lookup_typesRowSchema>;
-
-export interface MaintenanceAreaWithRelations extends MaintenanceArea {
-  area_type: AreaType | null;
+// THE FIX: Change from 'interface' to a 'type' alias using a type intersection (&).
+// This correctly merges the index signature from the Zod type with the new properties.
+export type MaintenanceAreaWithRelations = Maintenance_areasRowSchema & {
+  area_type: Lookup_typesRowSchema | null;
   parent_area: MaintenanceAreaWithRelations | null;
   child_areas: MaintenanceAreaWithRelations[];
-}
+};
 
 export interface AreaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: z.infer<typeof maintenance_areasInsertSchema>) => void;
+  onSubmit: (data: Maintenance_areasInsertSchema) => void;
   area: MaintenanceAreaWithRelations | null;
-  allAreas: MaintenanceArea[];
-  areaTypes: AreaType[];
+  allAreas: Maintenance_areasRowSchema[];
+  areaTypes: Lookup_typesRowSchema[];
   isLoading: boolean;
 }
 
-// --- CONFIGURATION (Unchanged) ---
+// --- CONFIGURATION ---
 export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
   entityName: 'area', entityDisplayName: 'Area', entityPluralName: 'Areas',
   parentField: 'parent_area', icon: FiBriefcase, isHierarchical: true,

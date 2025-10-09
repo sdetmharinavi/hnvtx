@@ -2,7 +2,7 @@
 import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { Maintenance_areasInsertSchema, Maintenance_areasUpdateSchema } from "@/schemas/zod-schemas";
-import { toast } from "sonner"; // <-- Import toast
+import { toast } from "sonner";
 
 export function useMaintenanceAreasMutations(
   supabase: ReturnType<typeof createClient>,
@@ -10,7 +10,6 @@ export function useMaintenanceAreasMutations(
 ) {
   const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
     onSuccess,
-    // ** Add an onError handler for creation failures.**
     onError: (error) => {
       toast.error(`Failed to create area: ${error.message}`);
     }
@@ -18,7 +17,6 @@ export function useMaintenanceAreasMutations(
 
   const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
     onSuccess,
-    // ** Add an onError handler for update failures.**
     onError: (error) => {
       toast.error(`Failed to update area: ${error.message}`);
     }
@@ -26,7 +24,6 @@ export function useMaintenanceAreasMutations(
 
   const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
     onSuccess,
-    // ** Add an onError handler for status toggle failures.**
     onError: (error) => {
       toast.error(`Failed to toggle status: ${error.message}`);
     }

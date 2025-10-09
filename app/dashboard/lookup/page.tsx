@@ -58,7 +58,7 @@ export default function LookupTypesPage() {
     getSortDirection,
   } = useSorting({
     data: lookupTypes,
-    defaultSortKey: 'name',
+    defaultSortKey: 'category',
     defaultDirection: 'asc',
     options: {
       caseSensitive: false,

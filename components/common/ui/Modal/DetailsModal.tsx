@@ -317,7 +317,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
     const avatarUrl = typeof avatarValue === "string" ? avatarValue : undefined;
 
     return (
-      <div className="relative px-8 py-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-900 border-b border-gray-200/50 dark:border-gray-700/50">
+      <div className="relative px-8 py-6 dark:from-gray-800 dark:via-gray-850 dark:to-gray-900 border-b border-gray-200/50 dark:border-gray-700/50">
         <div className="flex items-center justify-between">
           <motion.div className="flex items-center gap-4" variants={fieldVariants}>
             {header.avatar && (

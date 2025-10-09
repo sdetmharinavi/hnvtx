@@ -20,6 +20,7 @@ import {
   RPCConfig,
 } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
+import { BlurLoader } from '@/components/common/ui/LoadingSpinner';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
@@ -467,12 +468,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       {/* Section 2: Scrollable Table Area */}
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
       {isFetching && !loading && (
-          <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm">
-            <div className="flex items-center space-x-2 text-gray-500">
-              <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-blue-500"></div>
-              <span>Refreshing data...</span>
-            </div>
-          </div>
+          <BlurLoader className='h-full w-full' />
         )}
         <table className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
             <TableHeader
