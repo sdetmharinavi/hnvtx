@@ -10,6 +10,7 @@ import { NodesFilters } from '@/components/nodes/NodesFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import { convertRichFiltersToSimpleJson, usePagedData, Filters } from '@/hooks/database';
 import {
@@ -105,9 +106,7 @@ const NodesPage = () => {
   }, [nodes]);
 
   const columns = NodesTableColumns(nodes);
-  const orderedColumns = useOrderedColumns(columns, [
-    'name', 'latitude', 'longitude', 'node_type_name', 'maintenance_area_name', 'status', 'remark',
-  ]);
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
 
   const tableActions = useMemo(
     () => createStandardActions<V_nodes_completeRowSchema>({
