@@ -8,15 +8,10 @@ export const NodesTableColumns = (data: V_nodes_completeRowSchema[]) => {
     data: data,
     omit: [
       'node_type_id',
-      'node_type_code',
-      'maintenance_area_code',
       'id',
       'maintenance_terminal_id',
       'created_at',
       'updated_at',
-      'total_count',
-      'active_count',
-      'inactive_count',
     ],
     overrides: {
       name: {

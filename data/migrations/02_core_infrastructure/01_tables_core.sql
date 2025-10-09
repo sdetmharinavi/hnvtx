@@ -65,19 +65,6 @@ CREATE TABLE IF NOT EXISTS public.employees (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ring Master Table
-CREATE TABLE IF NOT EXISTS public.rings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  ring_type_id UUID REFERENCES public.lookup_types (id),
-  description TEXT,
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  total_nodes INTEGER DEFAULT 0,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- Unified Node List (Physical Locations/Sites)
 CREATE TABLE IF NOT EXISTS public.nodes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,6 +74,19 @@ CREATE TABLE IF NOT EXISTS public.nodes (
   longitude DECIMAL(11, 8),
   maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
   remark TEXT,
+  status BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ring Master Table
+CREATE TABLE IF NOT EXISTS public.rings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  ring_type_id UUID REFERENCES public.lookup_types (id),
+  description TEXT,
+  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
+  total_nodes INTEGER DEFAULT 0,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
