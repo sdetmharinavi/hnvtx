@@ -22,7 +22,7 @@ import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 
 const useEmployeesData = (
   params: DataQueryHookParams

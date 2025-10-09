@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import ColumnManagementProvider from "./ColumnManagementProvider";
 import DashboardHeader from "./DashboardHeader";
 import Sidebar from "../navigation/sidebar";
@@ -20,10 +20,32 @@ function DashboardContent({
   isMobile,
   showColumnManagement,
 }: DashboardContentProps) {
-  // Get page route
   const pathname = usePathname();
-  // Check if the current page is the dashboard
   const isDashboard = pathname === "/dashboard";
+  const [sidebarWidth, setSidebarWidth] = useState(0);
+
+  useEffect(() => {
+    const updateSidebarWidth = () => {
+      const sidebar = document.querySelector('[data-sidebar]');
+      if (sidebar) {
+        setSidebarWidth(sidebar.getBoundingClientRect().width);
+      }
+    };
+
+    // Initial measurement
+    updateSidebarWidth();
+
+    // Update on resize
+    window.addEventListener('resize', updateSidebarWidth);
+    
+    // Small delay to ensure sidebar transition completes
+    const timeout = setTimeout(updateSidebarWidth, 300);
+
+    return () => {
+      window.removeEventListener('resize', updateSidebarWidth);
+      clearTimeout(timeout);
+    };
+  }, [isCollapsed]);
 
   return (
       <ColumnManagementProvider
@@ -38,10 +60,10 @@ function DashboardContent({
 
         {/* Main Content Area */}
         <div
-          className={`transition-all duration-300 min-h-screen${
-            isMobile ? "" : isCollapsed ? " ml-16" : " ml-64"
-            // isMobile ? "" : isCollapsed ? " " : " "
-          }`}
+          className="transition-all duration-300 min-h-screen"
+          style={{
+            marginLeft: isMobile ? 0 : `${sidebarWidth}px`
+          }}
         >
           {/* Header */}
           <DashboardHeader onMenuClick={() => setIsCollapsed(false)} />

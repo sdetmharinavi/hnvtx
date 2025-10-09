@@ -11,7 +11,7 @@ import {
   Filters,
 } from './queries-type-helpers';
 import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
-import { DEFAULTS } from '@/config/constants';
+import { DEFAULTS } from '@/constants/constants';
 
 // =================================================================
 // Section 1: Generic & Specific RPC Hooks (Non-Paginated)

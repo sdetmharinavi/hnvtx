@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TableOrViewName, Row, Filters } from "@/hooks/database";
 import { useDebounce } from "@/hooks/useDebounce";
-import { DEFAULTS } from "@/config/constants";
+import { DEFAULTS } from "@/constants/constants";
 
 interface TableFilterPanelProps<T extends TableOrViewName> {
   columns: Column<Row<T>>[];

@@ -6,7 +6,7 @@ import { useDebounce } from 'use-debounce';
 import { FiFilter, FiSearch } from 'react-icons/fi';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
 import { Filters } from '@/hooks/database';
-import { DEFAULTS } from '@/config/constants';
+import { DEFAULTS } from '@/constants/constants';
 import {
   Employee_designationsRowSchema,
   Maintenance_areasRowSchema,

@@ -8,7 +8,6 @@ import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { RingsFilters } from '@/components/rings/RingsFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
-import { desiredRingColumnOrder } from '@/config/column-orders';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
@@ -19,6 +18,8 @@ import { GiLinkedRings } from 'react-icons/gi';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { FaNetworkWired } from 'react-icons/fa';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -63,12 +64,7 @@ const RingsPage = () => {
   const maintenanceAreas = maintenanceAreasData?.data || [];
 
   const columns = RingsColumns(rings);
-  const notUndefined = <T,>(x: T | undefined): x is T => x !== undefined;
-  const orderedColumns = [
-    ...desiredRingColumnOrder.map((k) => columns.find((c) => c.key === k)).filter(notUndefined),
-    ...columns.filter((c) => !desiredRingColumnOrder.includes(c.key)),
-  ];
-
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings])
   const handleView = useCallback((record: V_ringsRowSchema) => {
     if (record.id) {
       router.push(`/dashboard/rings/${record.id}`);

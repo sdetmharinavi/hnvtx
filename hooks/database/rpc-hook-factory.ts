@@ -3,7 +3,7 @@ import { useQuery, UseQueryOptions, UseQueryResult } from "@tanstack/react-query
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Json } from "@/types/supabase-types";
 import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns } from "./queries-type-helpers";
-import { DEFAULTS } from "@/config/constants";
+import { DEFAULTS } from "@/constants/constants";
 
 // Define a specific interface for the arguments our paged RPC functions accept.
 // This solves the "is not assignable to type 'never'" error.

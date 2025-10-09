@@ -5,7 +5,7 @@ import { useDebounce } from "use-debounce";
 import { FiSearch } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
 import { SearchableSelect, Option } from "@/components/common/ui/select/SearchableSelect";
-import { DEFAULTS } from "@/config/constants";
+import { DEFAULTS } from "@/constants/constants";
 
 interface NodesFiltersProps {
   searchQuery: string;

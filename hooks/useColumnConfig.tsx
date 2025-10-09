@@ -1,5 +1,5 @@
 import { useMemo, ReactNode } from 'react';
-import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 // import { inferColumnWidth } from "@/config/column-width";
 import {

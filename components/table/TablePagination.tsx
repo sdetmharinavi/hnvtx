@@ -2,7 +2,7 @@
 import React from "react";
 import { FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from "react-icons/fi";
 import { TablePaginationProps } from "@/components/table/datatable-types";
-import { DEFAULTS } from "@/config/constants";
+import { DEFAULTS } from "@/constants/constants";
 
 
 
