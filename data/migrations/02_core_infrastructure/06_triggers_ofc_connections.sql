@@ -22,7 +22,8 @@ BEGIN
             updated_fiber_no_sn,
             updated_fiber_no_en,
             updated_sn_id,
-            updated_en_id
+            updated_en_id,
+            fiber_role
         )
         VALUES (
             NEW.id,      -- Cable ID
@@ -32,7 +33,8 @@ BEGIN
             i,           -- updated_fiber_no_sn
             i,           -- updated_fiber_no_en
             NEW.sn_id,   -- updated_sn_id
-            NEW.en_id    -- updated_en_id
+            NEW.en_id,    -- updated_en_id
+            'working'    -- fiber_role
         );
     END LOOP;
     RETURN NEW;

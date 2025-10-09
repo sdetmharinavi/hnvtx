@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.ofc_connections (
   path_segment_order INTEGER DEFAULT 1,
   source_port TEXT,
   destination_port TEXT,
-  connection_category TEXT NOT NULL DEFAULT 'OFC_JOINT_TYPES',
+  connection_category TEXT NOT NULL DEFAULT 'SPLICE_TYPES',
   connection_type TEXT NOT NULL DEFAULT 'straight',
   CONSTRAINT fk_connection_type FOREIGN KEY (connection_category, connection_type)
     REFERENCES public.lookup_types(category, name),
