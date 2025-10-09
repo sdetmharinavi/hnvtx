@@ -28,11 +28,13 @@ import { toast } from 'sonner';
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
-  const [filters, setFilters] = useState<{ status?: string }>({});
+  // THE FIX: Add state to manage the selected entity ID.
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
+  
+  const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
-  
+
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
@@ -53,7 +55,7 @@ export default function DesignationManagerPage() {
   );
 
   const { refetch, error, data } = designationsQuery;
-  
+
   const allDesignations = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
 
@@ -69,11 +71,11 @@ export default function DesignationManagerPage() {
     mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
     isPending: boolean;
   };
-  
+
   const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
     return toggleStatusMutation.mutate({ ...variables, nameField: 'status' });
   };
-  
+
   const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDelete({

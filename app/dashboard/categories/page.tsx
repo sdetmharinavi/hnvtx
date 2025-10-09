@@ -38,7 +38,7 @@ export default function CategoriesPage() {
     error: dedupError,
     refetch: refetchCategories,
   } = useDeduplicated(supabase, 'lookup_types', {
-    columns: ['category', 'id'],
+    columns: ['category'],
     orderBy: [{ column: 'created_at', ascending: true }],
   });
   const categoriesDeduplicated = useMemo(() => categoriesResult?.data || [], [categoriesResult]);

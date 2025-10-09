@@ -28,6 +28,8 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   onCreateNew: () => void;
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
+  // THE FIX: Add onViewDetails to the component's props interface.
+  onViewDetails?: () => void;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
@@ -39,13 +41,13 @@ export function EntityManagementComponent<T extends BaseEntity>({
   onCreateNew,
   selectedEntityId,
   onSelect,
+  onViewDetails, // THE FIX: Destructure the new prop.
 }: EntityManagementComponentProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
-  const [expandedEntities] = useState<Set<string>>(new Set());
 
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
@@ -62,13 +64,13 @@ export function EntityManagementComponent<T extends BaseEntity>({
     onSelect(null);
   }, [onSelect]);
 
-  // **THE FIX IS HERE:** Removed `handleOpenEditForm` from the destructuring
   const {
     filteredEntities,
     hierarchicalEntities,
     selectedEntity,
     handleEntitySelect,
     handleOpenCreateForm,
+    expandedEntities,
     toggleExpanded,
   } = useEntityManagement<T>({
     entitiesQuery,
@@ -80,14 +82,14 @@ export function EntityManagementComponent<T extends BaseEntity>({
     selectedEntityId,
     onSelect,
   });
-  
+
   const IconComponent = config.icon;
-  
+
   const handleItemSelect = (id: string) => {
     handleEntitySelect(id);
     setShowDetailsPanel(true);
   };
-  
+
   const handleOpenEditForm = useCallback(() => {
     if (selectedEntity) {
       onEdit(selectedEntity);
@@ -160,7 +162,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     selectedEntityId={selectedEntityId}
                     expandedEntities={expandedEntities}
                     onSelect={handleItemSelect}
-                    onToggleExpand={(id) => toggleExpanded(id)}
+                    onToggleExpand={toggleExpanded}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
                     isLoading={toggleStatusMutation.isPending}
                   />
@@ -198,11 +200,13 @@ export function EntityManagementComponent<T extends BaseEntity>({
           </div>
           <div className="flex-1 overflow-y-auto">
             {selectedEntity ? (
-              <EntityDetailsPanel 
-                entity={selectedEntity} 
-                config={config} 
+              <EntityDetailsPanel
+                entity={selectedEntity}
+                config={config}
                 onEdit={handleOpenEditForm}
-                onDelete={onDelete} 
+                onDelete={onDelete}
+                // THE FIX: Pass the onViewDetails prop down to the panel.
+                onViewDetails={onViewDetails}
               />
             ) : (
               <div className="flex items-center justify-center h-full p-8 text-center">

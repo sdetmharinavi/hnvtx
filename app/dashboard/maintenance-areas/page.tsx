@@ -2,15 +2,13 @@
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal';
 import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
+import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config'; // THE FIX: Import the new modal
 import {
   Filters,
   PagedQueryResult,
@@ -28,9 +26,11 @@ import { toast } from 'sonner';
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
-  const [filters, setFilters] = useState<{ status?: string; areaType?: string; }>({});
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<{ status?: string; areaType?: string; }>({});
   const [isFormOpen, setFormOpen] = useState(false);
+  // THE FIX: Add state to manage the new details modal.
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingArea, setEditingArea] =
     useState<MaintenanceAreaWithRelations | null>(null);
 
@@ -62,6 +62,8 @@ export default function MaintenanceAreasPage() {
 
   const allAreas = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
+  // THE FIX: Memoize the selected entity to pass to the modal.
+  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
 
   const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
@@ -99,7 +101,7 @@ export default function MaintenanceAreasPage() {
     setEditingArea(area);
     setFormOpen(true);
   };
-  
+
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
@@ -150,11 +152,13 @@ export default function MaintenanceAreasPage() {
         config={areaConfig}
         entitiesQuery={areasQuery}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
-        onEdit={handleOpenEditForm}
+        // THE FIX: Pass the onViewDetails handler to the component.
+        onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedAreaId}
         onSelect={setSelectedAreaId}
+        onViewDetails={() => setIsDetailsModalOpen(true)}
       />
 
       {isFormOpen && (
@@ -172,6 +176,13 @@ export default function MaintenanceAreasPage() {
           }
         />
       )}
+      
+      {/* THE FIX: Render the new details modal. */}
+      <MaintenanceAreaDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        area={selectedEntity}
+      />
 
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}

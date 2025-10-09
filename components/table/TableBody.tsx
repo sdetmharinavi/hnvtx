@@ -201,6 +201,8 @@ function TableBodyBase<T extends TableOrViewName>({
     );
   }
 
+  
+
   if (processedData.length === 0) {
     return (
       <tbody>
@@ -222,7 +224,7 @@ function TableBodyBase<T extends TableOrViewName>({
     <tbody className={`bg-white dark:bg-gray-800 ${rest.striped && !rest.bordered ? "divide-y divide-gray-200 dark:divide-gray-700" : ""}`}>
       {processedData.map((record, rowIndex) => (
         <MemoizedTableRow
-            key={record.id} // IMPORTANT: Use a stable, unique ID
+            key={record.id}
             record={record}
             rowIndex={rowIndex}
             visibleColumns={visibleColumns}
