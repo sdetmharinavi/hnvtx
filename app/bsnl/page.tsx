@@ -1,228 +1,393 @@
-// path: app/bsnl/page.tsx
-"use client"
+// path: app/onboarding/onboarding-form-enhanced.tsx
 
-import React, { useState, useCallback, useMemo } from 'react';
-import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw, Loader2 } from 'lucide-react';
-import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
-import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
-import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
-import { PaginatedTable } from '@/components/bsnl/PaginatedTable';
-import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
-import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
-import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
-import { toast } from 'sonner';
-import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
-import { BsnlSearchFilters } from '@/schemas/custom-schemas';
-import { LatLngBounds } from 'leaflet';
+import { useAuthStore } from "@/stores/authStore";
+import { createClient } from "@/utils/supabase/client";
+import { useTableUpdate } from "@/hooks/database";
+import { toast } from "sonner";
+import Image from "next/image";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
+import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+import { useEffect } from "react";
+import { Input, Label } from "@/components/common/ui";
+import { Json } from "@/types/supabase-types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select/Select";
 
-type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
+// THE FIX: This function is now robust. It handles null/undefined/non-object
+// values by returning an empty object, preventing crashes.
+const toObject = (data: Json | null | undefined): Record<string, unknown> => {
+  if (data && typeof data === "object") {
+    return data as Record<string, unknown>;
+  }
+  return {};
+};
 
-export default function ScalableFiberNetworkDashboard() {
-  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
-  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+export default function OnboardingFormEnhanced() {
+  const user = useAuthStore((state) => state.user);
+  const supabase = createClient();
 
-  const [filters, setFilters] = useState<BsnlSearchFilters>({
-    query: '',
-    status: undefined,
-    type: undefined,
-    region: undefined,
-    nodeType: undefined,
-    priority: undefined
+  const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetMyUserDetails();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors, isDirty, dirtyFields },
+    watch,
+  } = useForm<User_profilesUpdateSchema>({
+    resolver: zodResolver(user_profilesUpdateSchema),
+    defaultValues: {
+      first_name: "",
+      avatar_url: null,
+      date_of_birth: null,
+      designation: null,
+      phone_number: null,
+      address: {},
+      preferences: {
+        language: null,
+        theme: null,
+      },
+    },
   });
 
-  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
+  const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(supabase, "user_profiles", {
+    onSuccess: (data) => {
+      console.log('Update success data:', data);
+      toast.success("Profile updated successfully!");
+      refetch();
 
-  const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
-  const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const [allocationData, setAllocationData] = useState<AllocationSaveData | null>(null);
+      if (data && data[0]) {
+        const updatedProfile = data[0] as User_profilesUpdateSchema;
+        console.log('Updated profile for reset:', updatedProfile);
 
-  // State for map interaction
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-  const [zoom, setZoom] = useState(13);
+        // Normalize the returned values for form reset
+        const normalizePreferenceValue = (value: unknown): string | null => {
+          if (!value || typeof value !== 'string') return null;
+          const normalized = value.toLowerCase().trim();
 
-  // THE FIX: Memoize state setters to prevent re-renders in the child map component.
-  const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
-    setMapBounds(bounds);
-  }, []);
+          switch (normalized) {
+            case 'english':
+            case 'en-us':
+            case 'en-gb':
+              return 'en';
+            case 'light':
+            case 'light-theme':
+              return 'light';
+            case 'dark':
+            case 'dark-theme':
+              return 'dark';
+            case 'system':
+            case 'auto':
+            case 'default':
+              return 'system';
+            default:
+              return normalized;
+          }
+        };
 
-  const handleZoomChange = useCallback((newZoom: number) => {
-    setZoom(newZoom);
-  }, []);
+        // Ensure proper structure for form reset
+        reset({
+          ...updatedProfile,
+          address: toObject(updatedProfile.address),
+          preferences: {
+            ...toObject(updatedProfile.preferences),
+            language: normalizePreferenceValue(toObject(updatedProfile.preferences).language),
+            theme: normalizePreferenceValue(toObject(updatedProfile.preferences).theme),
+          },
+        });
+      } else {
+        // Fallback to refetch if no data returned
+        refetch();
+      }
+    },
+    onError: (error) => {
+      console.error('Update error:', error);
+      toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const isLoading = isProfileLoading || isUpdatePending;
+  const avatarUrl = watch("avatar_url");
+
+  // Watch preferences values to debug
+  const languageValue = watch("preferences.language");
+  const themeValue = watch("preferences.theme");
+
+  console.log('Watched values - Language:', languageValue, 'Theme:', themeValue);
+
+  useEffect(() => {
+    if (profile) {
+      const preferences = toObject(profile.preferences);
+      console.log('Profile preferences:', profile.preferences);
+      console.log('Converted preferences:', preferences);
+
+      // Normalize preference values to match SelectItem values exactly
+      const normalizePreferenceValue = (value: unknown): string | null => {
+        if (!value || typeof value !== 'string') return null;
+        const normalized = value.toLowerCase().trim();
+
+        // Map common variations to canonical values
+        switch (normalized) {
+          case 'english':
+          case 'en-us':
+          case 'en-gb':
+            return 'en';
+          case 'light':
+          case 'light-theme':
+            return 'light';
+          case 'dark':
+          case 'dark-theme':
+            return 'dark';
+          case 'system':
+          case 'auto':
+          case 'default':
+            return 'system';
+          default:
+            return normalized; // Return as-is if it doesn't match known variations
+        }
+      };
+
+      const normalizedPreferences = {
+        language: normalizePreferenceValue(preferences.language),
+        theme: normalizePreferenceValue(preferences.theme),
+        needsOnboarding: preferences.needsOnboarding as boolean | null | undefined,
+        showOnboardingPrompt: preferences.showOnboardingPrompt as boolean | null | undefined,
+      };
+
+      console.log('Normalized preferences:', normalizedPreferences);
+
+      reset({
+        ...profile,
+        address: toObject(profile.address),
+        preferences: normalizedPreferences,
+      });
+    } else if (!isProfileLoading) {
+      reset({
+        first_name: "",
+        last_name: "",
+        avatar_url: null,
+        date_of_birth: null,
+        designation: null,
+        phone_number: null,
+        address: {},
+        preferences: {
+          language: null,
+          theme: null,
+        },
+      });
+    }
+  }, [profile, isProfileLoading, reset]);
+
+  const onSubmit = (data: User_profilesUpdateSchema) => {
+    if (!isDirty || !user?.id) {
+      toast.info("No changes to save.");
+      return;
+    }
+
+    console.log('Form submit data:', data);
+
+    const updates: Partial<User_profilesUpdateSchema> = {};
+
+    // THE FIX: Type-safe iteration over dirty fields without using `any`.
+    // This ensures correctness and adheres to the project's strict linting rules.
+    for (const key in dirtyFields) {
+      if (Object.prototype.hasOwnProperty.call(dirtyFields, key)) {
+        const typedKey = key as keyof User_profilesUpdateSchema;
+
+        const value = data[typedKey];
+        const keyForUpdate = typedKey as keyof User_profilesUpdateSchema;
+
+        // Convert empty strings or undefined to null for database compatibility.
+        // Use targeted type assertion for database update compatibility
+        (updates as Record<string, unknown>)[keyForUpdate] = value === '' || value === undefined ? null : value;
+      }
+    }
 
 
-  const handleSaveAllocation = (allocationData: AllocationSaveData) => {
-    setAllocationData(allocationData);
-    toast.info("Allocation feature is a work in progress.");
-  };
-
-  const clearFilters = useCallback(() => {
-    setFilters({
-      query: '',
-      status: undefined,
-      type: undefined,
-      region: undefined,
-      nodeType: undefined,
-      priority: undefined
-    });
-  }, []);
-
-  const handleRefresh = async () => {
-    toast.info("Refreshing network data...");
-    await refetchAll();
-    toast.success("Dashboard data refreshed.");
-  };
-
-  const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    const allSystemTypes = [...new Set(data.systems.map(s => s.system_type_name).filter(Boolean))];
-    const allCableTypes = [...new Set(data.ofcCables.map(c => c.ofc_type_name).filter(Boolean))];
-    const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
-    const allRegions = [...new Set(data.nodes.map(n => n.maintenance_area_name).filter(Boolean))].sort();
-    const allNodeTypes = [...new Set(data.nodes.map(n => n.node_type_name).filter(Boolean))].sort();
-
-    return {
-      typeOptions: uniqueTypes as string[],
-      regionOptions: allRegions as string[],
-      nodeTypeOptions: allNodeTypes as string[],
+    const newPreferences = {
+      ...toObject(profile?.preferences),
+      ...toObject(data.preferences),
+      needsOnboarding: false,
     };
-  }, [data]);
+    updates.preferences = newPreferences;
 
-  const systemColumns = [
-    { key: 'name', label: 'System Name', render: (system: BsnlSystem) => (<div><div className="font-medium text-gray-900 dark:text-white">{system.system_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{system.system_type_name}</div></div>) },
-    { key: 'status', label: 'Status', render: (system: BsnlSystem) => (<span className={`px-2 py-1 text-xs rounded-full ${system.status ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>{system.status ? 'Active' : 'Inactive'}</span>) },
-    { key: 'node', label: 'Node', render: (system: BsnlSystem) => system.node_name },
-    { key: 'ip', label: 'IP Address', render: (system: BsnlSystem) => <code className="text-xs">{system.ip_address as string}</code> },
-    { key: 'region', label: 'Region', render: (system: BsnlSystem) => system.system_maintenance_terminal_name }
-  ];
+    console.log('Final updates to send:', updates);
 
-  const cableColumns = [
-    { key: 'name', label: 'Route Name', render: (cable: BsnlCable) => (<div><div className="font-medium text-gray-900 dark:text-white">{cable.route_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{cable.asset_no}</div></div>) },
-    { key: 'status', label: 'Status', render: (cable: BsnlCable) => (<span className={`px-2 py-1 text-xs rounded-full ${cable.status ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>{cable.status ? 'Active' : 'Inactive'}</span>) },
-    { key: 'capacity', label: 'Capacity', render: (cable: BsnlCable) => `${cable.capacity}F / ${cable.current_rkm?.toFixed(1)}km` },
-    { key: 'endpoints', label: 'Endpoints', render: (cable: BsnlCable) => <div className="text-sm">{cable.sn_name} → {cable.en_name}</div> },
-    { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
-  ];
+    if (Object.keys(updates).length > 0) {
+      updateProfile({ id: user.id, data: updates });
+    }
+  };
 
-  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length;
+  if (isProfileLoading) {
+    return (
+      <div className='animate-pulse space-y-4'>
+        <div className='h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4'></div>
+        <div className='space-y-3'>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
+        </div>
+      </div>
+    );
+  }
 
-  if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
-  if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;
+  if (profileError) {
+    return (
+      <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'>
+        <h3 className='font-medium'>Error loading profile</h3>
+        <p className='text-sm mt-1'>{profileError.message}</p>
+        <button onClick={() => window.location.reload()} className='mt-3 text-sm underline hover:no-underline text-red-600 dark:text-red-400'>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Network className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BSNL Fiber Network Dashboard</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {data.systems.length.toLocaleString()} Systems | {data.ofcCables.length.toLocaleString()} Cables
-                  {isFetching && <span className="ml-2 inline-flex items-center"><Loader2 className="h-3 w-3 animate-spin" /></span>}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleRefresh}
-                disabled={isFetching}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
-              </button>
-              <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
-                <Settings className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <AdvancedSearchBar
-          filters={filters}
-          onFiltersChange={setFilters}
-          onClear={clearFilters}
-          typeOptions={typeOptions}
-          regionOptions={regionOptions}
-          nodeTypeOptions={nodeTypeOptions}
-        />
-
-        <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex space-x-8 -mb-px">
-            {(['overview', 'systems', 'allocations'] as BsnlDashboardTab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="relative">
-          {isFetching && !isInitialLoad && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
-              <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Updating results...</span>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <DashboardStatsGrid />
-              <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <OptimizedNetworkMap
-                  nodes={data.nodes}
-                  cables={data.ofcCables}
-                  selectedSystem={selectedSystem}
-                  visibleLayers={{ nodes: true, cables: true, systems: true }}
-                  mapBounds={mapBounds}
-                  zoom={zoom}
-                  onBoundsChange={handleBoundsChange}
-                  onZoomChange={handleZoomChange}
-                />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'systems' && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable
-                data={data.systems}
-                columns={systemColumns}
-                onItemClick={setSelectedSystem}
-                pageSize={50}
-              />
-            </div>
-          )}
-
-          {activeTab === 'allocations' && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable
-                data={data.ofcCables}
-                columns={cableColumns}
-                onItemClick={setSelectedCable}
-                pageSize={25}
-              />
-            </div>
-          )}
+    <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-3xl mx-auto'>
+      <div className='flex items-center gap-4'>
+        <Image src={avatarUrl || "/default-avatar.png"} alt='Profile' width={64} height={64} className='w-16 h-16 rounded-full object-cover bg-gray-200' />
+        <div className='flex-1'>
+          <Label htmlFor='avatar_url'>Avatar URL</Label>
+          <Input id='avatar_url' {...register("avatar_url")} placeholder='https://example.com/avatar.jpg' className='mt-1' />
+          {errors.avatar_url && <p className='text-red-500 text-xs mt-1'>{errors.avatar_url.message}</p>}
         </div>
       </div>
 
-      <AdvancedAllocationModal
-        isOpen={isAllocationModalOpen}
-        onClose={() => setIsAllocationModalOpen(false)}
-        onSave={handleSaveAllocation}
-        systems={data.systems}
-        nodes={data.nodes}
-        cables={data.ofcCables}
-      />
-    </div>
+      <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
+        <div>
+          <Label htmlFor='email'>Email</Label>
+          <Input id='email' type='email' value={user?.email || ""} disabled className='mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500' />
+        </div>
+        <div>
+          <Label htmlFor='phone_number'>Phone Number</Label>
+          <Input id='phone_number' type='tel' {...register("phone_number")} placeholder='+1 (555) 123-4567' className='mt-1' />
+          {errors.phone_number && <p className='text-red-500 text-xs mt-1'>{errors.phone_number.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor='first_name'>
+            First Name <span className='text-red-500'>*</span>
+          </Label>
+          <Input id='first_name' type='text' {...register("first_name")} className='mt-1' />
+          {errors.first_name && <p className='text-red-500 text-xs mt-1'>{errors.first_name.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor='last_name'>
+            Last Name <span className='text-red-500'>*</span>
+          </Label>
+          <Input id='last_name' type='text' {...register("last_name")} className='mt-1' />
+          {errors.last_name && <p className='text-red-500 text-xs mt-1'>{errors.last_name.message}</p>}
+        </div>
+      </div>
+
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Address Information</h3>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div className='sm:col-span-2'>
+            <Label htmlFor='address_street'>Street Address</Label>
+            <Input id='address_street' {...register("address.street")} placeholder='123 Main St' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_city'>City</Label>
+            <Input id='address_city' {...register("address.city")} placeholder='New York' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_state'>State/Province</Label>
+            <Input id='address_state' {...register("address.state")} placeholder='NY' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_zip_code'>Zip Code</Label>
+            <Input id='address_zip_code' {...register("address.zip_code")} placeholder='12345' className='mt-1' />
+          </div>
+          <div>
+            <Label htmlFor='address_country'>Country</Label>
+            <Input id='address_country' {...register("address.country")} placeholder='USA' className='mt-1' />
+          </div>
+        </div>
+      </div>
+
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div>
+            <Label htmlFor='preferences_language'>Language</Label>
+            <Controller
+              name="preferences.language"
+              control={control}
+              render={({ field }) => {
+                console.log('Language field value:', field.value, typeof field.value);
+                return (
+                  <Select 
+                    value={field.value ?? undefined} 
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                );
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor='preferences_theme'>Theme</Label>
+            <Controller
+              name="preferences.theme"
+              control={control}
+              render={({ field }) => {
+                console.log('Theme field value:', field.value, typeof field.value);
+                // Always pass a string value - empty string for null/undefined to keep it controlled
+                const selectValue = field.value && typeof field.value === 'string' ? field.value : "";
+                return (
+                  <Select 
+                    value={selectValue} 
+                    onValueChange={(value) => {
+                      // Convert empty string back to null for form state
+                      field.onChange(value === "" ? null : value);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                );
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className='flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-700'>
+        <div className='flex space-x-3'>
+          <button
+            type='button'
+            onClick={() => reset()}
+            disabled={!isDirty || isLoading}
+            className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50'>
+            Reset
+          </button>
+          <button type='submit' disabled={!isDirty || isLoading} className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center'>
+            {isLoading && (
+              <svg className='animate-spin -ml-1 mr-2 h-4 w-4 text-white' fill='none' viewBox='0 0 24 24'>
+                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' />
+              </svg>
+            )}
+            {isLoading ? "Updating..." : "Update Profile"}
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }

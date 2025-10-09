@@ -5,13 +5,14 @@ import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
 import { toast } from "sonner";
 import Image from "next/image";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
 import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
 import { useEffect } from "react";
 import { Input, Label } from "@/components/common/ui";
 import { Json } from "@/types/supabase-types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select/Select";
 
 // THE FIX: This function is now robust. It handles null/undefined/non-object
 // values by returning an empty object, preventing crashes.
@@ -32,19 +33,77 @@ export default function OnboardingFormEnhanced() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isDirty, dirtyFields },
     watch,
   } = useForm<User_profilesUpdateSchema>({
     resolver: zodResolver(user_profilesUpdateSchema),
+    defaultValues: {
+      first_name: "",
+      avatar_url: null,
+      date_of_birth: null,
+      designation: null,
+      phone_number: null,
+      address: {},
+      preferences: {
+        language: null,
+        theme: null,
+      },
+    },
   });
 
   const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(supabase, "user_profiles", {
     onSuccess: (data) => {
+      console.log('Update success data:', data);
       toast.success("Profile updated successfully!");
       refetch();
-      reset(data[0] as User_profilesUpdateSchema);
+
+      if (data && data[0]) {
+        const updatedProfile = data[0] as User_profilesUpdateSchema;
+        console.log('Updated profile for reset:', updatedProfile);
+
+        // Normalize the returned values for form reset
+        const normalizePreferenceValue = (value: unknown): string | null => {
+          if (!value || typeof value !== 'string') return null;
+          const normalized = value.toLowerCase().trim();
+
+          switch (normalized) {
+            case 'english':
+            case 'en-us':
+            case 'en-gb':
+              return 'en';
+            case 'light':
+            case 'light-theme':
+              return 'light';
+            case 'dark':
+            case 'dark-theme':
+              return 'dark';
+            case 'system':
+            case 'auto':
+            case 'default':
+              return 'system';
+            default:
+              return normalized;
+          }
+        };
+
+        // Ensure proper structure for form reset
+        reset({
+          ...updatedProfile,
+          address: toObject(updatedProfile.address),
+          preferences: {
+            ...toObject(updatedProfile.preferences),
+            language: normalizePreferenceValue(toObject(updatedProfile.preferences).language),
+            theme: normalizePreferenceValue(toObject(updatedProfile.preferences).theme),
+          },
+        });
+      } else {
+        // Fallback to refetch if no data returned
+        refetch();
+      }
     },
     onError: (error) => {
+      console.error('Update error:', error);
       toast.error(`Update failed: ${error.message}`);
     },
   });
@@ -52,17 +111,57 @@ export default function OnboardingFormEnhanced() {
   const isLoading = isProfileLoading || isUpdatePending;
   const avatarUrl = watch("avatar_url");
 
+  // Watch preferences values to debug
+  const languageValue = watch("preferences.language");
+  const themeValue = watch("preferences.theme");
+
+  console.log('Watched values - Language:', languageValue, 'Theme:', themeValue);
+
   useEffect(() => {
     if (profile) {
+      const preferences = toObject(profile.preferences);
+      console.log('Profile preferences:', profile.preferences);
+      console.log('Converted preferences:', preferences);
+
+      // Normalize preference values to match SelectItem values exactly
+      const normalizePreferenceValue = (value: unknown): string | null => {
+        if (!value || typeof value !== 'string') return null;
+        const normalized = value.toLowerCase().trim();
+
+        // Map common variations to canonical values
+        switch (normalized) {
+          case 'english':
+          case 'en-us':
+          case 'en-gb':
+            return 'en';
+          case 'light':
+          case 'light-theme':
+            return 'light';
+          case 'dark':
+          case 'dark-theme':
+            return 'dark';
+          case 'system':
+          case 'auto':
+          case 'default':
+            return 'system';
+          default:
+            return normalized; // Return as-is if it doesn't match known variations
+        }
+      };
+
+      const normalizedPreferences = {
+        language: normalizePreferenceValue(preferences.language),
+        theme: normalizePreferenceValue(preferences.theme),
+        needsOnboarding: preferences.needsOnboarding as boolean | null | undefined,
+        showOnboardingPrompt: preferences.showOnboardingPrompt as boolean | null | undefined,
+      };
+
+      console.log('Normalized preferences:', normalizedPreferences);
+
       reset({
-        first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
-        last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
-        avatar_url: profile.avatar_url,
-        date_of_birth: profile.date_of_birth,
-        designation: profile.designation,
-        phone_number: profile.phone_number,
+        ...profile,
         address: toObject(profile.address),
-        preferences: toObject(profile.preferences),
+        preferences: normalizedPreferences,
       });
     } else if (!isProfileLoading) {
       reset({
@@ -73,7 +172,10 @@ export default function OnboardingFormEnhanced() {
         designation: null,
         phone_number: null,
         address: {},
-        preferences: {},
+        preferences: {
+          language: null,
+          theme: null,
+        },
       });
     }
   }, [profile, isProfileLoading, reset]);
@@ -83,6 +185,8 @@ export default function OnboardingFormEnhanced() {
       toast.info("No changes to save.");
       return;
     }
+
+    console.log('Form submit data:', data);
 
     const updates: Partial<User_profilesUpdateSchema> = {};
 
@@ -108,6 +212,8 @@ export default function OnboardingFormEnhanced() {
       needsOnboarding: false,
     };
     updates.preferences = newPreferences;
+
+    console.log('Final updates to send:', updates);
 
     if (Object.keys(updates).length > 0) {
       updateProfile({ id: user.id, data: updates });
@@ -207,11 +313,49 @@ export default function OnboardingFormEnhanced() {
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
           <div>
             <Label htmlFor='preferences_language'>Language</Label>
-            <Input id='preferences_language' {...register("preferences.language")} placeholder='English' className='mt-1' />
+            <Controller
+              name="preferences.language"
+              control={control}
+              render={({ field }) => {
+                console.log('Language field value:', field.value, typeof field.value);
+                // Ensure consistent string value to prevent controlled/uncontrolled warning
+                const selectValue = field.value && typeof field.value === 'string' ? field.value : "";
+                return (
+                  <Select value={selectValue} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={field.value ? field.value : "Select language"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                );
+              }}
+            />
           </div>
           <div>
             <Label htmlFor='preferences_theme'>Theme</Label>
-            <Input id='preferences_theme' {...register("preferences.theme")} placeholder='Light' className='mt-1' />
+            <Controller
+              name="preferences.theme"
+              control={control}
+              render={({ field }) => {
+                console.log('Theme field value:', field.value, typeof field.value);
+                // Ensure consistent string value to prevent controlled/uncontrolled warning
+                const selectValue = field.value && typeof field.value === 'string' ? field.value : "";
+                return (
+                  <Select value={selectValue} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={field.value ? field.value : "Select theme"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                );
+              }}
+            />
           </div>
         </div>
       </div>
