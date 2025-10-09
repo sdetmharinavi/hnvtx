@@ -716,21 +716,22 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_area_type_code: "maintenance_area_type_code",
   },
   v_employees: {
-    id: "id",
-    employee_pers_no: "employee_pers_no",
     employee_name: "employee_name",
+    employee_contact: "employee_contact",
     employee_email: "employee_email",
+    employee_pers_no: "employee_pers_no",
+    employee_designation_name: "employee_designation_name",
     employee_dob: "employee_dob",
     employee_doj: "employee_doj",
-    employee_contact: "employee_contact",
     employee_addr: "employee_addr",
+    maintenance_area_name: "maintenance_area_name",
     employee_designation_id: "employee_designation_id",
-    employee_designation_name: "employee_designation_name",
     maintenance_terminal_id: "maintenance_terminal_id",
     remark: "remark",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
+    id: "id",
   },
   v_rings: {
     id: "id",
@@ -800,7 +801,7 @@ export const TABLE_COLUMN_KEYS = Object.entries(TABLE_COLUMN_OBJECTS).reduce(
     acc[key as PublicTableOrViewName] = Object.keys(value) as any;
     return acc;
   },
-  {} as { [K in PublicTableOrViewName]: readonly (keyof Row<K>)[] }
+  {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] }
 );
 
 export const TABLES = {

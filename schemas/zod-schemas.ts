@@ -1740,6 +1740,7 @@ export const v_employeesRowSchema = z.object({
   employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   employee_pers_no: z.string().nullable(),
   id: z.uuid().nullable(),
+  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),

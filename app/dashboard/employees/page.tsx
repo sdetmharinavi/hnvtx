@@ -21,6 +21,8 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { TABLE_COLUMN_KEYS } from '@/config/table-column-keys';
 
 const useEmployeesData = (
   params: DataQueryHookParams
@@ -73,19 +75,23 @@ const EmployeesPage = () => {
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
     dataQueryHook: useEmployeesData,
+    displayNameField: 'employee_name'
   });
 
-  // ** THE FIX: Correctly destructure the object returned by useTableQuery **
+  // These queries are now only for the form modal, not for the table display.
   const { data: designationsData } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
   const designations = useMemo(() => designationsData?.data || [], [designationsData]);
   const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
   const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
 
+  // The columns component is now much simpler.
+  const columns = useMemo(() => getEmployeeTableColumns(), []);
+  const orderedColumns = useOrderedColumns(
+    columns,
+    [...TABLE_COLUMN_KEYS.v_employees] 
+  );
 
-  const columns = useMemo(() => getEmployeeTableColumns({
-    designationMap: Object.fromEntries(designations.map(d => [d.id, d.name])),
-    areaMap: Object.fromEntries(maintenanceAreas.map(a => [a.id, a.name])),
-  }), [designations, maintenanceAreas]);
+  
 
   const tableActions = useMemo(
     () => createStandardActions<V_employeesRowSchema>({
@@ -139,7 +145,7 @@ const EmployeesPage = () => {
       <DataTable
         tableName="v_employees"
         data={employees}
-        columns={columns}
+        columns={orderedColumns}
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
