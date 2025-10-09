@@ -120,6 +120,7 @@ Include all imports, exports, and dependencies
 Ensure code is production-ready with proper error handling
 Add inline comments for complex logic
 Follow the existing code style and patterns
+strictly follow @typescript-eslint/no-explicit-any.
 
 
 📂 Project Structure & Codebase
