@@ -166,23 +166,20 @@ export const defaultValidationConfig: ValidationConfig = {
     {
       fieldName: 'role',
       tableName: 'user',
-      // CORRECTED: Use z.enum() for TypeScript enums as per Zod 4 docs
       validation: 'z.enum(UserRole)',
       description: 'User role field using native enum',
     },
     {
       fieldName: 'address',
       tableName: 'user_profiles',
-      validation:
-        'z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), })',
-      description: 'Supabase auth audience field',
+      validation: 'z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), })',
+      description: 'Custom object schema for user address',
     },
     {
       fieldName: 'preferences',
       tableName: 'user_profiles',
-      validation:
-        'z.object({language: z.string().optional().nullable(), theme: z.string().optional().nullable(), needsOnboarding: z.boolean().optional().nullable(), showOnboardingPrompt: z.boolean().optional().nullable(), })',
-      description: 'Supabase auth audience field',
+      validation: 'z.object({language: z.string().optional().nullable(), theme: z.string().optional().nullable(), needsOnboarding: z.boolean().optional().nullable(), showOnboardingPrompt: z.boolean().optional().nullable(), })',
+      description: 'Custom object schema for user preferences',
     },
     {
       fieldName: 'transnet_id',

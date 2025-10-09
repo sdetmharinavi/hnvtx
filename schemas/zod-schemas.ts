@@ -11,7 +11,7 @@ export const authAudit_log_entriesRowSchema = z.object({
   id: z.uuid(),
   instance_id: z.uuid().nullable(),
   ip_address: z.string().min(5, "Address must be at least 5 characters").max(500),
-  payload: z.string().nullable(),
+  payload: JsonSchema.nullable(),
 });
 
 export const authAudit_log_entriesInsertSchema = z.object({
@@ -19,7 +19,7 @@ export const authAudit_log_entriesInsertSchema = z.object({
   id: z.uuid(),
   instance_id: z.uuid().nullable().optional(),
   ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
-  payload: z.string().nullable().optional(),
+  payload: JsonSchema.nullable().optional(),
 });
 
 export const authAudit_log_entriesUpdateSchema = z.object({
@@ -27,7 +27,7 @@ export const authAudit_log_entriesUpdateSchema = z.object({
   id: z.uuid().optional(),
   instance_id: z.uuid().nullable().optional(),
   ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
-  payload: z.string().nullable().optional(),
+  payload: JsonSchema.nullable().optional(),
 });
 
 export const authFlow_stateRowSchema = z.object({
@@ -79,7 +79,7 @@ export const authIdentitiesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   email: z.email().nullable(),
   id: z.uuid(),
-  identity_data: z.string(),
+  identity_data: JsonSchema,
   last_sign_in_at: z.iso.datetime().nullable(),
   provider: z.string(),
   provider_id: z.uuid(),
@@ -91,7 +91,7 @@ export const authIdentitiesInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   email: z.email().nullable().optional(),
   id: z.uuid().optional(),
-  identity_data: z.string(),
+  identity_data: JsonSchema,
   last_sign_in_at: z.iso.datetime().nullable().optional(),
   provider: z.string(),
   provider_id: z.uuid(),
@@ -103,7 +103,7 @@ export const authIdentitiesUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   email: z.email().nullable().optional(),
   id: z.uuid().optional(),
-  identity_data: z.string().optional(),
+  identity_data: JsonSchema.optional(),
   last_sign_in_at: z.iso.datetime().nullable().optional(),
   provider: z.string().optional(),
   provider_id: z.uuid().optional(),
@@ -166,7 +166,7 @@ export const authMfa_challengesRowSchema = z.object({
   ip_address: z.string(),
   otp_code: z.string().nullable(),
   verified_at: z.iso.datetime().nullable(),
-  web_authn_session_data: z.string().nullable(),
+  web_authn_session_data: JsonSchema.nullable(),
 });
 
 export const authMfa_challengesInsertSchema = z.object({
@@ -176,7 +176,7 @@ export const authMfa_challengesInsertSchema = z.object({
   ip_address: z.string(),
   otp_code: z.string().nullable().optional(),
   verified_at: z.iso.datetime().nullable().optional(),
-  web_authn_session_data: z.string().nullable().optional(),
+  web_authn_session_data: JsonSchema.nullable().optional(),
 });
 
 export const authMfa_challengesUpdateSchema = z.object({
@@ -186,7 +186,7 @@ export const authMfa_challengesUpdateSchema = z.object({
   ip_address: z.string().optional(),
   otp_code: z.string().nullable().optional(),
   verified_at: z.iso.datetime().nullable().optional(),
-  web_authn_session_data: z.string().nullable().optional(),
+  web_authn_session_data: JsonSchema.nullable().optional(),
 });
 
 export const authMfa_factorsRowSchema = z.object({
@@ -201,7 +201,7 @@ export const authMfa_factorsRowSchema = z.object({
   updated_at: z.iso.datetime(),
   user_id: z.uuid(),
   web_authn_aaguid: z.string().nullable(),
-  web_authn_credential: z.string().nullable(),
+  web_authn_credential: JsonSchema.nullable(),
 });
 
 export const authMfa_factorsInsertSchema = z.object({
@@ -216,7 +216,7 @@ export const authMfa_factorsInsertSchema = z.object({
   updated_at: z.iso.datetime(),
   user_id: z.uuid(),
   web_authn_aaguid: z.string().nullable().optional(),
-  web_authn_credential: z.string().nullable().optional(),
+  web_authn_credential: JsonSchema.nullable().optional(),
 });
 
 export const authMfa_factorsUpdateSchema = z.object({
@@ -231,7 +231,7 @@ export const authMfa_factorsUpdateSchema = z.object({
   updated_at: z.iso.datetime().optional(),
   user_id: z.uuid().optional(),
   web_authn_aaguid: z.string().nullable().optional(),
-  web_authn_credential: z.string().nullable().optional(),
+  web_authn_credential: JsonSchema.nullable().optional(),
 });
 
 export const authOauth_clientsRowSchema = z.object({
@@ -346,7 +346,7 @@ export const authRefresh_tokensUpdateSchema = z.object({
 });
 
 export const authSaml_providersRowSchema = z.object({
-  attribute_mapping: z.string().nullable(),
+  attribute_mapping: JsonSchema.nullable(),
   created_at: z.iso.datetime().nullable(),
   entity_id: z.uuid(),
   id: z.uuid(),
@@ -358,7 +358,7 @@ export const authSaml_providersRowSchema = z.object({
 });
 
 export const authSaml_providersInsertSchema = z.object({
-  attribute_mapping: z.string().nullable().optional(),
+  attribute_mapping: JsonSchema.nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   entity_id: z.uuid(),
   id: z.uuid(),
@@ -370,7 +370,7 @@ export const authSaml_providersInsertSchema = z.object({
 });
 
 export const authSaml_providersUpdateSchema = z.object({
-  attribute_mapping: z.string().nullable().optional(),
+  attribute_mapping: JsonSchema.nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   entity_id: z.uuid().optional(),
   id: z.uuid().optional(),
@@ -550,8 +550,8 @@ export const authUsersRowSchema = z.object({
   phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  raw_app_meta_data: z.string().nullable(),
-  raw_user_meta_data: z.string().nullable(),
+  raw_app_meta_data: JsonSchema.nullable(),
+  raw_user_meta_data: JsonSchema.nullable(),
   reauthentication_sent_at: z.iso.datetime().nullable(),
   reauthentication_token: z.jwt().nullable(),
   recovery_sent_at: z.iso.datetime().nullable(),
@@ -594,8 +594,8 @@ export const authUsersInsertSchema = z.object({
   phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  raw_app_meta_data: z.string().nullable().optional(),
-  raw_user_meta_data: z.string().nullable().optional(),
+  raw_app_meta_data: JsonSchema.nullable().optional(),
+  raw_user_meta_data: JsonSchema.nullable().optional(),
   reauthentication_sent_at: z.iso.datetime().nullable().optional(),
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
@@ -638,8 +638,8 @@ export const authUsersUpdateSchema = z.object({
   phone_change_sent_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   phone_change_token: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  raw_app_meta_data: z.string().nullable().optional(),
-  raw_user_meta_data: z.string().nullable().optional(),
+  raw_app_meta_data: JsonSchema.nullable().optional(),
+  raw_user_meta_data: JsonSchema.nullable().optional(),
   reauthentication_sent_at: z.iso.datetime().nullable().optional(),
   reauthentication_token: z.jwt().nullable().optional(),
   recovery_sent_at: z.iso.datetime().nullable().optional(),
@@ -2032,8 +2032,8 @@ export const v_user_profiles_extendedRowSchema = z.object({
   phone_confirmed_at: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   phone_number: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   preferences: z.object({language: z.string().optional().nullable(), theme: z.string().optional().nullable(), needsOnboarding: z.boolean().optional().nullable(), showOnboardingPrompt: z.boolean().optional().nullable(), }).nullable(),
-  raw_app_meta_data: z.string().nullable(),
-  raw_user_meta_data: z.string().nullable(),
+  raw_app_meta_data: JsonSchema.nullable(),
+  raw_user_meta_data: JsonSchema.nullable(),
   role: z.enum(UserRole).nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
