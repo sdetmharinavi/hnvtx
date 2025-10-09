@@ -36,7 +36,7 @@ export default function ScalableFiberNetworkDashboard() {
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
   const [allocationData, setAllocationData] = useState<AllocationSaveData | null>(null);
-  
+
   // State for map interaction
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const [zoom, setZoom] = useState(13);
@@ -103,7 +103,7 @@ export default function ScalableFiberNetworkDashboard() {
     { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
   ];
 
-  const isInitialLoad = isLoading && data.nodes.length === 0 && data.systems.length === 0;
+  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length;
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;

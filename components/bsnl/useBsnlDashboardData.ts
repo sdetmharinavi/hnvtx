@@ -1,3 +1,4 @@
+// path: components/bsnl/useBsnlDashboardData.ts
 "use client";
 
 import { useMemo } from 'react';
@@ -16,13 +17,12 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
-    p_query: filters.query || null,
-    p_status: filters.status ? filters.status === 'active' : null,
-    p_system_types: filters.type ? [filters.type] : null,
-    p_cable_types: filters.type ? [filters.type] : null, // Assuming system and cable types are filtered by the same 'type' field
-    p_regions: filters.region ? [filters.region] : null,
-    p_node_types: filters.nodeType ? [filters.nodeType] : null,
-    // p_priority is in the schema but not in the RPC, it can be added here if the RPC is updated
+    p_query: filters.query || undefined,
+    p_status: filters.status ? filters.status === 'active' : undefined,
+    p_system_types: filters.type ? [filters.type] : undefined,
+    p_cable_types: filters.type ? [filters.type] : undefined,
+    p_regions: filters.region ? [filters.region] : undefined,
+    p_node_types: filters.nodeType ? [filters.nodeType] : undefined,
   }), [filters]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
