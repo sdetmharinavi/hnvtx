@@ -138,18 +138,16 @@ export function useGenerateRingPaths() {
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (variables: { systemId: string; logicalPathId: string }) => {
-      const { error } = await supabase.rpc('deprovision_path', {
-        p_system_id: variables.systemId,
-        p_logical_path_id: variables.logicalPathId,
+    mutationFn: async (variables: { logicalPathId: string }) => {
+      const { error } = await supabase.rpc('deprovision_logical_path', {
+        p_path_id: variables.logicalPathId,
       });
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       toast.success("Path deprovisioned successfully.");
-      // Invalidate all relevant queries to ensure UI consistency
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
-      queryClient.invalidateQueries({ queryKey: ['available-fibers'] }); // Invalidate all fiber queries
+      queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
     onError: (err) => {
       toast.error(`Deprovisioning failed: ${err.message}`);

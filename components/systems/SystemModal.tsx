@@ -36,7 +36,7 @@ interface SystemModalProps {
   isOpen: boolean;
   onClose: () => void;
   rowData: V_systems_completeRowSchema | null;
-  // THE FIX: Accept onSubmit function and isLoading state from parent.
+  // THE FIX: Component now accepts a generic onSubmit handler and isLoading state from its parent.
   onSubmit: (data: SystemFormData) => void;
   isLoading: boolean;
 }
@@ -46,7 +46,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
-  // Data fetching remains in the modal as it's needed for form options.
+  // Data fetching for form options remains in the modal.
   const { data: systemTypesResult = { data: [] } } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, is_ring_based, is_sdh, code', filters: { category: 'SYSTEM_TYPES' }, orderBy: [{ column: 'code', ascending: true }] });
   const systemTypes = systemTypesResult.data;
   const { data: nodesResult = { data: [] } } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
@@ -125,7 +125,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
     }
   }, [selectedNodeId, nodes, setValue]);
 
-  // THE FIX: Mutation logic is removed. This component now just calls the passed `onSubmit` prop.
+  // THE FIX: This function now simply calls the onSubmit prop. The mutation hook is removed.
   const onValidSubmit = useCallback((formData: SystemFormValues) => {
     onSubmit(formData);
   }, [onSubmit]);
@@ -182,8 +182,8 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   const modalTitle = isEditMode ? 'Edit System' : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
-      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading} standalone title={modalTitle} footerContent={renderFooter()}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-0 w-0 bg-transparent">
+      <FormCard standalone onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading} title={modalTitle} footerContent={renderFooter()}>
         <AnimatePresence mode="wait">
           {step === 1 ? step1Fields : step2Fields}
         </AnimatePresence>

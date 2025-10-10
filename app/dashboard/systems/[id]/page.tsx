@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData } from '@/hooks/database';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
@@ -55,18 +55,15 @@ export default function SystemConnectionsPage() {
   const systemId = params.id as string;
   const supabase = createClient();
 
-  const { data: system } = usePagedData<V_systems_completeRowSchema>(
+  const { data: system, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
     supabase,
     'v_systems_complete',
     {
       filters: { id: systemId },
     }
   );
-  
-  // THE FIX: Add the mutation hook to the page.
+
   const upsertMutation = useUpsertSystemConnection();
-
-
 
   const {
     data: connections,
@@ -80,7 +77,7 @@ export default function SystemConnectionsPage() {
     actions: crudActions,
   } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
     tableName: 'system_connections',
-    dataQueryHook: useSystemConnectionsData,
+    dataQueryHook: (params) => useSystemConnectionsData({ ...params, filters: { ...params.filters, system_id: systemId } }),
     displayNameField: ['customer_name', 'connected_system_name', 'system_name'],
   });
 
@@ -95,7 +92,10 @@ export default function SystemConnectionsPage() {
       }) as TableAction<'v_system_connections_complete'>[],
     [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
   );
-
+  
+  const parentSystem = system?.data?.[0];
+  
+  // THE FIX: The exportConfig property is now correctly provided.
   const headerActions = useStandardHeaderActions({
     onRefresh: () => {
       refetch();
@@ -103,14 +103,21 @@ export default function SystemConnectionsPage() {
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoadingConnections,
+    exportConfig: {
+      tableName: 'v_system_connections_complete',
+      fileName: `${parentSystem?.system_name || 'system'}_connections`,
+      filters: { system_id: systemId }
+    }
   });
 
-  const parentSystem = system?.data?.[0];
+  if (isLoadingSystem) {
+    return <PageSpinner text="Loading system details..." />;
+  }
+  
+  if (!parentSystem) {
+    return <ErrorDisplay error="System not found." />;
+  }
 
-  // Early return if system not found or still loading
-  if (!parentSystem) return <ErrorDisplay error="System not found." />;
-
-  // THE FIX: New save handler to construct payload and call mutation.
   const handleSave = (formData: SystemConnectionFormValues) => {
     const payload = {
       p_id: editModal.record?.id ?? undefined,
