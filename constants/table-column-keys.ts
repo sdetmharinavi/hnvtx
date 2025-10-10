@@ -150,7 +150,7 @@ export type ValidatedColumnKeys = {
 };
 
 const TABLE_COLUMN_OBJECTS = {
-  // Core Tables
+  // ==================== Core Tables ====================
   user_profiles: {
     id: "id",
     first_name: "first_name",
@@ -167,6 +167,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
   lookup_types: {
+    id: "id",
     category: "category",
     name: "name",
     code: "code",
@@ -178,9 +179,9 @@ const TABLE_COLUMN_OBJECTS = {
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   maintenance_areas: {
+    id: "id",
     name: "name",
     contact_person: "contact_person",
     contact_number: "contact_number",
@@ -194,15 +195,14 @@ const TABLE_COLUMN_OBJECTS = {
     parent_id: "parent_id",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   employee_designations: {
+    id: "id",
     name: "name",
     parent_id: "parent_id",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   employees: {
     id: "id",
@@ -273,9 +273,14 @@ const TABLE_COLUMN_OBJECTS = {
     uploaded_at: "uploaded_at",
     user_id: "user_id",
   },
-  folders: { id: "id", name: "name", user_id: "user_id", created_at: "created_at" },
+  folders: {
+    id: "id",
+    name: "name",
+    user_id: "user_id",
+    created_at: "created_at",
+  },
 
-  // System Tables
+  // ==================== System Tables ====================
   systems: {
     id: "id",
     system_name: "system_name",
@@ -338,7 +343,10 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     sfp_type_id: "sfp_type_id",
   },
-  sdh_systems: { system_id: "system_id", gne: "gne" },
+  sdh_systems: {
+    system_id: "system_id",
+    gne: "gne",
+  },
   sdh_connections: {
     system_connection_id: "system_connection_id",
     stm_no: "stm_no",
@@ -355,7 +363,10 @@ const TABLE_COLUMN_OBJECTS = {
     node_position: "node_position",
     node_ip: "node_ip",
   },
-  vmux_systems: { system_id: "system_id", vm_id: "vm_id" },
+  vmux_systems: {
+    system_id: "system_id",
+    vm_id: "vm_id",
+  },
   vmux_connections: {
     system_connection_id: "system_connection_id",
     subscriber: "subscriber",
@@ -392,7 +403,6 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: "created_at",
     updated_at: "updated_at",
   },
-
   cable_segments: {
     id: "id",
     original_cable_id: "original_cable_id",
@@ -467,7 +477,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
 
-  // ===== Views =====
+  // ==================== Views ====================
   v_cable_utilization: {
     cable_id: "cable_id",
     route_name: "route_name",
@@ -517,6 +527,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
   v_nodes_complete: {
+    id: "id",
     name: "name",
     latitude: "latitude",
     longitude: "longitude",
@@ -529,9 +540,9 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_terminal_id: "maintenance_terminal_id",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   v_ofc_connections_complete: {
+    id: "id",
     ofc_route_name: "ofc_route_name",
     updated_sn_name: "updated_sn_name",
     updated_fiber_no_sn: "updated_fiber_no_sn",
@@ -568,7 +579,6 @@ const TABLE_COLUMN_OBJECTS = {
     sn_id: "sn_id",
     en_id: "en_id",
     ofc_id: "ofc_id",
-    id: "id",
   },
   v_system_connections_complete: {
     id: "id",
@@ -716,6 +726,7 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_area_type_code: "maintenance_area_type_code",
   },
   v_employees: {
+    id: "id",
     employee_name: "employee_name",
     employee_contact: "employee_contact",
     employee_email: "employee_email",
@@ -731,9 +742,9 @@ const TABLE_COLUMN_OBJECTS = {
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   v_rings: {
+    id: "id",
     name: "name",
     total_nodes: "total_nodes",
     description: "description",
@@ -745,7 +756,6 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
     maintenance_terminal_id: "maintenance_terminal_id",
     ring_type_id: "ring_type_id",
-    id: "id",
   },
   v_system_ring_paths_detailed: {
     created_at: "created_at",
