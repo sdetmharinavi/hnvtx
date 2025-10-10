@@ -81,9 +81,9 @@ function TableRowBase<T extends TableOrViewName>({
             </td>
           )}
           {hasActions && (
-            <td className={`w-32 ${densityClasses[density ?? "default"]} text-right whitespace-nowrap overflow-hidden ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}
+            <td className={`w-32 ${densityClasses[density ?? "default"]} text-center whitespace-nowrap overflow-hidden ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}
                 style={{ width: 128, minWidth: 128, maxWidth: 128 }}>
-              <div className='flex items-center justify-end gap-1'>
+              <div className='flex items-center justify-center gap-1'>
                 {actions?.map((action) => {
                   const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
                   if (isHidden) return null;
