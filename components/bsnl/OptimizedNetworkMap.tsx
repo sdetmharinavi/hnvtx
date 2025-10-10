@@ -154,7 +154,7 @@ export function OptimizedNetworkMap({
     if (lats.length === 0 || lngs.length === 0) return null;
     return [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]] as [[number, number], [number, number]];
   }, [nodes]);
-  
+
   const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
   const visibleNodes = useMemo(() => {

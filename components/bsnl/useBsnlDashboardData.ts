@@ -36,7 +36,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
 
       return rpcData as BsnlDashboardData;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
     // THE FIX: Keep displaying the last successful fetch's data while new data is being fetched.
     // This provides a seamless UX by preventing the UI from showing a loading state on filter changes.
     placeholderData: (previousData) => previousData,
