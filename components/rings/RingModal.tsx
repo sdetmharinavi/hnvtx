@@ -1,3 +1,4 @@
+// path: components/rings/RingModal.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -79,7 +80,8 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
+  // THE FIX: This function now simply calls the onSubmit prop passed from the page.
+  // All useTableInsert and useTableUpdate hooks have been removed from this component.
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
       onSubmit(formData);
