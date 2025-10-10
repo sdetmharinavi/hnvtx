@@ -1,11 +1,15 @@
 // path: components/bsnl/useBsnlDashboardData.ts
 "use client";
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
-import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
+import { V_systems_completeRowSchema, V_nodes_completeRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+
+type BsnlSystem = V_systems_completeRowSchema;
+type BsnlNode = V_nodes_completeRowSchema;
+type BsnlCable = V_ofc_cables_completeRowSchema;
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
