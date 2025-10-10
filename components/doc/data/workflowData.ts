@@ -1,15 +1,10 @@
 // path: components/doc/data/workflowData.ts
-import { ShieldCheck, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
 import { WorkflowSection } from "../types/workflowTypes";
-import { FaDiagramNext } from "react-icons/fa6";
-import { BsPeople } from "react-icons/bs";
-import { ImUserTie } from "react-icons/im";
-import { FiDatabase } from "react-icons/fi";
 
 export const workflowSections: WorkflowSection[] = [
   {
     value: "auth",
-    icon: ShieldCheck,
+    icon: "ShieldCheck",
     title: "Authentication & Authorization",
     subtitle: "User registration, login & RBAC",
     gradient: "from-violet-500 to-purple-600",
@@ -58,7 +53,7 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "An admin action updates the `role` column in the `public.user_profiles` table.",
           "A database trigger (`sync_user_role_trigger`) fires on update.",
-          "This trigger updates the `raw_app_meta_data` JSONB column in the corresponding `auth.users` table, setting the new role.",
+          "This trigger updates the `role` text column in the corresponding `auth.users` table.",
           "The user's JWT is now minted with the new role claim, which is used by RLS policies to grant access.",
         ],
       },
@@ -69,7 +64,7 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "The `AuthButton` component contains a `<Link>` that navigates to `/onboarding`.",
           "The `OnboardingFormEnhanced` component fetches the user's profile using the `useGetMyUserDetails` hook.",
-          "An `useEffect` populates the form fields with the fetched data.",
+          "An `useEffect` populates the form fields with the fetched data, normalizing preference values for the UI.",
           "On submit, `OnboardingFormEnhanced` calls the `useTableUpdate` mutation, which updates the `user_profiles` record and sets `needsOnboarding` to `false` within the `preferences` column.",
           "The `isDirty` state from `react-hook-form` ensures the update only happens if changes were actually made.",
         ],
@@ -78,7 +73,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "base_structure",
-    icon: Server,
+    icon: "Server",
     title: "Base Structure Setup",
     subtitle: "Categories, Lookups, Areas & Designations",
     gradient: "from-gray-500 to-slate-600",
@@ -132,7 +127,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: 'designations_crud',
-    icon: ImUserTie,
+    icon: "ImUserTie",
     title: 'Designation Management',
     subtitle: 'Organizing employee roles in a hierarchy',
     gradient: 'from-cyan-500 to-sky-600',
@@ -167,7 +162,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "employees_crud",
-    icon: BsPeople,
+    icon: "BsPeople",
     title: "Employee Management",
     subtitle: "Managing employee records and roles",
     gradient: "from-sky-500 to-blue-600",
@@ -191,13 +186,13 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "diagrams_crud",
-    icon: FaDiagramNext,
+    icon: "FaDiagramNext",
     title: "Diagrams & File Management",
     subtitle: "Uploading and organizing network diagrams",
     gradient: "from-rose-500 to-pink-600",
     iconColor: "text-rose-400",
     bgGlow: "bg-rose-500/10",
-    color: "orange", // Using a distinct color
+    color: "orange",
     purpose: "To provide a centralized repository for uploading, storing, and accessing network diagrams, schematics, and other related documents.",
     workflows: [
       {
@@ -216,7 +211,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "users_crud",
-    icon: Users,
+    icon: "Users",
     title: "User CRUD Operations",
     subtitle: "Creating, updating, and deleting users",
     gradient: "from-blue-500 to-cyan-600",
@@ -255,9 +250,8 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           'The `handleCreateUser` function calls the `createUser` mutation from `useAdminUserOperations` hook.',
           'This mutation sends a `POST` request to the `/api/admin/users` serverless function.',
-          'The API route manually hashes the password and inserts a single new record directly into the `auth.users` table.',
-          'Crucially, this `INSERT` operation causes the `on_auth_user_created` database trigger to fire.',
-          'The trigger function is the single source of truth for profile creation; it automatically reads the metadata from the new `auth.users` record and inserts a corresponding row into `public.user_profiles`.',
+          "THE FIX: The API route now only inserts into `auth.users`, passing the role and metadata.",
+          'The `on_auth_user_created` database trigger is the single source of truth for profile creation. It reads the metadata and role from the new `auth.users` record and automatically inserts a corresponding row into `public.user_profiles`.',
           'The frontend invalidates the user list query to show the new user.',
         ],
       },
@@ -276,7 +270,7 @@ export const workflowSections: WorkflowSection[] = [
           'The `onEdit` handler from `useCrudManager` opens the modal with the user record.',
           'Submitting the form calls the `updateProfile` mutation from the `useAdminUpdateUserProfile` hook.',
           'This mutation calls the `admin_update_user_profile` RPC, which updates the `user_profiles` table.',
-          'If the role is changed, a database trigger syncs it to the `auth.users` table.',
+          'If the role is changed, the `sync_user_role_trigger` database trigger syncs the new role to the `auth.users` table.',
           'The user list query is invalidated and refetched.',
         ],
       },
@@ -303,7 +297,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "nodes_crud",
-    icon: Cpu,
+    icon: "Cpu",
     title: "Node CRUD Operations",
     subtitle: "Managing physical network locations",
     gradient: "from-emerald-500 to-teal-600",
@@ -313,43 +307,21 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To create, view, update, and delete network nodes, which represent physical sites like exchanges, BTS towers, or junction points.",
     workflows: [
       {
-        title: "Workflow A: Viewing & Filtering Nodes",
-        userSteps: ["User navigates to the `/dashboard/nodes` page.", "User types a node name in the search bar or selects a node type from the dropdown."],
-        uiSteps: ["The `DataTable` displays a list of nodes from the `v_nodes_complete` view.", "The list updates automatically as the user interacts with the filters."],
+        title: "Workflow: Managing Node Records",
+        userSteps: ["User navigates to the `/dashboard/nodes` page, clicks 'Add New' or 'Edit'.", "Fills out details in the `NodeFormModal`.", "Saves the record."],
+        uiSteps: ["The `DataTable` displays a list of nodes from the `v_nodes_complete` view.", "A modal opens for data entry.", "A toast confirms success and the table refreshes."],
         techSteps: [
-          "The `NodesPage` uses `useCrudManager` with a `useNodesData` adapter.",
-          "The `useNodesData` adapter calls the `get_paged_data` RPC function with the specified filters.",
-          "The RPC function queries the `v_nodes_complete` view to get the data along with related names (e.g., maintenance area name).",
-        ],
-      },
-      {
-        title: "Workflow B: Creating or Editing a Node",
-        userSteps: ["User clicks 'Add New' or the 'Edit' icon on a node row.", "Fills out the node details (name, type, location, etc.) in the `NodeFormModal`.", "Clicks 'Save'."],
-        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
-        techSteps: [
-          "`useCrudManager` opens the `NodeFormModal` with either `null` (for create) or the selected node data (for edit).",
-          "On form submission, `handleSave` is called, which triggers either the `useTableInsert` or `useTableUpdate` hook.",
-          "The mutation sends a request directly to the Supabase `nodes` table.",
-          "TanStack Query invalidates the `v_nodes_complete` view query, causing the UI to refetch and display the changes.",
-        ],
-      },
-      {
-        title: "Workflow C: Deleting a Node",
-        userSteps: ["User clicks the 'Delete' icon on a node row.", "Confirms the action in the `ConfirmModal`."],
-        uiSteps: ["A confirmation prompt appears.", "On success, a toast is shown, and the node is removed from the table."],
-        techSteps: [
-          "`crudActions.handleDelete` is called, which uses `useDeleteManager`.",
-          "`useDeleteManager` triggers the `ConfirmModal`.",
-          "On confirmation, a `useTableDelete` mutation is called, which sends a `DELETE` request to the Supabase `nodes` table for the specified ID.",
-          "The query for `v_nodes_complete` is invalidated, refreshing the UI.",
+          "The `NodesPage` uses the `useCrudManager` hook for state and action management.",
+          "The `NodeFormModal` is a 'dumb' component. It receives the `crudActions.handleSave` function as its `onSubmit` prop.",
+          "The `handleSave` function, provided by `useCrudManager`, triggers either `useTableInsert` or `useTableUpdate` on the `nodes` table.",
+          "TanStack Query invalidates the `v_nodes_complete` view query, causing the UI to refetch and display changes.",
         ],
       },
     ],
   },
-  // ** NEW WORKFLOW SECTION FOR SYSTEMS **
   {
     value: "systems_crud",
-    icon: FiDatabase,
+    icon: "FiDatabase",
     title: "System CRUD Operations",
     subtitle: "Managing network equipment and devices",
     gradient: "from-lime-500 to-green-600",
@@ -359,51 +331,29 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To create, view, update, and delete network systems (e.g., CPAN, MAAN, SDH). This workflow leverages a powerful database function to handle different system subtypes from a single form.",
     workflows: [
       {
-        title: "Workflow A: Creating a New System",
+        title: "Workflow: Creating or Editing a System",
         userSteps: [
-          "Admin navigates to `/dashboard/systems` and clicks 'Add New'.",
-          "The `SystemModal` opens to Step 1: 'Basic Information'.",
-          "Admin fills in the required fields: System Name, System Type (e.g., 'CPAN'), and Node/Location.",
-          "Admin clicks 'Next'.",
-          "Because 'CPAN' is a ring-based system, the modal proceeds to Step 2: 'Subtype Details'.",
-          "Admin selects the logical 'Ring' this system belongs to and fills in other details.",
-          "Admin clicks 'Create System'.",
+          "Admin navigates to `/dashboard/systems` and clicks 'Add New' or 'Edit'.",
+          "The `SystemModal` opens. Admin fills out the form, which may have one or two steps depending on the system type selected.",
+          "Admin clicks 'Create System' or 'Update System'.",
         ],
         uiSteps: [
-          "The `SystemModal` is a multi-step form. The fields shown in Step 2 change based on the 'System Type' selected in Step 1.",
-          "A success toast appears, the modal closes, and the systems list is refreshed.",
+          "The `SystemModal` is a multi-step form where Step 2 is conditional based on the 'System Type' selected.",
+          "A success toast appears, the modal closes, and the systems list refreshes.",
         ],
         techSteps: [
-          "The `onValidSubmit` handler in `SystemModal` is called.",
-          "It constructs a single payload object containing all data from both steps of the form.",
+          "THE FIX: The `SystemsPage` now holds the mutation logic. It passes its `handleSave` function to the `SystemModal`'s `onSubmit` prop.",
+          "The `handleSave` function constructs a single payload object from the form data.",
           "It calls the `upsert_system_with_details` PostgreSQL RPC function via the `useRpcMutation` hook.",
-          "Inside the database, the function first performs an `INSERT` or `UPDATE` on the generic `public.systems` table.",
-          "It then inspects the `system_type_id` and checks its boolean flags (`is_ring_based`, `is_sdh`).",
-          "Based on the flags, it executes conditional `INSERT`/`UPDATE` operations on the appropriate subtype tables (`ring_based_systems`, `sdh_systems`, etc.).",
-          "This entire process occurs within a single database transaction, ensuring data integrity.",
+          "The database function handles the complex logic of inserting/updating records in the generic `systems` table and the correct specific subtype table (`ring_based_systems`, `sdh_systems`, etc.) within a single transaction.",
           "On success, the frontend's `v_systems_complete` query is invalidated and refetched.",
-        ],
-      },
-      {
-        title: "Workflow B: Editing an Existing System",
-        userSteps: [
-          "Admin clicks the 'Edit' icon on a system row in the `DataTable`.",
-          "The `SystemModal` opens, pre-populated with all known data for that system, including its subtype details (e.g., the currently selected Ring).",
-          "Admin changes the IP address and clicks 'Update System'.",
-        ],
-        uiSteps: ["The modal opens with all relevant fields filled out.", "A success toast appears, and the UI updates."],
-        techSteps: [
-          "The `onValidSubmit` handler is called, but this time it includes the `p_id` of the existing system in the payload.",
-          "The `upsert_system_with_details` function is called again.",
-          "The function performs an `ON CONFLICT (id) DO UPDATE` on the `public.systems` table.",
-          "It then performs `ON CONFLICT (system_id) DO UPDATE` on the relevant subtype tables, ensuring all parts of the system record are updated correctly.",
         ],
       },
     ],
   },
   {
     value: "rings_crud",
-    icon: BellRing,
+    icon: "BellRing",
     title: "Ring CRUD Operations",
     subtitle: "Defining and managing logical network rings",
     gradient: "from-orange-500 to-amber-600",
@@ -413,24 +363,23 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To manage logical network rings, which group various systems together to form a resilient communication path.",
     workflows: [
       {
-        title: "Workflow A: Viewing & Filtering Rings",
-        userSteps: ["User navigates to the `/dashboard/rings` page.", "User types a ring name in the search bar."],
-        uiSteps: ["The `DataTable` displays a list of rings from the `v_rings` view, showing details like total nodes and maintenance area."],
-        techSteps: ["The `RingsPage` uses `useCrudManager` with a `useRingsData` adapter.", "The `useRingsData` adapter calls the `get_paged_data` RPC, which queries the `v_rings` view."],
+        title: "Workflow: Creating or Editing a Ring",
+        userSteps: ["User navigates to `/dashboard/rings`, clicks 'Add New' or 'Edit'.", "Fills out the `RingModal`.", "Saves the record."],
+        uiSteps: ["The `DataTable` lists all rings.", "A modal opens for data entry.", "A success toast appears and the table refreshes."],
+        techSteps: [
+          "THE FIX: The `RingsPage` now follows the standard pattern, using `useCrudManager`.",
+          "The `RingModal` is a 'dumb' component that receives `crudActions.handleSave` as its `onSubmit` prop.",
+          "The `handleSave` function triggers either `useTableInsert` or `useTableUpdate` on the `rings` table.",
+          "The query for the `v_rings` view is invalidated, refreshing the UI.",
+        ],
       },
       {
-        title: "Workflow B: Creating or Editing a Ring",
-        userSteps: ["User clicks 'Add New' or 'Edit'.", "Fills out the ring's name, type, and maintenance terminal in the `RingModal`.", "Clicks 'Save'."],
-        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
-        techSteps: ["`useCrudManager` opens the `RingModal`.", "On submission, `handleSave` triggers `useTableInsert` or `useTableUpdate` on the `rings` table.", "The query for the `v_rings` view is invalidated, refreshing the UI."],
-      },
-      {
-        title: "Workflow C: Associating Systems with a Ring",
+        title: "Workflow B: Associating Systems with a Ring",
         userSteps: ["User clicks the 'Manage Systems' icon on a ring row.", "In the `RingSystemsModal`, user moves systems from the 'Available' list to the 'Associated' list.", "User clicks 'Save Changes'."],
         uiSteps: ["A dual-listbox modal appears, showing systems in the same maintenance area.", "On success, a toast is shown, the modal closes, and the 'Total Nodes' count in the table updates."],
         techSteps: [
           "The `handleManageSystems` handler opens the `RingSystemsModal`.",
-          "The modal fetches associated systems (from `v_systems_complete` where `ring_id` matches) and available systems (from `v_systems_complete` where `ring_id` is null and `maintenance_terminal_id` matches).",
+          "The modal fetches associated systems and available systems from the `v_systems_complete` view.",
           "Saving triggers the `updateMutation`, which calls the `update_ring_system_associations` RPC function.",
           "This RPC function deletes old associations and inserts the new list of system IDs into the `ring_based_systems` junction table.",
           "The `v_rings` view query is invalidated, causing the 'Total Nodes' count to update.",
@@ -440,7 +389,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "routes",
-    icon: Route,
+    icon: "Route",
     title: "OFC & Route Management",
     subtitle: "Cable segmentation & fiber splicing",
     gradient: "from-teal-500 to-emerald-600",
@@ -450,102 +399,63 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.",
     workflows: [
       {
-        title: 'Workflow A: Managing OFC Cable Records (CRUD)',
+        title: 'Workflow: Managing OFC Cable Records',
         userSteps: [
           'Admin navigates to `/dashboard/ofc`.',
-          "Clicks 'Add New' to create a new cable route.",
-          "Fills in details like nodes, type, and capacity, then clicks 'Create'.",
-          "To edit, admin clicks the 'Edit' icon on a row, modifies data, and saves.",
-          "To delete, admin clicks the 'Delete' icon and confirms in the popup.",
+          "Clicks 'Add New' or 'Edit' to open the `OfcForm`.",
+          "Saves the record.",
         ],
         uiSteps: [
-          'The `DataTable` displays a list of all existing OFC cables.',
-          'A `route_name` is automatically generated when start and end nodes are selected.',
-          'On successful save/delete, a toast notification appears and the table refreshes.',
+          'The `DataTable` lists all OFC cables.',
+          'A success toast confirms the action and the table refreshes.',
         ],
         techSteps: [
-          'The `OfcPage` uses `useCrudManager` to manage state and data fetching.',
-          'Creating a record calls the `useTableInsert` hook to write to the `ofc_cables` table.',
-          'An `AFTER INSERT` trigger on `ofc_cables` (`create_initial_connections_for_cable`) automatically populates the `ofc_connections` table with records for each fiber.',
-          'Editing calls the `useTableUpdate` hook to update the `ofc_cables` record.',
-          'Deleting calls the `useTableDelete` hook. The `ON DELETE CASCADE` constraint on the `ofc_connections` table\'s `ofc_id` foreign key ensures PostgreSQL automatically deletes all associated fiber connection records.',
+          "THE FIX: The `OfcPage` now uses the `useCrudManager` hook for all state and actions, ensuring consistency with other pages.",
+          "The `OfcForm` receives `crudActions.handleSave` as its `onSubmit` prop.",
+          'An `AFTER INSERT` trigger on `ofc_cables` (`create_initial_connections_for_cable`) automatically populates the `ofc_connections` table.',
+          'Deleting a cable automatically cascades and deletes all associated `ofc_connections` records via database constraints.',
         ],
       },
       {
-        title: 'Workflow B: Visualizing a Route',
-        userSteps: ['User selects an OFC route from the dropdown in the Route Manager.'],
-        uiSteps: [
-          'The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).',
-          'A list of `Cable Segments` is displayed below the visualization.',
-        ],
-        techSteps: [
-          "The page component's `useRouteDetails` hook fetches data from the API route `/api/route/[id]`.",
-          'The API route fetches data from multiple tables, including `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
-          'The API returns a consolidated `RouteDetailsPayload` object.',
-        ],
-      },
-      {
-        title: 'Workflow C: Adding a Junction Closure',
+        title: 'Workflow B: Adding a Junction Closure & Segmentation',
         userSteps: [
-          "User clicks 'Add Junction Closure' in the Route Manager.",
-          "Fills in the JC's name and position and saves.",
+          "User selects a route from the dropdown in the Route Manager.",
+          "User clicks 'Add Junction Closure', fills in the details, and saves.",
         ],
         uiSteps: [
           'The `RouteVisualization` updates to show the new JC on the cable path.',
-          'The `Cable Segments` list is recalculated and re-rendered.',
+          'The `Cable Segments` list below is recalculated and re-rendered.',
         ],
         techSteps: [
           'The form calls the `add_junction_closure` Supabase RPC function.',
-          'This RPC inserts records into the `nodes` and `junction_closures` tables.',
-          'An `AFTER INSERT` trigger on `junction_closures` (`manage_cable_segments`) fires the `recalculate_segments_for_cable` function, which rebuilds the records in the `cable_segments` table.',
-          'The frontend refetches the route details, updating the UI.',
+          'An `AFTER INSERT` trigger on the `junction_closures` table (`manage_cable_segments`) automatically fires the `recalculate_segments_for_cable` function.',
+          'This function deletes all old segments and rebuilds the complete set of new segments in the `cable_segments` table based on the new JC positions.',
+          'The frontend simply refetches the route details to get the updated visualization.',
         ],
       },
       {
-        title: 'Workflow D: Managing Fiber Splices',
-        userSteps: [
-          'User clicks on an existing JC in the visualization.',
-          "User selects a fiber from one segment and then clicks an available fiber on another to create a splice.",
-        ],
-        uiSteps: [
-          'The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.',
-          'UI provides visual cues for selected, available, and used fibers.',
-        ],
-        techSteps: [
-          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC to fetch the current splice state.',
-          "A `manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
-          'The frontend query for splicing details is invalidated and refetched, updating the UI.',
-        ],
-      },
-      {
-        title: "Workflow E: Fiber Path Tracing & Logical Sync",
+        title: "Workflow C: Fiber Path Tracing & Logical Sync",
         userSteps: [
             "User navigates to an OFC Cable's detail page (`/dashboard/ofc/[id]`).",
-            "User clicks the 'Trace' icon on a specific fiber row in the `DataTable`.",
-            "The `FiberTraceModal` opens, showing a visual timeline of the fiber's path through segments and splices.",
+            "User clicks the 'Trace' icon on a fiber row.",
+            "The `FiberTraceModal` opens, showing the fiber's path through segments and splices.",
             "User clicks the 'Sync Path to DB' button.",
         ],
         uiSteps: [
-            "The `FiberTraceModal` opens and displays the `FiberTraceVisualizer` component.",
-            "The visualizer renders the path, orienting each segment to show a continuous flow (e.g., A → B, B → C, not A → B, C → B).",
-            "A toast confirms that the path data has been successfully synced to the database.",
-            "The modal closes and the `ofc_connections` table in the UI refreshes to show the updated logical start/end nodes.",
+            "The `FiberTraceVisualizer` renders the path, orienting each segment to show a continuous flow.",
+            "A toast confirms the sync, the modal closes, and the table refreshes to show updated logical start/end nodes.",
         ],
         techSteps: [
-            "The `useFiberTrace` hook is called with the fiber's `segment_id` and `fiber_no`.",
-            "This hook calls the `trace_fiber_path` PostgreSQL RPC, which recursively queries the `fiber_splices` table to build the end-to-end path.",
-            "The `FiberTraceVisualizer` receives the raw trace data and uses `useMemo` to create an `orientedTrace`, determining the correct 'from' and 'to' nodes for each step for display.",
-            "Clicking 'Sync' calls the `handleSyncPath` function in the modal.",
-            "This function processes the raw `traceData` to determine the true `pathStartNodeId` and `pathEndNodeId` of the entire logical path.",
-            "It calls the `useSyncPathFromTrace` mutation, which executes the `apply_logical_path_update` RPC.",
-            "This RPC updates the `updated_sn_id`, `updated_en_id`, `updated_fiber_no_sn`, and `updated_fiber_no_en` columns for the specific `ofc_connections` record.",
+            "The `useFiberTrace` hook calls the `trace_fiber_path` RPC to build the end-to-end path.",
+            "Clicking 'Sync' calls the `useSyncPathFromTrace` mutation, which executes the `apply_logical_path_update` RPC.",
+            "This RPC updates the `updated_sn_id`, `updated_en_id`, `updated_fiber_no_sn`, and `updated_fiber_no_en` columns for the specific `ofc_connections` record, effectively caching the logical path.",
         ],
       },
     ],
   },
   {
     value: "provisioning",
-    icon: GitBranch,
+    icon: "GitBranch",
     title: "Logical Path & Fiber Provisioning",
     subtitle: "End-to-end service provisioning",
     gradient: "from-cyan-500 to-blue-600",
@@ -555,54 +465,28 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To define an end-to-end logical path over physical cable segments and provision working/protection fibers for a service.",
     workflows: [
       {
-        title: "Workflow A: Building a Logical Path",
-        userSteps: ["User navigates to a System's detail page (`/dashboard/systems/[id]`).", "User clicks 'Initialize Path' to create a logical path record.", "In 'Build Mode', user clicks on nodes in the map to add cable segments to the path."],
-        uiSteps: ["The `SystemRingPath` component displays a map of nodes and a list of segments in the path.", "The map highlights nodes in the current path."],
+        title: "Workflow: Building and Provisioning a Path",
+        userSteps: ["User navigates to a System's detail page.", "Clicks 'Initialize Path' to create a logical path record.", "In 'Build Mode', user clicks nodes on the map to add cable segments.", "User selects a 'Working Fiber' and 'Protection Fiber' from the dropdowns and saves."],
+        uiSteps: ["The `SystemRingPath` component displays a map and a list of segments.", "Dropdowns only show continuously available fibers.", "UI updates to show the path as 'Provisioned'."],
         techSteps: [
-          "Initializing inserts a new record into `logical_fiber_paths`.",
-          "Clicking a node calls the `find_cable_between_nodes` RPC to find the physical `ofc_cables` record.",
-          "A new record is inserted into `logical_path_segments`, linking the `logical_fiber_paths` ID with the `ofc_cables` ID.",
-          "The path is validated in real-time using the `validate_ring_path` RPC.",
+          "Initializing inserts into `logical_fiber_paths`.",
+          "Clicking a node calls `find_cable_between_nodes` RPC to find the `ofc_cables` record.",
+          "A new record is inserted into `logical_path_segments`.",
+          "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC to populate dropdowns.",
+          "Saving calls the `provision_logical_path` RPC, which updates the `logical_path_id` on all relevant `ofc_connections` records.",
         ],
       },
       {
-        title: "Workflow B: Provisioning Fibers",
-        userSteps: ["Once a valid path is built, the `FiberProvisioning` section appears.", "User selects a 'Working Fiber' and a 'Protection Fiber' from the dropdowns and clicks 'Save Changes'."],
-        uiSteps: ["The dropdowns only show fibers that are continuously available across all segments of the logical path.", "After saving, the UI switches to a read-only view showing the provisioned fibers."],
+        title: "Workflow B: Deprovisioning a Logical Path",
+        userSteps: ["On the `/dashboard/system-paths` page, user clicks 'Deprovision'.", "Confirms the action in the modal."],
+        uiSteps: ["The path status changes from 'Provisioned' to 'Unprovisioned'.", "A success toast appears."],
         techSteps: [
-          "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.",
-          "Saving calls the `provision_logical_path` RPC.",
-          "This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.",
-          "This atomically allocates the fibers to the service.",
+          "THE FIX: The `useDeprovisionPath` hook now calls the safe `deprovision_logical_path` RPC function.",
+          "This function accepts only a `path_id`.",
+          "It finds the associated working and protection paths and sets the `logical_path_id` and `fiber_role` to `NULL` for all related records in the `ofc_connections` table.",
+          "Finally, it deletes the records from the `logical_fiber_paths` table.",
         ],
       },
     ],
   },
-  {
-    value: "auditing",
-    icon: GitCommit,
-    title: "Auditing System",
-    subtitle: "Automatic change tracking & logging",
-    gradient: "from-orange-500 to-red-600",
-    iconColor: "text-orange-400",
-    bgGlow: "bg-orange-500/10",
-    color: "orange",
-    purpose: "To automatically log all data modifications (INSERT, UPDATE, DELETE) for accountability and history tracking.",
-    workflows: [
-      {
-        title: "Workflow: Automatic Data Change Logging",
-        userSteps: ["An admin edits and saves an employee's profile."],
-        uiSteps: ["The change is reflected in the UI as usual.", "An admin with permission can view the change log in the 'User Activity' section."],
-        techSteps: [
-          "The `UPDATE` operation on the `employees` table completes.",
-          "An `AFTER UPDATE` trigger (`employees_log_trigger`) on the table fires automatically.",
-          "The trigger executes the `log_data_changes()` function.",
-          "This function captures the `OLD` and `NEW` row data, converts them to JSONB, and determines the operation type ('UPDATE').",
-          "It then calls `log_user_activity()`, passing the captured data.",
-          "The `log_user_activity()` function inserts a new record into the `user_activity_logs` table, including the current user's ID (`auth.uid()`) and role (`get_my_role()`).",
-          "The entire process is atomic and happens within the same database transaction as the original update.",
-        ],
-      },
-    ],
-  },
-];
+]

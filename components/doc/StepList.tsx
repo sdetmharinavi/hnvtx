@@ -21,11 +21,11 @@ export default function StepList({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Icon className={`w-4 h-4 ${iconColor}`} />
-        <h4 className="text-sm font-semibold text-gray-200">{title}</h4>
+        <h4 className="font-semibold text-gray-700 dark:text-gray-300">{title}</h4>
       </div>
       <ul className="space-y-2 ml-6">
         {steps.map((step, index) => (
-          <li key={index} className="text-sm text-gray-400 flex items-start gap-2">
+          <li key={index} className="text-gray-700 dark:text-gray-400 flex items-start gap-2">
             <span className={`${stepColor} mt-1`}>•</span>
             {isTechnical ? (
               <span dangerouslySetInnerHTML={{ 

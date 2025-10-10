@@ -26,7 +26,7 @@ export default function DashboardLayout({
     UserRole.CPANADMIN,
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
-    UserRole.VMUXADMIN,
+    UserRole.ASSETADMIN,
     UserRole.MNGADMIN,
   ],
 }: DashboardLayoutProps) {

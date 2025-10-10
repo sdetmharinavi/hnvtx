@@ -1,7 +1,8 @@
-import type { LucideIcon } from "lucide-react";
-import type { IconType } from "react-icons";
+// path: components/doc/types/workflowTypes.ts
 
-export type WorkflowIcon = LucideIcon | IconType;
+// THE FIX: The WorkflowIcon type is now correctly and simply defined as a string.
+// The unused LucideIcon import has been removed.
+export type WorkflowIcon = string;
 
 export interface WorkflowSection {
   value: string;
@@ -24,19 +25,34 @@ export interface Workflow {
 }
 
 export interface WorkflowCardProps {
-  purpose: string;
-  workflows: Workflow[];
-  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
+  section: WorkflowSection;
 }
 
 export interface WorkflowSectionProps {
   workflow: Workflow;
   index: number;
   colors: {
-    border: string;
-    glow: string;
-    badge: string;
-    icon: string;
+    border: {
+      light: string;
+      dark: string;
+    };
+    glow: {
+      light: string;
+      dark: string;
+    };
+    badge: {
+      light: string;
+      dark: string;
+    };
+    icon: {
+      light: string;
+      dark: string;
+    };
+    gradient: {
+      light: string;
+      dark: string;
+    };
+    accent: string;
   };
   isLast: boolean;
 }
