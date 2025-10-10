@@ -1,3 +1,4 @@
+// path: components/navigation/sidebar.tsx
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -25,23 +26,11 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
   const isMobile = useIsMobile();
 
-  // Define the Help NavItem data
-  const helpNavItem: NavItemType = {
-    id: 'help',
-    label: 'Help',
-    icon: <FiHelpCircle className="h-5 w-5" />,
-    href: '/dashboard/doc',
-    roles: [
-      UserRole.ADMIN,
-      UserRole.VIEWER,
-      UserRole.AUTHENTICATED,
-      UserRole.CPANADMIN,
-      UserRole.MAANADMIN,
-      UserRole.SDHADMIN,
-      UserRole.ASSETADMIN,
-      UserRole.MNGADMIN,
-    ],
-  };
+  // THE FIX: Extract the help item from the main navigation items.
+  const allNavItems = NavItems();
+  const helpNavItem = allNavItems.find(item => item.id === 'help');
+  const mainNavItems = allNavItems.filter(item => item.id !== 'help');
+
 
   // Close mobile sidebar on route changes
   useEffect(() => {
@@ -68,7 +57,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       <MobileSidebar
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
-        navItems={NavItems()}
+        navItems={allNavItems} // Mobile can show all items in one scrollable list
         expandedItems={expandedItems}
         toggleExpanded={toggleExpanded}
         setHoveredItem={setHoveredItem}
@@ -115,7 +104,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1" role="navigation">
-          {NavItems().map((item) => (
+          {/* Render only the main navigation items here. */}
+          {mainNavItems.map((item) => (
             <NavItem
               key={item.id}
               item={item}
@@ -129,16 +119,19 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
       </div>
 
-      {/* --- ADDED: Help section at the bottom --- */}
-      <div className="py-2 border-t border-gray-200 dark:border-gray-700">
-        <NavItem
-          item={helpNavItem}
-          isCollapsed={isCollapsed}
-          expandedItems={expandedItems}
-          toggleExpanded={toggleExpanded}
-          setHoveredItem={setHoveredItem}
-        />
-      </div>
+      {/* Render the Help item in a separate, persistent section at the bottom. */}
+      {helpNavItem && (
+        <div className="py-2 border-t border-gray-200 dark:border-gray-700">
+          <NavItem
+            item={helpNavItem}
+            isCollapsed={isCollapsed}
+            expandedItems={expandedItems}
+            toggleExpanded={toggleExpanded}
+            setHoveredItem={setHoveredItem}
+          />
+        </div>
+      )}
+
 
       <HoverMenu hoveredItem={hoveredItem} setHoveredItem={setHoveredItem} />
     </motion.aside>

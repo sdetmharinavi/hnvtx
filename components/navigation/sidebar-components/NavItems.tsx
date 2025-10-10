@@ -10,6 +10,7 @@ import {
   FiMapPin,
   FiList,
   FiGitBranch,
+  FiHelpCircle,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -35,7 +36,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
       },
       {
@@ -63,7 +64,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         children: [
           {
@@ -121,7 +122,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         children: [
           {
@@ -171,9 +172,27 @@ function NavItems() {
           UserRole.VIEWER,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         external: true,
+      },
+      // Add the new help item to the main navigation array.
+      // It will be filtered and rendered separately in the sidebar layout.
+      {
+        id: 'help',
+        label: 'Help & Documentation',
+        icon: <FiHelpCircle className="h-5 w-5" />,
+        href: '/dashboard/doc',
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+          UserRole.MNGADMIN,
+        ],
       },
     ],
     []
