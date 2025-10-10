@@ -361,26 +361,26 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID) TO authenticated;
 
--- NEW FUNCTION: Deprovisions all fibers for a system on a specific logical path
-CREATE OR REPLACE FUNCTION public.deprovision_path(
-    p_system_id UUID,
-    p_logical_path_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Unassign the system from all connections that were part of this provisioning
-    UPDATE public.ofc_connections
-    SET system_id = NULL
-    WHERE system_id = p_system_id;
-    -- Note: A more complex system might store which fibers belong to which path
-    -- For now, we deprovision all fibers for that system ID.
+-- -- NEW FUNCTION: Deprovisions all fibers for a system on a specific logical path
+-- CREATE OR REPLACE FUNCTION public.deprovision_path(
+--     p_system_id UUID,
+--     p_logical_path_id UUID
+-- )
+-- RETURNS VOID
+-- LANGUAGE plpgsql
+-- AS $$
+-- BEGIN
+--     -- Unassign the system from all connections that were part of this provisioning
+--     UPDATE public.ofc_connections
+--     SET system_id = NULL
+--     WHERE system_id = p_system_id;
+--     -- Note: A more complex system might store which fibers belong to which path
+--     -- For now, we deprovision all fibers for that system ID.
 
-    -- Mark the logical path as unprovisioned
-    UPDATE public.logical_paths
-    SET status = 'unprovisioned', updated_at = NOW()
-    WHERE id = p_logical_path_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.deprovision_path(UUID, UUID) TO authenticated;
+--     -- Mark the logical path as unprovisioned
+--     UPDATE public.logical_paths
+--     SET status = 'unprovisioned', updated_at = NOW()
+--     WHERE id = p_logical_path_id;
+-- END;
+-- $$;
+-- GRANT EXECUTE ON FUNCTION public.deprovision_path(UUID, UUID) TO authenticated;

@@ -81,7 +81,7 @@ export default function SystemsPage() {
     displayNameField: 'system_name'
   });
 
-  // THE FIX: Mutation hook is now in the page component.
+  // THE FIX: The mutation hook now lives in the page component, centralizing data logic.
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
@@ -125,8 +125,8 @@ export default function SystemsPage() {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
-  
-  // THE FIX: New save handler to construct the payload and call the mutation.
+
+  // THE FIX: This new handler constructs the payload and calls the mutation.
   const handleSave = useCallback((formData: SystemFormData) => {
     const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
     const isRingBased = selectedSystemType?.is_ring_based;
@@ -205,7 +205,7 @@ export default function SystemsPage() {
           </SearchAndFilters>
         }
       />
-      
+
       {/* THE FIX: Pass the new handleSave and mutation loading state to the modal */}
       <SystemModal
         isOpen={editModal.isOpen}

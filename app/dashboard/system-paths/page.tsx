@@ -55,15 +55,16 @@ export default function SystemConnectionsPage() {
   }, []);
 
   const handleConfirmDeprovision = useCallback(() => {
-    if (!pathToDeprovision || !systemId) return;
-    deprovisionMutation.mutate({ systemId, logicalPathId: pathToDeprovision.id }, {
+    if (!pathToDeprovision) return;
+    // THE FIX: The payload now correctly passes only the logical path ID.
+    deprovisionMutation.mutate({ logicalPathId: pathToDeprovision.id }, {
       onSuccess: () => {
         setDeprovisionModalOpen(false);
         setPathToDeprovision(null);
         refetchPaths();
       }
     });
-  }, [pathToDeprovision, systemId, deprovisionMutation, refetchPaths]);
+  }, [pathToDeprovision, deprovisionMutation, refetchPaths]);
 
   const isLoading = isLoadingSystem || isLoadingRings;
   if (isLoading) return <PageSpinner text="Loading provisioning details..." />;
@@ -130,7 +131,7 @@ export default function SystemConnectionsPage() {
           </div>
         </div>
       </div>
-      
+
       {systemId && (
         <RingProvisioningModal
           isOpen={isModalOpen}
