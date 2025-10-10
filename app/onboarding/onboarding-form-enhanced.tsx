@@ -78,14 +78,10 @@ export default function OnboardingFormEnhanced() {
     "user_profiles",
     {
       onSuccess: (data) => {
-        console.log("onSuccess: Update success data:", data);
         toast.success("Profile updated successfully!");
-        
-        console.log("onSuccess: Calling refetch...");
         refetch();
 
         if (data && data[0]) {
-          console.log("onSuccess: Processing returned data");
           const updatedProfile = data[0] as User_profilesUpdateSchema;
           const prefs = toObject(updatedProfile.preferences);
 
@@ -97,15 +93,10 @@ export default function OnboardingFormEnhanced() {
               theme: normalizePreferenceValue(prefs.theme) || "light",
             },
           };
-          
-          console.log("onSuccess: Resetting form to:", resetData);
           reset(resetData);
-        } else {
-          console.log("onSuccess: No data returned, relying on refetch");
         }
       },
       onError: (error) => {
-        console.error("Update error:", error);
         toast.error(`Update failed: ${error.message}`);
       },
     }
@@ -115,21 +106,12 @@ export default function OnboardingFormEnhanced() {
   const avatarUrl = watch("avatar_url");
 
   useEffect(() => {
-    console.log("useEffect triggered - isProfileLoading:", isProfileLoading, "profile exists:", !!profile);
-    
     if (profile && !isProfileLoading) {
-      console.log("Raw profile from database:", profile);
-      console.log("Raw preferences:", profile.preferences);
-      
       const preferences = toObject(profile.preferences);
-      console.log("Converted preferences object:", preferences);
-      
       const normalizedPreferences = {
         language: normalizePreferenceValue(preferences.language) || "en",
         theme: normalizePreferenceValue(preferences.theme) || "light",
       };
-      
-      console.log("Normalized preferences:", normalizedPreferences);
       
       const formData = {
         first_name: profile.first_name ?? "",
@@ -142,14 +124,9 @@ export default function OnboardingFormEnhanced() {
         preferences: normalizedPreferences,
       };
       
-      console.log("Form data being reset to:", formData);
-      console.log("Calling reset() now...");
-
       reset(formData);
-      
-      console.log("Reset completed");
     }
-  }, [profile, isProfileLoading]);
+  }, [profile, isProfileLoading, reset]);
 
   const onSubmit = (data: User_profilesUpdateSchema) => {
     if (!isDirty || !user?.id) {
@@ -163,7 +140,6 @@ export default function OnboardingFormEnhanced() {
       if (Object.prototype.hasOwnProperty.call(dirtyFields, key)) {
         const typedKey = key as keyof User_profilesUpdateSchema;
         const value = data[typedKey];
-
         (updates as Record<string, unknown>)[typedKey] =
           value === "" || value === undefined ? null : value;
       }
@@ -175,8 +151,6 @@ export default function OnboardingFormEnhanced() {
       needsOnboarding: false,
     };
     updates.preferences = newPreferences;
-
-    console.log("Final updates to send:", updates);
 
     if (Object.keys(updates).length > 0) {
       updateProfile({ id: user.id, data: updates });
@@ -340,13 +314,8 @@ export default function OnboardingFormEnhanced() {
               name='preferences.language'
               render={({ field }) => {
                 const currentValue = field.value || "en";
-                console.log("Language Controller render - field.value:", field.value, "currentValue:", currentValue);
-                
                 const handleChange = (value: string) => {
-                  console.log("Language onChange called with:", value);
-                  if (value) {
-                    field.onChange(value);
-                  }
+                  if (value) field.onChange(value);
                 };
                 
                 return (
@@ -354,10 +323,7 @@ export default function OnboardingFormEnhanced() {
                     <Label htmlFor='preferences_language' className='block text-sm font-medium mb-1'>
                       Language
                     </Label>
-                    <Select 
-                      onValueChange={handleChange} 
-                      value={currentValue}
-                    >
+                    <Select onValueChange={handleChange} value={currentValue}>
                       <SelectTrigger>
                         <SelectValue placeholder='Select a language' />
                       </SelectTrigger>
@@ -382,13 +348,8 @@ export default function OnboardingFormEnhanced() {
               control={control}
               render={({ field }) => {
                 const currentValue = field.value || "light";
-                console.log("Theme Controller render - field.value:", field.value, "currentValue:", currentValue);
-                
                 const handleChange = (value: string) => {
-                  console.log("Theme onChange called with:", value);
-                  if (value) {
-                    field.onChange(value);
-                  }
+                  if (value) field.onChange(value);
                 };
                 
                 return (
@@ -396,10 +357,7 @@ export default function OnboardingFormEnhanced() {
                     <Label htmlFor='preferences_theme' className='block text-sm font-medium mb-1'>
                       Theme
                     </Label>
-                    <Select 
-                      onValueChange={handleChange} 
-                      value={currentValue}
-                    >
+                    <Select onValueChange={handleChange} value={currentValue}>
                       <SelectTrigger>
                         <SelectValue placeholder='Select a theme' />
                       </SelectTrigger>
