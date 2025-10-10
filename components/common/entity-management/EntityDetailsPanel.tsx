@@ -1,3 +1,4 @@
+// path: components/common/entity-management/EntityDetailsPanel.tsx
 import React from 'react';
 import { FiEdit3, FiTrash2, FiEye } from 'react-icons/fi';
 import { BaseEntity, EntityConfig } from '@/components/common/entity-management/types';
@@ -57,7 +58,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         <div className="flex gap-2">
-          {/* THE FIX: Add the new "View Details" button, which will be the primary action. */}
+          {/* THE FIX: Add the new "View Details" button, making it the primary action. */}
           {onViewDetails && (
             <button
               onClick={onViewDetails}
