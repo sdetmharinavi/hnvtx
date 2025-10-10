@@ -79,7 +79,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' }}
+          transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
         />
       </div>
     </div>
@@ -113,7 +113,7 @@ export const StackedProgressBar: React.FC<StackedProgressBarProps> = ({
             className={cn('h-full', color)}
             initial={{ width: 0 }}
             animate={{ width }}
-            transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' }}
+            transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
           />
         );
       })}

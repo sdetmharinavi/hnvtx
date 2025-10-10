@@ -182,7 +182,7 @@ function NavItems() {
         id: 'help',
         label: 'Help & Documentation',
         icon: <FiHelpCircle className="h-5 w-5" />,
-        href: '/dashboard/doc',
+        href: '/doc',
         roles: [
           UserRole.ADMIN,
           UserRole.VIEWER,

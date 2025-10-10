@@ -1,6 +1,7 @@
 import { Separator } from "@/components/common/ui/separator";
 import StepList from "@/components/doc/StepList";
 import { WorkflowSectionProps } from "@/components/doc/types/workflowTypes";
+import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
 import { User, Monitor, Zap } from "lucide-react";
 
 export default function WorkflowSection({ 
@@ -9,6 +10,7 @@ export default function WorkflowSection({
   colors, 
   isLast 
 }: WorkflowSectionProps) {
+  const { data: isSuperAdmin } = useIsSuperAdmin();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -40,14 +42,16 @@ export default function WorkflowSection({
         />
 
         {/* Technical Flow */}
-        <StepList
-          icon={Zap}
-          iconColor="text-amber-400"
-          title="Technical Flow"
-          steps={workflow.techSteps}
+        {isSuperAdmin && (
+          <StepList
+            icon={Zap}
+            iconColor="text-amber-400"
+            title="Technical Flow"
+            steps={workflow.techSteps}
           stepColor="text-amber-400"
           isTechnical
         />
+        )}
       </div>
 
       {!isLast && (

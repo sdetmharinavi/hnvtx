@@ -27,7 +27,7 @@ export default function ScrollIndicator() {
         transition={{
           duration: 2,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: "easeInOut" as const,
         }}
         className="flex flex-col items-center space-y-2"
       >
@@ -47,7 +47,7 @@ export default function ScrollIndicator() {
             transition={{
               duration: 2,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: "easeInOut" as const,
             }}
             className={`
               mt-1 rounded-full shadow-sm
