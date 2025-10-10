@@ -1,4 +1,4 @@
-// app/api/admin/users/route.ts
+// path: app/api/admin/users/route.ts
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
@@ -22,13 +22,13 @@ export async function POST(req: Request) {
     const userData = await req.json();
     const hashed = await bcrypt.hash(userData.password, 10);
 
-    // ** Remove the manual transaction and the second INSERT.**
-    // We will now rely on the database trigger to create the user profile.
-    
+    // THE FIX: The manual transaction and the second INSERT have been removed.
+    // The database trigger 'on_auth_user_created' is now the single source of truth
+    // for creating a corresponding user profile.
     const { rows: authUserRows } = await client.query(
       `
-      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
-      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6)
+      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, role)
+      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6, $7)
       RETURNING id, email
       `,
       [
@@ -39,12 +39,12 @@ export async function POST(req: Request) {
         JSON.stringify({
           provider: 'email',
           providers: ['email'],
-          role: userData.role,
         }),
         JSON.stringify({
           first_name: userData.first_name,
           last_name: userData.last_name,
         }),
+        userData.role, // Pass the role directly to auth.users
       ]
     );
 
@@ -52,9 +52,6 @@ export async function POST(req: Request) {
     if (!createdAuthUser) {
       throw new Error("Failed to create user in auth.users");
     }
-
-    // The database trigger 'on_auth_user_created' will now automatically handle
-    // creating the corresponding record in 'public.user_profiles'.
 
     return NextResponse.json({ user: createdAuthUser });
 
@@ -92,7 +89,7 @@ export async function DELETE(req: Request) {
     if (!isSuperAdmin) {
       return NextResponse.json({ error: 'Forbidden: You do not have permission to perform this action.' }, { status: 403 });
     }
-    
+
     const { userIds } = await req.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -116,7 +113,7 @@ export async function DELETE(req: Request) {
         errors: deletionErrors,
       }, { status: 500 });
     }
-    
+
     return NextResponse.json({ message: 'Users deleted successfully' });
 
   } catch (err: unknown) {

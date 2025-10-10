@@ -1,14 +1,13 @@
 // path: components/bsnl/types.ts
 import {
-  v_nodes_completeRowSchema,
-  v_ofc_cables_completeRowSchema,
-  v_systems_completeRowSchema,
+  V_nodes_completeRowSchema,
+  V_ofc_cables_completeRowSchema,
+  V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { z } from 'zod';
 
-export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
-export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
-export type BsnlSystem = z.infer<typeof v_systems_completeRowSchema>;
+export type BsnlNode = V_nodes_completeRowSchema;
+export type BsnlCable = V_ofc_cables_completeRowSchema;
+export type BsnlSystem = V_systems_completeRowSchema;
 
 export interface FiberRoutePath {
   nodeId: string;

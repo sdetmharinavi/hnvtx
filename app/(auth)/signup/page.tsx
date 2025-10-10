@@ -1,4 +1,4 @@
-// app/(auth)/signup/page.tsx
+// path: app/(auth)/signup/page.tsx
 
 'use client';
 
@@ -13,8 +13,9 @@ import { loginSchema } from '@/app/(auth)/login/page';
 import { toast } from 'sonner';
 import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
 
-// CORRECTED: Use the central, reusable password schema and correct field names.
+// THE FIX: Use the central, reusable password schema and correct field names.
 const signupSchema = loginSchema
+  .pick({ email: true }) // Only pick email from login schema
   .extend({
     firstName: z
       .string()
@@ -24,9 +25,9 @@ const signupSchema = loginSchema
       .string()
       .min(1, 'Last name is required')
       .max(50, 'Last name must not exceed 50 characters'),
-  })
-  .omit({ encrypted_password: true }) // Remove the weak schema rule
-  .extend(passwordWithConfirmationSchema.shape); // Merge the strong, reusable password schema
+    // Merge the strong, reusable password schema
+    ...passwordWithConfirmationSchema.shape,
+  });
 
 type SignupForm = z.infer<typeof signupSchema>;
 
