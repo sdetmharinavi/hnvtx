@@ -1,4 +1,4 @@
-// config/maintenance-area-details-config.tsx
+// path: config/maintenance-area-details-config.tsx
 import {
   DetailsModal,
   defaultFormatters,
@@ -55,7 +55,6 @@ export const maintenanceAreaDetailsConfig = {
       fields: [
         { key: "contact_person", label: "Contact Person", icon: <FiUser size={18} /> },
         { key: "contact_number", label: "Contact Number", icon: <FiPhone size={18} /> },
-        // Ensure 'email' is treated as a string before creating the link.
         {
           key: "email",
           label: "Email",

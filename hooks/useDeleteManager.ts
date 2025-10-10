@@ -69,6 +69,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         toast.success(successMessage);
         onSuccess?.();
       },
+      // THE FIX: Add a generic onError handler to provide user feedback on failure.
       onError: (err: Error) => toast.error(`Deletion failed: ${err.message}`),
       onSettled: () => {
         setIsConfirmModalOpen(false);
@@ -98,7 +99,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const getConfirmationMessage = useCallback(() => {
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
-        // THE FIX: Use a generic, safe message.
         return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action cannot be undone.`;
       }
       return `Are you sure you want to delete these ${itemsToDelete.length} items? This action is permanent.`;
@@ -118,6 +118,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     isConfirmModalOpen,
     isPending,
     confirmationMessage: getConfirmationMessage(),
-    itemToDelete: itemsToDelete[0] ?? null, // Keep for single-item context
+    itemToDelete: itemsToDelete[0] ?? null,
   };
 }

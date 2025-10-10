@@ -1,3 +1,4 @@
+// path: components/common/entity-management/EntityManagementComponent.tsx
 import type { UseQueryResult } from "@tanstack/react-query";
 import { PagedQueryResult } from "@/hooks/database";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
@@ -48,6 +49,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
+  const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
@@ -70,7 +72,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
     selectedEntity,
     handleEntitySelect,
     handleOpenCreateForm,
-    expandedEntities,
+    expandedEntities: expanded,
     toggleExpanded,
   } = useEntityManagement<T>({
     entitiesQuery,
@@ -98,24 +100,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <IconComponent className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {config.entityPluralName}
-            </h1>
-          </div>
-          <button
-            onClick={handleOpenCreateForm}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-          >
-            <FiPlus className="h-4 w-4 mr-2" />
-            Add {config.entityDisplayName}
-          </button>
-        </div>
-      </div>
-
       <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
         <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
           <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -160,7 +144,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
                     config={config}
                     level={0}
                     selectedEntityId={selectedEntityId}
-                    expandedEntities={expandedEntities}
+                    expandedEntities={expanded}
                     onSelect={handleItemSelect}
                     onToggleExpand={toggleExpanded}
                     onToggleStatus={(e) => handleToggleStatus(e, entity)}
