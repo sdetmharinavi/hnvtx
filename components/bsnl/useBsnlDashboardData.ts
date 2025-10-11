@@ -21,26 +21,21 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
-    p_query: filters.query || undefined,
-    p_status: filters.status ? filters.status === 'active' : undefined,
-    p_system_types: filters.type ? [filters.type] : undefined,
-    p_cable_types: filters.type ? [filters.type] : undefined,
-    p_regions: filters.region ? [filters.region] : undefined,
-    p_node_types: filters.nodeType ? [filters.nodeType] : undefined,
-    // THE FIX: Pass bounds as separate, correctly named numeric parameters
-    p_min_lat: mapBounds?.getSouth(),
-    p_max_lat: mapBounds?.getNorth(),
-    p_min_lng: mapBounds?.getWest(),
-    p_max_lng: mapBounds?.getEast(),
+    p_query: filters.query || null,
+    p_status: filters.status ? filters.status === 'active' : null,
+    p_system_types: filters.type ? [filters.type] : null,
+    p_cable_types: filters.type ? [filters.type] : null,
+    p_regions: filters.region ? [filters.region] : null,
+    p_node_types: filters.nodeType ? [filters.nodeType] : null,
+    p_min_lat: mapBounds?.getSouth() ?? null,
+    p_max_lat: mapBounds?.getNorth() ?? null,
+    p_min_lng: mapBounds?.getWest() ?? null,
+    p_max_lng: mapBounds?.getEast() ?? null,
   }), [filters, mapBounds]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
     queryKey: ['bsnl-dashboard-data', queryParams],
     queryFn: async () => {
-      if (!mapBounds) {
-        return { nodes: [], ofcCables: [], systems: [] };
-      }
-
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_bsnl_dashboard_data', queryParams);
 
       if (rpcError) {
@@ -51,7 +46,6 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
-    enabled: !!mapBounds,
   });
 
   return {
