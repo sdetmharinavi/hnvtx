@@ -1,8 +1,7 @@
-// path: app/dashboard/ofc/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   PageHeader,
@@ -36,20 +35,26 @@ const useOfcData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  const combinedFilters: Filters = { ...filters };
-  if (searchQuery) {
-    combinedFilters.or = {
-      route_name: searchQuery,
-      asset_no: searchQuery,
-      transnet_id: searchQuery,
-    };
-  }
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = {
+        route_name: searchQuery,
+        asset_no: searchQuery,
+        transnet_id: searchQuery,
+        sn_name: searchQuery,
+        en_name: searchQuery,
+        ofc_owner_name: searchQuery,
+      };
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
     'v_ofc_cables_complete',
     {
-      filters: combinedFilters,
+      filters: searchFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'route_name',
@@ -165,8 +170,6 @@ const OfcPage = () => {
         actions={tableActions}
         selectable
         onRowSelect={(selectedRows) => {
-          // THE FIX: Filter out any rows where the 'id' is null before passing to the selection handler.
-          // This satisfies the type constraint of the generic hook, which expects a non-null ID.
           const validRows = selectedRows.filter(
             (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null
           );

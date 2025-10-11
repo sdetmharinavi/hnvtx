@@ -15,8 +15,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_id UUID DEFAULT NULL,
     p_ring_id UUID DEFAULT NULL,
     p_gne TEXT DEFAULT NULL,
-    p_make TEXT DEFAULT NULL,
-    p_vm_id TEXT DEFAULT NULL
+    p_make TEXT DEFAULT NULL
 )
 RETURNS SETOF public.systems
 LANGUAGE plpgsql
@@ -67,13 +66,6 @@ BEGIN
         VALUES (v_system_id, p_gne)
         ON CONFLICT (system_id) DO UPDATE SET gne = EXCLUDED.gne;
     END IF;
-    
-    -- Handle VMUX-Specific Systems (can also be converted to a flag if more types are added)
-    IF v_system_type_record.name = 'VMUX' THEN
-        INSERT INTO public.vmux_systems (system_id, vm_id)
-        VALUES (v_system_id, p_vm_id)
-        ON CONFLICT (system_id) DO UPDATE SET vm_id = EXCLUDED.vm_id;
-    END IF;
 
     -- Return the main system record
     RETURN QUERY SELECT * FROM public.systems WHERE id = v_system_id;
@@ -116,13 +108,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_a_slot TEXT DEFAULT NULL,
     p_a_customer TEXT DEFAULT NULL,
     p_b_slot TEXT DEFAULT NULL,
-    p_b_customer TEXT DEFAULT NULL,
-
-    -- VMUX connection fields
-    p_subscriber TEXT DEFAULT NULL,
-    p_c_code TEXT DEFAULT NULL,
-    p_channel TEXT DEFAULT NULL,
-    p_tk TEXT DEFAULT NULL
+    p_b_customer TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
@@ -204,20 +190,6 @@ BEGIN
             a_customer = EXCLUDED.a_customer,
             b_slot = EXCLUDED.b_slot,
             b_customer = EXCLUDED.b_customer;
-    END IF;
-
-    -- Handle VMUX connections
-    IF v_system_type_record.name = 'VMUX' THEN
-        INSERT INTO public.vmux_connections (
-            system_connection_id, subscriber, c_code, channel, tk
-        ) VALUES (
-            v_connection_id, p_subscriber, p_c_code, p_channel, p_tk
-        )
-        ON CONFLICT (system_connection_id) DO UPDATE SET
-            subscriber = EXCLUDED.subscriber,
-            c_code = EXCLUDED.c_code,
-            channel = EXCLUDED.channel,
-            tk = EXCLUDED.tk;
     END IF;
     
     -- Return the main connection record

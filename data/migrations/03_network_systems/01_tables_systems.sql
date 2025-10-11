@@ -1,7 +1,7 @@
 -- Path: migrations/03_network_systems/01_tables_systems.sql
 -- Description: Defines tables for generic and specific network systems.
 
--- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH, VMUX)
+-- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH etc.)
 CREATE TABLE IF NOT EXISTS public.systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
@@ -99,19 +99,4 @@ CREATE TABLE IF NOT EXISTS public.sdh_node_associations (
   node_position CHAR(1) CHECK (node_position IN ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')),
   node_ip INET,
   CONSTRAINT uq_sdh_system_position UNIQUE (sdh_system_id, node_position)
-);
-
--- 9. Dedicated Table for VMUX System Specific Details
-CREATE TABLE IF NOT EXISTS public.vmux_systems (
-  system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
- vm_id TEXT
-);
-
--- 10. Dedicated Table for VMUX Connection Specific Details
-CREATE TABLE IF NOT EXISTS public.vmux_connections (
-  system_connection_id UUID PRIMARY KEY REFERENCES public.system_connections (id) ON DELETE CASCADE,
-  subscriber TEXT,
-  c_code TEXT,
-  channel TEXT,
-  tk TEXT
 );

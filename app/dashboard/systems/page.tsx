@@ -1,5 +1,3 @@
-// path: app/dashboard/systems/page.tsx
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -41,6 +39,8 @@ const useSystemsData = (
       newFilters.or = {
         system_name: searchQuery,
         system_type_name: searchQuery,
+        node_name: searchQuery,
+        ip_address: searchQuery,
       };
     }
     return newFilters;
@@ -81,7 +81,6 @@ export default function SystemsPage() {
     displayNameField: 'system_name'
   });
 
-  // THE FIX: The mutation hook now lives in the page component, centralizing data logic.
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
@@ -126,12 +125,10 @@ export default function SystemsPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // THE FIX: This new handler constructs the payload and calls the mutation.
   const handleSave = useCallback((formData: SystemFormData) => {
     const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
     const isRingBased = selectedSystemType?.is_ring_based;
     const isSdh = selectedSystemType?.is_sdh;
-    const isVmux = selectedSystemType?.name === 'VMUX';
 
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
         p_id: editModal.record?.id ?? undefined,
@@ -147,7 +144,6 @@ export default function SystemsPage() {
         p_make: formData.make || undefined,
         p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
         p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
-        p_vm_id: (isVmux && formData.vm_id) ? formData.vm_id : undefined,
     };
     upsertSystemMutation.mutate(payload);
   }, [editModal.record, upsertSystemMutation, systemTypes]);
@@ -158,7 +154,7 @@ export default function SystemsPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="System Management"
-        description="Manage all network systems, including CPAN, MAAN, SDH, and VMUX."
+        description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc."
         icon={<FiDatabase />}
         stats={headerStats}
         actions={headerActions}
@@ -206,7 +202,6 @@ export default function SystemsPage() {
         }
       />
 
-      {/* THE FIX: Pass the new handleSave and mutation loading state to the modal */}
       <SystemModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

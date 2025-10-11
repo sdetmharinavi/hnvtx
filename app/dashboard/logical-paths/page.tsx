@@ -1,4 +1,3 @@
-// path: app/dashboard/logical-paths/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
@@ -20,10 +19,8 @@ import { LogicalPathsTableColumns } from '@/config/table-columns/LogicalPathsTab
 import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 
-// Define the shape for our UI, aliasing path_id to id for compatibility with generic components
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
-// Data fetching hook remains the same, but we'll use its return value directly
 const useLogicalPathsData = (
   params: { currentPage: number; pageLimit: number; searchQuery: string }
 ): DataQueryHookReturn<LogicalPathView> => {
@@ -32,7 +29,8 @@ const useLogicalPathsData = (
 
   const searchFilters = useMemo(() => {
     if (!searchQuery) return {};
-    return { or: { path_name: searchQuery, route_names: searchQuery } };
+    const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
+    return { or: searchString };
   }, [searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_end_to_end_pathsRowSchema>(
@@ -65,7 +63,6 @@ const useLogicalPathsData = (
 export default function LogicalPathsPage() {
   const router = useRouter();
   
-  // --- MANUAL STATE MANAGEMENT (Replaces useCrudManager) ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +79,6 @@ export default function LogicalPathsPage() {
   const handleClearFilters = () => setSearchQuery('');
   const hasActiveFilters = !!searchQuery;
 
-  // --- Deletion Logic ---
   const handleDeletePath = useCallback((record: Row<'v_end_to_end_paths'>) => {
     if (!record.path_id) {
       toast.error("Cannot de-provision: Path ID is missing.");
@@ -165,7 +161,6 @@ export default function LogicalPathsPage() {
       />
 
       <DataTable<'v_end_to_end_paths'>
-        // Provide the view name for column config, but the specific data type for operation
         tableName="v_end_to_end_paths"
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}

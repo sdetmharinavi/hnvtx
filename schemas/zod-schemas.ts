@@ -1661,45 +1661,6 @@ export const user_profilesUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const vmux_connectionsRowSchema = z.object({
-  c_code: z.string().nullable(),
-  channel: z.string().nullable(),
-  subscriber: z.string().nullable(),
-  system_connection_id: z.uuid(),
-  tk: z.string().nullable(),
-});
-
-export const vmux_connectionsInsertSchema = z.object({
-  c_code: z.string().nullable().optional(),
-  channel: z.string().nullable().optional(),
-  subscriber: z.string().nullable().optional(),
-  system_connection_id: z.uuid(),
-  tk: z.string().nullable().optional(),
-});
-
-export const vmux_connectionsUpdateSchema = z.object({
-  c_code: z.string().nullable().optional(),
-  channel: z.string().nullable().optional(),
-  subscriber: z.string().nullable().optional(),
-  system_connection_id: z.uuid().optional(),
-  tk: z.string().nullable().optional(),
-});
-
-export const vmux_systemsRowSchema = z.object({
-  system_id: z.uuid(),
-  vm_id: z.uuid().nullable(),
-});
-
-export const vmux_systemsInsertSchema = z.object({
-  system_id: z.uuid(),
-  vm_id: z.uuid().nullable().optional(),
-});
-
-export const vmux_systemsUpdateSchema = z.object({
-  system_id: z.uuid().optional(),
-  vm_id: z.uuid().nullable().optional(),
-});
-
 export const v_cable_segments_at_jcRowSchema = z.object({
   end_node_id: z.uuid().nullable(),
   fiber_count: z.number().int().min(0).nullable(),
@@ -1961,10 +1922,6 @@ export const v_system_connections_completeRowSchema = z.object({
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
-  vmux_c_code: z.string().nullable(),
-  vmux_channel: z.string().nullable(),
-  vmux_subscriber: z.string().nullable(),
-  vmux_tk: z.string().nullable(),
 });
 
 export const v_system_ring_paths_detailedRowSchema = z.object({
@@ -2009,7 +1966,6 @@ export const v_systems_completeRowSchema = z.object({
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
-  vmux_vm_id: z.uuid().nullable(),
 });
 
 export const v_user_profiles_extendedRowSchema = z.object({
@@ -2170,12 +2126,6 @@ export type SystemsUpdateSchema = z.infer<typeof systemsUpdateSchema>;
 export type User_profilesRowSchema = z.infer<typeof user_profilesRowSchema>;
 export type User_profilesInsertSchema = z.infer<typeof user_profilesInsertSchema>;
 export type User_profilesUpdateSchema = z.infer<typeof user_profilesUpdateSchema>;
-export type Vmux_connectionsRowSchema = z.infer<typeof vmux_connectionsRowSchema>;
-export type Vmux_connectionsInsertSchema = z.infer<typeof vmux_connectionsInsertSchema>;
-export type Vmux_connectionsUpdateSchema = z.infer<typeof vmux_connectionsUpdateSchema>;
-export type Vmux_systemsRowSchema = z.infer<typeof vmux_systemsRowSchema>;
-export type Vmux_systemsInsertSchema = z.infer<typeof vmux_systemsInsertSchema>;
-export type Vmux_systemsUpdateSchema = z.infer<typeof vmux_systemsUpdateSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;

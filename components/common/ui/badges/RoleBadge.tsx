@@ -28,7 +28,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
           shadow: "shadow-emerald-500/20 dark:shadow-emerald-500/30",
           icon: "🚀"
         };
-      case UserRole.VMUXADMIN:
+      case UserRole.ASSETADMIN:
         return { 
           bg: "bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30", 
           text: "text-slate-700 dark:text-slate-300",

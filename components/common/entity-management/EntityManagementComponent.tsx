@@ -1,4 +1,3 @@
-// path: components/common/entity-management/EntityManagementComponent.tsx
 import type { UseQueryResult } from "@tanstack/react-query";
 import { PagedQueryResult } from "@/hooks/database";
 import { EntityDetailsPanel } from "@/components/common/entity-management/EntityDetailsPanel";
@@ -10,6 +9,8 @@ import { ViewModeToggle } from "@/components/common/entity-management/ViewModeTo
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import { useDebounce } from "use-debounce";
+import { PageSpinner } from "@/components/common/ui";
+import { BlurLoader } from "@/components/common/ui/LoadingSpinner";
 
 type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity; };
 
@@ -28,14 +29,15 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   filters: Record<string, string>;
   onFilterChange: (filters: Record<string, string>) => void;
   onClearFilters: () => void;
+  isFetching?: boolean;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
   config, entitiesQuery, toggleStatusMutation, onEdit, onDelete,
   onCreateNew, selectedEntityId, onSelect, onViewDetails,
-  searchTerm, onSearchChange, filters, onFilterChange, onClearFilters
+  searchTerm, onSearchChange, filters, onFilterChange, onClearFilters,
+  isFetching
 }: EntityManagementComponentProps<T>) {
-  // THE FIX: Internal state for the search input to decouple it from parent re-renders.
   const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
   const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
 
@@ -44,7 +46,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
-  // THE FIX: Effect to update the parent component only when the debounced search term changes.
   useEffect(() => {
     onSearchChange(debouncedSearch);
   }, [debouncedSearch, onSearchChange]);
@@ -54,17 +55,49 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
     if (!config.isHierarchical) return allEntities.map((entity) => ({ ...entity, children: [] }));
+    
     const entityMap = new Map<string, EntityWithChildren<T>>();
-    allEntities.forEach((entity) => { entityMap.set(entity.id, { ...entity, children: [] }); });
+    allEntities.forEach((entity) => {
+      entityMap.set(entity.id, { ...entity, children: [] });
+    });
+    
     const rootEntities: EntityWithChildren<T>[] = [];
+
+    // THE FIX: Type guards to safely access parent properties without using 'any'
+    const isParentEntity = (value: unknown): value is { id: string } => {
+      return value != null && typeof value === 'object' && 'id' in value && typeof (value as { id: unknown }).id === 'string';
+    };
+    
+    const hasParentId = (entity: T): entity is T & { parent_id: string | null } => {
+      return 'parent_id' in entity;
+    }
+
     allEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
-      const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
+
+      let parentId: string | null = null;
+      
+      // Attempt to get parent ID from the loaded relation object (e.g., parent_area)
+      if (config.parentField) {
+        const parentRelation = entity[config.parentField];
+        if (isParentEntity(parentRelation)) {
+          parentId = parentRelation.id;
+        }
+      }
+      
+      // If the relation object didn't provide an ID, fall back to the direct parent_id foreign key
+      if (!parentId && hasParentId(entity) && entity.parent_id) {
+        parentId = entity.parent_id;
+      }
+
       if (parentId) {
         const parent = entityMap.get(parentId);
-        if (parent) { parent.children.push(entityWithChildren); }
-        else { rootEntities.push(entityWithChildren); }
+        if (parent) { 
+          parent.children.push(entityWithChildren); 
+        } else {
+           rootEntities.push(entityWithChildren);
+        }
       } else {
         rootEntities.push(entityWithChildren);
       }
@@ -85,8 +118,12 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   const IconComponent = config.icon;
 
+  const isInitialLoading = entitiesQuery.isLoading && allEntities.length === 0;
+
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)]">
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
+      {isFetching && !isInitialLoading && <BlurLoader />}
+      
       <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <SearchAndFilters
@@ -98,8 +135,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
           {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
         </div>
         <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
-          {entitiesQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
+          {isInitialLoading ? (
+            <div className="flex items-center justify-center py-12 text-center"><PageSpinner text={`Loading ${config.entityPluralName}...`} /></div>
           ) : entitiesQuery.isError ? (
             <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
           ) : allEntities.length === 0 ? (

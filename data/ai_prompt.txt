@@ -128,4 +128,4 @@ Never try to edit auto generated files like types/supabase-types.ts, types/flatt
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! We will first complete all the required functionalities for systems, so that this project will work as smart telecom network database management system.We will also try to implement DRY principle in the project without breaking any existing functionalities.
+Let's begin! We will first fix search and filter functionalities as they are not working in many pages.

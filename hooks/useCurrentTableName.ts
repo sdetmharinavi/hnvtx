@@ -72,10 +72,6 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "system_connections";
       case "user-activity-logs":
         return "user_activity_logs";
-      case "vmux":
-        return "vmux_systems";
-      case "vmux_connections":
-        return "vmux_connections";
       default:
         return null;
     }

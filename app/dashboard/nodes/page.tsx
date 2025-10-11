@@ -12,7 +12,7 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { convertRichFiltersToSimpleJson, usePagedData, Filters } from '@/hooks/database';
+import { usePagedData, Filters } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -41,19 +41,24 @@ const useNodesData = (
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const rpcFilters = useMemo(() => {
-      const convertedFilters = convertRichFiltersToSimpleJson(filters);
-      return {
-        ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
-        ...(searchQuery ? { name: searchQuery } : {}),
+  
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = {
+        name: searchQuery,
+        node_type_name: searchQuery,
+        maintenance_area_name: searchQuery,
       };
-    }, [filters, searchQuery]);
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
 
   const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
     'v_nodes_complete',
     {
-      filters: rpcFilters,
+      filters: searchFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
@@ -190,7 +195,6 @@ const NodesPage = () => {
           isOpen={editModal.isOpen}
           onClose={editModal.close}
           editingNode={editModal.record as NodeRowsWithRelations | null}
-          // ** Pass the correct props to the now "dumb" component.**
           onSubmit={crudActions.handleSave}
           isLoading={isMutating}
         />

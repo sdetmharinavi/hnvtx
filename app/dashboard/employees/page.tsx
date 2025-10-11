@@ -1,4 +1,3 @@
-// app/dashboard/employees/page.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -36,6 +35,8 @@ const useEmployeesData = (
       newFilters.or = {
         employee_name: searchQuery,
         employee_pers_no: searchQuery,
+        employee_email: searchQuery,
+        employee_contact: searchQuery,
       };
     }
     return newFilters;
@@ -78,13 +79,11 @@ const EmployeesPage = () => {
     displayNameField: 'employee_name'
   });
 
-  // These queries are now only for the form modal, not for the table display.
   const { data: designationsData } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
   const designations = useMemo(() => designationsData?.data || [], [designationsData]);
   const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
   const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
 
-  // The columns component is now much simpler.
   const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(
     columns,

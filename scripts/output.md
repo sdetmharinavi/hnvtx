@@ -1,20 +1,16 @@
-<!-- path: schemas/custom-schemas.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/schemas/custom-schemas.ts -->
 ```typescript
-// schemas/custom-schemas.ts
-
 import { z } from 'zod';
 import {
   v_ofc_cables_completeRowSchema,
   cable_segmentsRowSchema,
   junction_closuresRowSchema,
   fiber_splicesRowSchema,
-  nodesRowSchema,
-  user_profilesUpdateSchema,
+  nodesRowSchema
 } from '@/schemas/zod-schemas';
 
 // ============= AUTH & UI-SPECIFIC SCHEMAS =============
 
-// --- Reusable Password Validation Schema ---
 export const passwordSchema = z.string()
   .min(8, "Password must be at least 8 characters long")
   .max(50, "Password must not exceed 50 characters")
@@ -34,41 +30,8 @@ export const passwordWithConfirmationSchema = z.object({
 export type PasswordSchema = z.infer<typeof passwordSchema>;
 export type PasswordWithConfirmation = z.infer<typeof passwordWithConfirmationSchema>;
 
-// --- Onboarding Form Specific Schema ---
-// THE FIX: Define the detailed object shapes for our JSONB fields.
-const addressSchema = z
-  .object({
-    street: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    zip_code: z.string().optional().nullable(),
-    country: z.string().optional().nullable(),
-  })
-  .nullable()
-  .optional();
-
-const preferencesSchema = z
-  .object({
-    language: z.string().optional().nullable(),
-    theme: z.string().optional().nullable(),
-    needsOnboarding: z.boolean().optional().nullable(),
-    showOnboardingPrompt: z.boolean().optional().nullable(),
-  })
-  .nullable()
-  .optional();
-
-export const onboardingFormSchema = user_profilesUpdateSchema.extend({
-  address: addressSchema,
-  preferences: preferencesSchema,
-});
-
-// THE FIX: Use z.input<> to get the type that the form will produce,
-// which is different from the fully parsed output type.
-export type OnboardingFormData = z.input<typeof onboardingFormSchema>;
-
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
 
-// --- For useOfcRoutesForSelection hook ---
 export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema.pick({
   id: true,
   route_name: true,
@@ -78,13 +41,11 @@ export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema.pick({
 });
 export type OfcForSelection = z.infer<typeof ofcForSelectionSchema>;
 
-// --- For useAutoSplice hook result ---
 export const autoSpliceResultSchema = z.object({
   splices_created: z.number().int(),
 });
 export type AutoSpliceResult = z.infer<typeof autoSpliceResultSchema>;
 
-// --- For JcSplicingDetails ---
 const fiberAtSegmentSchema = z.object({
   fiber_no: z.number().int(),
   status: z.enum(['available', 'used_as_incoming', 'used_as_outgoing', 'terminated']),
@@ -109,8 +70,6 @@ export const jcSplicingDetailsSchema = z.object({
   segments_at_jc: z.array(segmentAtJcSchema),
 });
 export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
-
-// --- For RouteDetailsPayload and its constituent parts ---
 
 const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
   created_at: z.string().nullable(),
@@ -163,7 +122,6 @@ export const routeDetailsPayloadSchema = z.object({
 });
 export type RouteDetailsPayload = z.infer<typeof routeDetailsPayloadSchema>;
 
-// --- Schema for trace_fiber_path RPC ---
 export const fiberTraceSegmentSchema = z.object({
   step_order: z.number(),
   element_type: z.string(),
@@ -190,7 +148,6 @@ export const pathToUpdateSchema = z.object({
 export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 
-// --- BSNL Dashboard Search Filters ---
 export const bsnlSearchFiltersSchema = z.object({
   query: z.string().optional(),
   status: z.string().optional(),
@@ -202,9 +159,8 @@ export const bsnlSearchFiltersSchema = z.object({
 export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;
 ```
 
-<!-- path: schemas/zod-schemas.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/schemas/zod-schemas.ts -->
 ```typescript
-// Auto-generated Zod schemas from flattened-types.ts
 
 import { z } from "zod";
 
@@ -1867,45 +1823,6 @@ export const user_profilesUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const vmux_connectionsRowSchema = z.object({
-  c_code: z.string().nullable(),
-  channel: z.string().nullable(),
-  subscriber: z.string().nullable(),
-  system_connection_id: z.uuid(),
-  tk: z.string().nullable(),
-});
-
-export const vmux_connectionsInsertSchema = z.object({
-  c_code: z.string().nullable().optional(),
-  channel: z.string().nullable().optional(),
-  subscriber: z.string().nullable().optional(),
-  system_connection_id: z.uuid(),
-  tk: z.string().nullable().optional(),
-});
-
-export const vmux_connectionsUpdateSchema = z.object({
-  c_code: z.string().nullable().optional(),
-  channel: z.string().nullable().optional(),
-  subscriber: z.string().nullable().optional(),
-  system_connection_id: z.uuid().optional(),
-  tk: z.string().nullable().optional(),
-});
-
-export const vmux_systemsRowSchema = z.object({
-  system_id: z.uuid(),
-  vm_id: z.uuid().nullable(),
-});
-
-export const vmux_systemsInsertSchema = z.object({
-  system_id: z.uuid(),
-  vm_id: z.uuid().nullable().optional(),
-});
-
-export const vmux_systemsUpdateSchema = z.object({
-  system_id: z.uuid().optional(),
-  vm_id: z.uuid().nullable().optional(),
-});
-
 export const v_cable_segments_at_jcRowSchema = z.object({
   end_node_id: z.uuid().nullable(),
   fiber_count: z.number().int().min(0).nullable(),
@@ -2167,10 +2084,6 @@ export const v_system_connections_completeRowSchema = z.object({
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
-  vmux_c_code: z.string().nullable(),
-  vmux_channel: z.string().nullable(),
-  vmux_subscriber: z.string().nullable(),
-  vmux_tk: z.string().nullable(),
 });
 
 export const v_system_ring_paths_detailedRowSchema = z.object({
@@ -2215,7 +2128,6 @@ export const v_systems_completeRowSchema = z.object({
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
-  vmux_vm_id: z.uuid().nullable(),
 });
 
 export const v_user_profiles_extendedRowSchema = z.object({
@@ -2376,12 +2288,6 @@ export type SystemsUpdateSchema = z.infer<typeof systemsUpdateSchema>;
 export type User_profilesRowSchema = z.infer<typeof user_profilesRowSchema>;
 export type User_profilesInsertSchema = z.infer<typeof user_profilesInsertSchema>;
 export type User_profilesUpdateSchema = z.infer<typeof user_profilesUpdateSchema>;
-export type Vmux_connectionsRowSchema = z.infer<typeof vmux_connectionsRowSchema>;
-export type Vmux_connectionsInsertSchema = z.infer<typeof vmux_connectionsInsertSchema>;
-export type Vmux_connectionsUpdateSchema = z.infer<typeof vmux_connectionsUpdateSchema>;
-export type Vmux_systemsRowSchema = z.infer<typeof vmux_systemsRowSchema>;
-export type Vmux_systemsInsertSchema = z.infer<typeof vmux_systemsInsertSchema>;
-export type Vmux_systemsUpdateSchema = z.infer<typeof vmux_systemsUpdateSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
@@ -2402,20 +2308,15 @@ export type V_user_profiles_extendedRowSchema = z.infer<typeof v_user_profiles_e
 
 ```
 
-<!-- path: schemas/system-schemas.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/schemas/system-schemas.ts -->
 ```typescript
-// path: schemas/system-schemas.ts
 import { z } from 'zod';
 import {
   systemsInsertSchema,
   sdh_systemsInsertSchema,
-  vmux_systemsInsertSchema,
   ring_based_systemsInsertSchema,
 } from './zod-schemas';
 
-// THIS IS THE FINAL, CORRECT SCHEMA FOR THE FORM.
-// It uses .extend() and correctly marks the added fields as .optional()
-// to match the form's data structure, resolving the TypeScript error.
 export const systemFormValidationSchema = systemsInsertSchema
   .omit({
     created_at: true,
@@ -2423,21 +2324,16 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    // CORRECTED: Use a more robust transformation that handles '', null, and undefined.
     ring_id: ring_based_systemsInsertSchema.shape.ring_id.transform((val) => val || null).optional(),
     gne: sdh_systemsInsertSchema.shape.gne.transform((val) => val || null).optional(),
-    vm_id: vmux_systemsInsertSchema.shape.vm_id.transform((val) => val || null).optional(),
   });
 
-// This is the type that will be used by the form state.
 export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 ```
 
-<!-- path: app/customuppy.css -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/customuppy.css -->
 ```css
-/* Custom Uppy Styles - Add this to your globals.css or import as a separate file */
 
-/* Dark theme customizations */
 .uppy-dark .uppy-Dashboard {
   background-color: #1f2937;
   color: #f9fafb;
@@ -2515,7 +2411,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   background-color: #3b82f6;
 }
 
-/* Progress bar customization */
 .uppy-ProgressBar {
   height: 8px;
   background-color: #e5e7eb;
@@ -2533,7 +2428,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   height: 100%;
 }
 
-/* Custom drag-drop area */
 .uppy-DragDrop-container {
   border: 2px dashed #d1d5db;
   border-radius: 8px;
@@ -2559,7 +2453,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   background-color: #1e3a8a;
 }
 
-/* Webcam styles */
 .uppy-dark .uppy-Webcam-container {
   background-color: #1f2937;
 }
@@ -2577,7 +2470,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   background-color: #2563eb;
 }
 
-/* Image editor styles */
 .uppy-dark .uppy-ImageEditor-container {
   background-color: #1f2937;
 }
@@ -2602,7 +2494,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   color: #ffffff;
 }
 
-/* Custom animations */
 @keyframes uppy-fade-in {
   from {
     opacity: 0;
@@ -2618,27 +2509,24 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   animation: uppy-fade-in 0.3s ease-out;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .uppy-Dashboard {
     border-radius: 0;
   }
-
+  
   .uppy-Dashboard-inner {
     padding: 1rem;
   }
-
+  
   .uppy-DragDrop-container {
     padding: 2rem 1rem;
   }
 }
 
-/* File type icons */
 .uppy-Dashboard-Item-previewIcon {
   font-size: 2rem;
 }
 
-/* Success/Error states */
 .uppy-Dashboard-Item--success .uppy-Dashboard-Item-progress {
   background-color: #10b981;
 }
@@ -2651,7 +2539,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   color: #ef4444;
 }
 
-/* Custom button styles */
 .uppy-Dashboard-browse,
 .uppy-Dashboard-AddFiles-title {
   font-weight: 600;
@@ -2662,12 +2549,10 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   opacity: 0.8;
 }
 
-/* Hide powered by Uppy */
 .uppy-Dashboard-poweredBy {
   display: none !important;
 }
 
-/* Add this to your customuppy.css file */
 .uppy-dashboard-container {
   position: relative;
   width: 100%;
@@ -2685,16 +2570,15 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   overflow-x: hidden;
 }
 
-/* For mobile devices */
 @media (max-width: 768px) {
   .uppy-dashboard-container .uppy-Dashboard {
     height: 350px !important; /* Reduced height for mobile */
   }
-
+  
   .uppy-dashboard-container .uppy-Dashboard-files {
     padding: 0 5px;
   }
-
+  
   .uppy-dashboard-container .uppy-DashboardItem-name {
     white-space: nowrap;
     overflow: hidden;
@@ -2704,7 +2588,7 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 }
 ```
 
-<!-- path: app/globals.css -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/globals.css -->
 ```css
 @import "tailwindcss";
 
@@ -2723,13 +2607,11 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 }
 
 
-/* Smooth transitions for interactive elements */
 button,
 a {
   transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
 }
 
-/* Loading state transitions */
 [data-loading='true'] {
   opacity: 0.8;
   transform: translateY(1px);
@@ -2750,15 +2632,13 @@ body {
   overflow-x: hidden;
 }
 
-/* Ensure react-datepicker popper appears above modals/overlays */
 .react-datepicker-popper {
   z-index: 9999 !important;
 }
 ```
 
-<!-- path: app/(auth)/signup/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/signup/page.tsx -->
 ```typescript
-// app/(auth)/signup/page.tsx
 
 'use client';
 
@@ -2773,8 +2653,8 @@ import { loginSchema } from '@/app/(auth)/login/page';
 import { toast } from 'sonner';
 import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
 
-// CORRECTED: Use the central, reusable password schema and correct field names.
 const signupSchema = loginSchema
+  .pick({ email: true }) // Only pick email from login schema
   .extend({
     firstName: z
       .string()
@@ -2784,9 +2664,8 @@ const signupSchema = loginSchema
       .string()
       .min(1, 'Last name is required')
       .max(50, 'Last name must not exceed 50 characters'),
-  })
-  .omit({ encrypted_password: true }) // Remove the weak schema rule
-  .extend(passwordWithConfirmationSchema.shape); // Merge the strong, reusable password schema
+    ...passwordWithConfirmationSchema.shape,
+  });
 
 type SignupForm = z.infer<typeof signupSchema>;
 
@@ -2816,7 +2695,6 @@ export default function SignUpPage() {
   });
 
   const onSubmit = async (data: SignupForm) => {
-    // Pass the correct plaintext password field to the signUp function
     const { success, error } = await signUp({
       email: data.email ?? '',
       password: data.password,
@@ -2984,9 +2862,8 @@ export default function SignUpPage() {
 }
 ```
 
-<!-- path: app/(auth)/forgot-password/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/forgot-password/page.tsx -->
 ```typescript
-// app/(auth)/forgot-password/page.tsx
 'use client'
 
 import { motion } from 'framer-motion'
@@ -3024,7 +2901,7 @@ export default function ForgotPasswordPage() {
 
 ```
 
-<!-- path: app/(auth)/login/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/login/page.tsx -->
 ```typescript
 'use client';
 
@@ -3036,11 +2913,9 @@ import { useAuth } from '@/hooks/useAuth';
 import OAuthProviders from '@/components/auth/OAuthProviders';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-// THE FIX: Import the specific schema directly.
 import { authUsersRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 
-// We only pick the fields that are relevant to the login form.
 export const loginSchema = authUsersRowSchema.pick({
   email: true,
   encrypted_password: true,
@@ -3067,7 +2942,6 @@ export default function LoginPage() {
     },
   });
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (authState === 'authenticated') {
       router.push('/dashboard');
@@ -3187,9 +3061,8 @@ export default function LoginPage() {
 }
 ```
 
-<!-- path: app/(auth)/layout.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/layout.tsx -->
 ```typescript
-// app/(auth)/layout.tsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -3249,9 +3122,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
 ```
 
-<!-- path: app/(auth)/verify-email/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/verify-email/page.tsx -->
 ```typescript
-// app/(auth)/verify-email/page.tsx
 import Link from 'next/link'
 
 export default function VerifyEmailPage() {
@@ -3293,9 +3165,8 @@ export default function VerifyEmailPage() {
 }
 ```
 
-<!-- path: app/(auth)/reset-password/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/(auth)/reset-password/page.tsx -->
 ```typescript
-// app/(auth)/reset-password/page.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -3324,7 +3195,6 @@ export default function ResetPasswordPage() {
     }
   });
 
-  // Redirect if user is already logged in
   useEffect(() => {
     if (authState === 'authenticated') {
       router.replace('/dashboard');
@@ -3414,18 +3284,17 @@ export default function ResetPasswordPage() {
 }
 ```
 
-<!-- path: app/bsnl/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/bsnl/page.tsx -->
 ```typescript
-// path: app/bsnl/page.tsx
-"use client"
+'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw, Loader2 } from 'lucide-react';
+import { Network, Settings, RefreshCw, Loader2, Eye } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
-import { PaginatedTable } from '@/components/bsnl/PaginatedTable';
+import { DataTable, TableAction } from '@/components/table';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
 import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
@@ -3433,6 +3302,11 @@ import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 import { LatLngBounds } from 'leaflet';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { SystemDetailsModal } from '@/config/system-details-config';
+import { CableDetailsModal } from '@/config/cable-details-config';
+import { Row } from '@/hooks/database';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
@@ -3440,40 +3314,36 @@ export default function ScalableFiberNetworkDashboard() {
   const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
 
+  const [isSystemDetailsOpen, setIsSystemDetailsOpen] = useState(false);
+  const [isCableDetailsOpen, setIsCableDetailsOpen] = useState(false);
+
   const [filters, setFilters] = useState<BsnlSearchFilters>({
     query: '',
     status: undefined,
     type: undefined,
     region: undefined,
     nodeType: undefined,
-    priority: undefined
+    priority: undefined,
   });
 
   const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const [allocationData, setAllocationData] = useState<AllocationSaveData | null>(null);
-
-  // State for map interaction
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const [zoom, setZoom] = useState(13);
 
-  // THE FIX: Memoize state setters to prevent re-renders in the child map component.
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
   }, []);
-
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
   }, []);
-
-
-  const handleSaveAllocation = (allocationData: AllocationSaveData) => {
-    setAllocationData(allocationData);
-    toast.info("Allocation feature is a work in progress.");
+  const handleSaveAllocation = (
+    data: AllocationSaveData // eslint-disable-line @typescript-eslint/no-unused-vars
+  ) => {
+    toast.info('Allocation feature is a work in progress.');
   };
-
   const clearFilters = useCallback(() => {
     setFilters({
       query: '',
@@ -3481,23 +3351,27 @@ export default function ScalableFiberNetworkDashboard() {
       type: undefined,
       region: undefined,
       nodeType: undefined,
-      priority: undefined
+      priority: undefined,
     });
   }, []);
-
   const handleRefresh = async () => {
-    toast.info("Refreshing network data...");
+    toast.info('Refreshing network data...');
     await refetchAll();
-    toast.success("Dashboard data refreshed.");
+    toast.success('Dashboard data refreshed.');
   };
 
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    const allSystemTypes = [...new Set(data.systems.map(s => s.system_type_name).filter(Boolean))];
-    const allCableTypes = [...new Set(data.ofcCables.map(c => c.ofc_type_name).filter(Boolean))];
+    const allSystemTypes = [
+      ...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean)),
+    ];
+    const allCableTypes = [...new Set(data.ofcCables.map((c) => c.ofc_type_name).filter(Boolean))];
     const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
-    const allRegions = [...new Set(data.nodes.map(n => n.maintenance_area_name).filter(Boolean))].sort();
-    const allNodeTypes = [...new Set(data.nodes.map(n => n.node_type_name).filter(Boolean))].sort();
-
+    const allRegions = [
+      ...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean)),
+    ].sort();
+    const allNodeTypes = [
+      ...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean)),
+    ].sort();
     return {
       typeOptions: uniqueTypes as string[],
       regionOptions: allRegions as string[],
@@ -3505,39 +3379,187 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  const systemColumns = [
-    { key: 'name', label: 'System Name', render: (system: BsnlSystem) => (<div><div className="font-medium text-gray-900 dark:text-white">{system.system_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{system.system_type_name}</div></div>) },
-    { key: 'status', label: 'Status', render: (system: BsnlSystem) => (<span className={`px-2 py-1 text-xs rounded-full ${system.status ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>{system.status ? 'Active' : 'Inactive'}</span>) },
-    { key: 'node', label: 'Node', render: (system: BsnlSystem) => system.node_name },
-    { key: 'ip', label: 'IP Address', render: (system: BsnlSystem) => <code className="text-xs">{system.ip_address as string}</code> },
-    { key: 'region', label: 'Region', render: (system: BsnlSystem) => system.system_maintenance_terminal_name }
-  ];
+  const systemColumns: Column<Row<'v_systems_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'system_name',
+        title: 'System Name',
+        dataIndex: 'system_name',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlSystem;
+          return (
+            <div>
+              <div className="font-medium text-gray-900 dark:text-white">{rec.system_name}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">{rec.system_type_name}</div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlSystem;
+          return (
+            <span
+              className={`px-2 py-1 text-xs rounded-full ${
+                rec.status
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+              }`}
+            >
+              {rec.status ? 'Active' : 'Inactive'}
+            </span>
+          );
+        },
+      },
+      { key: 'node_name', title: 'Node', dataIndex: 'node_name', sortable: true },
+      {
+        key: 'ip_address',
+        title: 'IP Address',
+        dataIndex: 'ip_address',
+        sortable: true,
+        render: (_, record) => <code className="text-xs">{record.ip_address as string}</code>,
+      },
+      {
+        key: 'system_maintenance_terminal_name',
+        title: 'Region',
+        dataIndex: 'system_maintenance_terminal_name',
+        sortable: true,
+      },
+    ],
+    []
+  );
 
-  const cableColumns = [
-    { key: 'name', label: 'Route Name', render: (cable: BsnlCable) => (<div><div className="font-medium text-gray-900 dark:text-white">{cable.route_name}</div><div className="text-sm text-gray-500 dark:text-gray-400">{cable.asset_no}</div></div>) },
-    { key: 'status', label: 'Status', render: (cable: BsnlCable) => (<span className={`px-2 py-1 text-xs rounded-full ${cable.status ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>{cable.status ? 'Active' : 'Inactive'}</span>) },
-    { key: 'capacity', label: 'Capacity', render: (cable: BsnlCable) => `${cable.capacity}F / ${cable.current_rkm?.toFixed(1)}km` },
-    { key: 'endpoints', label: 'Endpoints', render: (cable: BsnlCable) => <div className="text-sm">{cable.sn_name} → {cable.en_name}</div> },
-    { key: 'owner', label: 'Owner', render: (cable: BsnlCable) => cable.ofc_owner_name }
-  ];
+  const cableColumns: Column<Row<'v_ofc_cables_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'route_name',
+        title: 'Route Name',
+        dataIndex: 'route_name',
+        width: '300px',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlCable;
+          return (
+            <div className="grid grid-rows-2">
+              <TruncateTooltip text={rec.route_name || ''} />
+              <div className="text-sm text-gray-500 dark:text-gray-400">{rec.asset_no}</div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        width: '80px',
+        dataIndex: 'status',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlCable;
+          return (
+            <span
+              className={`px-2 py-1 text-xs rounded-full ${
+                rec.status
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+              }`}
+            >
+              {rec.status ? 'Active' : 'Inactive'}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'capacity',
+        title: 'Capacity / RKM',
+        width: '100px',
+        dataIndex: 'capacity',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlCable;
+          return `${rec.capacity}F / ${rec.current_rkm?.toFixed(1)}km`;
+        },
+      },
+      {
+        key: 'endpoints',
+        title: 'Endpoints',
+        width: '350px',
+        dataIndex: 'sn_name',
+        sortable: true,
+        render: (_, record) => {
+          const rec = record as BsnlCable;
+          return <TruncateTooltip text={rec.sn_name + ' → ' + rec.en_name} />;
+        },
+      },
+      {
+        key: 'ofc_owner_name',
+        title: 'Owner',
+        width: '100px',
+        dataIndex: 'ofc_owner_name',
+        sortable: true,
+      },
+    ],
+    []
+  );
 
-  const isInitialLoad = isLoading && data.nodes.length === 0 && data.systems.length === 0;
+  const systemTableActions: TableAction<'v_systems_complete'>[] = useMemo(
+    () => [
+      {
+        key: 'view-details',
+        label: 'View Details',
+        icon: <Eye size={16} />,
+        onClick: (record) => {
+          setSelectedSystem(record as BsnlSystem);
+          setIsSystemDetailsOpen(true);
+        },
+      },
+    ],
+    []
+  );
+
+  const cableTableActions: TableAction<'v_ofc_cables_complete'>[] = useMemo(
+    () => [
+      {
+        key: 'view-details',
+        label: 'View Details',
+        icon: <Eye size={16} />,
+        onClick: (record) => {
+          setSelectedCable(record as BsnlCable);
+          setIsCableDetailsOpen(true);
+        },
+      },
+    ],
+    []
+  );
+
+  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length;
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
-  if (isError) return <ErrorDisplay error={error?.message || "An unknown error occurred."} />;
+  if (isError) return <ErrorDisplay error={error?.message || 'An unknown error occurred.'} />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Network className="h-8 w-8 text-blue-600 mr-3" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BSNL Fiber Network Dashboard</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  BSNL Fiber Network Dashboard
+                </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {data.systems.length.toLocaleString()} Systems | {data.ofcCables.length.toLocaleString()} Cables
-                  {isFetching && <span className="ml-2 inline-flex items-center"><Loader2 className="h-3 w-3 animate-spin" /></span>}
+                  {data.systems.length.toLocaleString()} Systems |{' '}
+                  {data.ofcCables.length.toLocaleString()} Cables
+                  {isFetching && (
+                    <span className="ml-2 inline-flex items-center">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -3556,8 +3578,7 @@ export default function ScalableFiberNetworkDashboard() {
           </div>
         </div>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-11/12 mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <AdvancedSearchBar
           filters={filters}
           onFiltersChange={setFilters}
@@ -3566,31 +3587,34 @@ export default function ScalableFiberNetworkDashboard() {
           regionOptions={regionOptions}
           nodeTypeOptions={nodeTypeOptions}
         />
-
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
             {(['overview', 'systems', 'allocations'] as BsnlDashboardTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+                  activeTab === tab
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
               >
                 {tab}
               </button>
             ))}
           </nav>
         </div>
-
         <div className="relative">
           {isFetching && !isInitialLoad && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
               <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Updating results...</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Updating results...
+                </span>
               </div>
             </div>
           )}
-
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <DashboardStatsGrid />
@@ -3608,27 +3632,37 @@ export default function ScalableFiberNetworkDashboard() {
               </div>
             </div>
           )}
-
           {activeTab === 'systems' && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable
-                data={data.systems}
-                columns={systemColumns}
-                onItemClick={setSelectedSystem}
-                pageSize={50}
-              />
-            </div>
+            <DataTable
+              tableName="v_systems_complete"
+              data={data.systems}
+              columns={systemColumns}
+              loading={isLoading}
+              actions={systemTableActions}
+              sortable={true}
+              pagination={{
+                current: 1,
+                pageSize: 50,
+                total: data.systems.length,
+                onChange: () => {},
+              }}
+            />
           )}
-
           {activeTab === 'allocations' && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
-              <PaginatedTable
-                data={data.ofcCables}
-                columns={cableColumns}
-                onItemClick={setSelectedCable}
-                pageSize={25}
-              />
-            </div>
+            <DataTable
+              tableName="v_ofc_cables_complete"
+              data={data.ofcCables}
+              columns={cableColumns}
+              loading={isLoading}
+              actions={cableTableActions}
+              sortable={true}
+              pagination={{
+                current: 1,
+                pageSize: 25,
+                total: data.ofcCables.length,
+                onChange: () => {},
+              }}
+            />
           )}
         </div>
       </div>
@@ -3641,15 +3675,27 @@ export default function ScalableFiberNetworkDashboard() {
         nodes={data.nodes}
         cables={data.ofcCables}
       />
+
+      {/* THE FIX: Render the new modals and connect them to the state. */}
+      <SystemDetailsModal
+        system={selectedSystem}
+        isOpen={isSystemDetailsOpen}
+        onClose={() => setIsSystemDetailsOpen(false)}
+      />
+      <CableDetailsModal
+        cable={selectedCable}
+        isOpen={isCableDetailsOpen}
+        onClose={() => setIsCableDetailsOpen(false)}
+      />
     </div>
   );
 }
+
 ```
 
-<!-- path: app/privacy/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/privacy/page.tsx -->
 ```typescript
 
-// app/privacy/page.tsx
 import Privacy from "@/components/auth/privacy";
 
 const PrivacyPage = () => {
@@ -3660,9 +3706,8 @@ export default PrivacyPage;
 
 ```
 
-<!-- path: app/api/ors-distance/route.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/api/ors-distance/route.ts -->
 ```typescript
-// path: app/api/ors-distance/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -3687,7 +3732,7 @@ export async function POST(req: NextRequest) {
         ],
       }),
     });
-
+    
     if (!res.ok) {
       const errorData = await res.json();
       console.error("ORS API Error:", errorData);
@@ -3704,9 +3749,8 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-<!-- path: app/api/admin/users/route.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/api/admin/users/route.ts -->
 ```typescript
-// app/api/admin/users/route.ts
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
@@ -3723,20 +3767,16 @@ const pool = new Pool({
   connectionString: `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`,
 });
 
-// This function handles creating users MANUALLY
 export async function POST(req: Request) {
   const client = await pool.connect();
   try {
     const userData = await req.json();
     const hashed = await bcrypt.hash(userData.password, 10);
 
-    // ** Remove the manual transaction and the second INSERT.**
-    // We will now rely on the database trigger to create the user profile.
-
     const { rows: authUserRows } = await client.query(
       `
-      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
-      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6)
+      INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, role)
+      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, $3, $4, $5, $6, $7)
       RETURNING id, email
       `,
       [
@@ -3747,12 +3787,12 @@ export async function POST(req: Request) {
         JSON.stringify({
           provider: 'email',
           providers: ['email'],
-          role: userData.role,
         }),
         JSON.stringify({
           first_name: userData.first_name,
           last_name: userData.last_name,
         }),
+        userData.role, // Pass the role directly to auth.users
       ]
     );
 
@@ -3760,9 +3800,6 @@ export async function POST(req: Request) {
     if (!createdAuthUser) {
       throw new Error("Failed to create user in auth.users");
     }
-
-    // The database trigger 'on_auth_user_created' will now automatically handle
-    // creating the corresponding record in 'public.user_profiles'.
 
     return NextResponse.json({ user: createdAuthUser });
 
@@ -3780,7 +3817,6 @@ export async function POST(req: Request) {
 }
 
 
-// DELETE function remains the same
 export async function DELETE(req: Request) {
   try {
     const supabase = await createClient();
@@ -3837,13 +3873,12 @@ export async function DELETE(req: Request) {
 }
 ```
 
-<!-- path: app/api/route/[id]/route.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/api/route/[id]/route.ts -->
 ```typescript
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import z from 'zod';
 
-// It is NOT a database model, but an API contract.
 const evolutionCommitPayloadSchema = z.object({
     plannedJointBoxes: z.array(z.object({
       name: z.string(),
@@ -3865,8 +3900,7 @@ const evolutionCommitPayloadSchema = z.object({
       distance_km: z.number(),
     })),
   });
-
-  // Infer the TypeScript type from the schema.
+  
   export type EvolutionCommitPayload = z.infer<typeof evolutionCommitPayloadSchema>;
 
 export async function GET(
@@ -3881,7 +3915,6 @@ export async function GET(
   const supabase = await createClient();
 
   try {
-    // 1. Fetch main route info from the complete view
     const { data: routeData, error: routeError } = await supabase
       .from('v_ofc_cables_complete')
       .select('*')
@@ -3890,8 +3923,7 @@ export async function GET(
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
-
-    // 2. Fetch all existing JCs on this cable (now includes the nested node name)
+    
     const { data: jcData, error: jcError } = await supabase
       .from('junction_closures')
       .select('*, node:node_id(name)')
@@ -3904,25 +3936,21 @@ export async function GET(
       status: 'existing' as const,
       attributes: {
         position_on_route: (jc.position_km / (routeData.current_rkm || 1)) * 100,
-        // The name is now correctly available under the 'node' relation
-        name: jc.node?.name
+        name: jc.node?.name 
       }
     }));
 
-    // 3. Fetch all current segments for this cable
     const { data: segmentData, error: segmentError } = await supabase
       .from('cable_segments')
       .select('*')
       .eq('original_cable_id', routeId)
       .order('segment_order');
-
+      
     if (segmentError) throw new Error(`Segment fetch error: ${segmentError.message}`);
 
-    // FIX: Construct the final payload correctly
     const payload = {
       route: {
         ...routeData,
-        // Add the nested objects the client side logic expects for start/end sites
         start_site: { id: routeData.sn_id, name: routeData.sn_name },
         end_site: { id: routeData.en_id, name: routeData.en_name },
         evolution_status: segmentData && segmentData.length > 1 ? 'fully_segmented' : (jointBoxes.length > 0 ? 'with_jcs' : 'simple')
@@ -3932,11 +3960,6 @@ export async function GET(
       splices: [] // Placeholder for splices
     };
 
-    // console.log("routeData", routeData);
-    // console.log("jcData", jcData);
-    // console.log("jointBoxes", jointBoxes);
-    // console.log("segmentData", segmentData);
-    // console.log("payload", payload);
 
 
     return NextResponse.json(payload);
@@ -3957,27 +3980,26 @@ export async function POST(
     if (!routeId) {
       return NextResponse.json({ error: 'Route ID is required' }, { status: 400 });
     }
-
+  
     try {
       const payload = await request.json();
-
-      // Validate the incoming payload against our strict Zod schema
+  
       const validationResult = evolutionCommitPayloadSchema.safeParse(payload);
       if (!validationResult.success) {
         return NextResponse.json({ error: 'Invalid payload structure.', details: z.treeifyError(validationResult.error) }, { status: 400 });
       }
-
+  
       const supabase = await createClient();
-
+  
       const { data, error } = await supabase.rpc('commit_route_evolution', {
         p_route_id: routeId,
         p_planned_equipment: validationResult.data.plannedJointBoxes,
       });
-
+      
       if (error) throw error;
-
+  
       return NextResponse.json({ message: 'Route evolution committed successfully', data });
-
+  
     } catch (err: unknown) {
       const error = err as Error;
       console.error(`Error committing evolution for route ${routeId}:`, error);
@@ -3986,10 +4008,10 @@ export async function POST(
   }
 ```
 
-<!-- path: app/manifest.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/manifest.ts -->
 ```typescript
 import type { MetadataRoute } from "next";
-
+ 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Harinavi Transmission Maintenance",
@@ -4044,17 +4066,15 @@ export default function manifest(): MetadataRoute.Manifest {
 }
 ```
 
-<!-- path: app/auth/callback/route.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/auth/callback/route.ts -->
 ```typescript
-// app/auth/callback/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // The 'next' URL is passed from the client when the OAuth flow is initiated
-  const next = searchParams.get('next') ?? '/dashboard';
+  const next = searchParams.get('next') ?? '/dashboard'; 
   const error = searchParams.get('error');
 
   if (error) {
@@ -4075,14 +4095,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
   }
 
-  // On success, redirect to the intended page. The Protected component will handle the rest.
   return NextResponse.redirect(`${origin}${next}`);
 }
 ```
 
-<!-- path: app/terms/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/terms/page.tsx -->
 ```typescript
-// app/terms/page.tsx
 import Terms from '@/components/auth/terms';
 
 const TermsPage = () => {
@@ -4094,7 +4112,7 @@ const TermsPage = () => {
 export default TermsPage;
 ```
 
-<!-- path: app/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/page.tsx -->
 ```typescript
 "use client";
 
@@ -4120,7 +4138,6 @@ export default function Home() {
   const { scrollY } = useScroll();
   const textY = useTransform(scrollY, [0, 500], [0, -50]);
 
-  // Check if browser modal should be shown
   useEffect(() => {
     if (isOutdated && typeof window !== "undefined") {
       const dismissed = localStorage.getItem("legacyBrowserDismissed");
@@ -4172,9 +4189,161 @@ export default function Home() {
 
 ```
 
-<!-- path: app/dashboard/rings/[id]/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/doc/[slug]/page.tsx -->
 ```typescript
-// path: app/dashboard/rings/[id]/page.tsx
+"use client";
+
+import { useParams } from "next/navigation";
+import { workflowSections } from "@/components/doc/data/workflowData";
+import WorkflowCard from "@/components/doc/WorkflowCard";
+import { AlertTriangle } from "lucide-react";
+
+export default function WorkflowContentPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+
+  const section = workflowSections.find((s) => s.value === slug);
+
+  if (!section) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-20">
+        <AlertTriangle className="w-12 h-12 text-yellow-500 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Workflow Not Found</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">
+          The documentation for &quot;{slug}&quot; could not be found. Please select a valid topic from the sidebar.
+        </p>
+      </div>
+    );
+  }
+
+  return <WorkflowCard section={section} />;
+}
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/doc/page.tsx -->
+```typescript
+"use client";
+
+import BackgroundElements from "@/components/doc/BackgroundElements";
+import HeaderSection from "@/components/doc/HeaderSection";
+
+export default function Workflows() {
+  return (
+    <div className="relative min-h-full w-full text-gray-100">
+      <BackgroundElements />
+      <div className="relative z-10">
+        <HeaderSection />
+        <div className="mt-16 text-center">
+          <p className="text-lg text-gray-400">
+            Please select a topic from the sidebar to view its detailed workflow documentation.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/doc/layout.tsx -->
+```typescript
+'use client';
+
+import { Protected } from '@/components/auth/Protected';
+import DocSidebar from '@/components/doc/DocSidebar';
+import { workflowSections } from '@/components/doc/data/workflowData';
+import { allowedRoles } from '@/constants/constants';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+
+export default function DocLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  return (
+    <QueryProvider>
+      <Protected allowedRoles={allowedRoles}>
+      <div className="flex min-h-[calc(100vh-64px)] bg-gray-100 dark:bg-gray-950">
+
+        <DocSidebar sections={workflowSections} />
+        <main className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="p-6 md:p-10"
+            >
+              <div className="max-w-11/12 mx-auto">{children}</div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Scroll to top button */}
+          <ScrollToTopButton />
+        </main>
+      </div>
+    </Protected>
+    </QueryProvider>
+  );
+}
+
+function ScrollToTopButton() {
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.pageYOffset > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener('scroll', toggleVisibility);
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg shadow-blue-500/50 z-50 transition-colors"
+          aria-label="Scroll to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 10l7-7m0 0l7 7m-7-7v18"
+            />
+          </svg>
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
+import React from 'react';
+
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/rings/[id]/page.tsx -->
+```typescript
 "use client";
 
 import { useMemo, useCallback } from "react";
@@ -4216,7 +4385,7 @@ export default function RingMapPage() {
 
   const { mainSegments, spurConnections, allPairs } = useMemo(() => {
     const ringStatusNodes = mappedNodes.filter(node => node.ring_status);
-
+    
     const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
@@ -4244,9 +4413,9 @@ export default function RingMapPage() {
   }, [mappedNodes]);
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
-
+  
   const ringName = nodes?.[0]?.ring_name || `Ring ${ringId.slice(0, 8)}...`;
-
+  
   const handleBack = useCallback(() => {
     router.push('/dashboard/rings');
   }, [router]);
@@ -4264,7 +4433,7 @@ export default function RingMapPage() {
         dashedLines={spurConnections}
         distances={distances}
         onBack={handleBack}
-        showControls={true}
+        showControls={true} 
       />
     );
   };
@@ -4285,9 +4454,8 @@ export default function RingMapPage() {
 }
 ```
 
-<!-- path: app/dashboard/rings/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/rings/page.tsx -->
 ```typescript
-// path: app/dashboard/rings/page.tsx
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
@@ -4444,7 +4612,7 @@ const RingsPage = () => {
 export default RingsPage;
 ```
 
-<!-- path: app/dashboard/users/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/users/page.tsx -->
 ```typescript
 'use client';
 
@@ -4464,7 +4632,6 @@ import { Row } from '@/hooks/database';
 import {
   useAdminGetAllUsersExtended,
   useAdminUserOperations,
-  useIsSuperAdmin,
   UserCreateInput,
 } from '@/hooks/useAdminUsers';
 import {
@@ -4479,9 +4646,8 @@ import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from '@/
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
+import { useUser } from '@/providers/UserProvider';
 
-// This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
-// 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
 const useUsersData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
@@ -4509,9 +4675,8 @@ const useUsersData = (
   };
 };
 const AdminUsersPage = () => {
-  // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
   const {
     createUser,
     deleteUsers: bulkDelete,
@@ -4520,7 +4685,6 @@ const AdminUsersPage = () => {
     isLoading: isOperationLoading,
   } = useAdminUserOperations();
 
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: users,
     totalCount,
@@ -4600,7 +4764,6 @@ const AdminUsersPage = () => {
     [selectedRowIds, bulkUpdateStatus, handleClearSelection]
   );
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions<'user_profiles'>({
     data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
@@ -4674,7 +4837,6 @@ const AdminUsersPage = () => {
         actions={tableActions}
         selectable
         onRowSelect={(rows) => {
-          // Filter out any rows where id is null
           const validRows = rows.filter(
             (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
           );
@@ -4753,7 +4915,7 @@ export default AdminUsersPage;
 
 ```
 
-<!-- path: app/dashboard/lookup/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/lookup/page.tsx -->
 ```typescript
 'use client';
 
@@ -4808,7 +4970,6 @@ export default function LookupTypesPage() {
     },
   } = useLookupTypes();
 
-  // Apply sorting to lookup types
   const {
     sortedData: sortedLookupTypes,
     handleSort,
@@ -4823,7 +4984,6 @@ export default function LookupTypesPage() {
     },
   });
 
-  // Filter sorted data based on search term
   const filteredAndSortedLookupTypes = useMemo(() => {
     if (!searchTerm.trim()) return sortedLookupTypes;
 
@@ -4836,10 +4996,8 @@ export default function LookupTypesPage() {
     );
   }, [sortedLookupTypes, searchTerm]);
 
-  // --- Define header content using the hook ---
   const serverFilters = useMemo(() => {
     const f: Filters = {
-      // Filter to download only categories with name not equal to "DEFAULT"
       name: {
         operator: 'neq',
         value: 'DEFAULT',
@@ -4858,7 +5016,6 @@ export default function LookupTypesPage() {
     exportConfig: { tableName: 'lookup_types', filters: serverFilters },
   });
 
-  // --- Define header stats ---
   const activeLookups = lookupTypes.filter((lookup) => lookup.status);
   const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
   const headerStats = [
@@ -4871,7 +5028,6 @@ export default function LookupTypesPage() {
     },
   ];
 
-  // Error handling
   if (lookupError) {
     return (
       <ErrorDisplay
@@ -4970,9 +5126,8 @@ export default function LookupTypesPage() {
 }
 ```
 
-<!-- path: app/dashboard/system-paths/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/system-paths/page.tsx -->
 ```typescript
-// path: app/dashboard/systems/[id]/page.tsx
 
 "use client";
 
@@ -4998,7 +5153,6 @@ export default function SystemConnectionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPath, setSelectedPath] = useState<PathWithNodes | null>(null);
 
-  // State for the deprovision confirmation modal
   const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
   const [pathToDeprovision, setPathToDeprovision] = useState<PathWithNodes | null>(null);
 
@@ -5029,15 +5183,15 @@ export default function SystemConnectionsPage() {
   }, []);
 
   const handleConfirmDeprovision = useCallback(() => {
-    if (!pathToDeprovision || !systemId) return;
-    deprovisionMutation.mutate({ systemId, logicalPathId: pathToDeprovision.id }, {
+    if (!pathToDeprovision) return;
+    deprovisionMutation.mutate({ logicalPathId: pathToDeprovision.id }, {
       onSuccess: () => {
         setDeprovisionModalOpen(false);
         setPathToDeprovision(null);
         refetchPaths();
       }
     });
-  }, [pathToDeprovision, systemId, deprovisionMutation, refetchPaths]);
+  }, [pathToDeprovision, deprovisionMutation, refetchPaths]);
 
   const isLoading = isLoadingSystem || isLoadingRings;
   if (isLoading) return <PageSpinner text="Loading provisioning details..." />;
@@ -5128,9 +5282,8 @@ export default function SystemConnectionsPage() {
 }
 ```
 
-<!-- path: app/dashboard/logical-paths/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/logical-paths/page.tsx -->
 ```typescript
-// path: app/dashboard/logical-paths/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
@@ -5152,10 +5305,8 @@ import { LogicalPathsTableColumns } from '@/config/table-columns/LogicalPathsTab
 import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 
-// Define the shape for our UI, aliasing path_id to id for compatibility with generic components
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
-// Data fetching hook remains the same, but we'll use its return value directly
 const useLogicalPathsData = (
   params: { currentPage: number; pageLimit: number; searchQuery: string }
 ): DataQueryHookReturn<LogicalPathView> => {
@@ -5196,8 +5347,7 @@ const useLogicalPathsData = (
 
 export default function LogicalPathsPage() {
   const router = useRouter();
-
-  // --- MANUAL STATE MANAGEMENT (Replaces useCrudManager) ---
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -5208,13 +5358,12 @@ export default function LogicalPathsPage() {
   const {
     data: logicalPaths, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch
   } = useLogicalPathsData({ currentPage, pageLimit, searchQuery });
-
+  
   const deprovisionMutation = useDeprovisionPath();
 
   const handleClearFilters = () => setSearchQuery('');
   const hasActiveFilters = !!searchQuery;
 
-  // --- Deletion Logic ---
   const handleDeletePath = useCallback((record: Row<'v_end_to_end_paths'>) => {
     if (!record.path_id) {
       toast.error("Cannot de-provision: Path ID is missing.");
@@ -5249,7 +5398,7 @@ export default function LogicalPathsPage() {
     {
       key: 'view',
       label: 'View Details',
-      icon: <FiEye />,
+      icon: <FiEye />, 
       onClick: (record) => {
         if (record.source_system_id) {
           router.push(`/dashboard/systems/${record.source_system_id}`);
@@ -5280,7 +5429,7 @@ export default function LogicalPathsPage() {
     { value: activeCount, label: 'Active' },
     { value: inactiveCount, label: 'Inactive' },
   ];
-
+  
   if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
@@ -5297,7 +5446,6 @@ export default function LogicalPathsPage() {
       />
 
       <DataTable<'v_end_to_end_paths'>
-        // Provide the view name for column config, but the specific data type for operation
         tableName="v_end_to_end_paths"
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}
@@ -5330,7 +5478,7 @@ export default function LogicalPathsPage() {
           </SearchAndFilters>
         }
       />
-
+      
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onConfirm={handleConfirmDelete}
@@ -5345,9 +5493,8 @@ export default function LogicalPathsPage() {
 }
 ```
 
-<!-- path: app/dashboard/categories/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/categories/page.tsx -->
 ```typescript
-// path: app/dashboard/categories/page.tsx
 'use client';
 
 import { CategoriesTable } from '@/components/categories/CategoriesTable';
@@ -5356,56 +5503,39 @@ import { CategorySearch } from '@/components/categories/CategorySearch';
 import { EmptyState } from '@/components/categories/EmptyState';
 import { LoadingState } from '@/components/categories/LoadingState';
 import { formatCategoryName } from '@/components/categories/utils';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal';
-import { Filters, useDeduplicated, useTableQuery } from '@/hooks/database';
+import { Filters, useDeduplicated, useTableQuery, useTableInsert } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { Lookup_typesInsertSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiLayers } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { GroupedLookupsByCategory, CategoryInfo } from '@/components/categories/categories-types';
+import { useMutation } from '@tanstack/react-query';
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryLookupCounts, setCategoryLookupCounts] = useState<
-    Record<string, CategoryInfo>
-  >({});
+  const [categoryLookupCounts, setCategoryLookupCounts] = useState<Record<string, CategoryInfo>>({});
 
   const supabase = createClient();
 
-  const {
-    data: categoriesResult,
-    isLoading: dedupLoading,
-    error: dedupError,
-    refetch: refetchCategories,
-  } = useDeduplicated(supabase, 'lookup_types', {
+  const { data: categoriesResult, isLoading: dedupLoading, error: dedupError, refetch: refetchCategories } = useDeduplicated(supabase, 'lookup_types', {
     columns: ['category'],
     orderBy: [{ column: 'created_at', ascending: true }],
   });
   const categoriesDeduplicated = useMemo(() => categoriesResult?.data || [], [categoriesResult]);
 
-  const {
-    data: groupedLookupsByCategory,
-    isLoading: groupedLookupsByCategoryLoading,
-    error: groupedLookupsByCategoryError,
-    refetch: refetchGroupedLookupsByCategory,
-  } = useTableQuery(supabase, 'lookup_types', {
-    // Correctly type the select function's return value
+  const { data: groupedLookupsByCategory, isLoading: groupedLookupsByCategoryLoading, error: groupedLookupsByCategoryError, refetch: refetchGroupedLookupsByCategory } = useTableQuery(supabase, 'lookup_types', {
     select: (result): GroupedLookupsByCategory => {
       const allLookups = result.data || [];
       return allLookups.reduce((accumulator, currentLookup) => {
         const category = currentLookup.category;
-        if (!accumulator[category]) {
-          accumulator[category] = [];
-        }
+        if (!accumulator[category]) accumulator[category] = [];
         accumulator[category].push(currentLookup);
         return accumulator;
       }, {} as GroupedLookupsByCategory);
@@ -5420,48 +5550,51 @@ export default function CategoriesPage() {
     },
   });
 
-  const isLoading = dedupLoading || groupedLookupsByCategoryLoading;
+  const { mutate: createCategory, isPending: isCreating } = useTableInsert(supabase, 'lookup_types');
+
+  const { mutate: renameCategory, isPending: isRenaming } = useMutation({
+    mutationFn: async ({ oldCategory, newCategory }: { oldCategory: string; newCategory: string }) => {
+      const { error } = await supabase
+        .from('lookup_types')
+        .update({ category: newCategory })
+        .eq('category', oldCategory);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Category renamed successfully.");
+      handleRefresh();
+      handleModalClose();
+    },
+    onError: (error: Error) => toast.error(`Failed to rename category: ${error.message}`),
+  });
+
+  const isLoading = dedupLoading || groupedLookupsByCategoryLoading || isCreating || isRenaming;
 
   const refreshCategoryInfo = useCallback(() => {
     const counts: Record<string, CategoryInfo> = {};
     for (const category of categoriesDeduplicated) {
-      const categoryLookups =
-        groupedLookupsByCategory?.[category.category] || [];
+      const categoryLookups = groupedLookupsByCategory?.[category.category] || [];
       counts[category.category] = {
         name: category.category,
         lookupCount: categoryLookups.length,
-        hasSystemDefaults: categoryLookups.some(
-          (lookup) => lookup.is_system_default
-        ),
+        hasSystemDefaults: categoryLookups.some(lookup => lookup.is_system_default),
       };
     }
     setCategoryLookupCounts(counts);
   }, [categoriesDeduplicated, groupedLookupsByCategory]);
 
   useEffect(() => {
-    if (!isLoading) {
-      refreshCategoryInfo();
-    }
+    if (!isLoading) refreshCategoryInfo();
   }, [isLoading, refreshCategoryInfo]);
 
   const handleRefresh = useCallback(async () => {
     try {
-      await Promise.all([
-        refetchCategories(),
-        refetchGroupedLookupsByCategory(),
-      ]);
+      await Promise.all([refetchCategories(), refetchGroupedLookupsByCategory()]);
       toast.success('Data refreshed successfully');
     } catch (error) {
-      console.error('Error refreshing data:', error);
       toast.error('Failed to refresh data.');
     }
   }, [refetchCategories, refetchGroupedLookupsByCategory]);
-
-  const handleCategoryCreated = useCallback(() => {
-    setIsModalOpen(false);
-    setEditingCategory(null);
-    handleRefresh();
-  }, [handleRefresh]);
 
   const handleEdit = useCallback((categoryName: string) => {
     setEditingCategory(categoryName);
@@ -5486,37 +5619,51 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   }, []);
 
+  const handleSaveCategory = useCallback((data: Lookup_typesInsertSchema, isEditing: boolean) => {
+    const formattedCategory = data.category.trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
+
+    if (!formattedCategory) {
+      toast.error("Please enter a valid category name");
+      return;
+    }
+
+    if (isEditing) {
+      if (!editingCategory) return;
+      renameCategory({ oldCategory: editingCategory, newCategory: formattedCategory });
+    } else {
+      if (categoriesDeduplicated.some(cat => cat.category === formattedCategory)) {
+        toast.error("A category with this name already exists.");
+        return;
+      }
+      const createData = { ...data, category: formattedCategory };
+      createCategory(createData, {
+        onSuccess: () => {
+          toast.success("Category created successfully.");
+          handleRefresh();
+          handleModalClose();
+        },
+        onError: (error: Error) => toast.error(`Failed to create category: ${error.message}`),
+      });
+    }
+  }, [editingCategory, createCategory, renameCategory, handleRefresh, handleModalClose, categoriesDeduplicated]);
+
   const filteredCategories = useMemo(() =>
     categoriesDeduplicated.filter(
       (category) =>
-        (category.category &&
-          category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        formatCategoryName(category)
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
+        (category.category && category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        formatCategoryName(category).toLowerCase().includes(searchTerm.toLowerCase())
     ), [categoriesDeduplicated, searchTerm]);
 
-  const serverFilters = useMemo((): Filters => ({
-    name: { operator: 'eq', value: 'DEFAULT' },
-  }), []);
-
+  const serverFilters = useMemo((): Filters => ({ name: { operator: 'eq', value: 'DEFAULT' } }), []);
   const headerActions = useStandardHeaderActions({
-    data: categoriesDeduplicated,
-    onRefresh: handleRefresh,
-    onAddNew: openCreateModal,
-    isLoading: isLoading,
-    exportConfig: {
-      tableName: 'lookup_types',
-      fileName: 'Categories',
-      filters: serverFilters,
-    },
+    data: categoriesDeduplicated, onRefresh: handleRefresh, onAddNew: openCreateModal,
+    isLoading: isLoading, exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
   });
 
   const headerStats = useMemo(() => {
     const activeCategories = categoriesDeduplicated.filter((category) => {
-        const info = categoryLookupCounts[category.category];
-        // Consider a category active if it has at least one active lookup
-        return info && (groupedLookupsByCategory?.[category.category] || []).some(l => l.status);
+      const info = categoryLookupCounts[category.category];
+      return info && (groupedLookupsByCategory?.[category.category] || []).some(l => l.status);
     });
     return [
       { value: categoriesDeduplicated.length, label: 'Total Categories' },
@@ -5528,78 +5675,26 @@ export default function CategoriesPage() {
   const error = dedupError || groupedLookupsByCategoryError;
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: handleRefresh,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]} />;
   }
 
   return (
     <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
-      <PageHeader
-        title="Categories"
-        description="Manage categories and their related information."
-        icon={<FiLayers />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading}
-      />
-
+      <PageHeader title="Categories" description="Manage categories and their related information." icon={<FiLayers />} stats={headerStats} actions={headerActions} isLoading={isLoading} />
       <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-
       {isLoading && <LoadingState />}
-
       {!isLoading && !error && (
-        <CategoriesTable
-          categories={filteredCategories}
-          categoryLookupCounts={categoryLookupCounts}
-          totalCategories={categoriesDeduplicated.length}
-          onEdit={handleEdit}
-          onDelete={handleDeleteCategory}
-          isDeleting={bulkDeleteManager.isPending}
-          searchTerm={searchTerm}
-        />
+        <CategoriesTable categories={filteredCategories} categoryLookupCounts={categoryLookupCounts} totalCategories={categoriesDeduplicated.length} onEdit={handleEdit} onDelete={handleDeleteCategory} isDeleting={bulkDeleteManager.isPending} searchTerm={searchTerm} />
       )}
-
-      {categoriesDeduplicated.length === 0 && !isLoading && !error && (
-        <EmptyState onCreate={openCreateModal} />
-      )}
-
-      <ConfirmModal
-        isOpen={bulkDeleteManager.isConfirmModalOpen}
-        onConfirm={bulkDeleteManager.handleConfirm}
-        onCancel={bulkDeleteManager.handleCancel}
-        title="Confirm Deletion"
-        message={bulkDeleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-        showIcon
-        loading={bulkDeleteManager.isPending}
-      />
-
-      <CategoryModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onCategoryCreated={handleCategoryCreated}
-        editingCategory={editingCategory || ''}
-        categories={categoriesDeduplicated}
-        lookupsByCategory={groupedLookupsByCategory}
-      />
+      {categoriesDeduplicated.length === 0 && !isLoading && !error && <EmptyState onCreate={openCreateModal} />}
+      <ConfirmModal isOpen={bulkDeleteManager.isConfirmModalOpen} onConfirm={bulkDeleteManager.handleConfirm} onCancel={bulkDeleteManager.handleCancel} title="Confirm Deletion" message={bulkDeleteManager.confirmationMessage} confirmText="Delete" cancelText="Cancel" type="danger" showIcon loading={bulkDeleteManager.isPending} />
+      <CategoryModal isOpen={isModalOpen} onClose={handleModalClose} onSubmit={handleSaveCategory} isLoading={isLoading} editingCategory={editingCategory} categories={categoriesDeduplicated} lookupsByCategory={groupedLookupsByCategory} />
     </div>
   );
 }
 ```
 
-<!-- path: app/dashboard/nodes/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/nodes/page.tsx -->
 ```typescript
 'use client';
 
@@ -5793,7 +5888,6 @@ const NodesPage = () => {
           isOpen={editModal.isOpen}
           onClose={editModal.close}
           editingNode={editModal.record as NodeRowsWithRelations | null}
-          // ** Pass the correct props to the now "dumb" component.**
           onSubmit={crudActions.handleSave}
           isLoading={isMutating}
         />
@@ -5815,9 +5909,8 @@ const NodesPage = () => {
 export default NodesPage;
 ```
 
-<!-- path: app/dashboard/employees/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/employees/page.tsx -->
 ```typescript
-// app/dashboard/employees/page.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -5897,20 +5990,18 @@ const EmployeesPage = () => {
     displayNameField: 'employee_name'
   });
 
-  // These queries are now only for the form modal, not for the table display.
   const { data: designationsData } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
   const designations = useMemo(() => designationsData?.data || [], [designationsData]);
   const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
   const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
 
-  // The columns component is now much simpler.
   const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(
     columns,
-    [...TABLE_COLUMN_KEYS.v_employees]
+    [...TABLE_COLUMN_KEYS.v_employees] 
   );
 
-
+  
 
   const tableActions = useMemo(
     () => createStandardActions<V_employeesRowSchema>({
@@ -6030,9 +6121,8 @@ const EmployeesPage = () => {
 export default EmployeesPage;
 ```
 
-<!-- path: app/dashboard/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/page.tsx -->
 ```typescript
-// app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6056,8 +6146,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isProfileLoading && profile) {
-      // ** Check the 'needsOnboarding' flag directly from the user's preferences.**
-      // This is the reliable source of truth.
       const needsOnboarding = (profile.preferences as User_profilesRowSchema["preferences"])?.needsOnboarding === true;
       const hasDismissedPrompt = (profile.preferences as User_profilesRowSchema["preferences"])?.showOnboardingPrompt === false;
 
@@ -6080,12 +6168,11 @@ export default function DashboardPage() {
     if (user?.id && profile) {
       const currentPreferences = (profile.preferences as User_profilesRowSchema["preferences"]) || {};
       const newPreferences = { ...currentPreferences, showOnboardingPrompt: false };
-
+      
       updateProfile({ id: user.id, data: { preferences: newPreferences } }, {
         onSuccess: () => {
           toast.success("Preference saved. We won't ask again.");
-          // Manually update the local profile state to prevent the prompt from reappearing before a full refetch
-          refetch();
+          refetch(); 
         },
         onError: (error) => {
           toast.error(`Failed to save preference: ${error.message}`);
@@ -6110,20 +6197,18 @@ export default function DashboardPage() {
 }
 ```
 
-<!-- path: app/dashboard/systems/[id]/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/systems/[id]/page.tsx -->
 ```typescript
-// path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData } from '@/hooks/database';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
@@ -6133,101 +6218,90 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 
-const useSystemConnectionsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_system_connections_completeRowSchema> => {
-  const { currentPage, pageLimit, searchQuery, filters } = params;
+export default function SystemConnectionsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const systemId = params.id as string;
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedData<V_system_connections_completeRowSchema>(
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLimit, setPageLimit] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
+
+  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
+    supabase,
+    'v_systems_complete',
+    { filters: { id: systemId } }
+  );
+  const parentSystem = systemData?.data?.[0];
+
+  const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase,
     'v_system_connections_complete',
     {
       filters: {
-        ...filters,
-        ...(searchQuery ? { or: `customer_name.ilike.%${searchQuery}%` } : {}),
+        system_id: systemId,
+        ...(searchQuery ? { or: { customer_name: searchQuery, connected_system_name: searchQuery } } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
   );
 
-  return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
-    isLoading,
-    error,
-    refetch,
-  };
-};
+  const connections = connectionsData?.data || [];
+  const totalCount = connectionsData?.total_count || 0;
 
-export default function SystemConnectionsPage() {
-  const params = useParams();
-  const systemId = params.id as string;
-  const supabase = createClient();
-
-  const { data: system } = usePagedData<V_systems_completeRowSchema>(
-    supabase,
-    'v_systems_complete',
-    {
-      filters: { id: systemId },
-    }
-  );
-
-  // THE FIX: Add the mutation hook to the page.
   const upsertMutation = useUpsertSystemConnection();
-
-
-
-  const {
-    data: connections,
-    totalCount,
-    isLoading: isLoadingConnections,
-    refetch,
-    pagination,
-    search,
-    editModal,
-    deleteModal,
-    actions: crudActions,
-  } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
+  const deleteManager = useDeleteManager({
     tableName: 'system_connections',
-    dataQueryHook: useSystemConnectionsData,
-    displayNameField: ['customer_name', 'connected_system_name', 'system_name'],
+    onSuccess: () => refetch(),
   });
 
   const columns = SystemConnectionsTableColumns(connections);
 
+  const openEditModal = (record: V_system_connections_completeRowSchema) => {
+    setEditingRecord(record);
+    setIsEditModalOpen(true);
+  };
+  const openAddModal = () => {
+    setEditingRecord(null);
+    setIsEditModalOpen(true);
+  };
+  const closeModal = () => {
+    setEditingRecord(null);
+    setIsEditModalOpen(false);
+  };
+
   const tableActions = useMemo(
-    () =>
-      createStandardActions<V_system_connections_completeRowSchema>({
-        onEdit: editModal.openEdit,
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
+    () => createStandardActions<V_system_connections_completeRowSchema>({
+        onEdit: openEditModal,
+        onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
+        onToggleStatus: (record) => { /* In this table, status toggle is handled via the upsert RPC */ },
       }) as TableAction<'v_system_connections_complete'>[],
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
+    [deleteManager]
   );
 
   const headerActions = useStandardHeaderActions({
-    onRefresh: () => {
-      refetch();
-      toast.success('Connections refreshed!');
-    },
-    onAddNew: editModal.openAdd,
+    onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
+    onAddNew: openAddModal,
     isLoading: isLoadingConnections,
+    exportConfig: {
+        tableName: 'v_system_connections_complete',
+        fileName: `${parentSystem?.system_name || 'system'}_connections`,
+        filters: { system_id: systemId }
+    }
   });
 
-  const parentSystem = system?.data?.[0];
-
-  // Early return if system not found or still loading
+  if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
 
-  // THE FIX: New save handler to construct payload and call mutation.
   const handleSave = (formData: SystemConnectionFormValues) => {
     const payload = {
-      p_id: editModal.record?.id ?? undefined,
+      p_id: editingRecord?.id ?? undefined,
       p_system_id: parentSystem.id!,
       p_media_type_id: formData.media_type_id,
       p_status: formData.status ?? true,
@@ -6265,7 +6339,7 @@ export default function SystemConnectionsPage() {
     upsertMutation.mutate(payload, {
       onSuccess: () => {
         refetch();
-        editModal.close();
+        closeModal();
       }
     });
   };
@@ -6287,37 +6361,37 @@ export default function SystemConnectionsPage() {
         loading={isLoadingConnections}
         actions={tableActions}
         pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
+          current: currentPage,
+          pageSize: pageLimit,
           total: totalCount,
           showSizeChanger: true,
           onChange: (page, limit) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(limit);
+            setCurrentPage(page);
+            setPageLimit(limit);
           },
         }}
         searchable
-        onSearchChange={search.setSearchQuery}
+        onSearchChange={setSearchQuery}
       />
 
-      {editModal.isOpen && (
+      {isEditModalOpen && (
         <SystemConnectionFormModal
-          isOpen={editModal.isOpen}
-          onClose={editModal.close}
+          isOpen={isEditModalOpen}
+          onClose={closeModal}
           parentSystem={parentSystem}
-          editingConnection={editModal.record}
+          editingConnection={editingRecord}
           onSubmit={handleSave}
           isLoading={upsertMutation.isPending}
         />
       )}
 
       <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
         title="Confirm Delete"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
         type="danger"
       />
     </div>
@@ -6325,9 +6399,8 @@ export default function SystemConnectionsPage() {
 }
 ```
 
-<!-- path: app/dashboard/systems/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/systems/page.tsx -->
 ```typescript
-// path: app/dashboard/systems/page.tsx
 
 'use client';
 
@@ -6410,7 +6483,6 @@ export default function SystemsPage() {
     displayNameField: 'system_name'
   });
 
-  // THE FIX: Mutation hook is now in the page component.
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
@@ -6455,12 +6527,10 @@ export default function SystemsPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // THE FIX: New save handler to construct the payload and call the mutation.
   const handleSave = useCallback((formData: SystemFormData) => {
     const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
     const isRingBased = selectedSystemType?.is_ring_based;
     const isSdh = selectedSystemType?.is_sdh;
-    const isVmux = selectedSystemType?.name === 'VMUX';
 
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
         p_id: editModal.record?.id ?? undefined,
@@ -6476,7 +6546,6 @@ export default function SystemsPage() {
         p_make: formData.make || undefined,
         p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
         p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
-        p_vm_id: (isVmux && formData.vm_id) ? formData.vm_id : undefined,
     };
     upsertSystemMutation.mutate(payload);
   }, [editModal.record, upsertSystemMutation, systemTypes]);
@@ -6487,7 +6556,7 @@ export default function SystemsPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="System Management"
-        description="Manage all network systems, including CPAN, MAAN, SDH, and VMUX."
+        description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc."
         icon={<FiDatabase />}
         stats={headerStats}
         actions={headerActions}
@@ -6558,9 +6627,8 @@ export default function SystemsPage() {
 }
 ```
 
-<!-- path: app/dashboard/maintenance-areas/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/maintenance-areas/page.tsx -->
 ```typescript
-// app/dashboard/maintenance-areas/page.tsx
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
@@ -6570,15 +6638,10 @@ import { ConfirmModal } from '@/components/common/ui/Modal';
 import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
-import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config'; // THE FIX: Import the new modal
-import {
-  Filters,
-  PagedQueryResult,
-  Row,
-  useTableQuery,
-  useTableWithRelations,
-} from '@/hooks/database';
+import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
+import { Filters, PagedQueryResult, Row, useTableQuery, useTableWithRelations } from '@/hooks/database';
 import { useDelete } from '@/hooks/useDelete';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
@@ -6589,12 +6652,11 @@ export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<{ status?: string; areaType?: string; }>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<Record<string, string>>({});
   const [isFormOpen, setFormOpen] = useState(false);
-  // THE FIX: Add state to manage the new details modal.
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [editingArea, setEditingArea] =
-    useState<MaintenanceAreaWithRelations | null>(null);
+  const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
 
   const serverFilters = useMemo(() => {
     const f: Filters = {};
@@ -6603,75 +6665,41 @@ export default function MaintenanceAreasPage() {
     return f;
   }, [filters]);
 
-  const areasQuery = useTableWithRelations<
-    'maintenance_areas',
-    PagedQueryResult<MaintenanceAreaWithRelations>
-  >(
-    supabase,
-    'maintenance_areas',
-    [
-      'area_type:area_type_id(id, name)',
-      'parent_area:parent_id(id, name, code)',
-      'child_areas:maintenance_areas!parent_id(id, name, code, status)'
-    ],
-    {
-      filters: serverFilters,
-      orderBy: [{ column: 'name', ascending: true }],
-    }
+  const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
+    supabase, 'maintenance_areas',
+    [ 'area_type:area_type_id(id, name)', 'parent_area:parent_id(id, name, code)', 'child_areas:maintenance_areas!parent_id(id, name, code, status)' ],
+    { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }] }
   );
 
   const { refetch, error, data } = areasQuery;
-
   const allAreas = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
-  // THE FIX: Memoize the selected entity to pass to the modal.
   const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
-
+  
   const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
     orderBy: [{ column: 'name', ascending: true }],
   });
   const areaTypes = useMemo(() => areaTypesResult?.data || [], [areaTypesResult]);
 
-  const {
-    createAreaMutation,
-    updateAreaMutation,
-    toggleStatusMutation,
-    handleFormSubmit,
-  } = useMaintenanceAreasMutations(supabase, () => {
-    refetch();
-    setFormOpen(false);
-    setEditingArea(null);
+  const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } = useMaintenanceAreasMutations(supabase, () => {
+    refetch(); setFormOpen(false); setEditingArea(null);
   });
 
-  const deleteManager = useDelete({
-    tableName: 'maintenance_areas',
-    onSuccess: () => {
-      if (selectedAreaId === deleteManager.itemToDelete?.id) {
-        setSelectedAreaId(null);
-      }
-      refetch();
-    },
+  const deleteManager = useDelete({ tableName: 'maintenance_areas',
+    onSuccess: () => { if (selectedAreaId === deleteManager.itemToDelete?.id) { setSelectedAreaId(null); } refetch(); },
   });
 
-  const handleOpenCreateForm = () => {
-    setEditingArea(null);
-    setFormOpen(true);
-  };
-
-  const handleOpenEditForm = (area: MaintenanceAreaWithRelations) => {
-    setEditingArea(area);
-    setFormOpen(true);
-  };
-
+  const handleOpenCreateForm = () => { setEditingArea(null); setFormOpen(true); };
+  const handleOpenEditForm = (area: MaintenanceAreaWithRelations) => { setEditingArea(area); setFormOpen(true); };
+  
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: handleOpenCreateForm,
-    isLoading: areasQuery.isLoading,
+    onAddNew: handleOpenCreateForm, isLoading: areasQuery.isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
-
+  
   const headerStats = [
     { value: totalCount, label: 'Total Areas' },
     { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
@@ -6679,125 +6707,54 @@ export default function MaintenanceAreasPage() {
   ];
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
-
-  const isLoading =
-    areasQuery.isLoading ||
-    createAreaMutation.isPending ||
-    updateAreaMutation.isPending ||
-    toggleStatusMutation.isPending;
+  
+  const isLoading = areasQuery.isLoading || createAreaMutation.isPending || updateAreaMutation.isPending || toggleStatusMutation.isPending;
 
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
-      <PageHeader
-        title="Maintenance Areas"
-        description="Manage maintenance areas, zones, and terminals."
-        icon={<FiMapPin />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading}
-        className="mb-4"
-      />
+      <PageHeader title="Maintenance Areas" description="Manage maintenance areas, zones, and terminals." icon={<FiMapPin />} stats={headerStats} actions={headerActions} isLoading={isLoading} className="mb-4" />
+      
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
-        // THE FIX: Pass the onViewDetails handler to the component.
         onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedAreaId}
         onSelect={setSelectedAreaId}
         onViewDetails={() => setIsDetailsModalOpen(true)}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
       />
 
       {isFormOpen && (
         <AreaFormModal
-          isOpen={isFormOpen}
-          onClose={() => setFormOpen(false)}
-          onSubmit={(data: Maintenance_areasInsertSchema) =>
-            handleFormSubmit(data, editingArea)
-          }
-          area={editingArea}
-          allAreas={allAreas}
-          areaTypes={areaTypes}
-          isLoading={
-            createAreaMutation.isPending || updateAreaMutation.isPending
-          }
+          isOpen={isFormOpen} onClose={() => setFormOpen(false)}
+          onSubmit={(data: Maintenance_areasInsertSchema) => handleFormSubmit(data, editingArea)}
+          area={editingArea} allAreas={allAreas} areaTypes={areaTypes}
+          isLoading={createAreaMutation.isPending || updateAreaMutation.isPending}
         />
       )}
 
-      {/* THE FIX: Render the new details modal. */}
-      <MaintenanceAreaDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        area={selectedEntity}
-      />
-
+      <MaintenanceAreaDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} area={selectedEntity} />
+      
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
-        title="Confirm Deletion"
-        message={deleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-        showIcon
-        loading={deleteManager.isPending}
+        isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel}
+        title="Confirm Deletion" message={deleteManager.confirmationMessage} confirmText="Delete" cancelText="Cancel"
+        type="danger" showIcon loading={deleteManager.isPending}
       />
     </div>
   );
 }
 ```
 
-<!-- path: app/dashboard/doc/page.tsx -->
-```typescript
-"use client";
-
-import { useState } from "react";
-import { Separator } from "@/components/common/ui/separator";
-import WorkflowAccordion from "@/components/doc/WorkflowAccordion";
-import HeaderSection from "@/components/doc/HeaderSection";
-import BackgroundElements from "@/components/doc/BackgroundElements";
-import { workflowSections } from "@/components/doc/data/workflowData";
-
-export default function Workflows() {
-  const [open, setOpen] = useState<string | undefined>("auth");
-
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100 p-4 md:p-8">
-      <BackgroundElements />
-
-      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
-        <HeaderSection />
-
-        <Separator className="bg-gradient-to-r from-transparent via-gray-700 to-transparent h-px" />
-
-        <WorkflowAccordion
-          sections={workflowSections}
-          open={open}
-          onValueChange={setOpen}
-        />
-      </div>
-    </div>
-  );
-}
-```
-
-<!-- path: app/dashboard/designations/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/designations/page.tsx -->
 ```typescript
 'use client';
 
@@ -6829,9 +6786,8 @@ import { toast } from 'sonner';
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
-  // THE FIX: Add state to manage the selected entity ID.
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
-
+  
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
@@ -6982,9 +6938,8 @@ export default function DesignationManagerPage() {
 }
 ```
 
-<!-- path: app/dashboard/ofc/[id]/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/ofc/[id]/page.tsx -->
 ```typescript
-// path: app/dashboard/ofc/[id]/page.tsx
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -6998,7 +6953,6 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { GitCommit, GitBranch } from 'lucide-react'; // Changed icon for better context
@@ -7013,10 +6967,10 @@ import {
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header'; // Import PageHeader components
+import { useUser } from '@/providers/UserProvider';
 
 export const dynamic = 'force-dynamic';
 
-// Data fetching hook
 const useOfcConnectionsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_connections_completeRowSchema> => {
@@ -7068,7 +7022,6 @@ export default function OfcCableDetailsPage() {
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
     dataQueryHook: useOfcConnectionsData,
-    // Provide human-readable fields for the confirmation dialog.
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
@@ -7110,7 +7063,7 @@ export default function OfcCableDetailsPage() {
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
   ]);
 
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
 
   const tableActions = useMemo(
     () => [
@@ -7251,73 +7204,64 @@ export default function OfcCableDetailsPage() {
 
 ```
 
-<!-- path: app/dashboard/ofc/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/ofc/page.tsx -->
 ```typescript
 'use client';
 
-import {
-  usePagedData,
-  useTableInsert,
-  useTableUpdate,
-} from '@/hooks/database';
-import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
-import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-
-import { BulkActions } from '@/components/common/BulkActions';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import OfcForm from '@/components/ofc/OfcForm/OfcForm';
-import { DataTable } from '@/components/table/DataTable';
-import { TablesInsert } from '@/types/supabase-types';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { toast } from 'sonner';
 import {
   PageHeader,
   useStandardHeaderActions,
 } from '@/components/common/page-header';
+import { BulkActions } from '@/components/common/BulkActions';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { DataTable } from '@/components/table/DataTable';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
+import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
+import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import OfcForm from '@/components/ofc/OfcForm/OfcForm';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { useUser } from '@/providers/UserProvider';
+import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { AiFillMerge } from 'react-icons/ai';
-import { toast } from 'sonner';
 
-export type OfcCablesWithRelations = V_ofc_cables_completeRowSchema & {
-  ofc_type: {
-    id: string;
-    name: string;
-  } | null;
-  maintenance_area: {
-    id: string;
-    name: string;
-  } | null;
-};
-
-// 1. ADAPTER HOOK: Makes `useOfcData` compatible with `useCrudManager`
 const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
-  const { currentPage, pageLimit, filters } = params;
+  const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
+
+  const combinedFilters: Filters = { ...filters };
+  if (searchQuery) {
+    combinedFilters.or = {
+      route_name: searchQuery,
+      asset_no: searchQuery,
+      transnet_id: searchQuery,
+    };
+  }
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
     'v_ofc_cables_complete',
     {
-      filters: filters,
+      filters: combinedFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
-      orderBy: 'route_name', // Changed from default 'name' to 'route_name' which exists in the view
+      orderBy: 'route_name',
     }
   );
-
 
   return {
     data: data?.data || [],
@@ -7332,7 +7276,10 @@ const useOfcData = (
 };
 
 const OfcPage = () => {
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
+  const router = useRouter();
+  const [showFilters, setShowFilters] = useState(false);
+  const { isSuperAdmin } = useUser();
+
   const {
     data: ofcData,
     totalCount,
@@ -7345,199 +7292,55 @@ const OfcPage = () => {
     refetch,
     pagination,
     search,
-    filters: crudFilters,
+    filters,
     editModal,
-    // viewModal,
     bulkActions,
     deleteModal,
     actions: crudActions,
   } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
     dataQueryHook: useOfcData,
-    // Provide an array of column names to search across
-    searchColumn: ['route_name', 'asset_no', 'transnet_id'],
+    displayNameField: 'route_name',
   });
 
-  // 3. Extract ring types from the rings data
-  const ofcTypes = useMemo(() => {
-    const uniqueOfcTypes = new Map();
-    ofcData.forEach((ofc) => {
-      if (ofc.ofc_type_code) {
-        uniqueOfcTypes.set(ofc.ofc_type_id, {
-          id: ofc.ofc_type_id,
-          name: ofc.ofc_type_code,
-        });
-      }
-    });
-    return Array.from(uniqueOfcTypes.values());
-  }, [ofcData]);
+  const { data: ofcTypesData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_TYPES' } });
+  const { data: maintenanceAreasData } = useTableQuery(createClient(), 'maintenance_areas', { filters: { status: true } });
+  const { data: ofcOwnersData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_OWNER' } });
 
-  const maintenanceAreas = useMemo(() => {
-    const uniqueMaintenanceAreas = new Map();
-    ofcData.forEach((ofc) => {
-      if (ofc.maintenance_area_code) {
-        uniqueMaintenanceAreas.set(ofc.maintenance_terminal_id, {
-          id: ofc.maintenance_terminal_id,
-          name: ofc.maintenance_area_code,
-        });
-      }
-    });
-    return Array.from(uniqueMaintenanceAreas.values());
-  }, [ofcData]);
+  const ofcTypes = useMemo(() => ofcTypesData?.data || [], [ofcTypesData]);
+  const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
+  const ofcOwners = useMemo(() => ofcOwnersData?.data || [], [ofcOwnersData]);
 
-  const ofcOwners = useMemo(() => {
-    const uniqueOwners = new Map();
-    ofcData.forEach((ofc) => {
-      if (ofc.ofc_owner_code) {
-        uniqueOwners.set(ofc.ofc_owner_id, {
-          id: ofc.ofc_owner_id,
-          ofc_owner_code: ofc.ofc_owner_code,
-        });
-      }
-    });
-    return Array.from(uniqueOwners.values());
-  }, [ofcData]);
-
-  const supabase = createClient();
-  const router = useRouter();
-  const [showFilters, setShowFilters] = useState(false);
-
-  const activeFilterCount = Object.values(crudFilters.filters).filter(
-    Boolean
-  ).length;
-  const hasActiveFilters = activeFilterCount > 0 || !!search.searchQuery;
-
-  const handleClearFilters = () => {
-    crudFilters.setFilters({});
-    search.setSearchQuery('');
-  };
-
-  const { data: isSuperAdmin } = useIsSuperAdmin();
-
-  // Memoize the record to prevent unnecessary re-renders
-  const memoizedOfcCable = useMemo(
-    () => editModal.record as OfcCablesWithRelations,
-    [editModal.record]
-  );
-
-  // --- MUTATIONS ---
-  const { mutate: insertOfcCable, isPending: isInserting } = useTableInsert(
-    supabase,
-    'ofc_cables',
-    {
-      onSuccess: () => {
-        refetch();
-        closeModal();
-        toast.success('OFC Cable created.');
-      },
-    }
-  );
-  const { mutate: updateOfcCable, isPending: isUpdating } = useTableUpdate(
-    supabase,
-    'ofc_cables',
-    {
-      onSuccess: () => {
-        refetch();
-        closeModal();
-        toast.success('OFC Cable updated.');
-      },
-    }
-  );
-
-  // --- HANDLERS ---
-  const closeModal = useCallback(() => {
-    editModal.close();
-  }, [editModal]);
-
-  const handleSave = useCallback((data: TablesInsert<'ofc_cables'>) => {
-    if (editModal.record) {
-      updateOfcCable({ id: editModal.record.id!, data });
-    } else {
-      insertOfcCable(data);
-    }
-  }, [editModal.record, insertOfcCable, updateOfcCable]);
-
-  // --- MEMOIZED VALUES ---
   const columns = OfcTableColumns(ofcData);
-
-  const orderedColumns = useOrderedColumns(
-    columns,
-    [...TABLE_COLUMN_KEYS.ofc_cables] // Spread operator creates a new mutable array
-  );
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
 
   const tableActions = useMemo(
-    () =>
-      createStandardActions({
-        onEdit: editModal.openEdit,
-        onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
-        canDelete: () => isSuperAdmin === true,
-      }),
-    [crudActions, editModal.openEdit, router, isSuperAdmin]
+    () => createStandardActions<V_ofc_cables_completeRowSchema>({
+      onEdit: editModal.openEdit,
+      onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
+      onDelete: crudActions.handleDelete,
+      onToggleStatus: crudActions.handleToggleStatus,
+      canDelete: () => isSuperAdmin === true,
+    }),
+    [editModal.openEdit, router, crudActions, isSuperAdmin]
   );
+
+  const headerActions = useStandardHeaderActions({
+    data: ofcData as Ofc_cablesRowSchema[],
+    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onAddNew: editModal.openAdd,
+    isLoading: isLoading,
+    exportConfig: { tableName: 'ofc_cables' },
+  });
 
   const headerStats = [
     { value: totalCount, label: 'Total OFC Cables' },
-    {
-      value: activeCount,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: inactiveCount,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  const loading = isLoading || isInserting || isUpdating;
-
-  const headerActions = useStandardHeaderActions({
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed successfully!');
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: loading,
-    exportConfig: {
-      tableName: 'ofc_cables',
-      filterOptions: [
-        {
-          label: 'BSNL',
-          filters: {
-            ofc_owner_id: {
-              operator: 'eq',
-              value: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f',
-            },
-          },
-        },
-        {
-          label: 'BBNL',
-          filters: {
-            ofc_owner_id: {
-              operator: 'eq',
-              value: 'e40c2549-11ec-485d-a67a-8261fcaec68a',
-            },
-          },
-        },
-      ],
-    },
-  });
-
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
 
   return (
@@ -7548,104 +7351,88 @@ const OfcPage = () => {
         icon={<AiFillMerge />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={loading}
+        isLoading={isLoading}
       />
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
-        onBulkDelete={() => bulkActions.handleBulkDelete()}
+        onBulkDelete={bulkActions.handleBulkDelete}
         onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
         onClearSelection={bulkActions.handleClearSelection}
         entityName="ofc cable"
         showStatusUpdate={true}
-        canDelete={() => isSuperAdmin === true && bulkActions.selectedCount > 0}
+        canDelete={() => isSuperAdmin === true}
       />
-
       <DataTable
         tableName="v_ofc_cables_complete"
         data={ofcData}
         columns={orderedColumns}
-        loading={loading}
-        isFetching={isFetching}
+        loading={isLoading}
+        isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable
-        onRowSelect={(selectedRows: V_ofc_cables_completeRowSchema[]): void => {
-          // Update selection with new row IDs
-          bulkActions.handleRowSelect(selectedRows as never);
+        onRowSelect={(selectedRows) => {
+          const validRows = selectedRows.filter(
+            (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null
+          );
+          bulkActions.handleRowSelect(validRows);
         }}
-        searchable={false}
-        filterable={false}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
           showSizeChanger: true,
-          onChange: (page, limit) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(limit);
-          },
+          onChange: (page, limit) => { pagination.setCurrentPage(page); pagination.setPageLimit(limit); },
         }}
         customToolbar={
           <SearchAndFilters
             searchTerm={search.searchQuery}
             onSearchChange={search.setSearchQuery}
             showFilters={showFilters}
-            onToggleFilters={() => setShowFilters((p) => !p)}
-            onClearFilters={handleClearFilters}
-            hasActiveFilters={hasActiveFilters}
-            activeFilterCount={activeFilterCount}
-            searchPlaceholder="Search by Asset No or Route Name or Transnet ID..."
+            onToggleFilters={() => setShowFilters(p => !p)}
+            onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+            hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
+            activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
+            searchPlaceholder="Search by Asset No, Route Name, or Transnet ID..."
           >
-            {/* THIS IS THE CLEANER, TYPE-SAFE WAY */}
             <SelectFilter
               label="OFC Type"
               filterKey="ofc_type_id"
-              filters={crudFilters.filters}
-              setFilters={crudFilters.setFilters}
+              filters={filters.filters}
+              setFilters={filters.setFilters}
               options={ofcTypes.map((t) => ({ value: t.id, label: t.name }))}
             />
             <SelectFilter
               label="Status"
               filterKey="status"
-              filters={crudFilters.filters}
-              setFilters={crudFilters.setFilters}
-              options={[
-                { value: 'true', label: 'Active' },
-                { value: 'false', label: 'Inactive' },
-              ]}
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
             />
             <SelectFilter
-              label="ofc_owner"
+              label="OFC Owner"
               filterKey="ofc_owner_id"
-              filters={crudFilters.filters}
-              setFilters={crudFilters.setFilters}
-              options={ofcOwners.map((t) => ({
-                value: t.id,
-                label: t.ofc_owner_code,
-              }))}
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={ofcOwners.map((o) => ({ value: o.id, label: o.name }))}
             />
             <SelectFilter
               label="Maintenance Terminal"
               filterKey="maintenance_terminal_id"
-              filters={crudFilters.filters}
-              setFilters={crudFilters.setFilters}
-              options={maintenanceAreas.map((t) => ({
-                value: t.id,
-                label: t.name,
-              }))}
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={maintenanceAreas.map((m) => ({ value: m.id, label: m.name }))}
             />
           </SearchAndFilters>
         }
       />
-
       <OfcForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        ofcCable={memoizedOfcCable}
-        onSubmit={handleSave}
+        ofcCable={editModal.record as OfcCablesWithRelations}
+        onSubmit={crudActions.handleSave}
         pageLoading={isMutating}
       />
-
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -7654,21 +7441,16 @@ const OfcPage = () => {
         message={deleteModal.message}
         type="danger"
         loading={deleteModal.loading}
-        confirmText="Delete"
-        cancelText="Cancel"
-        showIcon={true}
       />
     </div>
   );
 };
 
 export default OfcPage;
-
 ```
 
-<!-- path: app/dashboard/route-manager/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/route-manager/page.tsx -->
 ```typescript
-// app/dashboard/route-manager/page.tsx
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -7789,7 +7571,7 @@ export default function RouteManagerPage() {
 
 ```
 
-<!-- path: app/dashboard/layout.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/layout.tsx -->
 ```typescript
 "use client";
 
@@ -7801,6 +7583,7 @@ import DashboardContent from "@/components/dashboard/DashboardContent";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
+import { allowedRoles } from "@/constants/constants";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -7813,20 +7596,10 @@ export default function DashboardLayout({
   children,
   showFileUpload = true,
   showColumnManagement = true,
-  allowedRoles = [
-    UserRole.VIEWER,
-    UserRole.ADMIN,
-    UserRole.CPANADMIN,
-    UserRole.MAANADMIN,
-    UserRole.SDHADMIN,
-    UserRole.VMUXADMIN,
-    UserRole.MNGADMIN,
-  ],
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const isMobile = useIsMobile();
 
-  // Determine table name based on current route
 
   return (
     <QueryProvider>
@@ -7835,7 +7608,6 @@ export default function DashboardLayout({
           options={{
             autoSetConfig: true,
             customConfig: {
-              // Global defaults that apply to all pages
               isUploadEnabled: true,
             },
           }}
@@ -7870,15 +7642,13 @@ export default function DashboardLayout({
 
 ```
 
-<!-- path: app/dashboard/diagrams/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/diagrams/page.tsx -->
 ```typescript
 "use client";
 
-// app/diagrams/page.tsx
 
 import dynamic from "next/dynamic";
 
-// Disable SSR for the StorageManager component
 const FileUploader = dynamic(
   () => import("@/components/diagrams/FileUploader"),
   { ssr: false },
@@ -7928,127 +7698,154 @@ export default function Home() {
 
 ```
 
-<!-- path: app/onboarding/onboarding-form-enhanced.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/onboarding/onboarding-form-enhanced.tsx -->
 ```typescript
-// path: app/onboarding/onboarding-form-enhanced.tsx
 
 import { useAuthStore } from "@/stores/authStore";
 import { createClient } from "@/utils/supabase/client";
 import { useTableUpdate } from "@/hooks/database";
 import { toast } from "sonner";
 import Image from "next/image";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { OnboardingFormData, onboardingFormSchema } from "@/schemas/custom-schemas";
-import { User_profilesUpdateSchema } from "@/schemas/zod-schemas";
+import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
 import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
 import { useEffect } from "react";
-import { UserRole } from "@/types/user-roles";
 import { Input, Label } from "@/components/common/ui";
-const toObject = (data: unknown): Record<string, unknown> => {
-  if (data && typeof data === "object") {
-    return Object.fromEntries(
-      Object.entries(data).map(([key, value]) => [key, typeof value === "object" ? toObject(value) : value])
-    );
+import { Json } from "@/types/supabase-types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/common/ui/select/Select";
+
+const toObject = (data: Json | null | undefined): Record<string, unknown> => {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
     return data as Record<string, unknown>;
   }
   return {};
+};
+
+const normalizePreferenceValue = (value: unknown): string | null => {
+  if (!value || typeof value !== "string") return null;
+  const normalized = value.toLowerCase().trim();
+
+  switch (normalized) {
+    case "english":
+    case "en-us":
+    case "en-gb":
+      return "en";
+    case "light":
+    case "light-theme":
+      return "light";
+    case "dark":
+    case "dark-theme":
+      return "dark";
+    case "system":
+    case "auto":
+    case "default":
+      return "system";
+    default:
+      return normalized;
+  }
 };
 
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
 
-  const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetMyUserDetails();
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+    error: profileError,
+    refetch,
+  } = useGetMyUserDetails();
 
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isDirty, dirtyFields },
     watch,
-  } = useForm<OnboardingFormData>({
-    resolver: zodResolver(onboardingFormSchema),
+  } = useForm<User_profilesUpdateSchema>({
+    resolver: zodResolver(user_profilesUpdateSchema),
   });
 
-  const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(supabase, "user_profiles", {
-    onSuccess: (data) => {
-      toast.success("Profile updated successfully!");
-      refetch();
-      // THE FIX: Cast the reset data to the correct form data type.
-      reset(data[0] as unknown as OnboardingFormData);
-    },
-    onError: (error) => {
-      toast.error(`Update failed: ${error.message}`);
-    },
-  });
+  const { mutate: updateProfile, isPending: isUpdatePending } = useTableUpdate(
+    supabase,
+    "user_profiles",
+    {
+      onSuccess: (data) => {
+        toast.success("Profile updated successfully!");
+        refetch();
+
+        if (data && data[0]) {
+          const updatedProfile = data[0] as User_profilesUpdateSchema;
+          const prefs = toObject(updatedProfile.preferences);
+
+          const resetData = {
+            ...updatedProfile,
+            address: toObject(updatedProfile.address),
+            preferences: {
+              language: normalizePreferenceValue(prefs.language) || "en",
+              theme: normalizePreferenceValue(prefs.theme) || "light",
+            },
+          };
+          reset(resetData);
+        }
+      },
+      onError: (error) => {
+        toast.error(`Update failed: ${error.message}`);
+      },
+    }
+  );
 
   const isLoading = isProfileLoading || isUpdatePending;
   const avatarUrl = watch("avatar_url");
 
   useEffect(() => {
-    if (profile) {
-      reset({
-        first_name: profile.first_name === 'Placeholder' ? '' : profile.first_name || "",
-        last_name: profile.last_name === 'User' ? '' : profile.last_name || "",
-        avatar_url: profile.avatar_url,
-        date_of_birth: profile.date_of_birth,
-        designation: profile.designation,
-        phone_number: profile.phone_number,
+    if (profile && !isProfileLoading) {
+      const preferences = toObject(profile.preferences);
+      const normalizedPreferences = {
+        language: normalizePreferenceValue(preferences.language) || "en",
+        theme: normalizePreferenceValue(preferences.theme) || "light",
+      };
+      
+      const formData = {
+        first_name: profile.first_name ?? "",
+        last_name: profile.last_name ?? "",
+        avatar_url: profile.avatar_url ?? null,
+        date_of_birth: profile.date_of_birth ?? null,
+        designation: profile.designation ?? null,
+        phone_number: profile.phone_number ?? null,
         address: toObject(profile.address),
-        preferences: toObject(profile.preferences),
-      });
-    } else if (!isProfileLoading) {
-      reset({
-        first_name: "",
-        last_name: "",
-        avatar_url: null,
-        date_of_birth: null,
-        designation: null,
-        phone_number: null,
-        address: {},
-        preferences: {},
-      });
+        preferences: normalizedPreferences,
+      };
+      
+      reset(formData);
     }
   }, [profile, isProfileLoading, reset]);
 
-  const onSubmit = (data: OnboardingFormData) => {
+  const onSubmit = (data: User_profilesUpdateSchema) => {
     if (!isDirty || !user?.id) {
       toast.info("No changes to save.");
       return;
     }
 
-    // THE FIX: Build the 'updates' payload to strictly conform to Partial<User_profilesUpdateSchema>
     const updates: Partial<User_profilesUpdateSchema> = {};
 
-    // Iterate over dirty fields to build the payload, handling type conversions for specific fields like 'role'
-    (Object.keys(dirtyFields) as Array<keyof OnboardingFormData>).forEach(key => {
-      if (key === 'address' || key === 'preferences') {
-        // These are JSONB fields, so they are assignable to the `Json` type
-        updates[key] = data[key];
-      } else if (key === 'role') {
-        // Handle role field specifically - convert string to UserRole enum if valid
-        const roleValue = data[key];
-        if (roleValue && typeof roleValue === 'string') {
-          // Try to convert string to UserRole enum value
-          if (Object.values(UserRole).includes(roleValue as UserRole)) {
-            (updates as User_profilesUpdateSchema)[key] = roleValue as UserRole;
-          }
-        } else if (roleValue === null || roleValue === undefined) {
-          (updates as User_profilesUpdateSchema)[key] = roleValue as undefined;
-        }
-      } else if (key in data) {
-        // Handle all other fields - ensure null values are properly handled
-        const value = data[key];
-        if (value === null) {
-          (updates as User_profilesUpdateSchema)[key] = undefined;
-        } else {
-          (updates as User_profilesUpdateSchema)[key] = value;
-        }
+    for (const key in dirtyFields) {
+      if (Object.prototype.hasOwnProperty.call(dirtyFields, key)) {
+        const typedKey = key as keyof User_profilesUpdateSchema;
+        const value = data[typedKey];
+        (updates as Record<string, unknown>)[typedKey] =
+          value === "" || value === undefined ? null : value;
       }
-    });
+    }
 
-    // Handle preferences separately to ensure needsOnboarding is set
     const newPreferences = {
       ...toObject(profile?.preferences),
       ...toObject(data.preferences),
@@ -8079,7 +7876,9 @@ export default function OnboardingFormEnhanced() {
       <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'>
         <h3 className='font-medium'>Error loading profile</h3>
         <p className='text-sm mt-1'>{profileError.message}</p>
-        <button onClick={() => window.location.reload()} className='mt-3 text-sm underline hover:no-underline text-red-600 dark:text-red-400'>
+        <button
+          onClick={() => window.location.reload()}
+          className='mt-3 text-sm underline hover:no-underline text-red-600 dark:text-red-400'>
           Try again
         </button>
       </div>
@@ -8089,62 +7888,120 @@ export default function OnboardingFormEnhanced() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-3xl mx-auto'>
       <div className='flex items-center gap-4'>
-        <Image src={avatarUrl || "/default-avatar.png"} alt='Profile' width={64} height={64} className='w-16 h-16 rounded-full object-cover bg-gray-200' />
+        <Image
+          src={avatarUrl || "/default-avatar.png"}
+          alt='Profile'
+          width={64}
+          height={64}
+          className='w-16 h-16 rounded-full object-cover bg-gray-200'
+        />
         <div className='flex-1'>
           <Label htmlFor='avatar_url'>Avatar URL</Label>
-          <Input id='avatar_url' {...register("avatar_url")} placeholder='https://example.com/avatar.jpg' className='mt-1' />
-          {errors.avatar_url && <p className='text-red-500 text-xs mt-1'>{errors.avatar_url.message}</p>}
+          <Input
+            id='avatar_url'
+            {...register("avatar_url")}
+            placeholder='https://example.com/avatar.jpg'
+            className='mt-1'
+          />
+          {errors.avatar_url && (
+            <p className='text-red-500 text-xs mt-1'>{errors.avatar_url.message}</p>
+          )}
         </div>
       </div>
 
       <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
         <div>
           <Label htmlFor='email'>Email</Label>
-          <Input id='email' type='email' value={user?.email || ""} disabled className='mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500' />
+          <Input
+            id='email'
+            type='email'
+            value={user?.email || ""}
+            disabled
+            className='mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500'
+          />
         </div>
         <div>
           <Label htmlFor='phone_number'>Phone Number</Label>
-          <Input id='phone_number' type='tel' {...register("phone_number")} placeholder='+1 (555) 123-4567' className='mt-1' />
-          {errors.phone_number && <p className='text-red-500 text-xs mt-1'>{errors.phone_number.message}</p>}
+          <Input
+            id='phone_number'
+            type='tel'
+            {...register("phone_number")}
+            placeholder='+1 (555) 123-4567'
+            className='mt-1'
+          />
+          {errors.phone_number && (
+            <p className='text-red-500 text-xs mt-1'>{errors.phone_number.message}</p>
+          )}
         </div>
         <div>
           <Label htmlFor='first_name'>
             First Name <span className='text-red-500'>*</span>
           </Label>
           <Input id='first_name' type='text' {...register("first_name")} className='mt-1' />
-          {errors.first_name && <p className='text-red-500 text-xs mt-1'>{errors.first_name.message}</p>}
+          {errors.first_name && (
+            <p className='text-red-500 text-xs mt-1'>{errors.first_name.message}</p>
+          )}
         </div>
         <div>
           <Label htmlFor='last_name'>
             Last Name <span className='text-red-500'>*</span>
           </Label>
           <Input id='last_name' type='text' {...register("last_name")} className='mt-1' />
-          {errors.last_name && <p className='text-red-500 text-xs mt-1'>{errors.last_name.message}</p>}
+          {errors.last_name && (
+            <p className='text-red-500 text-xs mt-1'>{errors.last_name.message}</p>
+          )}
         </div>
       </div>
 
       <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
-        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Address Information</h3>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>
+          Address Information
+        </h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
           <div className='sm:col-span-2'>
             <Label htmlFor='address_street'>Street Address</Label>
-            <Input id='address_street' {...register("address.street")} placeholder='123 Main St' className='mt-1' />
+            <Input
+              id='address_street'
+              {...register("address.street")}
+              placeholder='123 Main St'
+              className='mt-1'
+            />
           </div>
           <div>
             <Label htmlFor='address_city'>City</Label>
-            <Input id='address_city' {...register("address.city")} placeholder='New York' className='mt-1' />
+            <Input
+              id='address_city'
+              {...register("address.city")}
+              placeholder='New York'
+              className='mt-1'
+            />
           </div>
           <div>
             <Label htmlFor='address_state'>State/Province</Label>
-            <Input id='address_state' {...register("address.state")} placeholder='NY' className='mt-1' />
+            <Input
+              id='address_state'
+              {...register("address.state")}
+              placeholder='NY'
+              className='mt-1'
+            />
           </div>
           <div>
             <Label htmlFor='address_zip_code'>Zip Code</Label>
-            <Input id='address_zip_code' {...register("address.zip_code")} placeholder='12345' className='mt-1' />
+            <Input
+              id='address_zip_code'
+              {...register("address.zip_code")}
+              placeholder='12345'
+              className='mt-1'
+            />
           </div>
           <div>
             <Label htmlFor='address_country'>Country</Label>
-            <Input id='address_country' {...register("address.country")} placeholder='USA' className='mt-1' />
+            <Input
+              id='address_country'
+              {...register("address.country")}
+              placeholder='USA'
+              className='mt-1'
+            />
           </div>
         </div>
       </div>
@@ -8153,12 +8010,73 @@ export default function OnboardingFormEnhanced() {
         <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
           <div>
-            <Label htmlFor='preferences_language'>Language</Label>
-            <Input id='preferences_language' {...register("preferences.language")} placeholder='English' className='mt-1' />
+            <Controller
+              control={control}
+              name='preferences.language'
+              render={({ field }) => {
+                const currentValue = field.value || "en";
+                const handleChange = (value: string) => {
+                  if (value) field.onChange(value);
+                };
+                
+                return (
+                  <div>
+                    <Label htmlFor='preferences_language' className='block text-sm font-medium mb-1'>
+                      Language
+                    </Label>
+                    <Select onValueChange={handleChange} value={currentValue}>
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select a language' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='en'>English</SelectItem>
+                        <SelectItem value='ar'>Arabic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.preferences?.language && (
+                      <p className='text-sm text-red-500 mt-1'>
+                        {errors.preferences.language.message}
+                      </p>
+                    )}
+                  </div>
+                );
+              }}
+            />
           </div>
           <div>
-            <Label htmlFor='preferences_theme'>Theme</Label>
-            <Input id='preferences_theme' {...register("preferences.theme")} placeholder='Light' className='mt-1' />
+            <Controller
+              name='preferences.theme'
+              control={control}
+              render={({ field }) => {
+                const currentValue = field.value || "light";
+                const handleChange = (value: string) => {
+                  if (value) field.onChange(value);
+                };
+                
+                return (
+                  <div>
+                    <Label htmlFor='preferences_theme' className='block text-sm font-medium mb-1'>
+                      Theme
+                    </Label>
+                    <Select onValueChange={handleChange} value={currentValue}>
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select a theme' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='light'>Light</SelectItem>
+                        <SelectItem value='dark'>Dark</SelectItem>
+                        <SelectItem value='system'>System</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.preferences?.theme && (
+                      <p className='text-sm text-red-500 mt-1'>
+                        {errors.preferences.theme.message}
+                      </p>
+                    )}
+                  </div>
+                );
+              }}
+            />
           </div>
         </div>
       </div>
@@ -8172,11 +8090,28 @@ export default function OnboardingFormEnhanced() {
             className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50'>
             Reset
           </button>
-          <button type='submit' disabled={!isDirty || isLoading} className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center'>
+          <button
+            type='submit'
+            disabled={!isDirty || isLoading}
+            className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center'>
             {isLoading && (
-              <svg className='animate-spin -ml-1 mr-2 h-4 w-4 text-white' fill='none' viewBox='0 0 24 24'>
-                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
-                <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' />
+              <svg
+                className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                fill='none'
+                viewBox='0 0 24 24'>
+                <circle
+                  className='opacity-25'
+                  cx='12'
+                  cy='12'
+                  r='10'
+                  stroke='currentColor'
+                  strokeWidth='4'
+                />
+                <path
+                  className='opacity-75'
+                  fill='currentColor'
+                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                />
               </svg>
             )}
             {isLoading ? "Updating..." : "Update Profile"}
@@ -8188,7 +8123,7 @@ export default function OnboardingFormEnhanced() {
 }
 ```
 
-<!-- path: app/onboarding/page.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/onboarding/page.tsx -->
 ```typescript
 "use client";
 import Link from "next/link";
@@ -8197,7 +8132,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function OnboardingPage() {
   const { logout } = useAuth();
-
+  
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -8233,9 +8168,8 @@ export default function OnboardingPage() {
 }
 ```
 
-<!-- path: app/onboarding/layout.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/onboarding/layout.tsx -->
 ```typescript
-// app/onboarding/layout.tsx
 "use client"
 
 import { Protected } from "@/components/auth/Protected";
@@ -8243,7 +8177,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
-
+    
   return (
     <QueryProvider><Protected>{children}</Protected></QueryProvider>
   );
@@ -8251,7 +8185,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
 ```
 
-<!-- path: app/layout.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/layout.tsx -->
 ```typescript
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -8263,7 +8197,6 @@ import ThemeProvider from "@/providers/ThemeProvider";
 
 const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 
-// Load the main body font (Inter)
 const fontSans = localFont({
   src: "../public/fonts/Inter.woff2",
   display: "swap",
@@ -8272,7 +8205,6 @@ const fontSans = localFont({
   fallback: ["system-ui", "arial"],
 });
 
-// Load the secondary heading font (Montserrat)
 const fontHeading = localFont({
   src: "../public/fonts/Montserrat.woff2",
   display: "swap",
@@ -8334,20 +8266,18 @@ export default function RootLayout({
                   const storedValue = localStorage.getItem('theme-storage');
 
                   if (storedValue) {
-                    // Try to parse as JSON (new format)
                     try {
                       const parsed = JSON.parse(storedValue);
                       if (parsed && parsed.state && typeof parsed.state.theme === 'string') {
                         theme = parsed.state.theme;
                       }
                     } catch (e) {
-                      // If parsing fails, it might be the old raw string format
                       if (typeof storedValue === 'string' && ['light', 'dark', 'system'].includes(storedValue)) {
                         theme = storedValue;
                       }
                     }
                   }
-
+                  
                   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
@@ -8370,33 +8300,31 @@ export default function RootLayout({
 
 ```
 
-<!-- path: config/user-details-config.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/user-details-config.tsx -->
 ```typescript
-// ==== USER DETAILS MODAL CONFIGURATION ====
-import {
-    DetailsModal,
-    defaultFormatters,
-    type HeaderConfig,
-    type SectionConfig
+import { 
+    DetailsModal, 
+    defaultFormatters, 
+    type HeaderConfig, 
+    type SectionConfig 
   } from '@/components/common/ui/Modal/DetailsModal';
-  import {
-    FiUser,
-    FiPhone,
-    FiCalendar,
-    FiUserCheck,
-    FiBriefcase,
-    FiMail,
-    FiShield,
-    FiClock,
-    FiSettings,
-    FiMapPin
+  import { 
+    FiUser, 
+    FiPhone, 
+    FiCalendar, 
+    FiUserCheck, 
+    FiBriefcase, 
+    FiMail, 
+    FiShield, 
+    FiClock, 
+    FiSettings, 
+    FiMapPin 
   } from "react-icons/fi";
   import { RoleBadge } from "@/components/common/ui/badges/RoleBadge";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
-
-  // User details modal configuration
+  
   export const userDetailsConfig = {
     header: {
       title: (user: V_user_profiles_extendedRowSchema) => {
@@ -8536,15 +8464,90 @@ import { UserRole } from '@/types/user-roles';
   };
 ```
 
-<!-- path: config/helper-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/cable-details-config.tsx -->
 ```typescript
-// config/helpers.ts
+import {
+    DetailsModal,
+    defaultFormatters,
+    type HeaderConfig,
+    type SectionConfig
+  } from '@/components/common/ui/Modal/DetailsModal';
+  import { FiGitBranch, FiMapPin, FiClock, FiInfo, FiHash, FiActivity } from "react-icons/fi";
+  import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+  import { BsnlCable } from '@/components/bsnl/types';
+  
+  export const cableDetailsConfig = {
+    header: {
+      title: (cable: BsnlCable) => cable.route_name || "Unnamed Route",
+      subtitle: (cable: BsnlCable) => cable.ofc_owner_name || "Unknown Owner",
+      badges: [
+        {
+          key: 'status',
+          component: (status: boolean | null) => <StatusBadge status={status ?? false} />,
+        },
+        {
+          key: 'ofc_type_name',
+          component: (type: string) => type ? (
+            <span className="px-3 py-1 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full dark:bg-purple-900 dark:text-purple-200">
+              {type}
+            </span>
+          ) : null
+        },
+      ]
+    } as HeaderConfig<BsnlCable>,
+  
+    sections: [
+      {
+        title: "Route Information",
+        icon: <FiGitBranch size={20} />,
+        fields: [
+          { key: 'route_name', label: 'Route Name', icon: <FiInfo size={18} /> },
+          { key: 'asset_no', label: 'Asset Number', icon: <FiHash size={18} /> },
+          { key: 'sn_name', label: 'Start Node', icon: <FiMapPin size={18} /> },
+          { key: 'en_name', label: 'End Node', icon: <FiMapPin size={18} /> },
+        ]
+      },
+      {
+        title: "Specifications",
+        icon: <FiActivity size={20} />,
+        fields: [
+          { key: 'capacity', label: 'Fiber Capacity', icon: <FiActivity size={18} /> },
+          { key: 'current_rkm', label: 'Route Length (RKM)', icon: <FiActivity size={18} />, formatter: (val) => `${val} km` },
+          { key: 'ofc_type_name', label: 'Cable Type', icon: <FiInfo size={18} /> },
+        ]
+      },
+      {
+        title: "Ownership & Timestamps",
+        icon: <FiClock size={20} />,
+        fields: [
+          { key: 'ofc_owner_name', label: 'Owner', icon: <FiInfo size={18} /> },
+          { key: 'maintenance_area_name', label: 'Maintenance Area', icon: <FiMapPin size={18} /> },
+          { key: 'commissioned_on', label: 'Commissioned On', icon: <FiClock size={18} />, formatter: defaultFormatters.date },
+        ]
+      }
+    ] as SectionConfig<BsnlCable>[],
+  };
+  
+  export const CableDetailsModal = ({ cable, onClose, isOpen }: { cable: BsnlCable | null; onClose: () => void; isOpen: boolean; }) => {
+    return (
+      <DetailsModal
+        data={cable}
+        onClose={onClose}
+        isOpen={isOpen}
+        config={cableDetailsConfig}
+        loading={!cable}
+      />
+    );
+  };
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/helper-types.ts -->
+```typescript
 
 import { Database, Tables } from "@/types/supabase-types";
 import { TABLES, VIEWS } from "@/constants/table-column-keys";
 import { PublicTableName, ViewName } from "@/hooks/database";
 
-// Database schema types
 
 export type TableNames = keyof typeof TABLES;
 export type ViewNames = keyof typeof VIEWS;
@@ -8552,11 +8555,9 @@ export type ViewNames = keyof typeof VIEWS;
 
 export type CurrentTableName = keyof typeof TABLES;
 
-// This Mapped Type now correctly includes both Tables and Views.
 export type AllColumnKeys = {
   [K in PublicTableName]: (keyof Tables<K> & string)[];
 } & {
-  // Add a mapped type for Views. This merges the view keys into the type.
   [K in ViewName]: (keyof Database["public"]["Views"][K]["Row"] & string)[];
 };
 
@@ -8597,29 +8598,27 @@ export type UploadMetaMap = {
 
 ```
 
-<!-- path: config/ofc-details-config.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/ofc-details-config.tsx -->
 ```typescript
-// ==== OFC DETAILS MODAL CONFIGURATION ====
-import {
-    DetailsModal,
-    defaultFormatters,
-    type HeaderConfig,
-    type SectionConfig
+import { 
+    DetailsModal, 
+    defaultFormatters, 
+    type HeaderConfig, 
+    type SectionConfig 
   } from '@/components/common/ui/Modal/DetailsModal';
-  import {
+  import { 
     FiActivity,
-    FiCalendar,
-    FiClock,
-    FiDatabase,
-    FiMapPin,
+    FiCalendar, 
+    FiClock, 
+    FiDatabase, 
+    FiMapPin, 
     FiInfo,
     FiGitBranch,
     FiTool
   } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
-
-  // OFC details modal configuration
+  
   export const ofcDetailsConfig = {
     header: {
       title: (ofc: V_ofc_cables_completeRowSchema) => ofc.route_name || "Unnamed OFC Route",
@@ -8645,7 +8644,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
         }
       ]
     } as HeaderConfig<V_ofc_cables_completeRowSchema>,
-
+  
     sections: [
       {
         title: "Route Information",
@@ -8706,7 +8705,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
       }
     ] as SectionConfig<V_ofc_cables_completeRowSchema>[]
   };
-
+  
   export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: V_ofc_cables_completeRowSchema, onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
@@ -8717,41 +8716,38 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
       />
     );
   };
-
+  
 ```
 
-<!-- path: config/employee-details-config.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/employee-details-config.tsx -->
 ```typescript
-// ==== EMPLOYEE DETAILS MODAL CONFIGURATION ====
 
-import {
-  DetailsModal,
-  defaultFormatters,
-  type HeaderConfig,
-  type SectionConfig
+import { 
+  DetailsModal, 
+  defaultFormatters, 
+  type HeaderConfig, 
+  type SectionConfig 
 } from '@/components/common/ui/Modal/DetailsModal';
-import {
-  FiUser,
-  FiPhone,
-  FiMail,
-  FiBriefcase,
-  FiCalendar,
-  FiClock,
-  FiMapPin,
-  FiInfo
+import { 
+  FiUser, 
+  FiPhone, 
+  FiMail, 
+  FiBriefcase, 
+  FiCalendar, 
+  FiClock, 
+  FiMapPin, 
+  FiInfo 
 } from "react-icons/fi";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
 
 type EmployeeDetails = V_employeesRowSchema | (EmployeesRowSchema & { employee_designation_name?: string | null });
 
-// Helper function to get the first letter of the name for avatar
 const getInitials = (name?: string | null) => {
   if (!name) return '?';
   return name.charAt(0).toUpperCase();
 };
 
-// Create header config function
 const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails> => ({
   title: (data: EmployeeDetails) => data.employee_name || emp.employee_name || "Unnamed Employee",
   subtitle: (data: EmployeeDetails) => data.employee_pers_no || emp.employee_pers_no || "No Personnel No.",
@@ -8762,7 +8758,7 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
   badges: [
     {
       key: 'designation',
-      component: (value: unknown, data: EmployeeDetails) =>
+      component: (value: unknown, data: EmployeeDetails) => 
         data.employee_designation_name ? (
           <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-200">
             {data.employee_designation_name}
@@ -8771,49 +8767,48 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
     },
     {
       key: 'status',
-      component: (value: unknown, data: EmployeeDetails) =>
+      component: (value: unknown, data: EmployeeDetails) => 
         <StatusBadge status={data.status ? "ACTIVE" : "INACTIVE"} />
     }
   ]
 });
 
-// Employee details modal configuration
 export const employeeDetailsConfig = {
   header: createHeaderConfig({} as EmployeeDetails), // Will be overridden in the component
-
+  
   sections: [
     {
       title: "Personal Information",
       icon: <FiUser size={20} />,
       fields: [
-        {
-          key: 'employee_email',
-          label: 'Email',
-          icon: <FiMail size={18} />,
+        { 
+          key: 'employee_email', 
+          label: 'Email', 
+          icon: <FiMail size={18} />, 
           formatter: (email: string | null) => email || 'Not provided'
         },
-        {
-          key: 'employee_contact',
-          label: 'Contact',
-          icon: <FiPhone size={18} />,
+        { 
+          key: 'employee_contact', 
+          label: 'Contact', 
+          icon: <FiPhone size={18} />, 
           formatter: (contact: string | null) => contact || 'Not provided'
         },
-        {
-          key: 'employee_dob',
-          label: 'Date of Birth',
-          icon: <FiCalendar size={18} />,
-          formatter: defaultFormatters.date
+        { 
+          key: 'employee_dob', 
+          label: 'Date of Birth', 
+          icon: <FiCalendar size={18} />, 
+          formatter: defaultFormatters.date 
         },
-        {
-          key: 'employee_doj',
-          label: 'Date of Joining',
-          icon: <FiCalendar size={18} />,
-          formatter: defaultFormatters.date
+        { 
+          key: 'employee_doj', 
+          label: 'Date of Joining', 
+          icon: <FiCalendar size={18} />, 
+          formatter: defaultFormatters.date 
         },
-        {
-          key: 'employee_addr',
-          label: 'Address',
-          icon: <FiMapPin size={18} />,
+        { 
+          key: 'employee_addr', 
+          label: 'Address', 
+          icon: <FiMapPin size={18} />, 
           formatter: (addr: string | null) => addr || 'Not provided'
         }
       ]
@@ -8822,15 +8817,15 @@ export const employeeDetailsConfig = {
       title: "Employment Details",
       icon: <FiBriefcase size={20} />,
       fields: [
-        {
-          key: 'employee_designation_name',
-          label: 'Designation',
+        { 
+          key: 'employee_designation_name', 
+          label: 'Designation', 
           icon: <FiBriefcase size={18} />,
           formatter: (designation: string | null) => designation || 'Not assigned'
         },
-        {
-          key: 'status',
-          label: 'Status',
+        { 
+          key: 'status', 
+          label: 'Status', 
           icon: <FiInfo size={18} />,
           formatter: (status: boolean | null) => status ? 'Active' : 'Inactive'
         }
@@ -8840,36 +8835,36 @@ export const employeeDetailsConfig = {
       title: "Timestamps",
       icon: <FiCalendar size={20} />,
       fields: [
-        {
-          key: 'created_at',
-          label: 'Created At',
-          icon: <FiCalendar size={18} />,
-          formatter: defaultFormatters.dateTime
+        { 
+          key: 'created_at', 
+          label: 'Created At', 
+          icon: <FiCalendar size={18} />, 
+          formatter: defaultFormatters.dateTime 
         },
-        {
-          key: 'updated_at',
-          label: 'Updated At',
-          icon: <FiClock size={18} />,
-          formatter: defaultFormatters.dateTime
+        { 
+          key: 'updated_at', 
+          label: 'Updated At', 
+          icon: <FiClock size={18} />, 
+          formatter: defaultFormatters.dateTime 
         }
       ]
     }
   ] as SectionConfig<EmployeeDetails>[]
 };
 
-export const EmployeeDetailsModal = ({
-  employee,
-  onClose,
-  isOpen
-}: {
-  employee: EmployeeDetails | null;
-  onClose: () => void;
-  isOpen: boolean
+export const EmployeeDetailsModal = ({ 
+  employee, 
+  onClose, 
+  isOpen 
+}: { 
+  employee: EmployeeDetails | null; 
+  onClose: () => void; 
+  isOpen: boolean 
 }) => {
   if (!employee) {
     return null;
   }
-
+  
   return (
     <DetailsModal<EmployeeDetails>
       data={employee}
@@ -8884,21 +8879,88 @@ export const EmployeeDetailsModal = ({
 };
 ```
 
-<!-- path: config/node-details-config.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/system-details-config.tsx -->
 ```typescript
-// ==== NODE DETAILS MODAL CONFIGURATION ====
 import {
-  DetailsModal,
-  defaultFormatters,
-  type HeaderConfig,
-  type SectionConfig
+    DetailsModal,
+    defaultFormatters,
+    type HeaderConfig,
+    type SectionConfig
+  } from '@/components/common/ui/Modal/DetailsModal';
+  import { FiCpu, FiMapPin, FiClock, FiServer, FiGitBranch, FiInfo } from "react-icons/fi";
+  import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+  import { BsnlSystem } from '@/components/bsnl/types';
+  
+  export const systemDetailsConfig = {
+    header: {
+      title: (system: BsnlSystem) => system.system_name || "Unnamed System",
+      subtitle: (system: BsnlSystem) => system.system_type_name || "Unknown Type",
+      badges: [
+        {
+          key: 'status',
+          component: (status: boolean | null) => <StatusBadge status={status ?? false} />,
+        },
+      ]
+    } as HeaderConfig<BsnlSystem>,
+  
+    sections: [
+      {
+        title: "Primary Information",
+        icon: <FiServer size={20} />,
+        fields: [
+          { key: 'system_name', label: 'System Name', icon: <FiInfo size={18} /> },
+          { key: 'system_type_name', label: 'System Type', icon: <FiCpu size={18} /> },
+          { key: 's_no', label: 'Serial Number', icon: <FiInfo size={18} /> },
+          { key: 'ip_address', label: 'IP Address', icon: <FiInfo size={18} />, formatter: (value) => <code className="text-sm">{String(value)}</code> },
+        ]
+      },
+      {
+        title: "Location & Maintenance",
+        icon: <FiMapPin size={20} />,
+        fields: [
+          { key: 'node_name', label: 'Node Location', icon: <FiMapPin size={18} /> },
+          { key: 'system_maintenance_terminal_name', label: 'Maintenance Area', icon: <FiMapPin size={18} /> },
+          { key: 'ring_logical_area_name', label: 'Ring Logical Area', icon: <FiGitBranch size={18} /> },
+        ]
+      },
+      {
+        title: "Timestamps",
+        icon: <FiClock size={20} />,
+        fields: [
+          { key: 'commissioned_on', label: 'Commissioned On', icon: <FiClock size={18} />, formatter: defaultFormatters.date },
+          { key: 'created_at', label: 'Record Created', icon: <FiClock size={18} />, formatter: defaultFormatters.dateTime },
+        ]
+      }
+    ] as SectionConfig<BsnlSystem>[],
+  };
+  
+  export const SystemDetailsModal = ({ system, onClose, isOpen }: { system: BsnlSystem | null; onClose: () => void; isOpen: boolean; }) => {
+    return (
+      <DetailsModal
+        data={system}
+        onClose={onClose}
+        isOpen={isOpen}
+        config={systemDetailsConfig}
+        loading={!system}
+      />
+    );
+  };
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/node-details-config.tsx -->
+```typescript
+import { 
+  DetailsModal, 
+  defaultFormatters, 
+  type HeaderConfig, 
+  type SectionConfig 
 } from '@/components/common/ui/Modal/DetailsModal';
-import {
+import { 
   FiCpu,
-  FiCalendar,
-  FiClock,
-  FiMapPin,
-  FiDatabase,
+  FiCalendar, 
+  FiClock, 
+  FiMapPin, 
+  FiDatabase, 
   FiServer,
   FiCode,
   FiInfo
@@ -8906,7 +8968,6 @@ import {
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 
-// Node details modal configuration
 export const nodeDetailsConfig = {
   header: {
     title: (node: V_nodes_completeRowSchema) => node.name || "Unnamed Node",
@@ -8983,19 +9044,15 @@ export const NodeDetailsModal = ({ node, onClose, isOpen }: { node: V_nodes_comp
 
 ```
 
-<!-- path: config/helper-functions.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/helper-functions.ts -->
 ```typescript
-// Helper: normalize various Excel/CSV date representations to 'YYYY-MM-DD' or null
 export const toPgDate = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
-  // Treat empty string as null to avoid Postgres date parse errors
   if (typeof value === "string") {
     const v = value.trim();
     if (v === "") return null;
-    // If already in YYYY-MM-DD, return as-is
     if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
 
-    // If the string is a numeric-like Excel serial, treat it as such
     if (/^\d+(?:\.\d+)?$/.test(v)) {
       const num = parseFloat(v);
       if (!isNaN(num)) {
@@ -9010,7 +9067,6 @@ export const toPgDate = (value: unknown): string | null => {
       }
     }
 
-    // Handle common D/M/Y or M/D/Y with optional time "DD/MM/YYYY HH:MM:SS" or "MM/DD/YYYY HH:MM:SS"
     const dmYTime =
       /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
     const match = v.match(dmYTime);
@@ -9018,14 +9074,12 @@ export const toPgDate = (value: unknown): string | null => {
       const d1 = parseInt(match[1], 10);
       const d2 = parseInt(match[2], 10);
       const yyyy = parseInt(match[3], 10);
-      // Disambiguate: if first part > 12 -> DD/MM/YYYY; if second part > 12 -> MM/DD/YYYY; otherwise assume DD/MM/YYYY (common in India)
       const isDMY = d1 > 12 || (d2 <= 12 && d1 <= 12);
       const dd = String(isDMY ? d1 : d2).padStart(2, "0");
       const mm = String(isDMY ? d2 : d1).padStart(2, "0");
       return `${yyyy}-${mm}-${dd}`;
     }
 
-    // Fallback to Date parsing for other formats
     const d = new Date(v);
     if (!isNaN(d.getTime())) {
       const yyyy = d.getFullYear();
@@ -9035,9 +9089,7 @@ export const toPgDate = (value: unknown): string | null => {
     }
     return null;
   }
-  // Excel serial number dates
   if (typeof value === "number") {
-    // Excel epoch (days since 1899-12-30). Multiply by ms per day.
     const ms = Math.round((value - 25569) * 86400 * 1000);
     const d = new Date(ms);
     if (!isNaN(d.getTime())) {
@@ -9048,7 +9100,6 @@ export const toPgDate = (value: unknown): string | null => {
     }
     return null;
   }
-  // Date object
   if (value instanceof Date && !isNaN(value.getTime())) {
     const yyyy = value.getFullYear();
     const mm = String(value.getMonth() + 1).padStart(2, "0");
@@ -9067,19 +9118,9 @@ export function toTitleCase(str: string): string {
     .trim();
 }
 
-/**
- * Generates a smart code from a name based on practical rules.
- * - Multi-word: "Base Transceiver Station" -> "BTS"
- * - Single long word: "Exchange" -> "EXC"
- * - Single short word: "Node" -> "NODE"
- * - Handles hyphens: "Point-to-Point" -> "PTP"
- * @param name The input string.
- * @returns The generated uppercase code.
- */
 export function generateCodeFromName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') return '';
 
-  // Clean up and split by spaces, underscores, or hyphens
   const words = name
     .trim()
     .split(/[\s_-]+/)
@@ -9089,7 +9130,6 @@ export function generateCodeFromName(name: string | null | undefined): string {
     return '';
   }
 
-  // Case 1: Multiple words -> create an acronym
   if (words.length > 1) {
     return words
       .map(word => word.charAt(0))
@@ -9097,15 +9137,12 @@ export function generateCodeFromName(name: string | null | undefined): string {
       .toLowerCase();
   }
 
-  // Case 2: A single word
   const singleWord = words[0];
 
-  // If the word is short (like an existing acronym), use the whole word.
   if (singleWord.length <= 4) {
     return singleWord.toLowerCase();
   }
 
-  // If it's a longer word, create a 3-letter abbreviation.
   return singleWord.substring(0, 3).toLowerCase();
 }
 
@@ -9131,7 +9168,6 @@ export function inferExcelFormat(
   )
     return "number";
   if (name.includes("percent")) return "percentage";
-  // common JSON-like columns
   if (
     name.includes("address") ||
     name.includes("preference") ||
@@ -9146,7 +9182,6 @@ export function inferExcelFormat(
   return "text";
 }
 
-// Helper: normalize boolean-like values to true/false or null
 export const toPgBoolean = (value: unknown): boolean | null => {
   if (value === null || value === undefined) return null;
   if (typeof value === "boolean") return value;
@@ -9163,14 +9198,6 @@ export const toPgBoolean = (value: unknown): boolean | null => {
   return null;
 };
 
-/**
- * Dynamically calculates the width of a column based on its content.
- *
- * @param columnName - The name of the column
- * @param rows - The table data (array of objects from Supabase)
- * @param ctx - Optional CanvasRenderingContext2D for measuring text width
- * @returns A number representing the width in pixels (capped at 300px)
- */
 export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
   columnName: string,
   rows: T[],
@@ -9180,17 +9207,14 @@ export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
   const MAX_WIDTH = 400;
   const PADDING = 32; // left + right cell padding
 
-  // fallback font if no canvas context provided
   if (!ctx) {
     const canvas = document.createElement("canvas");
     ctx = canvas.getContext("2d")!;
     ctx.font = "14px Inter, sans-serif"; // match your table CSS font
   }
 
-  // measure header
   let maxWidth = ctx.measureText(columnName).width;
 
-  // measure each row cell
   for (const row of rows) {
     const value = row[columnName];
     if (value == null) continue;
@@ -9201,12 +9225,11 @@ export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
     }
   }
 
-  // add padding and clamp
   return Math.min(Math.max(Math.ceil(maxWidth) + PADDING, MIN_WIDTH), MAX_WIDTH);
 }
 ```
 
-<!-- path: config/table-columns/OfcDetailsTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/OfcDetailsTableColumns.tsx -->
 ```typescript
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -9259,15 +9282,15 @@ export const OfcDetailsTableColumns = (
       'maintenance_area_name'
     ],
     overrides: {
-      updated_fiber_no_sn: {
-        title: 'End A Fiber',
-        sortable: true,
+      updated_fiber_no_sn: { 
+        title: 'End A Fiber', 
+        sortable: true, 
         searchable: true,
         excelFormat: 'number',
       },
-      updated_fiber_no_en: {
-        title: 'End B Fiber',
-        sortable: true,
+      updated_fiber_no_en: { 
+        title: 'End B Fiber', 
+        sortable: true, 
         searchable: true,
         excelFormat: 'number',
       },
@@ -9316,7 +9339,6 @@ export const OfcDetailsTableColumns = (
         searchable: true,
       },
       ofc_type_name: { title: 'Ofc Type', sortable: true, searchable: true },
-
       remark: { title: 'Remark', sortable: true, searchable: true },
       status: {
         title: 'Status',
@@ -9338,7 +9360,7 @@ export const OfcDetailsTableColumns = (
 
 ```
 
-<!-- path: config/table-columns/LogicalPathsTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/LogicalPathsTableColumns.tsx -->
 ```typescript
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
@@ -9376,7 +9398,7 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
 };
 ```
 
-<!-- path: config/table-columns/NodesTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/NodesTableColumns.tsx -->
 ```typescript
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
@@ -9424,7 +9446,7 @@ export const NodesTableColumns = (data: V_nodes_completeRowSchema[]) => {
 
 ```
 
-<!-- path: config/table-columns/UsersTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/UsersTableColumns.tsx -->
 ```typescript
 import Image from 'next/image';
 import {StatusBadge} from '@/components/common/ui/badges/StatusBadge';
@@ -9476,7 +9498,7 @@ export const UserProfileColumns = (data:V_user_profiles_extendedRowSchema[]) => 
 };
 ```
 
-<!-- path: config/table-columns/RingsTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/RingsTableColumns.tsx -->
 ```typescript
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
@@ -9557,7 +9579,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
 
 ```
 
-<!-- path: config/table-columns/OfcTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/OfcTableColumns.tsx -->
 ```typescript
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -9628,7 +9650,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
 
 ```
 
-<!-- path: config/table-columns/SystemConnectionsTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/SystemConnectionsTableColumns.tsx -->
 ```typescript
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui';
@@ -9661,10 +9683,6 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
       'sfp_port',
       'sfp_serial_no',
       'vlan',
-      'vmux_c_code',
-      'vmux_channel',
-      'vmux_subscriber',
-      'vmux_tk',
       'en_node_name',
       'sn_node_name',
       'media_type_name',
@@ -9777,113 +9795,130 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
 
 ```
 
-<!-- path: config/table-columns/SystemsTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/table-columns/SystemsTableColumns.tsx -->
 ```typescript
-import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui';
 import { FiMapPin } from 'react-icons/fi';
 import { formatDate } from '@/utils/formatters';
+import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { Row } from '@/hooks/database';
 
-export const SystemsTableColumns = (data: Row<'v_systems_complete'>[]) => {
+export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
   return useDynamicColumnConfig('v_systems_complete', {
-    data: data,
+    data: data as Row<'v_systems_complete'>[],
     omit: [
-
+      "id",
+      "node_type_name",
+      "is_ring_based",
+      "is_sdh",
+      "ring_id",
+      "system_type_id",
+      "node_id",
+      "maintenance_terminal_id",
+      "make",
+      "remark",
+      "s_no",
+      "latitude",
+      "longitude",
+      "ring_logical_area_name",
+      "sdh_gne",
+      "system_category",
+      "system_maintenance_terminal_name",
+      "system_type_code",
+      "updated_at",
+      "created_at",
     ],
     overrides: {
-      system_name:{
-            key: "system_name",
-            title: "Name",
-            dataIndex: "system_name",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 200,
-            render: (value: unknown, record: Row<'v_systems_complete'>) => {
-              const stringValue = value as string; // Type assertion since we know it will be a string
-              return (
-                <div className='flex flex-col'>
-                  <span className='font-medium text-gray-900 dark:text-white'>{stringValue}</span>
-                  <span className='text-xs text-gray-500 dark:text-gray-400'>S/N: {record.s_no}</span>
-                </div>
-              );
-            },
-          },
-          system_type_name:{
-            key: "system_type_name",
-            title: "Type",
-            dataIndex: "system_type_name",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 150,
-          },
-          node_name:{
-            key: "node_name",
-            title: "Node / Location",
-            dataIndex: "node_name",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 150,
-            render: (value) => (
-              <div className="flex items-center gap-1">
-                <FiMapPin className="h-3 w-3 text-gray-400" />
-                <span>{value as string || "N/A"}</span>
-              </div>
-            ),
-          },
-          ip_address:{
-            key: "ip_address",
-            title: "IP Address",
-            dataIndex: "ip_address",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 150,
-            render: (value: unknown) => (
-              <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
-                {value as string || "N/A"}
-              </code>
-            ),
-          },
-          status:{
-            key: "status",
-            title: "Status",
-            dataIndex: "status",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 150,
-            render: (value) => <StatusBadge status={value as boolean} />
-          },
-          commissioned_on:{
-            key: "commissioned_on",
-            title: "Commissioned On",
-            dataIndex: "commissioned_on",
-            sortable: true,
-            searchable: true,
-            filterable: true,
-            width: 150,
-            render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
-          }
+      system_name: {
+        key: 'system_name',
+        title: 'Name',
+        dataIndex: 'system_name',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 200,
+        render: (value, record) => {
+          const stringValue = value as string; // Type assertion since we know it will be a string
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium text-gray-900 dark:text-white">{stringValue}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">S/N: {record.s_no}</span>
+            </div>
+          );
+        },
+      },
+      system_type_name: {
+        key: 'system_type_name',
+        title: 'Type',
+        dataIndex: 'system_type_name',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+      },
+      node_name: {
+        key: 'node_name',
+        title: 'Node / Location',
+        dataIndex: 'node_name',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+        render: (value) => (
+          <div className="flex items-center gap-1">
+            <FiMapPin className="h-3 w-3 text-gray-400" />
+            <span>{(value as string) || 'N/A'}</span>
+          </div>
+        ),
+      },
+      ip_address: {
+        key: 'ip_address',
+        title: 'IP Address',
+        dataIndex: 'ip_address',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+        render: (value) => (
+          <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
+            {(value as string) || 'N/A'}
+          </code>
+        ),
+      },
+      status: {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+        render: (value) => <StatusBadge status={value as boolean} />,
+      },
+      commissioned_on: {
+        key: 'commissioned_on',
+        title: 'Commissioned On',
+        dataIndex: 'commissioned_on',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
+      },
     },
   });
 };
 
 ```
 
-<!-- path: config/areas.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/areas.ts -->
 ```typescript
-// config/areas.ts
 
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
 import { Maintenance_areasRowSchema, Lookup_typesRowSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
 
-// THE FIX: Change from 'interface' to a 'type' alias using a type intersection (&).
-// This correctly merges the index signature from the Zod type with the new properties.
 export type MaintenanceAreaWithRelations = Maintenance_areasRowSchema & {
   area_type: Lookup_typesRowSchema | null;
   parent_area: MaintenanceAreaWithRelations | null;
@@ -9900,7 +9935,6 @@ export interface AreaFormModalProps {
   isLoading: boolean;
 }
 
-// --- CONFIGURATION ---
 export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
   entityName: 'area', entityDisplayName: 'Area', entityPluralName: 'Areas',
   parentField: 'parent_area', icon: FiBriefcase, isHierarchical: true,
@@ -9922,15 +9956,13 @@ export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
 };
 ```
 
-<!-- path: config/designations.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/designations.ts -->
 ```typescript
-// config/designations.ts
 import { z } from 'zod';
 import { EntityConfig } from "@/components/common/entity-management/types";
 import { FiBriefcase } from "react-icons/fi";
 import { employee_designationsRowSchema } from "@/schemas/zod-schemas";
 
-// --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
 export type Designation = z.infer<typeof employee_designationsRowSchema>;
 
 export interface DesignationWithRelations extends Designation {
@@ -9938,7 +9970,6 @@ export interface DesignationWithRelations extends Designation {
   child_designations: DesignationWithRelations[];
 }
 
-// --- CONFIGURATION (Unchanged) ---
 export const designationConfig: EntityConfig<DesignationWithRelations> = {
   entityName: 'designation', entityDisplayName: 'Designation', entityPluralName: 'Designations',
   parentField: 'parent_designation', icon: FiBriefcase, isHierarchical: true,
@@ -9960,9 +9991,8 @@ export const designationConfig: EntityConfig<DesignationWithRelations> = {
 };
 ```
 
-<!-- path: config/maintenance-area-details-config.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/config/maintenance-area-details-config.tsx -->
 ```typescript
-// config/maintenance-area-details-config.tsx
 import {
   DetailsModal,
   defaultFormatters,
@@ -9983,7 +10013,6 @@ import {
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { MaintenanceAreaWithRelations } from "@/config/areas";
 
-// This configuration defines how to display the rich data for a Maintenance Area.
 export const maintenanceAreaDetailsConfig = {
   header: {
     title: (area: MaintenanceAreaWithRelations) => area.name,
@@ -10019,7 +10048,6 @@ export const maintenanceAreaDetailsConfig = {
       fields: [
         { key: "contact_person", label: "Contact Person", icon: <FiUser size={18} /> },
         { key: "contact_number", label: "Contact Number", icon: <FiPhone size={18} /> },
-        // Ensure 'email' is treated as a string before creating the link.
         {
           key: "email",
           label: "Email",
@@ -10068,7 +10096,6 @@ export const maintenanceAreaDetailsConfig = {
   ] as SectionConfig<MaintenanceAreaWithRelations>[],
 };
 
-// This is the actual component that will be imported by the page.
 export const MaintenanceAreaDetailsModal = ({
   area,
   onClose,
@@ -10088,10 +10115,9 @@ export const MaintenanceAreaDetailsModal = ({
     />
   );
 };
-
 ```
 
-<!-- path: types/supabase-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/supabase-types.ts -->
 ```typescript
 export type Json =
   | string
@@ -10102,8 +10128,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
@@ -12842,75 +12866,6 @@ export type Database = {
           },
         ]
       }
-      vmux_connections: {
-        Row: {
-          c_code: string | null
-          channel: string | null
-          subscriber: string | null
-          system_connection_id: string
-          tk: string | null
-        }
-        Insert: {
-          c_code?: string | null
-          channel?: string | null
-          subscriber?: string | null
-          system_connection_id: string
-          tk?: string | null
-        }
-        Update: {
-          c_code?: string | null
-          channel?: string | null
-          subscriber?: string | null
-          system_connection_id?: string
-          tk?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vmux_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vmux_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vmux_systems: {
-        Row: {
-          system_id: string
-          vm_id: string | null
-        }
-        Insert: {
-          system_id: string
-          vm_id?: string | null
-        }
-        Update: {
-          system_id?: string
-          vm_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vmux_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vmux_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       v_cable_segments_at_jc: {
@@ -13738,10 +13693,6 @@ export type Database = {
           system_type_name: string | null
           updated_at: string | null
           vlan: string | null
-          vmux_c_code: string | null
-          vmux_channel: string | null
-          vmux_subscriber: string | null
-          vmux_tk: string | null
         }
         Relationships: [
           {
@@ -13967,7 +13918,6 @@ export type Database = {
           system_type_id: string | null
           system_type_name: string | null
           updated_at: string | null
-          vmux_vm_id: string | null
         }
         Relationships: [
           {
@@ -14220,10 +14170,6 @@ export type Database = {
       }
       deprovision_logical_path: {
         Args: { p_path_id: string }
-        Returns: undefined
-      }
-      deprovision_path: {
-        Args: { p_logical_path_id: string; p_system_id: string }
         Returns: undefined
       }
       execute_sql: {
@@ -14547,7 +14493,6 @@ export type Database = {
           p_status: boolean
           p_system_name: string
           p_system_type_id: string
-          p_vm_id?: string
         }
         Returns: {
           commissioned_on: string | null
@@ -14732,9 +14677,8 @@ export const Constants = {
 
 ```
 
-<!-- path: types/user-roles.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/user-roles.ts -->
 ```typescript
-// types/user-roles.ts
 
 import { Json } from "@/types/supabase-types";
 import z from "zod";
@@ -14752,9 +14696,8 @@ export enum UserRole {
 }
 ```
 
-<!-- path: types/flattened-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/flattened-types.ts -->
 ```typescript
-// Auto-generated from types/supabase-types.ts
 
 import type { Json, Database } from "@/types/supabase-types";
 
@@ -16395,45 +16338,6 @@ export type User_profilesUpdate = {
     updated_at?: string | null;
 };
 
-export type Vmux_connectionsRow = {
-    c_code: string | null;
-    channel: string | null;
-    subscriber: string | null;
-    system_connection_id: string;
-    tk: string | null;
-};
-
-export type Vmux_connectionsInsert = {
-    c_code?: string | null;
-    channel?: string | null;
-    subscriber?: string | null;
-    system_connection_id: string;
-    tk?: string | null;
-};
-
-export type Vmux_connectionsUpdate = {
-    c_code?: string | null;
-    channel?: string | null;
-    subscriber?: string | null;
-    system_connection_id?: string;
-    tk?: string | null;
-};
-
-export type Vmux_systemsRow = {
-    system_id: string;
-    vm_id: string | null;
-};
-
-export type Vmux_systemsInsert = {
-    system_id: string;
-    vm_id?: string | null;
-};
-
-export type Vmux_systemsUpdate = {
-    system_id?: string;
-    vm_id?: string | null;
-};
-
 // ============= VIEWS =============
 
 export type V_cable_segments_at_jcRow = {
@@ -16697,10 +16601,6 @@ export type V_system_connections_completeRow = {
     system_type_name: string | null;
     updated_at: string | null;
     vlan: string | null;
-    vmux_c_code: string | null;
-    vmux_channel: string | null;
-    vmux_subscriber: string | null;
-    vmux_tk: string | null;
 };
 
 export type V_system_ring_paths_detailedRow = {
@@ -16745,7 +16645,6 @@ export type V_systems_completeRow = {
     system_type_id: string | null;
     system_type_name: string | null;
     updated_at: string | null;
-    vmux_vm_id: string | null;
 };
 
 export type V_user_profiles_extendedRow = {
@@ -16836,9 +16735,7 @@ export const tableNames = [
   "sfp_based_connections",
   "system_connections",
   "systems",
-  "user_profiles",
-  "vmux_connections",
-  "vmux_systems"
+  "user_profiles"
 ] as const;
 
 export const viewNames = [
@@ -16864,7 +16761,7 @@ export const viewNames = [
 
 ```
 
-<!-- path: types/custom.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/custom.ts -->
 ```typescript
 import { Json } from "@/types/supabase-types";
 import z from "zod";
@@ -16881,7 +16778,7 @@ export const JsonSchema: z.ZodType<Json> = z.lazy(() =>
 );
 ```
 
-<!-- path: types/pollyfills.d.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/pollyfills.d.ts -->
 ```typescript
 declare module 'core-js/stable';
 declare module 'regenerator-runtime/runtime';
@@ -16890,7 +16787,7 @@ declare module 'intersection-observer';
 declare module 'url-polyfill';
 ```
 
-<!-- path: types/error-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/types/error-types.ts -->
 ```typescript
 export type DetailedError = Error & { details?: unknown; hint?: unknown; code?: unknown };
 
@@ -16899,7 +16796,7 @@ export function hasDetails(error: unknown): error is DetailedError {
 }
 ```
 
-<!-- path: constants/table-column-keys.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/constants/table-column-keys.ts -->
 ```typescript
 import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
@@ -17053,7 +16950,7 @@ export type ValidatedColumnKeys = {
 };
 
 const TABLE_COLUMN_OBJECTS = {
-  // Core Tables
+  // ==================== Core Tables ====================
   user_profiles: {
     id: "id",
     first_name: "first_name",
@@ -17070,6 +16967,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
   lookup_types: {
+    id: "id",
     category: "category",
     name: "name",
     code: "code",
@@ -17081,9 +16979,9 @@ const TABLE_COLUMN_OBJECTS = {
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   maintenance_areas: {
+    id: "id",
     name: "name",
     contact_person: "contact_person",
     contact_number: "contact_number",
@@ -17097,15 +16995,14 @@ const TABLE_COLUMN_OBJECTS = {
     parent_id: "parent_id",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   employee_designations: {
+    id: "id",
     name: "name",
     parent_id: "parent_id",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   employees: {
     id: "id",
@@ -17176,9 +17073,14 @@ const TABLE_COLUMN_OBJECTS = {
     uploaded_at: "uploaded_at",
     user_id: "user_id",
   },
-  folders: { id: "id", name: "name", user_id: "user_id", created_at: "created_at" },
+  folders: {
+    id: "id",
+    name: "name",
+    user_id: "user_id",
+    created_at: "created_at",
+  },
 
-  // System Tables
+  // ==================== System Tables ====================
   systems: {
     id: "id",
     system_name: "system_name",
@@ -17241,7 +17143,10 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     sfp_type_id: "sfp_type_id",
   },
-  sdh_systems: { system_id: "system_id", gne: "gne" },
+  sdh_systems: {
+    system_id: "system_id",
+    gne: "gne",
+  },
   sdh_connections: {
     system_connection_id: "system_connection_id",
     stm_no: "stm_no",
@@ -17257,14 +17162,6 @@ const TABLE_COLUMN_OBJECTS = {
     node_id: "node_id",
     node_position: "node_position",
     node_ip: "node_ip",
-  },
-  vmux_systems: { system_id: "system_id", vm_id: "vm_id" },
-  vmux_connections: {
-    system_connection_id: "system_connection_id",
-    subscriber: "subscriber",
-    c_code: "c_code",
-    channel: "channel",
-    tk: "tk",
   },
   ofc_connections: {
     id: "id",
@@ -17295,7 +17192,6 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: "created_at",
     updated_at: "updated_at",
   },
-
   cable_segments: {
     id: "id",
     original_cable_id: "original_cable_id",
@@ -17370,7 +17266,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
 
-  // ===== Views =====
+  // ==================== Views ====================
   v_cable_utilization: {
     cable_id: "cable_id",
     route_name: "route_name",
@@ -17420,6 +17316,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
   v_nodes_complete: {
+    id: "id",
     name: "name",
     latitude: "latitude",
     longitude: "longitude",
@@ -17432,9 +17329,9 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_terminal_id: "maintenance_terminal_id",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   v_ofc_connections_complete: {
+    id: "id",
     ofc_route_name: "ofc_route_name",
     updated_sn_name: "updated_sn_name",
     updated_fiber_no_sn: "updated_fiber_no_sn",
@@ -17471,7 +17368,6 @@ const TABLE_COLUMN_OBJECTS = {
     sn_id: "sn_id",
     en_id: "en_id",
     ofc_id: "ofc_id",
-    id: "id",
   },
   v_system_connections_complete: {
     id: "id",
@@ -17515,10 +17411,6 @@ const TABLE_COLUMN_OBJECTS = {
     sn_ip: "sn_ip",
     updated_at: "updated_at",
     vlan: "vlan",
-    vmux_c_code: "vmux_c_code",
-    vmux_channel: "vmux_channel",
-    vmux_subscriber: "vmux_subscriber",
-    vmux_tk: "vmux_tk",
   },
   v_systems_complete: {
     id: "id",
@@ -17547,7 +17439,6 @@ const TABLE_COLUMN_OBJECTS = {
     system_type_code: "system_type_code",
     updated_at: "updated_at",
     created_at: "created_at",
-    vmux_vm_id: "vmux_vm_id",
   },
   v_user_profiles_extended: {
     id: "id",
@@ -17619,6 +17510,7 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_area_type_code: "maintenance_area_type_code",
   },
   v_employees: {
+    id: "id",
     employee_name: "employee_name",
     employee_contact: "employee_contact",
     employee_email: "employee_email",
@@ -17634,9 +17526,9 @@ const TABLE_COLUMN_OBJECTS = {
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
-    id: "id",
   },
   v_rings: {
+    id: "id",
     name: "name",
     total_nodes: "total_nodes",
     description: "description",
@@ -17648,7 +17540,6 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
     maintenance_terminal_id: "maintenance_terminal_id",
     ring_type_id: "ring_type_id",
-    id: "id",
   },
   v_system_ring_paths_detailed: {
     created_at: "created_at",
@@ -17698,7 +17589,6 @@ const TABLE_COLUMN_OBJECTS = {
   },
 } satisfies ValidatedColumnKeys;
 
-// Programmatically create the array-based export from the validated object.
 export const TABLE_COLUMN_KEYS = (Object.keys(TABLE_COLUMN_OBJECTS) as Array<keyof typeof TABLE_COLUMN_OBJECTS>).reduce(
   (acc, tableName) => {
     const value = TABLE_COLUMN_OBJECTS[tableName];
@@ -17725,8 +17615,6 @@ export const TABLES = {
   sdh_node_associations: "sdh_node_associations",
   sdh_systems: "sdh_systems",
   system_connections: "system_connections",
-  vmux_connections: "vmux_connections",
-  vmux_systems: "vmux_systems",
   files: "files",
   folders: "folders",
   ring_based_systems: "ring_based_systems",
@@ -17765,19 +17653,30 @@ export const TABLE_NAMES = {
 
 ```
 
-<!-- path: constants/constants.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/constants/constants.ts -->
 ```typescript
+import { UserRole } from "@/types/user-roles";
+
 export const DEFAULTS = {
   DEBOUNCE_DELAY: 400,
   PAGE_SIZE: 10,
   PAGE_SIZE_OPTIONS: [10, 20, 50, 100, 500],
 };
 
+export const allowedRoles = [
+    UserRole.VIEWER,
+    UserRole.ADMIN,
+    UserRole.CPANADMIN,
+    UserRole.MAANADMIN,
+    UserRole.SDHADMIN,
+    UserRole.ASSETADMIN,
+    UserRole.MNGADMIN,
+  ]
+
 ```
 
-<!-- path: constants/ofcFormConfig.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/constants/ofcFormConfig.ts -->
 ```typescript
-// components/ofc/OfcForm/constants/ofcFormConfig.ts
 export const OFC_FORM_CONFIG = {
   CAPACITY_OPTIONS: [
     { value: '2', label: '2' },
@@ -17809,32 +17708,24 @@ export const OFC_FORM_CONFIG = {
 
 ```
 
-<!-- path: middleware.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/middleware.ts -->
 ```typescript
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  // update user's auth session
   return await updateSession(request);
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except the landing page `/`, `/login`, `/signup` and for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|^$|^login$|^signup$).*)",
   ],
 };
 
 ```
 
-<!-- path: public/sw.js -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/public/sw.js -->
 ```javascript
 self.addEventListener('push', function (event) {
   if (event.data) {
@@ -17852,15 +17743,14 @@ self.addEventListener('push', function (event) {
     event.waitUntil(self.registration.showNotification(data.title, options))
   }
 })
-
+ 
 self.addEventListener('notificationclick', function (event) {
-  // console.log('Notification click received.')
   event.notification.close()
   event.waitUntil(clients.openWindow('<https://hnvtx.vercel.app>'))
 })
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/03_indexes.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/03_indexes.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/03_indexes.sql
 -- Description: Creates indexes for the Advanced OFC module tables.
@@ -17869,7 +17759,7 @@ CREATE INDEX IF NOT EXISTS idx_logical_fiber_paths_source_system_id ON public.lo
 CREATE INDEX IF NOT EXISTS idx_logical_path_segments_path_id ON public.logical_path_segments(logical_path_id);
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/05_triggers.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/05_triggers.sql -->
 ```sql
 -- Ensure a clean state by dropping any old triggers that might exist.
 DROP TRIGGER IF EXISTS on_junction_closure_change ON public.junction_closures;
@@ -17885,7 +17775,7 @@ COMMENT ON TRIGGER on_junction_closure_change ON public.junction_closures
 IS 'When a JC is added or removed, this trigger calls a function to recalculate the virtual segments of the affected OFC cable.';
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/02_views.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/02_views.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/02_views.sql
 -- Description: Defines views for analyzing OFC paths and utilization. [UPDATED]
@@ -17984,7 +17874,7 @@ GROUP BY
   oc.id, oc.route_name, oc.capacity;
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/04_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/04_functions.sql -->
 ```sql
 -- path: data/migrations/04_advanced_ofc/04_functions.sql
 -- Description: All functions for cable segmentation, splicing, and fiber path management. [CONSOLIDATED & CORRECTED]
@@ -18182,7 +18072,7 @@ BEGIN
         previous_splice_id UUID,
         visited_segments UUID[]
     ) ON COMMIT DROP;
-
+    
     -- Trace forward
     INSERT INTO temp_path_trace
     WITH RECURSIVE forward_trace AS (
@@ -18192,9 +18082,9 @@ BEGIN
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
-
+        
         UNION ALL
-
+        
         SELECT
             p.step + 1,
             s.outgoing_segment_id,
@@ -18202,15 +18092,15 @@ BEGIN
             s.id,
             p.visited_segments || s.outgoing_segment_id
         FROM forward_trace p
-        JOIN public.fiber_splices s
-            ON p.current_segment_id = s.incoming_segment_id
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.incoming_segment_id 
             AND p.current_fiber_no = s.incoming_fiber_no
         WHERE s.outgoing_segment_id IS NOT NULL
           AND NOT (s.outgoing_segment_id = ANY(p.visited_segments))
           AND p.step < 100
     )
     SELECT * FROM forward_trace;
-
+    
     -- Trace backward
     INSERT INTO temp_path_trace
     WITH RECURSIVE backward_trace AS (
@@ -18220,9 +18110,9 @@ BEGIN
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
-
+        
         UNION ALL
-
+        
         SELECT
             p.step - 1,
             s.incoming_segment_id,
@@ -18230,15 +18120,15 @@ BEGIN
             s.id,
             p.visited_segments || s.incoming_segment_id
         FROM backward_trace p
-        JOIN public.fiber_splices s
-            ON p.current_segment_id = s.outgoing_segment_id
+        JOIN public.fiber_splices s 
+            ON p.current_segment_id = s.outgoing_segment_id 
             AND p.current_fiber_no = s.outgoing_fiber_no
         WHERE s.incoming_segment_id IS NOT NULL
           AND NOT (s.incoming_segment_id = ANY(p.visited_segments))
           AND p.step > -100
     )
     SELECT * FROM backward_trace WHERE step < 0;
-
+    
     -- Return results
     RETURN QUERY
     WITH path_elements AS (
@@ -18250,9 +18140,9 @@ BEGIN
             fp.current_fiber_no as fiber_in,
             fp.current_fiber_no as fiber_out
         FROM temp_path_trace fp
-
+        
         UNION ALL
-
+        
         -- Splices
         SELECT
             fp.step * 2 - 1 AS order_key,
@@ -18272,9 +18162,9 @@ BEGIN
             WHEN pe.element_type = 'SPLICE' THEN n.name
         END AS element_name,
         CASE
-            WHEN pe.element_type = 'SEGMENT' THEN
+            WHEN pe.element_type = 'SEGMENT' THEN 
                 'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
-            WHEN pe.element_type = 'SPLICE' THEN
+            WHEN pe.element_type = 'SPLICE' THEN 
                 'Junction Closure Splice'
         END AS details,
         pe.fiber_in,
@@ -18282,23 +18172,23 @@ BEGIN
         cs.distance_km,
         fs.loss_db,
         cs.original_cable_id,
-        cs.start_node_id,
-        cs.end_node_id
+        cs.start_node_id,     
+        cs.end_node_id        
     FROM path_elements pe
-    LEFT JOIN public.cable_segments cs
+    LEFT JOIN public.cable_segments cs 
         ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
-    LEFT JOIN public.ofc_cables oc
+    LEFT JOIN public.ofc_cables oc 
         ON cs.original_cable_id = oc.id
     LEFT JOIN public.nodes sn ON cs.start_node_id = sn.id
     LEFT JOIN public.nodes en ON cs.end_node_id = en.id
-    LEFT JOIN public.fiber_splices fs
+    LEFT JOIN public.fiber_splices fs 
         ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
-    LEFT JOIN public.junction_closures jc
+    LEFT JOIN public.junction_closures jc 
         ON fs.jc_id = jc.id
-    LEFT JOIN public.nodes n
+    LEFT JOIN public.nodes n 
         ON jc.node_id = n.id
     ORDER BY pe.order_key;
-
+    
     -- Cleanup
     DROP TABLE IF EXISTS temp_path_trace;
 END;
@@ -18357,66 +18247,66 @@ SET search_path = public
 AS $$
 -- Fetches info about the requested JC
 WITH jc_info AS (
-  SELECT jc.id, n.name, jc.node_id
-  FROM public.junction_closures jc
-  JOIN public.nodes n ON jc.node_id = n.id
+  SELECT jc.id, n.name, jc.node_id 
+  FROM public.junction_closures jc 
+  JOIN public.nodes n ON jc.node_id = n.id 
   WHERE jc.id = p_jc_id
 ),
--- Finds all JCs at the same node
+-- Finds all JCs at the same node 
 all_jcs_at_node AS (
-  SELECT id
-  FROM public.junction_closures
+  SELECT id 
+  FROM public.junction_closures 
   WHERE node_id = (SELECT node_id FROM jc_info)
-),
--- Finds all segments at the same node
+), 
+-- Finds all segments at the same node 
 segments_at_jc AS (
-  SELECT
-    cs.id as segment_id,
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
+  SELECT 
+    cs.id as segment_id, 
+    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
     cs.fiber_count
-  FROM public.cable_segments cs
+  FROM public.cable_segments cs 
   JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-  WHERE cs.start_node_id = (SELECT node_id FROM jc_info)
+  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
      OR cs.end_node_id = (SELECT node_id FROM jc_info)
-),
+), 
 fiber_universe AS (
-  SELECT s.segment_id, series.i as fiber_no
+  SELECT s.segment_id, series.i as fiber_no 
   FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-),
+), 
 splice_info AS (
   SELECT
-    fs.id as splice_id,
-    fs.jc_id,
-    fs.incoming_segment_id,
-    fs.incoming_fiber_no,
-    fs.outgoing_segment_id,
-    fs.outgoing_fiber_no,
+    fs.id as splice_id, 
+    fs.jc_id, 
+    fs.incoming_segment_id, 
+    fs.incoming_fiber_no, 
+    fs.outgoing_segment_id, 
+    fs.outgoing_fiber_no, 
     fs.loss_db,
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')'
-     FROM cable_segments cs_out
-     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
+     FROM cable_segments cs_out 
+     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
      WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')'
-     FROM cable_segments cs_in
-     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
+     FROM cable_segments cs_in 
+     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
      WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs
+  FROM public.fiber_splices fs 
   WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
 )
 SELECT jsonb_build_object(
   'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
   'segments_at_jc', (
     SELECT jsonb_agg(jsonb_build_object(
-      'segment_id', seg.segment_id,
-      'segment_name', seg.segment_name,
+      'segment_id', seg.segment_id, 
+      'segment_name', seg.segment_name, 
       'fiber_count', seg.fiber_count,
       'fibers', (
         SELECT jsonb_agg(jsonb_build_object(
           'fiber_no', fu.fiber_no,
-          'status', CASE
-            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming'
-            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing'
-            ELSE 'available'
+          'status', CASE 
+            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
+            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
+            ELSE 'available' 
           END,
           'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
           'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
@@ -18424,11 +18314,11 @@ SELECT jsonb_build_object(
           'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
         ) ORDER BY fu.fiber_no)
         FROM fiber_universe fu
-        LEFT JOIN splice_info s_in
-          ON fu.segment_id = s_in.incoming_segment_id
+        LEFT JOIN splice_info s_in 
+          ON fu.segment_id = s_in.incoming_segment_id 
           AND fu.fiber_no = s_in.incoming_fiber_no
-        LEFT JOIN splice_info s_out
-          ON fu.segment_id = s_out.outgoing_segment_id
+        LEFT JOIN splice_info s_out 
+          ON fu.segment_id = s_out.outgoing_segment_id 
           AND fu.fiber_no = s_out.outgoing_fiber_no
         WHERE fu.segment_id = seg.segment_id
       )
@@ -18459,7 +18349,7 @@ DECLARE
     v_active_status_id UUID;
 BEGIN
     -- Get the ID for the 'active' operational status from lookup_types
-    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUSES' AND name = 'active' LIMIT 1;
+    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
     IF v_active_status_id IS NULL THEN
         RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
     END IF;
@@ -18503,8 +18393,8 @@ GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UU
 
 -- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
 CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(
-    p_jc_id UUID,
-    p_segment1_id UUID,
+    p_jc_id UUID, 
+    p_segment1_id UUID, 
     p_segment2_id UUID,
     p_loss_db NUMERIC DEFAULT 0
 )
@@ -18514,11 +18404,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    segment1_fibers INT;
-    segment2_fibers INT;
-    i INT;
+    segment1_fibers INT; 
+    segment2_fibers INT; 
+    i INT; 
     splice_count INT := 0;
-    available_fibers_s1 INT[];
+    available_fibers_s1 INT[]; 
     available_fibers_s2 INT[];
     v_straight_splice_id UUID;
 BEGIN
@@ -18530,31 +18420,31 @@ BEGIN
     -- Get fiber counts for both segments
     SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
     SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
-
-    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN
-        RAISE EXCEPTION 'One or both segments not found.';
+    
+    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN 
+        RAISE EXCEPTION 'One or both segments not found.'; 
     END IF;
 
     -- Find available fibers in segment 1
-    SELECT array_agg(s.i) INTO available_fibers_s1
+    SELECT array_agg(s.i) INTO available_fibers_s1 
     FROM generate_series(1, segment1_fibers) s(i)
     WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs
-        WHERE fs.jc_id = p_jc_id
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
         AND (
-            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i)
+            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) 
             OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)
         )
     );
-
+    
     -- Find available fibers in segment 2
-    SELECT array_agg(s.i) INTO available_fibers_s2
+    SELECT array_agg(s.i) INTO available_fibers_s2 
     FROM generate_series(1, segment2_fibers) s(i)
     WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs
-        WHERE fs.jc_id = p_jc_id
+        SELECT 1 FROM public.fiber_splices fs 
+        WHERE fs.jc_id = p_jc_id 
         AND (
-            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i)
+            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) 
             OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)
         )
     );
@@ -18562,28 +18452,28 @@ BEGIN
     -- Create splices for each available fiber pair
     FOR i IN 1..LEAST(cardinality(available_fibers_s1), cardinality(available_fibers_s2)) LOOP
         INSERT INTO public.fiber_splices (
-            jc_id,
-            incoming_segment_id,
-            incoming_fiber_no,
-            outgoing_segment_id,
-            outgoing_fiber_no,
+            jc_id, 
+            incoming_segment_id, 
+            incoming_fiber_no, 
+            outgoing_segment_id, 
+            outgoing_fiber_no, 
             splice_type_id,
             loss_db
         )
         VALUES (
-            p_jc_id,
-            p_segment1_id,
-            available_fibers_s1[i],
-            p_segment2_id,
-            available_fibers_s2[i],
+            p_jc_id, 
+            p_segment1_id, 
+            available_fibers_s1[i], 
+            p_segment2_id, 
+            available_fibers_s2[i], 
             v_straight_splice_id,
             p_loss_db
         );
         splice_count := splice_count + 1;
     END LOOP;
-
+    
     RETURN jsonb_build_object(
-        'status', 'success',
+        'status', 'success', 
         'splices_created', splice_count,
         'loss_db_applied', p_loss_db
     );
@@ -18594,7 +18484,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) TO authenticated;
 
 -- Optional: Keep backward compatibility with old function signature
-COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS
+COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
 'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
 
 
@@ -18625,7 +18515,7 @@ GRANT EXECUTE ON FUNCTION public.get_all_splices() TO authenticated;
 
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/06_rls_and_grants.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/06_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/06_rls_and_grants.sql
 -- Description: RLS policies and Grants for the Advanced OFC (Route Manager) module.
@@ -18703,13 +18593,13 @@ BEGIN
   GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-
+  
   RAISE NOTICE 'Applied SELECT grants on advanced OFC views for ALL relevant roles.';
 END;
 $$;
 ```
 
-<!-- path: data/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql -->
 ```sql
 -- Path: migrations/04_advanced_ofc/01_tables_advanced_ofc.sql
 -- Description: Defines tables for advanced OFC path and splice management. [CORRECTED FOR SEGMENTS]
@@ -18789,7 +18679,7 @@ CREATE TABLE IF NOT EXISTS public.logical_path_segments (
 
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/03_views.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/03_views.sql -->
 ```sql
 -- path: data/migrations/02_core_infrastructure/03_views.sql
 -- Description: Defines denormalized views for the Core Infrastructure module. [PERFORMANCE OPTIMIZED]
@@ -18862,7 +18752,7 @@ LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id;
 
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/02_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/02_functions.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/02_functions.sql
 -- Description: Contains helper and trigger functions for core tables.
@@ -18915,7 +18805,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/01_tables_core.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/01_tables_core.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/01_tables_core.sql
 -- Description: Defines all core infrastructure and master data tables.
@@ -19088,7 +18978,7 @@ CREATE TABLE IF NOT EXISTS public.files (
 );
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/04_indexes.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/04_indexes.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/04_indexes.sql
 -- Description: Creates all B-tree and GIN (FTS) indexes for the Core module.
@@ -19137,7 +19027,7 @@ CREATE INDEX IF NOT EXISTS idx_ofc_cables_remark_fts ON public.ofc_cables USING 
 CREATE INDEX IF NOT EXISTS idx_ofc_connections_remark_fts ON public.ofc_connections USING gin(to_tsvector('english', remark));
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/06_triggers_ofc_connections.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/06_triggers_ofc_connections.sql -->
 ```sql
 -- Path: migrations/02_core_infrastructure/07_triggers_ofc_connections.sql
 -- Description: Creates a trigger to automatically populate ofc_connections when a new ofc_cable is inserted.
@@ -19192,7 +19082,7 @@ EXECUTE FUNCTION public.create_initial_connections_for_cable();
 COMMENT ON TRIGGER on_ofc_cable_created ON public.ofc_cables IS 'Automatically creates individual fiber records in ofc_connections upon the creation of a new ofc_cable.';
 ```
 
-<!-- path: data/migrations/02_core_infrastructure/05_rls_and_grants.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/02_core_infrastructure/05_rls_and_grants.sql -->
 ```sql
 -- path: data/migrations/02_core_infrastructure/05_rls_and_grants.sql
 -- Description: Applies RLS policies and grants to core tables and views created in this module.
@@ -19213,12 +19103,12 @@ BEGIN
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-
+    
     -- Grant permissions to specific roles
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
-
+    
     -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
 
@@ -19251,7 +19141,7 @@ $$;
 DO $$
 BEGIN
   -- Grant SELECT on all views created in this module to all relevant roles.
-  GRANT SELECT ON
+  GRANT SELECT ON 
     public.v_lookup_types,
     public.v_maintenance_areas,
     public.v_employee_designations,
@@ -19265,7 +19155,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/05_auditing/03_triggers_attach_all.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/05_auditing/03_triggers_attach_all.sql -->
 ```sql
 -- Path: migrations/05_auditing/03_triggers_attach_all.sql
 -- Description: Dynamically attaches the log_data_changes trigger to all relevant tables.
@@ -19311,7 +19201,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/05_auditing/02_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/05_auditing/02_functions.sql -->
 ```sql
 -- Path: migrations/05_auditing/02_functions.sql
 -- Description: Core functions for the auditing system.
@@ -19406,7 +19296,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/05_auditing/01_table_user_activity_logs.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/05_auditing/01_table_user_activity_logs.sql -->
 ```sql
 -- Path: migrations/05_auditing/01_table_user_activity_logs.sql
 -- Description: Defines the table for storing all user activity and data change logs.
@@ -19430,7 +19320,7 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_logs_action_type ON public.user_act
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_table_name ON public.user_activity_logs(table_name);
 ```
 
-<!-- path: data/migrations/05_auditing/04_rls_and_grants.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/05_auditing/04_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/05_auditing/04_rls_and_grants.sql
 -- Description: Secures the user_activity_logs table, allowing access only to admins.
@@ -19454,7 +19344,7 @@ USING (is_super_admin() OR get_my_role() = 'admin')
 WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
 ```
 
-<!-- path: data/migrations/06_utilities/01_generic_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/01_generic_functions.sql -->
 ```sql
 -- path: data/migrations/06_utilities/01_generic_functions.sql
 -- Description: A collection of generic, reusable utility functions.
@@ -19485,9 +19375,6 @@ DECLARE
   where_clause TEXT := '';
   filter_key TEXT;
   filter_value JSONB;
-  or_conditions TEXT[];
-  or_key TEXT;
-  or_value TEXT;
   alias_prefix TEXT;
 BEGIN
     alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
@@ -19499,31 +19386,27 @@ BEGIN
     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
-        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
-            or_conditions := ARRAY[]::TEXT[];
-            FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
-                IF public.column_exists('public', p_view_name, or_key) THEN
-                    or_conditions := array_append(or_conditions, format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%'));
-                END IF;
-            END LOOP;
-
-            IF array_length(or_conditions, 1) > 0 THEN
-                where_clause := where_clause || ' AND (' || array_to_string(or_conditions, ' OR ') || ')';
-            END IF;
-        ELSE
-            IF public.column_exists('public', p_view_name, filter_key) THEN
-                IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
-                    -- Handle complex filters like { "operator": "in", "value": [...] }
-                ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                    where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
-                ELSE
-                    where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
-                END IF;
+        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'string' THEN
+            -- Handle string format like '(col1.ilike.%val%,col2.ilike.%val%)'
+            where_clause := where_clause || ' AND ' || regexp_replace(filter_value::text, '([a-zA-Z0-9_]+)\.', alias_prefix || '\1.', 'g');
+        ELSIF public.column_exists('public', p_view_name, filter_key) THEN
+            -- This part handles standard key-value filters
+            IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
+                -- Handle complex filters if needed in the future, e.g., { "operator": "gt", "value": 10 }
+            ELSIF jsonb_typeof(filter_value) = 'array' THEN
+                where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
+            ELSE
+                where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
             END IF;
         END IF;
     END LOOP;
 
-    RETURN where_clause;
+    -- Prepend WHERE if there are any clauses
+    IF where_clause != '' THEN
+        RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
+    END IF;
+
+    RETURN '';
 END;
 $$;
 
@@ -19545,7 +19428,7 @@ DECLARE
   result_json JSON;
 BEGIN
   cleaned_query := lower(regexp_replace(sql_query, '^\s+', ''));
-
+  
   IF cleaned_query !~ '^(select|with|call)\s' THEN
     RAISE EXCEPTION 'Only read-only statements (SELECT, WITH, CALL) are allowed.';
   END IF;
@@ -19598,7 +19481,7 @@ BEGIN
   ELSE select_clause := '*'; END IF;
 
   where_clause := public.build_where_clause(filters, '');
-
+  
   IF where_clause != '' THEN
     where_clause := 'WHERE ' || substr(where_clause, 6);
   END IF;
@@ -19702,7 +19585,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated;
 ```
 
-<!-- path: data/migrations/06_utilities/03_no_pagination_specialized_function.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/03_no_pagination_specialized_function.sql -->
 ```sql
 -- =================================================================
 -- Section 3: Specialized Utility Functions (No Pagination)
@@ -19837,14 +19720,14 @@ BEGIN
 
     -- Delete the logical_fiber_paths records themselves (cascading delete will handle protection path)
     DELETE FROM public.logical_fiber_paths WHERE id = v_working_path_id;
-
+    
 END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated;
 ```
 
-<!-- path: data/migrations/06_utilities/02_paged_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/02_paged_functions.sql -->
 ```sql
 -- path: data/migrations/06_utilities/02_paged_functions.sql
 -- =================================================================
@@ -19867,6 +19750,7 @@ DECLARE
     status_column_exists BOOLEAN;
 BEGIN
     status_column_exists := public.column_exists('public', p_view_name, 'status');
+    -- Use the updated build_where_clause function
     where_clause := public.build_where_clause(p_filters, p_view_name);
 
     IF public.column_exists('public', p_view_name, p_order_by) THEN
@@ -19882,18 +19766,18 @@ BEGIN
     END IF;
 
     data_query := format(
-        'SELECT jsonb_agg(v) FROM (SELECT * FROM public.%I v WHERE 1=1 %s ORDER BY v.%I %s LIMIT %L OFFSET %L) v',
+        'SELECT jsonb_agg(v) FROM (SELECT * FROM public.%I v %s ORDER BY v.%I %s LIMIT %L OFFSET %L) v',
         p_view_name, where_clause, order_by_column, p_order_dir, p_limit, p_offset
     );
 
     IF status_column_exists THEN
         count_query := format(
             'SELECT count(*), count(*) FILTER (WHERE v.status = true), count(*) FILTER (WHERE v.status = false)
-             FROM public.%I v WHERE 1=1 %s', p_view_name, where_clause
+             FROM public.%I v %s', p_view_name, where_clause
         );
         EXECUTE count_query INTO total_records, active_records, inactive_records;
     ELSE
-        count_query := format('SELECT count(*) FROM public.%I v WHERE 1=1 %s', p_view_name, where_clause);
+        count_query := format('SELECT count(*) FROM public.%I v %s', p_view_name, where_clause);
         EXECUTE count_query INTO total_records;
     END IF;
 
@@ -19908,7 +19792,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB) TO authenticated;
 ```
 
-<!-- path: data/migrations/06_utilities/05_search_nodes.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/05_search_nodes.sql -->
 ```sql
 -- path: migrations/06_utilities/07_search_nodes.sql
 -- Description: Creates a function to search nodes for dropdowns with pagination and filtering.
@@ -19939,7 +19823,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.search_nodes_for_select(TEXT, INT) TO authenticated;
 ```
 
-<!-- path: data/migrations/06_utilities/06_bsnl_dashboard_data.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/06_bsnl_dashboard_data.sql -->
 ```sql
 -- path: data/migrations/06_utilities/06_bsnl_dashboard_data.sql
 -- Description: Creates a centralized RPC function to fetch filtered data for the BSNL dashboard.
@@ -20016,7 +19900,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_bsnl_dashboard_data(TEXT, BOOLEAN, TEXT[], TEXT[], TEXT[], TEXT[]) TO authenticated;
 ```
 
-<!-- path: data/migrations/06_utilities/07_attach_updated_at_triggers.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/07_attach_updated_at_triggers.sql -->
 ```sql
 -- path: data/migrations/06_utilities/07_attach_updated_at_triggers.sql
 -- Description: Dynamically attaches the 'update_updated_at_column' trigger to all tables that have an 'updated_at' column.
@@ -20060,7 +19944,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/06_utilities/04_dashboard_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/04_dashboard_functions.sql -->
 ```sql
 -- path: migrations/06_utilities/04_dashboard_functions.sql
 -- Description: Contains functions for dashboard aggregations.
@@ -20111,7 +19995,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_dashboard_overview() TO authenticated;
 ```
 
-<!-- path: data/migrations/00_setup/02_function_stubs.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/00_setup/02_function_stubs.sql -->
 ```sql
 -- Path: migrations/00_setup/02_function_stubs.sql
 -- Description: Creates dummy "stub" versions of functions that may be optionally defined later.
@@ -20139,7 +20023,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/00_setup/01_roles.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/00_setup/01_roles.sql -->
 ```sql
 -- Path: migrations/00_setup/01_roles.sql
 -- Description: Creates all custom database roles. Must be run first.
@@ -20201,7 +20085,7 @@ END
 $$;
 ```
 
-<!-- path: data/migrations/03_network_systems/03_views.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/03_views.sql -->
 ```sql
 -- path: data/migrations/03_network_systems/02_views.sql
 -- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
@@ -20222,8 +20106,7 @@ SELECT
   ma.name AS system_maintenance_terminal_name,
   rbs.ring_id,
   ring_area.name AS ring_logical_area_name,
-  ss.gne AS sdh_gne,
-  vs.vm_id AS vmux_vm_id
+  ss.gne AS sdh_gne
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -20232,7 +20115,6 @@ FROM public.systems s
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id
   LEFT JOIN public.sdh_systems ss ON s.id = ss.system_id
-  LEFT JOIN public.vmux_systems vs ON s.id = vs.system_id;
 
 
 -- View for a complete picture of a system connection and its specific details.
@@ -20256,9 +20138,7 @@ SELECT
   sfpc.sfp_serial_no, sfpc.fiber_in, sfpc.fiber_out, sfpc.customer_name, sfpc.bandwidth_allocated_mbps,
   -- SDH details
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer,
-  -- VMUX details
-  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk
+  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -20271,8 +20151,7 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.sfp_based_connections sfpc ON sc.id = sfpc.system_connection_id
   LEFT JOIN public.lookup_types lt_sfp ON sfpc.sfp_type_id = lt_sfp.id
-  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id
-  LEFT JOIN public.vmux_connections vcs ON sc.id = vcs.system_connection_id;
+  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
 
 
 -- View for OFC Connections, now including system details from this module.
@@ -20373,7 +20252,7 @@ LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
 ```
 
-<!-- path: data/migrations/03_network_systems/03_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/03_functions.sql -->
 ```sql
 -- Path: data/migrations/03_network_systems/03_functions.sql
 -- Description: Contains functions for the Network Systems module.
@@ -20392,8 +20271,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_id UUID DEFAULT NULL,
     p_ring_id UUID DEFAULT NULL,
     p_gne TEXT DEFAULT NULL,
-    p_make TEXT DEFAULT NULL,
-    p_vm_id TEXT DEFAULT NULL
+    p_make TEXT DEFAULT NULL
 )
 RETURNS SETOF public.systems
 LANGUAGE plpgsql
@@ -20445,13 +20323,6 @@ BEGIN
         ON CONFLICT (system_id) DO UPDATE SET gne = EXCLUDED.gne;
     END IF;
 
-    -- Handle VMUX-Specific Systems (can also be converted to a flag if more types are added)
-    IF v_system_type_record.name = 'VMUX' THEN
-        INSERT INTO public.vmux_systems (system_id, vm_id)
-        VALUES (v_system_id, p_vm_id)
-        ON CONFLICT (system_id) DO UPDATE SET vm_id = EXCLUDED.vm_id;
-    END IF;
-
     -- Return the main system record
     RETURN QUERY SELECT * FROM public.systems WHERE id = v_system_id;
 END;
@@ -20476,7 +20347,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_vlan TEXT DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
-
+    
     -- SFP-based connection fields (for CPAN/MAAN)
     p_sfp_port TEXT DEFAULT NULL,
     p_sfp_type_id UUID DEFAULT NULL,
@@ -20493,13 +20364,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_a_slot TEXT DEFAULT NULL,
     p_a_customer TEXT DEFAULT NULL,
     p_b_slot TEXT DEFAULT NULL,
-    p_b_customer TEXT DEFAULT NULL,
-
-    -- VMUX connection fields
-    p_subscriber TEXT DEFAULT NULL,
-    p_c_code TEXT DEFAULT NULL,
-    p_channel TEXT DEFAULT NULL,
-    p_tk TEXT DEFAULT NULL
+    p_b_customer TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
@@ -20546,7 +20411,7 @@ BEGIN
     RETURNING id INTO v_connection_id;
 
     -- Step 2: Handle subtype tables based on the parent system's type flags
-
+    
     -- Handle SFP-based connections (CPAN/MAAN)
     IF v_system_type_record.is_ring_based = true THEN
         INSERT INTO public.sfp_based_connections (
@@ -20582,21 +20447,7 @@ BEGIN
             b_slot = EXCLUDED.b_slot,
             b_customer = EXCLUDED.b_customer;
     END IF;
-
-    -- Handle VMUX connections
-    IF v_system_type_record.name = 'VMUX' THEN
-        INSERT INTO public.vmux_connections (
-            system_connection_id, subscriber, c_code, channel, tk
-        ) VALUES (
-            v_connection_id, p_subscriber, p_c_code, p_channel, p_tk
-        )
-        ON CONFLICT (system_connection_id) DO UPDATE SET
-            subscriber = EXCLUDED.subscriber,
-            c_code = EXCLUDED.c_code,
-            channel = EXCLUDED.channel,
-            tk = EXCLUDED.tk;
-    END IF;
-
+    
     -- Return the main connection record
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
@@ -20738,32 +20589,32 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID) TO authenticated;
 
--- NEW FUNCTION: Deprovisions all fibers for a system on a specific logical path
-CREATE OR REPLACE FUNCTION public.deprovision_path(
-    p_system_id UUID,
-    p_logical_path_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Unassign the system from all connections that were part of this provisioning
-    UPDATE public.ofc_connections
-    SET system_id = NULL
-    WHERE system_id = p_system_id;
-    -- Note: A more complex system might store which fibers belong to which path
-    -- For now, we deprovision all fibers for that system ID.
+-- -- NEW FUNCTION: Deprovisions all fibers for a system on a specific logical path
+-- CREATE OR REPLACE FUNCTION public.deprovision_path(
+--     p_system_id UUID,
+--     p_logical_path_id UUID
+-- )
+-- RETURNS VOID
+-- LANGUAGE plpgsql
+-- AS $$
+-- BEGIN
+--     -- Unassign the system from all connections that were part of this provisioning
+--     UPDATE public.ofc_connections
+--     SET system_id = NULL
+--     WHERE system_id = p_system_id;
+--     -- Note: A more complex system might store which fibers belong to which path
+--     -- For now, we deprovision all fibers for that system ID.
 
-    -- Mark the logical path as unprovisioned
-    UPDATE public.logical_paths
-    SET status = 'unprovisioned', updated_at = NOW()
-    WHERE id = p_logical_path_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.deprovision_path(UUID, UUID) TO authenticated;
+--     -- Mark the logical path as unprovisioned
+--     UPDATE public.logical_paths
+--     SET status = 'unprovisioned', updated_at = NOW()
+--     WHERE id = p_logical_path_id;
+-- END;
+-- $$;
+-- GRANT EXECUTE ON FUNCTION public.deprovision_path(UUID, UUID) TO authenticated;
 ```
 
-<!-- path: data/migrations/03_network_systems/07_rls_and_grants_logical_paths.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/07_rls_and_grants_logical_paths.sql -->
 ```sql
 -- path: data/migrations/03_network_systems/07_rls_and_grants_logical_paths.sql
 -- Description: Defines all RLS policies and Grants for the new logical_paths table.
@@ -20822,12 +20673,12 @@ USING (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin',
 WITH CHECK (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'));
 ```
 
-<!-- path: data/migrations/03_network_systems/01_tables_systems.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/01_tables_systems.sql -->
 ```sql
 -- Path: migrations/03_network_systems/01_tables_systems.sql
 -- Description: Defines tables for generic and specific network systems.
 
--- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH, VMUX)
+-- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH etc.)
 CREATE TABLE IF NOT EXISTS public.systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
@@ -20926,24 +20777,9 @@ CREATE TABLE IF NOT EXISTS public.sdh_node_associations (
   node_ip INET,
   CONSTRAINT uq_sdh_system_position UNIQUE (sdh_system_id, node_position)
 );
-
--- 9. Dedicated Table for VMUX System Specific Details
-CREATE TABLE IF NOT EXISTS public.vmux_systems (
-  system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
- vm_id TEXT
-);
-
--- 10. Dedicated Table for VMUX Connection Specific Details
-CREATE TABLE IF NOT EXISTS public.vmux_connections (
-  system_connection_id UUID PRIMARY KEY REFERENCES public.system_connections (id) ON DELETE CASCADE,
-  subscriber TEXT,
-  c_code TEXT,
-  channel TEXT,
-  tk TEXT
-);
 ```
 
-<!-- path: data/migrations/03_network_systems/06_rls_and_grants.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/06_rls_and_grants.sql -->
 ```sql
 -- path: data/migrations/03_network_systems/06_rls_and_grants.sql
 -- Description: Defines all RLS policies and Grants for the Network Systems module. [SELF-CONTAINED]
@@ -20959,17 +20795,16 @@ BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'systems', 'system_connections', 'management_ports',
     'ring_based_systems', 'sfp_based_connections',
-    'sdh_systems', 'sdh_connections', 'sdh_node_associations',
-    'vmux_systems', 'vmux_connections', 'logical_paths'
+    'sdh_systems', 'sdh_connections', 'sdh_node_associations', 'logical_paths'
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-
+    
     -- Grant permissions to specific roles
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
-
+    
     -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
   END LOOP;
@@ -20999,7 +20834,6 @@ BEGIN
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
         (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
       )
     )
@@ -21010,7 +20844,6 @@ BEGIN
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
         (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
       )
     )
@@ -21035,7 +20868,6 @@ BEGIN
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
         )
       )
@@ -21049,7 +20881,6 @@ BEGIN
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'asset_admin' AND lt.name = 'VMUX') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
         )
       )
@@ -21065,7 +20896,7 @@ $$;
 DO $$
 BEGIN
   -- Grant SELECT on all views created in this module to all relevant roles.
-  GRANT SELECT ON
+  GRANT SELECT ON 
     public.v_systems_complete,
     public.v_system_connections_complete,
     public.v_ring_nodes,
@@ -21078,7 +20909,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/03_network_systems/04_indexes.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/04_indexes.sql -->
 ```sql
 -- Path: migrations/03_network_systems/03_indexes.sql
 -- Description: Creates B-tree and GIN (FTS) indexes for the Network Systems module.
@@ -21106,7 +20937,7 @@ CREATE INDEX IF NOT EXISTS idx_system_connections_remark_fts ON public.system_co
 CREATE INDEX IF NOT EXISTS idx_management_ports_remark_fts ON public.management_ports USING gin(to_tsvector('english', remark));
 ```
 
-<!-- path: data/migrations/03_network_systems/02_logical_paths.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/02_logical_paths.sql -->
 ```sql
 
 CREATE TABLE IF NOT EXISTS public.logical_paths (
@@ -21126,7 +20957,7 @@ CREATE INDEX IF NOT EXISTS idx_logical_paths_ring_id ON public.logical_paths(rin
 CREATE INDEX IF NOT EXISTS idx_logical_paths_status ON public.logical_paths(status);
 ```
 
-<!-- path: data/migrations/01_user_management/03_functions.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/03_functions.sql -->
 ```sql
 -- Path: migrations/01_user_management/03_functions.sql
 -- Description: All functions for the User Management module.
@@ -21225,7 +21056,7 @@ CREATE OR REPLACE FUNCTION public.admin_get_all_users_extended(
     date_to TIMESTAMPTZ DEFAULT NULL,
     page_offset INTEGER DEFAULT 0,
     page_limit INTEGER DEFAULT 50
-)
+) 
 -- CORRECTED: Returns a single JSONB object
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -21428,7 +21259,7 @@ END;
 $$;
 ```
 
-<!-- path: data/migrations/01_user_management/05_triggers.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/05_triggers.sql -->
 ```sql
 -- Path: migrations/01_user_management/05_triggers.sql
 -- Description: Attaches triggers for the User Management module.
@@ -21463,7 +21294,7 @@ DO $$ BEGIN
 END $$;
 ```
 
-<!-- path: data/migrations/01_user_management/02_views.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/02_views.sql -->
 ```sql
 -- Path: migrations/01_user_management/02_views.sql
 -- Description: Defines views for the User Management module.
@@ -21514,7 +21345,7 @@ FROM auth.users u
 JOIN public.user_profiles p ON u.id = p.id;
 ```
 
-<!-- path: data/migrations/01_user_management/06_rls_and_grants.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/06_rls_and_grants.sql -->
 ```sql
 -- Path: migrations/01_user_management/06_rls_and_grants.sql
 -- Description: All RLS policies and Grants for the User Management module.
@@ -21588,7 +21419,7 @@ FOR DELETE
 USING ((select auth.uid()) = id);
 ```
 
-<!-- path: data/migrations/01_user_management/04_indexes.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/04_indexes.sql -->
 ```sql
 -- Path: migrations/01_user_management/04_indexes.sql
 -- Description: Indexes for user_profiles to improve performance.
@@ -21606,7 +21437,7 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_last_name_first_name ON public.user
 CREATE INDEX IF NOT EXISTS idx_user_profiles_created_at ON public.user_profiles (created_at);
 ```
 
-<!-- path: data/migrations/01_user_management/01_tables_user_profiles.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/01_user_management/01_tables_user_profiles.sql -->
 ```sql
 -- Path: migrations/01_user_management/01_tables_user_profiles.sql
 -- Description: Defines the user_profiles table, which extends auth.users.
@@ -21647,7 +21478,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 );
 ```
 
-<!-- path: data/migrations/99_finalization/01_cross_module_constraints.sql -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/99_finalization/01_cross_module_constraints.sql -->
 ```sql
 -- Path: migrations/99_finalization/01_cross_module_constraints.sql
 -- Description: Adds all cross-module foreign key constraints after all tables have been created.
@@ -21698,7 +21529,7 @@ REFERENCES public.systems(id)
 ON DELETE SET NULL;
 ```
 
-<!-- path: components/bsnl/AdvancedSearchBar.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/AdvancedSearchBar.tsx -->
 ```typescript
 'use client';
 import { useState } from 'react';
@@ -21721,7 +21552,6 @@ export function AdvancedSearchBar({
   nodeTypeOptions = [],
 }: AdvancedSearchBarProps) {
   const [showFilters, setShowFilters] = useState(false);
-  // Simplified handler for single-select dropdowns
   const handleFilterChange = (filterKey: keyof BsnlSearchFilters, value: string) => {
     onFiltersChange({ ...filters, [filterKey]: value || undefined });
   };
@@ -21835,117 +21665,17 @@ export function AdvancedSearchBar({
 
 ```
 
-<!-- path: components/bsnl/PaginatedTable.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/types.ts -->
 ```typescript
-// path: components/bsnl/PaginatedTable.tsx
-"use client";
-
-import React, { useState } from 'react';
-
-// Paginated data table component
-export function PaginatedTable<T>({
-  data,
-  columns,
-  pageSize = 50,
-  onItemClick
-}: {
-  data: T[];
-  columns: { key: string; label: string; render: (item: T) => React.ReactNode }[];
-  pageSize?: number;
-  onItemClick?: (item: T) => void;
-}) {
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const totalPages = Math.ceil(data.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedData = data.slice(startIndex, startIndex + pageSize);
-
-  // Helper function to generate a unique key for each row
-  const getRowKey = (item: T, index: number): string | number => {
-    if (typeof item === 'object' && item !== null && 'id' in item && item.id) {
-      return item.id as string | number;
-    }
-    return index;
-  };
-
-  return (
-    <div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {paginatedData.map((item, index) => (
-              <tr
-                key={getRowKey(item, index)}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
-                onClick={() => onItemClick?.(item)}
-              >
-                {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {column.render(item)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, data.length)} of {data.length} results
-          </div>
-          <div className="flex space-x-2 items-center">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-```
-
-<!-- path: components/bsnl/types.ts -->
-```typescript
-// path: components/bsnl/types.ts
 import {
-  v_nodes_completeRowSchema,
-  v_ofc_cables_completeRowSchema,
-  v_systems_completeRowSchema,
+  V_nodes_completeRowSchema,
+  V_ofc_cables_completeRowSchema,
+  V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { z } from 'zod';
 
-export type BsnlNode = z.infer<typeof v_nodes_completeRowSchema>;
-export type BsnlCable = z.infer<typeof v_ofc_cables_completeRowSchema>;
-export type BsnlSystem = z.infer<typeof v_systems_completeRowSchema>;
+export type BsnlNode = V_nodes_completeRowSchema;
+export type BsnlCable = V_ofc_cables_completeRowSchema;
+export type BsnlSystem = V_systems_completeRowSchema;
 
 export interface FiberRoutePath {
   nodeId: string;
@@ -21977,9 +21707,8 @@ export interface AllocationSaveData {
 }
 ```
 
-<!-- path: components/bsnl/OptimizedNetworkMap.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/OptimizedNetworkMap.tsx -->
 ```typescript
-// path: components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
 import React, { useMemo, useEffect, memo } from 'react';
@@ -21991,7 +21720,6 @@ import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 
-// THE FIX: Component props are updated to accept stable callbacks.
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
 
@@ -22088,7 +21816,6 @@ const MapContent = memo<{
 ));
 MapContent.displayName = 'MapContent';
 
-// THE FIX: Updated props for the main component.
 interface OptimizedNetworkMapProps {
   nodes: BsnlNode[];
   cables: BsnlCable[];
@@ -22210,7 +21937,7 @@ export function OptimizedNetworkMap({
 }
 ```
 
-<!-- path: components/bsnl/NewAllocationModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/NewAllocationModal.tsx -->
 ```typescript
 "use client"
 
@@ -22218,7 +21945,6 @@ import React, { useState, useMemo } from 'react';
 import { X, GitBranch, Plus, Trash2 } from 'lucide-react';
 import { BsnlNode, BsnlCable, BsnlSystem, FiberRoutePath, FiberAllocation } from '@/components/bsnl/types';
 
-// The mock data is now only used as a fallback and is correctly typed.
 export const mockData = {
   nodes: [] as BsnlNode[],
   ofcCables: [] as BsnlCable[],
@@ -22237,7 +21963,6 @@ export interface AllocationSaveData {
   };
 }
 
-// --- REUSABLE PATH BUILDER COMPONENT ---
 interface PathBuilderProps {
   path: FiberRoutePath[];
   onPathChange: (newPath: FiberRoutePath[]) => void;
@@ -22350,7 +22075,6 @@ function PathBuilder({ path, onPathChange, startNodeId, nodes, cables, allAlloca
   );
 }
 
-// --- THE MULTI-TOPOLOGY WIZARD MODAL ---
 interface AdvancedAllocationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22419,13 +22143,13 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
              <div className="border rounded-lg border-gray-200 dark:border-gray-600">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-300">Working Path</div>
                 <div className="p-4">
-                  <PathBuilder
-                    path={paths.working}
-                    onPathChange={p => setPaths(c => ({ ...c, working: p }))}
-                    startNodeId={selectedSystem.node_id!}
-                    nodes={nodes}
-                    cables={cables}
-                    allAllocatedFibers={allAllocatedFibers}
+                  <PathBuilder 
+                    path={paths.working} 
+                    onPathChange={p => setPaths(c => ({ ...c, working: p }))} 
+                    startNodeId={selectedSystem.node_id!} 
+                    nodes={nodes} 
+                    cables={cables} 
+                    allAllocatedFibers={allAllocatedFibers} 
                   />
                 </div>
               </div>
@@ -22455,8 +22179,8 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
           <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">Cancel</button>
           <div className="space-x-3">
             {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">Back</button>}
-            {step < 2 ?
-              <button onClick={() => setStep(s => s + 1)} disabled={!selectedSystemId} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-500">Next</button> :
+            {step < 2 ? 
+              <button onClick={() => setStep(s => s + 1)} disabled={!selectedSystemId} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-500">Next</button> : 
               <button onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Allocation</button>}
           </div>
         </div>
@@ -22468,15 +22192,19 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
 export default AdvancedAllocationModal;
 ```
 
-<!-- path: components/bsnl/useBsnlDashboardData.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/useBsnlDashboardData.ts -->
 ```typescript
 "use client";
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
-import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
+import { V_systems_completeRowSchema, V_nodes_completeRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+
+type BsnlSystem = V_systems_completeRowSchema;
+type BsnlNode = V_nodes_completeRowSchema;
+type BsnlCable = V_ofc_cables_completeRowSchema;
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
@@ -22488,13 +22216,12 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
-    p_query: filters.query || null,
-    p_status: filters.status ? filters.status === 'active' : null,
-    p_system_types: filters.type ? [filters.type] : null,
-    p_cable_types: filters.type ? [filters.type] : null, // Assuming system and cable types are filtered by the same 'type' field
-    p_regions: filters.region ? [filters.region] : null,
-    p_node_types: filters.nodeType ? [filters.nodeType] : null,
-    // p_priority is in the schema but not in the RPC, it can be added here if the RPC is updated
+    p_query: filters.query || undefined,
+    p_status: filters.status ? filters.status === 'active' : undefined,
+    p_system_types: filters.type ? [filters.type] : undefined,
+    p_cable_types: filters.type ? [filters.type] : undefined,
+    p_regions: filters.region ? [filters.region] : undefined,
+    p_node_types: filters.nodeType ? [filters.nodeType] : undefined,
   }), [filters]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
@@ -22508,9 +22235,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
 
       return rpcData as BsnlDashboardData;
     },
-    staleTime: 5 * 60 * 1000,
-    // THE FIX: Keep displaying the last successful fetch's data while new data is being fetched.
-    // This provides a seamless UX by preventing the UI from showing a loading state on filter changes.
+    staleTime: 60 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });
 
@@ -22525,9 +22250,8 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
 }
 ```
 
-<!-- path: components/bsnl/DashboardStatsGrid.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/DashboardStatsGrid.tsx -->
 ```typescript
-// path: components/bsnl/DashboardStatsGrid.tsx
 "use client";
 
 import React from 'react';
@@ -22535,7 +22259,6 @@ import { Network, Activity, AlertTriangle, CheckCircle, GitBranch, Cable } from 
 import { useDashboardOverview } from './useDashboardOverview';
 import { Card } from '@/components/common/ui';
 
-// Stat Card subcomponent for consistent styling
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string; }> = ({ icon, label, value, color }) => (
   <Card className={`p-4 border-l-4 ${color} bg-white dark:bg-gray-800 dark:border-l-4`}>
     <div className="flex items-center">
@@ -22550,7 +22273,6 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
   </Card>
 );
 
-// Skeleton loader for when data is being fetched
 const StatsGridSkeleton: React.FC = () => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
     {Array.from({ length: 6 }).map((_, i) => (
@@ -22612,16 +22334,14 @@ export const DashboardStatsGrid: React.FC = () => {
 };
 ```
 
-<!-- path: components/bsnl/useDashboardOverview.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/bsnl/useDashboardOverview.ts -->
 ```typescript
-// path: components/bsnl/useDashboardOverview.ts
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod';
 
-// CORRECTED: The z.record schema now correctly specifies both a key and a value type.
 const dashboardOverviewSchema = z.object({
   system_status_counts: z.object({
     Active: z.number().optional(),
@@ -22653,12 +22373,12 @@ export function useDashboardOverview() {
     queryKey: ['dashboard-overview'],
     queryFn: async (): Promise<DashboardOverviewData | null> => {
       const { data, error } = await supabase.rpc('get_dashboard_overview');
-
+      
       if (error) {
         console.error("Error fetching dashboard overview:", error);
         throw new Error(error.message);
       }
-
+      
       const parsed = dashboardOverviewSchema.safeParse(data);
       if (!parsed.success) {
         console.error("Zod validation error for dashboard overview:", parsed.error);
@@ -22672,9 +22392,8 @@ export function useDashboardOverview() {
 }
 ```
 
-<!-- path: components/table/TableHeader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TableHeader.tsx -->
 ```typescript
-// @/components/table/TableHeader.tsx
 import React from "react";
 import { FiArrowUp, FiArrowDown } from "react-icons/fi";
 import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
@@ -22832,7 +22551,7 @@ export const TableHeader = React.memo(TableHeaderBase) as <T extends TableOrView
 
 ```
 
-<!-- path: components/table/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/index.ts -->
 ```typescript
 export * from "./DataTable";
 export * from "./TableHeader";
@@ -22844,9 +22563,8 @@ export * from "./TableToolbar";
 export * from "./datatable-types";
 ```
 
-<!-- path: components/table/TableFilterPanel.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TableFilterPanel.tsx -->
 ```typescript
-// @/components/table/TableFilterPanel.tsx
 import React, { useState, useEffect } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TableOrViewName, Row, Filters } from "@/hooks/database";
@@ -22925,8 +22643,8 @@ export function TableFilterPanel<T extends TableOrViewName>({
         ))}
       {Object.keys(filters).length > 0 && (
         <div className='flex items-end'>
-          <button
-            onClick={() => setFilters({})}
+          <button 
+            onClick={() => setFilters({})} 
             className='px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
           >
             Clear All
@@ -22938,9 +22656,8 @@ export function TableFilterPanel<T extends TableOrViewName>({
 }
 ```
 
-<!-- path: components/table/DataTable.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/DataTable.tsx -->
 ```typescript
-// @/components/table/DataTable.tsx
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
@@ -22964,10 +22681,8 @@ import {
 import { cn } from '@/lib/utils';
 import { BlurLoader } from '@/components/common/ui/LoadingSpinner';
 
-// Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
-// --- State Management with useReducer ---
 
 type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
@@ -22981,7 +22696,6 @@ type TableState<T extends PublicTableOrViewName> = {
   showFilters: boolean;
 };
 
-// Base action type that works with any row type
 type BaseTableAction<R> =
   | { type: 'SET_SEARCH_QUERY'; payload: string }
   | { type: 'SET_SELECTED_ROWS'; payload: R[] }
@@ -22995,7 +22709,6 @@ type BaseTableAction<R> =
   | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
   | { type: 'TOGGLE_FILTERS'; payload?: boolean };
 
-// Table-specific action type that extends the base with table-aware actions
 type TableAction<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
   | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
@@ -23115,7 +22828,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
   }, [filterable]);
 
-  // (Excel download hooks remain the same)
   const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
     showToasts: true,
   });
@@ -23265,7 +22977,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   }, []);
 
   const handleExport = useCallback(async () => {
-    // 1) If a custom export handler is provided by the parent, use it
     if (onExport) {
       await onExport(
         processedData as Row<T>[],
@@ -23274,7 +22985,6 @@ export function DataTable<T extends PublicTableOrViewName>({
       return;
     }
 
-    // 2) Build export options: prefer explicit options, else use current visible columns and filters
     const columnsToExport = (exportOptions?.columns ??
       visibleColumnsData) as Column<Row<T>>[];
     const mergedFilters = exportOptions?.includeFilters
@@ -23291,7 +23001,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     };
 
     try {
-      // 3) Use RPC-based download if rpcConfig is provided; otherwise, table/view download
       if (exportOptions?.rpcConfig) {
         const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
           ...baseOptions,
@@ -23302,7 +23011,6 @@ export function DataTable<T extends PublicTableOrViewName>({
         await tableExcelDownload.mutateAsync(baseOptions);
       }
     } catch (err) {
-      // 4) Optional CSV fallback using currently processed rows
       if (exportOptions?.fallbackToCsv) {
         try {
           const headers = columnsToExport.map((c) => c.title).join(',');
@@ -23332,7 +23040,6 @@ export function DataTable<T extends PublicTableOrViewName>({
           document.body.removeChild(link);
           URL.revokeObjectURL(link.href);
         } catch {
-          // If CSV fallback also fails, rethrow original error
           throw err;
         }
       } else {
@@ -23353,10 +23060,10 @@ export function DataTable<T extends PublicTableOrViewName>({
     tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
   return (
-    <div
+    <div 
       className={cn(
-        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)] relative",
-        bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md",
+        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)] relative", 
+        bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md", 
         className
       )}
     >
@@ -23469,9 +23176,8 @@ export function DataTable<T extends PublicTableOrViewName>({
 
 ```
 
-<!-- path: components/table/datatable-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/datatable-types.ts -->
 ```typescript
-// @/components/table/types.ts
 import { TableOrViewName, Row, Filters } from "@/hooks/database";
 import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries/excel-helpers";
 
@@ -23504,7 +23210,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   loading?: boolean;
   isFetching?: boolean;
   showColumnSelector?: boolean;
-  // Controls visibility of the Columns toggle button in the toolbar
   showColumnsToggle?: boolean;
   pagination?: {
     current: number;
@@ -23516,7 +23221,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   };
   actions?: TableAction<T>[];
   searchable?: boolean;
-  // If true, DataTable will not perform client-side search and will delegate to parent via onSearchChange
   serverSearch?: boolean;
   filterable?: boolean;
   sortable?: boolean;
@@ -23531,7 +23235,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   emptyText?: string;
   title?: string;
   onRefresh?: () => void;
-  // Called when the search query changes; useful for server-side search or fetching more rows
   onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
@@ -23557,9 +23260,8 @@ export type TablePaginationProps = Pick<DataTableProps<TableOrViewName>, 'pagina
 
 ```
 
-<!-- path: components/table/TablePagination.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TablePagination.tsx -->
 ```typescript
-// @/components/table/TablePagination.tsx
 import React from "react";
 import { FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from "react-icons/fi";
 import { TablePaginationProps } from "@/components/table/datatable-types";
@@ -23628,9 +23330,8 @@ export function TablePagination({ pagination, bordered }: TablePaginationProps) 
 }
 ```
 
-<!-- path: components/table/TableBody.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TableBody.tsx -->
 ```typescript
-// @/components/table/TableBody.tsx
 import React, { useRef, useEffect } from "react";
 import { FiEdit3, FiCheck, FiX } from "react-icons/fi";
 import { DataTableProps, TableAction } from "@/components/table/datatable-types";
@@ -23638,9 +23339,8 @@ import { TableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
+ 
 
-
-// Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
 
 interface TableBodyProps<T extends TableOrViewName> extends Pick<DataTableProps<T>, "columns" | "selectable" | "bordered" | "density" | "striped" | "hoverable" | "loading" | "emptyText"> {
@@ -23667,7 +23367,6 @@ interface TableRowProps<T extends TableOrViewName> extends Omit<TableBodyProps<T
 
 const densityClasses = { compact: "py-1 px-3", default: "py-3 px-4", comfortable: "py-4 px-6" };
 
-// Base Table Row component (generic). We'll memoize it below with a type assertion to preserve generics.
 function TableRowBase<T extends TableOrViewName>({
     record,
     rowIndex,
@@ -23688,7 +23387,6 @@ function TableRowBase<T extends TableOrViewName>({
     onCellEdit,
     saveCellEdit,
     cancelCellEdit,
-    // isLoading,
 }: TableRowProps<T>) {
     const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -23699,8 +23397,7 @@ function TableRowBase<T extends TableOrViewName>({
         }
     }, [editingCell, rowIndex]);
 
-    // Loading UI is handled at the TableBodyBase level.
-
+    
     return (
         <tr
           className={`${striped && rowIndex % 2 === 1 ? "bg-gray-50/50 dark:bg-gray-700/25" : ""} ${hoverable ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : ""} ${
@@ -23713,13 +23410,13 @@ function TableRowBase<T extends TableOrViewName>({
             </td>
           )}
           {hasActions && (
-            <td className={`w-32 ${densityClasses[density ?? "default"]} text-right whitespace-nowrap overflow-hidden ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}
+            <td className={`w-32 ${densityClasses[density ?? "default"]} text-center whitespace-nowrap overflow-hidden ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} border-gray-200 dark:border-gray-700` : ""}`}
                 style={{ width: 128, minWidth: 128, maxWidth: 128 }}>
-              <div className='flex items-center justify-end gap-1'>
+              <div className='flex items-center justify-center gap-1'>
                 {actions?.map((action) => {
                   const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
                   if (isHidden) return null;
-
+                  
                   const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
                   const variants = {
                     primary: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
@@ -23727,10 +23424,10 @@ function TableRowBase<T extends TableOrViewName>({
                     danger: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
                     success: "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300",
                   };
-
+                  
                   const icon = action.getIcon ? action.getIcon(record) : action.icon;
                   const variant = action.variant || 'secondary';
-
+                  
                   return (
                     <button
                       key={action.key}
@@ -23801,12 +23498,10 @@ function TableRowBase<T extends TableOrViewName>({
     );
 }
 
-// Memoized Table Row component for performance optimization (preserve generics via assertion)
 const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>(
   props: TableRowProps<T>
 ) => React.ReactElement;
 
-// Base TableBody component (generic). We'll memoize with a type assertion below to preserve generics.
 function TableBodyBase<T extends TableOrViewName>({
   processedData,
   visibleColumns,
@@ -23833,7 +23528,7 @@ function TableBodyBase<T extends TableOrViewName>({
     );
   }
 
-
+  
 
   if (processedData.length === 0) {
     return (
@@ -23873,7 +23568,7 @@ export const TableBody = React.memo(TableBodyBase) as <T extends TableOrViewName
 ) => React.ReactElement;
 ```
 
-<!-- path: components/table/action-helpers.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/action-helpers.ts -->
 ```typescript
 import React from "react";
 import {
@@ -23889,7 +23584,6 @@ type ActionableRecord = RecordWithId & {
   status?: boolean | string | null; // Allow both boolean and string status
 };
 
-// Define a flexible TableAction type that can work with any record type
 export interface TableAction<T = unknown> {
   key: string;
   label: string;
@@ -23899,12 +23593,9 @@ export interface TableAction<T = unknown> {
   variant?: 'primary' | 'secondary' | 'danger' | 'success';
   disabled?: boolean | ((record: T) => boolean);
   hidden?: boolean | ((record: T) => boolean);
-  // Additional properties that might be used by the DataTable
   [key: string]: unknown;
 }
 
-// Defines the shape of the handlers that a page component will provide.
-// The helper is now generic over `V`, which represents the data type in the table row (e.g., UserProfileData)
 interface StandardActionHandlers<V extends ActionableRecord> {
   onView?: (record: V) => void;
   onEdit?: (record: V) => void;
@@ -23914,12 +23605,6 @@ interface StandardActionHandlers<V extends ActionableRecord> {
   canEdit?: (record: V) => boolean;
   canDelete?: (record: V) => boolean;
 }
-/**
- * Creates a standardized array of TableAction objects for CRUD operations.
- * This ensures all tables have consistent icons, labels, variants, and behaviors.
- * @param handlers - An object containing the onClick handlers and optional logic for the actions.
- * @returns An array of TableAction<T> objects.
- */
 export function createStandardActions<V extends ActionableRecord>({
   onView,
   onEdit,
@@ -23930,17 +23615,15 @@ export function createStandardActions<V extends ActionableRecord>({
 }: StandardActionHandlers<V>): TableAction<V>[] {
   const actions: TableAction<V>[] = [];
 
-  // Narrower type guard: only treat records with a boolean `status` as toggle-able
   const hasBooleanStatus = (record: V): record is V & { status: boolean } =>
     typeof (record as unknown as V)?.status === "boolean";
 
-  // --- Toggle Status Actions (Activate/Deactivate) ---
   if (onToggleStatus) {
     actions.push({
       key: "toggleStatus",
       label: "Toggle Status",
-      getIcon: (record: V) =>
-        React.createElement(record.status ? FiToggleRight : FiToggleLeft, {
+      getIcon: (record: V) => 
+        React.createElement(record.status ? FiToggleRight : FiToggleLeft, { 
           className: `w-4 h-4 ${record.status ? 'text-green-500' : 'text-gray-400'}`,
           size: 20
         }),
@@ -23950,7 +23633,6 @@ export function createStandardActions<V extends ActionableRecord>({
     });
   }
 
-  // --- View Action ---
   if (onView) {
     actions.push({
       key: "view",
@@ -23961,7 +23643,6 @@ export function createStandardActions<V extends ActionableRecord>({
     });
   }
 
-  // --- Edit Action ---
   if (onEdit) {
     actions.push({
       key: "edit",
@@ -23973,7 +23654,6 @@ export function createStandardActions<V extends ActionableRecord>({
     });
   }
 
-  // --- Delete Action ---
   if (onDelete) {
     actions.push({
       key: "delete",
@@ -23990,9 +23670,8 @@ export function createStandardActions<V extends ActionableRecord>({
 
 ```
 
-<!-- path: components/table/TableColumnSelector.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TableColumnSelector.tsx -->
 ```typescript
-// @/components/table/TableColumnSelector.tsx
 import React, { useEffect, useRef } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TableOrViewName, Row } from "@/hooks/database";
@@ -24072,9 +23751,8 @@ export function TableColumnSelector<T extends TableOrViewName>({
 }
 ```
 
-<!-- path: components/table/TableToolbar.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/table/TableToolbar.tsx -->
 ```typescript
-// @/components/table/TableToolbar.tsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   FiSearch,
@@ -24147,7 +23825,6 @@ export function TableToolbar<T extends TableOrViewName>({
   const setSearchQueryRef = useRef(setSearchQuery);
   const onSearchChangeRef = useRef(onSearchChange);
 
-  // Keep refs in sync with latest props without retriggering the search effect
   useEffect(() => {
     setSearchQueryRef.current = setSearchQuery;
   }, [setSearchQuery]);
@@ -24155,7 +23832,6 @@ export function TableToolbar<T extends TableOrViewName>({
     onSearchChangeRef.current = onSearchChange;
   }, [onSearchChange]);
 
-  // Only react to content changes, not function identity changes
   useEffect(() => {
     setSearchQueryRef.current(debouncedSearchQuery);
     onSearchChangeRef.current?.(debouncedSearchQuery);
@@ -24268,7 +23944,7 @@ export function TableToolbar<T extends TableOrViewName>({
 
 ```
 
-<!-- path: components/rings/RingModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/rings/RingModal.tsx -->
 ```typescript
 "use client";
 
@@ -24351,7 +24027,6 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
       onSubmit(formData);
@@ -24424,9 +24099,8 @@ export function RingModal({
 }
 ```
 
-<!-- path: components/rings/RingSystemsModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/rings/RingSystemsModal.tsx -->
 ```typescript
-// path: components/rings/RingSystemsModal.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -24448,7 +24122,6 @@ interface RingSystemsModalProps {
   ring: V_ringsRowSchema | null;
 }
 
-// Data fetching hook
 const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
   const supabase = createClient();
   return useQuery({
@@ -24458,14 +24131,12 @@ const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
         return { associated: [], available: [] };
       }
 
-      // Fetch systems already associated with this ring (no change here)
       const { data: associated, error: assocError } = await supabase
         .from('v_systems_complete')
         .select('id, system_name')
         .eq('ring_id', ring.id);
       if (assocError) throw new Error(`Failed to fetch associated systems: ${assocError.message}`);
 
-      // CORRECTED QUERY: Fetch available systems ONLY from the same maintenance area
       const { data: available, error: availError } = await supabase
         .from('v_systems_complete')
         .select('id, system_name')
@@ -24491,15 +24162,13 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
   const [selectedAssociated, setSelectedAssociated] = useState<Set<string>>(new Set());
   const [selectedAvailable, setSelectedAvailable] = useState<Set<string>>(new Set());
 
-  // CORRECTED: This effect, with your provided fix, correctly maps the
-  // data from the API shape (`system_name`) to the component state shape (`name`).
   useEffect(() => {
     if (data) {
       setAssociated(data.associated.map(item => ({ id: item.id, name: item.system_name })));
       setAvailable(data.available.map(item => ({ id: item.id, name: item.system_name })));
     }
   }, [data]);
-
+  
   const updateMutation = useMutation({
     mutationFn: async (systemIds: string[]) => {
       if (!ring?.id) throw new Error("Ring ID is missing.");
@@ -24578,12 +24247,12 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center">
             <ListBox title="Available Systems" items={available} selected={selectedAvailable} onSelect={(id) => handleToggleSelection('available', id)} />
-
+            
             <div className="flex flex-col gap-2">
               <Button onClick={() => moveItems('available')} disabled={selectedAvailable.size === 0}><ArrowRight className="h-4 w-4" /></Button>
               <Button onClick={() => moveItems('associated')} disabled={selectedAssociated.size === 0}><ArrowLeft className="h-4 w-4" /></Button>
             </div>
-
+            
             <ListBox title="Associated Systems" items={associated} selected={selectedAssociated} onSelect={(id) => handleToggleSelection('associated', id)} />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -24599,7 +24268,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
 }
 ```
 
-<!-- path: components/rings/RingsFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/rings/RingsFilters.tsx -->
 ```typescript
 import { FiSearch } from "react-icons/fi";
 
@@ -24631,7 +24300,7 @@ export default RingsFilters;
 
 ```
 
-<!-- path: components/navigation/sidebar-components/MobileSidebar.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/MobileSidebar.tsx -->
 ```typescript
 "use client";
 
@@ -24669,13 +24338,13 @@ export const MobileSidebar = ({
 
   return (
     <>
-      <motion.div
+      <motion.div 
         initial="hidden"
         animate="visible"
         exit="hidden"
         variants={mobileOverlayVariants}
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-        aria-label="Sidebar backdrop"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" 
+        aria-label="Sidebar backdrop" 
         onClick={handleBackdropClick}
       />
       <motion.aside
@@ -24690,15 +24359,15 @@ export const MobileSidebar = ({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Navigation
           </h2>
-          <button
-            onClick={() => setIsCollapsed(true)}
-            className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+          <button 
+            onClick={() => setIsCollapsed(true)} 
+            className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800" 
             aria-label="Close sidebar"
           >
             <FiX className="h-5 w-5" />
           </button>
         </div>
-
+        
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1" role="navigation">
             {navItems.map((item) => (
@@ -24723,7 +24392,7 @@ export const MobileSidebar = ({
 };
 ```
 
-<!-- path: components/navigation/sidebar-components/sidebar-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/sidebar-types.ts -->
 ```typescript
 import { Database } from "@/types/supabase-types";
 import { UserRole } from "@/types/user-roles";
@@ -24747,7 +24416,6 @@ export interface NavItem {
   external?: boolean;
 }
 
-// Animation variants
 export const sidebarVariants = {
   expanded: { width: 260 },
   collapsed: { width: 64 }
@@ -24775,7 +24443,7 @@ export const submenuVariants = {
 };
 ```
 
-<!-- path: components/navigation/sidebar-components/NavItems.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/NavItems.tsx -->
 ```typescript
 import { UserRole } from '@/types/user-roles';
 import { NavItem as NavItemType } from '@/components/navigation/sidebar-components/sidebar-types';
@@ -24789,6 +24457,7 @@ import {
   FiMapPin,
   FiList,
   FiGitBranch,
+  FiHelpCircle,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -24814,7 +24483,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
       },
       {
@@ -24842,7 +24511,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         children: [
           {
@@ -24900,7 +24569,7 @@ function NavItems() {
           UserRole.CPANADMIN,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         children: [
           {
@@ -24950,9 +24619,25 @@ function NavItems() {
           UserRole.VIEWER,
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
-          UserRole.VMUXADMIN,
+          UserRole.ASSETADMIN,
         ],
         external: true,
+      },
+      {
+        id: 'help',
+        label: 'Help & Documentation',
+        icon: <FiHelpCircle className="h-5 w-5" />,
+        href: '/doc',
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+          UserRole.MNGADMIN,
+        ],
       },
     ],
     []
@@ -24964,7 +24649,7 @@ export default NavItems;
 
 ```
 
-<!-- path: components/navigation/sidebar-components/NavItem.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/NavItem.tsx -->
 ```typescript
 "use client";
 
@@ -24972,11 +24657,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { FiChevronDown } from "react-icons/fi";
 import { NavItem as NavItemType, submenuVariants } from "./sidebar-types";
-import { useUserPermissions } from "@/hooks/useRoleFunctions";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
 import { ButtonSpinner } from "@/components/common/ui/LoadingSpinner";
 import { useState, useEffect } from "react";
+import { useUser } from "@/providers/UserProvider";
 
 interface NavItemProps {
   item: NavItemType;
@@ -24997,7 +24682,7 @@ export const NavItem = ({
 }: NavItemProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { isSuperAdmin, role } = useUserPermissions();
+  const { isSuperAdmin, role } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
@@ -25021,13 +24706,13 @@ export const NavItem = ({
       toast.error("You are not authorized to access this section.");
       return;
     }
-
+    
     if (item.children && item.children.length > 0) {
       e.preventDefault();
       toggleExpanded(item.id);
       return;
     }
-
+    
     if (item.href) {
       try {
         setNavigatingTo(item.href);
@@ -25037,7 +24722,6 @@ export const NavItem = ({
           setIsLoading(false);
         } else {
           await router.push(item.href);
-          // The loading state will be cleared by the effect below
         }
       } catch (error) {
         console.error("Navigation error:", error);
@@ -25048,7 +24732,6 @@ export const NavItem = ({
     }
   };
 
-  // Clear loading state when the route changes
   useEffect(() => {
     if (pathname === navigatingTo) {
       setIsLoading(false);
@@ -25063,21 +24746,21 @@ export const NavItem = ({
   const isExpanded = expandedItems.includes(item.id);
 
   return (
-    <div
-      key={item.id}
-      className="relative"
-      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
+    <div 
+      key={item.id} 
+      className="relative" 
+      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)} 
       onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
     >
       <div
         onClick={handleItemClick}
         className={`
-          flex cursor-pointer items-center justify-between py-3 text-sm font-medium
+          flex cursor-pointer items-center justify-between py-3 text-sm font-medium 
           transition-all duration-200 rounded-lg mx-2 mb-1
-          ${active
-            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm"
+          ${active 
+            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm" 
             : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm"
-          }
+          } 
           ${isCollapsed ? "justify-center px-4" : `pr-4 ${depth > 0 ? "pl-8" : "pl-4"}`}
         `}
         role="button"
@@ -25108,8 +24791,8 @@ export const NavItem = ({
             className="p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
-            <motion.div
-              animate={{ rotate: isExpanded ? 0 : -90 }}
+            <motion.div 
+              animate={{ rotate: isExpanded ? 0 : -90 }} 
               transition={{ duration: 0.2 }}
             >
               <FiChevronDown className="w-4 h-4" />
@@ -25117,11 +24800,11 @@ export const NavItem = ({
           </button>
         )}
       </div>
-
+      
       {!isCollapsed && hasChildren && (
         <AnimatePresence initial={false}>
           {isExpanded && (
-            <motion.div
+            <motion.div 
               initial="hidden"
               animate="visible"
               exit="hidden"
@@ -25151,16 +24834,16 @@ export const NavItem = ({
 };
 ```
 
-<!-- path: components/navigation/sidebar-components/HoverMenu.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/HoverMenu.tsx -->
 ```typescript
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { NavItem as NavItemType } from "./sidebar-types";
-import { useUserPermissions } from "@/hooks/useRoleFunctions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
+import { useUser } from "@/providers/UserProvider";
 
 interface HoverMenuProps {
   hoveredItem: NavItemType | null;
@@ -25169,7 +24852,7 @@ interface HoverMenuProps {
 
 export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
   const router = useRouter();
-  const { isSuperAdmin, role } = useUserPermissions();
+  const { isSuperAdmin, role } = useUser();
 
   const hasPermission = (roles: UserRole[]) => {
     if (isSuperAdmin) return true;
@@ -25212,8 +24895,8 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
                 disabled={!hasPermission(child.roles)}
                 className={`
                   flex w-full items-center space-x-3 px-4 py-2 text-left text-sm transition-colors
-                  ${hasPermission(child.roles)
-                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                  ${hasPermission(child.roles) 
+                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" 
                     : "text-gray-400 cursor-not-allowed dark:text-gray-600"
                   }
                 `}
@@ -25230,7 +24913,7 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
 };
 ```
 
-<!-- path: components/navigation/sidebar-components/QuickActions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar-components/QuickActions.tsx -->
 ```typescript
 "use client";
 
@@ -25243,8 +24926,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useUploadConfigStore } from "@/stores/useUploadConfigStore";
 import { useExcelUpload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
-import { TableName } from "@/hooks/database/queries-type-helpers";
 import { useCurrentTableName } from "@/hooks/useCurrentTableName";
+import { PublicTableName } from "@/hooks/database";
 
 interface QuickActionsProps {
   isCollapsed: boolean;
@@ -25253,32 +24936,23 @@ interface QuickActionsProps {
 
 export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
   const [showMenuSection, setShowMenuSection] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [file, setFile] = useState<File | null>(null);
   const currentTableName = useCurrentTableName();
 
-  // Don't show on dashboard or when collapsed
   const shouldHideFeatures =
     pathname === "/dashboard" || isCollapsed || !currentTableName;
 
-  // Zustand integration
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // const pageKey = currentTableName as string;
 
-  // Get the config for this specific context from the store.
   const { configs } = useUploadConfigStore();
   const storeConfig = configs[currentTableName as string];
-  // console.log("storeConfig", storeConfig);
 
-  // Initialize the upload hook. Note that we don't know the table name here yet.
   const { mutate, isPending } = useExcelUpload(
     supabase,
-    currentTableName as TableName,
+    currentTableName as PublicTableName,
     {
       onSuccess: (result) => {
-        // ... success handler
-        console.log("result", result);
         return result.successCount > 0
           ? toast.success(
               `Successfully uploaded ${result.successCount} of ${result.totalRows} records.`
@@ -25286,7 +24960,6 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
           : toast.error(`Failed to upload ${result.totalRows} records.`);
       },
       onError: (error) => {
-        // ... error handler
         console.log(error);
       },
     }
@@ -25319,7 +24992,6 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
     }
   };
 
-  // Don't show on dashboard or when collapsed
   if (shouldHideFeatures) return null;
 
   return (
@@ -25391,7 +25063,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
 
 ```
 
-<!-- path: components/navigation/sidebar.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/navigation/sidebar.tsx -->
 ```typescript
 'use client';
 
@@ -25420,32 +25092,17 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
   const isMobile = useIsMobile();
 
-  // Define the Help NavItem data
-  const helpNavItem: NavItemType = {
-    id: 'help',
-    label: 'Help',
-    icon: <FiHelpCircle className="h-5 w-5" />,
-    href: '/dashboard/doc',
-    roles: [
-      UserRole.ADMIN,
-      UserRole.VIEWER,
-      UserRole.AUTHENTICATED,
-      UserRole.CPANADMIN,
-      UserRole.MAANADMIN,
-      UserRole.SDHADMIN,
-      UserRole.ASSETADMIN,
-      UserRole.MNGADMIN,
-    ],
-  };
+  const allNavItems = NavItems();
+  const helpNavItem = allNavItems.find(item => item.id === 'help');
+  const mainNavItems = allNavItems.filter(item => item.id !== 'help');
 
-  // Close mobile sidebar on route changes
+
   useEffect(() => {
     if (isMobile) {
       setIsCollapsed(true);
     }
   }, [pathname, isMobile, setIsCollapsed]);
 
-  // Close hover menu when sidebar expands
   useEffect(() => {
     if (!isCollapsed) {
       setHoveredItem(null);
@@ -25463,7 +25120,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       <MobileSidebar
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
-        navItems={NavItems()}
+        navItems={allNavItems} // Mobile can show all items in one scrollable list
         expandedItems={expandedItems}
         toggleExpanded={toggleExpanded}
         setHoveredItem={setHoveredItem}
@@ -25510,7 +25167,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1" role="navigation">
-          {NavItems().map((item) => (
+          {/* Render only the main navigation items here. */}
+          {mainNavItems.map((item) => (
             <NavItem
               key={item.id}
               item={item}
@@ -25524,16 +25182,19 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
       </div>
 
-      {/* --- ADDED: Help section at the bottom --- */}
-      <div className="py-2 border-t border-gray-200 dark:border-gray-700">
-        <NavItem
-          item={helpNavItem}
-          isCollapsed={isCollapsed}
-          expandedItems={expandedItems}
-          toggleExpanded={toggleExpanded}
-          setHoveredItem={setHoveredItem}
-        />
-      </div>
+      {/* Render the Help item in a separate, persistent section at the bottom. */}
+      {helpNavItem && (
+        <div className="py-2 border-t border-gray-200 dark:border-gray-700">
+          <NavItem
+            item={helpNavItem}
+            isCollapsed={isCollapsed}
+            expandedItems={expandedItems}
+            toggleExpanded={toggleExpanded}
+            setHoveredItem={setHoveredItem}
+          />
+        </div>
+      )}
+
 
       <HoverMenu hoveredItem={hoveredItem} setHoveredItem={setHoveredItem} />
     </motion.aside>
@@ -25542,12 +25203,10 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
 
 Sidebar.displayName = 'Sidebar';
 export default Sidebar;
-
 ```
 
-<!-- path: components/ofc-details/OfcConnectionsFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc-details/OfcConnectionsFormModal.tsx -->
 ```typescript
-// path: components/ofc-details/OfcConnectionsFormModal.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -25703,9 +25362,8 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
 }
 ```
 
-<!-- path: components/ofc-details/FiberTraceVisualizer.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc-details/FiberTraceVisualizer.tsx -->
 ```typescript
-// path: components/ofc-details/FiberTraceVisualizer.tsx
 "use client";
 
 import { Button } from "@/components/common/ui";
@@ -25713,7 +25371,6 @@ import { FiberTraceSegment } from "@/schemas/custom-schemas";
 import { Cable, GitBranch, MapPin, Milestone, RefreshCw, Route } from "lucide-react";
 import { useMemo } from "react";
 
-// A new type for our oriented steps to add clarity
 interface OrientedStep extends FiberTraceSegment {
   oriented_from_node_name: string;
   oriented_to_node_name: string;
@@ -25725,10 +25382,9 @@ interface FiberTraceVisualizerProps {
   isSyncing: boolean;
 }
 
-// Small helper component for rendering a single SEGMENT step with correct orientation
 const SegmentStep = ({ item }: { item: OrientedStep }) => {
   const detailText = `Segment ${item.step_order} (${item.oriented_from_node_name} → ${item.oriented_to_node_name})`;
-
+  
   return (
     <li className='mb-10 ml-8'>
       <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900'>
@@ -25753,7 +25409,6 @@ const SegmentStep = ({ item }: { item: OrientedStep }) => {
   );
 };
 
-// Small helper component for rendering a single SPLICE step
 const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: FiberTraceSegment | undefined }) => {
   const fiberIn = item.fiber_in ?? prevStep?.fiber_out;
 
@@ -25785,8 +25440,7 @@ const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: Fib
 };
 
 export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData, onSync, isSyncing }) => {
-
-  // ** NEW LOGIC: Process the trace data to orient segments correctly **
+  
   const orientedTrace = useMemo(() => {
     if (!traceData || traceData.length === 0) {
       return {
@@ -25799,7 +25453,6 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
     let currentNodeId: string | null = null;
     const orientedSteps: OrientedStep[] = [];
 
-    // Create a map of node IDs to names from the details field for easy lookup
     const nodeNameMap = new Map<string, string>();
     traceData.forEach(step => {
       if (step.element_type === 'SEGMENT' && step.details) {
@@ -25813,7 +25466,6 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
     for (const item of traceData) {
       if (item.element_type === 'SEGMENT') {
         if (currentNodeId === null) {
-          // This is the first segment, assume its orientation is correct
           orientedSteps.push({
             ...item,
             oriented_from_node_name: nodeNameMap.get(item.start_node_id!) || 'Unknown',
@@ -25821,9 +25473,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
           });
           currentNodeId = item.end_node_id;
         } else {
-          // For subsequent segments, check if we need to flip the orientation for display
           if (item.start_node_id === currentNodeId) {
-            // Traversed in forward direction
             orientedSteps.push({
               ...item,
               oriented_from_node_name: nodeNameMap.get(item.start_node_id!) || 'Unknown',
@@ -25831,7 +25481,6 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
             });
             currentNodeId = item.end_node_id;
           } else {
-            // Traversed in backward direction, swap for display
             orientedSteps.push({
               ...item,
               oriented_from_node_name: nodeNameMap.get(item.end_node_id!) || 'Unknown',
@@ -25841,7 +25490,6 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
           }
         }
       } else {
-        // Splice steps don't have direction, just pass them through
         orientedSteps.push({
           ...item,
           oriented_from_node_name: '',
@@ -25852,7 +25500,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 
     const firstSegment = orientedSteps.find(s => s.element_type === 'SEGMENT');
     const lastSegment = [...orientedSteps].reverse().find(s => s.element_type === 'SEGMENT');
-
+    
     return {
         steps: orientedSteps,
         pathStartNodeName: firstSegment?.oriented_from_node_name || "Unknown Start",
@@ -25872,8 +25520,8 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 
   return (
     <div className='p-4 font-sans relative'>
-      <Button
-        className='absolute top-0 right-10 z-10 animate-pulse'
+      <Button 
+        className='absolute top-0 right-10 z-10 animate-pulse' 
         onClick={onSync}
         disabled={isSyncing}
         leftIcon={isSyncing ? <RefreshCw className="animate-spin" /> : <RefreshCw />}
@@ -25915,7 +25563,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 };
 ```
 
-<!-- path: components/ofc-details/OfcDetailsHeader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc-details/OfcDetailsHeader.tsx -->
 ```typescript
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
@@ -25926,7 +25574,7 @@ import { Row } from '@/hooks/database';
 interface OfcDetailsHeaderProps {
     cable: Row<'v_ofc_cables_complete'>;
 }
-
+  
   const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
     const containerVariants: Variants = {
       hidden: { opacity: 0 },
@@ -25938,15 +25586,15 @@ interface OfcDetailsHeaderProps {
         }
       }
     };
-
+  
     const cardVariants: Variants = {
-      hidden: {
-        opacity: 0,
+      hidden: { 
+        opacity: 0, 
         y: 20,
         scale: 0.95
       },
-      visible: {
-        opacity: 1,
+      visible: { 
+        opacity: 1, 
         y: 0,
         scale: 1,
         transition: {
@@ -25956,11 +25604,11 @@ interface OfcDetailsHeaderProps {
         }
       }
     };
-
+  
     const itemVariants: Variants = {
       hidden: { opacity: 0, x: -10 },
-      visible: {
-        opacity: 1,
+      visible: { 
+        opacity: 1, 
         x: 0,
         transition: {
           type: "spring" as const,
@@ -25969,16 +25617,16 @@ interface OfcDetailsHeaderProps {
         }
       }
     };
-
+  
     interface InfoItemProps {
       icon: LucideIcon;
       label: string;
       value: string;
       delay?: number;
     }
-
+  
     const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => (
-      <motion.div
+      <motion.div 
         variants={itemVariants}
         className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
       >
@@ -25995,18 +25643,18 @@ interface OfcDetailsHeaderProps {
         </span>
       </motion.div>
     );
-
+  
     return (
-      <motion.div
+      <motion.div 
         variants={containerVariants}
         initial="hidden"
         animate="visible"
         className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
       >
         {/* Summary Card */}
-        <motion.div
+        <motion.div 
           variants={cardVariants}
-          whileHover={{
+          whileHover={{ 
             y: -2,
             boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
           }}
@@ -26014,12 +25662,12 @@ interface OfcDetailsHeaderProps {
         >
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
-
+          
           {/* Decorative Element */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/20 to-transparent dark:from-blue-800/10 rounded-bl-full" />
-
+          
           <div className="relative p-6">
-            <motion.div
+            <motion.div 
               className="flex items-center gap-3 mb-6"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -26032,22 +25680,22 @@ interface OfcDetailsHeaderProps {
                 Summary
               </h2>
             </motion.div>
-
-            <motion.div
+            
+            <motion.div 
               variants={containerVariants}
               className="space-y-1"
             >
-              <InfoItem
+              <InfoItem 
                 icon={Hash}
                 label="Asset No."
                 value={String(cable.asset_no ?? '-')}
               />
-              <InfoItem
+              <InfoItem 
                 icon={Route}
                 label="Route Name"
                 value={String(cable.route_name ?? '-')}
               />
-              <motion.div
+              <motion.div 
                 variants={itemVariants}
                 className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
               >
@@ -26064,11 +25712,11 @@ interface OfcDetailsHeaderProps {
             </motion.div>
           </div>
         </motion.div>
-
+  
         {/* Metadata Card */}
-        <motion.div
+        <motion.div 
           variants={cardVariants}
-          whileHover={{
+          whileHover={{ 
             y: -2,
             boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
           }}
@@ -26076,12 +25724,12 @@ interface OfcDetailsHeaderProps {
         >
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
-
+          
           {/* Decorative Element */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-100/20 to-transparent dark:from-emerald-800/10 rounded-bl-full" />
-
+          
           <div className="relative p-6">
-            <motion.div
+            <motion.div 
               className="flex items-center gap-3 mb-6"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -26094,22 +25742,22 @@ interface OfcDetailsHeaderProps {
                 Metadata
               </h2>
             </motion.div>
-
-            <motion.div
+            
+            <motion.div 
               variants={containerVariants}
               className="space-y-1"
             >
-              <InfoItem
+              <InfoItem 
                 icon={Cable}
                 label="OFC Type"
                 value={cable?.ofc_type_name || '-'}
               />
-              <InfoItem
+              <InfoItem 
                 icon={MapPin}
                 label="Maintenance Area"
                 value={cable?.maintenance_area_name || '-'}
               />
-              <InfoItem
+              <InfoItem 
                 icon={Calendar}
                 label="Commissioned On"
                 value={
@@ -26128,13 +25776,12 @@ interface OfcDetailsHeaderProps {
       </motion.div>
     );
   };
-
+  
   export default OfcDetailsHeader;
 ```
 
-<!-- path: components/ofc-details/FiberTraceModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc-details/FiberTraceModal.tsx -->
 ```typescript
-// path: components/ofc-details/FiberTraceModal.tsx
 'use client';
 
 import { Modal, PageSpinner } from '@/components/common/ui';
@@ -26167,7 +25814,6 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       return;
     }
 
-    // ** NEW LOGIC: Determine the true start and end of the logical path **
     let currentNodeId: string | null = null;
     let pathStartNodeId: string | null = null;
     let pathEndNodeId: string | null = null;
@@ -26175,22 +25821,17 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
     for (const item of traceData) {
       if (item.element_type === 'SEGMENT') {
         if (currentNodeId === null) {
-          // First segment in the trace determines the starting point
           pathStartNodeId = item.start_node_id;
           pathEndNodeId = item.end_node_id; // Tentative end node
           currentNodeId = item.end_node_id;
         } else {
-          // For subsequent segments, determine direction and update the end node
           if (item.start_node_id === currentNodeId) {
-            // Path is moving forward through this segment
             pathEndNodeId = item.end_node_id;
             currentNodeId = item.end_node_id;
           } else if (item.end_node_id === currentNodeId) {
-            // Path is moving backward through this segment
             pathEndNodeId = item.start_node_id;
             currentNodeId = item.start_node_id;
           } else {
-            // This indicates a break in the path continuity
             toast.error("Cannot sync: Path is broken or discontinuous.");
             return;
           }
@@ -26198,10 +25839,9 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       }
     }
 
-    // Fiber numbers are consistent regardless of segment direction
     const firstSegment = traceData.find((s) => s.element_type === "SEGMENT");
     const lastSegment = [...traceData].reverse().find((s) => s.element_type === "SEGMENT");
-
+    
     const startFiberNo = firstSegment?.fiber_in ?? 0;
     const endFiberNo = lastSegment?.fiber_out ?? 0;
 
@@ -26209,7 +25849,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       toast.error("Cannot sync: Trace is incomplete and start/end nodes could not be determined.");
       return;
     }
-
+    
     if (startFiberNo === 0 || endFiberNo === 0) {
       toast.error("Cannot sync: Invalid fiber numbers found in trace.");
       return;
@@ -26256,12 +25896,11 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
 };
 ```
 
-<!-- path: components/ofc-details/CableNotFound.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc-details/CableNotFound.tsx -->
 ```typescript
 import { ButtonSpinner } from '@/components/common/ui';
 import { motion } from 'framer-motion';
 
-// Define animation variants outside for better portability and to resolve TypeScript inference issues
 
 const containerVariants = {
   hidden: { opacity: 0, y: -20 },
@@ -26394,44 +26033,41 @@ export default CableNotFound;
 
 ```
 
-<!-- path: components/pwa/offline-status.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/pwa/offline-status.tsx -->
 ```typescript
 'use client'
-
+ 
 import { useState, useEffect } from 'react'
 import { MdWifiOff, MdWifi } from 'react-icons/md'
-
+ 
 export default function OfflineStatus() {
   const [isOnline, setIsOnline] = useState(true)
   const [wasOffline, setWasOffline] = useState(false)
-
+ 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
       if (wasOffline) {
-        // Show "Back online" message briefly
         setTimeout(() => setWasOffline(false), 3000)
       }
     }
-
+ 
     const handleOffline = () => {
       setIsOnline(false)
       setWasOffline(true)
     }
-
+ 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-
-    // Check initial status
+ 
     setIsOnline(navigator.onLine)
-
+ 
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [wasOffline])
-
-  // Show offline message
+ 
   if (!isOnline) {
     return (
       <div className="fixed top-4 left-4 right-4 bg-red-500 text-white p-3 rounded-lg shadow-lg z-50">
@@ -26442,8 +26078,7 @@ export default function OfflineStatus() {
       </div>
     )
   }
-
-  // Show "back online" message briefly
+ 
   if (isOnline && wasOffline) {
     return (
       <div className="fixed top-4 left-4 right-4 bg-green-500 text-white p-3 rounded-lg shadow-lg z-50">
@@ -26454,19 +26089,19 @@ export default function OfflineStatus() {
       </div>
     )
   }
-
+ 
   return null
 }
 ```
 
-<!-- path: components/pwa/pwa-install-prompt.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/pwa/pwa-install-prompt.tsx -->
 ```typescript
 'use client'
-
+ 
 import { useState, useEffect } from 'react'
 import { MdClose, MdDownload } from 'react-icons/md'
 import { Button } from '../common/ui/Button'
-
+ 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
   readonly userChoice: Promise<{
@@ -26475,58 +26110,55 @@ interface BeforeInstallPromptEvent extends Event {
   }>
   prompt(): Promise<void>
 }
-
+ 
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-
+ 
   useEffect(() => {
-    // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
       return
     }
-
-    // Listen for beforeinstallprompt event
+ 
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       setShowInstallPrompt(true)
     }
-
+ 
     window.addEventListener('beforeinstallprompt', handler)
-
-    // Listen for app installed event
+ 
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true)
       setShowInstallPrompt(false)
     })
-
+ 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler)
     }
   }, [])
-
+ 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return
-
+ 
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-
+    
     if (outcome === 'accepted') {
       setDeferredPrompt(null)
       setShowInstallPrompt(false)
     }
   }
-
+ 
   const handleDismiss = () => {
     setShowInstallPrompt(false)
     setDeferredPrompt(null)
   }
-
+ 
   if (isInstalled || !showInstallPrompt) return null
-
+ 
   return (
     <div className="fixed bottom-4 left-4 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-50">
       <div className="flex items-center justify-between">
@@ -26561,7 +26193,7 @@ export default function PWAInstallPrompt() {
 }
 ```
 
-<!-- path: components/users/UserCreateModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/users/UserCreateModal.tsx -->
 ```typescript
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -26620,14 +26252,12 @@ export function UserCreateModal({
     register,
     handleSubmit,
     control,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     formState: { errors, isDirty, isValid },
     reset,
   } = form;
 
   const onValidSubmit = async (data: UserFormData) => {
     try {
-      // Auto-generate UUID if not provided
       const payload = {
         ...data,
         id: data.id && data.id.trim() !== '' ? data.id : uuidv4(),
@@ -26752,7 +26382,7 @@ export function UserCreateModal({
 
 ```
 
-<!-- path: components/users/UserProfileEditModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/users/UserProfileEditModal.tsx -->
 ```typescript
 'use client';
 
@@ -26760,8 +26390,6 @@ import React, { useEffect } from 'react';
 import { FiShield } from 'react-icons/fi';
 import {
   useAdminUpdateUserProfile,
-  useGetMyRole,
-  useIsSuperAdmin,
 } from '@/hooks/useAdminUsers';
 import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
@@ -26773,12 +26401,11 @@ import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
 import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
+import { useUser } from '@/providers/UserProvider';
 
-// ** Define types based on the Zod schema, not manually.**
 const addressSchema = user_profilesUpdateSchema.shape.address;
 const preferencesSchema = user_profilesUpdateSchema.shape.preferences;
 
-// Extend the auto-generated schema to handle nested objects for the form
 const userProfileFormSchema = user_profilesUpdateSchema.extend({
     address: addressSchema,
     preferences: preferencesSchema,
@@ -26837,8 +26464,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   }, [isOpen, reset, user]);
 
   const avatarUrl = watch('avatar_url');
-  const { data: currentUserRole } = useGetMyRole();
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin, role: currentUserRole } = useUser();
   const updateProfile = useAdminUpdateUserProfile();
 
   const onValidSubmit = async (data: UserProfileFormData) => {
@@ -26847,10 +26473,9 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
       onClose();
       return;
     }
-
-    // The payload now perfectly matches the expected type for the RPC function
+    
     const updateParams: { user_id: string; [key: string]: unknown } = { user_id: user.id };
-
+    
     (Object.keys(data) as Array<keyof UserProfileFormData>).forEach(key => {
       updateParams[`update_${key}`] = data[key];
     });
@@ -26886,7 +26511,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
           </div>
 
           <FormInput name="designation" label="Designation" register={register} error={errors.designation} placeholder="e.g., Senior Engineer" />
-
+          
           <div>
             <Label>Address</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
@@ -26896,7 +26521,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
               <Input {...register("address.zip_code")} placeholder="ZIP/Postal Code" error={errors.address?.zip_code?.message} />
             </div>
           </div>
-
+          
           <div>
             <Label>Preferences</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
@@ -26937,7 +26562,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
 export default UserProfileEditModal;
 ```
 
-<!-- path: components/users/BulkActions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/users/BulkActions.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiTrash2 } from "react-icons/fi";
@@ -26965,9 +26590,9 @@ export function BulkActions({
   if (selectedCount === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
+    <motion.div 
+      initial={{ opacity: 0, y: -8 }} 
+      animate={{ opacity: 1, y: 0 }} 
       className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6"
     >
       <div className="flex items-center justify-between">
@@ -27022,7 +26647,7 @@ export function BulkActions({
 }
 ```
 
-<!-- path: components/users/UserFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/users/UserFilters.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiSearch, FiX, FiFilter, FiChevronDown, FiChevronUp } from "react-icons/fi";
@@ -27200,9 +26825,8 @@ export function UserFilters({
 }
 ```
 
-<!-- path: components/auth/OnboardingPromptModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/OnboardingPromptModal.tsx -->
 ```typescript
-// components/auth/OnboardingPromptModal.tsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -27277,9 +26901,8 @@ export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
 };
 ```
 
-<!-- path: components/auth/UnauthorizedModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/UnauthorizedModal.tsx -->
 ```typescript
-// components/auth/UnauthorizedModal.tsx
 "use client"
 
 import { useState, useEffect } from "react";
@@ -27291,26 +26914,23 @@ interface UnauthorizedModalProps {
   currentRole?: string | null;
 }
 
-export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
-  allowedRoles,
-  currentRole
+export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({ 
+  allowedRoles, 
+  currentRole 
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const router = useRouter();
 
-  // Auto-close modal and redirect after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       handleClose();
     }, 5000);
 
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    // Redirect to dashboard or home page
     router.push("/dashboard");
   };
 
@@ -27328,26 +26948,26 @@ export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
+      <div 
         className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={handleClose}
       />
-
+      
       {/* Modal */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-md mx-4 p-6 z-10">
         {/* Icon */}
         <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-          <svg
-            className="w-8 h-8 text-red-600"
-            fill="none"
-            stroke="currentColor"
+          <svg 
+            className="w-8 h-8 text-red-600" 
+            fill="none" 
+            stroke="currentColor" 
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" 
             />
           </svg>
         </div>
@@ -27402,7 +27022,7 @@ export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
 };
 ```
 
-<!-- path: components/auth/terms.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/terms.tsx -->
 ```typescript
 import React from "react";
 
@@ -27453,9 +27073,8 @@ export default Terms;
 
 ```
 
-<!-- path: components/auth/ForgotPasswordForm.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/ForgotPasswordForm.tsx -->
 ```typescript
-// path: components/auth/ForgotPasswordForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -27470,7 +27089,6 @@ export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  // THE FIX: Use component state instead of localStorage to manage UI flow.
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [sentToEmail, setSentToEmail] = useState("");
 
@@ -27637,9 +27255,8 @@ export default function ForgotPasswordForm() {
 }
 ```
 
-<!-- path: components/auth/OAuthProviders.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/OAuthProviders.tsx -->
 ```typescript
-// components/auth/OAuthProviders.tsx
 'use client';
 
 import { OAuthButton } from '@/components/auth/OAuthButton';
@@ -27662,8 +27279,8 @@ export default function OAuthProviders({
   showDivider = true,
   dividerText,
 }: OAuthProvidersProps) {
-  const defaultDividerText = variant === 'signup'
-    ? 'Or sign up with email'
+  const defaultDividerText = variant === 'signup' 
+    ? 'Or sign up with email' 
     : 'Or continue with email';
 
   return (
@@ -27695,28 +27312,27 @@ export default function OAuthProviders({
 }
 ```
 
-<!-- path: components/auth/authButton.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/authButton.tsx -->
 ```typescript
-// components/auth/authButton.tsx
 'use client'
-
+ 
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/authStore'
 import { BiLogOut, BiUser } from 'react-icons/bi'
 import { CiSettings } from 'react-icons/ci'
 import Image from 'next/image'
-
+ 
 export default function AuthButton() {
   const { logout } = useAuth()
   const user = useAuthStore((state) => state.user)
-
+ 
   if (!user) {
     return (
       <div className="h-9 w-24 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg border border-gray-200 dark:border-gray-700"></div>
     )
   }
-
+ 
   if (user) {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm min-w-[220px]">
@@ -27758,7 +27374,7 @@ export default function AuthButton() {
             <CiSettings className="h-4 w-4 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
             <span className="font-medium">Update Profile</span>
           </Link>
-
+          
           <button
             onClick={logout}
             className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
@@ -27770,7 +27386,7 @@ export default function AuthButton() {
       </div>
     )
   }
-
+ 
   return (
     <div className="flex items-center space-x-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 shadow-sm">
       <Link
@@ -27791,22 +27407,20 @@ export default function AuthButton() {
 }
 ```
 
-<!-- path: components/auth/Protected.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/Protected.tsx -->
 ```typescript
-// components/auth/Protected.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PageSpinner } from "../common/ui/LoadingSpinner";
-import { useUserPermissionsExtended } from "@/hooks/useRoleFunctions";
 import { UserRole } from "@/types/user-roles";
 import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
+import { UserProvider, useUser } from "@/providers/UserProvider"; // THE FIX: Import UserProvider
 
-// This hook checks the user's profile to see if they need to complete onboarding.
 const useUserProfileCheck = (userId?: string) => {
   const supabase = createClient();
   return useQuery({
@@ -27815,49 +27429,37 @@ const useUserProfileCheck = (userId?: string) => {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('first_name, preferences') // Only fetch what's needed for the check
+        .select('preferences')
         .eq('id', userId)
         .single();
 
       if (error) {
-        // 'PGRST116' means no rows found, which is a valid state for a brand new user
         if (error.code === 'PGRST116') return null;
         throw error;
       }
       return data;
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 };
 
 interface ProtectedProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedRoles?: UserRole[];
   redirectTo?: string;
-  fallbackComponent?: React.ReactNode;
 }
 
-export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, redirectTo = "/login" }) => {
-  const authState = useAuthStore((state) => state.authState);
+const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const hasRedirected = useRef(false);
-
-  const { data: profile, isLoading: isProfileLoading, isError: isProfileError, error: profileError } = useUserProfileCheck(user?.id);
-  const { isSuperAdmin, canAccess, isLoading: isRoleLoading, isError: isRoleError, error: roleError } = useUserPermissionsExtended();
+  
+  const { data: profile, isLoading: isProfileLoading } = useUserProfileCheck(user?.id);
+  const { canAccess, isSuperAdmin, isLoading: isRoleLoading } = useUser();
 
   useEffect(() => {
-    // Unauthenticated: Redirect to login if not already done
-    if (authState === 'unauthenticated' && !hasRedirected.current) {
-      hasRedirected.current = true;
-      router.replace(redirectTo);
-      return;
-    }
-
-    // Authenticated: Check for onboarding completion once all data is loaded
-    if (authState === 'authenticated' && !isProfileLoading && !isRoleLoading) {
-      const needsOnboarding = (profile?.preferences)?.needsOnboarding === true;
+    if (!isProfileLoading && !isRoleLoading) {
+      const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
 
       if (needsOnboarding) {
         if (window.location.pathname !== '/onboarding') {
@@ -27866,73 +27468,67 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
         return;
       }
 
-      // If onboarding is complete, check role-based access
       if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-        // The UnauthorizedModal will be rendered below.
         return;
       }
     }
   }, [
-    authState,
-    profile,
-    isProfileLoading,
-    isRoleLoading,
-    canAccess,
-    isSuperAdmin,
-    allowedRoles,
-    router,
-    redirectTo
+    profile, isProfileLoading, isRoleLoading,
+    canAccess, isSuperAdmin, allowedRoles, router
   ]);
 
-  // Render states
-  if (authState === 'loading' || isProfileLoading || isRoleLoading) {
-    return <PageSpinner text="Verifying session..." />;
+  if (isProfileLoading) {
+     return <PageSpinner text="Loading user profile..." />;
+  }
+  
+  const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
+  if (needsOnboarding) {
+    return <PageSpinner text="Finalizing session..." />;
   }
 
-  // ** Add an explicit check for any error state.**
-  if (isRoleError || isProfileError) {
-    const errorMessage = roleError?.message || profileError?.message || "Could not verify your user permissions or profile.";
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="p-8 text-center bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
-          <h3 className="text-xl font-semibold text-red-700 dark:text-red-300">Authentication Error</h3>
-          <p className="mt-2 text-red-600 dark:text-red-400">{errorMessage}</p>
-        </div>
-      </div>
-    );
+  if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
+    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={user?.role} />;
+  }
+
+  return <>{children}</>;
+}
+
+
+export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, redirectTo = "/login" }) => {
+  const authState = useAuthStore((state) => state.authState);
+  const router = useRouter();
+  const hasRedirected = useRef(false);
+
+  useEffect(() => {
+    if (authState === 'unauthenticated' && !hasRedirected.current) {
+      hasRedirected.current = true;
+      router.replace(redirectTo);
+    }
+  }, [authState, router, redirectTo]);
+
+  if (authState === 'loading') {
+    return <PageSpinner text="Verifying session..." />;
   }
 
   if (authState === 'unauthenticated') {
     return <PageSpinner text="Redirecting..." />;
   }
 
-  if (authState === 'authenticated' && user) {
-    // If profile is still loading, it's safer to wait
-    if (isProfileLoading) return <PageSpinner text="Loading user profile..." />;
-
-    const needsOnboarding = (profile?.preferences)?.needsOnboarding === true;
-
-    // The useEffect will handle the redirect, show a spinner in the meantime
-    if (needsOnboarding) {
-        return <PageSpinner text="Finalizing session..." />;
-    }
-
-    // If profile is loaded and onboarding is complete, check roles
-    if (profile) {
-      if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-        return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={user.role} />;
-      }
-      // If authorized, render the children
-      return <>{children}</>;
-    }
+  if (authState === 'authenticated') {
+    return (
+      <UserProvider>
+        <ProtectedContent allowedRoles={allowedRoles}>
+          {children}
+        </ProtectedContent>
+      </UserProvider>
+    );
   }
 
-  // Fallback for any other unexpected state
   return <PageSpinner text="Finalizing..." />;
 };
 ```
 
-<!-- path: components/auth/privacy.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/privacy.tsx -->
 ```typescript
 import React from "react";
 
@@ -27977,10 +27573,8 @@ export default Privacy;
 
 ```
 
-<!-- path: components/auth/OAuthButton.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/auth/OAuthButton.tsx -->
 ```typescript
-// components/auth/OAuthButton.tsx
-/* @refresh reset */
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -28019,16 +27613,12 @@ export function OAuthButton({
   const { signInWithGoogle, authState } = useAuth();
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
-
-  //  Use ref to track if action is in progress
+  
   const isProcessingRef = useRef(false);
 
-  //  Remove authState and isLocalLoading from dependencies
-  // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
     debug("handleGoogleSignIn called");
 
-    // Prevent multiple clicks - check ref instead of state
     if (isProcessingRef.current) {
       debug("Already processing, ignoring click");
       return;
@@ -28056,7 +27646,6 @@ export function OAuthButton({
     }
   }, [signInWithGoogle]); // Only signInWithGoogle in deps
 
-  // Check for OAuth in progress on mount
   useEffect(() => {
     const inProgress = sessionStorage.getItem("oauth_in_progress") === "true";
     if (inProgress) {
@@ -28064,7 +27653,6 @@ export function OAuthButton({
     }
   }, []); // Run once on mount
 
-  // Combine all loading states
   const isLoading = isLocalLoading || authState === "loading" || isOAuthInProgress;
   const isButtonDisabled = disabled || isLoading;
   const config = providerConfig[provider as keyof typeof providerConfig];
@@ -28185,7 +27773,7 @@ export function OAuthButton({
 }
 ```
 
-<!-- path: components/lookup/lookup-hooks.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/lookup-hooks.ts -->
 ```typescript
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -28204,15 +27792,13 @@ export function useLookupTypes(initialCategory = "") {
 
   const supabase = createClient();
 
-  // Database hooks
   const {
     data: categoriesResult,
     isLoading: categoriesLoading,
     error: categoriesError,
     refetch: refetchCategories
   } = useDeduplicated(supabase, "lookup_types", {
-    // CORRECTED: Deduplicate by 'category' only to get a unique list of categories.
-    columns: ["category"],
+    columns: ["category"], 
     orderBy: [{ column: "category", ascending: true }],
   });
   const categories = categoriesResult?.data || [];
@@ -28226,8 +27812,8 @@ export function useLookupTypes(initialCategory = "") {
     orderBy: [{ column: "name", ascending: true }],
     filters: {
       name: { operator: "neq", value: "DEFAULT" },
-      ...(selectedCategory && {
-        category: { operator: "eq", value: selectedCategory }
+      ...(selectedCategory && { 
+        category: { operator: "eq", value: selectedCategory } 
       })
     }
   });
@@ -28235,19 +27821,18 @@ export function useLookupTypes(initialCategory = "") {
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, "lookup_types");
   const { mutate: deleteRowsById } = useTableDelete(supabase, "lookup_types");
-
+  
   const hasCategories = categories.length > 0;
   const hasSelectedCategory = !!selectedCategory;
   const isLoading = categoriesLoading || lookupLoading;
-
+  
   const filteredLookups = lookupTypes
-    .filter(lookup =>
+    .filter(lookup => 
       lookup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lookup.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lookup.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  // Handlers
   const handleCategoryChange = useCallback((category: string) => {
     setSelectedCategory(category);
     setSearchTerm("");
@@ -28349,7 +27934,7 @@ export function useLookupTypes(initialCategory = "") {
 }
 ```
 
-<!-- path: components/lookup/LookupTypesTable.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/LookupTypesTable.tsx -->
 ```typescript
 "use client";
 
@@ -28378,12 +27963,12 @@ interface SortableHeaderProps {
   className?: string;
 }
 
-function SortableHeader({
-  children,
-  sortKey,
-  onSort,
-  getSortDirection,
-  className = ""
+function SortableHeader({ 
+  children, 
+  sortKey, 
+  onSort, 
+  getSortDirection, 
+  className = "" 
 }: SortableHeaderProps) {
   const sortDirection = getSortDirection?.(sortKey);
   const isSortable = onSort && getSortDirection;
@@ -28403,7 +27988,7 @@ function SortableHeader({
   }
 
   return (
-    <th
+    <th 
       className={`px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors select-none ${className}`}
       onClick={handleClick}
       role="button"
@@ -28445,49 +28030,52 @@ export function LookupTypesTable({
   getSortDirection
 }: LookupTypesTableProps) {
 
-  // Filter lookups based on search term (if not already filtered externally)
+  const sortedLookups = useMemo(() => {
+    return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
+  }, [lookups]);
+
   const filteredLookups = useMemo(() => {
     if (!searchTerm.trim()) return lookups;
-
+    
     const lowerSearchTerm = searchTerm.toLowerCase();
-    return lookups.filter(lookup =>
+    return lookups.filter(lookup => 
       lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
       lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
       lookup.description?.toLowerCase().includes(lowerSearchTerm)
     );
   }, [lookups, searchTerm]);
 
-  const displayedLookups = searchTerm ? filteredLookups : lookups;
+  const displayedLookups = searchTerm ? filteredLookups : sortedLookups;
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <SortableHeader
-              sortKey="name"
-              onSort={onSort}
+            <SortableHeader 
+              sortKey="name" 
+              onSort={onSort} 
               getSortDirection={getSortDirection}
             >
               Name
             </SortableHeader>
-            <SortableHeader
-              sortKey="code"
-              onSort={onSort}
+            <SortableHeader 
+              sortKey="code" 
+              onSort={onSort} 
               getSortDirection={getSortDirection}
             >
               Short Code
             </SortableHeader>
-            <SortableHeader
-              sortKey="description"
-              onSort={onSort}
+            <SortableHeader 
+              sortKey="description" 
+              onSort={onSort} 
               getSortDirection={getSortDirection}
             >
               Description
             </SortableHeader>
-            <SortableHeader
-              sortKey="status"
-              onSort={onSort}
+            <SortableHeader 
+              sortKey="status" 
+              onSort={onSort} 
               getSortDirection={getSortDirection}
             >
               Status
@@ -28592,7 +28180,7 @@ export function LookupTypesTable({
 }
 ```
 
-<!-- path: components/lookup/LookupTypesFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/LookupTypesFilters.tsx -->
 ```typescript
 "use client";
 
@@ -28658,9 +28246,8 @@ export function LookupTypesFilters({
 }
 ```
 
-<!-- path: components/lookup/LookupModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/LookupModal.tsx -->
 ```typescript
-// path: components/lookup/LookupModal.tsx
 "use client";
 
 import { Button } from "@/components/common/ui/Button";
@@ -28733,7 +28320,7 @@ export function LookupModal({
       is_ring_based: false, is_sdh: false, // ADDED
     },
   });
-
+  
   const watchedName = watch('name');
   const watchedCategory = watch("category");
 
@@ -28785,7 +28372,6 @@ export function LookupModal({
   const canSubmit = Boolean(watch("category")?.trim() && watch("name")?.trim() && !isSubmitting);
   const watchedCode = watch("code");
 
-  // Determine if the special system type flags should be shown
   const showSystemFlags = watchedCategory === 'SYSTEM_TYPES';
 
   return (
@@ -28871,7 +28457,7 @@ export function LookupModal({
 }
 ```
 
-<!-- path: components/lookup/index.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/index.tsx -->
 ```typescript
 export * from "./lookup-types";
 export * from "./lookup-hooks";
@@ -28881,7 +28467,7 @@ export * from "./LookupTypesFilters";
 
 ```
 
-<!-- path: components/lookup/LookupTypesEmptyStates.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/LookupTypesEmptyStates.tsx -->
 ```typescript
 "use client";
 
@@ -28893,7 +28479,7 @@ import { LoadingSpinner } from "@/components/common/ui/LoadingSpinner";
 
 export function NoCategoriesState({ error, isLoading }: { error?: Error; isLoading: boolean }) {
   const router = useRouter();
-
+  
   return (
     <Card className="p-8 text-center ">
       <p className="mb-4 text-gray-500 dark:text-gray-400">
@@ -28951,7 +28537,7 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry: () => vo
 }
 ```
 
-<!-- path: components/employee/EmployeeTableColumns.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/employee/EmployeeTableColumns.tsx -->
 ```typescript
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
@@ -29039,66 +28625,14 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
 ];
 ```
 
-<!-- path: components/employee/EmployeeTableActions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/employee/EmployeeStats.tsx -->
 ```typescript
-import { FiEdit, FiTrash2, FiToggleRight, FiEye } from "react-icons/fi";
-import { TableAction } from "@/components/table/datatable-types";
-import { Row } from "@/hooks/database";
-
-interface EmployeeTableActionsProps {
-  onView: (employeeId: string) => void;
-  onEdit: (employeeId: string) => void;
-  onToggleStatus: (record: Row<"employees">) => void;
-  onDelete: (employeeId: string, displayName?: string) => void;
-}
-
-export const getEmployeeTableActions = ({
-  onView,
-  onEdit,
-  onToggleStatus,
-  onDelete,
-}: EmployeeTableActionsProps): TableAction<"employees">[] => [
-  {
-    key: "view",
-    label: "View",
-    icon: <FiEye className='w-4 h-4' />,
-    onClick: (record) => onView(record.id || ""),
-    variant: "primary",
-  },
-  {
-    key: "toggle",
-    label: "Toggle Status",
-    icon: <FiToggleRight className='w-4 h-4' />,
-    onClick: (record) => onToggleStatus(record),
-    variant: "secondary",
-  },
-  {
-    key: "edit",
-    label: "Edit",
-    icon: <FiEdit className='w-4 h-4' />,
-    onClick: (record) => onEdit(record.id || ""),
-    variant: "primary",
-  },
-  {
-    key: "delete",
-    label: "Delete",
-    icon: <FiTrash2 className='w-4 h-4' />,
-    onClick: (record) => onDelete(record.id || "", String(record.employee_name || "this employee")),
-    variant: "danger",
-  },
-];
-
-```
-
-<!-- path: components/employee/EmployeeStats.tsx -->
-```typescript
-// app/dashboard/employees/components/EmployeeStats.tsx
 interface EmployeeStatsProps {
     total: number;
     active: number;
     inactive: number;
   }
-
+  
   export const EmployeeStats = ({ total, active, inactive }: EmployeeStatsProps) => {
     return (
       <div className="mt-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
@@ -29113,9 +28647,8 @@ interface EmployeeStatsProps {
   };
 ```
 
-<!-- path: components/employee/EmployeeForm.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/employee/EmployeeForm.tsx -->
 ```typescript
-// path: components/employee/EmployeeForm.tsx
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29224,7 +28757,6 @@ const EmployeeForm = ({
     label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
   }));
 
-  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
   const onValidFormSubmit = (data: EmployeesInsertSchema) => {
     onSubmit(data);
   };
@@ -29333,9 +28865,8 @@ const EmployeeForm = ({
 export default EmployeeForm;
 ```
 
-<!-- path: components/employee/EmployeeFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/employee/EmployeeFilters.tsx -->
 ```typescript
-// path: components/employee/EmployeeFilters.tsx
 'use client';
 
 import React, { memo, useState, useEffect } from 'react';
@@ -29382,7 +28913,6 @@ const EmployeeFiltersComponent = memo(
       setInternalSearch(searchQuery);
     }, [searchQuery]);
 
-    // REVISED: These handlers now safely update the state without type conflicts.
     const onDesignationChange = (value: string | null) => {
       setFilters(prev => {
         const newFilters: Filters = { ...prev };
@@ -29490,9 +29020,8 @@ EmployeeFiltersComponent.displayName = 'EmployeeFilters';
 export default EmployeeFiltersComponent;
 ```
 
-<!-- path: components/employee/EmployeeDetailsModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/employee/EmployeeDetailsModal.tsx -->
 ```typescript
-// components/employee/EmployeeDetailsModal.tsx
 import { FiX, FiMail, FiPhone, FiUser, FiBriefcase, FiCalendar, FiEdit3 } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
 import { useTableRecord } from "@/hooks/database";
@@ -29504,7 +29033,6 @@ type EmployeeData = EmployeesRowSchema & {
 };
 
 type Props = {
-  // Accept either employee data or employeeId
   employee?: EmployeeData;
   employeeId?: string;
   onClose: () => void;
@@ -29528,7 +29056,6 @@ const formatDate = (dateString: string | null | undefined) => {
 const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) => {
   const supabase = createClient();
 
-  // Only fetch if employeeId is provided and employee data is not provided
   const { data: fetchedEmployee, isLoading, isError, error } = useTableRecord(
     supabase,
     "employees",
@@ -29538,7 +29065,6 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
     } : undefined
   );
 
-  // Use the passed employee or the fetched employee
   const currentEmployee = employee || fetchedEmployee;
 
   if (isLoading) {
@@ -29571,8 +29097,6 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
     );
   }
 
-  // Rest of your component remains the same
-  // Just make sure to use currentEmployee instead of employee
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -29631,7 +29155,7 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
             <div>
               <p className="text-sm text-gray-500">Designation</p>
               <p className="font-medium">
-                {typeof currentEmployee.employee_designation_id === 'object'
+                {typeof currentEmployee.employee_designation_id === 'object' 
                   ? currentEmployee.employee_name
                   : 'Not provided'}
               </p>
@@ -29676,7 +29200,7 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
 export default EmployeeDetailsModal;
 ```
 
-<!-- path: components/home/AnimatedBackground.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/AnimatedBackground.tsx -->
 ```typescript
 "use client"
 import Image from "next/image";
@@ -29693,13 +29217,12 @@ export default function AnimatedBackground() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check for dark mode preference
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-
+    
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-
+    
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
@@ -29707,13 +29230,13 @@ export default function AnimatedBackground() {
     <>
       {/* Dynamic gradient overlay that adjusts for dark mode */}
       <div className={`fixed inset-0 z-0 transition-opacity duration-500 ${
-        isDarkMode
-          ? "bg-gradient-to-b from-black/70 via-black/40 to-black/70"
+        isDarkMode 
+          ? "bg-gradient-to-b from-black/70 via-black/40 to-black/70" 
           : "bg-gradient-to-b from-black/40 via-transparent to-black/40"
       }`} />
-
-      <motion.div
-        className="fixed inset-0 -z-10"
+      
+      <motion.div 
+        className="fixed inset-0 -z-10" 
         style={{ y: backgroundY }}
       >
         <Image
@@ -29735,7 +29258,7 @@ export default function AnimatedBackground() {
 }
 ```
 
-<!-- path: components/home/StatsHighlights.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/StatsHighlights.tsx -->
 ```typescript
 "use client"
 import { motion } from "framer-motion";
@@ -29759,14 +29282,14 @@ export default function StatsHighlights() {
           key={index}
           initial={{ opacity: 0, y: 20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{
-            duration: 0.6,
+          transition={{ 
+            duration: 0.6, 
             delay: 2.5 + index * 0.15,
             type: "spring",
             stiffness: 100
           }}
-          whileHover={{
-            scale: 1.05,
+          whileHover={{ 
+            scale: 1.05, 
             y: -5,
             transition: { duration: 0.2 }
           }}
@@ -29774,14 +29297,14 @@ export default function StatsHighlights() {
         >
           {/* Background glow effect */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/10 to-purple-500/10 dark:from-blue-500/10 dark:to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
+          
           <div className="relative z-10 text-center">
             {/* Icon */}
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{
-                duration: 0.6,
+              transition={{ 
+                duration: 0.6, 
                 delay: 2.7 + index * 0.1,
                 type: "spring",
                 stiffness: 200
@@ -29790,22 +29313,22 @@ export default function StatsHighlights() {
             >
               {stat.icon}
             </motion.div>
-
+            
             {/* Number */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{
-                duration: 0.5,
-                delay: 2.8 + index * 0.1,
-                type: "spring",
-                stiffness: 200
+              transition={{ 
+                duration: 0.5, 
+                delay: 2.8 + index * 0.1, 
+                type: "spring", 
+                stiffness: 200 
               }}
               className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-red-400 to-orange-500 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent mb-1 sm:mb-2"
             >
               {stat.number}
             </motion.div>
-
+            
             {/* Label */}
             <div className="text-xs sm:text-sm font-semibold text-gray-200 dark:text-gray-300 tracking-wide">
               {stat.label}
@@ -29818,7 +29341,7 @@ export default function StatsHighlights() {
 }
 ```
 
-<!-- path: components/home/ScrollIndicator.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/ScrollIndicator.tsx -->
 ```typescript
 "use client";
 import { motion } from "framer-motion";
@@ -29830,10 +29353,10 @@ export default function ScrollIndicator() {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-
+    
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-
+    
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
@@ -29849,7 +29372,7 @@ export default function ScrollIndicator() {
         transition={{
           duration: 2,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: "easeInOut" as const,
         }}
         className="flex flex-col items-center space-y-2"
       >
@@ -29857,19 +29380,19 @@ export default function ScrollIndicator() {
         <div className={`
           relative flex justify-center rounded-full border-2 shadow-lg backdrop-blur-sm
           h-8 w-5 sm:h-10 sm:w-6
-          ${isDarkMode
-            ? "border-gray-300/70 bg-gray-800/30"
+          ${isDarkMode 
+            ? "border-gray-300/70 bg-gray-800/30" 
             : "border-white/70 bg-white/20"}
         `}>
           <motion.div
-            animate={{
-              y: [2, 10, 2],
-              opacity: [1, 0.3, 1]
+            animate={{ 
+              y: [2, 10, 2], 
+              opacity: [1, 0.3, 1] 
             }}
             transition={{
               duration: 2,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: "easeInOut" as const,
             }}
             className={`
               mt-1 rounded-full shadow-sm
@@ -29878,7 +29401,7 @@ export default function ScrollIndicator() {
             `}
           />
         </div>
-
+        
         {/* Scroll text */}
         <motion.span
           initial={{ opacity: 0 }}
@@ -29896,7 +29419,7 @@ export default function ScrollIndicator() {
 }
 ```
 
-<!-- path: components/home/variants.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/variants.ts -->
 ```typescript
 import { TargetAndTransition, Variants } from "framer-motion";
 
@@ -29913,16 +29436,16 @@ export const containerVariants: Variants = {
 };
 
 export const titleVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 60,
-    scale: 0.8
+  hidden: { 
+    opacity: 0, 
+    y: 60, 
+    scale: 0.8 
   },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
+    transition: { 
       duration: 1.2,
       type: "spring",
       stiffness: 100,
@@ -29932,9 +29455,9 @@ export const titleVariants: Variants = {
 };
 
 export const subtitleVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 40
+  hidden: { 
+    opacity: 0, 
+    y: 40 
   },
   visible: {
     opacity: 1,
@@ -29948,7 +29471,7 @@ export const subtitleVariants: Variants = {
 };
 
 export const highlightVariants: Variants = {
-  hidden: {
+  hidden: { 
     opacity: 0,
     scaleX: 0,
     transformOrigin: "left"
@@ -29965,17 +29488,17 @@ export const highlightVariants: Variants = {
 };
 
 export const ctaVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 30,
-    scale: 0.9
+  hidden: { 
+    opacity: 0, 
+    y: 30, 
+    scale: 0.9 
   },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
-      duration: 0.8,
+    transition: { 
+      duration: 0.8, 
       delay: 0.5,
       type: "spring",
       stiffness: 120,
@@ -29995,7 +29518,7 @@ export const floatingAnimation: TargetAndTransition = {
 };
 ```
 
-<!-- path: components/home/HeroContent.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/HeroContent.tsx -->
 ```typescript
 import {
   motion,
@@ -30104,7 +29627,7 @@ export default function HeroContent({
 
 ```
 
-<!-- path: components/home/ParticlesOverlay.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/home/ParticlesOverlay.tsx -->
 ```typescript
 "use client"
 import { motion } from "framer-motion";
@@ -30116,23 +29639,22 @@ export default function ParticlesOverlay() {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-
+    
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-
+    
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  // Colors that adapt to dark/light mode
   const colors = {
-    red: isDarkMode
-      ? { gradient: 'rgba(239, 68, 68, 0.8)' }
+    red: isDarkMode 
+      ? { gradient: 'rgba(239, 68, 68, 0.8)' } 
       : { gradient: 'rgba(220, 38, 38, 0.6)' },
-    purple: isDarkMode
-      ? { gradient: 'rgba(168, 85, 247, 0.8)' }
+    purple: isDarkMode 
+      ? { gradient: 'rgba(168, 85, 247, 0.8)' } 
       : { gradient: 'rgba(147, 51, 234, 0.6)' },
-    white: isDarkMode
-      ? { gradient: 'rgba(255, 255, 255, 0.4)' }
+    white: isDarkMode 
+      ? { gradient: 'rgba(255, 255, 255, 0.4)' } 
       : { gradient: 'rgba(255, 255, 255, 0.2)' }
   };
 
@@ -30148,12 +29670,12 @@ export default function ParticlesOverlay() {
             top: `${Math.random() * 100}%`,
             width: `${4 + Math.random() * 8}px`,
             height: `${4 + Math.random() * 8}px`,
-            background: i % 3 === 0
+            background: i % 3 === 0 
               ? `radial-gradient(circle, ${colors.red.gradient}, transparent 70%)`
               : i % 3 === 1
               ? `radial-gradient(circle, ${colors.purple.gradient}, transparent 70%)`
               : `radial-gradient(circle, ${colors.white.gradient}, transparent 70%)`,
-            boxShadow: i % 3 === 0
+            boxShadow: i % 3 === 0 
               ? `0 0 20px rgba(239, 68, 68, ${isDarkMode ? 0.6 : 0.4})`
               : i % 3 === 1
               ? `0 0 20px rgba(168, 85, 247, ${isDarkMode ? 0.6 : 0.4})`
@@ -30173,7 +29695,7 @@ export default function ParticlesOverlay() {
           }}
         />
       ))}
-
+      
       {/* Floating geometric shapes */}
       {[...Array(6)].map((_, i) => (
         <motion.div
@@ -30196,7 +29718,7 @@ export default function ParticlesOverlay() {
             delay: i * 0.5,
           }}
         >
-          <div
+          <div 
             className="w-full h-full rounded-full"
             style={{
               background: `radial-gradient(circle, ${colors.white.gradient}, transparent 70%)`,
@@ -30210,20 +29732,15 @@ export default function ParticlesOverlay() {
 }
 ```
 
-<!-- path: components/map/types/node.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/map/types/node.ts -->
 ```typescript
-// path: components/map/types/node.ts
 import { z } from 'zod';
 import { v_ring_nodesRowSchema } from '@/schemas/zod-schemas';
 
-// The RingMapNode is the primary, feature-rich node type, derived directly from the view.
 export type RingMapNode = z.infer<typeof v_ring_nodesRowSchema>;
 
-// The MapNode can be a simplified version or a partial type for more generic use cases.
-// For simplicity and type safety, we can often just use RingMapNode everywhere.
 export type MapNode = RingMapNode;
 
-// Enums can remain as they are application-level constants, not direct DB models.
 export enum NodeType {
   EXCHANGE = "EXCHANGE",
   CUSTOMER = "CUSTOMER",
@@ -30234,9 +29751,8 @@ export enum NodeType {
 }
 ```
 
-<!-- path: components/map/ClientRingMap.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/map/ClientRingMap.tsx -->
 ```typescript
-// path: components/map/ClientRingMap.tsx
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
@@ -30259,7 +29775,6 @@ interface ClientRingMapProps {
   showControls?: boolean; // NEW PROP
 }
 
-// ... (Helper components like MapController and FullscreenControl remain the same)
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -30338,8 +29853,6 @@ export default function ClientRingMap({
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
   useEffect(() => {
-    // Fix for default marker icons in React Leaflet
-    // We need to delete the private _getIconUrl method to override with custom icons
     const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
       _getIconUrl?: () => string;
     };
@@ -30363,7 +29876,6 @@ export default function ClientRingMap({
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
 
-    // Filter out nodes with invalid coordinates
     const validNodes = nodes.filter((n) => n.lat !== null && n.long !== null && typeof n.lat === "number" && typeof n.long === "number");
 
     if (validNodes.length === 0) return null;
@@ -30489,7 +30001,7 @@ export default function ClientRingMap({
 
 ```
 
-<!-- path: components/categories/CategorySearch.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/CategorySearch.tsx -->
 ```typescript
 import { FiSearch } from "react-icons/fi";
 import { Input } from "@/components/common/ui/Input";
@@ -30524,7 +30036,7 @@ export function CategorySearch({
 
 ```
 
-<!-- path: components/categories/EmptyState.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/EmptyState.tsx -->
 ```typescript
 import { FiPlus } from "react-icons/fi";
 import { Button } from "@/components/common/ui/Button";
@@ -30549,7 +30061,7 @@ export function EmptyState({ onCreate }: EmptyStateProps) {
 }
 ```
 
-<!-- path: components/categories/utils.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/utils.ts -->
 ```typescript
 import { Categories } from "@/components/categories/categories-types";
 
@@ -30561,7 +30073,7 @@ export function formatCategoryName(category: Categories): string {
 }
 ```
 
-<!-- path: components/categories/LoadingState.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/LoadingState.tsx -->
 ```typescript
 import { LoadingSpinner } from "@/components/common/ui/LoadingSpinner";
 
@@ -30575,7 +30087,7 @@ export function LoadingState() {
 }
 ```
 
-<!-- path: components/categories/CategoryModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/CategoryModal.tsx -->
 ```typescript
 "use client";
 
@@ -30583,40 +30095,26 @@ import { GroupedLookupsByCategory } from "@/components/categories/categories-typ
 import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
-import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { Lookup_typesInsertSchema, lookup_typesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
+import { Lookup_typesInsertSchema, lookup_typesInsertSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { snakeToTitleCase } from "@/utils/formatters";
-import { createClient } from "@/utils/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PostgrestError } from "@supabase/supabase-js";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
-
-
+import { generateCodeFromName } from "@/config/helper-functions";
 
 interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCategoryCreated?: (categoryData: Lookup_typesInsertSchema) => void;
-  editingCategory?: string;
+  onSubmit: (data: Lookup_typesInsertSchema, isEditing: boolean) => void;
+  isLoading: boolean;
+  editingCategory?: string | null;
   categories?: Lookup_typesRowSchema[];
   lookupsByCategory?: GroupedLookupsByCategory;
 }
 
-
-
-export function CategoryModal({
-  isOpen,
-  onClose,
-  onCategoryCreated,
-  editingCategory,
-  categories,
-  lookupsByCategory,
-}: CategoryModalProps) {
-
-  const categoryFormSchema = lookup_typesRowSchema.pick({
+const categoryFormSchema = lookup_typesInsertSchema.pick({
   category: true,
   code: true,
   description: true,
@@ -30624,281 +30122,125 @@ export function CategoryModal({
   sort_order: true,
   is_system_default: true,
   status: true,
+  is_ring_based: true,
+  is_sdh: true,
 });
 type CategoryForm = z.infer<typeof categoryFormSchema>;
 
+export function CategoryModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  isLoading,
+  editingCategory,
+  lookupsByCategory,
+}: CategoryModalProps) {
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
+  const isEditMode = !!editingCategory;
+
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-    watch,
+    register, handleSubmit, formState: { errors },
+    reset, watch, setValue,
   } = useForm<CategoryForm>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
-      category: "",
-      code: "default",
-      description: "",
-      name: "DEFAULT",
-      sort_order: 0,
-      is_system_default: true,
-      status: true,
+      category: "", code: "default", description: "", name: "DEFAULT",
+      sort_order: 0, is_system_default: true, status: true,
+      is_ring_based: false, is_sdh: false,
     },
   });
 
-  const supabase = createClient();
-  const submissionInProgress = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const watchedName = watch('name');
+  const watchedCategory = watch("category");
+  const showSystemFlags = watchedCategory === 'SYSTEM_TYPES';
 
-  const { mutate: createCategory } = useTableInsert(supabase, "lookup_types");
-  const { mutate: updateCategory } = useTableUpdate(supabase, "lookup_types");
-
-// Only reset when editingCategory changes or when opening for creation
-useEffect(() => {
-  if (isOpen) {
-    if (editingCategory) {
-      const categoryLookups = lookupsByCategory?.[editingCategory] || [];
-      if (categoryLookups.length > 0) {
-        const template = categoryLookups[0];
-        reset({
-          category: template.category,
-          code: template.code || "default",
-          description: template.description || "",
-          name: template.name || "DEFAULT",
-          sort_order: template.sort_order || 0,
-          is_system_default: template.is_system_default ?? true,
-          status: template.status ?? true,
-        });
-      }
-    } else {
-      // New category: reset to defaults
-      reset({
-        category: "",
-        code: "default",
-        description: "",
-        name: "DEFAULT",
-        sort_order: 0,
-        is_system_default: true,
-        status: true,
-      });
-    }
-  }
-  // Do not reset on close, only on open
-}, [isOpen, editingCategory, lookupsByCategory, reset]);
-
-  const handleUpdateError = useCallback((error: unknown) => {
-    const postgrestError = error as PostgrestError;
-    if (
-      postgrestError?.message?.includes("already exists") ||
-      postgrestError?.code === "23505" ||
-      postgrestError?.message?.includes("violates unique constraint")
-    ) {
-      toast.error("Category already exists");
-    } else {
-      toast.error(`Failed to update category: ${postgrestError?.message || "Unknown error"}`);
-    }
-  }, []);
-
-  const handleCreateError = useCallback((error: unknown) => {
-    const postgrestError = error as PostgrestError;
-    if (
-      postgrestError?.message?.includes("already exists") ||
-      postgrestError?.code === "23505" ||
-      postgrestError?.message?.includes("violates unique constraint")
-    ) {
-      toast.error("Category already exists");
-    } else {
-      toast.error(`Failed to create category: ${postgrestError?.message || "Unknown error"}`);
-    }
-  }, []);
-
-  const onValidSubmit = useCallback(
-    async (data: CategoryForm) => {
-      const id = categories?.find((cat) => cat.category === editingCategory)?.id;
-      if (submissionInProgress.current) return;
-
-      if (!data.category.trim()) {
-        toast.error("Category is required");
-        return;
-      }
-
-      submissionInProgress.current = true;
-      abortControllerRef.current = new AbortController();
-
-      try {
-        const formattedCategory = data.category
-          .trim()
-          .toUpperCase()
-          .replace(/\s+/g, "_")
-          .replace(/[^A-Z0-9_]/g, "");
-
-        if (!formattedCategory) {
-          toast.error("Please enter a valid category name");
-          return;
-        }
-
-        const commonData = {
-          ...data,
-          category: formattedCategory,
-          description: `Default entry for ${snakeToTitleCase(formattedCategory)} category`,
-        };
-
-        if (editingCategory) {
-          updateCategory(
-            { id: id!, data: commonData },
-            {
-              onSuccess: () => {
-                if (abortControllerRef.current?.signal.aborted) return;
-                toast.success(`Category renamed to "${formattedCategory}"`);
-                onCategoryCreated?.(commonData);
-                onClose();
-              },
-              onError: handleUpdateError,
-              onSettled: () => {
-                submissionInProgress.current = false;
-              },
-            }
-          );
-        } else {
-          if (categories?.some((cat) => cat.category === formattedCategory)) {
-            toast.error("Category already exists");
-            submissionInProgress.current = false;
-            return;
-          }
-          createCategory(commonData, {
-            onSuccess: () => {
-              if (abortControllerRef.current?.signal.aborted) return;
-              onCategoryCreated?.(commonData);
-              onClose();
-            },
-            onError: handleCreateError,
-            onSettled: () => {
-              submissionInProgress.current = false;
-            },
+  useEffect(() => {
+    if (isOpen) {
+      setIsCodeManuallyEdited(isEditMode);
+      if (editingCategory && lookupsByCategory) {
+        const template = lookupsByCategory[editingCategory]?.[0];
+        if (template) {
+          reset({
+            category: template.category,
+            code: template.code || "default", description: template.description || "",
+            name: template.name || "DEFAULT", sort_order: template.sort_order || 0,
+            is_system_default: template.is_system_default ?? true,
+            status: template.status ?? true, is_ring_based: template.is_ring_based || false,
+            is_sdh: template.is_sdh || false,
           });
         }
-      } catch (error) {
-        console.error("Error saving category:", error);
-        toast.error(`Failed to ${editingCategory ? "update" : "create"} category`);
-        submissionInProgress.current = false;
+      } else {
+        reset({
+          category: "", code: "default", description: "", name: "DEFAULT",
+          sort_order: 0, is_system_default: true, status: true,
+          is_ring_based: false, is_sdh: false,
+        });
       }
+    }
+  }, [isOpen, editingCategory, lookupsByCategory, reset, isEditMode]);
+
+  useEffect(() => {
+    if (!isCodeManuallyEdited && !isEditMode) {
+      setValue('code', generateCodeFromName(watchedName), { shouldValidate: true });
+    }
+  }, [watchedName, isCodeManuallyEdited, isEditMode, setValue]);
+
+  const onValidSubmit = useCallback(
+    (data: CategoryForm) => {
+      const submissionData = {
+        ...data,
+        category: data.category.trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, ""),
+        description: `Default entry for ${snakeToTitleCase(data.category)} category`,
+      };
+      onSubmit(submissionData, isEditMode);
     },
-    [categories, editingCategory, createCategory, updateCategory, onCategoryCreated, onClose, handleUpdateError, handleCreateError]
+    [onSubmit, isEditMode]
   );
 
-  const handleClose = useCallback(() => {
-    if (!isSubmitting && !submissionInProgress.current) {
-      onClose();
-    }
-  }, [isSubmitting, onClose]);
-
-  const categoryValue = watch("category") || "";
-  const formattedPreview = categoryValue
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^A-Z0-9_]/g, "");
-
-  const isEditing = !!editingCategory;
+  const modalTitle = isEditMode ? "Edit Category" : "Create New Category";
+  const submitButtonText = isEditMode ? (isLoading ? "Updating..." : "Update") : (isLoading ? "Creating..." : "Create");
+  const canSubmit = Boolean(watch("category")?.trim() && !isLoading);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isEditing ? "Edit Category" : "Create New Category"} visible={false}
-      className="transparent bg-gray-700 rounded-2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent bg-gray-700 rounded-2xl">
       <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Category {isEditing ? "Name" : ""} <span className="text-red-500">*</span>
-            </label>
-            <Input
-              type="text"
-              {...register("category")}
-              placeholder="Enter category (e.g., Node Type, System Type)"
-              required
-              disabled={isSubmitting || submissionInProgress.current}
-              className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
-            />
-            {formattedPreview && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Will be saved as:{" "}
-                <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-700 dark:text-gray-200">
-                  {formattedPreview}
-                </code>
-              </p>
-            )}
-            {errors.category && (
-              <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.category.message}</p>
-            )}
-          </div>
+        <div className="md:col-span-2">
+          <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Category Name <span className="text-red-500">*</span></label>
+          {/* THE FIX: Always render an editable text input for the category name. */}
+          <Input
+            type="text"
+            {...register("category")}
+            placeholder="Enter a new category name"
+            required
+            disabled={isLoading}
+            className="dark:bg-gray-800"
+          />
+          {errors.category && <p className="mt-1 text-xs text-red-500">{errors.category.message}</p>}
         </div>
 
-        <div
-          className={`rounded-md border p-3 ${
-            isEditing
-              ? "border-yellow-200 bg-yellow-50 dark:border-yellow-800/50 dark:bg-yellow-900/20"
-              : "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20"
-          }`}
-        >
-          <h4
-            className={`mb-1 text-sm font-medium ${
-              isEditing ? "text-yellow-900 dark:text-yellow-200" : "text-blue-900 dark:text-blue-200"
-            }`}
-          >
-            {isEditing ? "Edit Category Notes:" : "Category Creation Notes:"}
+        <div className={`rounded-md border p-3 ${isEditMode ? "border-yellow-200 bg-yellow-50 dark:border-yellow-800/50 dark:bg-yellow-900/20" : "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20"}`}>
+          <h4 className={`mb-1 text-sm font-medium ${isEditMode ? "text-yellow-900 dark:text-yellow-200" : "text-blue-900 dark:text-blue-200"}`}>
+            Notes:
           </h4>
-          <ul
-            className={`space-y-1 text-xs ${
-              isEditing ? "text-yellow-800 dark:text-yellow-200/80" : "text-blue-800 dark:text-blue-200/80"
-            }`}
-          >
-            {isEditing ? (
-              <>
-                <li>• This will update the category name for ALL lookup types in this category</li>
-                <li>• Category name will be converted to uppercase with underscores</li>
-                <li>• Special characters will be removed except letters, numbers, and underscores</li>
-              </>
-            ) : (
-              <>
-                <li>• Category field will be converted to uppercase with underscores</li>
-                <li>• Special characters will be removed except letters, numbers, and underscores</li>
-                <li>• Created and updated timestamps will be set automatically</li>
-                <li>• ID will be generated automatically</li>
-              </>
-            )}
+          <ul className={`space-y-1 text-xs ${isEditMode ? "text-yellow-800 dark:text-yellow-200/80" : "text-blue-800 dark:text-blue-200/80"}`}>
+            <li>• Category name will be converted to uppercase with underscores.</li>
+            {isEditMode && <li>• This will update the category for ALL associated lookup types.</li>}
+            {!isEditMode && <li>• A default 'DEFAULT' lookup type will be created.</li>}
           </ul>
         </div>
-
         <div className="flex justify-end gap-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting || submissionInProgress.current}
-            className="dark:border-gray-700 dark:hover:bg-gray-800"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || submissionInProgress.current || !categoryValue.trim()}
-          >
-            {isSubmitting || submissionInProgress.current
-              ? isEditing
-                ? "Updating..."
-                : "Creating..."
-              : isEditing
-              ? "Update Category"
-              : "Create Category"}
-          </Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
+          <Button type="submit" disabled={!canSubmit}>{submitButtonText}</Button>
         </div>
       </form>
     </Modal>
   );
 }
 
+
 ```
 
-<!-- path: components/categories/CategoriesTable.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/CategoriesTable.tsx -->
 ```typescript
 import Link from "next/link";
 import { FiEdit2, FiInfo } from "react-icons/fi";
@@ -30906,7 +30248,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Card } from "@/components/common/ui/card";
 import { formatCategoryName } from "@/components/categories/utils";
 import { Categories, CategoryInfo } from "./categories-types";
-import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
+import { useUser } from "@/providers/UserProvider";
 
 interface CategoriesTableProps {
   categories: Categories[];
@@ -30928,7 +30270,7 @@ export function CategoriesTable({
   searchTerm,
 }: CategoriesTableProps) {
 
-  const {data: isSuperAdmin} = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
   return (
     <Card className="overflow-hidden dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">
@@ -31045,13 +30387,11 @@ export function CategoriesTable({
 }
 ```
 
-<!-- path: components/categories/categories-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/categories/categories-types.ts -->
 ```typescript
-// components/categories/categories-types.ts
 import { z } from 'zod';
 import { lookup_typesRowSchema } from '@/schemas/zod-schemas';
 
-//  Derive all types from the Zod schema
 export type Categories = z.infer<typeof lookup_typesRowSchema>;
 
 export type GroupedLookupsByCategory = Record<string, Categories[]>;
@@ -31063,7 +30403,7 @@ export interface CategoryInfo {
 }
 ```
 
-<!-- path: components/nodes/NodesFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/nodes/NodesFilters.tsx -->
 ```typescript
 "use client";
 
@@ -31090,13 +30430,11 @@ const NodesFiltersComponent = memo(({
   onNodeTypeChange
 }: NodesFiltersProps) => {
   const [internalSearch, setInternalSearch] = useState(searchQuery);
-  const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY);
-  // Effect to call the parent's onSearchChange only when the debounced value changes
+  const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY); 
   useEffect(() => {
     onSearchChange(debouncedSearch);
   }, [debouncedSearch, onSearchChange]);
 
-  // Effect to sync the internal state if the parent's state changes
   useEffect(() => {
     setInternalSearch(searchQuery);
   }, [searchQuery]);
@@ -31137,7 +30475,7 @@ NodesFiltersComponent.displayName = "NodesFilters";
 export const NodesFilters = NodesFiltersComponent;
 ```
 
-<!-- path: components/nodes/NodeFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/nodes/NodeFormModal.tsx -->
 ```typescript
 'use client';
 
@@ -31238,7 +30576,6 @@ export function NodeFormModal({
     }
   }, [isOpen, editingNode, reset]);
 
-  //  The form's submit handler now just calls the prop.
   const onValidSubmit = useCallback(
     (formData: NodesInsertSchema) => {
       onSubmit(formData);
@@ -31314,9 +30651,8 @@ export function NodeFormModal({
 }
 ```
 
-<!-- path: components/systems/RingProvisioningModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/RingProvisioningModal.tsx -->
 ```typescript
-// path: components/systems/RingProvisioningModal.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, FC } from 'react';
@@ -31328,7 +30664,6 @@ import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-// --- TYPE DEFINITIONS ---
 
 interface ProvisioningStep {
   stepIndex: number;
@@ -31349,7 +30684,6 @@ interface RingProvisioningModalProps {
   systemId: string | null;
 }
 
-// --- SUB-COMPONENT FOR A SINGLE STEP ---
 
 const ProvisioningStepView: FC<{
   step: ProvisioningStep;
@@ -31357,19 +30691,17 @@ const ProvisioningStepView: FC<{
   onCableSelect: (cableId: string | null) => void;
   onFiberSelect: (type: 'tx' | 'rx', fiber: number | null) => void;
 }> = ({ step, isActive, onCableSelect, onFiberSelect }) => {
-
-  // CORRECTED: Fetch cables only for the active step, using the reliable startNodeId from props.
+  
   const { data: availableCables = [], isLoading: isLoadingCables } = useAvailableCables(isActive ? step.startNodeId : null);
   const { data: availableFibers = [], isLoading: isLoadingFibers } = useAvailableFibers(isActive ? step.cableId : null);
 
   console.log("availableCables", availableCables);
   console.log("availableFibers", availableFibers);
-
+  
 
   const cableOptions = useMemo(() => availableCables.map(c => ({ value: c.id, label: c.route_name })), [availableCables]);
   const fiberOptions = useMemo(() => availableFibers.map(f => ({ value: f.fiber_no.toString(), label: `Fiber #${f.fiber_no}` })), [availableFibers]);
-
-  // Fetch the full details of the selected cable to show its endpoints
+  
   const { data: selectedCable } = useQuery({
       queryKey: ['cable-details-for-step', step.cableId],
       queryFn: async () => {
@@ -31395,7 +30727,7 @@ const ProvisioningStepView: FC<{
       </div>
 
       {isLoadingCables && isActive && <div className="text-sm text-gray-500">Loading available cables...</div>}
-
+      
       {isActive && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SearchableSelect
@@ -31435,7 +30767,6 @@ const ProvisioningStepView: FC<{
   );
 };
 
-// --- MAIN MODAL COMPONENT ---
 
 export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ isOpen, onClose, logicalPath, systemId }) => {
   const [cascade, setCascade] = useState<ProvisioningStep[]>([]);
@@ -31541,7 +30872,6 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
       }
       onClose();
     } catch (error) {
-      // Error is handled by the mutation's onError
     }
   };
 
@@ -31560,7 +30890,7 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
             <span className="text-gray-600 dark:text-gray-300 font-normal">{logicalPath.end_node?.name}</span>
           </p>
         </div>
-
+        
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {cascade.map((step, index) => (
             <ProvisioningStepView
@@ -31572,7 +30902,7 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
             />
           ))}
         </div>
-
+        
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleProvision} disabled={!isPathComplete || assignMutation.isPending}>
@@ -31585,9 +30915,8 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
 };
 ```
 
-<!-- path: components/systems/SystemModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/SystemModal.tsx -->
 ```typescript
-// path: components/systems/SystemModal.tsx
 
 'use client';
 
@@ -31618,14 +30947,12 @@ const createDefaultFormValues = (): SystemFormValues => ({
   ring_id: null,
   gne: null,
   make: '',
-  vm_id: null,
 });
 
 interface SystemModalProps {
   isOpen: boolean;
   onClose: () => void;
   rowData: V_systems_completeRowSchema | null;
-  // THE FIX: Accept onSubmit function and isLoading state from parent.
   onSubmit: (data: SystemFormData) => void;
   isLoading: boolean;
 }
@@ -31635,7 +30962,6 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
-  // Data fetching remains in the modal as it's needed for form options.
   const { data: systemTypesResult = { data: [] } } = useTableQuery(supabase, 'lookup_types', { columns: 'id, name, is_ring_based, is_sdh, code', filters: { category: 'SYSTEM_TYPES' }, orderBy: [{ column: 'code', ascending: true }] });
   const systemTypes = systemTypesResult.data;
   const { data: nodesResult = { data: [] } } = useTableQuery(supabase, 'nodes', { columns: 'id, name, maintenance_terminal_id' });
@@ -31670,8 +30996,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   const selectedSystemType = useMemo(() => systemTypes.find(st => st.id === selectedSystemTypeId), [systemTypes, selectedSystemTypeId]);
   const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based, [selectedSystemType]);
   const isSdhSystem = useMemo(() => selectedSystemType?.is_sdh, [selectedSystemType]);
-  const isVmuxSystem = useMemo(() => selectedSystemType?.name === 'VMUX', [selectedSystemType]);
-  const needsStep2 = isRingBasedSystem || isSdhSystem || isVmuxSystem;
+  const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   const handleClose = useCallback(() => {
     onClose();
@@ -31697,7 +31022,6 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
                 ring_id: rowData.ring_id ?? null,
                 gne: rowData.sdh_gne ?? null,
                 make: rowData.make ?? '',
-                vm_id: rowData.vmux_vm_id ?? null,
             });
         } else {
             reset(createDefaultFormValues());
@@ -31714,7 +31038,6 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
     }
   }, [selectedNodeId, nodes, setValue]);
 
-  // THE FIX: Mutation logic is removed. This component now just calls the passed `onSubmit` prop.
   const onValidSubmit = useCallback((formData: SystemFormValues) => {
     onSubmit(formData);
   }, [onSubmit]);
@@ -31766,13 +31089,13 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   };
 
   const step1Fields = ( <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> <FormInput name="system_name" label="System Name" register={register} error={errors.system_name} required /> <FormSearchableSelect name="system_type_id" label="System Type" control={control} options={systemTypeOptions} error={errors.system_type_id} required /> <FormSearchableSelect name="node_id" label="Node / Location" control={control} options={nodeOptions} error={errors.node_id} required /> <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceTerminalOptions} error={errors.maintenance_terminal_id} /> <FormIPAddressInput name="ip_address" label="IP Address" control={control} error={errors.ip_address} /> <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} /> </div> </motion.div> );
-  const step2Fields = ( <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {isRingBasedSystem && ( <FormSearchableSelect name="ring_id" label="Ring" control={control} options={ringOptions} error={errors.ring_id} /> )} {isSdhSystem && ( <> <FormInput name="gne" label="GNE" register={register} error={errors.gne} /> <FormInput name="make" label="Make" register={register} error={errors.make} /> </> )} {isVmuxSystem && ( <FormInput name="vm_id" label="VM ID" register={register} error={errors.vm_id} /> )} <div className="md:col-span-2"> <FormInput name="s_no" label="Serial Number" register={register} error={errors.s_no} /> </div> <div className="md:col-span-2"> <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} /> </div> <div className="md:col-span-2"> <FormSwitch name="status" label="Status" control={control} className="my-4" /> </div> </div> </motion.div> );
+  const step2Fields = ( <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {isRingBasedSystem && ( <FormSearchableSelect name="ring_id" label="Ring" control={control} options={ringOptions} error={errors.ring_id} /> )} {isSdhSystem && ( <> <FormInput name="gne" label="GNE" register={register} error={errors.gne} /> <FormInput name="make" label="Make" register={register} error={errors.make} /> </> )}  <div className="md:col-span-2"> <FormInput name="s_no" label="Serial Number" register={register} error={errors.s_no} /> </div> <div className="md:col-span-2"> <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} /> </div> <div className="md:col-span-2"> <FormSwitch name="status" label="Status" control={control} className="my-4" /> </div> </div> </motion.div> );
 
   const modalTitle = isEditMode ? 'Edit System' : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
-      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading} standalone title={modalTitle} footerContent={renderFooter()}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl" visible={false} className="h-0 w-0 bg-transparent">
+      <FormCard standalone onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading} title={modalTitle} footerContent={renderFooter()}>
         <AnimatePresence mode="wait">
           {step === 1 ? step1Fields : step2Fields}
         </AnimatePresence>
@@ -31782,7 +31105,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
 };
 ```
 
-<!-- path: components/systems/CreatePathModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/CreatePathModal.tsx -->
 ```typescript
 "use client";
 
@@ -31862,7 +31185,7 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
             />
           )}
         />
-
+        
         <Controller
           name="destination_system_id"
           control={control}
@@ -31876,7 +31199,7 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
             />
           )}
         />
-
+        
         <div>
           <label className="block text-sm font-medium mb-1">Remarks</label>
           <textarea {...register("remark")} className="w-full rounded-md border-gray-300 dark:bg-gray-700" rows={3} />
@@ -31894,9 +31217,8 @@ export function CreatePathModal({ isOpen, onClose, system, onPathCreated }: Prop
 }
 ```
 
-<!-- path: components/systems/FiberProvisioning.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/FiberProvisioning.tsx -->
 ```typescript
-// path: components/systems/FiberProvisioning.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -31956,8 +31278,8 @@ export function FiberProvisioning({ path, pathName, systemId, physicalPathId, va
     return [...new Map(available.map(item => [item.fiber_no, item])).values()].sort((a,b) => a.fiber_no - b.fiber_no);
   }, [availableFibersData, isProvisioned, provisionedFibers]);
 
-  const fiberOptions: Option[] = useMemo(() =>
-    allContinuouslyAvailableFibers.map(f => ({ value: f.fiber_no.toString(), label: `Fiber #${f.fiber_no}` })),
+  const fiberOptions: Option[] = useMemo(() => 
+    allContinuouslyAvailableFibers.map(f => ({ value: f.fiber_no.toString(), label: `Fiber #${f.fiber_no}` })), 
   [allContinuouslyAvailableFibers]);
 
   const title = validationStatus === 'valid_ring' ? "Provision Protected Ring Service" : "Provision Protected Path Service";
@@ -31986,11 +31308,11 @@ export function FiberProvisioning({ path, pathName, systemId, physicalPathId, va
       });
     }
   };
-
+  
   if (isLoadingAvailable || isLoadingProvisioned) {
     return <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><p className="text-sm text-gray-500 animate-pulse">Loading Fiber Details...</p></div>;
   }
-
+  
   return (
     <div className={`mt-6 p-4 rounded-lg border ${isProvisioned && !editMode ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' : 'bg-gray-50 dark:bg-gray-800/50 border-dashed dark:border-gray-700'}`}>
       <div className="flex justify-between items-start mb-3">
@@ -32007,7 +31329,7 @@ export function FiberProvisioning({ path, pathName, systemId, physicalPathId, va
             </div>
         )}
       </div>
-
+      
       {editMode ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
@@ -32051,7 +31373,7 @@ export function FiberProvisioning({ path, pathName, systemId, physicalPathId, va
 }
 ```
 
-<!-- path: components/systems/PathSegmentList.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/PathSegmentList.tsx -->
 ```typescript
 "use client";
 
@@ -32125,9 +31447,8 @@ export function PathSegmentList({ segments, onDragEnd, onDelete }: ListProps) {
 }
 ```
 
-<!-- path: components/systems/SystemConnectionFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/SystemConnectionFormModal.tsx -->
 ```typescript
-// path: components/systems/SystemConnectionFormModal.tsx
 "use client";
 
 import { FC, useCallback, useEffect, useMemo } from "react";
@@ -32170,7 +31491,6 @@ interface SystemConnectionFormModalProps {
   onClose: () => void;
   parentSystem: V_systems_completeRowSchema;
   editingConnection: V_system_connections_completeRowSchema | null;
-  // THE FIX: Accept onSubmit function and isLoading state from parent.
   onSubmit: (data: SystemConnectionFormValues) => void;
   isLoading: boolean;
 }
@@ -32229,10 +31549,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           a_customer: editingConnection.sdh_a_customer ?? null,
           b_slot: editingConnection.sdh_b_slot ?? null,
           b_customer: editingConnection.sdh_b_customer ?? null,
-          subscriber: editingConnection.vmux_subscriber ?? null,
-          c_code: editingConnection.vmux_c_code ?? null,
-          channel: editingConnection.vmux_channel ?? null,
-          tk: editingConnection.vmux_tk ?? null,
         });
       } else {
         reset({
@@ -32244,7 +31560,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
 
-  // THE FIX: This function now simply calls the onSubmit prop.
   const onValidSubmit = useCallback(
     (formData: SystemConnectionFormValues) => {
       if (!formData.media_type_id) {
@@ -32303,18 +31618,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
             </>
           )}
 
-          {parentSystem.system_type_name === "VMUX" && (
-            <>
-              <h3 className='text-lg font-medium border-b pt-4 pb-2'>VMUX Details</h3>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput name='subscriber' label='Subscriber' register={register} error={errors.subscriber} />
-                <FormInput name='c_code' label='C-Code' register={register} error={errors.c_code} />
-                <FormInput name='channel' label='Channel' register={register} error={errors.channel} />
-                <FormInput name='tk' label='TK' register={register} error={errors.tk} />
-              </div>
-            </>
-          )}
-
           <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />
           <FormSwitch name='status' label='Status' control={control} className='my-4' />
         </div>
@@ -32325,9 +31628,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
 
 ```
 
-<!-- path: components/systems/SystemRingPath.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/SystemRingPath.tsx -->
 ```typescript
-// path: components/systems/SystemRingPath.tsx
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -32391,11 +31693,11 @@ export function SystemRingPath({ system }: Props) {
   const path = logicalPathResult?.data[0];
 
   const { data: pathSegments = [], isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
-
+  
   const { data: validationResult, isLoading: isValidating } = useRpcQuery<"validate_ring_path", PathValidationResult>(supabase, 'validate_ring_path', { p_path_id: path?.id ?? '' }, { enabled: !!path?.id && pathSegments.length > 0 });
 
   const { data: nodesInAreaResult, isLoading: isLoadingNodes } = useTableQuery(supabase, 'v_nodes_complete', { filters: { maintenance_terminal_id: system.maintenance_terminal_id! }, enabled: !!system.maintenance_terminal_id });
-
+  
   const pathNodeIdsToFetch = useMemo(() => {
     if (!pathSegments || pathSegments.length === 0) return [];
     const ids = new Set(pathSegments.flatMap(s => [s.start_node_id, s.end_node_id]));
@@ -32403,7 +31705,7 @@ export function SystemRingPath({ system }: Props) {
   }, [pathSegments]);
 
   const { data: pathNodesResult, isLoading: isLoadingPathNodes } = useTableQuery(supabase, 'v_nodes_complete', { filters: { id: { operator: 'in', value: pathNodeIdsToFetch } }, enabled: pathNodeIdsToFetch.length > 0 });
-
+  
   const deleteSegmentMutation = useDeletePathSegment();
   const reorderSegmentsMutation = useReorderPathSegments();
   const { mutate: addSegment } = useTableInsert(supabase, 'logical_path_segments', {
@@ -32418,34 +31720,34 @@ export function SystemRingPath({ system }: Props) {
   }, [pathSegments, system.node_id]);
 
   const lastNodeInPathId = useMemo(() => (pathSegments?.length > 0) ? pathSegments[pathSegments.length - 1].end_node_id : system.node_id, [pathSegments, system.node_id]);
-
+  
   const mapNodes = useMemo((): MapNode[] => {
     const allNodes = new Map<string, V_nodes_completeRowSchema>();
     (nodesInAreaResult?.data || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
     (pathNodesResult?.data || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
     return Array.from(allNodes.values())
       .filter(node => node.latitude != null && node.longitude != null)
-      .map(node => ({
-          id: node.id!,
-          name: node.name!,
-          lat: node.latitude!,
-          long: node.longitude!,
-          type: node.node_type_name,
-          status: node.status,
-          remark: node.remark,
-          ip: null,
-          ring_id: null,
-          ring_name: null,
-          order_in_ring: null,
-          ring_status: null,
-          system_status: null
+      .map(node => ({ 
+          id: node.id!, 
+          name: node.name!, 
+          lat: node.latitude!, 
+          long: node.longitude!, 
+          type: node.node_type_name, 
+          status: node.status, 
+          remark: node.remark, 
+          ip: null, 
+          ring_id: null, 
+          ring_name: null, 
+          order_in_ring: null, 
+          ring_status: null, 
+          system_status: null 
       }));
   }, [nodesInAreaResult, pathNodesResult]);
-
-  const nodeOptionsForSearch = useMemo((): Option[] =>
+  
+  const nodeOptionsForSearch = useMemo((): Option[] => 
     mapNodes
       .filter(n => n.id && n.name) // Ensure value and label are not null
-      .map(n => ({ value: n.id!, label: n.name! })),
+      .map(n => ({ value: n.id!, label: n.name! })), 
   [mapNodes]);
 
   const handleNodeClick = useCallback(async (clickedNodeId: string) => {
@@ -32477,7 +31779,7 @@ export function SystemRingPath({ system }: Props) {
       setFlyToCoords([node?.lat ?? 0, node?.long ?? 0]);
     }
   }, [mapNodes]);
-
+  
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id && pathSegments && path) {
@@ -32515,7 +31817,7 @@ export function SystemRingPath({ system }: Props) {
             </div>
           )}
         </div>
-
+        
         {path ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
             <div className="space-y-4 flex flex-col">
@@ -32577,9 +31879,8 @@ export function SystemRingPath({ system }: Props) {
 }
 ```
 
-<!-- path: components/systems/SystemRingPathToBeUsedLater.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/SystemRingPathToBeUsedLater.tsx -->
 ```typescript
-// path: components/systems/SystemRingPath.tsx
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -32643,11 +31944,11 @@ export function SystemRingPath({ system }: Props) {
   const path = logicalPathResult?.data[0];
 
   const { data: pathSegments = [], isLoading: isLoadingSegments, refetch: refetchSegments } = useSystemPath(path?.id || null);
-
+  
   const { data: validationResult, isLoading: isValidating } = useRpcQuery<"validate_ring_path", PathValidationResult>(supabase, 'validate_ring_path', { p_path_id: path?.id ?? '' }, { enabled: !!path?.id && pathSegments.length > 0 });
 
   const { data: nodesInAreaResult, isLoading: isLoadingNodes } = useTableQuery(supabase, 'v_nodes_complete', { filters: { maintenance_terminal_id: system.maintenance_terminal_id! }, enabled: !!system.maintenance_terminal_id });
-
+  
   const pathNodeIdsToFetch = useMemo(() => {
     if (!pathSegments || pathSegments.length === 0) return [];
     const ids = new Set(pathSegments.flatMap(s => [s.start_node_id, s.end_node_id]));
@@ -32655,7 +31956,7 @@ export function SystemRingPath({ system }: Props) {
   }, [pathSegments]);
 
   const { data: pathNodesResult, isLoading: isLoadingPathNodes } = useTableQuery(supabase, 'v_nodes_complete', { filters: { id: { operator: 'in', value: pathNodeIdsToFetch } }, enabled: pathNodeIdsToFetch.length > 0 });
-
+  
   const deleteSegmentMutation = useDeletePathSegment();
   const reorderSegmentsMutation = useReorderPathSegments();
   const { mutate: addSegment } = useTableInsert(supabase, 'logical_path_segments', {
@@ -32670,34 +31971,34 @@ export function SystemRingPath({ system }: Props) {
   }, [pathSegments, system.node_id]);
 
   const lastNodeInPathId = useMemo(() => (pathSegments?.length > 0) ? pathSegments[pathSegments.length - 1].end_node_id : system.node_id, [pathSegments, system.node_id]);
-
+  
   const mapNodes = useMemo((): MapNode[] => {
     const allNodes = new Map<string, V_nodes_completeRowSchema>();
     (nodesInAreaResult?.data || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
     (pathNodesResult?.data || []).forEach(node => { if(node.id) allNodes.set(node.id, node) });
     return Array.from(allNodes.values())
       .filter(node => node.latitude != null && node.longitude != null)
-      .map(node => ({
-          id: node.id!,
-          name: node.name!,
-          lat: node.latitude!,
-          long: node.longitude!,
-          type: node.node_type_name,
-          status: node.status,
-          remark: node.remark,
-          ip: null,
-          ring_id: null,
-          ring_name: null,
-          order_in_ring: null,
-          ring_status: null,
-          system_status: null
+      .map(node => ({ 
+          id: node.id!, 
+          name: node.name!, 
+          lat: node.latitude!, 
+          long: node.longitude!, 
+          type: node.node_type_name, 
+          status: node.status, 
+          remark: node.remark, 
+          ip: null, 
+          ring_id: null, 
+          ring_name: null, 
+          order_in_ring: null, 
+          ring_status: null, 
+          system_status: null 
       }));
   }, [nodesInAreaResult, pathNodesResult]);
-
-  const nodeOptionsForSearch = useMemo((): Option[] =>
+  
+  const nodeOptionsForSearch = useMemo((): Option[] => 
     mapNodes
       .filter(n => n.id && n.name) // Ensure value and label are not null
-      .map(n => ({ value: n.id!, label: n.name! })),
+      .map(n => ({ value: n.id!, label: n.name! })), 
   [mapNodes]);
 
   const handleNodeClick = useCallback(async (clickedNodeId: string) => {
@@ -32729,7 +32030,7 @@ export function SystemRingPath({ system }: Props) {
       setFlyToCoords([node?.lat ?? 0, node?.long ?? 0]);
     }
   }, [mapNodes]);
-
+  
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id && pathSegments && path) {
@@ -32767,7 +32068,7 @@ export function SystemRingPath({ system }: Props) {
             </div>
           )}
         </div>
-
+        
         {path ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
             <div className="space-y-4 flex flex-col">
@@ -32829,7 +32130,7 @@ export function SystemRingPath({ system }: Props) {
 }
 ```
 
-<!-- path: components/systems/AddSegmentModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/systems/AddSegmentModal.tsx -->
 ```typescript
 "use client";
 
@@ -32852,7 +32153,7 @@ interface Props {
 export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegments, onSegmentAdded }: Props) {
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
   const supabase = createClient();
-
+  
   const lastSegment = currentSegments.length > 0 ? currentSegments[currentSegments.length - 1] : null;
   const nextNodeId = lastSegment ? lastSegment.end_node_id : null;
 
@@ -32919,7 +32220,7 @@ export function AddSegmentModal({ isOpen, onClose, logicalPathId, currentSegment
 }
 ```
 
-<!-- path: components/maintenance-areas/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/maintenance-areas/index.ts -->
 ```typescript
 export * from "./AreaFormModal";
 export * from "./useMaintenanceAreasMutations";
@@ -32927,9 +32228,8 @@ export * from "./useMaintenanceAreasMutations";
 
 ```
 
-<!-- path: components/maintenance-areas/useMaintenanceAreasMutations.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/maintenance-areas/useMaintenanceAreasMutations.ts -->
 ```typescript
-// components/maintenance-areas/useMaintenanceAreasMutations.ts
 import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate, useToggleStatus } from "@/hooks/database";
 import { Maintenance_areasInsertSchema, Maintenance_areasUpdateSchema } from "@/schemas/zod-schemas";
@@ -32939,21 +32239,21 @@ export function useMaintenanceAreasMutations(
   supabase: ReturnType<typeof createClient>,
   onSuccess: () => void
 ) {
-  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", {
+  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to create area: ${error.message}`);
     }
   });
 
-  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", {
+  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to update area: ${error.message}`);
     }
   });
 
-  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", {
+  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to toggle status: ${error.message}`);
@@ -32966,10 +32266,10 @@ export function useMaintenanceAreasMutations(
   ) => {
     if (editingArea?.id) {
       const { id, ...updateData } = data;
-
-      updateAreaMutation.mutate({
-        id: editingArea.id,
-        data: updateData as Maintenance_areasUpdateSchema
+      
+      updateAreaMutation.mutate({ 
+        id: editingArea.id, 
+        data: updateData as Maintenance_areasUpdateSchema 
       });
     } else {
       createAreaMutation.mutate(data);
@@ -32985,9 +32285,8 @@ export function useMaintenanceAreasMutations(
 }
 ```
 
-<!-- path: components/maintenance-areas/AreaFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/maintenance-areas/AreaFormModal.tsx -->
 ```typescript
-// components/maintenance-areas/AreaFormModal.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -33051,8 +32350,6 @@ export function AreaFormModal({
     if (isOpen) {
       setIsCodeManuallyEdited(isEditMode);
       if (area) {
-        // ** Manually map fields from the 'area' prop to what the form schema expects.**
-        // This avoids passing unexpected nested objects (like `parent_area`) to the form state.
         reset({
           name: area.name,
           code: area.code,
@@ -33259,12 +32556,364 @@ export function AreaFormModal({
 
 ```
 
-<!-- path: components/doc/types/workflowTypes.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/DocSidebar.tsx -->
 ```typescript
-import type { LucideIcon } from "lucide-react";
-import type { IconType } from "react-icons";
+"use client";
 
-export type WorkflowIcon = LucideIcon | IconType;
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { WorkflowSection } from "@/components/doc/types/workflowTypes";
+import * as LucideIcons from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo, useCallback } from "react";
+import AuthButton from "@/components/auth/authButton";
+import ThemeToggle from "@/components/common/ui/theme/ThemeToggle";
+import Image from "next/image";
+import { useAuthStore } from "@/stores/authStore";
+
+const iconMap = {
+  ShieldCheck: LucideIcons.ShieldCheck,
+  Server: LucideIcons.Server,
+  ImUserTie: LucideIcons.Users,
+  BsPeople: LucideIcons.Users2,
+  FaDiagramNext: LucideIcons.Network,
+  Users: LucideIcons.Users,
+  Cpu: LucideIcons.Cpu,
+  BellRing: LucideIcons.BellRing,
+  Route: LucideIcons.Route,
+  GitBranch: LucideIcons.GitBranch,
+  GitCommit: LucideIcons.GitCommit,
+} as const;
+
+interface DocSidebarProps {
+  sections: WorkflowSection[];
+}
+
+export default function DocSidebar({ sections }: DocSidebarProps) {
+  const pathname = usePathname();
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return sections;
+    
+    const query = searchQuery.toLowerCase();
+    return sections.filter(section => 
+      section.title.toLowerCase().includes(query) ||
+      section.value.toLowerCase().includes(query)
+    );
+  }, [sections, searchQuery]);
+
+  const handleHoverStart = useCallback((index: number) => {
+    setHoveredIndex(index);
+  }, []);
+
+  const handleHoverEnd = useCallback(() => {
+    setHoveredIndex(null);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+  }, []);
+
+  const toggleUserMenu = useCallback(() => {
+    setIsUserMenuOpen(prev => !prev);
+  }, []);
+
+  const userInitials = useMemo(() => {
+    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
+      return `${user.user_metadata.first_name[0]}${user.user_metadata.last_name[0]}`.toUpperCase();
+    }
+    return user?.user_metadata?.first_name?.[0]?.toUpperCase() || "U";
+  }, [user]);
+
+  return (
+    <motion.aside 
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="w-64 border-r border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-950 hidden md:flex flex-col sticky top-0 h-screen"
+    >
+      {/* User Section & Theme Toggle */}
+      <div className="p-4 border-b border-gray-200  dark:border-gray-800">
+        <div className="flex items-center justify-between gap-2">
+          {user ? (
+            <div className="relative flex-1">
+              <button
+                onClick={toggleUserMenu}
+                className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors group"
+              >
+                {user.user_metadata?.avatar_url ? (
+                  <Image
+                    src={user.user_metadata.avatar_url}
+                    alt="User Avatar"
+                    className="h-8 w-8 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all"
+                    width={32}
+                    height={32}
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all">
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      {userInitials}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {user.user_metadata?.first_name || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {user.email}
+                  </p>
+                </div>
+                <LucideIcons.ChevronDown
+                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                    isUserMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {isUserMenuOpen && (
+                  <>
+                    {/* Backdrop */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    />
+                    
+                    {/* Menu */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-0 right-0 mt-2 z-50"
+                    >
+                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        {/* User Info */}
+                        <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user.user_metadata?.first_name} {user.user_metadata?.last_name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.email}
+                          </p>
+                        </div>
+
+                        {/* Menu Items */}
+                        <div className="p-2">
+                          <Link
+                            href="/onboarding"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                          >
+                            <LucideIcons.User className="w-4 h-4" />
+                            Profile Settings
+                          </Link>
+                          <Link
+                            href="/dashboard"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                          >
+                            <LucideIcons.LayoutDashboard className="w-4 h-4" />
+                            Dashboard
+                          </Link>
+                        </div>
+                      </div>
+                      <div className="p-2 border-t border-gray-200 dark:border-gray-700 w-full flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-b-lg" >
+                        <ThemeToggle />
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="flex-1">
+              <AuthButton />
+            </div>
+          )}
+          
+          
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent p-6">
+        {/* Header */}
+        <motion.div
+          initial={{ y: -10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white tracking-wide flex items-center gap-2">
+            <LucideIcons.BookOpen className="w-5 h-5 text-blue-500" />
+            Workflows
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {filteredSections.length} of {sections.length} sections
+          </p>
+        </motion.div>
+
+        {/* Search Input */}
+        <motion.div
+          initial={{ y: -10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15 }}
+          className="mb-4 relative"
+        >
+          <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search workflows..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              aria-label="Clear search"
+            >
+              <LucideIcons.X className="w-4 h-4" />
+            </button>
+          )}
+        </motion.div>
+
+        {/* Navigation */}
+        <nav className="space-y-1" role="navigation" aria-label="Documentation sections">
+          <AnimatePresence mode="popLayout">
+            {filteredSections.length > 0 ? (
+              filteredSections.map((section, index) => {
+                const href = `/doc/${section.value}`;
+                const isActive = pathname === href;
+                const Icon = iconMap[section.icon as keyof typeof iconMap] || LucideIcons.FileText;
+
+                return (
+                  <motion.div
+                    key={section.value}
+                    layout
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -20, opacity: 0 }}
+                    transition={{ delay: index * 0.03, duration: 0.3 }}
+                    onHoverStart={() => handleHoverStart(index)}
+                    onHoverEnd={handleHoverEnd}
+                    className="relative"
+                  >
+                    <Link
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 relative overflow-hidden group ${
+                        isActive
+                          ? "text-blue-800 dark:text-blue-300"
+                          : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {/* Active background */}
+                      <AnimatePresence>
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeBackground"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            className="absolute inset-0 bg-blue-100 dark:bg-blue-900/30 rounded-lg"
+                          />
+                        )}
+                      </AnimatePresence>
+
+                      {/* Hover background */}
+                      {!isActive && hoveredIndex === index && (
+                        <motion.div
+                          layoutId="hoverBackground"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-lg"
+                        />
+                      )}
+
+                      {/* Icon */}
+                      <motion.div
+                        animate={{
+                          scale: isActive ? 1.1 : hoveredIndex === index ? 1.05 : 1,
+                          rotate: isActive ? [0, -5, 5, 0] : 0
+                        }}
+                        transition={{ duration: 0.3 }}
+                        className="relative z-10"
+                      >
+                        <Icon className={`w-4 h-4 ${isActive ? section.iconColor : 'text-gray-400 dark:text-gray-500'}`} />
+                      </motion.div>
+
+                      {/* Title */}
+                      <span className="flex-1 relative z-10 text-sm truncate" title={section.title}>
+                        {section.title}
+                      </span>
+
+                      {/* Active indicator */}
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeIndicator"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="w-1.5 h-1.5 rounded-full bg-blue-500 relative z-10"
+                        />
+                      )}
+
+                      {/* Hover arrow */}
+                      {!isActive && hoveredIndex === index && (
+                        <motion.div
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          className="relative z-10"
+                        >
+                          <LucideIcons.ChevronRight className="w-4 h-4 text-gray-400" />
+                        </motion.div>
+                      )}
+                    </Link>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <motion.div
+                key="no-results"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center py-8"
+              >
+                <LucideIcons.SearchX className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No workflows found
+                </p>
+                <button
+                  onClick={clearSearch}
+                  className="text-xs text-blue-500 hover:text-blue-600 mt-2 underline"
+                >
+                  Clear search
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+      </div>
+    </motion.aside>
+  );
+}
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/types/workflowTypes.ts -->
+```typescript
+
+export type WorkflowIcon = string;
 
 export interface WorkflowSection {
   value: string;
@@ -33287,112 +32936,398 @@ export interface Workflow {
 }
 
 export interface WorkflowCardProps {
-  purpose: string;
-  workflows: Workflow[];
-  color: "violet" | "blue" | "teal" | "cyan" | "orange" | "yellow";
+  section: WorkflowSection;
 }
 
 export interface WorkflowSectionProps {
   workflow: Workflow;
   index: number;
   colors: {
-    border: string;
-    glow: string;
-    badge: string;
-    icon: string;
+    border: {
+      light: string;
+      dark: string;
+    };
+    glow: {
+      light: string;
+      dark: string;
+    };
+    badge: {
+      light: string;
+      dark: string;
+    };
+    icon: {
+      light: string;
+      dark: string;
+    };
+    gradient: {
+      light: string;
+      dark: string;
+    };
+    accent: string;
   };
   isLast: boolean;
 }
 ```
 
-<!-- path: components/doc/WorkflowCard.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/WorkflowCard.tsx -->
 ```typescript
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/ui/card/card';
 import { ScrollArea } from '@/components/common/ui/scroll-area';
-import { WorkflowCardProps } from '@/components/doc/types/workflowTypes';
-import WorkflowSection from '@/components/doc/WorkflowSection';
-import { Workflow } from 'lucide-react';
+import { WorkflowSection as WorkflowSectionType } from '@/components/doc/types/workflowTypes';
+import WorkflowSectionComponent from '@/components/doc/WorkflowSection';
+import { Workflow, ArrowLeft, Info, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { motion, Variants } from 'framer-motion';
+import { useMemo } from 'react';
 
-export default function WorkflowCard({ purpose, workflows, color }: WorkflowCardProps) {
-  const colorMap = {
-    violet: {
-      border: 'border-violet-500/30',
-      glow: 'shadow-violet-500/10',
-      badge: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-      icon: 'text-violet-400',
-    },
-    blue: {
-      border: 'border-blue-500/30',
-      glow: 'shadow-blue-500/10',
-      badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-      icon: 'text-blue-400',
-    },
-    teal: {
-      border: 'border-teal-500/30',
-      glow: 'shadow-teal-500/10',
-      badge: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
-      icon: 'text-teal-400',
-    },
-    cyan: {
-      border: 'border-cyan-500/30',
-      glow: 'shadow-cyan-500/10',
-      badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-      icon: 'text-cyan-400',
-    },
-    orange: {
-      border: 'border-orange-500/30',
-      glow: 'shadow-orange-500/10',
-      badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-      icon: 'text-orange-400',
-    },
-    yellow: {
-      border: 'border-yellow-500/30',
-      glow: 'shadow-yellow-500/10',
-      badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-      icon: 'text-yellow-400',
-    },
-  };
-
-  const colors = colorMap[color];
-
-  return (
-    <Card
-      className={`mt-4 bg-gradient-to-br from-gray-900/90 to-gray-800/50 backdrop-blur-sm border ${colors.border} ${colors.glow} shadow-2xl`}
-    >
-      <CardHeader className="pb-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg">
-            <Workflow className={`w-5 h-5 ${colors.icon}`} />
-          </div>
-          <div className="flex-1">
-            <CardTitle className="text-lg text-gray-100 mb-2">Purpose</CardTitle>
-            <p className="text-gray-400 text-sm leading-relaxed">{purpose}</p>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-0">
-        <ScrollArea className="h-[600px] rounded-xl border border-gray-800/50 bg-gray-950/50 backdrop-blur-sm">
-          <div className="p-6 space-y-8">
-            {workflows.map((workflow, index) => (
-              <WorkflowSection
-                key={index}
-                workflow={workflow}
-                index={index}
-                colors={colors}
-                isLast={index === workflows.length - 1}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
+interface WorkflowCardProps {
+  section: WorkflowSectionType;
 }
 
+type ColorTheme = 'violet' | 'blue' | 'teal' | 'cyan' | 'orange' | 'yellow';
+
+interface ColorConfig {
+  border: {
+    light: string;
+    dark: string;
+  };
+  glow: {
+    light: string;
+    dark: string;
+  };
+  badge: {
+    light: string;
+    dark: string;
+  };
+  icon: {
+    light: string;
+    dark: string;
+  };
+  gradient: {
+    light: string;
+    dark: string;
+  };
+  accent: string;
+}
+
+const colorMap: Record<ColorTheme, ColorConfig> = {
+  violet: {
+    border: {
+      light: 'border-violet-400/40',
+      dark: 'border-violet-500/30'
+    },
+    glow: {
+      light: 'shadow-violet-500/20',
+      dark: 'shadow-violet-500/10'
+    },
+    badge: {
+      light: 'bg-violet-100 text-violet-700 border-violet-300',
+      dark: 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+    },
+    icon: {
+      light: 'text-violet-600',
+      dark: 'text-violet-400'
+    },
+    gradient: {
+      light: 'from-violet-100 to-purple-100',
+      dark: 'from-violet-500/10 to-purple-500/10'
+    },
+    accent: 'bg-violet-500',
+  },
+  blue: {
+    border: {
+      light: 'border-blue-400/40',
+      dark: 'border-blue-500/30'
+    },
+    glow: {
+      light: 'shadow-blue-500/20',
+      dark: 'shadow-blue-500/10'
+    },
+    badge: {
+      light: 'bg-blue-100 text-blue-700 border-blue-300',
+      dark: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+    },
+    icon: {
+      light: 'text-blue-600',
+      dark: 'text-blue-400'
+    },
+    gradient: {
+      light: 'from-blue-100 to-cyan-100',
+      dark: 'from-blue-500/10 to-cyan-500/10'
+    },
+    accent: 'bg-blue-500',
+  },
+  teal: {
+    border: {
+      light: 'border-teal-400/40',
+      dark: 'border-teal-500/30'
+    },
+    glow: {
+      light: 'shadow-teal-500/20',
+      dark: 'shadow-teal-500/10'
+    },
+    badge: {
+      light: 'bg-teal-100 text-teal-700 border-teal-300',
+      dark: 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+    },
+    icon: {
+      light: 'text-teal-600',
+      dark: 'text-teal-400'
+    },
+    gradient: {
+      light: 'from-teal-100 to-emerald-100',
+      dark: 'from-teal-500/10 to-emerald-500/10'
+    },
+    accent: 'bg-teal-500',
+  },
+  cyan: {
+    border: {
+      light: 'border-cyan-400/40',
+      dark: 'border-cyan-500/30'
+    },
+    glow: {
+      light: 'shadow-cyan-500/20',
+      dark: 'shadow-cyan-500/10'
+    },
+    badge: {
+      light: 'bg-cyan-100 text-cyan-700 border-cyan-300',
+      dark: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+    },
+    icon: {
+      light: 'text-cyan-600',
+      dark: 'text-cyan-400'
+    },
+    gradient: {
+      light: 'from-cyan-100 to-blue-100',
+      dark: 'from-cyan-500/10 to-blue-500/10'
+    },
+    accent: 'bg-cyan-500',
+  },
+  orange: {
+    border: {
+      light: 'border-orange-400/40',
+      dark: 'border-orange-500/30'
+    },
+    glow: {
+      light: 'shadow-orange-500/20',
+      dark: 'shadow-orange-500/10'
+    },
+    badge: {
+      light: 'bg-orange-100 text-orange-700 border-orange-300',
+      dark: 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+    },
+    icon: {
+      light: 'text-orange-600',
+      dark: 'text-orange-400'
+    },
+    gradient: {
+      light: 'from-orange-100 to-amber-100',
+      dark: 'from-orange-500/10 to-amber-500/10'
+    },
+    accent: 'bg-orange-500',
+  },
+  yellow: {
+    border: {
+      light: 'border-yellow-400/40',
+      dark: 'border-yellow-500/30'
+    },
+    glow: {
+      light: 'shadow-yellow-500/20',
+      dark: 'shadow-yellow-500/10'
+    },
+    badge: {
+      light: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+      dark: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+    },
+    icon: {
+      light: 'text-yellow-600',
+      dark: 'text-yellow-400'
+    },
+    gradient: {
+      light: 'from-yellow-100 to-orange-100',
+      dark: 'from-yellow-500/10 to-orange-500/10'
+    },
+    accent: 'bg-yellow-500',
+  },
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut",
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4, ease: "easeOut" }
+  }
+};
+
+export default function WorkflowCard({ section }: WorkflowCardProps) {
+  const { purpose, workflows, color, title } = section;
+
+  const colors = useMemo(() => colorMap[color], [color]);
+
+  const workflowStats = useMemo(() => ({
+    total: workflows.length,
+    steps: workflows.reduce((acc, w) => acc + (w.uiSteps?.length || 0), 0)
+  }), [workflows]);
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+      <Card
+        className={`
+          bg-gradient-to-br 
+          dark:from-gray-900/90 dark:to-gray-800/50 
+          light:from-white/95 light:to-gray-50/80
+          backdrop-blur-sm border 
+          dark:${colors.border.dark} light:${colors.border.light}
+          dark:${colors.glow.dark} light:${colors.glow.light}
+          shadow-2xl hover:shadow-3xl transition-all duration-300
+        `}
+      >
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            {/* Back button */}
+            <motion.div variants={itemVariants}>
+              <Link
+                href="/dashboard"
+                className={`
+                  inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
+                  dark:bg-gray-800/50 light:bg-gray-100/80
+                  border 
+                  dark:border-gray-700/50 light:border-gray-300/80
+                  dark:text-gray-300 light:text-gray-600
+                  hover:text-white dark:hover:border-gray-600 light:hover:border-gray-400
+                  transition-all duration-200 text-sm font-medium group
+                `}
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                Dashboard
+              </Link>
+            </motion.div>
+
+            {/* Stats badges */}
+            <motion.div 
+              variants={itemVariants}
+              className="flex items-center gap-2"
+            >
+              <div className={`
+                px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5
+                dark:${colors.badge.dark} light:${colors.badge.light}
+              `}>
+                <Workflow className="w-3.5 h-3.5" />
+                {workflowStats.total} {workflowStats.total === 1 ? 'Workflow' : 'Workflows'}
+              </div>
+              <div className={`
+                px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5
+                dark:bg-gray-800/50 light:bg-gray-100/80
+                dark:border-gray-700/50 light:border-gray-300/80
+                dark:text-gray-300 light:text-gray-600
+              `}>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {workflowStats.steps} Steps
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Purpose section */}
+          <motion.div 
+            variants={itemVariants}
+            className="flex items-start gap-3"
+          >
+            <div className={`
+              p-2.5 bg-gradient-to-br border rounded-xl shadow-lg
+              dark:${colors.gradient.dark} light:${colors.gradient.light}
+              dark:${colors.border.dark} light:${colors.border.light}
+            `}>
+              <Info className={`w-5 h-5 dark:${colors.icon.dark} light:${colors.icon.light}`} />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg dark:text-gray-100 light:text-gray-900 mb-2 flex items-center gap-2">
+                {title}
+                <div className={`h-1 w-12 rounded-full ${colors.accent}`} />
+              </CardTitle>
+              <p className="dark:text-gray-400 light:text-gray-600 leading-relaxed text-sm">
+                {purpose}
+              </p>
+            </div>
+          </motion.div>
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          <motion.div variants={itemVariants}>
+            <ScrollArea className={`
+              h-[calc(100vh-22rem)] rounded-xl border backdrop-blur-sm
+              dark:border-gray-800/50 light:border-gray-300/80
+              dark:bg-gray-950/50 light:bg-white/50
+            `}>
+              <div className="p-6 space-y-8">
+                {workflows.map((workflow, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: index * 0.1,
+                      ease: "easeOut" as const
+                    }}
+                  >
+                    <WorkflowSectionComponent
+                      workflow={workflow}
+                      index={index}
+                      colors={colors}
+                      isLast={index === workflows.length - 1}
+                    />
+                  </motion.div>
+                ))}
+
+                {/* End marker */}
+                {workflows.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: workflows.length * 0.1 + 0.3 }}
+                    className="flex items-center justify-center pt-4 pb-2"
+                  >
+                    <div className="flex items-center gap-3 dark:text-gray-500 light:text-gray-400">
+                      <div className="h-px w-16 bg-gradient-to-r from-transparent dark:to-gray-700 light:to-gray-300" />
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-xs font-medium">
+                        All workflows loaded
+                      </span>
+                      <div className="h-px w-16 bg-gradient-to-l from-transparent dark:to-gray-700 light:to-gray-300" />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </ScrollArea>
+          </motion.div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
 ```
 
-<!-- path: components/doc/BackgroundElements.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/BackgroundElements.tsx -->
 ```typescript
 export default function BackgroundElements() {
     return (
@@ -33404,42 +33339,259 @@ export default function BackgroundElements() {
   }
 ```
 
-<!-- path: components/doc/HeaderSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/HeaderSection.tsx -->
 ```typescript
-import { Workflow } from "lucide-react";
+"use client";
+
+import { Workflow, Sparkles, BookOpen, Zap } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { useMemo } from "react";
+
+const PARTICLE_COUNT = 8;
 
 export default function HeaderSection() {
+  const prefersReducedMotion = useReducedMotion();
+
+  const particles = useMemo(
+    () =>
+      Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+        id: i,
+        startX: Math.random() * 100,
+        startY: Math.random() * 100,
+        endX: Math.random() * 100,
+        endY: Math.random() * 100,
+        delay: i * 0.3,
+        duration: 8 + i * 1.5,
+        size: Math.random() * 2 + 1,
+      })),
+    []
+  );
+
   return (
-    <div className="text-center space-y-4 mb-12">
-      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500/20 to-cyan-500/20 rounded-full border border-violet-500/30 backdrop-blur-sm">
-        <Workflow className="w-4 h-4 text-violet-400" />
-        <span className="text-sm font-medium text-gray-300">Technical Documentation</span>
-      </div>
-      <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent">
-        System Workflows
-      </h1>
-      <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-        Comprehensive step-by-step user and technical workflows for your application
-      </p>
+    <div className="text-center space-y-6 mb-12 relative overflow-hidden py-8">
+      {/* Floating particles effect */}
+      {!prefersReducedMotion && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {particles.map((particle) => (
+            <motion.div
+              key={particle.id}
+              className="absolute rounded-full bg-gradient-to-br from-violet-500/40 to-cyan-500/40 blur-sm"
+              style={{
+                width: particle.size,
+                height: particle.size,
+              }}
+              initial={{
+                x: `${particle.startX}%`,
+                y: `${particle.startY}%`,
+                opacity: 0,
+              }}
+              animate={{
+                x: [`${particle.startX}%`, `${particle.endX}%`, `${particle.startX}%`],
+                y: [`${particle.startY}%`, `${particle.endY}%`, `${particle.startY}%`],
+                scale: [1, 1.8, 1],
+                opacity: [0, 0.6, 0],
+              }}
+              transition={{
+                duration: particle.duration,
+                delay: particle.delay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Background gradient glow */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.2 }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-violet-500/10 via-cyan-500/10 to-blue-500/10 rounded-full blur-3xl pointer-events-none"
+      />
+
+      {/* Badge */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{
+          type: "spring",
+          stiffness: 200,
+          damping: 15,
+          delay: 0.2,
+        }}
+        className="inline-block relative z-10"
+      >
+        <motion.div
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-violet-500/20 via-purple-500/20 to-cyan-500/20 rounded-full border border-violet-500/30 backdrop-blur-sm cursor-pointer shadow-lg shadow-violet-500/10 group"
+        >
+          <motion.div
+            animate={
+              !prefersReducedMotion
+                ? {
+                    rotate: [0, 360],
+                  }
+                : {}
+            }
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            className="relative"
+          >
+            <Workflow className="w-4 h-4 text-violet-400 group-hover:text-violet-300 transition-colors" />
+            <motion.div
+              animate={
+                !prefersReducedMotion
+                  ? {
+                      scale: [1, 1.5, 1],
+                      opacity: [0.5, 0, 0.5],
+                    }
+                  : {}
+              }
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute inset-0 bg-violet-400/30 rounded-full blur-md"
+            />
+          </motion.div>
+
+          <span className="font-medium text-gray-200 text-sm group-hover:text-white transition-colors">
+            Technical Documentation
+          </span>
+
+          <motion.div
+            animate={
+              !prefersReducedMotion
+                ? {
+                    scale: [1, 1.3, 1],
+                    opacity: [0.5, 1, 0.5],
+                    rotate: [0, 180, 360],
+                  }
+                : {}
+            }
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+          </motion.div>
+        </motion.div>
+      </motion.div>
+
+      {/* Main title with enhanced gradient */}
+      <motion.div
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
+        className="relative z-10"
+      >
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+          <motion.span
+            className="bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-transparent inline-block"
+            animate={
+              !prefersReducedMotion
+                ? {
+                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                  }
+                : {}
+            }
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            style={{
+              backgroundSize: "200% 200%",
+            }}
+          >
+            System Workflows
+          </motion.span>
+        </h1>
+
+        {/* Decorative accent under title */}
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ delay: 0.7, duration: 0.8, ease: "easeOut" }}
+          className="h-1 w-32 mx-auto mt-4 bg-gradient-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-full"
+        />
+      </motion.div>
+
+      {/* Subtitle with icons */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+        className="relative z-10"
+      >
+        <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+          Comprehensive step-by-step user and technical workflows for your application
+        </p>
+
+        {/* Feature highlights */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9, duration: 0.6 }}
+          className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-500"
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-violet-400" />
+            <span>Detailed Guides</span>
+          </div>
+          <div className="w-1 h-1 rounded-full bg-gray-600" />
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            <span>Quick Reference</span>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Bottom decorative line with glow effect */}
+      <motion.div
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={{ scaleX: 1, opacity: 1 }}
+        transition={{ delay: 1, duration: 0.8 }}
+        className="relative z-10 mx-auto w-64 h-px"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+        <motion.div
+          animate={
+            !prefersReducedMotion
+              ? {
+                  x: ["-100%", "100%"],
+                }
+              : {}
+          }
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent blur-sm"
+        />
+      </motion.div>
     </div>
   );
 }
 ```
 
-<!-- path: components/doc/data/workflowData.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/data/workflowData.ts -->
 ```typescript
-// path: components/doc/data/workflowData.ts
-import { ShieldCheck, Route, GitBranch, GitCommit, Users, Cpu, BellRing, Server } from "lucide-react";
 import { WorkflowSection } from "../types/workflowTypes";
-import { FaDiagramNext } from "react-icons/fa6";
-import { BsPeople } from "react-icons/bs";
-import { ImUserTie } from "react-icons/im";
-import { FiDatabase } from "react-icons/fi";
 
 export const workflowSections: WorkflowSection[] = [
   {
     value: "auth",
-    icon: ShieldCheck,
+    icon: "ShieldCheck",
     title: "Authentication & Authorization",
     subtitle: "User registration, login & RBAC",
     gradient: "from-violet-500 to-purple-600",
@@ -33488,7 +33640,7 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "An admin action updates the `role` column in the `public.user_profiles` table.",
           "A database trigger (`sync_user_role_trigger`) fires on update.",
-          "This trigger updates the `raw_app_meta_data` JSONB column in the corresponding `auth.users` table, setting the new role.",
+          "This trigger updates the `role` text column in the corresponding `auth.users` table.",
           "The user's JWT is now minted with the new role claim, which is used by RLS policies to grant access.",
         ],
       },
@@ -33499,7 +33651,7 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "The `AuthButton` component contains a `<Link>` that navigates to `/onboarding`.",
           "The `OnboardingFormEnhanced` component fetches the user's profile using the `useGetMyUserDetails` hook.",
-          "An `useEffect` populates the form fields with the fetched data.",
+          "An `useEffect` populates the form fields with the fetched data, normalizing preference values for the UI.",
           "On submit, `OnboardingFormEnhanced` calls the `useTableUpdate` mutation, which updates the `user_profiles` record and sets `needsOnboarding` to `false` within the `preferences` column.",
           "The `isDirty` state from `react-hook-form` ensures the update only happens if changes were actually made.",
         ],
@@ -33508,7 +33660,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "base_structure",
-    icon: Server,
+    icon: "Server",
     title: "Base Structure Setup",
     subtitle: "Categories, Lookups, Areas & Designations",
     gradient: "from-gray-500 to-slate-600",
@@ -33562,7 +33714,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: 'designations_crud',
-    icon: ImUserTie,
+    icon: "ImUserTie",
     title: 'Designation Management',
     subtitle: 'Organizing employee roles in a hierarchy',
     gradient: 'from-cyan-500 to-sky-600',
@@ -33597,7 +33749,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "employees_crud",
-    icon: BsPeople,
+    icon: "BsPeople",
     title: "Employee Management",
     subtitle: "Managing employee records and roles",
     gradient: "from-sky-500 to-blue-600",
@@ -33621,13 +33773,13 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "diagrams_crud",
-    icon: FaDiagramNext,
+    icon: "FaDiagramNext",
     title: "Diagrams & File Management",
     subtitle: "Uploading and organizing network diagrams",
     gradient: "from-rose-500 to-pink-600",
     iconColor: "text-rose-400",
     bgGlow: "bg-rose-500/10",
-    color: "orange", // Using a distinct color
+    color: "orange",
     purpose: "To provide a centralized repository for uploading, storing, and accessing network diagrams, schematics, and other related documents.",
     workflows: [
       {
@@ -33646,7 +33798,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "users_crud",
-    icon: Users,
+    icon: "Users",
     title: "User CRUD Operations",
     subtitle: "Creating, updating, and deleting users",
     gradient: "from-blue-500 to-cyan-600",
@@ -33685,9 +33837,8 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           'The `handleCreateUser` function calls the `createUser` mutation from `useAdminUserOperations` hook.',
           'This mutation sends a `POST` request to the `/api/admin/users` serverless function.',
-          'The API route manually hashes the password and inserts a single new record directly into the `auth.users` table.',
-          'Crucially, this `INSERT` operation causes the `on_auth_user_created` database trigger to fire.',
-          'The trigger function is the single source of truth for profile creation; it automatically reads the metadata from the new `auth.users` record and inserts a corresponding row into `public.user_profiles`.',
+          "THE FIX: The API route now only inserts into `auth.users`, passing the role and metadata.",
+          'The `on_auth_user_created` database trigger is the single source of truth for profile creation. It reads the metadata and role from the new `auth.users` record and automatically inserts a corresponding row into `public.user_profiles`.',
           'The frontend invalidates the user list query to show the new user.',
         ],
       },
@@ -33706,7 +33857,7 @@ export const workflowSections: WorkflowSection[] = [
           'The `onEdit` handler from `useCrudManager` opens the modal with the user record.',
           'Submitting the form calls the `updateProfile` mutation from the `useAdminUpdateUserProfile` hook.',
           'This mutation calls the `admin_update_user_profile` RPC, which updates the `user_profiles` table.',
-          'If the role is changed, a database trigger syncs it to the `auth.users` table.',
+          'If the role is changed, the `sync_user_role_trigger` database trigger syncs the new role to the `auth.users` table.',
           'The user list query is invalidated and refetched.',
         ],
       },
@@ -33733,7 +33884,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "nodes_crud",
-    icon: Cpu,
+    icon: "Cpu",
     title: "Node CRUD Operations",
     subtitle: "Managing physical network locations",
     gradient: "from-emerald-500 to-teal-600",
@@ -33743,43 +33894,21 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To create, view, update, and delete network nodes, which represent physical sites like exchanges, BTS towers, or junction points.",
     workflows: [
       {
-        title: "Workflow A: Viewing & Filtering Nodes",
-        userSteps: ["User navigates to the `/dashboard/nodes` page.", "User types a node name in the search bar or selects a node type from the dropdown."],
-        uiSteps: ["The `DataTable` displays a list of nodes from the `v_nodes_complete` view.", "The list updates automatically as the user interacts with the filters."],
+        title: "Workflow: Managing Node Records",
+        userSteps: ["User navigates to the `/dashboard/nodes` page, clicks 'Add New' or 'Edit'.", "Fills out details in the `NodeFormModal`.", "Saves the record."],
+        uiSteps: ["The `DataTable` displays a list of nodes from the `v_nodes_complete` view.", "A modal opens for data entry.", "A toast confirms success and the table refreshes."],
         techSteps: [
-          "The `NodesPage` uses `useCrudManager` with a `useNodesData` adapter.",
-          "The `useNodesData` adapter calls the `get_paged_data` RPC function with the specified filters.",
-          "The RPC function queries the `v_nodes_complete` view to get the data along with related names (e.g., maintenance area name).",
-        ],
-      },
-      {
-        title: "Workflow B: Creating or Editing a Node",
-        userSteps: ["User clicks 'Add New' or the 'Edit' icon on a node row.", "Fills out the node details (name, type, location, etc.) in the `NodeFormModal`.", "Clicks 'Save'."],
-        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
-        techSteps: [
-          "`useCrudManager` opens the `NodeFormModal` with either `null` (for create) or the selected node data (for edit).",
-          "On form submission, `handleSave` is called, which triggers either the `useTableInsert` or `useTableUpdate` hook.",
-          "The mutation sends a request directly to the Supabase `nodes` table.",
-          "TanStack Query invalidates the `v_nodes_complete` view query, causing the UI to refetch and display the changes.",
-        ],
-      },
-      {
-        title: "Workflow C: Deleting a Node",
-        userSteps: ["User clicks the 'Delete' icon on a node row.", "Confirms the action in the `ConfirmModal`."],
-        uiSteps: ["A confirmation prompt appears.", "On success, a toast is shown, and the node is removed from the table."],
-        techSteps: [
-          "`crudActions.handleDelete` is called, which uses `useDeleteManager`.",
-          "`useDeleteManager` triggers the `ConfirmModal`.",
-          "On confirmation, a `useTableDelete` mutation is called, which sends a `DELETE` request to the Supabase `nodes` table for the specified ID.",
-          "The query for `v_nodes_complete` is invalidated, refreshing the UI.",
+          "The `NodesPage` uses the `useCrudManager` hook for state and action management.",
+          "The `NodeFormModal` is a 'dumb' component. It receives the `crudActions.handleSave` function as its `onSubmit` prop.",
+          "The `handleSave` function, provided by `useCrudManager`, triggers either `useTableInsert` or `useTableUpdate` on the `nodes` table.",
+          "TanStack Query invalidates the `v_nodes_complete` view query, causing the UI to refetch and display changes.",
         ],
       },
     ],
   },
-  // ** NEW WORKFLOW SECTION FOR SYSTEMS **
   {
     value: "systems_crud",
-    icon: FiDatabase,
+    icon: "FiDatabase",
     title: "System CRUD Operations",
     subtitle: "Managing network equipment and devices",
     gradient: "from-lime-500 to-green-600",
@@ -33789,51 +33918,29 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To create, view, update, and delete network systems (e.g., CPAN, MAAN, SDH). This workflow leverages a powerful database function to handle different system subtypes from a single form.",
     workflows: [
       {
-        title: "Workflow A: Creating a New System",
+        title: "Workflow: Creating or Editing a System",
         userSteps: [
-          "Admin navigates to `/dashboard/systems` and clicks 'Add New'.",
-          "The `SystemModal` opens to Step 1: 'Basic Information'.",
-          "Admin fills in the required fields: System Name, System Type (e.g., 'CPAN'), and Node/Location.",
-          "Admin clicks 'Next'.",
-          "Because 'CPAN' is a ring-based system, the modal proceeds to Step 2: 'Subtype Details'.",
-          "Admin selects the logical 'Ring' this system belongs to and fills in other details.",
-          "Admin clicks 'Create System'.",
+          "Admin navigates to `/dashboard/systems` and clicks 'Add New' or 'Edit'.",
+          "The `SystemModal` opens. Admin fills out the form, which may have one or two steps depending on the system type selected.",
+          "Admin clicks 'Create System' or 'Update System'.",
         ],
         uiSteps: [
-          "The `SystemModal` is a multi-step form. The fields shown in Step 2 change based on the 'System Type' selected in Step 1.",
-          "A success toast appears, the modal closes, and the systems list is refreshed.",
+          "The `SystemModal` is a multi-step form where Step 2 is conditional based on the 'System Type' selected.",
+          "A success toast appears, the modal closes, and the systems list refreshes.",
         ],
         techSteps: [
-          "The `onValidSubmit` handler in `SystemModal` is called.",
-          "It constructs a single payload object containing all data from both steps of the form.",
+          "THE FIX: The `SystemsPage` now holds the mutation logic. It passes its `handleSave` function to the `SystemModal`'s `onSubmit` prop.",
+          "The `handleSave` function constructs a single payload object from the form data.",
           "It calls the `upsert_system_with_details` PostgreSQL RPC function via the `useRpcMutation` hook.",
-          "Inside the database, the function first performs an `INSERT` or `UPDATE` on the generic `public.systems` table.",
-          "It then inspects the `system_type_id` and checks its boolean flags (`is_ring_based`, `is_sdh`).",
-          "Based on the flags, it executes conditional `INSERT`/`UPDATE` operations on the appropriate subtype tables (`ring_based_systems`, `sdh_systems`, etc.).",
-          "This entire process occurs within a single database transaction, ensuring data integrity.",
+          "The database function handles the complex logic of inserting/updating records in the generic `systems` table and the correct specific subtype table (`ring_based_systems`, `sdh_systems`, etc.) within a single transaction.",
           "On success, the frontend's `v_systems_complete` query is invalidated and refetched.",
-        ],
-      },
-      {
-        title: "Workflow B: Editing an Existing System",
-        userSteps: [
-          "Admin clicks the 'Edit' icon on a system row in the `DataTable`.",
-          "The `SystemModal` opens, pre-populated with all known data for that system, including its subtype details (e.g., the currently selected Ring).",
-          "Admin changes the IP address and clicks 'Update System'.",
-        ],
-        uiSteps: ["The modal opens with all relevant fields filled out.", "A success toast appears, and the UI updates."],
-        techSteps: [
-          "The `onValidSubmit` handler is called, but this time it includes the `p_id` of the existing system in the payload.",
-          "The `upsert_system_with_details` function is called again.",
-          "The function performs an `ON CONFLICT (id) DO UPDATE` on the `public.systems` table.",
-          "It then performs `ON CONFLICT (system_id) DO UPDATE` on the relevant subtype tables, ensuring all parts of the system record are updated correctly.",
         ],
       },
     ],
   },
   {
     value: "rings_crud",
-    icon: BellRing,
+    icon: "BellRing",
     title: "Ring CRUD Operations",
     subtitle: "Defining and managing logical network rings",
     gradient: "from-orange-500 to-amber-600",
@@ -33843,24 +33950,23 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To manage logical network rings, which group various systems together to form a resilient communication path.",
     workflows: [
       {
-        title: "Workflow A: Viewing & Filtering Rings",
-        userSteps: ["User navigates to the `/dashboard/rings` page.", "User types a ring name in the search bar."],
-        uiSteps: ["The `DataTable` displays a list of rings from the `v_rings` view, showing details like total nodes and maintenance area."],
-        techSteps: ["The `RingsPage` uses `useCrudManager` with a `useRingsData` adapter.", "The `useRingsData` adapter calls the `get_paged_data` RPC, which queries the `v_rings` view."],
+        title: "Workflow: Creating or Editing a Ring",
+        userSteps: ["User navigates to `/dashboard/rings`, clicks 'Add New' or 'Edit'.", "Fills out the `RingModal`.", "Saves the record."],
+        uiSteps: ["The `DataTable` lists all rings.", "A modal opens for data entry.", "A success toast appears and the table refreshes."],
+        techSteps: [
+          "THE FIX: The `RingsPage` now follows the standard pattern, using `useCrudManager`.",
+          "The `RingModal` is a 'dumb' component that receives `crudActions.handleSave` as its `onSubmit` prop.",
+          "The `handleSave` function triggers either `useTableInsert` or `useTableUpdate` on the `rings` table.",
+          "The query for the `v_rings` view is invalidated, refreshing the UI.",
+        ],
       },
       {
-        title: "Workflow B: Creating or Editing a Ring",
-        userSteps: ["User clicks 'Add New' or 'Edit'.", "Fills out the ring's name, type, and maintenance terminal in the `RingModal`.", "Clicks 'Save'."],
-        uiSteps: ["A modal opens with the form.", "On success, a toast notification appears, and the table refreshes."],
-        techSteps: ["`useCrudManager` opens the `RingModal`.", "On submission, `handleSave` triggers `useTableInsert` or `useTableUpdate` on the `rings` table.", "The query for the `v_rings` view is invalidated, refreshing the UI."],
-      },
-      {
-        title: "Workflow C: Associating Systems with a Ring",
+        title: "Workflow B: Associating Systems with a Ring",
         userSteps: ["User clicks the 'Manage Systems' icon on a ring row.", "In the `RingSystemsModal`, user moves systems from the 'Available' list to the 'Associated' list.", "User clicks 'Save Changes'."],
         uiSteps: ["A dual-listbox modal appears, showing systems in the same maintenance area.", "On success, a toast is shown, the modal closes, and the 'Total Nodes' count in the table updates."],
         techSteps: [
           "The `handleManageSystems` handler opens the `RingSystemsModal`.",
-          "The modal fetches associated systems (from `v_systems_complete` where `ring_id` matches) and available systems (from `v_systems_complete` where `ring_id` is null and `maintenance_terminal_id` matches).",
+          "The modal fetches associated systems and available systems from the `v_systems_complete` view.",
           "Saving triggers the `updateMutation`, which calls the `update_ring_system_associations` RPC function.",
           "This RPC function deletes old associations and inserts the new list of system IDs into the `ring_based_systems` junction table.",
           "The `v_rings` view query is invalidated, causing the 'Total Nodes' count to update.",
@@ -33870,7 +33976,7 @@ export const workflowSections: WorkflowSection[] = [
   },
   {
     value: "routes",
-    icon: Route,
+    icon: "Route",
     title: "OFC & Route Management",
     subtitle: "Cable segmentation & fiber splicing",
     gradient: "from-teal-500 to-emerald-600",
@@ -33880,102 +33986,63 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "An advanced tool to manage the physical segmentation and fiber splicing of an optical fiber cable (OFC) route.",
     workflows: [
       {
-        title: 'Workflow A: Managing OFC Cable Records (CRUD)',
+        title: 'Workflow: Managing OFC Cable Records',
         userSteps: [
           'Admin navigates to `/dashboard/ofc`.',
-          "Clicks 'Add New' to create a new cable route.",
-          "Fills in details like nodes, type, and capacity, then clicks 'Create'.",
-          "To edit, admin clicks the 'Edit' icon on a row, modifies data, and saves.",
-          "To delete, admin clicks the 'Delete' icon and confirms in the popup.",
+          "Clicks 'Add New' or 'Edit' to open the `OfcForm`.",
+          "Saves the record.",
         ],
         uiSteps: [
-          'The `DataTable` displays a list of all existing OFC cables.',
-          'A `route_name` is automatically generated when start and end nodes are selected.',
-          'On successful save/delete, a toast notification appears and the table refreshes.',
+          'The `DataTable` lists all OFC cables.',
+          'A success toast confirms the action and the table refreshes.',
         ],
         techSteps: [
-          'The `OfcPage` uses `useCrudManager` to manage state and data fetching.',
-          'Creating a record calls the `useTableInsert` hook to write to the `ofc_cables` table.',
-          'An `AFTER INSERT` trigger on `ofc_cables` (`create_initial_connections_for_cable`) automatically populates the `ofc_connections` table with records for each fiber.',
-          'Editing calls the `useTableUpdate` hook to update the `ofc_cables` record.',
-          'Deleting calls the `useTableDelete` hook. The `ON DELETE CASCADE` constraint on the `ofc_connections` table\'s `ofc_id` foreign key ensures PostgreSQL automatically deletes all associated fiber connection records.',
+          "THE FIX: The `OfcPage` now uses the `useCrudManager` hook for all state and actions, ensuring consistency with other pages.",
+          "The `OfcForm` receives `crudActions.handleSave` as its `onSubmit` prop.",
+          'An `AFTER INSERT` trigger on `ofc_cables` (`create_initial_connections_for_cable`) automatically populates the `ofc_connections` table.',
+          'Deleting a cable automatically cascades and deletes all associated `ofc_connections` records via database constraints.',
         ],
       },
       {
-        title: 'Workflow B: Visualizing a Route',
-        userSteps: ['User selects an OFC route from the dropdown in the Route Manager.'],
-        uiSteps: [
-          'The `RouteVisualization` component renders the start/end nodes and any existing Junction Closures (JCs).',
-          'A list of `Cable Segments` is displayed below the visualization.',
-        ],
-        techSteps: [
-          "The page component's `useRouteDetails` hook fetches data from the API route `/api/route/[id]`.",
-          'The API route fetches data from multiple tables, including `v_ofc_cables_complete`, `junction_closures`, and `cable_segments`.',
-          'The API returns a consolidated `RouteDetailsPayload` object.',
-        ],
-      },
-      {
-        title: 'Workflow C: Adding a Junction Closure',
+        title: 'Workflow B: Adding a Junction Closure & Segmentation',
         userSteps: [
-          "User clicks 'Add Junction Closure' in the Route Manager.",
-          "Fills in the JC's name and position and saves.",
+          "User selects a route from the dropdown in the Route Manager.",
+          "User clicks 'Add Junction Closure', fills in the details, and saves.",
         ],
         uiSteps: [
           'The `RouteVisualization` updates to show the new JC on the cable path.',
-          'The `Cable Segments` list is recalculated and re-rendered.',
+          'The `Cable Segments` list below is recalculated and re-rendered.',
         ],
         techSteps: [
           'The form calls the `add_junction_closure` Supabase RPC function.',
-          'This RPC inserts records into the `nodes` and `junction_closures` tables.',
-          'An `AFTER INSERT` trigger on `junction_closures` (`manage_cable_segments`) fires the `recalculate_segments_for_cable` function, which rebuilds the records in the `cable_segments` table.',
-          'The frontend refetches the route details, updating the UI.',
+          'An `AFTER INSERT` trigger on the `junction_closures` table (`manage_cable_segments`) automatically fires the `recalculate_segments_for_cable` function.',
+          'This function deletes all old segments and rebuilds the complete set of new segments in the `cable_segments` table based on the new JC positions.',
+          'The frontend simply refetches the route details to get the updated visualization.',
         ],
       },
       {
-        title: 'Workflow D: Managing Fiber Splices',
-        userSteps: [
-          'User clicks on an existing JC in the visualization.',
-          "User selects a fiber from one segment and then clicks an available fiber on another to create a splice.",
-        ],
-        uiSteps: [
-          'The `FiberSpliceManager` component displays a matrix of all segments and fibers at that JC.',
-          'UI provides visual cues for selected, available, and used fibers.',
-        ],
-        techSteps: [
-          '`FiberSpliceManager` calls the `get_jc_splicing_details` RPC to fetch the current splice state.',
-          "A `manage_splice` RPC function is called with `p_action: 'create'`, inserting a record into the `fiber_splices` table.",
-          'The frontend query for splicing details is invalidated and refetched, updating the UI.',
-        ],
-      },
-      {
-        title: "Workflow E: Fiber Path Tracing & Logical Sync",
+        title: "Workflow C: Fiber Path Tracing & Logical Sync",
         userSteps: [
             "User navigates to an OFC Cable's detail page (`/dashboard/ofc/[id]`).",
-            "User clicks the 'Trace' icon on a specific fiber row in the `DataTable`.",
-            "The `FiberTraceModal` opens, showing a visual timeline of the fiber's path through segments and splices.",
+            "User clicks the 'Trace' icon on a fiber row.",
+            "The `FiberTraceModal` opens, showing the fiber's path through segments and splices.",
             "User clicks the 'Sync Path to DB' button.",
         ],
         uiSteps: [
-            "The `FiberTraceModal` opens and displays the `FiberTraceVisualizer` component.",
-            "The visualizer renders the path, orienting each segment to show a continuous flow (e.g., A → B, B → C, not A → B, C → B).",
-            "A toast confirms that the path data has been successfully synced to the database.",
-            "The modal closes and the `ofc_connections` table in the UI refreshes to show the updated logical start/end nodes.",
+            "The `FiberTraceVisualizer` renders the path, orienting each segment to show a continuous flow.",
+            "A toast confirms the sync, the modal closes, and the table refreshes to show updated logical start/end nodes.",
         ],
         techSteps: [
-            "The `useFiberTrace` hook is called with the fiber's `segment_id` and `fiber_no`.",
-            "This hook calls the `trace_fiber_path` PostgreSQL RPC, which recursively queries the `fiber_splices` table to build the end-to-end path.",
-            "The `FiberTraceVisualizer` receives the raw trace data and uses `useMemo` to create an `orientedTrace`, determining the correct 'from' and 'to' nodes for each step for display.",
-            "Clicking 'Sync' calls the `handleSyncPath` function in the modal.",
-            "This function processes the raw `traceData` to determine the true `pathStartNodeId` and `pathEndNodeId` of the entire logical path.",
-            "It calls the `useSyncPathFromTrace` mutation, which executes the `apply_logical_path_update` RPC.",
-            "This RPC updates the `updated_sn_id`, `updated_en_id`, `updated_fiber_no_sn`, and `updated_fiber_no_en` columns for the specific `ofc_connections` record.",
+            "The `useFiberTrace` hook calls the `trace_fiber_path` RPC to build the end-to-end path.",
+            "Clicking 'Sync' calls the `useSyncPathFromTrace` mutation, which executes the `apply_logical_path_update` RPC.",
+            "This RPC updates the `updated_sn_id`, `updated_en_id`, `updated_fiber_no_sn`, and `updated_fiber_no_en` columns for the specific `ofc_connections` record, effectively caching the logical path.",
         ],
       },
     ],
   },
   {
     value: "provisioning",
-    icon: GitBranch,
+    icon: "GitBranch",
     title: "Logical Path & Fiber Provisioning",
     subtitle: "End-to-end service provisioning",
     gradient: "from-cyan-500 to-blue-600",
@@ -33985,126 +34052,48 @@ export const workflowSections: WorkflowSection[] = [
     purpose: "To define an end-to-end logical path over physical cable segments and provision working/protection fibers for a service.",
     workflows: [
       {
-        title: "Workflow A: Building a Logical Path",
-        userSteps: ["User navigates to a System's detail page (`/dashboard/systems/[id]`).", "User clicks 'Initialize Path' to create a logical path record.", "In 'Build Mode', user clicks on nodes in the map to add cable segments to the path."],
-        uiSteps: ["The `SystemRingPath` component displays a map of nodes and a list of segments in the path.", "The map highlights nodes in the current path."],
+        title: "Workflow: Building and Provisioning a Path",
+        userSteps: ["User navigates to a System's detail page.", "Clicks 'Initialize Path' to create a logical path record.", "In 'Build Mode', user clicks nodes on the map to add cable segments.", "User selects a 'Working Fiber' and 'Protection Fiber' from the dropdowns and saves."],
+        uiSteps: ["The `SystemRingPath` component displays a map and a list of segments.", "Dropdowns only show continuously available fibers.", "UI updates to show the path as 'Provisioned'."],
         techSteps: [
-          "Initializing inserts a new record into `logical_fiber_paths`.",
-          "Clicking a node calls the `find_cable_between_nodes` RPC to find the physical `ofc_cables` record.",
-          "A new record is inserted into `logical_path_segments`, linking the `logical_fiber_paths` ID with the `ofc_cables` ID.",
-          "The path is validated in real-time using the `validate_ring_path` RPC.",
+          "Initializing inserts into `logical_fiber_paths`.",
+          "Clicking a node calls `find_cable_between_nodes` RPC to find the `ofc_cables` record.",
+          "A new record is inserted into `logical_path_segments`.",
+          "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC to populate dropdowns.",
+          "Saving calls the `provision_logical_path` RPC, which updates the `logical_path_id` on all relevant `ofc_connections` records.",
         ],
       },
       {
-        title: "Workflow B: Provisioning Fibers",
-        userSteps: ["Once a valid path is built, the `FiberProvisioning` section appears.", "User selects a 'Working Fiber' and a 'Protection Fiber' from the dropdowns and clicks 'Save Changes'."],
-        uiSteps: ["The dropdowns only show fibers that are continuously available across all segments of the logical path.", "After saving, the UI switches to a read-only view showing the provisioned fibers."],
+        title: "Workflow B: Deprovisioning a Logical Path",
+        userSteps: ["On the `/dashboard/system-paths` page, user clicks 'Deprovision'.", "Confirms the action in the modal."],
+        uiSteps: ["The path status changes from 'Provisioned' to 'Unprovisioned'.", "A success toast appears."],
         techSteps: [
-          "The `useAvailableFibers` hook calls the `get_continuous_available_fibers` RPC, which finds common unallocated fiber numbers across all `ofc_connections` in the path.",
-          "Saving calls the `provision_logical_path` RPC.",
-          "This RPC creates two new `logical_fiber_paths` records (one for working, one for protection) and then updates the `logical_path_id` and `fiber_role` columns on all relevant `ofc_connections` records.",
-          "This atomically allocates the fibers to the service.",
+          "THE FIX: The `useDeprovisionPath` hook now calls the safe `deprovision_logical_path` RPC function.",
+          "This function accepts only a `path_id`.",
+          "It finds the associated working and protection paths and sets the `logical_path_id` and `fiber_role` to `NULL` for all related records in the `ofc_connections` table.",
+          "Finally, it deletes the records from the `logical_fiber_paths` table.",
         ],
       },
     ],
   },
-  {
-    value: "auditing",
-    icon: GitCommit,
-    title: "Auditing System",
-    subtitle: "Automatic change tracking & logging",
-    gradient: "from-orange-500 to-red-600",
-    iconColor: "text-orange-400",
-    bgGlow: "bg-orange-500/10",
-    color: "orange",
-    purpose: "To automatically log all data modifications (INSERT, UPDATE, DELETE) for accountability and history tracking.",
-    workflows: [
-      {
-        title: "Workflow: Automatic Data Change Logging",
-        userSteps: ["An admin edits and saves an employee's profile."],
-        uiSteps: ["The change is reflected in the UI as usual.", "An admin with permission can view the change log in the 'User Activity' section."],
-        techSteps: [
-          "The `UPDATE` operation on the `employees` table completes.",
-          "An `AFTER UPDATE` trigger (`employees_log_trigger`) on the table fires automatically.",
-          "The trigger executes the `log_data_changes()` function.",
-          "This function captures the `OLD` and `NEW` row data, converts them to JSONB, and determines the operation type ('UPDATE').",
-          "It then calls `log_user_activity()`, passing the captured data.",
-          "The `log_user_activity()` function inserts a new record into the `user_activity_logs` table, including the current user's ID (`auth.uid()`) and role (`get_my_role()`).",
-          "The entire process is atomic and happens within the same database transaction as the original update.",
-        ],
-      },
-    ],
-  },
-];
+]
 ```
 
-<!-- path: components/doc/WorkflowAccordion.tsx -->
-```typescript
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-  } from "@/components/common/ui/accordion";
-import AccordionTriggerContent from "@/components/doc/AccordionTriggerContent";
-import { WorkflowSection } from "@/components/doc/types/workflowTypes";
-import WorkflowCard from "@/components/doc/WorkflowCard";
-
-
-  interface WorkflowAccordionProps {
-    sections: WorkflowSection[];
-    open: string | undefined;
-    onValueChange: (value: string | undefined) => void;
-  }
-
-  export default function WorkflowAccordion({
-    sections,
-    open,
-    onValueChange
-  }: WorkflowAccordionProps) {
-    return (
-      <Accordion
-        type="single"
-        collapsible
-        value={open}
-        onValueChange={onValueChange}
-        className="space-y-4"
-      >
-        {sections.map((section) => (
-          <AccordionItem key={section.value} value={section.value} className="border-none">
-            <AccordionTrigger className="hover:no-underline group">
-              <AccordionTriggerContent
-                section={section}
-                isOpen={open === section.value}
-              />
-            </AccordionTrigger>
-            <AccordionContent>
-              <WorkflowCard
-                purpose={section.purpose}
-                workflows={section.workflows}
-                color={section.color}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    );
-  }
-```
-
-<!-- path: components/doc/WorkflowSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/WorkflowSection.tsx -->
 ```typescript
 import { Separator } from "@/components/common/ui/separator";
 import StepList from "@/components/doc/StepList";
 import { WorkflowSectionProps } from "@/components/doc/types/workflowTypes";
+import { useUser } from "@/providers/UserProvider";
 import { User, Monitor, Zap } from "lucide-react";
 
-export default function WorkflowSection({
-  workflow,
-  index,
-  colors,
-  isLast
+export default function WorkflowSection({ 
+  workflow, 
+  index, 
+  colors, 
+  isLast 
 }: WorkflowSectionProps) {
+  const { isSuperAdmin } = useUser();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -34136,14 +34125,16 @@ export default function WorkflowSection({
         />
 
         {/* Technical Flow */}
-        <StepList
-          icon={Zap}
-          iconColor="text-amber-400"
-          title="Technical Flow"
-          steps={workflow.techSteps}
+        {isSuperAdmin && (
+          <StepList
+            icon={Zap}
+            iconColor="text-amber-400"
+            title="Technical Flow"
+            steps={workflow.techSteps}
           stepColor="text-amber-400"
           isTechnical
         />
+        )}
       </div>
 
       {!isLast && (
@@ -34154,7 +34145,7 @@ export default function WorkflowSection({
 }
 ```
 
-<!-- path: components/doc/StepList.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/doc/StepList.tsx -->
 ```typescript
 import { LucideIcon } from "lucide-react";
 
@@ -34167,30 +34158,30 @@ interface StepListProps {
   isTechnical?: boolean;
 }
 
-export default function StepList({
-  icon: Icon,
-  iconColor,
-  title,
-  steps,
+export default function StepList({ 
+  icon: Icon, 
+  iconColor, 
+  title, 
+  steps, 
   stepColor,
-  isTechnical = false
+  isTechnical = false 
 }: StepListProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Icon className={`w-4 h-4 ${iconColor}`} />
-        <h4 className="text-sm font-semibold text-gray-200">{title}</h4>
+        <h4 className="font-semibold text-gray-700 dark:text-gray-300">{title}</h4>
       </div>
       <ul className="space-y-2 ml-6">
         {steps.map((step, index) => (
-          <li key={index} className="text-sm text-gray-400 flex items-start gap-2">
+          <li key={index} className="text-gray-700 dark:text-gray-400 flex items-start gap-2">
             <span className={`${stepColor} mt-1`}>•</span>
             {isTechnical ? (
-              <span dangerouslySetInnerHTML={{
+              <span dangerouslySetInnerHTML={{ 
                 __html: step.replace(
-                  /`([^`]+)`/g,
+                  /`([^`]+)`/g, 
                   '<code class="bg-gray-800/80 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono border border-gray-700/50">$1</code>'
-                )
+                ) 
               }} />
             ) : (
               <span>{step}</span>
@@ -34203,41 +34194,7 @@ export default function StepList({
 }
 ```
 
-<!-- path: components/doc/AccordionTriggerContent.tsx -->
-```typescript
-import { WorkflowSection } from "@/components/doc/types/workflowTypes";
-import { ChevronRight } from "lucide-react";
-
-
-interface AccordionTriggerContentProps {
-  section: WorkflowSection;
-  isOpen: boolean;
-}
-
-export default function AccordionTriggerContent({
-  section,
-  isOpen
-}: AccordionTriggerContentProps) {
-  const Icon = section.icon;
-
-  return (
-    <div className={`w-full flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-sm border border-gray-800 hover:border-${section.color}-500/50 transition-all duration-300 ${isOpen ? `border-${section.color}-500/50 shadow-lg shadow-${section.color}-500/20` : ""}`}>
-      <div className={`p-3 rounded-xl bg-gradient-to-br ${section.gradient} ${section.bgGlow}`}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div className="flex-1 text-left">
-        <h3 className="text-xl font-semibold text-gray-100 group-hover:text-white transition-colors">
-          {section.title}
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">{section.subtitle}</p>
-      </div>
-      <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isOpen ? "rotate-90" : ""}`} />
-    </div>
-  );
-}
-```
-
-<!-- path: components/designations/DesignationFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/designations/DesignationFormModal.tsx -->
 ```typescript
 import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -34260,8 +34217,6 @@ interface DesignationFormModalProps {
 }
 
 export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, allDesignations }: DesignationFormModalProps) {
-  // === React Hook Form Setup ===
-  // Create a form-specific schema that excludes timestamp fields to avoid Date vs string/null mismatches
   const designationFormSchema = employee_designationsInsertSchema.pick({ id: true, name: true, parent_id: true, status: true });
   type DesignationForm = z.infer<typeof designationFormSchema>;
 
@@ -34298,7 +34253,6 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
     return allDesignations.filter((d) => !d.id || !excludeIds.has(d.id));
   }, [designation, allDesignations]);
 
-  // Reset form when designation changes (to pre-fill the form when editing)
   useEffect(() => {
     if (designation) {
       reset({
@@ -34311,7 +34265,6 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
   }, [designation, reset]);
 
   const onValidSubmit = (data: DesignationForm) => {
-    // Forward only the fields we collect; backend/consumer can add timestamps as needed
     const parsedData = {
       ...data,
     };
@@ -34333,10 +34286,9 @@ export function DesignationFormModal({ isOpen, onClose, onSubmit, designation, a
 
 ```
 
-<!-- path: components/outdated/OutdatedBrowserModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/outdated/OutdatedBrowserModal.tsx -->
 ```typescript
 
-// components/outdated/OutdatedBrowserModal.tsx
 import React from 'react'
 
 interface OutdatedBrowserModalProps {
@@ -34394,7 +34346,7 @@ const OutdatedBrowserModal: React.FC<OutdatedBrowserModalProps> = ({ handleClose
 export default OutdatedBrowserModal
 ```
 
-<!-- path: components/common/filters/SearchAndFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/filters/SearchAndFilters.tsx -->
 ```typescript
 import { motion } from "framer-motion";
 import { FiSearch, FiX, FiFilter, FiChevronDown, FiChevronUp } from "react-icons/fi";
@@ -34497,14 +34449,13 @@ export function SearchAndFilters({
 }
 ```
 
-<!-- path: components/common/filters/FilterInputs.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/filters/FilterInputs.tsx -->
 ```typescript
 import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { Input } from '@/components/common/ui/Input';
 import { Filters } from '@/hooks/database';
 import React from 'react';
 
-// --- TYPE DEFINITIONS ---
 
 interface FilterWrapperProps {
   label: string;
@@ -34525,7 +34476,6 @@ interface InputFilterProps extends FilterWrapperProps {
   placeholder?: string;
 }
 
-// --- COMPONENTS ---
 
 export const SelectFilter: React.FC<SelectFilterProps> = ({
   label,
@@ -34535,7 +34485,6 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
   options,
   placeholder,
 }) => {
-  // Safely extract the current value, ensuring it's a string for the component.
   const currentValue = filters[filterKey];
   const valueAsString =
     typeof currentValue === 'string' || typeof currentValue === 'number'
@@ -34546,7 +34495,6 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
     setFilters((prevFilters) => {
       const newFilters = { ...prevFilters };
       if (newValue === null || newValue === '') {
-        // When cleared, remove the key entirely for a cleaner state.
         delete newFilters[filterKey];
       } else {
         newFilters[filterKey] = newValue;
@@ -34567,25 +34515,6 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
         placeholder={placeholder || `All ${label}s`}
         clearable
       />
-      {/* <Select
-        value={(valueAsString as string) ?? ''}
-        onValueChange={(value) => handleChange(value)}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={placeholder ?? 'Select'} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-            >
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select> */}
     </div>
   );
 };
@@ -34597,7 +34526,6 @@ export const InputFilter: React.FC<InputFilterProps> = ({
   setFilters,
   placeholder,
 }) => {
-  // Safely extract the current value
   const currentValue = filters[filterKey];
   const valueAsString =
     typeof currentValue === 'string' || typeof currentValue === 'number'
@@ -34633,7 +34561,7 @@ export const InputFilter: React.FC<InputFilterProps> = ({
 
 ```
 
-<!-- path: components/common/entity-management/DetailItem.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/DetailItem.tsx -->
 ```typescript
 import React from 'react';
 import { BaseEntity } from '@/components/common/entity-management/types';
@@ -34657,7 +34585,6 @@ export function DetailItem<T extends BaseEntity>({
 
   const renderValue = () => {
     if (render) {
-      // We know value should be T[keyof T] when render is provided
       return render(value as T[keyof T], entity);
     }
 
@@ -34698,9 +34625,8 @@ export function DetailItem<T extends BaseEntity>({
 }
 ```
 
-<!-- path: components/common/entity-management/types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/types.ts -->
 ```typescript
-// components/common/entity-management/types.ts
 import { UseQueryResult } from '@tanstack/react-query';
 import { PagedQueryResult } from '@/hooks/database'; // IMPORT THE NEW TYPE
 
@@ -34717,12 +34643,10 @@ export interface HierarchicalEntity extends BaseEntity {
   parent?: HierarchicalEntity | null;
 }
 
-// Utility type for entities with computed children
 export type EntityWithChildren<T extends BaseEntity> = T & {
   children: EntityWithChildren<T>[];
 };
 
-// Type guard functions
 export function isHierarchicalEntity<T extends BaseEntity>(
   entity: T
 ): entity is T & HierarchicalEntity {
@@ -34763,7 +34687,6 @@ export interface UseEntityManagementProps<T extends BaseEntity> {
 }
 
 
-// Updated component interfaces
 export interface EntityTreeItemProps<T extends BaseEntity> {
     entity: EntityWithChildren<T>;
     config: EntityConfig<T>;
@@ -34777,7 +34700,7 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
   }
 ```
 
-<!-- path: components/common/entity-management/SearchAndFilters.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/SearchAndFilters.tsx -->
 ```typescript
 import { MdFilterList as Filter, MdSearch as Search, MdClear as Clear } from 'react-icons/md';
 import { BaseEntity, EntityConfig } from '@/components/common/entity-management/types';
@@ -34883,7 +34806,7 @@ export function SearchAndFilters<T extends BaseEntity>({
 }
 ```
 
-<!-- path: components/common/entity-management/EntityListItem.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/EntityListItem.tsx -->
 ```typescript
 import React from 'react';
 import { BiToggleLeft, BiToggleRight } from 'react-icons/bi';
@@ -34908,15 +34831,14 @@ export function EntityListItem<T extends BaseEntity>({
 }: EntityListItemProps<T>) {
   const IconComponent = config.icon;
 
-  // Function to get parent name using the configured parent field
   const getParentName = (entity: T): string | null => {
     if (!config.isHierarchical || !config.parentField) return null;
-
+    
     const parentObject = entity[config.parentField] as HierarchicalEntity;
     if (parentObject?.name) {
       return parentObject.name;
     }
-
+    
     return null;
   };
 
@@ -34945,8 +34867,7 @@ export function EntityListItem<T extends BaseEntity>({
         </div>
         <button
           onClick={(e) => {
-            // IMPROVEMENT: Stop the click from bubbling up to the parent div.
-            e.stopPropagation();
+            e.stopPropagation(); 
             onToggleStatus(e, entity);
           }}
           disabled={isLoading}
@@ -34964,7 +34885,7 @@ export function EntityListItem<T extends BaseEntity>({
 }
 ```
 
-<!-- path: components/common/entity-management/EntityTreeItem.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/EntityTreeItem.tsx -->
 ```typescript
 import { BaseEntity, EntityTreeItemProps } from "@/components/common/entity-management/types";
 import { FiChevronDown, FiChevronRight, FiToggleLeft, FiToggleRight } from "react-icons/fi";
@@ -34984,7 +34905,7 @@ export function EntityTreeItem<T extends BaseEntity>({
     const hasChildren = entity.children.length > 0;
     const isSelected = entity.id === selectedEntityId;
     const isExpanded = expandedEntities.has(entity.id);
-
+  
     return (
       <div className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
         <div
@@ -35052,10 +34973,10 @@ export function EntityTreeItem<T extends BaseEntity>({
       </div>
     );
   }
-
+  
 ```
 
-<!-- path: components/common/entity-management/EntityDetailsPanel.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/EntityDetailsPanel.tsx -->
 ```typescript
 import React from 'react';
 import { FiEdit3, FiTrash2, FiEye } from 'react-icons/fi';
@@ -35067,7 +34988,6 @@ interface EntityDetailsPanelProps<T extends BaseEntity> {
   config: EntityConfig<T>;
   onEdit: () => void;
   onDelete: (entity: { id: string; name: string }) => void;
-  // THE FIX: Add a new prop to handle opening the full details modal.
   onViewDetails?: () => void;
 }
 
@@ -35116,7 +35036,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         <div className="flex gap-2">
-          {/* THE FIX: Add the new "View Details" button, which will be the primary action. */}
+          {/* THE FIX: Add the new "View Details" button, making it the primary action. */}
           {onViewDetails && (
             <button
               onClick={onViewDetails}
@@ -35144,7 +35064,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 }
 ```
 
-<!-- path: components/common/entity-management/EntityManagementComponent.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/EntityManagementComponent.tsx -->
 ```typescript
 import type { UseQueryResult } from "@tanstack/react-query";
 import { PagedQueryResult } from "@/hooks/database";
@@ -35152,219 +35072,150 @@ import { EntityDetailsPanel } from "@/components/common/entity-management/Entity
 import { EntityListItem } from "@/components/common/entity-management/EntityListItem";
 import { EntityTreeItem } from "@/components/common/entity-management/EntityTreeItem";
 import { SearchAndFilters } from "@/components/common/entity-management/SearchAndFilters";
-import { BaseEntity, EntityConfig } from "@/components/common/entity-management/types";
+import { BaseEntity, EntityConfig, EntityWithChildren } from "@/components/common/entity-management/types";
 import { ViewModeToggle } from "@/components/common/entity-management/ViewModeToggle";
-import { useEntityManagement } from "@/hooks/useEntityManagement";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
-import { useCallback, useState } from "react";
+import { useDebounce } from "use-debounce";
 
-type ToggleStatusVariables = {
-  id: string;
-  status: boolean;
-  nameField?: keyof BaseEntity;
-};
+type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity; };
 
 interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
   entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
-  toggleStatusMutation: {
-    mutate: (variables: ToggleStatusVariables) => void;
-    isPending: boolean;
-  };
+  toggleStatusMutation: { mutate: (variables: ToggleStatusVariables) => void; isPending: boolean; };
   onEdit: (entity: T) => void;
   onDelete: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
-  // THE FIX: Add onViewDetails to the component's props interface.
   onViewDetails?: () => void;
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+  filters: Record<string, string>;
+  onFilterChange: (filters: Record<string, string>) => void;
+  onClearFilters: () => void;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
-  config,
-  entitiesQuery,
-  toggleStatusMutation,
-  onEdit,
-  onDelete,
-  onCreateNew,
-  selectedEntityId,
-  onSelect,
-  onViewDetails, // THE FIX: Destructure the new prop.
+  config, entitiesQuery, toggleStatusMutation, onEdit, onDelete,
+  onCreateNew, selectedEntityId, onSelect, onViewDetails,
+  searchTerm, onSearchChange, filters, onFilterChange, onClearFilters
 }: EntityManagementComponentProps<T>) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
+  const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
+
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Record<string, string>>({});
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
+  const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    onSearchChange(debouncedSearch);
+  }, [debouncedSearch, onSearchChange]);
+
+  const allEntities = useMemo(() => entitiesQuery.data?.data || [], [entitiesQuery.data]);
+  const selectedEntity = useMemo(() => allEntities.find(e => e.id === selectedEntityId) || null, [allEntities, selectedEntityId]);
+
+  const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
+    if (!config.isHierarchical) return allEntities.map((entity) => ({ ...entity, children: [] }));
+    const entityMap = new Map<string, EntityWithChildren<T>>();
+    allEntities.forEach((entity) => { entityMap.set(entity.id, { ...entity, children: [] }); });
+    const rootEntities: EntityWithChildren<T>[] = [];
+    allEntities.forEach((entity) => {
+      const entityWithChildren = entityMap.get(entity.id);
+      if (!entityWithChildren) return;
+      const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
+      if (parentId) {
+        const parent = entityMap.get(parentId);
+        if (parent) { parent.children.push(entityWithChildren); }
+        else { rootEntities.push(entityWithChildren); }
+      } else {
+        rootEntities.push(entityWithChildren);
+      }
+    });
+    return rootEntities;
+  }, [allEntities, config.isHierarchical, config.parentField]);
 
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
     if (entity.status === null || entity.status === undefined) return;
-    toggleStatusMutation.mutate({
-      id: entity.id,
-      status: !entity.status,
-      nameField: 'status'
-    });
+    toggleStatusMutation.mutate({ id: entity.id, status: !entity.status, nameField: 'status' });
   }, [toggleStatusMutation]);
 
-  const handleCloseDetailsPanel = useCallback(() => {
-    setShowDetailsPanel(false);
-    onSelect(null);
-  }, [onSelect]);
-
-  const {
-    filteredEntities,
-    hierarchicalEntities,
-    selectedEntity,
-    handleEntitySelect,
-    handleOpenCreateForm,
-    expandedEntities,
-    toggleExpanded,
-  } = useEntityManagement<T>({
-    entitiesQuery,
-    config: { ...config, isHierarchical: config.isHierarchical || false },
-    onEdit,
-    onDelete,
-    onToggleStatus: handleToggleStatus,
-    onCreateNew,
-    selectedEntityId,
-    onSelect,
-  });
+  const handleCloseDetailsPanel = useCallback(() => { setShowDetailsPanel(false); onSelect(null); }, [onSelect]);
+  const handleItemSelect = (id: string) => { onSelect(id); setShowDetailsPanel(true); };
+  const handleOpenEditForm = useCallback(() => { if (selectedEntity) onEdit(selectedEntity); }, [selectedEntity, onEdit]);
+  const toggleExpanded = (id: string) => { setExpandedEntities((prev) => { const newSet = new Set(prev); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); return newSet; }); };
 
   const IconComponent = config.icon;
 
-  const handleItemSelect = (id: string) => {
-    handleEntitySelect(id);
-    setShowDetailsPanel(true);
-  };
-
-  const handleOpenEditForm = useCallback(() => {
-    if (selectedEntity) {
-      onEdit(selectedEntity);
-    }
-  }, [selectedEntity, onEdit]);
-
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <IconComponent className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {config.entityPluralName}
-            </h1>
-          </div>
-          <button
-            onClick={handleOpenCreateForm}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-          >
-            <FiPlus className="h-4 w-4 mr-2" />
-            Add {config.entityDisplayName}
-          </button>
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)]">
+      <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <SearchAndFilters
+            searchTerm={internalSearchTerm} onSearchChange={setInternalSearchTerm}
+            showFilters={showFilters} onToggleFilters={() => setShowFilters(p => !p)}
+            filters={filters} onFilterChange={onFilterChange} onClearFilters={onClearFilters}
+            config={config}
+          />
+          {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
+        </div>
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+          {entitiesQuery.isLoading ? (
+            <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
+          ) : entitiesQuery.isError ? (
+            <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
+          ) : allEntities.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-center">
+               <div>
+                  <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No {config.entityPluralName.toLowerCase()} found.</p>
+                  <button onClick={onCreateNew} className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30">
+                      <FiPlus className="h-4 w-4 mr-2" />
+                      Add First {config.entityDisplayName}
+                  </button>
+              </div>
+            </div>
+          ) : config.isHierarchical && viewMode === "tree" ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {hierarchicalEntities.map((entity) => (
+                <EntityTreeItem key={entity.id} entity={entity} config={config} level={0} selectedEntityId={selectedEntityId} expandedEntities={expandedEntities} onSelect={handleItemSelect} onToggleExpand={toggleExpanded} onToggleStatus={(e) => handleToggleStatus(e, entity)} isLoading={toggleStatusMutation.isPending} />
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {allEntities.map((entity) => (
+                <EntityListItem key={entity.id} entity={entity} config={config} isSelected={entity.id === selectedEntityId} onSelect={() => handleItemSelect(entity.id)} onToggleStatus={(e) => handleToggleStatus(e, entity)} isLoading={toggleStatusMutation.isPending} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
-        <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
-          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <SearchAndFilters
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(p => !p)}
-              filters={filters}
-              onFilterChange={setFilters}
-              onClearFilters={() => setFilters({})}
-              config={config}
-            />
-            {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
-          </div>
-
-          <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
-            {entitiesQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
-            ) : entitiesQuery.isError ? (
-              <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
-            ) : filteredEntities.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-center">
-                 <div>
-                    <IconComponent className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">No {config.entityPluralName.toLowerCase()} found.</p>
-                    <button
-                        onClick={handleOpenCreateForm}
-                        className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                    >
-                        <FiPlus className="h-4 w-4 mr-2" />
-                        Add First {config.entityDisplayName}
-                    </button>
-                </div>
-              </div>
-            ) : config.isHierarchical && viewMode === "tree" ? (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {hierarchicalEntities.map((entity) => (
-                  <EntityTreeItem
-                    key={entity.id}
-                    entity={entity}
-                    config={config}
-                    level={0}
-                    selectedEntityId={selectedEntityId}
-                    expandedEntities={expandedEntities}
-                    onSelect={handleItemSelect}
-                    onToggleExpand={toggleExpanded}
-                    onToggleStatus={(e) => handleToggleStatus(e, entity)}
-                    isLoading={toggleStatusMutation.isPending}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {filteredEntities.map((entity) => (
-                  <EntityListItem
-                    key={entity.id}
-                    entity={entity}
-                    config={config}
-                    isSelected={entity.id === selectedEntityId}
-                    onSelect={() => handleItemSelect(entity.id)}
-                    onToggleStatus={(e) => handleToggleStatus(e, entity)}
-                    isLoading={toggleStatusMutation.isPending}
-                  />
-                ))}
-              </div>
-            )}
+      <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
+            <button onClick={handleCloseDetailsPanel} className="p-2 rounded-md text-gray-400">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         </div>
-
-        <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
-          <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
-              <button onClick={handleCloseDetailsPanel} className="p-2 rounded-md text-gray-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          </div>
-          <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {selectedEntity ? (
-              <EntityDetailsPanel
-                entity={selectedEntity}
-                config={config}
-                onEdit={handleOpenEditForm}
-                onDelete={onDelete}
-                // THE FIX: Pass the onViewDetails prop down to the panel.
-                onViewDetails={onViewDetails}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full p-8 text-center">
-                <div>
-                  <FiInfo className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">Select a {config.entityDisplayName.toLowerCase()} to view details</p>
-                </div>
+        <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {selectedEntity ? (
+            <EntityDetailsPanel entity={selectedEntity} config={config} onEdit={handleOpenEditForm} onDelete={onDelete} onViewDetails={onViewDetails} />
+          ) : (
+            <div className="flex items-center justify-center h-full p-8 text-center">
+              <div>
+                <FiInfo className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">Select a {config.entityDisplayName.toLowerCase()} to view details</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -35372,13 +35223,13 @@ export function EntityManagementComponent<T extends BaseEntity>({
 }
 ```
 
-<!-- path: components/common/entity-management/ViewModeToggle.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/entity-management/ViewModeToggle.tsx -->
 ```typescript
 interface ViewModeToggleProps {
     viewMode: "tree" | "list";
     onChange: (mode: "tree" | "list") => void;
   }
-
+  
   export function ViewModeToggle({ viewMode, onChange }: ViewModeToggleProps) {
     return (
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -35409,28 +35260,17 @@ interface ViewModeToggleProps {
   }
 ```
 
-<!-- path: components/common/TruncateTooltip.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/TruncateTooltip.tsx -->
 ```typescript
-// @/components/common/TruncateTooltip.tsx
 import React, { useEffect, useRef, useState } from "react";
 
 export interface TruncateTooltipProps {
   text: string;
   className?: string;
-  /**
-   * Optional id suffix for ARIA. If omitted, a random id will be generated.
-   */
   id?: string;
-  /**
-   * Optional: control max width of tooltip in px. Default 320.
-   */
   maxWidth?: number;
 }
 
-/**
- * Renders truncated single-line text and shows a custom tooltip on hover/focus
- * only when the content is visually truncated.
- */
 export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   text,
   className,
@@ -35446,7 +35286,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const checkOverflow = () => {
     const el = textRef.current;
     if (!el) return false;
-    // Compare scrollWidth vs clientWidth on the measured element itself
     const overflow = el.scrollWidth > el.clientWidth;
     setIsOverflowing(overflow);
     return overflow;
@@ -35470,7 +35309,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (checkOverflow()) {
       const el = textRef.current!;
       const rect = el.getBoundingClientRect();
-      // Clamp tooltip within viewport horizontally
       const left = Math.min(Math.max(8, rect.left), window.innerWidth - maxWidth - 8);
       setPos({ top: rect.bottom + 8, left });
       setShowTooltip(true);
@@ -35510,9 +35348,8 @@ export default TruncateTooltip;
 
 ```
 
-<!-- path: components/common/BulkActions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/BulkActions.tsx -->
 ```typescript
-// BulkActions Component (Enhanced version)
 import { FiTrash2, FiCheck, FiX } from "react-icons/fi";
 
 interface BulkActionsProps {
@@ -35550,14 +35387,13 @@ export function BulkActions({
     const value = e.target.value as "active" | "inactive" | "";
     if (value) {
       onBulkUpdateStatus(value);
-      // Reset select to default
       e.target.value = "";
     }
   };
 
   const getButtonClasses = (variant: 'primary' | 'secondary' | 'danger' = 'primary') => {
     const baseClasses = "px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
-
+    
     switch (variant) {
       case 'danger':
         return `${baseClasses} bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800`;
@@ -35577,7 +35413,7 @@ export function BulkActions({
             {selectedCount} {entityName}{selectedCount !== 1 ? 's' : ''} selected
           </p>
         </div>
-
+        
         <div className="flex items-center gap-2 flex-wrap">
           {/* Status Update Dropdown */}
           {showStatusUpdate && (
@@ -35608,7 +35444,7 @@ export function BulkActions({
               {action.label}
             </button>
           ))}
-
+          
           {/* Delete Button */}
           <button
             onClick={onBulkDelete}
@@ -35619,12 +35455,12 @@ export function BulkActions({
             <FiTrash2 className="w-4 h-4" />
             Delete {selectedCount > 1 && `(${selectedCount})`}
           </button>
-
+          
           {/* Clear Selection Button */}
           <button
             onClick={onClearSelection}
             disabled={isOperationLoading}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 
                       text-sm px-2 py-1 rounded transition-colors flex items-center gap-1"
             title="Clear selection"
           >
@@ -35648,18 +35484,18 @@ export function BulkActions({
 
 ```
 
-<!-- path: components/common/DataListView.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/DataListView.tsx -->
 ```typescript
 import React, { useState } from 'react';
-import {
-  FiSearch,
-  FiFilter,
-  FiGrid,
-  FiList,
-  FiInfo,
-  FiPlus,
+import { 
+  FiSearch, 
+  FiFilter, 
+  FiGrid, 
+  FiList, 
+  FiInfo, 
+  FiPlus, 
   FiX,
-  FiAlertCircle
+  FiAlertCircle 
 } from 'react-icons/fi';
 interface DataItem {
     id: string | number;  // Adjust the type based on your actual ID type
@@ -35667,7 +35503,6 @@ interface DataItem {
     description?: string;
     status?: boolean;
     title?: string;
-    // Add other properties that your data items have
   }
 interface DataListViewProps {
     data: DataItem[];
@@ -35709,12 +35544,7 @@ interface DataListViewProps {
     detailsClassName: string;
 }
 
-/**
- * A reusable data list view component with search, filters, and details panel
- * @param {Object} props - Component props
- */
 const DataListView = (props: DataListViewProps) => {
-  // Destructure props with defaults
   const {
     data = [],
     isLoading = false,
@@ -35754,8 +35584,7 @@ const DataListView = (props: DataListViewProps) => {
   } = props;
 
   const [internalShowDetailsPanel, setInternalShowDetailsPanel] = useState(false);
-
-  // Use external state if provided, otherwise use internal state
+  
   const detailsPanelVisible = showDetailsPanel !== undefined ? showDetailsPanel : internalShowDetailsPanel;
   const setDetailsPanelVisible = setShowDetailsPanel || setInternalShowDetailsPanel;
 
@@ -35765,7 +35594,6 @@ const DataListView = (props: DataListViewProps) => {
     if (onItemSelect) {
       onItemSelect(item);
     }
-    // Auto-show details panel on mobile when item is selected
     if (window.innerWidth < 1024) {
       setDetailsPanelVisible(true);
     }
@@ -35773,7 +35601,7 @@ const DataListView = (props: DataListViewProps) => {
 
   const ViewModeToggle = () => {
     if (!showViewModeToggle) return null;
-
+    
     return (
       <div className="flex items-center space-x-1 px-4 py-2 border-t border-gray-200 dark:border-gray-700">
         <button
@@ -35828,13 +35656,13 @@ const DataListView = (props: DataListViewProps) => {
           )}
         </div>
       </div>
-
+      
       {showFilters && renderFilters && (
         <div className="px-4 pb-3 border-t border-gray-200 dark:border-gray-700">
           {renderFilters(filters, onFilterChange, onClearFilters)}
         </div>
       )}
-
+      
       <ViewModeToggle />
     </div>
   );
@@ -35865,12 +35693,12 @@ const DataListView = (props: DataListViewProps) => {
   };
 
   const EmptyState = () => {
-
+    
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          {React.createElement(emptyStateIcon, {
-            className: "h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4"
+          {React.createElement(emptyStateIcon, { 
+            className: "h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" 
           })}
           <p className="text-gray-900 dark:text-white font-medium mb-2">
             {emptyStateTitle}
@@ -35897,7 +35725,7 @@ const DataListView = (props: DataListViewProps) => {
     if (error) return <ErrorState />;
     if (data.length === 0) return <EmptyState />;
 
-    const contentClass = viewMode === 'grid'
+    const contentClass = viewMode === 'grid' 
       ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4"
       : "divide-y divide-gray-100 dark:divide-gray-700";
 
@@ -35905,7 +35733,7 @@ const DataListView = (props: DataListViewProps) => {
       <div className={contentClass}>
         {data.map((item) => {
           const isSelected = selectedItemId === item.id;
-
+          
           if (viewMode === 'grid' && renderGridItem) {
             return renderGridItem(item, isSelected, () => handleItemSelect(item));
           } else if (viewMode === 'tree' && renderTreeItem) {
@@ -35913,8 +35741,7 @@ const DataListView = (props: DataListViewProps) => {
           } else if (renderListItem) {
             return renderListItem(item, isSelected, () => handleItemSelect(item));
           }
-
-          // Fallback default rendering
+          
           return (
             <div
               key={item.id}
@@ -35947,7 +35774,7 @@ const DataListView = (props: DataListViewProps) => {
         } lg:border-r lg:border-gray-200 lg:dark:border-gray-700 ${listClassName}`}
       >
         <SearchAndFiltersSection />
-
+        
         <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
           {renderContent()}
         </div>
@@ -36001,9 +35828,25 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```
 
-<!-- path: components/common/ui/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/index.ts -->
 ```typescript
 export { Button } from './Button';
 export { Card } from './card';
@@ -36034,7 +35877,7 @@ export {SearchableSelect} from './select/SearchableSelect';
 
 ```
 
-<!-- path: components/common/ui/scroll-area.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/scroll-area.tsx -->
 ```typescript
 "use client"
 
@@ -36097,7 +35940,7 @@ export { ScrollArea, ScrollBar }
 
 ```
 
-<!-- path: components/common/ui/table/TableSkeleton.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/table/TableSkeleton.tsx -->
 ```typescript
 import React from 'react';
 
@@ -36157,7 +36000,6 @@ const Skeleton: React.FC<SkeletonProps> = ({
   );
 };
 
-// Compound components for common patterns
 interface TableSkeletonProps {
   rows?: number;
   columns?: number;
@@ -36334,14 +36176,13 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({
 export default Skeleton;
 ```
 
-<!-- path: components/common/ui/Button/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Button/index.ts -->
 ```typescript
 export { Button } from './Button';
 ```
 
-<!-- path: components/common/ui/Button/Button.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Button/Button.tsx -->
 ```typescript
-// src/components/common/Button/Button.tsx
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import { cn } from '@/utils/classNames';
@@ -36411,19 +36252,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         className={cn(
-          // Base styles
           'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-          // Variant styles
           variants[variant],
-          // Size styles
           sizes[size],
-          // Rounded styles
           roundedOptions[rounded],
-          // Full width
           fullWidth && 'w-full',
-          // Disabled cursor
           isDisabled && 'cursor-not-allowed',
-          // Custom className
           className
         )}
         {...props}
@@ -36460,7 +36294,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = 'Button';
 
-// Icon button variant
 interface IconButtonProps extends Omit<ButtonProps, 'leftIcon' | 'rightIcon'> {
   icon: React.ReactNode;
   label?: string; // For accessibility
@@ -36497,7 +36330,6 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 
 IconButton.displayName = 'IconButton';
 
-// Button group component
 interface ButtonGroupProps {
   children: React.ReactNode;
   orientation?: 'horizontal' | 'vertical';
@@ -36528,7 +36360,6 @@ export const ButtonGroup: React.FC<ButtonGroupProps> = ({
   );
 };
 
-// Floating Action Button
 interface FABProps extends Omit<ButtonProps, 'size' | 'variant'> {
   size?: 'md' | 'lg';
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -36572,7 +36403,6 @@ export const FloatingActionButton: React.FC<FABProps> = ({
   );
 };
 
-// Specialized exam buttons
 export const SubmitButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
   <Button variant="success" {...props} />
 );
@@ -36610,12 +36440,12 @@ export const PreviousButton: React.FC<Omit<ButtonProps, 'variant' | 'leftIcon'>>
 );
 ```
 
-<!-- path: components/common/ui/phoneInput/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/phoneInput/index.ts -->
 ```typescript
 export { default as PhoneInputWithCountry } from './PhoneInputWithCountry';
 ```
 
-<!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
 ```typescript
 "use client";
 
@@ -36629,7 +36459,6 @@ interface Country {
   flag: string;
 }
 
-// Full country list: name, code, dialCode, flag
 const countries: Country[] = [
   { name: "India", code: "IN", dialCode: "+91", flag: "🇮🇳" },
   { name: "Afghanistan", code: "AF", dialCode: "+93", flag: "🇦🇫" },
@@ -37025,7 +36854,7 @@ export default function PhoneInputWithCountry({
 
 ```
 
-<!-- path: components/common/ui/tabs.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/tabs.tsx -->
 ```typescript
 "use client"
 
@@ -37096,7 +36925,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent }
 
 ```
 
-<!-- path: components/common/ui/accordion.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/accordion.tsx -->
 ```typescript
 "use client"
 
@@ -37167,13 +36996,11 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 
 ```
 
-<!-- path: components/common/ui/textarea/Textarea.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/textarea/Textarea.tsx -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, ChangeEvent, FocusEvent } from "react";
 import { Label } from "@/components/common/ui/label/Label";
 
-// Type definitions
 type TextareaResize = "none" | "both" | "horizontal" | "vertical";
 type TextareaVariant = "default" | "filled" | "outlined";
 
@@ -37197,7 +37024,6 @@ interface TextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaEl
   fullWidth?: boolean;
 }
 
-// Textarea Component
 export const Textarea: React.FC<TextareaProps> = ({
   value = "",
   onChange = (e: ChangeEvent<HTMLTextAreaElement>, value: string) => {},
@@ -37279,7 +37105,7 @@ export const Textarea: React.FC<TextareaProps> = ({
           rows={rows}
           maxLength={maxLength}
           className={`
-            ${fullWidth ? "w-full" : "w-fit"}
+            ${fullWidth ? "w-full" : "w-fit"} 
             px-3 py-2 rounded-lg transition-all duration-200
             ${resizeClasses[resize]}
             ${variantClasses[variant]}
@@ -37337,9 +37163,8 @@ export const Textarea: React.FC<TextareaProps> = ({
 };
 ```
 
-<!-- path: components/common/ui/label/Label.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/label/Label.tsx -->
 ```typescript
-// Type definitions
 type LabelSize = "xs" | "sm" | "md" | "lg" | "xl";
 type LabelWeight = "normal" | "medium" | "semibold" | "bold";
 
@@ -37355,23 +37180,22 @@ interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   tooltip?: string;
 }
 
-// Label Component
-export const Label: React.FC<LabelProps> = ({
-  children,
-  htmlFor,
-  required = false,
+export const Label: React.FC<LabelProps> = ({ 
+  children, 
+  htmlFor, 
+  required = false, 
   disabled = false,
   size = "md",
   weight = "medium",
   className = "",
   showRequiredSymbol = true,
   tooltip,
-  ...props
+  ...props 
 }) => {
   const sizeClasses: Record<LabelSize, string> = {
     xs: "text-xs",
     sm: "text-sm",
-    md: "text-base",
+    md: "text-base", 
     lg: "text-lg",
     xl: "text-xl"
   };
@@ -37387,8 +37211,8 @@ export const Label: React.FC<LabelProps> = ({
     <label
       htmlFor={htmlFor}
       className={`
-        ${sizeClasses[size]}
-        ${weightClasses[weight]}
+        ${sizeClasses[size]} 
+        ${weightClasses[weight]} 
         block text-gray-900 dark:text-gray-100
         ${disabled ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
@@ -37404,18 +37228,18 @@ export const Label: React.FC<LabelProps> = ({
       )}
       {tooltip && (
         <span className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 inline"
-            fill="none"
-            viewBox="0 0 24 24"
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-4 w-4 inline" 
+            fill="none" 
+            viewBox="0 0 24 24" 
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
             />
           </svg>
         </span>
@@ -37423,21 +37247,25 @@ export const Label: React.FC<LabelProps> = ({
     </label>
   );
 };
+
+
+
+
+
+
 ```
 
-<!-- path: components/common/ui/ProgressBar/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/ProgressBar/index.ts -->
 ```typescript
 export { ProgressBar } from './ProgressBar';
 ```
 
-<!-- path: components/common/ui/ProgressBar/ProgressBar.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/ProgressBar/ProgressBar.tsx -->
 ```typescript
-// src/components/common/ProgressBar/ProgressBar.tsx
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/classNames';
 import { type ReactNode } from 'react';
 
-// Common types
 export type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 
 const sizeClasses = {
@@ -37463,7 +37291,6 @@ const backgroundClasses: Record<Variant, string> = {
   info: 'bg-cyan-100 dark:bg-cyan-900',
 };
 
-// Linear ProgressBar
 interface ProgressBarProps {
   value: number;
   max?: number;
@@ -37513,14 +37340,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' }}
+          transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
         />
       </div>
     </div>
   );
 };
 
-// Stacked Progress Bars
 interface StackedProgressBarProps {
   segments: { value: number; variant?: Variant }[];
   max?: number;
@@ -37547,7 +37373,7 @@ export const StackedProgressBar: React.FC<StackedProgressBarProps> = ({
             className={cn('h-full', color)}
             initial={{ width: 0 }}
             animate={{ width }}
-            transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' }}
+            transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
           />
         );
       })}
@@ -37555,7 +37381,6 @@ export const StackedProgressBar: React.FC<StackedProgressBarProps> = ({
   );
 };
 
-// Step Progress Bar with icons
 interface StepProgressProps {
   steps: Array<{
     id: string;
@@ -37637,13 +37462,13 @@ export const StepProgress: React.FC<StepProgressProps> = ({
 
 ```
 
-<!-- path: components/common/ui/LoadingSpinner/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/LoadingSpinner/index.ts -->
 ```typescript
 export { LoadingSpinner } from './LoadingSpinner';
 export { ButtonSpinner, PageSpinner, CardSpinner, LoadingSkeleton, LoadingCard, BlurLoader } from './LoadingSpinner';
 ```
 
-<!-- path: components/common/ui/LoadingSpinner/AdvancedLoader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/LoadingSpinner/AdvancedLoader.tsx -->
 ```typescript
 "use client";
 
@@ -37750,9 +37575,8 @@ export default AdvancedLoader;
 
 ```
 
-<!-- path: components/common/ui/LoadingSpinner/LoadingSpinner.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/LoadingSpinner/LoadingSpinner.tsx -->
 ```typescript
-// components/common/ui/LoadingSpinner/LoadingSpinner.tsx
 import { cn } from "@/utils/classNames";
 
 interface LoadingSpinnerProps {
@@ -37834,7 +37658,6 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return spinnerContent;
 };
 
-// Variants for specific use cases
 export const ButtonSpinner: React.FC<{ size?: "xs" | "sm" | "md" }> = ({ size = "sm" }) => (
   <LoadingSpinner size={size} color='primary' className='inline-flex' />
 );
@@ -37851,7 +37674,6 @@ export const CardSpinner: React.FC<{ text?: string }> = ({ text }) => (
   </div>
 );
 
-// Loading skeleton components
 export const LoadingSkeleton: React.FC<{
   className?: string;
   rows?: number;
@@ -37901,13 +37723,13 @@ export const BlurLoader: React.FC<{
 
 ```
 
-<!-- path: components/common/ui/Input/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Input/index.ts -->
 ```typescript
 export { default as Input } from './Input';
 
 ```
 
-<!-- path: components/common/ui/Input/Input.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Input/Input.tsx -->
 ```typescript
 "use client";
 
@@ -37947,40 +37769,33 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const innerRef = useRef<HTMLInputElement | null>(null);
     const [liveHasValue, setLiveHasValue] = useState<boolean>(false);
 
-    // Merge forwarded ref with local ref
     const setRefs = (el: HTMLInputElement | null) => {
       innerRef.current = el;
       if (typeof ref === 'function') ref(el);
       else if (ref && 'current' in ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
     };
 
-    // Initialize hasValue on mount and when value/defaultValue changes
     useEffect(() => {
       const dv = (props as { defaultValue?: string | number })?.defaultValue;
       const raw = value ?? dv ?? innerRef.current?.value ?? '';
       setLiveHasValue(String(raw).length > 0);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value, (props as { defaultValue?: string | number })?.defaultValue]);
 
-    // Handle clear action
     const handleClear = () => {
-      // Create a synthetic event that react-hook-form can understand
       const syntheticEvent = {
         target: { value: '' },
         currentTarget: { value: '' },
       } as React.ChangeEvent<HTMLInputElement>;
-
-      // If an onChange is passed from register, call it with an empty value
+      
       props.onChange?.(syntheticEvent);
-
+      
       onClear?.();
-
-      // Focus the input
+      
       if (ref && 'current' in ref && ref.current) {
         ref.current.focus();
       }
     };
-
+    
     const shouldShowClear = clearable && !disabled && !isLoading && (String((value) || '').length > 0 || liveHasValue);
     const defaultValue = (props as { defaultValue?: string | number })?.defaultValue;
     const rawVal = value ?? defaultValue ?? '';
@@ -37993,19 +37808,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       'px-4 py-2.5 text-base', // Standard size
       leftIcon && 'pl-11',
       shouldShowClear && 'pr-11',
-      // Place external classes earlier so our bg utilities later will override
       className,
       error ? 'border-red-500 focus:ring-red-500 dark:border-red-600' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:ring-blue-500',
-      // Disabled style
       (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed',
-      // Active background: apply bg-gray-100 in normal mode and dark:bg-gray-800 in dark mode when input has value
       !(disabled || isLoading) && hasValue && 'bg-gray-50 dark:bg-gray-800!',
-      // Default background when no value
       !(disabled || isLoading) && !hasValue && 'bg-white dark:bg-gray-900',
-      // Text colors
       !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100'
     );
-
+    
     return (
       <div className={clsx('relative', fullWidth && 'w-full')}>
         {leftIcon && <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">{leftIcon}</div>}
@@ -38038,81 +37848,80 @@ Input.displayName = 'Input';
 export default Input;
 ```
 
-<!-- path: components/common/ui/badges/RoleBadge.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/badges/RoleBadge.tsx -->
 ```typescript
-// components/users/RoleBadge.tsx
 import { UserRole } from "@/types/user-roles";
 
 export const RoleBadge = ({ role }: { role: UserRole }) => {
   const getRoleConfig = (role: UserRole) => {
     switch (role) {
       case UserRole.ADMIN:
-        return {
-          bg: "bg-gradient-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30",
+        return { 
+          bg: "bg-gradient-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30", 
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
           shadow: "shadow-red-500/20 dark:shadow-red-500/30",
           icon: "👑"
         };
       case UserRole.MAANADMIN:
-        return {
-          bg: "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30",
+        return { 
+          bg: "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30", 
           text: "text-indigo-700 dark:text-indigo-300",
           border: "border-indigo-200/60 dark:border-indigo-500/40",
           shadow: "shadow-indigo-500/20 dark:shadow-indigo-500/30",
           icon: "⭐"
         };
       case UserRole.SDHADMIN:
-        return {
-          bg: "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30",
+        return { 
+          bg: "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30", 
           text: "text-emerald-700 dark:text-emerald-300",
           border: "border-emerald-200/60 dark:border-emerald-500/40",
           shadow: "shadow-emerald-500/20 dark:shadow-emerald-500/30",
           icon: "🚀"
         };
-      case UserRole.VMUXADMIN:
-        return {
-          bg: "bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30",
+      case UserRole.ASSETADMIN:
+        return { 
+          bg: "bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30", 
           text: "text-slate-700 dark:text-slate-300",
           border: "border-slate-200/60 dark:border-slate-500/40",
           shadow: "shadow-slate-500/20 dark:shadow-slate-500/30",
           icon: "⚙️"
         };
       case UserRole.MNGADMIN:
-        return {
-          bg: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30",
+        return { 
+          bg: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
           text: "text-amber-700 dark:text-amber-300",
           border: "border-amber-200/60 dark:border-amber-500/40",
           shadow: "shadow-amber-500/20 dark:shadow-amber-500/30",
           icon: "📊"
         };
       case UserRole.VIEWER:
-        return {
-          bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
+        return { 
+          bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25", 
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
           shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",
           icon: "👁️"
         };
       case UserRole.AUTHENTICATED:
-        return {
-          bg: "bg-gradient-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30",
+        return { 
+          bg: "bg-gradient-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30", 
           text: "text-sky-700 dark:text-sky-300",
           border: "border-sky-200/60 dark:border-sky-500/40",
           shadow: "shadow-sky-500/20 dark:shadow-sky-500/30",
           icon: "✅"
         };
       case UserRole.ANON:
-        return {
-          bg: "bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25",
+        return { 
+          bg: "bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
           text: "text-zinc-600 dark:text-zinc-400",
           border: "border-zinc-200/50 dark:border-zinc-600/40",
           shadow: "shadow-zinc-500/10 dark:shadow-zinc-500/20",
           icon: "❓"
         };
       default:
-        return {
-          bg: "bg-gradient-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25",
+        return { 
+          bg: "bg-gradient-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25", 
           text: "text-neutral-600 dark:text-neutral-400",
           border: "border-neutral-200/50 dark:border-neutral-600/40",
           shadow: "shadow-neutral-500/10 dark:shadow-neutral-500/20",
@@ -38127,7 +37936,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
   return (
     <span
       className={`
-        inline-flex items-center gap-1.5 px-3 py-1.5
+        inline-flex items-center gap-1.5 px-3 py-1.5 
         rounded-full text-xs font-semibold tracking-wide
         border backdrop-blur-sm
         transition-all duration-300 ease-out
@@ -38149,15 +37958,13 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
 
 ```
 
-<!-- path: components/common/ui/badges/StatusBadge.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/badges/StatusBadge.tsx -->
 ```typescript
-// components/users/StatusBadge.tsx
 
 export const StatusBadge = ({ status }: { status: string | boolean | null }) => {
   const getStatusConfig = (status: string | boolean | null) => {
-    // Handle null/undefined cases first
     if (status === null || status === undefined) {
-      return {
+      return { 
         bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
         text: "text-gray-600 dark:text-gray-400",
         border: "border-gray-200/50 dark:border-gray-600/40",
@@ -38169,7 +37976,6 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
       };
     }
 
-    // Handle boolean cases
     if (typeof status === 'boolean') {
       return status
         ? {
@@ -38194,7 +38000,6 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           };
     }
 
-    // Handle string cases
     switch (status.toLowerCase()) {
       case "active":
         return {
@@ -38208,7 +38013,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: true
         };
       case "inactive":
-        return {
+        return { 
           bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
@@ -38219,7 +38024,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: false
         };
       case "suspended":
-        return {
+        return { 
           bg: "bg-gradient-to-r from-red-500/20 to-orange-500/20 dark:from-red-500/30 dark:to-orange-500/30",
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
@@ -38285,7 +38090,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: false
         };
       default:
-        return {
+        return { 
           bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
@@ -38313,7 +38118,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         dark:shadow-lg
       `}
     >
-      <span
+      <span 
         className={`
           relative w-2 h-2 rounded-full shadow-sm
           ${config.dot} ${config.dotShadow}
@@ -38321,7 +38126,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         `}
       >
         {config.pulse && (
-          <span
+          <span 
             className={`
               absolute inset-0 w-2 h-2 rounded-full opacity-75
               animate-ping
@@ -38338,7 +38143,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
 };
 ```
 
-<!-- path: components/common/ui/separator.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/separator.tsx -->
 ```typescript
 "use client"
 
@@ -38371,7 +38176,7 @@ export { Separator }
 
 ```
 
-<!-- path: components/common/ui/card/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/card/index.ts -->
 ```typescript
 export { Card } from './_Card';
 export { CardHeader } from './_Card';
@@ -38379,7 +38184,7 @@ export { CardBody } from './_Card';
 export { CardFooter } from './_Card';
 ```
 
-<!-- path: components/common/ui/card/_Card.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/card/_Card.tsx -->
 ```typescript
 import { type ReactNode, forwardRef } from 'react';
 import { motion } from 'framer-motion';
@@ -38487,7 +38292,7 @@ Card.displayName = 'Card';
 
 const CardHeader = ({ children, className }: CardHeaderProps) => (
   <div className={cn(
-    'border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 text-gray-900 dark:text-gray-100',
+    'border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 text-gray-900 dark:text-gray-100', 
     className
   )}>
     {children}
@@ -38502,7 +38307,7 @@ const CardBody = ({ children, className }: CardBodyProps) => (
 
 const CardFooter = ({ children, className }: CardFooterProps) => (
   <div className={cn(
-    'border-t border-gray-200 dark:border-gray-700 pt-3 mt-4 text-gray-600 dark:text-gray-400',
+    'border-t border-gray-200 dark:border-gray-700 pt-3 mt-4 text-gray-600 dark:text-gray-400', 
     className
   )}>
     {children}
@@ -38512,7 +38317,7 @@ const CardFooter = ({ children, className }: CardFooterProps) => (
 export { Card, CardHeader, CardBody, CardFooter };
 ```
 
-<!-- path: components/common/ui/card/card.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/card/card.tsx -->
 ```typescript
 import * as React from "react"
 
@@ -38609,20 +38414,17 @@ export {
 
 ```
 
-<!-- path: components/common/ui/Modal/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Modal/index.ts -->
 ```typescript
-// Base Modal Component
 export { Modal } from './Modal';
 
-// Confirm Modal Components
 export { ConfirmModal, useConfirmModal } from './confirmModal';
 
-// ChangePasswordModal Components
 export { ChangePasswordModal } from './ChangePasswordModal';
 
 ```
 
-<!-- path: components/common/ui/Modal/Modal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Modal/Modal.tsx -->
 ```typescript
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useEffect } from "react";
@@ -38654,7 +38456,6 @@ export const Modal = ({
   className,
   visible = true,
 }: ModalProps) => {
-  // Handle escape key
   useEffect(() => {
     if (!closeOnEscape || !isOpen) return;
 
@@ -38668,7 +38469,6 @@ export const Modal = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -38752,7 +38552,7 @@ export const Modal = ({
 
 ```
 
-<!-- path: components/common/ui/Modal/DetailsModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Modal/DetailsModal.tsx -->
 ```typescript
 import { motion, AnimatePresence } from "framer-motion";
 import { FiX } from "react-icons/fi";
@@ -39187,11 +38987,10 @@ export { DetailsModal, defaultFormatters };
 
 ```
 
-<!-- path: components/common/ui/Modal/confirmModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Modal/confirmModal.tsx -->
 ```typescript
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-// Icon components with proper TypeScript support
 interface IconProps {
   className?: string;
 }
@@ -39283,32 +39082,26 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  
 
-
-  // Handle modal opening/closing
   useEffect(() => {
     if (isOpen) {
-      // Store previously focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
-
+      
       setIsVisible(true);
-      // Use requestAnimationFrame for smoother animations
       requestAnimationFrame(() => {
         setIsAnimating(true);
       });
 
-      // Prevent body scroll
       document.body.style.overflow = 'hidden';
       document.body.style.paddingRight = `${window.innerWidth - document.documentElement.clientWidth}px`;
     } else {
       setIsAnimating(false);
       const timer = setTimeout(() => {
         setIsVisible(false);
-        // Restore body scroll
         document.body.style.overflow = '';
         document.body.style.paddingRight = '';
-
-        // Restore focus to previously active element
+        
         if (previousActiveElement.current) {
           previousActiveElement.current.focus();
         }
@@ -39318,7 +39111,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle escape key
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -39328,7 +39120,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         return;
       }
 
-      // Handle tab navigation within modal
       if (e.key === 'Tab') {
         const focusableElements = modalRef.current?.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -39340,13 +39131,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 
         if (e.shiftKey) {
-          // Shift + Tab
           if (document.activeElement === firstElement) {
             e.preventDefault();
             lastElement.focus();
           }
         } else {
-          // Tab
           if (document.activeElement === lastElement) {
             e.preventDefault();
             firstElement.focus();
@@ -39362,10 +39151,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Focus management
   useEffect(() => {
     if (isOpen && isAnimating) {
-      // Focus the cancel button by default (safer option)
       setTimeout(() => {
         cancelButtonRef.current?.focus();
       }, 100);
@@ -39380,7 +39167,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const handleConfirm = async () => {
     if (loading) return;
-
+    
     try {
       await onConfirm();
     } catch (error) {
@@ -39390,7 +39177,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const getIcon = () => {
     const className = `w-6 h-6 ${getIconColor()}`;
-
+    
     switch (type) {
       case 'danger':
         return <icons.Error className={className} />;
@@ -39495,8 +39282,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   {getIcon()}
                 </div>
               )}
-              <h3
-                id="modal-title"
+              <h3 
+                id="modal-title" 
                 className="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-6"
               >
                 {title}
@@ -39562,13 +39349,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   );
 };
 
-// Hook for easier modal management
 export const useConfirmModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const confirm = useCallback((options?: Partial<ConfirmModalProps>): Promise<boolean> => {
     return new Promise((resolve) => {
       resolveRef.current = resolve;
@@ -39604,7 +39389,6 @@ export const useConfirmModal = () => {
   };
 };
 
-// Demo component
 export const ConfirmModalDemo: React.FC = () => {
   const [modals, setModals] = useState({
     default: false,
@@ -39628,7 +39412,6 @@ export const ConfirmModalDemo: React.FC = () => {
   const handleConfirm = async (type: keyof typeof modals) => {
     if (type === 'loading') {
       setIsLoading(true);
-      // Simulate async operation
       await new Promise(resolve => setTimeout(resolve, 2000));
       closeModal(type);
       alert('Action completed!');
@@ -39644,7 +39427,7 @@ export const ConfirmModalDemo: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
           Improved ConfirmModal Demo
         </h1>
-
+        
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">Modal Types</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -39737,24 +39520,20 @@ export const ConfirmModalDemo: React.FC = () => {
 };
 ```
 
-<!-- path: components/common/ui/Modal/ChangePasswordModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/Modal/ChangePasswordModal.tsx -->
 ```typescript
-// components/common/Modal/ChangePasswordModal.tsx
 import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { Modal } from "./Modal"; // Make sure your Modal component is correctly imported
 
-// --- MODIFIED Type Definition ---
 export interface ChangePasswordData {
   newPassword: string;
-  // currentPassword is no longer needed for the API call
 }
 
 interface ChangePasswordModalProps {
   onClose: () => void;
-  // This function signature now matches our store
   changePassword: (data: ChangePasswordData) => Promise<boolean>;
   isLoading: boolean;
   isOpen: boolean;
@@ -39766,7 +39545,6 @@ export const ChangePasswordModal = ({
   changePassword,
   isLoading,
 }: ChangePasswordModalProps) => {
-  // --- REMOVED currentPassword state ---
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -39782,7 +39560,6 @@ export const ChangePasswordModal = ({
       return;
     }
 
-    // --- MODIFIED: Call the function with the new data shape ---
     const success = await changePassword({ newPassword });
 
     if (success) {
@@ -39857,16 +39634,14 @@ export const ChangePasswordModal = ({
 };
 ```
 
-<!-- path: components/common/ui/switch/Switch.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/switch/Switch.tsx -->
 ```typescript
 import { MouseEvent } from "react";
 import { Label } from "@/components/common/ui/label/Label";
 
-// Type definitions
 type SwitchSize = "sm" | "md" | "lg";
 type SwitchColor = "primary" | "secondary" | "success" | "danger" | "warning";
 
-// Omit the onChange from ButtonHTMLAttributes since we're using our own
 interface SwitchProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
   checked?: boolean;
@@ -39882,7 +39657,6 @@ interface SwitchProps
   showIcons?: boolean;
 }
 
-// Color classes for light and dark modes
 const colorClasses: Record<SwitchColor, { light: string; dark: string }> = {
   primary: {
     light: "bg-blue-600",
@@ -39906,7 +39680,6 @@ const colorClasses: Record<SwitchColor, { light: string; dark: string }> = {
   },
 };
 
-// Switch Component
 export const Switch: React.FC<SwitchProps> = ({
   checked = false,
   onChange = () => {},
@@ -39921,7 +39694,6 @@ export const Switch: React.FC<SwitchProps> = ({
   showIcons = false,
   ...props
 }) => {
-  // Size classes
   const sizeClasses: Record<SwitchSize, { container: string; thumb: string }> =
     {
       sm: {
@@ -39938,7 +39710,6 @@ export const Switch: React.FC<SwitchProps> = ({
       },
     };
 
-  // Position classes based on checked state
   const translateClasses: Record<SwitchSize, string> = {
     sm: checked ? "translate-x-4" : "translate-x-0",
     md: checked ? "translate-x-5" : "translate-x-0",
@@ -39990,7 +39761,7 @@ export const Switch: React.FC<SwitchProps> = ({
           className={`
             ${
               sizeClasses[size].container
-            } relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent
+            } relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent 
             transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
             ${
               checked
@@ -40004,7 +39775,7 @@ export const Switch: React.FC<SwitchProps> = ({
         >
           <span
             className={`
-              ${sizeClasses[size].thumb} ${translateClasses[size]} pointer-events-none
+              ${sizeClasses[size].thumb} ${translateClasses[size]} pointer-events-none 
               rounded-full bg-white shadow-lg transform ring-0 transition duration-200 ease-in-out
               flex items-center justify-center
             `}
@@ -40055,10 +39826,30 @@ export const Switch: React.FC<SwitchProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
 ```
 
-<!-- path: components/common/ui/theme/ThemeToggle.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 "use client";
 
@@ -40072,8 +39863,7 @@ export default function ThemeToggle() {
   const [hasMounted, setHasMounted] = useState(false); // **THE FIX**
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // ** Only render the real UI after the component has mounted on the client.**
+  
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -40130,7 +39920,6 @@ export default function ThemeToggle() {
     }
   };
 
-  // ** Show loading skeleton until the component has mounted.**
   if (!hasMounted) {
     return (
       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
@@ -40184,7 +39973,7 @@ export default function ThemeToggle() {
 }
 ```
 
-<!-- path: components/common/ui/select/Select.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/select/Select.tsx -->
 ```typescript
 "use client"
 
@@ -40226,7 +40015,6 @@ function SelectTrigger({
       data-size={size}
       className={cn(
         "data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        // Align with SearchableSelect visuals
         "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus-visible:ring-2 focus-visible:ring-blue-500",
         className
       )}
@@ -40252,7 +40040,6 @@ function SelectContent({
         data-slot="select-content"
         className={cn(
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-lg",
-          // Align with SearchableSelect visuals
           "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
@@ -40300,11 +40087,8 @@ function SelectItem({
       data-slot="select-item"
       className={cn(
         "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
-        // Disabled
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        // Base text colors
         "text-gray-900 dark:text-white [&_svg:not([class*='text-'])]:text-gray-400",
-        // Hover/focus and selected states to mirror SearchableSelect
         "hover:bg-gray-100 dark:hover:bg-gray-600",
         "data-[highlighted]:bg-blue-100 dark:data-[highlighted]:bg-blue-900/50 data-[highlighted]:text-blue-900 dark:data-[highlighted]:text-blue-200",
         "data-[state=checked]:bg-blue-50 dark:data-[state=checked]:bg-blue-900/30 data-[state=checked]:text-blue-700 dark:data-[state=checked]:text-blue-300 font-medium",
@@ -40386,9 +40170,8 @@ export {
 
 ```
 
-<!-- path: components/common/ui/select/SearchableSelect.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/select/SearchableSelect.tsx -->
 ```typescript
-// path: components/common/ui/select/SearchableSelect.tsx
 "use client";
 
 import { Label } from "@/components/common/ui/label/Label";
@@ -40478,7 +40261,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       return () => clearTimeout(handler);
     }
   }, [searchTerm, serverSide, onSearch]);
-
+  
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -40611,7 +40394,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 };
 ```
 
-<!-- path: components/common/ui/error/ErrorDisplay.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/ui/error/ErrorDisplay.tsx -->
 ```typescript
 import React, { useState, MouseEvent } from "react";
 
@@ -40659,8 +40442,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0
-            11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0
+            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 
+            11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 
             102 0V6a1 1 0 00-1-1z"
             clipRule="evenodd"
           />
@@ -40673,11 +40456,11 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M8.257 3.099c.765-1.36 2.722-1.36
-            3.486 0l5.58 9.92c.75 1.334-.213
-            2.98-1.742 2.98H4.42c-1.53
-            0-2.493-1.646-1.743-2.98l5.58-9.92zM11
-            13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0
+            d="M8.257 3.099c.765-1.36 2.722-1.36 
+            3.486 0l5.58 9.92c.75 1.334-.213 
+            2.98-1.742 2.98H4.42c-1.53 
+            0-2.493-1.646-1.743-2.98l5.58-9.92zM11 
+            13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 
             00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
             clipRule="evenodd"
           />
@@ -40690,10 +40473,10 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0
-            0116 0zm-7-4a1 1 0 11-2 0 1 1
-            0 012 0zM9 9a1 1 0 000 2v3a1 1
-            0 001 1h1a1 1 0 100-2v-3a1 1 0
+            d="M18 10a8 8 0 11-16 0 8 8 0 
+            0116 0zm-7-4a1 1 0 11-2 0 1 1 
+            0 012 0zM9 9a1 1 0 000 2v3a1 1 
+            0 001 1h1a1 1 0 100-2v-3a1 1 0 
             00-1-1H9z"
             clipRule="evenodd"
           />
@@ -40878,12 +40661,12 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10
-                8.586l4.293-4.293a1 1 0
-                111.414 1.414L11.414 10l4.293
-                4.293a1 1 0 01-1.414 1.414L10
-                11.414l-4.293 4.293a1 1 0
-                01-1.414-1.414L8.586 10 4.293
+                d="M4.293 4.293a1 1 0 011.414 0L10 
+                8.586l4.293-4.293a1 1 0 
+                111.414 1.414L11.414 10l4.293 
+                4.293a1 1 0 01-1.414 1.414L10 
+                11.414l-4.293 4.293a1 1 0 
+                01-1.414-1.414L8.586 10 4.293 
                 5.707a1 1 0 010-1.414z"
                 clipRule="evenodd"
               />
@@ -40897,7 +40680,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
 ```
 
-<!-- path: components/common/page-header/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/index.ts -->
 ```typescript
 export * from './DropdownButton';
 export * from './PageHeader';
@@ -40906,7 +40689,7 @@ export * from './hooks/useStandardHeaderActions';
 
 ```
 
-<!-- path: components/common/page-header/PageHeader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/PageHeader.tsx -->
 ```typescript
 'use client';
 
@@ -40920,7 +40703,6 @@ import {
   DropdownButton,
 } from '@/components/common/page-header/DropdownButton';
 
-// --- TYPE DEFINITIONS ---
 
 export interface PageHeaderProps {
   title: string;
@@ -40932,9 +40714,7 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-// --- SUB-COMPONENTS ---
 
-// --- MAIN COMPONENT ---
 
 export function PageHeader({
   title,
@@ -41050,11 +40830,10 @@ export function PageHeader({
   );
 }
 
-// --- HOOK FOR CREATING STANDARD ACTIONS ---
 
 ```
 
-<!-- path: components/common/page-header/DropdownButton.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/DropdownButton.tsx -->
 ```typescript
 'use client';
 import { Button } from '@/components/common/ui';
@@ -41146,7 +40925,7 @@ export const DropdownButton: React.FC<ActionButton> = ({
 
 ```
 
-<!-- path: components/common/page-header/hooks/useStandardHeaderActions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/hooks/useStandardHeaderActions.tsx -->
 ```typescript
 'use client';
 
@@ -41172,7 +40951,6 @@ interface ExportConfig<T extends PublicTableOrViewName> {
   maxRows?: number;
   columns?: (keyof Row<T> & string)[]; // Allow specifying a subset of columns for export
   filterOptions?: ExportFilterOption[]; // New: array of filter options
-  // Deprecated: keeping for backward compatibility
   filters?: Filters;
   fileName?: string;
 }
@@ -41213,27 +40991,22 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         return;
       }
 
-      // Use filterOption filters if provided, otherwise fall back to exportConfig filters
       const filters = filterOption?.filters || exportConfig.filters;
 
-      // Determine the file and sheet name
       let fileName: string;
       let sheetName: string;
 
       if (filterOption) {
-        // If it's a filter option, use custom fileName or append label to table name
         if (filterOption.fileName) {
           fileName = filterOption.fileName;
           sheetName = filterOption.fileName;
         } else {
-          // Append filter label to table name
           fileName = `${exportConfig.tableName}-${filterOption.label
             .toLowerCase()
             .replace(/\s+/g, '-')}`;
           sheetName = `${exportConfig.tableName}-${filterOption.label}`;
         }
       } else {
-        // No filter option - use default table name or custom fileName
         fileName = exportConfig.fileName || exportConfig.tableName;
         sheetName = exportConfig.fileName || exportConfig.tableName;
       }
@@ -41269,9 +41042,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     }
 
     if (exportConfig) {
-      // Check if we have multiple filter options
       if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
-        // Create dropdown with filter options
         const dropdownoptions = [
           {
             label: 'Export All (No Filters)',
@@ -41301,7 +41072,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           dropdownoptions,
         });
       } else {
-        // Single export button (backward compatibility)
         actions.push({
           label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
           onClick: () => handleExport(),
@@ -41335,7 +41105,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
 ```
 
-<!-- path: components/common/page-header/StatCard.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/StatCard.tsx -->
 ```typescript
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
@@ -41400,7 +41170,7 @@ export const StatCard: React.FC<StatProps> = ({
 
 ```
 
-<!-- path: components/common/form/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/index.ts -->
 ```typescript
 export * from './FormCard';
 export * from './FormControls';
@@ -41410,7 +41180,7 @@ export * from './IPAddressInput';
 
 ```
 
-<!-- path: components/common/form/FormCard.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/FormCard.tsx -->
 ```typescript
 import React from "react";
 import { cn } from "@/utils/classNames";
@@ -41460,14 +41230,14 @@ export const FormCard: React.FC<FormCardProps> = ({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div
+      <div 
         className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
         style={{
           animation: "slideDown 0.5s ease-out 0.1s both"
         }}
       >
         <div>
-          <h2
+          <h2 
             className="text-2xl font-bold text-gray-900 dark:text-white"
             style={{
               animation: "fadeInUp 0.6s ease-out 0.2s both"
@@ -41476,7 +41246,7 @@ export const FormCard: React.FC<FormCardProps> = ({
             {title}
           </h2>
           {subtitle && (
-            <p
+            <p 
               className="text-gray-600 dark:text-gray-400 text-sm mt-1"
               style={{
                 animation: "fadeInUp 0.6s ease-out 0.3s both"
@@ -41503,33 +41273,33 @@ export const FormCard: React.FC<FormCardProps> = ({
       {/* Form Body + Footer */}
       <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0">
         {/* Body */}
-        <div
+        <div 
           className="flex-1 overflow-y-auto relative min-h-0"
           style={{
             animation: "fadeInUp 0.6s ease-out 0.3s both"
           }}
         >
           {isLoading && (
-            <div
+            <div 
               className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10"
               style={{
                 animation: "fadeIn 0.3s ease-out"
               }}
             >
               <div className="flex items-center space-x-2">
-                <div
+                <div 
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out infinite both"
                   }}
                 ></div>
-                <div
+                <div 
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out 0.16s infinite both"
                   }}
                 ></div>
-                <div
+                <div 
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out 0.32s infinite both"
@@ -41543,7 +41313,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         </div>
 
         {/* Footer */}
-        <div
+        <div 
           className="flex-shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
           style={{
             animation: "slideUp 0.5s ease-out 0.4s both"
@@ -41679,10 +41449,9 @@ export const FormCard: React.FC<FormCardProps> = ({
     </div>
   );
 
-  // If standalone, wrap with backdrop, otherwise return just the modal content
   if (standalone) {
     return (
-      <div
+      <div 
         className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
         style={{
           background: "rgba(0, 0, 0, 0.6)",
@@ -41699,7 +41468,6 @@ export const FormCard: React.FC<FormCardProps> = ({
     );
   }
 
-  // Return just the modal content without backdrop (for use within existing modals)
   return (
     <div className="flex items-center justify-center p-4 w-full">
       {modalContent}
@@ -41708,9 +41476,8 @@ export const FormCard: React.FC<FormCardProps> = ({
 };
 ```
 
-<!-- path: components/common/form/FormControls.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/FormControls.tsx -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import {
@@ -41741,7 +41508,6 @@ import {
 } from '@/components/common/ui/select/Select';
 import IPAddressInput from '@/components/common/form/IPAddressInput';
 
-// --- TYPE DEFINITIONS for Generic Components ---
 
 type BaseProps<T extends FieldValues> = {
   name: Path<T>;
@@ -41752,7 +41518,6 @@ type BaseProps<T extends FieldValues> = {
   labelClassName?: string;
 };
 
-// --- FORM INPUT COMPONENT ---
 
 interface FormInputProps<T extends FieldValues>
   extends BaseProps<T>,
@@ -41785,12 +41550,10 @@ export function FormInput<T extends FieldValues>({
         error={typeof error?.message === 'string' ? error.message : undefined}
         {...props}
         {...register(name, {
-          // For number inputs, treat empty string as null and otherwise coerce to Number
           ...(type === 'number' && {
             setValueAs: (v) =>
               v === '' || v === null || typeof v === 'undefined' ? null : Number(v),
           }),
-          // For date inputs, map empty to null and non-empty to Date object
           ...(type === 'date' && {
             setValueAs: (v) => (v ? new Date(v) : null),
           }),
@@ -41800,7 +41563,6 @@ export function FormInput<T extends FieldValues>({
   );
 }
 
-// --- FORM TEXTAREA COMPONENT ---
 
 interface FormTextareaProps<T extends FieldValues>
   extends BaseProps<T>,
@@ -41862,7 +41624,6 @@ export function FormTextarea<T extends FieldValues>({
   );
 }
 
-// --- FORM SEARCHABLE SELECT COMPONENT ---
 
 interface FormSearchableSelectProps<T extends FieldValues>
   extends BaseProps<T> {
@@ -41872,7 +41633,6 @@ interface FormSearchableSelectProps<T extends FieldValues>
   searchPlaceholder?: string;
   disabled?: boolean;
   clearable?: boolean;
-  // **NEW PROPS FOR SERVER-SIDE SEARCH**
   serverSide?: boolean; // When true, options are not filtered client-side
   onSearch?: (term: string) => void; // Function to trigger a search
   isLoading?: boolean; // To show a loading indicator
@@ -41888,7 +41648,6 @@ export function FormSearchableSelect<T extends FieldValues>({
   labelClassName,
   ...props
 }: FormSearchableSelectProps<T>) {
-  // console.log("options",options);
 
   return (
     <div className={className}>
@@ -41921,7 +41680,6 @@ export function FormSearchableSelect<T extends FieldValues>({
   );
 }
 
-// --- FORM SELECT COMPONENT ---
 
 interface FormSelectProps<T extends FieldValues> extends BaseProps<T> {
   control: Control<T>;
@@ -41986,9 +41744,7 @@ export function FormSelect<T extends FieldValues>({
   );
 }
 
-// --- FORM DATE INPUT COMPONENT ---
 
-// Keep your original prop intent; allow passing datepicker props safely
 export interface FormDateInputProps<T extends FieldValues>
   extends BaseProps<T>,
     Omit<
@@ -41996,11 +41752,9 @@ export interface FormDateInputProps<T extends FieldValues>
       'name' | 'type' | 'size'
     > {
   control: Control<T>;
-  // Optional passthrough for DatePicker props (minDate, maxDate, showTimeSelect, etc.)
   pickerProps?: Partial<
     Omit<
       DatePickerProps,
-      // Keep single-date mode: exclude props that change `onChange` signature
       | 'selected'
       | 'onChange'
       | 'customInput'
@@ -42014,7 +41768,6 @@ export interface FormDateInputProps<T extends FieldValues>
   >;
 }
 
-/** A styled input used as ReactDatePicker's customInput to control theme + icon */
 const DateTextInput = forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement> & { errorText?: string }
@@ -42084,7 +41837,6 @@ export function FormDateInput<T extends FieldValues>({
         name={name}
         control={control}
         render={({ field }) => {
-          // Normalize value to Date | null
           const raw = field.value as unknown;
           const selected: Date | null =
             raw == null || (raw as any) === ''
@@ -42096,30 +41848,20 @@ export function FormDateInput<T extends FieldValues>({
               : new Date(raw as any);
 
           return (
-            // @ts-expect-error react-datepicker's prop union sometimes misinfers to multi-select variant.
-            // We intentionally use single-date mode: `selected: Date | null` and `onChange(date | null)`.
             <DatePicker
               id={name}
-              // --- recommended defaults for date-only fields ---
               selected={selected}
               onChange={(d: Date | null) =>
                 field.onChange(d ? d.toISOString().split('T')[0] : null)
               }
               onBlur={field.onBlur}
-              // Keep keyboard nav and accessibility
-              // Use a date-only format; adjust as you like
               dateFormat={(pickerProps as any)?.dateFormat ?? 'yyyy-MM-dd'}
-              // Show clear button by default; optional
               isClearable
-              // Enable year and month dropdowns
               showMonthDropdown
               showYearDropdown
               dropdownMode="select" // Makes dropdowns selectable instead of scrollable
-              // You can also set year range if needed
               yearDropdownItemNumber={15} // Shows 15 years in dropdown
-              // Render portal into Next.js root so it appears above modals/overflows
               portalId="__next"
-              // Custom input so we fully control theme + icon
               customInput={
                 <DateTextInput
                   errorText={
@@ -42130,7 +41872,6 @@ export function FormDateInput<T extends FieldValues>({
                   placeholder={inputProps.placeholder ?? 'Select date'}
                 />
               }
-              // Pass through any extra ReactDatePicker props (minDate, maxDate, showTimeSelect, etc.)
               {...pickerProps}
             />
           );
@@ -42140,7 +41881,6 @@ export function FormDateInput<T extends FieldValues>({
   );
 }
 
-// --- FORM SWITCH COMPONENT ---
 
 interface FormSwitchProps<T extends FieldValues> extends BaseProps<T> {
   control: Control<T>;
@@ -42185,7 +41925,6 @@ export function FormSwitch<T extends FieldValues>({
   );
 }
 
-// --- FORM IP ADDRESS COMPONENT ---
 
 interface FormIPAddressInputProps<T extends FieldValues> extends BaseProps<T> {
   control: Control<T>;
@@ -42234,20 +41973,17 @@ export function FormIPAddressInput<T extends FieldValues>({
 
 ```
 
-<!-- path: components/common/form/IPAddressInput.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/IPAddressInput.tsx -->
 ```typescript
 import React, { useState, useCallback, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
-// import { Label } from '@/components/common/ui';
 
-// The ValidationState type remains useful for internal logic
 interface ValidationState {
   isValid: boolean | null;
   type: 'IPv4' | 'IPv6' | null;
   error: string | null;
 }
 
-// Props are simplified. We now only expect a simple onChange.
 interface IPAddressInputProps {
   value?: string;
   onChange?: (value: string) => void;
@@ -42271,7 +42007,6 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     error: null,
   });
 
-  // IPv4 validation
   const isValidIPv4 = useCallback((ip: string): boolean => {
     const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
     const match = ip.match(ipv4Regex);
@@ -42284,10 +42019,8 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
   }, []);
 
   const isValidIPv6Basic = useCallback((ip: string): boolean => {
-    // Normalize the IPv6 address
     const normalized = ip.toLowerCase();
 
-    // Handle :: compression
     if (normalized.includes('::')) {
       const parts = normalized.split('::');
       if (parts.length > 2) return false; // More than one ::
@@ -42298,12 +42031,10 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
 
       if (totalParts > 8) return false;
     } else {
-      // No compression, should have exactly 8 parts
       const parts = normalized.split(':');
       if (parts.length !== 8) return false;
     }
 
-    // Validate each hexadecimal group
     const hexGroups = normalized
       .split('::')
       .join(':')
@@ -42315,10 +42046,8 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     });
   }, []);
 
-  // IPv6 validation
   const isValidIPv6 = useCallback(
     (ip: string): boolean => {
-      // Handle IPv6 with embedded IPv4
       const ipv6WithIPv4Regex =
         /^([0-9a-fA-F:]+):(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
       if (ipv6WithIPv4Regex.test(ip)) {
@@ -42369,14 +42098,16 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     [allowIPv4, allowIPv6, isValidIPv4, isValidIPv6]
   );
 
-  // Update validation state whenever the prop value changes from the outside (e.g., from react-hook-form)
+
+
+
+
   useEffect(() => {
     setValidationState(validateIP(value));
   }, [value, validateIP]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newValue = e.target.value;
-    // We call the onChange from props directly, letting react-hook-form manage the state.
     onChange(newValue);
   };
 
@@ -42439,7 +42170,7 @@ export default IPAddressInput;
 
 ```
 
-<!-- path: components/common/form/SectionCard.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/SectionCard.tsx -->
 ```typescript
 import { ReactNode } from "react";
 import { cn } from "@/utils/classNames";
@@ -42476,9 +42207,8 @@ export default function SectionCard({
 
 ```
 
-<!-- path: components/ofc/ofc-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/ofc-types.ts -->
 ```typescript
-// components/ofc/ofc-types.ts
 import { z } from 'zod';
 import { v_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
 
@@ -42502,15 +42232,14 @@ export type OfcCablesWithRelations = z.infer<typeof v_ofc_cables_completeRowSche
 
 ```
 
-<!-- path: components/ofc/OfcStats.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcStats.tsx -->
 ```typescript
-// app/dashboard/employees/components/EmployeeStats.tsx
 interface OfcStatsProps {
     total: number;
     active: number;
     inactive: number;
   }
-
+  
   export const OfcStats = ({ total, active, inactive }: OfcStatsProps) => {
     return (
       <div className="mt-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
@@ -42525,9 +42254,8 @@ interface OfcStatsProps {
   };
 ```
 
-<!-- path: components/ofc/OfcForm/RouteConfigurationSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/RouteConfigurationSection.tsx -->
 ```typescript
-// components/OfcForm/RouteConfigurationSection.tsx
 import React from 'react';
 import { Zap } from 'lucide-react';
 import { Control, FieldErrors } from 'react-hook-form';
@@ -42552,9 +42280,6 @@ const RouteConfigurationSection: React.FC<RouteConfigurationSectionProps> = ({
   endingNodeOptions,
   routeName,
 }) => {
-  // console.log('startingNodeOptions', startingNodeOptions);
-  // console.log('endingNodeOptions', endingNodeOptions);
-  // console.log('control', control);
 
   return (
     <FormSection
@@ -42612,9 +42337,8 @@ export default RouteConfigurationSection;
 
 ```
 
-<!-- path: components/ofc/OfcForm/ExistingRoutesAlert.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/ExistingRoutesAlert.tsx -->
 ```typescript
-// components/OfcForm/ExistingRoutesAlert.tsx
 import React from "react";
 import { AlertTriangle } from "lucide-react";
 
@@ -42656,9 +42380,8 @@ const ExistingRoutesAlert: React.FC<ExistingRoutesAlertProps> = ({ routes }) => 
 export default ExistingRoutesAlert;
 ```
 
-<!-- path: components/ofc/OfcForm/types/ofcForm.types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/types/ofcForm.types.ts -->
 ```typescript
-// types/ofcForm.types.ts
 export interface FormLoadingState {
     nodes: boolean;
     ofcTypes: boolean;
@@ -42666,14 +42389,14 @@ export interface FormLoadingState {
     routeGeneration: boolean;
     form: boolean;
   }
-
+  
   export interface NodeOption {
     id: string;
     name: string;
     nodeType: string;
     status: boolean;
   }
-
+  
   export interface ValidationResult {
     isValid: boolean;
     errors: Record<string, string>;
@@ -42681,28 +42404,19 @@ export interface FormLoadingState {
   }
 ```
 
-<!-- path: components/ofc/OfcForm/hooks/useExistingRoutesQuery.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/hooks/useExistingRoutesQuery.ts -->
 ```typescript
-// components/ofc/OfcForm/hooks/useExistingRoutesQuery.ts
 'use client';
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 
-/**
- * A specialized hook to query for existing OFC cables between two specific nodes.
- * @param startingNodeId The ID of the starting node.
- * @param endingNodeId The ID of the ending node.
- * @returns An object containing the fetched routes and a loading state.
- */
 export const useExistingRoutesQuery = (startingNodeId: string | null, endingNodeId: string | null) => {
   const supabase = createClient();
 
-  // The specific 'or' filter string for this query.
   const orFilter = useMemo(() => {
     if (!startingNodeId || !endingNodeId) return null;
-    // This creates the PostgREST filter `or=(and(sn_id.eq.val1,en_id.eq.val2),and(sn_id.eq.val2,en_id.eq.val1))`
     return `and(sn_id.eq.${startingNodeId},en_id.eq.${endingNodeId}),and(sn_id.eq.${endingNodeId},en_id.eq.${startingNodeId})`;
   }, [startingNodeId, endingNodeId]);
 
@@ -42725,9 +42439,8 @@ export const useExistingRoutesQuery = (startingNodeId: string | null, endingNode
 };
 ```
 
-<!-- path: components/ofc/OfcForm/hooks/useOfcFormData.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/hooks/useOfcFormData.ts -->
 ```typescript
-// components/ofc/OfcForm/hooks/useOfcFormData.ts
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
@@ -42768,7 +42481,6 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
     defaultValues,
   });
 
-  // Reset form when ofcCable changes or when switching from edit to create mode
   useEffect(() => {
     if (isEdit && ofcCable) {
       form.reset({
@@ -42787,12 +42499,10 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
         status: ofcCable.status ?? true,
       });
     } else if (!isEdit) {
-      // Reset to default values when not in edit mode
       form.reset(defaultValues);
     }
   }, [isEdit, ofcCable, form, defaultValues]);
 
-  // Create a stable reference to the ofcCable data
   const ofcCableData = useMemo(() => {
     if (!isEdit || !ofcCable) return null;
     const data = {
@@ -42813,20 +42523,16 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
     return data;
   }, [isEdit, ofcCable]);
 
-  // Track previous data to prevent unnecessary resets
   const prevOfcCableData = useRef(ofcCableData);
   const prevDefaultValues = useRef(defaultValues);
   const isInitialMount = useRef(true);
 
-  // Reset form when ofcCable changes
   useEffect(() => {
-    // Skip if this is the initial mount and we're in edit mode
     if (isInitialMount.current && isEdit) {
       isInitialMount.current = false;
       return;
     }
 
-    // Skip if nothing has changed
     if (
       isEqual(prevOfcCableData.current, ofcCableData) &&
       isEqual(prevDefaultValues.current, defaultValues)
@@ -42834,12 +42540,10 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
       return;
     }
 
-    // Update refs
     prevOfcCableData.current = ofcCableData;
     prevDefaultValues.current = defaultValues;
 
     if (ofcCableData) {
-      // In edit mode, use the existing data
       form.reset(
         {
           ...ofcCableData,
@@ -42851,7 +42555,6 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
         }
       );
     } else {
-      // In add mode, use default values
       form.reset(
         {
           ...defaultValues,
@@ -42870,9 +42573,8 @@ export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
 
 ```
 
-<!-- path: components/ofc/OfcForm/hooks/useRouteGeneration.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/hooks/useRouteGeneration.ts -->
 ```typescript
-// components/ofc/OfcForm/hooks/useRouteGeneration.ts
 'use client';
 
 import { useEffect, useMemo } from 'react';
@@ -42896,9 +42598,8 @@ export const useRouteGeneration = <T extends FieldValues>({
   isEdit,
   setValue,
 }: UseRouteGenerationProps<T>) => {
-
-  // ** Removed the unnecessary generic type argument.**
-  const { data: existingRoutes, isLoading: existingRoutesLoading } =
+  
+  const { data: existingRoutes, isLoading: existingRoutesLoading } = 
     useExistingRoutesQuery(startingNodeId, endingNodeId);
 
   const routeData = useMemo(() => {
@@ -42922,7 +42623,7 @@ export const useRouteGeneration = <T extends FieldValues>({
       setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>);
       return;
     }
-
+    
     if (existingRoutesLoading) {
       return;
     }
@@ -42953,11 +42654,10 @@ export const useRouteGeneration = <T extends FieldValues>({
 };
 ```
 
-<!-- path: components/ofc/OfcForm/hooks/useCapacityInference.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/hooks/useCapacityInference.ts -->
 ```typescript
 'use client';
 
-// components/ofc/OfcForm/hooks/useCapacityInference.ts
 import { useEffect, useRef, useState } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { UseFormSetValue, Path, PathValue } from 'react-hook-form';
@@ -42978,7 +42678,6 @@ export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
   const lastProcessedTypeId = useRef<string | null>(null);
 
   useEffect(() => {
-    // Skip if we've already processed this OFC type ID
     if (lastProcessedTypeId.current === currentOfcTypeId) {
       return;
     }
@@ -43001,7 +42700,6 @@ export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
     const match = selectedOption.label.match(/(\d+)\s*F/i);
     if (match) {
       const inferredCapacity = parseInt(match[1], 10);
-      // Only update if the value has changed
       setValue(
         'capacity' as Path<T>,
         inferredCapacity as unknown as PathValue<T, Path<T>>,
@@ -43024,9 +42722,8 @@ export const useCapacityInference = <T extends Ofc_cablesInsertSchema>({
 
 ```
 
-<!-- path: components/ofc/OfcForm/CableSpecificationsSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/CableSpecificationsSection.tsx -->
 ```typescript
-// components/OfcForm/CableSpecificationsSection.tsx
 import React from 'react';
 import { FileText } from 'lucide-react';
 import {
@@ -43194,9 +42891,8 @@ export default CableSpecificationsSection;
 
 ```
 
-<!-- path: components/ofc/OfcForm/OfcForm.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/OfcForm.tsx -->
 ```typescript
-// Main OfcForm component
 import React, { useCallback, useMemo } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { usePagedData, useTableQuery } from '@/hooks/database';
@@ -43247,13 +42943,11 @@ const OfcForm: React.FC<OfcFormProps> = ({
     formState: { errors },
   } = form;
 
-  // Watch critical form values
   const startingNodeId = watch('sn_id');
   const endingNodeId = watch('en_id');
   const routeName = watch('route_name');
   const currentOfcTypeId = watch('ofc_type_id');
 
-  // Data fetching with optimized queries
   const { data: nodesData, isLoading: nodesLoading } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
     'v_nodes_complete',
@@ -43295,7 +42989,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
   });
   const maintenanceTerminalsData = maintenanceTerminalsResult?.data;
 
-  // Custom hooks for complex logic
   const setValueWithType = useCallback(
     <K extends keyof Ofc_cablesInsertSchema>(
       name: K,
@@ -43322,7 +43015,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
     setValue: setValueWithType,
   });
 
-  // Memoized options to prevent unnecessary re-renders
   const nodeOptions = useMemo(
     (): Option[] =>
       nodesData?.data.map((node: V_nodes_completeRowSchema) => ({
@@ -43458,10 +43150,9 @@ const OfcForm: React.FC<OfcFormProps> = ({
 export default OfcForm;
 ```
 
-<!-- path: components/ofc/OfcForm/LoadingOverlay.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/LoadingOverlay.tsx -->
 ```typescript
 
-// components/OfcForm/LoadingOverlay.tsx
 import React from "react";
 import { ButtonSpinner } from "@/components/common/ui/LoadingSpinner";
 
@@ -43469,8 +43160,8 @@ interface LoadingOverlayProps {
   message?: string;
 }
 
-const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
-  message = "Loading form data..."
+const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
+  message = "Loading form data..." 
 }) => (
   <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
     <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 rounded-lg px-6 py-4 shadow-lg border dark:border-gray-700">
@@ -43485,9 +43176,8 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 export default LoadingOverlay;
 ```
 
-<!-- path: components/ofc/OfcForm/FormSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/FormSection.tsx -->
 ```typescript
-// components/OfcForm/FormSection.tsx
 import React from "react";
 import { LucideIcon } from "lucide-react";
 
@@ -43516,9 +43206,8 @@ const FormSection: React.FC<FormSectionProps> = ({
 export default FormSection;
 ```
 
-<!-- path: components/ofc/OfcForm/MaintenanceSection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/ofc/OfcForm/MaintenanceSection.tsx -->
 ```typescript
-// components/OfcForm/MaintenanceSection.tsx
 import React from 'react';
 import { Settings } from 'lucide-react';
 import { Control, FieldErrors } from 'react-hook-form';
@@ -43572,9 +43261,8 @@ export default MaintenanceSection;
 
 ```
 
-<!-- path: components/route-manager/CableSegmentationManager.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/CableSegmentationManager.tsx -->
 ```typescript
-// components/ofc/CableSegmentationManager.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -43614,31 +43302,28 @@ export const CableSegmentationManager = ({
   } = useCableSegmentation();
 
   const loadExistingData = useCallback(async () => {
-    // Don't load if no cable is selected
     if (!cableId || cableId === '') {
       setJunctionClosures([]);
       setCableSegments([]);
       return;
     }
-
+  
     try {
-      // Load junction closures
       const { data: jcData, error: jcError } = await supabase
         .from('junction_closures')
         .select('*')
         .eq('ofc_cable_id', cableId)
         .order('position_km');
-
+  
       if (jcError) throw jcError;
       setJunctionClosures(jcData || []);
-
-      // Load cable segments
+  
       const { data: segmentData, error: segmentError } = await supabase
         .from('cable_segments')
         .select('*')
         .eq('original_cable_id', cableId)
         .order('segment_order');
-
+  
       if (segmentError) throw segmentError;
       setCableSegments(segmentData || []);
     } catch (err) {
@@ -43652,7 +43337,6 @@ export const CableSegmentationManager = ({
 
 
 
-  // Load existing junction closures and segments
   useEffect(() => {
     loadExistingData();
   }, [cableId, loadExistingData]);
@@ -43669,11 +43353,9 @@ export const CableSegmentationManager = ({
       const jc = await addJunctionClosure(cableId, newJCData.position_km, newJCData.name);
       if (jc) {
 
-        // Create cable segments (this will recreate all segments for the cable)
         const segments = await createCableSegments(jc.id, cableId);
 
         if (segments.length > 0) {
-          // Create initial fiber connections for each segment
           for (const segment of segments) {
             await createInitialFiberConnections(segment.id);
           }
@@ -43694,7 +43376,6 @@ export const CableSegmentationManager = ({
   };
 
   const handleApplySplices = async (segmentId: string, spliceConfig: SpliceConfiguration[]) => {
-    // Find the junction closure between segments
     const segment = cableSegments.find(s => s.id === segmentId);
     if (!segment || segment.end_node_type !== 'jc') return;
 
@@ -43708,7 +43389,6 @@ export const CableSegmentationManager = ({
     toast.success('Splice configuration applied successfully');
   };
 
-    // Don't render if no cable is selected
     if (!cableId || cableId === '') {
       return (
         <div className="space-y-6">
@@ -43740,7 +43420,7 @@ export const CableSegmentationManager = ({
         Cable: <span className="font-medium">{cableName}</span> (<span className="font-mono">{cableId}</span>)
       </p>
     </CardHeader>
-
+    
     <CardBody className="pt-4">
       <div className="space-y-6">
         {/* Add JC Button */}
@@ -43925,7 +43605,7 @@ export const CableSegmentationManager = ({
 
 ```
 
-<!-- path: components/route-manager/RouteSelection.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/RouteSelection.tsx -->
 ```typescript
 import { PageHeader } from "@/components/common/page-header";
 import { Option, SearchableSelect } from "@/components/common/ui/select/SearchableSelect";
@@ -43935,7 +43615,6 @@ import { FaRoute } from "react-icons/fa";
 import { FiPlus } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
 
-// RouteSelection Component
 interface RouteSelectionProps {
   selectedRouteId: string | null;
   onRouteChange: (routeId: string | null) => void;
@@ -43961,8 +43640,6 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
 
   const handleRouteChange = useCallback((value: string | null) => {
     onRouteChange(value);
-    // Invalidate ALL splice details when the route changes.
-    // This forces a refetch for any JC on the newly selected route.
     queryClient.invalidateQueries({ queryKey: ['jc-splicing-details'] });
   }, [onRouteChange, queryClient]);
 
@@ -43981,18 +43658,18 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
           disabled: !selectedRouteId || isLoadingRouteDetails,
         }]}
       />
-
+      
       <div className='bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border dark:border-gray-700'>
         <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
           Select an OFC Route to Manage
         </label>
-        <SearchableSelect
-          options={routeOptions}
-          value={selectedRouteId || ""}
-          onChange={handleRouteChange}
-          placeholder={isLoadingRoutesData ? "Loading routes..." : "Select a route"}
-          disabled={isLoadingRoutesData}
-          clearable
+        <SearchableSelect 
+          options={routeOptions} 
+          value={selectedRouteId || ""} 
+          onChange={handleRouteChange} 
+          placeholder={isLoadingRoutesData ? "Loading routes..." : "Select a route"} 
+          disabled={isLoadingRoutesData} 
+          clearable 
         />
       </div>
     </>
@@ -44003,9 +43680,8 @@ export default RouteSelection;
 
 ```
 
-<!-- path: components/route-manager/ui/RouteVisualization.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/ui/RouteVisualization.tsx -->
 ```typescript
-// path: components/route-manager/ui/RouteVisualization.tsx
 "use client";
 
 import { motion } from 'framer-motion';
@@ -44022,34 +43698,32 @@ interface RouteVisualizationProps {
 
 export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, onDeleteJc }: RouteVisualizationProps) {
   const { route, jointBoxes, segments } = routeDetails;
-
-  // This is the crucial logic block
+  
   const allPoints = [
-    {
-      id: route.sn_id,
-      name: route.sn_name || route.start_site?.name || 'Start Node',
-      type: 'site' as const,
-      position: 0,
-      raw: {}
+    { 
+      id: route.sn_id, 
+      name: route.sn_name || route.start_site?.name || 'Start Node', 
+      type: 'site' as const, 
+      position: 0, 
+      raw: {} 
     },
-    ...jointBoxes.map(e => ({
+    ...jointBoxes.map(e => ({ 
         id: e.node_id, // <-- Use the node_id for matching against segments
-        name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`,
-        type: 'jointBox' as const,
-        position: e.attributes?.position_on_route || 0,
+        name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
+        type: 'jointBox' as const, 
+        position: e.attributes?.position_on_route || 0, 
         status: e.status,
-        raw: e
+        raw: e 
     })),
-    {
-      id: route.en_id,
-      name: route.en_name || route.end_site?.name || 'End Node',
-      type: 'site' as const,
-      position: 100,
-      raw: {}
+    { 
+      id: route.en_id, 
+      name: route.en_name || route.end_site?.name || 'End Node', 
+      type: 'site' as const, 
+      position: 100, 
+      raw: {} 
     }
   ].sort((a, b) => a.position - b.position);
 
-  // console.log("allPoints", allPoints);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
@@ -44066,33 +43740,33 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
           </div>
         </div>
       </div>
-
+      
       <div className="mb-8">
         <div className="overflow-x-auto pb-4">
           <div className="relative min-w-[800px] h-64 py-8">
-            <div
-              className="absolute top-1/2 h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg"
-              style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }}
+            <div 
+              className="absolute top-1/2 h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg" 
+              style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }} 
             />
-
+            
             <div className="absolute top-0 left-0 right-0 h-full">
               {allPoints.map((point, index) => {
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
                 const isFirst = index === 0;
                 const isLast = index === allPoints.length - 1;
-
+                
                 return (
-                  <motion.div
-                    key={point.id}
-                    className="absolute top-1/2 flex flex-col items-center group"
-                    style={{
-                      left: `calc(4% + ${point.position}% * 0.92)`,
+                  <motion.div 
+                    key={point.id} 
+                    className="absolute top-1/2 flex flex-col items-center group" 
+                    style={{ 
+                      left: `calc(4% + ${point.position}% * 0.92)`, 
                       transform: 'translateX(-50%) translateY(-50%)'
                     }}
                     initial={{ opacity: 0, scale: 0.5, y: -20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{
-                      duration: 0.6,
+                    transition={{ 
+                      duration: 0.6, 
                       delay: index * 0.1,
                       ease: "easeOut"
                     }}
@@ -44103,14 +43777,14 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                       </p>
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white dark:border-t-gray-700"></div>
                     </div>
-
-                    <div
+                    
+                    <div 
                       onClick={() => point.type === 'jointBox' && onJcClick(point.raw as JointBox)}
                       className={`relative w-6 h-6 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-lg ${
-                        point.type === 'site'
-                          ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300'
-                          : point.status === 'existing'
-                            ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300'
+                        point.type === 'site' 
+                          ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300' 
+                          : point.status === 'existing' 
+                            ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300' 
                             : 'bg-yellow-500 border-yellow-200 hover:bg-yellow-600 hover:border-yellow-300'
                       } ${point.type === 'jointBox' ? 'cursor-pointer hover:scale-125 hover:shadow-xl' : 'hover:scale-110'}`}
                       title={`${point.name} at ${km} km`}
@@ -44119,31 +43793,31 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                         {point.type === 'site' ? (isFirst ? 'S' : 'E') : 'J'}
                       </span>
                     </div>
-
+                    
                     <div className="absolute top-10 text-center min-w-max">
                       <p className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md border dark:border-gray-600 shadow-sm">
                         {km} km
                       </p>
                     </div>
-
+                    
                     {point.type === 'jointBox' && (
                       <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        <button
+                        <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditJc(point.raw as JointBox);
-                          }}
-                          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                          }} 
+                          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
                           title="Edit JC"
                         >
                           <Edit size={14} />
                         </button>
-                        <button
+                        <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeleteJc((point.raw as JointBox).id!);
-                          }}
-                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                          }} 
+                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
                           title="Delete JC"
                         >
                           <Trash2 size={14} />
@@ -44157,7 +43831,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
           </div>
         </div>
       </div>
-
+      
       <div className="border-t dark:border-gray-600 pt-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center">
@@ -44170,15 +43844,15 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
             </div>
           )}
         </div>
-
+        
         {segments.length > 0 ? (
           <div className="space-y-3">
             {segments.map((seg, index) => {
               const start = allPoints.find(p => p.id === seg.start_node_id);
               const end = allPoints.find(p => p.id === seg.end_node_id);
               return (
-                <motion.div
-                  key={seg.id}
+                <motion.div 
+                  key={seg.id} 
                   className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/30 dark:to-gray-700/50 p-4 rounded-xl border dark:border-gray-600/50 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-700/50 dark:hover:to-gray-700/70 transition-all duration-300 hover:shadow-md"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -44210,7 +43884,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
             })}
           </div>
         ) : (
-          <motion.div
+          <motion.div 
             className='text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600'
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -44235,7 +43909,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
 }
 ```
 
-<!-- path: components/route-manager/ui/SpliceVisualizationModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/ui/SpliceVisualizationModal.tsx -->
 ```typescript
 "use client";
 
@@ -44247,7 +43921,6 @@ import { useJcSplicingDetails, useManageSplice } from '@/hooks/database/route-ma
 import { Separator } from '@/components/common/ui/separator';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
-// --- Type Definitions for Clarity ---
 interface SpliceConnection {
   id: string;
   incoming_segment: string;
@@ -44275,7 +43948,6 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
 
   const [spliceToDelete, setSpliceToDelete] = useState<SpliceConnection | null>(null);
 
-  // Transform the fetched data into flat lists for the tables
   const { spliceConnections, availableFibers } = useMemo(() => {
     if (!spliceDetails?.segments_at_jc) {
       return { spliceConnections: [], availableFibers: [] };
@@ -44305,7 +43977,6 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
       }
     }
 
-    // Sort for consistent display
     splices.sort((a, b) => a.incoming_fiber - b.incoming_fiber);
     available.sort((a,b) => a.segment_name.localeCompare(b.segment_name) || a.fiber_no - b.fiber_no);
 
@@ -44331,7 +44002,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
           <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
             Active Splice Connections ({spliceConnections.length})
           </h4>
-
+          
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
@@ -44395,10 +44066,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.loss_db}</div>
                   </div>
                 </div>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setSpliceToDelete(splice)}
+                <Button 
+                  variant="danger" 
+                  size="sm" 
+                  onClick={() => setSpliceToDelete(splice)} 
                   leftIcon={<FiTrash2 />}
                   className="w-full"
                 >
@@ -44421,7 +44092,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
           <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
             Available Segments ({availableFibers.length})
           </h4>
-
+          
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -44472,10 +44143,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
 
   return (
     <>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`}
+      <Modal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`} 
         size="full"
       >
         <div className="p-4 md:p-6">
@@ -44496,27 +44167,25 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
 };
 ```
 
-<!-- path: components/route-manager/logic/project.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/logic/project.ts -->
 ```typescript
 import { z } from 'zod';
-import {
-    v_ofc_cables_completeRowSchema,
-    cable_segmentsRowSchema,
+import { 
+    v_ofc_cables_completeRowSchema, 
+    cable_segmentsRowSchema, 
     junction_closuresRowSchema,
-    fiber_splicesRowSchema
+    fiber_splicesRowSchema 
 } from '@/schemas/zod-schemas';
 
-// --- TYPE DEFINITIONS INFERRED FROM ZOD SCHEMAS ---
 type CableRoute = z.infer<typeof v_ofc_cables_completeRowSchema>;
-type Equipment = z.infer<typeof junction_closuresRowSchema> & {
+type Equipment = z.infer<typeof junction_closuresRowSchema> & { 
   node?: { name: string | null; } | null;
-  status: 'existing' | 'planned';
-  attributes: { position_on_route: number; name?: string; }
+  status: 'existing' | 'planned'; 
+  attributes: { position_on_route: number; name?: string; } 
 };
 type CableSegment = z.infer<typeof cable_segmentsRowSchema>;
 type FiberSplice = z.infer<typeof fiber_splicesRowSchema>;
 
-// --- STRICT LOCAL TYPES (NO 'any') ---
 interface BranchConfig {
   target_id: string;
   target_type: 'site' | 'equipment';
@@ -44550,7 +44219,7 @@ export function projectSegments(
     const end = points[i + 1];
     const pct = Math.max(0, end.position - start.position) / 100;
     const distance = Math.round((route.current_rkm || 0) * pct * 1000) / 1000;
-
+    
     segments.push({
       id: `proj-seg-${route.id}-${order}`,
       segment_order: order,
@@ -44575,14 +44244,12 @@ export function projectDefaultSplices(
   segments: CableSegment[],
   equipment: Equipment[],
 ): FiberSplice[] {
-    // Placeholder for future implementation
     return [];
 }
 ```
 
-<!-- path: components/route-manager/JcFormModal.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/JcFormModal.tsx -->
 ```typescript
-// path: components/route-manager/JcFormModal.tsx
 'use client';
 
 import { useEffect, useMemo } from 'react';
@@ -44612,10 +44279,8 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
   const supabase = createClient();
   const isEditMode = !!editingJc;
 
-  // Get the JC Lists
   const serverFilters = useMemo(() => {
       const f: Filters = {
-        // Filter to download only categories with name not equal to "DEFAULT" and NODE_TYPES equal to "Joint / Splice Point"
         node_type_code: { operator: 'eq', value: 'BJC' },
         name: { operator: 'neq', value: 'DEFAULT' },
       };
@@ -44623,7 +44288,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     }, []);
   const { data: jcLists } = useTableQuery(supabase, 'v_nodes_complete', { filters: serverFilters, columns: 'id, name, latitude, longitude' });
 
-  // Local form schema: only validate the fields this form actually collects
   const junction_closuresFormSchema = junction_closuresInsertSchema.pick({
     node_id: true,
     position_km: true,
@@ -44648,8 +44312,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
   useEffect(() => {
     if (isOpen) {
       if (editingJc) {
-        // For planned equipment, we need to map the fields appropriately
-        // Since JointBox doesn't have node_id, we'll need to handle this differently
         reset({
           node_id: editingJc.node_id,
           position_km: editingJc.attributes.position_on_route
@@ -44657,7 +44319,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
             : null,
         });
       } else {
-        // Start with no selection for node; leave node_id undefined
         reset({
           node_id: '',
           position_km: null,
@@ -44673,14 +44334,10 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     label: d.name as string,
   }));
 
-  // Watch selected JC (node) id
   const selectedNodeId = watch("node_id");
 
-  // If needed, you can derive latitude/longitude from selectedNodeId for display purposes
-  // but they are not part of the form schema, so we do not set them in form state.
   useEffect(() => {
     if (!selectedNodeId) return;
-    // Placeholder for any side effects when node changes
   }, [selectedNodeId]);
 
   const handleValidSubmit = async (formData: JcFormValues) => {
@@ -44703,7 +44360,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       let jcData, insertError;
 
       if (isEditMode && editingJc) {
-        // UPDATE existing junction closure
         const { data, error } = await supabase
           .from('junction_closures')
           .update({
@@ -44716,7 +44372,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         jcData = data;
         insertError = error;
       } else {
-        // CREATE new junction closure using the RPC function
         const result = await supabase
           .rpc('add_junction_closure', {
             p_node_id: payload.node_id,
@@ -44728,7 +44383,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         insertError = result.error;
       }
 
-      // console.log('Function result:', { jcData, insertError });
 
       if (insertError) {
         console.error('Database error:', insertError);
@@ -44736,9 +44390,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         return;
       }
 
-      // If this is a new junction closure (not an edit), cable segments will be created automatically by database trigger
       if (!isEditMode && jcData) {
-        // jcData is returned as an array from the database function
         const dataArray = Array.isArray(jcData) ? jcData : [jcData];
         if (dataArray && dataArray.length > 0) {
           const newJc = dataArray[0];
@@ -44752,7 +44404,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       onClose();
     } catch (error) {
       console.error('Error in handleValidSubmit:', error);
-
+    
       if (error instanceof Error) {
         toast.error(
           `Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`
@@ -44765,10 +44417,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     }
   };
 
-  // console.log('=== JcFormModal RENDERED ===');
-  // console.log('isOpen:', isOpen);
-  // console.log('routeId:', routeId);
-  // console.log('editingJc:', editingJc);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >
@@ -44809,9 +44457,8 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
 };
 ```
 
-<!-- path: components/route-manager/FiberSpliceManager.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/FiberSpliceManager.tsx -->
 ```typescript
-// path: components/route-manager/FiberSpliceManager.tsx
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
@@ -44823,7 +44470,6 @@ import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVi
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { Loader2 } from 'lucide-react';
 
-// --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
 type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
 type FiberAtSegment = JcSplicingDetails['segments_at_jc'][0]['fibers'][0];
 
@@ -44853,11 +44499,11 @@ interface AutoSplicePair {
     lossDb: string;
 }
 
-const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
-  normalizedData: JcSplicingDetails | null;
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null
+const useNormalizedSplicingDetails = (junctionClosureId: string | null): { 
+  normalizedData: JcSplicingDetails | null; 
+  isLoading: boolean; 
+  isError: boolean; 
+  error: Error | null 
 } => {
     const { data: rawData, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
 
@@ -44874,7 +44520,7 @@ const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
 export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId }) => {
 
     const { normalizedData: spliceDetails, isLoading, isError, error } = useNormalizedSplicingDetails(junctionClosureId);
-
+    
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
     const syncPathUpdatesMutation = useSyncPathUpdates(); // NEW HOOK
@@ -44887,7 +44533,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     const [autoSplicePairs, setAutoSplicePairs] = useState<AutoSplicePair[]>([]);
     const [showVisualizationModal, setShowVisualizationModal] = useState(false);
 
-    // (useEffect for auto-splice pairs remains the same)
     useEffect(() => {
         if (pendingSpliceAction?.type === 'auto' && pendingSpliceAction.autoData && spliceDetails) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
@@ -44897,10 +44542,10 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             if (segment1 && segment2) {
                 const availableFibers1 = segment1.fibers.filter(f => f.status === 'available').map(f => f.fiber_no);
                 const availableFibers2 = segment2.fibers.filter(f => f.status === 'available').map(f => f.fiber_no);
-
+                
                 const pairs: AutoSplicePair[] = [];
                 const maxPairs = Math.min(availableFibers1.length, availableFibers2.length);
-
+                
                 for (let i = 0; i < maxPairs; i++) {
                     pairs.push({
                         fiber1No: availableFibers1[i],
@@ -44908,7 +44553,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         lossDb: '0.3'
                     });
                 }
-
+                
                 setAutoSplicePairs(pairs);
             }
         }
@@ -44925,7 +44570,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     const handleTargetFiberClick = (targetSegmentId: string, targetFiberNo: number) => {
         if (!selectedFiber || !junctionClosureId) return;
-
+        
         setPendingSpliceAction({
             type: 'manual',
             manualData: {
@@ -44940,10 +44585,10 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     const handleAutoSplice = (segment1Id: string, segment2Id: string) => {
         if (!junctionClosureId || !spliceDetails) return;
-
+        
         const segment1 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment1Id);
         const segment2 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment2Id);
-
+        
         setPendingSpliceAction({
             type: 'auto',
             autoData: {
@@ -44980,7 +44625,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             resetModal();
         } else if (pendingSpliceAction.type === 'auto' && pendingSpliceAction.autoData) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
-
+            
             if (autoSpliceMode === 'uniform') {
                 const lossDb = parseFloat(lossDbValue) || 0;
                 autoSpliceMutation.mutate({
@@ -45049,8 +44694,8 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             terminated: 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
         };
 
-        const titleText = fiber.connected_to_segment
-          ? `-> F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}`
+        const titleText = fiber.connected_to_segment 
+          ? `-> F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` 
           : fiber.status.replace(/_/g, ' ');
 
         return (
@@ -45088,9 +44733,9 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     View All Splices
                 </Button>
                 {/* NEW SYNC BUTTON */}
-                <Button
-                    size="sm"
-                    variant="primary"
+                <Button 
+                    size="sm" 
+                    variant="primary" 
                     onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
                     disabled={syncPathUpdatesMutation.isPending}
                     leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
@@ -45099,7 +44744,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 </Button>
               </div>
             </div>
-
+            
             {/* ... rest of the component remains the same ... */}
             {selectedFiber && (
                 <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-center">
@@ -45108,13 +44753,13 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </p>
                 </div>
             )}
-
+            
             <div className="grid gap-4" style={{ gridTemplateColumns }}>
                 {segments_at_jc.map((segment, index) => (
                     <div key={segment.segment_id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border dark:border-gray-700">
                         <h4 className="font-bold text-sm mb-2 truncate"><TruncateTooltip text={segment.segment_name} /></h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Fibers: {segment.fiber_count}</p>
-
+                        
                         {index < segments_at_jc.length - 1 && (
                              <Button size="xs" onClick={() => handleAutoSplice(segment.segment_id, segments_at_jc[index + 1].segment_id)} className="w-full mb-3" variant="outline">
                                 <FiZap className="w-3 h-3 mr-1"/> Auto-Splice
@@ -45136,7 +44781,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         <h3 className="text-lg font-semibold mb-4">
                             {pendingSpliceAction?.type === 'auto' ? 'Auto-Splice Configuration' : 'Configure Splice Loss'}
                         </h3>
-
+                        
                         {pendingSpliceAction?.type === 'auto' ? (
                             <>
                                 <div className="mb-4">
@@ -45163,7 +44808,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                             <div className="text-xs text-gray-600 dark:text-gray-400">Apply same loss to all splices</div>
                                         </div>
                                     </label>
-
+                                    
                                     <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                         <input
                                             type="radio"
@@ -45217,7 +44862,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                                 Apply to All
                                             </Button>
                                         </div>
-
+                                        
                                         <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                                             <div className="bg-gray-100 dark:bg-gray-900 px-3 py-2 grid grid-cols-3 gap-2 text-xs font-semibold">
                                                 <div>Fiber 1</div>
@@ -45275,15 +44920,15 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                 </div>
                             </>
                         )}
-
+                        
                         <div className="flex gap-3 justify-end">
                             <Button variant="outline" onClick={resetModal}>
                                 Cancel
                             </Button>
                             <Button onClick={confirmSplice} disabled={manageSpliceMutation.isPending || autoSpliceMutation.isPending}>
-                                {manageSpliceMutation.isPending || autoSpliceMutation.isPending ? 'Creating...' :
-                                    pendingSpliceAction?.type === 'auto'
-                                        ? `Create ${autoSplicePairs.length} Splice${autoSplicePairs.length !== 1 ? 's' : ''}`
+                                {manageSpliceMutation.isPending || autoSpliceMutation.isPending ? 'Creating...' : 
+                                    pendingSpliceAction?.type === 'auto' 
+                                        ? `Create ${autoSplicePairs.length} Splice${autoSplicePairs.length !== 1 ? 's' : ''}` 
                                         : 'Confirm Splice'}
                             </Button>
                         </div>
@@ -45295,9 +44940,8 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 };
 ```
 
-<!-- path: components/route-manager/queryKeys.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/route-manager/queryKeys.ts -->
 ```typescript
-// components/route-manager/queryKeys.ts
 
 export const queryKeys = {
   routes: ['routes'] as const,
@@ -45306,7 +44950,7 @@ export const queryKeys = {
 
 ```
 
-<!-- path: components/dashboard/DashboardContent.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/dashboard/DashboardContent.tsx -->
 ```typescript
 import { ReactNode, useState, useEffect } from "react";
 import ColumnManagementProvider from "./ColumnManagementProvider";
@@ -45342,13 +44986,10 @@ function DashboardContent({
       }
     };
 
-    // Initial measurement
     updateSidebarWidth();
 
-    // Update on resize
     window.addEventListener('resize', updateSidebarWidth);
-
-    // Small delay to ensure sidebar transition completes
+    
     const timeout = setTimeout(updateSidebarWidth, 300);
 
     return () => {
@@ -45362,8 +45003,8 @@ function DashboardContent({
         data={children as Record<string, unknown>[] | null}
       >
         {/* Sidebar */}
-        <Sidebar
-          isCollapsed={isCollapsed}
+        <Sidebar 
+          isCollapsed={isCollapsed} 
           setIsCollapsed={setIsCollapsed}
           showMenuFeatures={showColumnManagement}
         />
@@ -45392,7 +45033,7 @@ function DashboardContent({
 export default DashboardContent;
 ```
 
-<!-- path: components/dashboard/ColumnManagementProvider.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/dashboard/ColumnManagementProvider.tsx -->
 ```typescript
 "use client";
 
@@ -45441,11 +45082,9 @@ export default function ColumnManagementProvider({
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [isDeleteVisible, setIsDeleteVisible] = useState(false);
 
-  // Generate column options from data
   const columnOptions = useMemo(() => {
     if (!data || (data as Record<string, unknown>[]).length === 0) return [];
 
-    // Get keys from first item in data array
     const firstItem = data as Record<string, unknown>[];
     if (!firstItem || typeof firstItem !== "object") return [];
 
@@ -45459,14 +45098,12 @@ export default function ColumnManagementProvider({
       }));
   }, [data, excludeColumns]);
 
-  // Initialize visible columns when column options change
   useEffect(() => {
     if (columnOptions.length > 0 && visibleColumns.length === 0) {
       setVisibleColumns(columnOptions.map((col) => col.value));
     }
   }, [columnOptions, visibleColumns.length]);
 
-  // Toggle delete visibility
   const toggleDelete = () => {
     setIsDeleteVisible((prev) => {
       const newState = !prev;
@@ -45475,7 +45112,6 @@ export default function ColumnManagementProvider({
     });
   };
 
-  // Reset columns to default
   const resetColumnsToDefault = () => {
     if (columnOptions.length > 0) {
       setVisibleColumns(columnOptions.map((col) => col.value));
@@ -45504,7 +45140,7 @@ export default function ColumnManagementProvider({
 
 ```
 
-<!-- path: components/dashboard/MenuButton.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/dashboard/MenuButton.tsx -->
 ```typescript
 "use client";
 import { FiMenu } from "react-icons/fi";
@@ -45528,7 +45164,7 @@ export default function MenuButton({ onClick }: MenuButtonProps) {
 
 ```
 
-<!-- path: components/dashboard/DashboardHeader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/dashboard/DashboardHeader.tsx -->
 ```typescript
 "use client";
 
@@ -45610,16 +45246,16 @@ export default function DashboardHeader({
 }
 ```
 
-<!-- path: components/polyfills/PolyfillLoader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/polyfills/PolyfillLoader.tsx -->
 ```typescript
 "use client";
-
+ 
 import { useEffect } from "react";
-
+ 
 export default function PolyfillLoader() {
   useEffect(() => {
     const needsPolyfills = !("fetch" in window) || !("IntersectionObserver" in window);
-
+ 
     if (needsPolyfills) {
       import("core-js/stable");
       import("regenerator-runtime/runtime");
@@ -45628,14 +45264,13 @@ export default function PolyfillLoader() {
       import("url-polyfill");
     }
   }, []);
-
+ 
   return null; // No UI needed
 }
 ```
 
-<!-- path: components/diagrams/uploader-components/ErrorDisplay.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/ErrorDisplay.tsx -->
 ```typescript
-// components/diagrams/uploader-components/ErrorDisplay.tsx
 import React, { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -45673,9 +45308,8 @@ export default ErrorDisplay;
 
 ```
 
-<!-- path: components/diagrams/uploader-components/FolderManagement.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/FolderManagement.tsx -->
 ```typescript
-// components/diagrams/uploader-components/FolderManagement.tsx
 import React from "react";
 
 interface FolderManagementProps {
@@ -45695,8 +45329,7 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
   folderId,
   setFolderId,
 }) => {
-  // Sort folders alphabetically by name
-  const sortedFolders = [...folders].sort((a, b) =>
+  const sortedFolders = [...folders].sort((a, b) => 
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   );
 
@@ -45746,9 +45379,8 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
 export default FolderManagement;
 ```
 
-<!-- path: components/diagrams/uploader-components/RecentlyUploaded.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/RecentlyUploaded.tsx -->
 ```typescript
-// components/diagrams/uploader-components/RecentlyUploaded.tsx
 import React from "react";
 import Image from "next/image";
 import { Eye, Download } from "lucide-react";
@@ -45832,9 +45464,8 @@ const RecentlyUploaded: React.FC<RecentlyUploadedProps> = ({
 export default RecentlyUploaded;
 ```
 
-<!-- path: components/diagrams/uploader-components/UploadModeToggle.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/UploadModeToggle.tsx -->
 ```typescript
-// components/diagrams/uploader-components/UploadModeToggle.tsx
 import React from "react";
 
 interface UploadModeToggleProps {
@@ -45878,7 +45509,7 @@ const UploadModeToggle: React.FC<UploadModeToggleProps> = ({
 export default UploadModeToggle;
 ```
 
-<!-- path: components/diagrams/uploader-components/AdvancedUpload.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/AdvancedUpload.tsx -->
 ```typescript
 
 
@@ -45928,33 +45559,8 @@ const AdvancedUpload: React.FC<AdvancedUploadProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
-        capture={facingMode}
-        onChange={handleFileChange}
-        className="hidden"
-      />
-
-      {/* Action Buttons */}
       <div className="mb-2 flex flex-wrap gap-2 justify-between items-center">
         <div className="flex gap-2">
-          {/* <button
-            onClick={toggleCameraActive}
-            className={`flex items-center gap-2 rounded px-3 py-1 text-sm ${
-              isNightMode
-                ? "bg-gray-600 text-white hover:bg-gray-500"
-                : "bg-gray-200 text-black hover:bg-gray-300"
-            }`}
-          >
-            {isCameraActive ? (
-              <>
-                <CameraOff size={16} /> Stop Camera
-              </>
-            ) : (
-              <>
-                <Camera size={16} /> Start Camera
-              </>
-            )}
-          </button> */}
 
           <button
             onClick={toggleCamera}
@@ -46035,7 +45641,7 @@ export default AdvancedUpload;
 
 ```
 
-<!-- path: components/diagrams/uploader-components/SimpleUpload.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/uploader-components/SimpleUpload.tsx -->
 ```typescript
 import React from "react";
 import type { AppUppy, SelectedFile } from "@/components/diagrams/hooks/useUppyUploader";
@@ -46081,360 +45687,6 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf,.doc,.docx,.txt,.rtf,video/*,audio/*"
-          onChange={handleFileInputChange}
-          className="hidden"
-        />
-        <div>
-          <p className="text-lg font-medium">Drag files here or click to browse</p>
-          <p className="mt-2 text-sm opacity-70">
-            Supports images, PDFs, documents, audio, and video files
-          </p>
-        </div>
-      </div>
-
-      <div id="uppy-progress" className="w-full"></div>
-
-      {selectedFiles.length > 0 && (
-        <div
-          className={`rounded-lg border p-4 dark:border-gray-600 dark:bg-gray-700`}
-        >
-          <h4
-            className={`mb-3 text-sm font-medium dark:text-gray-200 text-gray-700`}
-          >
-            Selected Files ({selectedFiles.length})
-          </h4>
-          <div className="max-h-40 space-y-2 overflow-y-auto">
-            {selectedFiles.map((file) => (
-              <div
-                key={file.id}
-                className={`flex items-center justify-between rounded p-2 dark:hover:bg-gray-600 dark:bg-gray-650 border dark:border-gray-500`}
-              >
-                <div className="flex min-w-0 flex-1 items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    {file.type?.startsWith("image/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-green-100">
-                        <span className="text-xs text-green-600">🖼️</span>
-                      </div>
-                    ) : file.type?.includes("pdf") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-red-100">
-                        <span className="text-xs text-red-600">📄</span>
-                      </div>
-                    ) : file.type?.startsWith("video/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-100">
-                        <span className="text-xs text-blue-600">🎥</span>
-                      </div>
-                    ) : file.type?.startsWith("audio/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-100">
-                        <span className="text-xs text-purple-600">🎵</span>
-                      </div>
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100">
-                        <span className="text-xs text-gray-600">📁</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-sm font-medium dark:text-white text-gray-900`}
-                    >
-                      {file.name}
-                    </p>
-                    <p
-                      className={`text-xs dark:text-gray-400 text-gray-500`}
-                    >
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRemoveFile(file.id)}
-                  className={`ml-2 flex-shrink-0 rounded-full p-1 transition-colors dark:text-gray-400 dark:hover:bg-red-500 dark:hover:text-red-400 text-gray-500 hover:bg-red-500 hover:text-red`}
-                  title="Remove file"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <button
-        onClick={handleStartUpload}
-        disabled={selectedFiles.length === 0 || isUploading}
-        className={`flex w-full items-center justify-center gap-2 rounded px-4 py-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800 dark:disabled:bg-gray-600 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white`}
-      >
-        {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isUploading
-          ? "Uploading..."
-          : selectedFiles.length > 0
-            ? `Upload ${selectedFiles.length} File${selectedFiles.length > 1 ? "s" : ""}`
-            : "Start Upload"}
-      </button>
-    </div>
-  );
-};
-
-export default SimpleUpload;
-```
-
-<!-- path: components/diagrams/types/storage.ts -->
-```typescript
-// components/diagrams/types/storage.ts
-import { z } from 'zod';
-import { filesRowSchema } from '@/schemas/zod-schemas';
-
-//  Derive the type from the Zod schema.
-export type StoredFile = z.infer<typeof filesRowSchema>;
-
-export interface UploadProgress {
-  [key: number]: number;
-}
-
-export interface StorageManagerProps {
-  bucketName?: string;
-  maxFileSize?: number;
-  allowedFileTypes?: string[];
-  onUploadComplete?: (files: StoredFile[]) => void;
-  onError?: (error: string) => void;
-}
-
-export interface SupabaseStorageError {
-  error: string;
-  message: string;
-  statusCode?: string;
-}
-
-
-```
-
-<!-- path: components/diagrams/FileTable.tsx -->
-```typescript
-"use client";
-
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Eye, Download, Trash2, Search, Filter, Grid, List, X } from "lucide-react";
-import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
-import "../../app/customuppy.css"; // Custom styles for Uppy
-
-// Define file type for better type safety
-interface FileType {
-  id: string;
-  file_name: string;
-  file_type: string;
-  file_url: string;
-  uploaded_at: string;
-  [key: string]: unknown;
-}
-
-interface FileTableProps {
-  folders: Array<{ id: string; name: string }>;
-  onFileDelete?: () => void;
-  folderId?: string | null;
-  onFolderSelect?: (id: string | null) => void;
-  isLoading?: boolean;
-}
-
-export function FileTable({ folders, onFileDelete }: FileTableProps) {
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
-  const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<"name" | "date" | "type">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [deletingFile, setDeletingFile] = useState<string | null>(null);
-
-  // Use React Query to fetch files
-  const { data: files = [], isLoading, refetch } = useFiles(selectedFolder || undefined);
-  const loading = isLoading; // Use loading state from React Query
-  const { mutate: deleteFile } = useDeleteFile();
-
-  // Filter folders based on folder search term and sort alphabetically in ascending order
-  const filteredFolders = useMemo(() =>
-    folders
-      .filter(folder =>
-        folder.name.toLowerCase().includes(folderSearchTerm.toLowerCase())
-      )
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())),
-    [folders, folderSearchTerm]
-  );
-
-  // Reset selected folder when it's not in filtered results
-  useEffect(() => {
-    if (selectedFolder && folderSearchTerm) {
-      const isFolderVisible = filteredFolders.some(folder => folder.id === selectedFolder);
-      if (!isFolderVisible) {
-        setSelectedFolder(null);
-      }
-    }
-  }, [selectedFolder, folderSearchTerm, filteredFolders]);
-
-
-  // Sort and filter files based on user preferences
-  const processedFiles = useMemo(() => {
-    return (files as FileType[])
-      .filter((file) => {
-        const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
-        const matchesType = fileTypeFilter === "all" || file.file_type?.includes(fileTypeFilter);
-        return matchesSearch && matchesType;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-
-        if (sortBy === "name") {
-          comparison = a.file_name.localeCompare(b.file_name);
-        } else if (sortBy === "type") {
-          comparison = (a.file_type || "").localeCompare(b.file_type || "");
-        } else {
-          // Sort by date
-          const dateA = new Date(a.uploaded_at || 0).getTime();
-          const dateB = new Date(b.uploaded_at || 0).getTime();
-          comparison = dateA - dateB;
-        }
-
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
-
-  const handleView = (file: FileType) => {
-    if (file.file_type === "application/pdf") {
-      const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(file.file_url)}&embedded=true`;
-      window.open(googleViewerUrl, '_blank');
-    } else {
-      window.open(file.file_url, '_blank');
-    }
-  };
-
-  const handleDelete = (file: FileType) => {
-    if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
-      return;
-    }
-
-    setDeletingFile(file.id);
-    deleteFile(
-      { id: file.id, folderId: selectedFolder },
-      {
-        onSuccess: () => {
-          onFileDelete?.();
-          refetch();
-        },
-        onError: (error) => {
-          console.error("Delete error:", error);
-          alert("Failed to delete file");
-        },
-        onSettled: () => {
-          setDeletingFile(null);
-        }
-      }
-    );
-  };
-
-  const getDownloadUrl = (file: FileType) => {
-    if (file.file_type === "application/pdf") {
-      return file.file_url.replace("/upload/", "/upload/fl_attachment/");
-    }
-    return file.file_url;
-  };
-
-  const getFileIcon = (fileType: string = '') => {
-    if (fileType.startsWith("image/")) return "🖼️";
-    if (fileType === "application/pdf") return "📄";
-    if (fileType.startsWith("video/")) return "🎥";
-    if (fileType.startsWith("audio/")) return "🎵";
-    if (fileType.includes("document") || fileType.includes("word")) return "📝";
-    if (fileType.includes("spreadsheet") || fileType.includes("excel")) return "📊";
-    if (fileType.includes("presentation") || fileType.includes("powerpoint")) return "📈";
-    return "📎";
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Helper function to truncate folder names with ellipsis
-  const truncateFolderName = (name: string, maxLength: number = 20) => {
-    if (name.length <= maxLength) return name;
-    return name.substring(0, maxLength) + "...";
-  };
-
-  // Clear search functions
-  const clearFolderSearch = useCallback(() => {
-    setFolderSearchTerm("");
-  }, []);
-
-  const clearFileSearch = useCallback(() => {
-    setFileSearchTerm("");
-  }, []);
-
-  // Filter and sort files
-  const filteredAndSortedFiles = useMemo(() => {
-    return (files as FileType[])
-      .filter((file) => {
-        const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
-        const matchesType = fileTypeFilter === "all" || file.file_type.startsWith(fileTypeFilter);
-        return matchesSearch && matchesType;
-      })
-      .sort((a, b) => {
-        let aValue: string | Date;
-        let bValue: string | Date;
-
-        switch (sortBy) {
-          case "name":
-            aValue = a.file_name.toLowerCase();
-            bValue = b.file_name.toLowerCase();
-            break;
-          case "type":
-            aValue = a.file_type || '';
-            bValue = b.file_type || '';
-            break;
-          case "date":
-          default:
-            aValue = new Date(a.uploaded_at || 0);
-            bValue = new Date(b.uploaded_at || 0);
-            break;
-        }
-
-        const comparison = aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
-
-  const getFileTypeOptions = () => {
-    const types = [...new Set((files as FileType[]).map(file => file.file_type.split("/")[0]))];
-    return types.map(type => ({
-      value: type,
-      label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Unknown',
-    }));
-  };
-
-  return (
-    <div className="mt-8 space-y-6">
-      <h2
-        className={`text-xl font-semibold dark:text-white text-black`}
-      >
-        UPLOADED DIAGRAMS
-      </h2>
-      {/* Files Display */}
       {selectedFolder && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -46688,8 +45940,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           </button>
           {getFileTypeOptions().map((option) => {
             const count = files.filter(file => file.file_type.startsWith(option.value)).length;
-            // console.log(`File type: ${option.value}, Count: ${count}`, "label:", option.label);
-
+            
             return (
               <button
                 key={option.value}
@@ -46712,7 +45963,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         <h3 className={`text-lg font-medium dark:text-white text-black`}>
           Select Folder to View Files
         </h3>
-
+        
         {filteredFolders.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {filteredFolders.map((folder) => (
@@ -46740,7 +45991,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                     )}
                   </div>
                 </button>
-
+                
                 {/* Tooltip for long folder names */}
                 {folder.name.length > 25 && (
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
@@ -46764,9 +46015,8 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
 }
 ```
 
-<!-- path: components/diagrams/hooks/useUppyUploader.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/hooks/useUppyUploader.ts -->
 ```typescript
-// hooks/useUppyUploader.ts
 import { useRef, useState, useEffect } from 'react';
 import Uppy, { type UppyFile } from '@uppy/core';
 import XHRUpload from '@uppy/xhr-upload';
@@ -46813,9 +46063,7 @@ const isUploadedFile = (value: unknown): value is UploadedFile => {
 
 interface UseUppyUploaderProps {
   folderId: string | null;
-  // refresh: boolean;
   setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
-  // error?: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
@@ -46887,7 +46135,6 @@ export function useUppyUploader({
   };
 
 
-  // Initialize Uppy
   useEffect(() => {
     const uppy = createOptimizedUppy({ folderId }) as AppUppy;
 
@@ -46903,7 +46150,6 @@ export function useUppyUploader({
       limit: 14,
     });
 
-    // Configure Webcam
     const webcamPlugin = uppy.use(Webcam, {
       onBeforeSnapshot: () => Promise.resolve(),
       countdown: false,
@@ -46923,7 +46169,6 @@ export function useUppyUploader({
       });
     }
 
-    // Add optimization preprocessor
     uppy.addPreProcessor(async (fileIDs) => {
       const optimizationPromises = fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
@@ -47126,9 +46371,8 @@ export function useUppyUploader({
 }
 ```
 
-<!-- path: components/diagrams/hooks/useFolders.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/hooks/useFolders.ts -->
 ```typescript
-// hooks/useFolders.ts
 "use client";
 
 import { useState, useCallback } from 'react';
@@ -47168,7 +46412,6 @@ export function useFolders({
   const [newFolderName, setNewFolderName] = useState("");
   const queryClient = useQueryClient();
 
-  // Fetch folders
   const { data: folders = [], isLoading } = useQuery<Folder[]>({
     queryKey: ['folders'],
     queryFn: async () => {
@@ -47178,19 +46421,17 @@ export function useFolders({
       const { data, error } = await supabase
         .from("folders")
         .select("*");
-        // .eq("user_id", user.id);
 
       if (error) {
         console.error("Fetch folders error:", error);
         onError?.("Failed to load folders");
         return [];
       }
-
+      
       return data || [];
     }
   });
 
-  // Create folder mutation
   const { mutate: createFolder, isPending: isCreating } = useMutation({
     mutationFn: async (name: string) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -47244,9 +46485,8 @@ export function useFolders({
 }
 ```
 
-<!-- path: components/diagrams/hooks/useFileHandling.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/hooks/useFileHandling.ts -->
 ```typescript
-// hooks/useFileHandling.ts
 import { useCallback, useRef } from 'react';
 import { AppUppy } from './useUppyUploader';
 
@@ -47286,9 +46526,8 @@ export function useFileHandling(uppyRef: React.RefObject<AppUppy | null>) {
 }
 ```
 
-<!-- path: components/diagrams/FileUploader.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/diagrams/FileUploader.tsx -->
 ```typescript
-// components/FileUploader.tsx
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -47303,7 +46542,6 @@ export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [showUploadSection, setShowUploadSection] = useState(false);
-  // const [showDashboard, setShowDashboard] = useState(false);
 
   const {
     folders,
@@ -47319,17 +46557,12 @@ export default function FileUploader() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
   });
 
+
   const {
     uppyRef,
-    // uploadedFiles,
     selectedFiles,
     isUploading,
     handleStartUpload,
-    // toggleCamera,
-    // toggleCameraActive,
-    // facingMode,
-    // isCameraActive,
-    // cameraError,
   } = useUppyUploader({
     folderId: folderId || null,
     setRefresh: () => {
@@ -47344,7 +46577,6 @@ export default function FileUploader() {
     fileInputRef,
     handleFileInputChange,
     triggerFileInput,
-    // handleRemoveFile,
   } = useFileHandling(uppyRef);
 
   const handleFileDeleted = useCallback(() => {
@@ -47353,7 +46585,7 @@ export default function FileUploader() {
 
   if(error){
     console.log("Error: ", error);
-
+    
   }
 
   return (
@@ -47433,9 +46665,8 @@ export default function FileUploader() {
 
 ```
 
-<!-- path: providers/QueryProvider.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/providers/QueryProvider.tsx -->
 ```typescript
-// providers/QueryProvider.tsx
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -47473,9 +46704,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
 ```
 
-<!-- path: providers/ToastProvider.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/providers/ToastProvider.tsx -->
 ```typescript
-// components/providers/ToastProvider.tsx
 'use client';
 
 import { Toaster } from 'sonner';
@@ -47510,7 +46740,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
-<!-- path: providers/ThemeProvider.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/providers/ThemeProvider.tsx -->
 ```typescript
 "use client";
 
@@ -47524,23 +46754,20 @@ export default function ThemeProvider({
 }) {
   const theme = useThemeStore((state) => state.theme);
 
-  // This useEffect now only needs to react to subsequent theme changes.
   useEffect(() => {
     const applyTheme = (themeToApply: Theme) => {
       const root = document.documentElement;
-
+      
       const isDark =
         themeToApply === "dark" ||
         (themeToApply === "system" &&
           window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-      // Simply toggle the class. No need for transition management.
       root.classList.toggle("dark", isDark);
     };
 
     applyTheme(theme);
 
-    // If the theme is 'system', we still need to listen for OS-level changes.
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => applyTheme("system");
@@ -47554,7 +46781,48 @@ export default function ThemeProvider({
 }
 ```
 
-<!-- path: scripts/generate-zod-schemas.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/providers/UserProvider.tsx -->
+```typescript
+"use client";
+
+import { createContext, useContext, ReactNode } from 'react';
+import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
+import { UserRole } from '@/types/user-roles';
+import { PageSpinner } from '@/components/common/ui';
+
+interface UserContextType {
+  role: UserRole | null;
+  isSuperAdmin: boolean | null;
+  isLoading: boolean;
+  canAccess: (allowedRoles?: string[]) => boolean;
+}
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export const UserProvider = ({ children }: { children: ReactNode }) => {
+  const { role, isSuperAdmin, isLoading, canAccess } = useUserPermissionsExtended();
+
+  if (isLoading) {
+    return <PageSpinner text="Verifying user permissions..." />;
+  }
+
+  return (
+    <UserContext.Provider value={{ role: role as UserRole | null, isSuperAdmin, isLoading, canAccess }}>
+      {children}
+    </UserContext.Provider>
+  );
+};
+
+export const useUser = (): UserContextType => {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+};
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/scripts/generate-zod-schemas.ts -->
 ```typescript
 import * as ts from "typescript";
 import * as fs from "fs";
@@ -47595,7 +46863,6 @@ class TypeScriptToZodConverter {
       if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name)) {
         const typeName = node.name.text;
 
-        // Skip the Json type import
         if (typeName === "Json") {
           ts.forEachChild(node, visit);
           return;
@@ -47651,7 +46918,6 @@ class TypeScriptToZodConverter {
           isNullable: hasNull || nonNullTypes[0].isNullable,
         };
       } else {
-        // Multiple non-null types - create union
         const unionTypes = nonNullTypes.map((t) => t.type).join(" | ");
         return {
           type: unionTypes,
@@ -47692,34 +46958,29 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Fallback - get the text representation
     const printer = ts.createPrinter();
     const typeText = printer.printNode(ts.EmitHint.Unspecified, typeNode, this.sourceFile);
     return { type: typeText, isNullable: false };
   }
 
   private typeToZodSchema(type: string, isNullable: boolean, fieldName?: string, tableName?: string): string {
-    // ✅ CHECK CUSTOM RULES FIRST - before any type handling
   const customRule = this.config.customRules.find(
     (rule) => rule.fieldName === fieldName && this.matchesTableName(rule.tableName, tableName)
   );
   if (customRule) {
     return isNullable ? `${customRule.validation}.nullable()` : customRule.validation;
   }
-    // Handle literal types (enums)
     if (type.includes('"') && type.includes("|")) {
       const literalValues = type.split(" | ").map((v) => v.trim());
       const zodEnum = `z.enum([${literalValues.join(", ")}])`;
       return isNullable ? `${zodEnum}.nullable()` : zodEnum;
     }
 
-    // Handle single literal types
     if (type.startsWith('"') && type.endsWith('"')) {
       const literal = `z.literal(${type})`;
       return isNullable ? `${literal}.nullable()` : literal;
     }
 
-    // Handle basic types with smart validation based on field names
     let zodType: string;
     switch (type) {
       case 'Json':
@@ -47741,7 +47002,6 @@ class TypeScriptToZodConverter {
         zodType = "z.undefined()";
         break;
         default:
-          // Handle literal unions (enums)
           if (type.includes('"') && type.includes('|')) {
             const literalValues = type.split(' | ').map((v) => v.trim());
             zodType = `z.enum([${literalValues.join(', ')}])`;
@@ -47749,13 +47009,12 @@ class TypeScriptToZodConverter {
             zodType = 'z.string()'; // Fallback for complex/unknown types
           }
       }
-
+  
       return isNullable ? `${zodType}.nullable()` : zodType;
   }
 
   private getSmartStringValidation(fieldName: string, tableName?: string): string {
 
-    // Generic pattern matching.
     const lowerName = fieldName.toLowerCase();
     for (const rule of this.config.stringRules) {
       for (const pattern of rule.fieldPatterns) {
@@ -47768,7 +47027,6 @@ class TypeScriptToZodConverter {
   }
 
   private getSmartNumberValidation(fieldName: string, tableName?: string): string {
-    // Check number rules
     const lowerName = fieldName.toLowerCase();
     for (const rule of this.config.numberRules) {
       for (const pattern of rule.fieldPatterns) {
@@ -47778,7 +47036,6 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Default number validation
     return "z.number()";
   }
 
@@ -47790,22 +47047,18 @@ class TypeScriptToZodConverter {
       return false; // Cannot match a specific rule if table name is unknown
     }
 
-    // ** Use includes() for partial matching**
     return actualTableName.toLowerCase().includes(ruleTableName.toLowerCase());
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {
-    // If pattern starts and ends with ^$, treat as regex
     if (pattern.startsWith("^") && pattern.endsWith("$")) {
       return new RegExp(pattern).test(fieldName);
     }
 
-    // If pattern contains regex chars, treat as regex
     if (pattern.includes("*") || pattern.includes(".") || pattern.includes("^") || pattern.includes("$") || pattern.includes("[") || pattern.includes("]")) {
       return new RegExp(pattern).test(fieldName);
     }
 
-    // Otherwise, simple includes check
     return fieldName.includes(pattern);
   }
 
@@ -47815,14 +47068,12 @@ class TypeScriptToZodConverter {
     output += 'import { UserRole } from "@/types/user-roles";\n\n';
     output += 'import { JsonSchema } from "@/types/custom";\n\n';
 
-    // Group types by category
     const tableTypes = types.filter((t) => t.name.endsWith("Row") || t.name.endsWith("Insert") || t.name.endsWith("Update"));
     const viewTypes = types.filter(
       (t) => t.name.includes("v_") // or whatever your view naming convention is
     );
     const enumTypes = types.filter((t) => !t.name.endsWith("Row") && !t.name.endsWith("Insert") && !t.name.endsWith("Update"));
 
-    // Generate table schemas
     if (tableTypes.length > 0) {
       output += "// ============= TABLE SCHEMAS =============\n\n";
 
@@ -47831,7 +47082,6 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Generate view schemas
     if (viewTypes.length > 0) {
       output += "// ============= VIEW SCHEMAS =============\n\n";
 
@@ -47840,21 +47090,20 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Generate enum schemas
     if (enumTypes.length > 0) {
       output += "// ============= ENUM SCHEMAS =============\n\n";
 
       for (const type of enumTypes) {
-        // For enums, we need to handle them differently since they're usually union types
         if (type.properties.length === 0) {
-          // This is likely a direct enum type, skip for now
           continue;
         }
         output += this.generateTypeSchema(type);
       }
     }
 
-    // Generate type exports
+
+
+
     output += "// ============= TYPE EXPORTS =============\n\n";
     for (const type of types) {
       if (type.properties.length > 0) {
@@ -47875,7 +47124,6 @@ class TypeScriptToZodConverter {
       return "";
     }
 
-    // ✅ derive real table name from the type alias
     const baseTableName = type.name.replace(/(Row|Insert|Update)$/, ""); // strip suffixes like "Row"
     const snakeCaseTableName = this.toSnakeCase(baseTableName);
 
@@ -47925,7 +47173,6 @@ async function main() {
 
     console.log(`🎉 Generated Zod schemas: ${outputPath}`);
 
-    // Log summary
     console.log("\n📊 Summary:");
     for (const type of types) {
       if (type.properties.length > 0) {
@@ -47942,7 +47189,7 @@ main();
 
 ```
 
-<!-- path: scripts/generate-flattened-types.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/scripts/generate-flattened-types.ts -->
 ```typescript
 import * as ts from 'typescript';
 import * as fs from 'fs';
@@ -48166,10 +47413,8 @@ function generateFlattenedTypes(
 ): string {
   let output = '// Auto-generated from types/supabase-types.ts\n\n';
 
-  // Import the Json type
   output += 'import type { Json, Database } from "@/types/supabase-types";\n\n';
 
-  // Generate table types
   output += '// ============= TABLES =============\n\n';
 
   for (const table of tables) {
@@ -48191,7 +47436,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate view types
   if (views.length > 0) {
     output += '// ============= VIEWS =============\n\n';
 
@@ -48207,7 +47451,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate enum types
   if (enums.length > 0) {
     output += '// ============= ENUMS =============\n\n';
 
@@ -48224,7 +47467,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate lists of table and view names for runtime checks
   output += '// ============= HELPERS =============\n\n';
 
   const tableNamesArray = tables.map(t => `"${t.name}"`).join(',\n  ');
@@ -48240,7 +47482,6 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Main execution
 async function main() {
   try {
     const supabaseTypesPath = path.join(
@@ -48271,7 +47512,6 @@ async function main() {
 
     console.log(`🎉 Generated flattened types: ${outputPath}`);
 
-    // Log summary
     console.log('\n📊 Summary:');
     tables.forEach((table) => {
       const types = [
@@ -48307,12 +47547,10 @@ main();
 
 ```
 
-<!-- path: hooks/UseRouteBasedUploadConfigOptions.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/UseRouteBasedUploadConfigOptions.tsx -->
 ```typescript
-// src/hooks/useRouteBasedUploadConfig.ts
 
 import { useEffect, FC, ReactNode, useRef } from "react";
-// Import the simplified store and its types
 import {
   useUploadConfigStore,
   UploadConfig,
@@ -48333,16 +47571,12 @@ export const useRouteBasedUploadConfig = (
   const { tableName, autoSetConfig = true, customConfig } = options;
   const previousTableNameRef = useRef<TableNames | null>(null);
 
-  // Get current table name from the new hook
   const currentTableName = useCurrentTableName(tableName);
 
-  // Get the actions from the store
   const { setUploadConfig, getUploadConfig, clearUploadConfig } =
     useUploadConfigStore();
 
-  // Proper cleanup and config management
   useEffect(() => {
-    // Clear previous config when route changes
     if (
       previousTableNameRef.current &&
       previousTableNameRef.current !== currentTableName
@@ -48350,7 +47584,6 @@ export const useRouteBasedUploadConfig = (
       clearUploadConfig(previousTableNameRef.current);
     }
 
-    // Set new config if applicable
     if (autoSetConfig && currentTableName) {
       const generated = buildUploadConfig(currentTableName);
       const finalConfig = {
@@ -48360,10 +47593,8 @@ export const useRouteBasedUploadConfig = (
       setUploadConfig(currentTableName, finalConfig);
     }
 
-    // Update the ref with current table name
     previousTableNameRef.current = currentTableName;
 
-    // Cleanup function - runs when component unmounts
     return () => {
       if (currentTableName) {
         clearUploadConfig(currentTableName);
@@ -48383,10 +47614,6 @@ export const useRouteBasedUploadConfig = (
   };
 };
 
-/**
- * A simple Provider component to easily wrap layouts or pages,
- * activating the route-based configuration logic.
- */
 export const RouteBasedUploadConfigProvider: FC<{
   children: ReactNode;
   options?: UseRouteBasedUploadConfigOptions;
@@ -48397,9 +47624,8 @@ export const RouteBasedUploadConfigProvider: FC<{
 
 ```
 
-<!-- path: hooks/useOutdatedBrowserCheck.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useOutdatedBrowserCheck.tsx -->
 ```typescript
-// hooks/useOutdatedBrowserCheck.tsx
 import { useEffect, useState } from 'react';
 
 const LOCAL_KEY = 'isOutdatedBrowser';
@@ -48408,8 +47634,7 @@ function detectOutdatedBrowser(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return false;
   }
-
-  // **Priority 1: Feature Detection**
+  
   const missingFeatures = [
     () => typeof Promise?.allSettled !== 'function', // ES2020
     () => typeof window.crypto?.subtle === 'undefined', // Web Crypto API
@@ -48424,22 +47649,18 @@ function detectOutdatedBrowser(): boolean {
     return true;
   }
 
-  // **Priority 2: User-Agent Sniffing as a fallback for known legacy browsers**
   const ua = navigator.userAgent;
 
-  // Rule out Internet Explorer immediately
   const isIE = /MSIE|Trident/.test(ua);
   if (isIE) {
     return true;
   }
-
-  // Check for very old versions of other browsers
+  
   const legacyEdgeMatch = ua.match(/Edge\/(\d+)/); // Non-Chromium Edge
   if (legacyEdgeMatch && parseInt(legacyEdgeMatch[1]) < 18) {
     return true;
   }
 
-  // At this point, the browser is likely modern enough.
   return false;
 }
 
@@ -48447,7 +47668,6 @@ export function useOutdatedBrowserCheck(): boolean | null {
   const [isOutdated, setIsOutdated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Only run on the client
     if (typeof window === 'undefined') return;
 
     const cached = localStorage.getItem(LOCAL_KEY);
@@ -48465,7 +47685,7 @@ export function useOutdatedBrowserCheck(): boolean | null {
 }
 ```
 
-<!-- path: hooks/useBulkSelection.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useBulkSelection.ts -->
 ```typescript
 import { useState, useCallback } from 'react';
 
@@ -48484,12 +47704,10 @@ interface UseSelectionReturn<T> {
 export function useSelection<T = string>(): UseSelectionReturn<T> {
   const [selectedItems, setSelectedItems] = useState<Set<T>>(new Set());
 
-  // Clear selection
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, []);
 
-  // Toggle single item selection
   const toggleSelection = useCallback((id: T) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);
@@ -48502,12 +47720,10 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
     });
   }, []);
 
-  // Set selected items
   const setSelected = useCallback((ids: T[]) => {
     setSelectedItems(new Set(ids));
   }, []);
 
-  // Toggle all items selection
   const toggleAllSelection = useCallback((allIds: T[]) => {
     setSelectedItems(prev => {
       if (prev.size === allIds.length) {
@@ -48518,17 +47734,14 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
     });
   }, []);
 
-  // Check if item is selected
   const isSelected = useCallback((id: T) => {
     return selectedItems.has(id);
   }, [selectedItems]);
 
-  // Check if all items are selected
   const isAllSelected = useCallback((allIds: T[]) => {
     return allIds.length > 0 && selectedItems.size === allIds.length;
   }, [selectedItems]);
 
-  // Check if selection is indeterminate (some but not all selected)
   const isIndeterminate = useCallback((allIds: T[]) => {
     return selectedItems.size > 0 && selectedItems.size < allIds.length;
   }, [selectedItems]);
@@ -48547,7 +47760,7 @@ export function useSelection<T = string>(): UseSelectionReturn<T> {
 }
 ```
 
-<!-- path: hooks/useOrderedColumns.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useOrderedColumns.ts -->
 ```typescript
 import { useMemo } from 'react';
 
@@ -48556,29 +47769,25 @@ const useOrderedColumns = <T extends { key: string | number | boolean }>(
   desiredOrder: Array<string | number | boolean>
 ): T[] => {
   return useMemo(() => {
-    // Normalize comparison values to strings for consistent comparison
     const normalizeKey = (key: string | number | boolean): string => {
       if (typeof key === 'boolean') return String(key);
       if (typeof key === 'number') return String(key);
       return key;
     };
 
-    // Create a Set of normalized desired keys for efficient lookup
     const desiredOrderSet = new Set(desiredOrder.map(normalizeKey));
 
-    // Order columns according to desiredOrder
     const ordered = desiredOrder
       .map(desiredKey => {
         const normalizedDesiredKey = normalizeKey(desiredKey);
         return columns.find(col => normalizeKey(col.key) === normalizedDesiredKey);
       })
       .filter((col): col is T => col !== undefined);
-
-    // Get remaining columns that aren't in desiredOrder
+    
     const remaining = columns.filter(
       col => !desiredOrderSet.has(normalizeKey(col.key))
     );
-
+    
     return [...ordered, ...remaining];
   }, [columns, desiredOrder]);
 };
@@ -48586,7 +47795,7 @@ const useOrderedColumns = <T extends { key: string | number | boolean }>(
 export default useOrderedColumns;
 ```
 
-<!-- path: hooks/useAdminUsers.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useAdminUsers.ts -->
 ```typescript
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -48605,7 +47814,6 @@ type UserCreateInput = {
   role: string;
 };
 
-// Define the shape of the RPC response
 type UserDataResult = {
   data: V_user_profiles_extendedRowSchema[];
   counts: {
@@ -48617,7 +47825,6 @@ type UserDataResult = {
 
 export type { UserCreateInput };
 
-// Types
 type AdminGetAllUsersExtended =
   Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
 
@@ -48635,7 +47842,6 @@ type AdminUpdateUserProfile =
 
 
 
-// Query Keys
 export const adminUserKeys = {
   all: ["admin-users"] as const,
   lists: () => [...adminUserKeys.all, "list"] as const,
@@ -48652,7 +47858,6 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
   const supabase = createClient();
   return useQuery({
     queryKey: adminUserKeys.list(params),
-    // CORRECTED: Update the query function to expect the new JSONB structure
     queryFn: async (): Promise<UserDataResult> => {
       const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
 
@@ -48660,7 +47865,6 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
         throw new Error(error.message);
       }
 
-      // Return the structured data, providing defaults if the RPC returns null
       return {
         data: data?.data || [],
         counts: data?.counts || { total: 0, active: 0, inactive: 0 },
@@ -48671,7 +47875,6 @@ export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {
   });
 };
 
-// Hook to get user by ID
 export const useAdminGetUserById = (userId: string, enabled = true) => {
   const supabase = createClient();
   return useQuery({
@@ -48692,25 +47895,6 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
   });
 };
 
-// Hook to get current user's role
-export const useGetMyRole = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.role(),
-    queryFn: async (): Promise<string> => {
-      const { data, error } = await supabase.rpc("get_my_role");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || "";
-    },
-    staleTime: 15 * 60 * 1000, // 15 minutes (roles don't change often)
-  });
-};
-
-// Hook to get current user's details
 export const useGetMyUserDetails = () => {
   const supabase = createClient();
   return useQuery({
@@ -48728,25 +47912,6 @@ export const useGetMyUserDetails = () => {
   });
 };
 
-// Hook to check if current user is super admin
-export const useIsSuperAdmin = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.superAdmin(),
-    queryFn: async (): Promise<boolean> => {
-      const { data, error } = await supabase.rpc("is_super_admin");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || false;
-    },
-    staleTime: 15 * 60 * 1000,
-  });
-};
-
-// Hook to update user profile
 export const useAdminUpdateUserProfile = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -48767,7 +47932,6 @@ export const useAdminUpdateUserProfile = () => {
     onSuccess: (_, variables) => {
       toast.success("User profile updated successfully");
 
-      // Invalidate and refetch relevant queries
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: adminUserKeys.detail(variables.user_id),
@@ -48779,7 +47943,6 @@ export const useAdminUpdateUserProfile = () => {
   });
 };
 
-// Hook to bulk delete users
 export const useAdminBulkDeleteUsers = () => {
   const queryClient = useQueryClient();
 
@@ -48815,7 +47978,6 @@ export const useAdminBulkDeleteUsers = () => {
 };
 
 
-// Hook to bulk update user roles
 export const useAdminBulkUpdateUserRole = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -48838,10 +48000,8 @@ export const useAdminBulkUpdateUserRole = () => {
         `Successfully updated role for ${variables.user_ids.length} user(s)`
       );
 
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
 
-      // Invalidate individual user details
       variables.user_ids.forEach((userId) => {
         queryClient.invalidateQueries({
           queryKey: adminUserKeys.detail(userId),
@@ -48854,7 +48014,6 @@ export const useAdminBulkUpdateUserRole = () => {
   });
 };
 
-// Hook to bulk update user status
 export const useAdminBulkUpdateUserStatus = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -48877,10 +48036,8 @@ export const useAdminBulkUpdateUserStatus = () => {
         `Successfully updated status for ${variables.user_ids.length} user(s)`
       );
 
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
 
-      // Invalidate individual user details
       variables.user_ids.forEach((userId) => {
         queryClient.invalidateQueries({
           queryKey: adminUserKeys.detail(userId),
@@ -48893,7 +48050,6 @@ export const useAdminBulkUpdateUserStatus = () => {
   });
 };
 
-// Hook to create a new user
 export const useAdminCreateUser = () => {
   const queryClient = useQueryClient();
 
@@ -48925,7 +48081,6 @@ export const useAdminCreateUser = () => {
 };
 
 
-// Combined hook for multiple operations
 interface UserOperations {
   createUser: ReturnType<typeof useAdminCreateUser>;
   updateUser: ReturnType<typeof useAdminUpdateUserProfile>;
@@ -48948,25 +48103,23 @@ export const useAdminUserOperations = (): UserOperations => {
     deleteUsers,
     updateUserRoles,
     updateUserStatus,
-    isLoading: createUser.isPending ||
-               updateUser.isPending ||
-               deleteUsers.isPending ||
-               updateUserRoles.isPending ||
+    isLoading: createUser.isPending || 
+               updateUser.isPending || 
+               deleteUsers.isPending || 
+               updateUserRoles.isPending || 
                updateUserStatus.isPending
   };
 };
 ```
 
-<!-- path: hooks/database/advanced-bulk-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/advanced-bulk-queries.ts -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { TableName, TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
 import { applyFilters, applyOrdering } from "./utility-functions";
 
-// Enhanced bulk operations with more advanced filtering and performance features
 export function useAdvancedBulkOperations<T extends TableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -48980,7 +48133,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
   const queryClient = useQueryClient();
   const { maxRetries = 3, retryDelay = 1000, onProgress } = options || {};
 
-  // Helper function for retrying operations
   const withRetry = async <TResult>(operation: () => Promise<TResult>, retries = maxRetries): Promise<TResult> => {
     try {
       return await operation();
@@ -48993,7 +48145,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
     }
   };
 
-  // Advanced bulk update with complex filtering and progress tracking
   const advancedBulkUpdate = useMutation({
     mutationFn: async (params: {
       criteria: {
@@ -49013,20 +48164,16 @@ export function useAdvancedBulkOperations<T extends TableName>(
         await withRetry(async () => {
           let query = supabase.from(tableName).update(data as any);
 
-          // Apply filters
           query = applyFilters(query, filters);
 
-          // Apply ordering if specified
           if (orderBy && orderBy.length > 0) {
             query = applyOrdering(query, orderBy);
           }
 
-          // Apply limit if specified
           if (limit) {
             query = query.limit(limit);
           }
 
-          // Apply performance options
           if (performanceOptions?.timeout) {
             query = query.abortSignal(AbortSignal.timeout(performanceOptions.timeout));
           }
@@ -49048,7 +48195,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
     },
   });
 
-  // Advanced bulk delete with complex criteria
   const advancedBulkDelete = useMutation({
     mutationFn: async (params: {
       criteria: Array<{
@@ -49072,34 +48218,28 @@ export function useAdvancedBulkOperations<T extends TableName>(
         await withRetry(async () => {
           let query = supabase.from(tableName).delete();
 
-          // Apply ID filters if provided
           if (ids && ids.length > 0) {
             query = query.in("id" as any, ids);
           }
 
-          // Apply other filters
           if (filters) {
             query = applyFilters(query, filters);
           }
 
-          // Apply ordering (useful for limited deletes)
           if (orderBy && orderBy.length > 0) {
             query = applyOrdering(query, orderBy);
           }
 
-          // Apply limit (either specified or safety limit)
           const effectiveLimit = Math.min(limit || Number.MAX_SAFE_INTEGER, safetyLimit || Number.MAX_SAFE_INTEGER);
 
           if (effectiveLimit < Number.MAX_SAFE_INTEGER) {
             query = query.limit(effectiveLimit);
           }
 
-          // Apply performance options
           if (performanceOptions?.timeout) {
             query = query.abortSignal(AbortSignal.timeout(performanceOptions.timeout));
           }
 
-          // First, count the records that will be deleted
           let countQuery = supabase.from(tableName).select("*", { count: "exact", head: true });
 
           if (ids && ids.length > 0) {
@@ -49118,7 +48258,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
           const { count: recordCount, error: countError } = await countQuery;
           if (countError) throw countError;
 
-          // Now perform the actual delete
           const { error } = await query;
           if (error) throw error;
 
@@ -49139,7 +48278,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
     },
   });
 
-  // Batch operation with transaction-like behavior (all or nothing)
   const transactionalBulkOperation = useMutation({
     mutationFn: async (params: {
       operations: Array<{
@@ -49153,8 +48291,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
       const results: any[] = [];
       const errors: Error[] = [];
 
-      // In a real implementation, you might want to use database transactions
-      // For now, we'll simulate transaction-like behavior with rollback on error
 
       try {
         for (const operation of operations) {
@@ -49202,7 +48338,6 @@ export function useAdvancedBulkOperations<T extends TableName>(
         return { success: true, results };
       } catch (error) {
         errors.push(error as Error);
-        // In a real database transaction, you would rollback here
         return { success: false, results: [], errors };
       }
     },
@@ -49221,9 +48356,8 @@ export function useAdvancedBulkOperations<T extends TableName>(
 
 ```
 
-<!-- path: hooks/database/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/index.ts -->
 ```typescript
-// hooks/database/index.ts - Main export file
 export * from './queries-type-helpers'
 export * from './utility-functions'
 export * from './core-queries'
@@ -49231,9 +48365,7 @@ export * from './basic-mutation-hooks'
 export * from './bulk-queries'
 export * from './advanced-bulk-queries'
 
-// Additional specialized hooks for complex operations
 export * from './rpc-queries'
-// Performance and Cache hooks
 export * from './cache-performance'
 
 
@@ -49246,15 +48378,13 @@ export * from './cache-performance'
 
 ```
 
-<!-- path: hooks/database/basic-mutation-hooks.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/basic-mutation-hooks.ts -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { TableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions } from "./queries-type-helpers";
 
-// Generic toggle status hook
 export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
@@ -49296,7 +48426,6 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
   });
 }
 
-// Optimized insert mutation with batching
 export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
@@ -49305,7 +48434,6 @@ export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Dat
     mutationFn: async (data: TableInsert<T> | TableInsert<T>[]): Promise<TableRow<T>[]> => {
       const payload = (Array.isArray(data) ? data : [data]) as any;
 
-      // Batch large inserts for better performance
       if (payload.length > batchSize) {
         const batches = [];
         for (let i = 0; i < payload.length; i += batchSize) {
@@ -49370,7 +48498,6 @@ export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Dat
   });
 }
 
-// Enhanced update mutation with optimizations
 export function useTableUpdate<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, ...mutationOptions } = options || {};
@@ -49421,7 +48548,6 @@ export function useTableUpdate<T extends TableName>(supabase: SupabaseClient<Dat
   });
 }
 
-// Enhanced delete mutation
 export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<void, string | string[], OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
@@ -49430,7 +48556,6 @@ export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Dat
     mutationFn: async (id: string | string[]): Promise<void> => {
       const ids = Array.isArray(id) ? id : [id];
 
-      // Batch large deletes for better performance
       if (ids.length > batchSize) {
         const batches = [];
         for (let i = 0; i < ids.length; i += batchSize) {
@@ -49494,17 +48619,14 @@ export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Dat
 
 ```
 
-<!-- path: hooks/database/rpc-hook-factory.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/rpc-hook-factory.ts -->
 ```typescript
-// path: hooks/database/rpc-hook-factory.ts
 import { useQuery, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Json } from "@/types/supabase-types";
 import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns } from "./queries-type-helpers";
 import { DEFAULTS } from "@/constants/constants";
 
-// Define a specific interface for the arguments our paged RPC functions accept.
-// This solves the "is not assignable to type 'never'" error.
 interface PagedRpcArgs {
   p_limit: number;
   p_offset: number;
@@ -49513,7 +48635,6 @@ interface PagedRpcArgs {
   p_filters: Json;
 }
 
-// Type for the options our hook will accept. It's clean and simple.
 type PagedRpcHookOptions = {
   limit?: number;
   offset?: number;
@@ -49522,20 +48643,11 @@ type PagedRpcHookOptions = {
   filters?: Json;
 };
 
-// Generic type for the actual query options passed to TanStack Query.
-// This allows users to pass standard options like `staleTime`, `enabled`, etc.
 type PagedRpcQueryOptions<TResult> = Omit<
   UseQueryOptions<TResult, Error>,
   'queryKey' | 'queryFn'
 >;
 
-/**
- * A factory function that creates a reusable and type-safe TanStack Query hook
- * for any of your paginated RPC functions.
- * @param functionName The name of the PostgreSQL RPC function.
- * @param queryKeyPrefix A unique prefix for the query key.
- * @param defaultOrderBy The default column to sort by.
- */
 export function createPagedRpcHook<
   TName extends RpcFunctionName,
   TResult = RpcFunctionReturns<TName> // The result type is now correctly INFERRED from the function name
@@ -49544,7 +48656,6 @@ export function createPagedRpcHook<
   queryKeyPrefix: string,
   defaultOrderBy: string
 ) {
-  // This is the returned custom hook
   return function usePagedRpc(
     supabase: SupabaseClient<Database>,
     hookOptions: PagedRpcHookOptions = {},
@@ -49578,7 +48689,7 @@ export function createPagedRpcHook<
         console.error(`Error fetching from RPC '${String(functionName)}':`, error);
         throw new Error(error.message);
       }
-
+      
       return (data ?? []) as TResult;
     };
 
@@ -49591,16 +48702,14 @@ export function createPagedRpcHook<
 }
 ```
 
-<!-- path: hooks/database/bulk-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/bulk-queries.ts -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { TableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
 import { applyFilters } from "./utility-functions";
 
-// Enhanced bulk operations hook with filter support
 export function useTableBulkOperations<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, batchSize = 1000) {
   const queryClient = useQueryClient();
 
@@ -49621,7 +48730,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // Enhanced bulk update with filter support
   const bulkUpdate = useMutation({
     mutationFn: async (params: {
       updates: { id: string; data: TableUpdate<T> }[];
@@ -49639,7 +48747,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
             .update(data as any)
             .eq("id" as any, id);
 
-          // Apply additional filters if provided
           if (filters) {
             query = applyFilters(query, filters);
           }
@@ -49661,7 +48768,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // Enhanced bulk delete with filter support
   const bulkDelete = useMutation({
     mutationFn: async (params: {
       ids?: string[];
@@ -49670,13 +48776,11 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     }): Promise<void> => {
       const { ids, filters, deleteAll = false } = params;
 
-      // Safety check: require either IDs, filters, or explicit deleteAll flag
       if (!ids && !filters && !deleteAll) {
         throw new Error("Must provide either ids, filters, or set deleteAll to true");
       }
 
       if (ids && ids.length > 0) {
-        // Delete by IDs (existing behavior, but with optional additional filters)
         for (let i = 0; i < ids.length; i += batchSize) {
           const batch = ids.slice(i, i + batchSize);
           let query = supabase
@@ -49684,7 +48788,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
             .delete()
             .in("id" as any, batch);
 
-          // Apply additional filters if provided
           if (filters) {
             query = applyFilters(query, filters);
           }
@@ -49693,7 +48796,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
           if (error) throw error;
         }
       } else if (filters || deleteAll) {
-        // Delete by filters only
         let query = supabase.from(tableName).delete();
 
         if (filters) {
@@ -49727,7 +48829,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // New: Bulk insert with conditional logic based on existing data
   const bulkInsertByFilters = useMutation({
     mutationFn: async (params: {
       data: TableInsert<T>[];
@@ -49738,7 +48839,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
       const { data, conflictResolution = "error", checkFilters, onConflict } = params;
 
       if (checkFilters) {
-        // Check for existing records that match the filters
         let checkQuery = supabase.from(tableName).select("id");
         checkQuery = applyFilters(checkQuery, checkFilters);
 
@@ -49752,7 +48852,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
             case "error":
               throw new Error(`Records matching filters already exist: ${existingRecords.length} found`);
             case "update":
-              // Convert to upsert operation
               const { data: upsertResult, error: upsertError } = await supabase
                 .from(tableName)
                 .upsert(data as any, { onConflict })
@@ -49763,14 +48862,12 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
         }
       }
 
-      // Proceed with normal insertion
       const results: TableRow<T>[] = [];
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize) as any;
 
         let insertQuery = supabase.from(tableName).insert(batch);
 
-        // Handle conflicts at database level if onConflict is specified
         if (conflictResolution === "skip" && onConflict) {
           insertQuery = supabase.from(tableName).upsert(batch, {
             onConflict,
@@ -49792,7 +48889,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // New: Bulk update by filters (update multiple records matching criteria)
   const bulkUpdateByFilters = useMutation({
     mutationFn: async (params: {
       data: TableUpdate<T>;
@@ -49803,10 +48899,8 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
 
       let query = supabase.from(tableName).update(data as any);
 
-      // Apply filters
       query = applyFilters(query, filters);
 
-      // Apply limit if provided (for safety)
       if (limit) {
         query = query.limit(limit);
       }
@@ -49821,7 +48915,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // New: Bulk upsert with filter-based conflict detection
   const bulkUpsertByFilters = useMutation({
     mutationFn: async (params: {
       data: TableInsert<T>[];
@@ -49831,16 +48924,12 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     }): Promise<TableRow<T>[]> => {
       const { data, onConflict, checkFilters, updateColumns } = params;
 
-      // Optional: Check existing records first
       if (checkFilters) {
         try {
-          // Create a new query builder
           let checkQuery = supabase.from(tableName).select("*", { count: "exact" });
 
-          // Apply the filters
           checkQuery = applyFilters(checkQuery, checkFilters);
 
-          // Execute the query
           const { data: existingRecords, error: checkError, count } = await checkQuery;
 
           if (checkError) {
@@ -49878,7 +48967,6 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
     },
   });
 
-  // New: Conditional bulk operations (perform operation only if conditions are met)
   const conditionalBulkUpdate = useMutation({
     mutationFn: async (params: {
       updates: Array<{
@@ -49900,12 +48988,10 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
             .update(data as any)
             .eq("id" as any, id);
 
-          // Apply global filters
           if (globalFilters) {
             query = applyFilters(query, globalFilters);
           }
 
-          // Apply individual conditions
           if (conditions) {
             query = applyFilters(query, conditions);
           }
@@ -49941,7 +49027,7 @@ export function useTableBulkOperations<T extends TableName>(supabase: SupabaseCl
 
 ```
 
-<!-- path: hooks/database/path-mutations.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/path-mutations.ts -->
 ```typescript
 "use client";
 
@@ -49951,9 +49037,6 @@ import { toast } from "sonner";
 
 const supabase = createClient();
 
-/**
- * Hook to call the RPC function for deleting a path segment and reordering the rest.
- */
 export function useDeletePathSegment() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -49972,9 +49055,6 @@ export function useDeletePathSegment() {
   });
 }
 
-/**
- * Hook to call the RPC function for reordering path segments via drag-and-drop.
- */
 export function useReorderPathSegments() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -49993,11 +49073,7 @@ export function useReorderPathSegments() {
   });
 }
 
-// ... (keep existing hooks)
 
-/**
- * Hook to call the RPC function for provisioning a fiber onto a path.
- */
 export function useProvisionFiber() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -50010,9 +49086,8 @@ export function useProvisionFiber() {
       },
       onSuccess: (_, { pathId }) => {
           toast.success("Fiber provisioned successfully!");
-          // Refetch everything related to paths and connections to update the UI state
           queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
-          queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] });
+          queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] }); 
           queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       },
       onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
@@ -50022,12 +49097,12 @@ export function useProvisionFiber() {
 export function useProvisionRingPath() {
   const queryClient = useQueryClient();
   return useMutation({
-      mutationFn: async (variables: {
+      mutationFn: async (variables: { 
           systemId: string;
           pathName: string;
           workingFiber: number;
           protectionFiber: number;
-          physicalPathId: string;
+          physicalPathId: string; 
       }) => {
           const { error } = await supabase.rpc('provision_logical_path', {
               p_system_id: variables.systemId,
@@ -50040,9 +49115,8 @@ export function useProvisionRingPath() {
       },
       onSuccess: (_, variables) => {
           toast.success("Ring path provisioned successfully!");
-          // Invalidate all related queries to refresh the UI state completely
           queryClient.invalidateQueries({ queryKey: ['system-path', variables.physicalPathId] });
-          queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.physicalPathId] });
+          queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.physicalPathId] }); 
           queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
           queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
           queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
@@ -50062,7 +49136,6 @@ export function useDeprovisionPath() {
     },
     onSuccess: (_, { pathId }) => {
       toast.success("Path de-provisioned successfully!");
-      // Invalidate all related queries to reflect the change
       queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] });
       queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
@@ -50074,9 +49147,8 @@ export function useDeprovisionPath() {
 }
 ```
 
-<!-- path: hooks/database/core-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/core-queries.ts -->
 ```typescript
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   useQuery,
   useInfiniteQuery,
@@ -50105,15 +49177,12 @@ import {
   createUniqueValuesKey,
 } from './utility-functions';
 
-// Generic table query hook with enhanced features
 export function useTableQuery<
   T extends TableOrViewName,
-  // UPDATED: The default data type is now the new PagedQueryResult
   TData = PagedQueryResult<Row<T>>
 >(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  // UPDATED: The options type now reflects the new return shape
   options?: Omit<UseTableQueryOptions<T, TData>, 'select'> & { select?: (data: PagedQueryResult<Row<T>>) => TData }
 ) {
   const {
@@ -50141,10 +49210,7 @@ export function useTableQuery<
       limit,
       offset
     ),
-    // UPDATED: The query function now returns the PagedQueryResult shape
     queryFn: async (): Promise<PagedQueryResult<Row<T>>> => {
-      // Deduplication and aggregation logic remains the same but would need adjustment if they also need counts.
-      // For now, we assume they return a simple array.
       if (deduplication) {
         const sql = buildDeduplicationQuery(tableName as string, deduplication, filters, orderBy);
         const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', { sql_query: sql });
@@ -50165,7 +49231,6 @@ export function useTableQuery<
         return { data: resultData, count: resultData.length };
       }
 
-      // Main query logic
       let query = supabase.from(tableName as any).select(columns as string, { count: includeCount ? 'exact' : undefined });
 
       if (filters) query = applyFilters(query, filters);
@@ -50177,7 +49242,6 @@ export function useTableQuery<
       const { data, error, count } = await query;
       if (error) throw error;
 
-      // UPDATED: Return the new structured object instead of attaching count to each row.
       return {
         data: (data as unknown as Row<T>[]) || [],
         count: includeCount ? (count ?? 0) : (data?.length ?? 0),
@@ -50187,7 +49251,6 @@ export function useTableQuery<
   });
 }
 
-// Infinite scroll query hook for large datasets
 export function useTableInfiniteQuery<
   T extends TableOrViewName,
   TData = InfiniteData<InfiniteQueryPage<T>>
@@ -50247,7 +49310,6 @@ export function useTableInfiniteQuery<
   });
 }
 
-// Generic single record query hook (optimized)
 export function useTableRecord<
   T extends TableOrViewName,
   TData = Row<T> | null
@@ -50286,7 +49348,6 @@ export function useTableRecord<
   });
 }
 
-// Get unique values for a specific column
 export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -50310,7 +49371,6 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
           'RPC unique values failed, falling back to direct query',
           error
         );
-        // Fallback implementation
         let fallbackQuery = supabase.from(tableName as any).select(column);
         if (filters) fallbackQuery = applyFilters(fallbackQuery, filters);
         if (orderBy?.length)
@@ -50333,7 +49393,6 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
   });
 }
 
-// Deduplicated rows hook
 export function useDeduplicated<T extends TableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -50346,7 +49405,6 @@ export function useDeduplicated<T extends TableName>(
   });
 }
 
-// Relationship query hook with optimizations
 export function useTableWithRelations<
   T extends TableName,
   TData = RowWithCount<Row<T>>[]
@@ -50367,9 +49425,8 @@ export function useTableWithRelations<
 
 ```
 
-<!-- path: hooks/database/path-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/path-queries.ts -->
 ```typescript
-// path: hooks/database/path-queries.ts
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -50381,9 +49438,6 @@ import { fiberTraceSegmentSchema, FiberTraceSegment } from "@/schemas/custom-sch
 
 const supabase = createClient();
 
-/**
- * Fetches the detailed, ordered path segments for a given logical path.
- */
 export function useSystemPath(logicalPathId: string | null) {
   return useRpcQuery(
     supabase,
@@ -50393,9 +49447,6 @@ export function useSystemPath(logicalPathId: string | null) {
   );
 }
 
-/**
- * Fetches the list of continuously available fiber numbers for a given path.
- */
 export function useAvailableFibers(pathId: string | null) {
   return useRpcQuery(
     supabase,
@@ -50405,9 +49456,6 @@ export function useAvailableFibers(pathId: string | null) {
   );
 }
 
-/**
- * Fetches the working and protection fiber numbers for a given path.
- */
 
 export function useProvisionedFibers(pathId: string | null) {
   return useQuery({
@@ -50422,7 +49470,7 @@ export function useProvisionedFibers(pathId: string | null) {
               .in('fiber_role', ['working', 'protection']);
 
           if (error) throw error;
-
+          
           const working = data.find(f => f.fiber_role === 'working')?.fiber_no_sn || null;
           const protection = data.find(f => f.fiber_role === 'protection')?.fiber_no_sn || null;
 
@@ -50432,17 +49480,12 @@ export function useProvisionedFibers(pathId: string | null) {
   });
 }
 
-/**
- * Hook to trace a fiber's complete path using the recursive RPC function.
- * The new RPC returns a pre-ordered, structured list, so no client-side tree building is needed.
- */
 export function useFiberTrace(startSegmentId: string | null, fiberNo: number | null) {
   return useQuery({
     queryKey: ['fiber-trace', startSegmentId, fiberNo],
     queryFn: async (): Promise<FiberTraceSegment[]> => {
       if (!startSegmentId || fiberNo === null) return [];
 
-      // CORRECTED: Call the RPC with the segment_id parameter
       const { data, error } = await supabase.rpc('trace_fiber_path', {
         p_start_segment_id: startSegmentId,
         p_start_fiber_no: fiberNo
@@ -50452,7 +49495,6 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
         toast.error(`Trace failed: ${error.message}`);
         throw error;
       }
-      // ... (rest of the function is the same)
       if (!data || data.length === 0) {
         return [];
       }
@@ -50469,22 +49511,18 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
 }
 ```
 
-<!-- path: hooks/database/excel-queries/index.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/excel-queries/index.ts -->
 ```typescript
 export * from "./excel-download";
 export * from "./excel-upload";
 ```
 
-<!-- path: hooks/database/excel-queries/excel-helpers.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/excel-queries/excel-helpers.ts -->
 ```typescript
-// hooks/database/excel-queries.ts
 import * as ExcelJS from "exceljs";
 import { Filters, UploadResult } from "@/hooks/database";
 import { TableOrViewName, Row } from "@/hooks/database";
 
-//================================================================================
-// TYPES AND INTERFACES
-//================================================================================
 
 export interface Column<T> {
   key: string;
@@ -50503,14 +49541,12 @@ export interface Column<T> {
   excludeFromExport?: boolean;
 }
 
-// Generic RPC Configuration that works with any function
 export interface RPCConfig<TParams = Record<string, unknown>> {
   functionName: string;
   parameters?: TParams;
   selectFields?: string;
 }
 
-// NOTE: T refers to a table/view name. Columns should describe a Row<T>.
 export interface DownloadOptions<
   T extends TableOrViewName = TableOrViewName
 > {
@@ -50550,7 +49586,6 @@ export interface UseExcelDownloadOptions<
   defaultRPCConfig?: RPCConfig;
 }
 
-// Enhanced error tracking interfaces
 export interface ValidationError {
   rowIndex: number;
   column: string;
@@ -50575,9 +49610,6 @@ export interface EnhancedUploadResult extends UploadResult {
   skippedRows: number;
 }
 
-//================================================================================
-// UTILITY FUNCTIONS
-//================================================================================
 
 export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   type: "pattern",
@@ -50590,30 +49622,23 @@ export const formatCellValue = <T = unknown>(
   column: Column<T>
 ): unknown => {
   if (value === null || value === undefined) return "";
-
-  // Handle number types first
+  
   if (typeof value === 'number') {
     return value;
   }
-
-  // Handle object values
+  
   if (typeof value === 'object' && value !== null) {
-    // If it's a Date object
     if (value instanceof Date) {
       return value;
     }
-    // If it's an array, join with comma
     if (Array.isArray(value)) {
       return value.join(', ');
     }
-    // For other objects, try to stringify
     try {
       const str = JSON.stringify(value);
-      // If it's a JSON object string, parse and get a simple string representation
       if (str.startsWith('{') || str.startsWith('[')) {
         const parsed = JSON.parse(str);
         if (typeof parsed === 'object' && parsed !== null) {
-          // For objects, get values and join
           if (Array.isArray(parsed)) {
             return parsed.join(', ');
           }
@@ -50627,7 +49652,6 @@ export const formatCellValue = <T = unknown>(
     }
   }
 
-  // Handle non-object values
   switch (column.excelFormat) {
     case "date":
       return value instanceof Date ? value : new Date(value as string);
@@ -50713,13 +49737,11 @@ export const convertFiltersToRPCParams = (
   return rpcParams;
 };
 
-// Safe UUID generator: uses crypto.randomUUID if available, otherwise a lightweight fallback
 export const generateUUID = (): string => {
   const g = globalThis as { crypto?: { randomUUID?: () => string } };
   if (g && g.crypto && typeof g.crypto.randomUUID === "function") {
     return g.crypto.randomUUID();
   }
-  // RFC4122 version 4 fallback
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -50727,7 +49749,6 @@ export const generateUUID = (): string => {
   });
 };
 
-// Enhanced logging utilities
 export const logRowProcessing = (
   rowIndex: number,
   excelRowNumber: number,
@@ -50747,9 +49768,6 @@ export const logRowProcessing = (
     skipReason,
   };
 
-  // console.group(`🔍 Processing Row ${excelRowNumber} (Index: ${rowIndex})`);
-  // console.log("📊 Original Data:", originalData);
-  // console.log("🔄 Processed Data:", processedData);
 
   if (validationErrors.length > 0) {
     console.warn("❌ Validation Errors:", validationErrors);
@@ -50777,7 +49795,6 @@ export const logColumnTransformation = (
   }
 };
 
-// Enhanced value validation
 export const validateValue = (
   value: unknown,
   columnName: string,
@@ -50799,9 +49816,7 @@ export const validateValue = (
     }
   }
 
-  // Type-specific validations
   if (value !== null && value !== undefined && value !== "") {
-    // Check for UUID format if column suggests it's an ID
     if ((columnName === "id" || columnName.endsWith("_id") ) && columnName !== "transnet_id") {
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50816,7 +49831,6 @@ export const validateValue = (
       }
     }
 
-    // Check for email format
     if (columnName.toLowerCase().includes("email")) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const strValue = String(value).trim();
@@ -50830,7 +49844,6 @@ export const validateValue = (
       }
     }
 
-    // Check for IP address format
     const isIPField =
       columnName === "ip_address" ||
       columnName.endsWith("_ip") ||
@@ -50855,7 +49868,7 @@ export const validateValue = (
 
 ```
 
-<!-- path: hooks/database/excel-queries/excel-download.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/excel-queries/excel-download.ts -->
 ```typescript
 
 import { TableOrViewName, isTableName, Row, ViewName, PublicTableName, PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
@@ -50867,7 +49880,6 @@ import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelD
 import { toast } from "sonner";
 import { applyFilters } from "@/hooks/database/utility-functions";
 
-// Extended types for new functionality
 interface OrderByOption {
 column: string;
 ascending?: boolean;
@@ -50885,7 +49897,6 @@ defaultWrapText?: boolean;
 defaultAutoFitColumns?: boolean;
 }
 
-// Hook for RPC-based downloads with full type safety
 export function useRPCExcelDownload<T extends TableOrViewName>(
   supabase: SupabaseClient<Database>,
   options?: EnhancedUseExcelDownloadOptions<T>
@@ -50942,7 +49953,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
 
         toast.info("Fetching data via RPC...");
 
-        // Prepare RPC parameters
         const rpcParams = {
           ...rpcConfig.parameters,
           ...convertFiltersToRPCParams(filters),
@@ -50952,14 +49962,12 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           rpcParams.row_limit = maxRows;
         }
 
-        // Add ordering parameters to RPC if supported
         if (orderBy && orderBy.length > 0) {
-          rpcParams.order_by = orderBy.map(order =>
+          rpcParams.order_by = orderBy.map(order => 
             `${order.column}.${order.ascending !== false ? 'asc' : 'desc'}`
           ).join(',');
         }
 
-        // Execute RPC call with proper error handling
         const { data, error } = await supabase.rpc(
           rpcConfig.functionName as keyof Database["public"]["Functions"],
           rpcParams
@@ -50970,23 +49978,20 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           throw new Error("No data returned from RPC function");
         }
 
-        // Ensure data is an array
         let dataArray = Array.isArray(data) ? data : [data];
-
-        // Apply client-side ordering if RPC doesn't support it
+        
         if (orderBy && orderBy.length > 0) {
           dataArray = dataArray.sort((a, b) => {
             for (const order of orderBy) {
-              // Safe property access with type guards
-              const aVal = (a && typeof a === 'object' && !Array.isArray(a))
-                ? (a as Record<string, unknown>)[order.column]
+              const aVal = (a && typeof a === 'object' && !Array.isArray(a)) 
+                ? (a as Record<string, unknown>)[order.column] 
                 : undefined;
-              const bVal = (b && typeof b === 'object' && !Array.isArray(b))
-                ? (b as Record<string, unknown>)[order.column]
+              const bVal = (b && typeof b === 'object' && !Array.isArray(b)) 
+                ? (b as Record<string, unknown>)[order.column] 
                 : undefined;
-
+              
               if (aVal === bVal) continue;
-
+              
               let comparison = 0;
               if (aVal == null && bVal != null) comparison = 1;
               else if (aVal != null && bVal == null) comparison = -1;
@@ -50994,13 +49999,13 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
                 if (aVal < bVal) comparison = -1;
                 else if (aVal > bVal) comparison = 1;
               }
-
+              
               return order.ascending !== false ? comparison : -comparison;
             }
             return 0;
           });
         }
-
+        
         toast.success(
           `Fetched ${dataArray.length} records. Generating Excel file...`
         );
@@ -51008,13 +50013,11 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(sheetName || "Data");
 
-        // Set column properties with enhanced options
         worksheet.columns = exportColumns.map((col) => ({
           key: String(col.dataIndex),
           width: typeof col.width === "number" ? col.width / 8 : 20,
         }));
 
-        // Add header row with enhanced styling
         const headerTitles = exportColumns.map((col) => col.title);
         const headerRow = worksheet.addRow(headerTitles);
         headerRow.height = 25;
@@ -51023,10 +50026,9 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           const cell = headerRow.getCell(index + 1);
           if (styles.headerFont) cell.font = styles.headerFont;
           if (styles.headerFill) cell.fill = styles.headerFill;
-
-          // Enhanced header alignment with text wrapping
-          cell.alignment = {
-            horizontal: "center",
+          
+          cell.alignment = { 
+            horizontal: "center", 
             vertical: "middle",
             wrapText: wrapText || false
           };
@@ -51041,9 +50043,7 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           }
         });
 
-        // Add data rows with enhanced styling
         dataArray.forEach((record, rowIndex: number) => {
-          // Ensure we only process object-like rows
           if (record === null || typeof record !== "object" || Array.isArray(record)) {
             return; // skip non-object rows
           }
@@ -51057,7 +50057,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           });
           const excelRow = worksheet.addRow(rowData);
 
-          // Enhanced cell styling with wrap text support
           exportColumns.forEach((col, colIndex) => {
             const cell = excelRow.getCell(colIndex + 1);
 
@@ -51067,7 +50066,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
               cell.fill = styles.alternateRowFill;
             }
 
-            // Apply text wrapping and alignment
             cell.alignment = {
               ...cell.alignment,
               wrapText: wrapText || false,
@@ -51088,21 +50086,18 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           });
         });
 
-        // Auto-fit columns if enabled
         if (autoFitColumns) {
           exportColumns.forEach((col, index) => {
             const column = worksheet.getColumn(index + 1);
             let maxLength = col.title.length;
-
-            // Calculate max content length for auto-fitting
+            
             dataArray.forEach((record) => {
               if (record && typeof record === "object" && !Array.isArray(record)) {
                 const obj = record as Record<string, unknown>;
                 const key = String(col.dataIndex);
                 const value = obj[key];
                 const cellText = String(formatCellValue(value, col) || '');
-
-                // For wrapped text, consider line breaks
+                
                 if (wrapText) {
                   const lines = cellText.split('\n');
                   const maxLineLength = Math.max(...lines.map(line => line.length));
@@ -51112,17 +50107,14 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
                 }
               }
             });
-
-            // Set reasonable bounds for column width
+            
             const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), 50);
             column.width = calculatedWidth;
           });
         }
 
-        // Freeze header row
         worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
-        // Generate and download file
         const buffer = await workbook.xlsx.writeBuffer();
         const sanitizedFileName = sanitizeFileName(fileName);
         const blob = new Blob([buffer], {
@@ -51158,7 +50150,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
   });
 }
 
-// Hook for traditional table/view downloads with enhanced features
 export function useTableExcelDownload<T extends PublicTableOrViewName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -51222,14 +50213,13 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
           : supabase.from(tableName as ViewName).select(selectFields);
 
         if (filters) query = applyFilters(query, filters);
-
-        // Apply ordering to the Supabase query
+        
         if (orderBy && orderBy.length > 0) {
           orderBy.forEach(order => {
             query = query.order(order.column, { ascending: order.ascending !== false });
           });
         }
-
+        
         if (maxRows) query = query.limit(maxRows);
 
         const { data, error } = await query;
@@ -51243,7 +50233,6 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
           `Fetched ${typedData.length} records. Generating Excel file...`
         );
 
-        // Excel generation logic with enhanced features
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(sheetName || "Data");
 
@@ -51260,10 +50249,9 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
           const cell = headerRow.getCell(index + 1);
           if (styles.headerFont) cell.font = styles.headerFont;
           if (styles.headerFill) cell.fill = styles.headerFill;
-
-          // Enhanced header alignment with text wrapping
-          cell.alignment = {
-            horizontal: "center",
+          
+          cell.alignment = { 
+            horizontal: "center", 
             vertical: "middle",
             wrapText: wrapText || false
           };
@@ -51278,7 +50266,6 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
           }
         });
 
-        // Add data rows with enhanced styling
         typedData.forEach((record, rowIndex) => {
           const rowData: Record<string, unknown> = {};
           exportColumns.forEach((col) => {
@@ -51286,8 +50273,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
             rowData[key] = formatCellValue(record[key], col);
           });
           const excelRow = worksheet.addRow(rowData);
-
-          // Set row height for wrapped text
+          
           if (wrapText) {
             excelRow.height = 20; // Minimum height, will auto-expand
           }
@@ -51301,7 +50287,6 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
               cell.fill = styles.alternateRowFill;
             }
 
-            // Apply text wrapping and alignment
             cell.alignment = {
               ...cell.alignment,
               wrapText: wrapText || false,
@@ -51322,19 +50307,16 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
           });
         });
 
-        // Auto-fit columns if enabled
         if (autoFitColumns) {
           exportColumns.forEach((col, index) => {
             const column = worksheet.getColumn(index + 1);
             let maxLength = col.title.length;
-
-            // Calculate max content length for auto-fitting
+            
             typedData.forEach((record) => {
               const key = col.dataIndex as keyof Row<T> & string;
               const value = record[key];
               const cellText = String(formatCellValue(value, col) || '');
-
-              // For wrapped text, consider line breaks
+              
               if (wrapText) {
                 const lines = cellText.split('\n');
                 const maxLineLength = Math.max(...lines.map(line => line.length));
@@ -51343,8 +50325,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
                 maxLength = Math.max(maxLength, cellText.length);
               }
             });
-
-            // Set reasonable bounds for column width
+            
             const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), wrapText ? 30 : 50);
             column.width = calculatedWidth;
           });
@@ -51392,7 +50373,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
 
 ```
 
-<!-- path: hooks/database/excel-queries/excel-upload.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/excel-queries/excel-upload.ts -->
 ```typescript
 import * as XLSX from "xlsx";
 import { TableInsert, PublicTableName, UploadOptions, UseExcelUploadOptions } from "@/hooks/database/queries-type-helpers";
@@ -51402,19 +50383,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { EnhancedUploadResult, generateUUID, logColumnTransformation, logRowProcessing, ProcessingLog, validateValue, ValidationError } from "@/hooks/database/excel-queries/excel-helpers";
 import { toast } from "sonner";
 
-//================================================================================
-// UPLOAD FUNCTIONS
-//================================================================================
 
-/**
- * Reads a File object and returns its contents as a 2D array using xlsx.
- * @param file The File object to read.
- * @returns A Promise that resolves to a 2D array of the sheet data.
- */
 const parseExcelFile = (file: File): Promise<unknown[][]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-
+  
       reader.onload = (event: ProgressEvent<FileReader>) => {
         try {
           if (!event.target?.result) {
@@ -51427,8 +50400,6 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           if (!worksheet) {
             throw new Error("No worksheet found in the file.");
           }
-          // header: 1 tells sheet_to_json to return an array of arrays
-          // defval: '' preserves empty cells so column indices stay aligned
           const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
             header: 1,
             defval: "",
@@ -51438,23 +50409,16 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           reject(error);
         }
       };
-
+  
       reader.onerror = (error) => {
         reject(new Error(`FileReader error: ${error.type}`));
       };
-
+  
       reader.readAsArrayBuffer(file);
     });
   };
-
-  //================================================================================
-  // MAIN ENHANCED UPLOAD HOOK
-  //================================================================================
-
-  /**
-   * Enhanced React hook for uploading data from an Excel file to a Supabase table using 'xlsx'.
-   * Includes comprehensive logging and error tracking.
-   */
+  
+  
   export function useExcelUpload<T extends PublicTableName>(
     supabase: SupabaseClient<Database>,
     tableName: T,
@@ -51466,7 +50430,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
       ...mutationOptions
     } = options || {};
     const queryClient = useQueryClient();
-
+  
     return useMutation<EnhancedUploadResult, Error, UploadOptions<T>>({
       mutationFn: async (
         uploadOptions: UploadOptions<T>
@@ -51477,84 +50441,71 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           uploadType = "upsert",
           conflictColumn,
         } = uploadOptions;
-
+  
         if (uploadType === "upsert" && !conflictColumn) {
           throw new Error(
             "A 'conflictColumn' must be specified for 'upsert' operations."
           );
         }
-
+  
         const processingLogs: ProcessingLog[] = [];
         const allValidationErrors: ValidationError[] = [];
-
+  
         toast.info("Reading and parsing Excel file...");
-
-        // 1. Parse the Excel file using our xlsx utility function
+  
         const jsonData = await parseExcelFile(file);
-
+  
         if (!jsonData || jsonData.length < 2) {
           toast.warning(
             "No data found in the Excel file. (A header row and at least one data row are required)."
           );
-          console.groupEnd();
-          return {
-            successCount: 0,
-            errorCount: 0,
-            totalRows: 0,
+          return { 
+            successCount: 0, 
+            errorCount: 0, 
+            totalRows: 0, 
             errors: [],
             processingLogs,
             validationErrors: allValidationErrors,
             skippedRows: 0,
           };
         }
-
-        // 2. Map Excel headers to their column index for efficient lookup
+  
         const excelHeaders: string[] = jsonData[0] as string[];
         const headerMap: Record<string, number> = {};
-        // console.log("📝 Excel Headers:", excelHeaders);
-
+        
         excelHeaders.forEach((header, index) => {
           const cleanHeader = String(header).trim().toLowerCase();
           headerMap[cleanHeader] = index;
-          // console.log(`   [${index}]: "${header}" -> "${cleanHeader}"`);
         });
-
+        
         const isFirstColumnId =
           String(excelHeaders?.[0] ?? "").toLowerCase() === "id";
-        // console.log("🆔 First column is ID:", isFirstColumnId);
-
-        // 3. Validate that all required columns from the mapping exist in the file
+  
         const getHeaderIndex = (name: string): number | undefined =>
           headerMap[String(name).trim().toLowerCase()];
-
+  
         toast.info(
           `Found ${jsonData.length - 1} rows. Preparing data for upload...`
         );
-
-        // 4. Process rows and transform data into the format for Supabase
+  
         const dataRows = jsonData.slice(1);
-
-        // Helper: determine if a row is effectively empty (ignoring 'id')
+  
         const isRowEffectivelyEmpty = (row: unknown[]): boolean => {
           for (const mapping of columns) {
-            if (mapping.dbKey === "id") continue; // ignore id when checking emptiness
+            if (mapping.dbKey === "id") continue;
             const idx = getHeaderIndex(mapping.excelHeader);
             const v = idx !== undefined ? row[idx] : undefined;
             if (v !== undefined && String(v).trim() !== "") {
-              return false; // has some non-empty value in a non-id column
+              return false;
             }
           }
           return true;
         };
-
-        // Filter out rows that are empty across all non-id columns, keep index for error reporting
+  
         const filteredRows = dataRows
           .map((row, idx) => ({ row: row as unknown[], idx }))
           .filter(({ row }) => !isRowEffectivelyEmpty(row));
-
-        // console.log(`🎯 Filtered ${dataRows.length} rows down to ${filteredRows.length} non-empty rows`);
-
-        // Initialize upload result early to record pre-insert validation errors
+  
         const uploadResult: EnhancedUploadResult = {
           successCount: 0,
           errorCount: 0,
@@ -51564,16 +50515,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           validationErrors: allValidationErrors,
           skippedRows: 0,
         };
-
+  
         let recordsToProcess: TableInsert<T>[] = [];
 
-        // Helpers capture the hook's generic T via closure over tableName
         const insertBatch = async (
           rows: TableInsert<T>[]
         ) => {
-          // T is a generic (union of table names) here; Supabase's overloads require a concrete table literal.
-          // A localized cast is used to bridge this at the single boundary to Supabase.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return supabase.from(tableName).insert(rows as any);
         };
 
@@ -51581,7 +50528,6 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           rows: TableInsert<T>[],
           onConflict: string
         ) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return supabase.from(tableName).upsert(rows as any, { onConflict });
         };
 
@@ -51589,66 +50535,53 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           row: TableInsert<T>,
           onConflict: string
         ) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return supabase.from(tableName).upsert(row as any, { onConflict });
         };
-
-        console.group("🔄 Row Processing Phase");
-
+        
         for (let i = 0; i < filteredRows.length; i++) {
           const { row, idx } = filteredRows[i];
-          const excelRowNumber = idx + 2; // +2 because Excel is 1-indexed and we skip header
-
+          const excelRowNumber = idx + 2;
+          
           const originalData: Record<string, unknown> = {};
           const processedData: Record<string, unknown> = {};
           const rowValidationErrors: ValidationError[] = [];
           let isSkipped = false;
           let skipReason: string | undefined;
-
-          // Build original data object for logging
+  
           excelHeaders.forEach((header, headerIdx) => {
             originalData[header] = row[headerIdx];
           });
-
-          // Secondary safeguard: determine if row has any meaningful non-id value
+  
           const rowHasContent = columns.some((mapping) => {
             if (mapping.dbKey === "id") return false;
             const idx = getHeaderIndex(mapping.excelHeader);
             const v = idx !== undefined ? row[idx] : undefined;
             return v !== undefined && String(v).trim() !== "";
           });
-
+  
           if (!rowHasContent) {
-            // Skip rows that are effectively empty across non-id columns
             isSkipped = true;
             skipReason = "Row is empty across all non-id columns";
             uploadResult.skippedRows++;
-
+            
             const log = logRowProcessing(
-              i,
-              excelRowNumber,
-              originalData,
-              processedData,
-              rowValidationErrors,
-              isSkipped,
+              i, 
+              excelRowNumber, 
+              originalData, 
+              processedData, 
+              rowValidationErrors, 
+              isSkipped, 
               skipReason
             );
             processingLogs.push(log);
             continue;
           }
-
-          // Process each column mapping
+  
           for (const mapping of columns) {
             const colIndex = getHeaderIndex(mapping.excelHeader);
-            // Guard: only index row when we have a valid column index
             let rawValue = colIndex !== undefined ? row[colIndex] : undefined;
-
-            // console.group(`🔧 Processing "${mapping.dbKey}" (Excel: "${mapping.excelHeader}")`);
-            // console.log(`📍 Column Index: ${colIndex}`);
-            // console.log(`📊 Raw Value:`, rawValue, `(${typeof rawValue})`);
-
+  
             try {
-              // Normalize empty strings to null for UUID-like fields
               if (
                 (mapping.dbKey === "id" ||
                   mapping.dbKey.endsWith("_id") ||
@@ -51656,11 +50589,8 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 (rawValue === "" || rawValue === undefined)
               ) {
                 rawValue = null;
-                // console.log("🔄 Normalized empty UUID field to null");
               }
-
-              // Normalize IP address-like fields for inet columns: trim and empty -> null
-              // Targets include: 'ip_address', any key ending with '_ip', or containing 'ipaddr'
+  
               {
                 const key = String(mapping.dbKey || "").toLowerCase();
                 const isIPField =
@@ -51670,13 +50600,10 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 if (isIPField && typeof rawValue === "string") {
                   const trimmed = rawValue.trim();
                   rawValue = trimmed === "" ? null : trimmed;
-                  // console.log("🌐 Processed IP field:", rawValue);
                 }
               }
-
-              // Only generate a UUID for `id` if the row actually has content
+  
               if (mapping.dbKey === "id" && rowHasContent) {
-                // If first Excel column is id/ID and current mapping is for 'id', auto-generate UUID when empty
                 if (
                   isFirstColumnId &&
                   (rawValue === null ||
@@ -51684,27 +50611,21 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                     String(rawValue).trim() === "")
                 ) {
                   rawValue = generateUUID();
-                  // console.log("🆔 Generated UUID for empty ID:", rawValue);
                 }
-                // If 'id' header is entirely missing, still generate a UUID
                 if (colIndex === undefined) {
                   rawValue = generateUUID();
-                  // console.log("🆔 Generated UUID for missing ID column:", rawValue);
                 }
               }
-
-              // Use the transform function if available, otherwise use the raw value
+  
               let finalValue: unknown;
               if (mapping.transform) {
                 try {
                   finalValue = mapping.transform(rawValue);
-                  // console.log("🔧 Transformed value:", finalValue, `(${typeof finalValue})`);
                 } catch (transformError) {
-                  const errorMsg = transformError instanceof Error
-                    ? transformError.message
+                  const errorMsg = transformError instanceof Error 
+                    ? transformError.message 
                     : "Transform function failed";
-                  console.error("❌ Transform error:", errorMsg);
-
+                  
                   const validationError: ValidationError = {
                     rowIndex: i,
                     column: mapping.dbKey,
@@ -51713,56 +50634,49 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   };
                   rowValidationErrors.push(validationError);
                   allValidationErrors.push(validationError);
-                  finalValue = rawValue; // Use raw value as fallback
+                  finalValue = rawValue;
                 }
               } else {
                 finalValue = rawValue;
               }
-
-              // Validate the processed value
+  
               const validationError = validateValue(
-                finalValue,
-                mapping.dbKey,
+                finalValue, 
+                mapping.dbKey, 
                 mapping.required || false
               );
-
+              
               if (validationError) {
                 validationError.rowIndex = i;
                 rowValidationErrors.push(validationError);
                 allValidationErrors.push(validationError);
-                console.error("❌ Validation failed:", validationError.error);
               }
-
-              // Assign the processed value to the correct database key
-              // Normalize empty strings to null to satisfy numeric/date/inet columns
+  
               let assignValue =
                 finalValue !== undefined
                   ? finalValue
                   : rawValue !== undefined
                   ? rawValue
                   : null;
-
+              
               if (typeof assignValue === "string" && assignValue.trim() === "") {
                 assignValue = null;
-                // console.log("🧹 Normalized empty string to null");
               }
-
+              
               processedData[mapping.dbKey] = assignValue;
-              // console.log("✅ Final assigned value:", assignValue, `(${typeof assignValue})`);
-
+  
               logColumnTransformation(
                 i,
                 mapping.dbKey,
                 rawValue,
                 assignValue
               );
-
+  
             } catch (columnError) {
-              const errorMsg = columnError instanceof Error
-                ? columnError.message
+              const errorMsg = columnError instanceof Error 
+                ? columnError.message 
                 : "Unknown column processing error";
-              console.error("💥 Column processing error:", errorMsg);
-
+              
               const validationError: ValidationError = {
                 rowIndex: i,
                 column: mapping.dbKey,
@@ -51771,34 +50685,28 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               };
               rowValidationErrors.push(validationError);
               allValidationErrors.push(validationError);
-            } finally {
-              console.groupEnd();
             }
           }
-
-          // Check if row has validation errors
-          const hasRequiredFieldErrors = rowValidationErrors.some(err =>
+  
+          const hasRequiredFieldErrors = rowValidationErrors.some(err => 
             err.error.includes("Required field") || err.error.includes("Missing required")
           );
-
+  
           if (hasRequiredFieldErrors) {
-            // Record a validation error for this row and skip it
             isSkipped = true;
             skipReason = `Validation failed: ${rowValidationErrors.map(e => e.error).join("; ")}`;
             uploadResult.errorCount += 1;
             uploadResult.skippedRows++;
-
+            
             uploadResult.errors.push({
               rowIndex: excelRowNumber,
               data: processedData as Record<string, unknown>,
               error: skipReason,
             });
           } else {
-            // Add to records to process
             recordsToProcess.push(processedData as TableInsert<T>);
           }
-
-          // Log the complete row processing
+  
           const log = logRowProcessing(
             i,
             excelRowNumber,
@@ -51810,32 +50718,17 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
           );
           processingLogs.push(log);
         }
-
-        console.groupEnd(); // End Row Processing Phase
-
-        // console.log(`📊 Processing Summary:`);
-        // console.log(`   Total filtered rows: ${filteredRows.length}`);
-        // console.log(`   Records to process: ${recordsToProcess.length}`);
-        // console.log(`   Skipped rows: ${uploadResult.skippedRows}`);
-        // console.log(`   Validation errors: ${allValidationErrors.length}`);
-
-        // Deduplicate by conflict columns to avoid Postgres error:
-        // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+  
         if (uploadType === "upsert" && conflictColumn) {
-          console.group("🔄 Deduplication Process");
-
           const conflictCols = String(conflictColumn)
             .split(",")
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
-
-          // console.log("🎯 Conflict columns:", conflictCols);
-
+  
           if (conflictCols.length > 0) {
             const seen = new Set<string>();
             const deduped: TableInsert<T>[] = [];
-            let duplicateCount = 0;
-
+            
             for (const rec of recordsToProcess) {
               const values = conflictCols.map((c) => (rec as Record<string, unknown>)[c]);
               const allPresent = values.every(
@@ -51844,92 +50737,60 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   v !== null &&
                   !(typeof v === "string" && v === "")
               );
-
+              
               if (!allPresent) {
-                // Do not dedupe records missing conflict values; still avoid PK updates on composite keys
                 if (!conflictCols.includes("id")) {
                   delete (rec as Record<string, unknown>).id;
                 }
                 deduped.push(rec);
-                // console.log("➕ Added record with missing conflict values (no deduplication)");
                 continue;
               }
-
-              // Normalize strings for dedupe to match DB uniqueness (trim + lowercase)
+  
               const normalized = values.map((v) =>
                 typeof v === "string" ? v.trim().toLowerCase() : v
               );
               const key = JSON.stringify(normalized);
-
+              
               if (!seen.has(key)) {
                 seen.add(key);
                 if (!conflictCols.includes("id")) {
                   delete (rec as Record<string, unknown>).id;
                 }
                 deduped.push(rec);
-                // console.log(`➕ Added unique record with key: ${key}`);
-              } else {
-                duplicateCount++;
-                // console.log(`⏭️  Skipped duplicate record with key: ${key}`);
               }
             }
-
-            // console.log(`📊 Deduplication results:`);
-            // console.log(`   Original records: ${recordsToProcess.length}`);
-            // console.log(`   After deduplication: ${deduped.length}`);
-            // console.log(`   Duplicates removed: ${duplicateCount}`);
-
+            
             recordsToProcess = deduped;
           }
-
-          console.groupEnd();
         }
-
-        // 5. Perform batch upload to Supabase
+  
         uploadResult.totalRows = recordsToProcess.length;
-        // console.log(`🚀 Starting Supabase upload for ${uploadResult.totalRows} records`);
-
+  
         if (recordsToProcess.length === 0) {
-          // console.log("⚠️ No records to upload after processing");
           toast.warning("No valid records found to upload after processing.");
-          console.groupEnd();
           return uploadResult;
         }
-
-        console.group("📤 Supabase Upload Process");
-
+  
         for (let i = 0; i < recordsToProcess.length; i += batchSize) {
           const batch = recordsToProcess.slice(i, i + batchSize);
           const progress = Math.round(
             ((i + batch.length) / recordsToProcess.length) * 100
           );
           toast.info(`Uploading batch ${Math.floor(i / batchSize) + 1}... (${progress}%)`);
-
-          // console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}:`);
-          // console.log(`   Range: ${i} - ${i + batch.length - 1}`);
-          // console.log(`   Batch size: ${batch.length}`);
-          // console.log(`   Progress: ${progress}%`);
-          // console.log("📊 Batch data sample:", batch.slice(0, 2)); // Show first 2 records
-
-          // If using composite conflict keys, upsert rows one-by-one to avoid
-          // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+  
           const isCompositeConflict =
             uploadType === "upsert" &&
             conflictColumn &&
             String(conflictColumn).split(",").length > 1;
-
+            
           if (isCompositeConflict) {
-            // console.log("🔄 Using individual upserts for composite conflict keys");
-
             for (let j = 0; j < batch.length; j++) {
               const row = batch[j];
-              // console.log(`📝 Upserting individual record ${i + j + 1}:`, row);
-
+              
               try {
                 const { error } = await upsertOne(row as TableInsert<T>, conflictColumn as string);
-
+                  
                 if (error) {
-                  console.error(`❌ Individual upsert failed for record ${i + j + 1}:`, error);
                   uploadResult.errorCount += 1;
                   uploadResult.errors.push({
                     rowIndex: i + j,
@@ -51942,14 +50803,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                     );
                   }
                 } else {
-                  // console.log(`✅ Individual upsert successful for record ${i + j + 1}`);
                   uploadResult.successCount += 1;
                 }
               } catch (unexpectedError) {
-                const errorMsg = unexpectedError instanceof Error
-                  ? unexpectedError.message
+                const errorMsg = unexpectedError instanceof Error 
+                  ? unexpectedError.message 
                   : "Unexpected error during individual upsert";
-                console.error(`💥 Unexpected error during individual upsert:`, unexpectedError);
                 uploadResult.errorCount += 1;
                 uploadResult.errors.push({
                   rowIndex: i + j,
@@ -51960,26 +50819,19 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             }
             continue;
           }
-
-          // Regular batch processing
-          // console.log(`🚀 Executing batch ${uploadType} operation`);
-
+          
           try {
             let query;
             if (uploadType === "insert") {
-              // console.log("➕ Using INSERT operation");
               query = insertBatch(batch as TableInsert<T>[]);
             } else {
-              // console.log(`🔄 Using UPSERT operation with conflict: ${conflictColumn}`);
               query = upsertBatch(batch as TableInsert<T>[], conflictColumn as string);
             }
-
+  
             const { error } = await query;
-
+            
             if (error) {
-              // Handle foreign key constraint violation specifically
               if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
-                // Type-safe access to sn_id
                 type RecordWithSnId = { sn_id?: unknown };
                 const getSnId = (record: unknown): string | undefined => {
                   if (record && typeof record === 'object' && 'sn_id' in record) {
@@ -51988,21 +50840,11 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   }
                   return undefined;
                 };
-
-                // Extract all unique sn_ids from the batch that caused the error
+                
                 const invalidSnIds = [...new Set(
                   batch.map(record => getSnId(record)).filter((id): id is string => Boolean(id))
                 )];
-
-                // Log detailed error information
-                console.error('Foreign key violation details:', {
-                  table: tableName,
-                  constraint: 'ofc_cables_sn_id_fkey',
-                  invalidValues: invalidSnIds,
-                  error: error.message
-                });
-
-                // Add validation errors for each affected row
+                
                 batch.forEach((record, index) => {
                   const snId = getSnId(record);
                   if (snId) {
@@ -52015,8 +50857,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                     });
                   }
                 });
-
-                // Add a summary error to the upload result
+                
                 const errorMessage = `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found in batch. ` +
                   `Invalid values: ${invalidSnIds.join(', ')}`;
                 uploadResult.errorCount += batch.length;
@@ -52025,8 +50866,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   data: batch,
                   error: errorMessage
                 });
-
-                // Show user-friendly error message
+                
                 if (showToasts) {
                   toast.error(
                     `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found. ` +
@@ -52035,13 +50875,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   );
                 }
               } else {
-                // Handle other types of errors
                 const errorDetails: Record<string, unknown> = {};
                 if (error.code === '23503') {
                   errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
                   errorDetails.detail = error.message;
                 }
-
+                
                 uploadResult.errorCount += batch.length;
                 uploadResult.errors.push({
                   rowIndex: i,
@@ -52049,20 +50888,18 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                   error: error.message,
                   ...(Object.keys(errorDetails).length > 0 ? { details: errorDetails } : {})
                 });
-
+                
                 if (showToasts) {
                   toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
                 }
               }
             } else {
-              // console.log(`✅ Batch operation successful for ${batch.length} records`);
               uploadResult.successCount += batch.length;
             }
           } catch (unexpectedError) {
-            const errorMsg = unexpectedError instanceof Error
-              ? unexpectedError.message
+            const errorMsg = unexpectedError instanceof Error 
+              ? unexpectedError.message 
               : "Unexpected error during batch operation";
-            console.error(`💥 Unexpected error during batch operation:`, unexpectedError);
             uploadResult.errorCount += batch.length;
             uploadResult.errors.push({
               rowIndex: i,
@@ -52071,26 +50908,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
             });
           }
         }
-
-        console.groupEnd(); // End Supabase Upload Process
-
-        // 6. Finalize and report
-        // console.group("📊 Upload Results Summary");
-        // console.log(`✅ Successful uploads: ${uploadResult.successCount}`);
-        // console.log(`❌ Failed uploads: ${uploadResult.errorCount}`);
-        // console.log(`⏭️  Skipped rows: ${uploadResult.skippedRows}`);
-        // console.log(`📝 Total processing logs: ${processingLogs.length}`);
-        // console.log(`⚠️  Total validation errors: ${allValidationErrors.length}`);
-
-        if (uploadResult.errors.length > 0) {
-          // console.log("🔍 Upload errors:", uploadResult.errors);
-        }
-
-        if (allValidationErrors.length > 0) {
-          // console.log("🔍 Validation errors:", allValidationErrors);
-        }
-        console.groupEnd();
-
+  
         if (uploadResult.errorCount > 0) {
           if (showToasts) {
             toast.warning(
@@ -52103,14 +50921,12 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               `Successfully uploaded ${uploadResult.successCount} of ${uploadResult.totalRows} records.`
             );
           }
-
-          // Invalidate related queries instead of reloading the page to preserve UI state
+          
           try {
             await queryClient.invalidateQueries({
               predicate: (q) => {
                 const key = q.queryKey as unknown[];
                 if (!Array.isArray(key)) return false;
-                // Match if any segment equals the tableName or contains it as a substring (to catch views/RPC keys like "v_ofc_cables_complete")
                 return key.some((seg) => {
                   if (seg === tableName) return true;
                   if (typeof seg === "string" && seg.toLowerCase().includes(String(tableName).toLowerCase())) return true;
@@ -52118,7 +50934,6 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
                 });
               },
             });
-            // Force refetch so UI reflects changes immediately even if staleTime is large
             await queryClient.refetchQueries({
               predicate: (q) => {
                 const key = q.queryKey as unknown[];
@@ -52131,13 +50946,10 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
               },
               type: "active",
             });
-            // console.log("✅ Query cache invalidated successfully");
           } catch (err) {
-            console.warn("⚠️ Failed to invalidate queries after upload", err);
           }
         }
-
-        console.groupEnd(); // End Excel Upload Process
+  
         return uploadResult;
       },
       ...mutationOptions,
@@ -52145,9 +50957,8 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
   }
 ```
 
-<!-- path: hooks/database/system-connection-hooks.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/system-connection-hooks.ts -->
 ```typescript
-// path: hooks/database/system-connection-hooks.ts
 "use client";
 import { useRpcMutation } from "@/hooks/database/rpc-queries";
 import { createClient } from "@/utils/supabase/client";
@@ -52168,11 +50979,10 @@ export function useUpsertSystemConnection() {
   });
 }
 
-// THE FIX: The payload type must match the RPC function's arguments exactly, not partially.
 export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 ```
 
-<!-- path: hooks/database/cache-performance.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/cache-performance.ts -->
 ```typescript
 import { useQueryClient, QueryClient } from "@tanstack/react-query";
 import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, TableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
@@ -52180,7 +50990,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { applyFilters, applyOrdering, createQueryKey, createRpcQueryKey } from "./utility-functions";
 
-// Performance monitoring hook
 export function useQueryPerformance() {
   const queryClient = useQueryClient();
 
@@ -52226,12 +51035,7 @@ export function useQueryPerformance() {
   };
 }
 
-// Specialized hooks for RPC functions (keeping existing ones)
-// This type is generated automatically by the Supabase CLI!
-// Define the return type with more precision
-// Use `Array<T>` syntax for clarity and add `| null` to handle initial/error states.
 
-// Enhanced cache utilities with performance optimizations
 export const tableQueryUtils = {
   invalidateTable: (queryClient: QueryClient, tableName: string) => {
     queryClient.invalidateQueries({ queryKey: ["table", tableName] });
@@ -52299,7 +51103,6 @@ export const tableQueryUtils = {
     });
   },
 
-  // Optimized cache management
   setQueryData: <T extends TableName>(queryClient: QueryClient, tableName: T, data: TableRow<T>[], filters?: Filters, columns?: string) => {
     queryClient.setQueryData(createQueryKey(tableName, filters, columns), data);
   },
@@ -52308,7 +51111,6 @@ export const tableQueryUtils = {
     return queryClient.getQueryData(createQueryKey(tableName, filters, columns));
   },
 
-  // Performance monitoring
   getTableCacheStats: (queryClient: QueryClient, tableName: string) => {
     const cache = queryClient.getQueryCache();
     const tableQueries = cache.findAll({
@@ -52327,7 +51129,6 @@ export const tableQueryUtils = {
     };
   },
 
-  // Cleanup utilities
   removeStaleQueries: (
     queryClient: QueryClient,
     maxAge = 10 * 60 * 1000 // 10 minutes
@@ -52340,7 +51141,6 @@ export const tableQueryUtils = {
     });
   },
 
-  // Batch operations
   batchInvalidate: (queryClient: QueryClient, operations: Array<{ type: "table" | "rpc"; name: string }>) => {
     operations.forEach(({ type, name }) => {
       queryClient.invalidateQueries({ queryKey: [type, name] });
@@ -52350,9 +51150,8 @@ export const tableQueryUtils = {
 
 ```
 
-<!-- path: hooks/database/route-manager-hooks.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/route-manager-hooks.ts -->
 ```typescript
-// path: hooks/database/route-manager-hooks.ts
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
@@ -52362,7 +51161,6 @@ import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSp
 
 const supabase = createClient();
 
-/** Fetches a list of OFC cables for the selection dropdown. */
 export function useOfcRoutesForSelection() {
   return useQuery({
     queryKey: ["ofc-routes-for-selection"],
@@ -52384,7 +51182,6 @@ export function useOfcRoutesForSelection() {
   });
 }
 
-/** Fetches detailed info for a single OFC Cable from our API route. */
 export function useRouteDetails(routeId: string | null) {
   return useQuery({
     queryKey: ["route-details", routeId],
@@ -52407,7 +51204,6 @@ export function useRouteDetails(routeId: string | null) {
   });
 }
 
-/** Fetches all data needed for the splice matrix editor for a single JC. */
 export function useJcSplicingDetails(jcId: string | null) {
   return useQuery({
     queryKey: ["jc-splicing-details", jcId],
@@ -52431,7 +51227,6 @@ export function useJcSplicingDetails(jcId: string | null) {
   });
 }
 
-/** Hook to call the `manage_splice` RPC function. */
 export function useManageSplice() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -52468,7 +51263,6 @@ export function useManageSplice() {
   });
 }
 
-/** NEW HOOK for manually syncing path data from the visualizer. */
 export function useSyncPathFromTrace() {
   const queryClient = useQueryClient();
 
@@ -52489,14 +51283,13 @@ export function useSyncPathFromTrace() {
 }
 
 
-/** Hook to call the `auto_splice_straight_segments` RPC function. */
 
 export function useAutoSplice() {
   const queryClient = useQueryClient();
   return useMutation({
-      mutationFn: async (variables: {
-          jcId: string;
-          segment1Id: string;
+      mutationFn: async (variables: { 
+          jcId: string; 
+          segment1Id: string; 
           segment2Id: string;
           lossDb?: number;
       }): Promise<AutoSpliceResult> => {
@@ -52507,7 +51300,7 @@ export function useAutoSplice() {
               p_loss_db: variables.lossDb || 0,
           });
           if (error) throw error;
-
+    
           const parsed = autoSpliceResultSchema.safeParse(data);
           if (!parsed.success) {
               console.error("Zod validation error for AutoSpliceResult:", parsed.error);
@@ -52524,19 +51317,15 @@ export function useAutoSplice() {
   });
 }
 
-/** NEW HOOK for the manual "Apply Path Updates" button */
 export function useSyncPathUpdates() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async ({ jcId }: { jcId: string }) => {
-      // This is now an empty placeholder as the trigger handles everything.
-      // We keep it to maintain the button's functionality, but it does nothing.
       return Promise.resolve();
     },
     onSuccess: (_, { jcId }) => {
       toast.success("Path data has been refreshed.");
-      // Invalidate everything to ensure the entire UI reflects the new state from the trigger
       queryClient.invalidateQueries({ queryKey: ["jc-splicing-details", jcId] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['route-details'] });
@@ -52548,20 +51337,17 @@ export function useSyncPathUpdates() {
 }
 ```
 
-<!-- path: hooks/database/queries-type-helpers.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/queries-type-helpers.ts -->
 ```typescript
-// hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
 import { Database } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types';
 
-// --- Type for a structured query result with a count ---
 export type PagedQueryResult<T> = {
   data: T[];
   count: number;
 };
 
-// --- TYPE HELPERS DERIVED FROM SUPABASE ---
 
 export type PublicTableName = keyof Database["public"]["Tables"];
 export type AuthTableName = keyof Database["auth"]["Tables"];
@@ -52570,13 +51356,11 @@ export type PublicTableOrViewName = PublicTableName | ViewName;
 export type ViewName = keyof Database["public"]["Views"];
 export type TableOrViewName = TableName | ViewName;
 
-// Helper to check if a name is a table (and not a view)
 export const isTableName = (name: TableOrViewName): name is TableName => {
   return (tableNames as readonly string[]).includes(name);
 };
 
 
-// Generic row types for any read operation
 export type Row<T extends TableOrViewName> = T extends keyof Database["public"]["Tables"]
   ? Database["public"]["Tables"][T]["Row"]
   : T extends keyof Database["public"]["Views"]
@@ -52603,16 +51387,13 @@ export type TableUpdate<T extends TableName> = T extends keyof Database["public"
   ? Database["auth"]["Tables"][T]["Update"]
   : never;
 
-// These types now correctly infer from the robust types above.
 export type TableInsertWithDates<T extends TableName> = { [K in keyof TableInsert<T>]?: TableInsert<T>[K] | Date | null; };
 export type TableUpdateWithDates<T extends TableName> = { [K in keyof TableUpdate<T>]?: TableUpdate<T>[K] | Date | null; };
 
-// RPC function type helpers (unchanged)
 export type RpcFunctionName = keyof Database["public"]["Functions"];
 export type RpcFunctionArgs<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Args"];
 export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Returns"];
 
-// --- ADVANCED TYPES FOR HOOK OPTIONS (Unchanged) ---
 
 export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
 export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
@@ -52627,8 +51408,7 @@ export type AggregationOptions = { count?: boolean | string; sum?: string[]; avg
 export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout?: number; connection?: "read" | "write"; };
 export type RowWithCount<T> = T & { total_count?: number };
 
-// --- HOOK OPTIONS INTERFACES (Unchanged) ---
-export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>>
+export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
   extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
   columns?: string;
   filters?: Filters;
@@ -52658,7 +51438,6 @@ export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, 
 }
 export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
 
-// ... (Excel Upload types remain the same) ...
 export interface UploadColumnMapping<T extends TableName> {
     excelHeader: string;
     dbKey: keyof TableInsert<T> & string;
@@ -52701,9 +51480,8 @@ export type DashboardOverviewData = {
 };
 ```
 
-<!-- path: hooks/database/ring-map-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/ring-map-queries.ts -->
 ```typescript
-// path: hooks/database/ring-map-queries.ts
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
@@ -52735,9 +51513,8 @@ export function useRingNodes(ringId: string | null) {
 }
 ```
 
-<!-- path: hooks/database/rpc-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/rpc-queries.ts -->
 ```typescript
-// path: hooks/database/rpc-queries.ts
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
@@ -52753,10 +51530,8 @@ import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
 import { DEFAULTS } from '@/constants/constants';
 
 // =================================================================
-// Section 1: Generic & Specific RPC Hooks (Non-Paginated)
 // =================================================================
 
-// Generic RPC query hook for any non-paginated function
 export function useRpcQuery<
   T extends RpcFunctionName,
   TData = RpcFunctionReturns<T>
@@ -52783,7 +51558,6 @@ export function useRpcQuery<
   });
 }
 
-// Generic RPC mutation hook
 export function useRpcMutation<T extends RpcFunctionName>(
   supabase: SupabaseClient<Database>,
   functionName: T,
@@ -52803,13 +51577,11 @@ export function useRpcMutation<T extends RpcFunctionName>(
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
-    //  The onSuccess callback now correctly accepts all four arguments
     onSuccess: (data, variables, context, mutation) => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ['table'] });
         queryClient.invalidateQueries({ queryKey: ['rpc'] });
       }
-      // The original onSuccess is called with the correct signature
       if (options?.onSuccess) {
         options.onSuccess(data, variables, context, mutation);
       }
@@ -52818,7 +51590,6 @@ export function useRpcMutation<T extends RpcFunctionName>(
   });
 }
 
-// Specific hook for the dashboard overview
 export function useDashboardOverview(
   supabase: SupabaseClient<Database>,
   options?: UseRpcQueryOptions<'get_dashboard_overview'>
@@ -52827,10 +51598,8 @@ export function useDashboardOverview(
 }
 
 // =================================================================
-// Section 2: Efficient Generic Pagination Hook
 // =================================================================
 
-// Define the shape of the JSONB object returned by the efficient `get_paged_data` SQL function
 export interface PagedDataResult<T> {
   data: T[];
   total_count: number;
@@ -52838,7 +51607,6 @@ export interface PagedDataResult<T> {
   inactive_count: number;
 }
 
-// CORRECTED: The options now correctly use the `Filters` type
 interface UsePagedDataOptions {
   limit?: number;
   offset?: number;
@@ -52872,7 +51640,6 @@ export function usePagedData<T>(
     filters = {},
   } = hookOptions;
 
-  // The hook internally converts the complex Filters object to the simple JSON the RPC expects
   const rpcFilters = buildRpcFilters(filters);
   const queryKey = ['paged-data', viewName, { limit, offset, orderBy, orderDir, filters: rpcFilters }];
 
@@ -52920,9 +51687,8 @@ export function usePagedData<T>(
 }
 ```
 
-<!-- path: hooks/database/ring-provisioning-hooks.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/ring-provisioning-hooks.ts -->
 ```typescript
-// path: hooks/database/ring-provisioning-hooks.ts
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52933,7 +51699,6 @@ import { z } from "zod";
 
 const supabase = createClient();
 
-// Hook to fetch all rings for the selection dropdown
 export function useRingsForSelection() {
   return useQuery({
     queryKey: ['rings-for-selection'],
@@ -52948,7 +51713,6 @@ export function useRingsForSelection() {
   });
 }
 
-// Hook to fetch the logical connection paths for a selected ring
 export function useRingConnectionPaths(ringId: string | null) {
   return useQuery({
     queryKey: ['ring-connection-paths', ringId],
@@ -52966,15 +51730,11 @@ export function useRingConnectionPaths(ringId: string | null) {
   });
 }
 
-// ** THE DEFINITIVE FIX **
-// Create a local, more lenient schema that accepts the non-ISO date format
-// and transforms it into a valid one for the main schema.
 const lenientCableSchema = ofc_cablesRowSchema.extend({
     created_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
     updated_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
 });
 
-// Hook to fetch available physical cables connected to a node
 export function useAvailableCables(nodeId: string | null) {
   return useQuery({
     queryKey: ['available-cables', nodeId],
@@ -52983,9 +51743,6 @@ export function useAvailableCables(nodeId: string | null) {
       const { data, error } = await supabase.rpc('get_available_cables_for_node', { p_node_id: nodeId });
       if (error) throw error;
 
-      // **THE DEFINITIVE FIX: Use the lenient schema for parsing.**
-      // This accepts the database's format and transforms it into the strict format
-      // that the rest of the application expects.
       const parsed = z.array(lenientCableSchema).safeParse(data);
 
       if (!parsed.success) {
@@ -52999,7 +51756,6 @@ export function useAvailableCables(nodeId: string | null) {
 }
 
 
-// Hook to fetch available fibers on a specific cable
 export function useAvailableFibers(cableId: string | null) {
   return useQuery({
     queryKey: ['available-fibers', cableId],
@@ -53013,7 +51769,6 @@ export function useAvailableFibers(cableId: string | null) {
   });
 }
 
-// Hook to call the mutation that assigns a system to fibers
 export function useAssignSystemToFibers() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -53030,7 +51785,6 @@ export function useAssignSystemToFibers() {
     },
     onSuccess: (_, variables) => {
       toast.success(`Fibers ${variables.fiberTx} & ${variables.fiberRx} provisioned successfully!`);
-      // Invalidate related queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.cableId] });
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
     },
@@ -53040,7 +51794,6 @@ export function useAssignSystemToFibers() {
   });
 }
 
-// Hook to generate the logical paths for a ring
 export function useGenerateRingPaths() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -53058,22 +51811,19 @@ export function useGenerateRingPaths() {
     });
 }
 
-// NEW HOOK: To deprovision a system from a logical path
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (variables: { systemId: string; logicalPathId: string }) => {
-      const { error } = await supabase.rpc('deprovision_path', {
-        p_system_id: variables.systemId,
-        p_logical_path_id: variables.logicalPathId,
+    mutationFn: async (variables: { logicalPathId: string }) => {
+      const { error } = await supabase.rpc('deprovision_logical_path', {
+        p_path_id: variables.logicalPathId,
       });
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       toast.success("Path deprovisioned successfully.");
-      // Invalidate all relevant queries to ensure UI consistency
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
-      queryClient.invalidateQueries({ queryKey: ['available-fibers'] }); // Invalidate all fiber queries
+      queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
     onError: (err) => {
       toast.error(`Deprovisioning failed: ${err.message}`);
@@ -53082,7 +51832,7 @@ export function useDeprovisionPath() {
 }
 ```
 
-<!-- path: hooks/database/file-queries.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/file-queries.ts -->
 ```typescript
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
@@ -53094,24 +51844,24 @@ type FileUpdate = Database["public"]["Tables"]["files"]["Update"];
 
 export function useFiles(folderId?: string | null) {
   const supabase = createClient();
-
+  
   return useQuery({
     queryKey: ["files", folderId],
     queryFn: async () => {
       let query = supabase
         .from("files")
         .select("*");
-
+      
       if (folderId) {
         query = query.eq("folder_id", folderId);
       }
-
+      
       const { data, error } = await query.order("uploaded_at", { ascending: false });
-
+      
       if (error) {
         throw new Error(error.message);
       }
-
+      
       return data || [];
     },
     enabled: true,
@@ -53121,7 +51871,7 @@ export function useFiles(folderId?: string | null) {
 export function useUploadFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async (fileData: FileInsert) => {
       const { data, error } = await supabase
@@ -53129,16 +51879,16 @@ export function useUploadFile() {
         .insert(fileData)
         .select()
         .single();
-
+        
       if (error) {
         throw new Error(error.message);
       }
-
+      
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["files", variables.folder_id]
+      queryClient.invalidateQueries({ 
+        queryKey: ["files", variables.folder_id] 
       });
     },
   });
@@ -53147,7 +51897,7 @@ export function useUploadFile() {
 export function useDeleteFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async ({
       id,
@@ -53160,16 +51910,16 @@ export function useDeleteFile() {
         .from("files")
         .delete()
         .eq("id", id);
-
+        
       if (error) {
         throw new Error(error.message);
       }
-
+      
       return { id };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["files", variables.folderId]
+      queryClient.invalidateQueries({ 
+        queryKey: ["files", variables.folderId] 
       });
     },
   });
@@ -53178,7 +51928,7 @@ export function useDeleteFile() {
 export function useUpdateFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async ({
       id,
@@ -53193,16 +51943,16 @@ export function useUpdateFile() {
         .eq("id", id)
         .select()
         .single();
-
+        
       if (error) {
         throw new Error(error.message);
       }
-
+      
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ["files", data.folder_id]
+      queryClient.invalidateQueries({ 
+        queryKey: ["files", data.folder_id] 
       });
     },
   });
@@ -53210,10 +51960,8 @@ export function useUpdateFile() {
 
 ```
 
-<!-- path: hooks/database/utility-functions.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/utility-functions.ts -->
 ```typescript
-// path: hooks/database/utility-functions.ts
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from "@tanstack/react-query";
 import {
   AggregationOptions,
@@ -53229,13 +51977,10 @@ export function buildRpcFilters(filters: Filters): Json {
   const rpcFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
-    // --- THIS IS THE FIX ---
-    // Pass the 'or' object through directly without converting it to a string.
     if (key === 'or' && typeof filters.or === 'object' && filters.or !== null) {
       rpcFilters.or = filters.or;
       continue; // Continue to the next key
     }
-    // --- END FIX ---
 
     const filterValue = filters[key];
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
@@ -53434,7 +52179,7 @@ export function convertRichFiltersToSimpleJson(filters: Filters): Json {
 }
 ```
 
-<!-- path: hooks/useCreateOfcConnection.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useCreateOfcConnection.ts -->
 ```typescript
 import { useCallback, useRef } from 'react'; // THE FIX: Import useRef
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -53458,7 +52203,6 @@ export const useCreateOfcConnection = ({
   isLoadingOfcConnections,
 }: useCreateOfcConnectionProps) => {
   const queryClient = useQueryClient();
-  // THE FIX: Create a ref to act as a lock, preventing concurrent executions.
   const isCreatingConnections = useRef(false);
 
   const { data: cable, isLoading: isLoadingCable } = usePagedData<Ofc_cablesRowSchema>(
@@ -53487,12 +52231,11 @@ export const useCreateOfcConnection = ({
   });
 
   const createMissingConnections = useCallback(async (): Promise<void> => {
-    // THE FIX: Check if an operation is already in progress. If so, exit immediately.
     if (isCreatingConnections.current) {
       console.log('Connection creation already in progress, skipping.');
       return;
     }
-
+    
     const cableData = cable?.data?.[0];
     if (!cableData || !cableData.capacity || cableData.capacity <= 0) {
         console.log('Skipping connection check: Cable data or capacity is missing.');
@@ -53500,7 +52243,6 @@ export const useCreateOfcConnection = ({
     }
 
     try {
-      // THE FIX: Set the lock to true before starting async operations.
       isCreatingConnections.current = true;
 
       const { data: existingConnections, error } = await supabase
@@ -53549,7 +52291,6 @@ export const useCreateOfcConnection = ({
       toast.error(`Failed to create missing connections: ${errorMessage}`);
       throw creationError;
     } finally {
-      // THE FIX: Always release the lock when the operation is complete (success or fail).
       isCreatingConnections.current = false;
     }
   }, [cable, cableId, createConnections, supabase]);
@@ -53562,7 +52303,6 @@ export const useCreateOfcConnection = ({
       await createMissingConnections();
     } catch (error) {
       console.error(`Failed to ensure connections exist: ${error}`);
-      // Errors are already handled and toasted inside createMissingConnections
     }
   }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 
@@ -53574,9 +52314,8 @@ export const useCreateOfcConnection = ({
 };
 ```
 
-<!-- path: hooks/useDebounce.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useDebounce.ts -->
 ```typescript
-// @/hooks/useDebounce.ts
 import { useState, useEffect } from 'react';
 
 export function useDebounce<T>(value: T, delay: number): T {
@@ -53587,7 +52326,6 @@ export function useDebounce<T>(value: T, delay: number): T {
       setDebouncedValue(value);
     }, delay);
 
-    // Cleanup function to cancel the timeout if value changes before delay has passed
     return () => {
       clearTimeout(handler);
     };
@@ -53597,9 +52335,8 @@ export function useDebounce<T>(value: T, delay: number): T {
 }
 ```
 
-<!-- path: hooks/useCrudManager.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useCrudManager.ts -->
 ```typescript
-// path: hooks/useCrudManager.ts
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -53619,7 +52356,6 @@ import {
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
 
-// --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
   id: string | number | null;
   system_id?: string | number | null;
@@ -53657,12 +52393,10 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
-  // THE FIX: Allow displayNameField to be a string or an array of strings.
   displayNameField?: (keyof V & string) | (keyof V & string)[];
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
 
-// --- THE HOOK ---
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
@@ -53672,7 +52406,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
 
-  // --- STATE MANAGEMENT ---
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -53684,7 +52417,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
-  // Combine search query and other filters
   const combinedFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (debouncedSearch && searchColumn) {
@@ -53700,12 +52432,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     return newFilters;
   }, [debouncedSearch, filters, searchColumn]);
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filters]);
 
-  // --- DATA FETCHING ---
   const { data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch } = dataQueryHook({
     currentPage,
     pageLimit,
@@ -53713,7 +52443,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- MUTATIONS ---
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(
     supabase,
     tableName,
@@ -53770,7 +52499,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     deleteManager.isPending ||
     bulkUpdate.isPending;
 
-  // --- MODAL HANDLERS ---
   const openAddModal = useCallback(() => {
     setEditingRecord(null);
     setIsEditModalOpen(true);
@@ -53793,7 +52521,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setViewingRecord(null);
   }, []);
 
-  // --- SAVE HANDLER ---
   const handleSave = useCallback(
     (formData: TableInsertWithDates<T>) => {
       const processedData = processDataForSave
@@ -53812,9 +52539,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [editingRecord, insertItem, updateItem, processDataForSave]
   );
 
-  // --- DELETE HANDLERS ---
    const getDisplayName = useCallback((record: RecordWithId): string => {
-    // THE FIX: Handle both string and array for displayNameField.
     if (displayNameField) {
       const fields = Array.isArray(displayNameField) ? displayNameField : [displayNameField];
       for (const field of fields) {
@@ -53849,7 +52574,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [deleteManager, getDisplayName]
   );
 
-  // --- STATUS TOGGLE HANDLER ---
   const handleToggleStatus = useCallback(
     (record: RecordWithId & { status?: boolean | null }) => {
       if (!record.id) {
@@ -53864,7 +52588,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [toggleStatus]
   );
 
-  // --- BULK SELECTION HANDLERS ---
   const handleRowSelect = useCallback(
     (rows: Array<V & { id?: string | number }>) => {
       const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
@@ -53877,7 +52600,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setSelectedRowIds([]);
   }, []);
 
-  // --- BULK DELETE HANDLER ---
   const handleBulkDelete = useCallback(() => {
     if (selectedRowIds.length === 0) {
       toast.error("No records selected for deletion");
@@ -53890,7 +52612,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     deleteManager.deleteMultiple(selectedRecords);
   }, [selectedRowIds, data, deleteManager, getDisplayName]);
 
-  // --- BULK STATUS UPDATE HANDLER ---
   const handleBulkUpdateStatus = useCallback(
     (status: "active" | "inactive") => {
       if (selectedRowIds.length === 0) return;
@@ -53912,7 +52633,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [selectedRowIds, bulkUpdate, refetch]
   );
 
-  // --- BULK DELETE BY FILTER ---
   const handleBulkDeleteByFilter = useCallback(
     (column: string, value: string | number | boolean | null, displayName: string) => {
       deleteManager.deleteBulk({
@@ -53924,7 +52644,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [deleteManager]
   );
 
-  // --- RETURN VALUE ---
   return {
     data: data || [],
     totalCount,
@@ -53948,9 +52667,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 }
 ```
 
-<!-- path: hooks/useORSRouteDistances.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useORSRouteDistances.ts -->
 ```typescript
-// path: hooks/useORSRouteDistances.ts
 import { useQuery } from '@tanstack/react-query';
 import { RingMapNode } from '@/components/map/types/node';
 import { useMemo } from 'react';
@@ -53960,10 +52678,8 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
     return {};
   }
 
-  // Use a Map to ensure unique pairs, preventing duplicate API calls
   const uniquePairs = new Map<string, [RingMapNode, RingMapNode]>();
   pairs.forEach(([startNode, endNode]) => {
-    // Sort IDs to create a consistent key regardless of order
     const key = [startNode.id, endNode.id].sort().join('-');
     if (!uniquePairs.has(key)) {
       uniquePairs.set(key, [startNode, endNode]);
@@ -53982,7 +52698,7 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
         console.error(`API error for pair ${startNode.id}-${endNode.id}: ${response.statusText}`);
         return null;
       }
-
+      
       const data = await response.json();
       return {
         startId: startNode.id,
@@ -54000,7 +52716,6 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
 
   results.forEach(result => {
     if (result) {
-      //  Create keys for both directions
       distances[`${result.startId}-${result.endId}`] = result.distance;
       distances[`${result.endId}-${result.startId}`] = result.distance;
     }
@@ -54010,7 +52725,6 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
 }
 
 export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>) {
-  // The queryKey should also be consistently sorted to ensure caching works correctly
   const sortedUniqueKeys = useMemo(() => {
     const keys = pairs.map(p => [p[0].id, p[1].id].sort().join('-'));
     return [...new Set(keys)].sort();;
@@ -54025,15 +52739,15 @@ export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapN
 }
 ```
 
-<!-- path: hooks/useRoleFunctions.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useRoleFunctions.ts -->
 ```typescript
-// hooks/database/functions.ts - Hooks for Supabase functions
-import { useQuery, UseQueryResult } from '@tanstack/react-query'
+"use client";
+
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/utils/supabase/client'
 import React from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
-// Types for better type safety
 type UserRole = string | null
 type SuperAdminStatus = boolean | null
 
@@ -54046,136 +52760,59 @@ interface UserPermissions {
   refetch: () => void
 }
 
-/**
- * Hook to get the current user's role with automatic session refresh if needed
- */
-export const useMyRole = (): UseQueryResult<UserRole, Error> => {
-  const supabase = createClient()
-  const { user, authState, syncSession } = useAuth()
 
-  return useQuery({
-    queryKey: ['my-role', user?.id],
-    queryFn: async (): Promise<UserRole> => {
-      try {
-        const { data, error } = await supabase.rpc('get_my_role')
-
-        // If we get null data, try refreshing the session and retry
-        if (data === null) {
-          const sessionRefreshed = await syncSession()
-          if (sessionRefreshed) {
-            const { data: retryData, error: retryError } = await supabase.rpc('get_my_role')
-            if (retryError) throw retryError
-            return retryData as UserRole
-          }
-        }
-
-        if (error) {
-          console.error('Role fetch error:', error)
-          throw new Error(`Failed to get user role: ${error.message}`)
-        }
-
-        return data as UserRole
-      } catch (err) {
-        console.error('Role query error:', err)
-        throw err
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
-    retry: (failureCount, error) => {
-      // Don't retry on authentication errors
-      if (error.message.includes('JWT') || error.message.includes('auth')) {
-        return false
-      }
-      return failureCount < 2
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    enabled: authState === "authenticated" && !!user?.id,
-    refetchOnWindowFocus: false,
-    networkMode: 'offlineFirst'
-  })
-}
-
-/**
- * Hook to check if the current user is a super admin
- */
-export const useIsSuperAdmin = (): UseQueryResult<SuperAdminStatus, Error> => {
-  const supabase = createClient()
-  const { user, authState, syncSession } = useAuth()
-
-  return useQuery({
-    queryKey: ['is-super-admin', user?.id],
-    queryFn: async (): Promise<SuperAdminStatus> => {
-      try {
-        const { data, error } = await supabase.rpc('is_super_admin')
-
-        // If we get null data, try refreshing the session and retry
-        if (data === null) {
-          const sessionRefreshed = await syncSession()
-          if (sessionRefreshed) {
-            const { data: retryData, error: retryError } = await supabase.rpc('is_super_admin')
-            if (retryError) throw retryError
-            return retryData as SuperAdminStatus
-          }
-        }
-
-        if (error) {
-          console.error('Super admin check error:', error)
-          throw new Error(`Failed to check super admin status: ${error.message}`)
-        }
-
-        return data as SuperAdminStatus
-      } catch (err) {
-        console.error('Super admin query error:', err)
-        throw err
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
-    retry: (failureCount, error) => {
-      if (error.message.includes('JWT') || error.message.includes('auth')) {
-        return false
-      }
-      return failureCount < 2
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    enabled: authState === "authenticated" && !!user?.id,
-    refetchOnWindowFocus: false,
-    networkMode: 'offlineFirst'
-  })
-}
-
-/**
- * Combined hook that returns both role and super admin status
- * with optimized refetching and error handling
- */
-export const useUserPermissions = (): UserPermissions => {
-  const roleQuery = useMyRole()
-  const superAdminQuery = useIsSuperAdmin()
-
-  const refetch = React.useCallback(() => {
-    return Promise.allSettled([
-      roleQuery.refetch(),
-      superAdminQuery.refetch()
-    ])
-  }, [roleQuery, superAdminQuery])
-
-  return {
-    role: roleQuery.data ?? null,
-    isSuperAdmin: superAdminQuery.data ?? null,
-    isLoading: roleQuery.isLoading || superAdminQuery.isLoading,
-    error: roleQuery.error || superAdminQuery.error || null,
-    isError: roleQuery.isError || superAdminQuery.isError,
-    refetch
-  }
-}
-
-/**
- * Extended version of user permissions with utility methods
- */
 export const useUserPermissionsExtended = () => {
-  const permissions = useUserPermissions()
+  const supabase = createClient()
+  const { user, authState, syncSession } = useAuth()
 
+  const { data, isLoading, error, isError, refetch } = useQuery({
+    queryKey: ['user-permissions', user?.id],
+    queryFn: async (): Promise<{ role: UserRole, isSuperAdmin: SuperAdminStatus }> => {
+      try {
+        let [roleRes, superAdminRes] = await Promise.all([
+          supabase.rpc('get_my_role'),
+          supabase.rpc('is_super_admin')
+        ]);
+        
+        if (roleRes.data === null || superAdminRes.data === null) {
+          const sessionRefreshed = await syncSession();
+          if (sessionRefreshed) {
+            [roleRes, superAdminRes] = await Promise.all([
+              supabase.rpc('get_my_role'),
+              supabase.rpc('is_super_admin')
+            ]);
+          }
+        }
+
+        if (roleRes.error) throw new Error(`Failed to get user role: ${roleRes.error.message}`);
+        if (superAdminRes.error) throw new Error(`Failed to check super admin status: ${superAdminRes.error.message}`);
+
+        return { role: roleRes.data as UserRole, isSuperAdmin: superAdminRes.data as SuperAdminStatus };
+      } catch (err) {
+        console.error('Permissions query error:', err);
+        throw err;
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.message.includes('JWT') || error.message.includes('auth')) return false;
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: authState === "authenticated" && !!user?.id,
+    refetchOnWindowFocus: false,
+  });
+
+  const permissions = React.useMemo(() => ({
+    role: data?.role ?? null,
+    isSuperAdmin: data?.isSuperAdmin ?? null,
+    isLoading,
+    error: error || null,
+    isError,
+    refetch
+  }), [data, isLoading, error, isError, refetch]);
+  
   const hasRole = React.useCallback((requiredRole: string): boolean => {
     return permissions.role === requiredRole
   }, [permissions.role])
@@ -54185,13 +52822,8 @@ export const useUserPermissionsExtended = () => {
   }, [permissions.role])
 
   const canAccess = React.useCallback((allowedRoles?: string[]): boolean => {
-    // Super admin can access everything
     if (permissions.isSuperAdmin) return true
-
-    // If no roles specified, just check if authenticated
     if (!allowedRoles || allowedRoles.length === 0) return !!permissions.role
-
-    // Check if user has required role
     return hasAnyRole(allowedRoles)
   }, [permissions.isSuperAdmin, permissions.role, hasAnyRole])
 
@@ -54204,36 +52836,27 @@ export const useUserPermissionsExtended = () => {
   }
 }
 
-/**
- * Optimized hook for role-based conditional rendering
- * Uses memoization to prevent unnecessary re-renders
- */
 export const useHasPermission = (allowedRoles?: string[]): boolean => {
   const { canAccess } = useUserPermissionsExtended()
   return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles])
 }
 
-// Export types for use in other files
 export type { UserRole, SuperAdminStatus, UserPermissions }
 ```
 
-<!-- path: hooks/useDebugSession.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useDebugSession.ts -->
 ```typescript
-// hooks/useDebugSession.ts
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 export const useDebugSession = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [sessionInfo, setSessionInfo] = useState<any>(null)
   const supabase = createClient()
 
   useEffect(() => {
     const checkSession = async () => {
-      // Check current session
       const { data: { session }, error } = await supabase.auth.getSession()
-
-      // Check headers that would be sent with requests
+      
       const headers = await supabase.auth.getSession().then(({ data: { session } }) => ({
         'apikey': 'present',
         'authorization': session ? `Bearer ${session.access_token}` : 'none',
@@ -54261,7 +52884,6 @@ export const useDebugSession = () => {
 
     checkSession()
 
-    // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state change:', event, session?.user?.id)
@@ -54270,17 +52892,14 @@ export const useDebugSession = () => {
     )
 
     return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return sessionInfo
 }
 ```
 
-<!-- path: hooks/useAuth.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useAuth.ts -->
 ```typescript
-// path: hooks/useAuth.ts
-// hooks/useAuth.ts
 "use client";
 
 import { useEffect, useMemo, useCallback } from "react";
@@ -54289,13 +52908,11 @@ import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { AuthError } from "@supabase/supabase-js";
 
-// CORRECTED: Define a consistent return type for auth actions
 interface AuthActionResult {
   success: boolean;
   error: AuthError | null;
 }
 
-// Auth Hook
 export const useAuth = () => {
   const { user, authState, setUser, setAuthState, logout: logoutStore, executeWithLoading, isAuthenticated, isLoading, getUserId } = useAuthStore();
   const supabase = useMemo(() => createClient(), []);
@@ -54437,7 +53054,7 @@ export const useAuth = () => {
       }
     });
   }, [executeWithLoading, supabase.auth, setAuthState]);
-
+  
   const resetPassword = useCallback(async (newPassword: string): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
@@ -54478,7 +53095,7 @@ export const useAuth = () => {
 };
 ```
 
-<!-- path: hooks/useEntityManagement.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useEntityManagement.ts -->
 ```typescript
 "use client";
 
@@ -54493,21 +53110,14 @@ export function useEntityManagement<T extends BaseEntity>({
   selectedEntityId,
   onSelect,
   onToggleStatus,
-}: UseEntityManagementProps<T>) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"tree" | "list">("list");
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  searchTerm,
+  filters,
+}: UseEntityManagementProps<T> & { searchTerm: string, filters: Record<string, string> }) {
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
-  // CHANGED: Data is now accessed from the .data property of the query result.
   const allEntities = useMemo(() => entitiesQuery.data?.data || [], [entitiesQuery.data]);
-
-  const selectedEntity = useMemo(() => {
-    return allEntities.find(e => e.id === selectedEntityId) || null;
-  }, [allEntities, selectedEntityId]);
-
 
   const searchedEntities = useMemo(() => {
     if (!searchTerm) return allEntities;
@@ -54520,6 +53130,7 @@ export function useEntityManagement<T extends BaseEntity>({
   }, [allEntities, searchTerm, config.searchFields]);
 
   const filteredEntities = useMemo(() => {
+    if (Object.keys(filters).length === 0) return searchedEntities;
     return searchedEntities.filter((entity) => {
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
@@ -54532,29 +53143,35 @@ export function useEntityManagement<T extends BaseEntity>({
     });
   }, [searchedEntities, filters]);
 
+  const selectedEntity = useMemo(() => {
+    return allEntities.find(e => e.id === selectedEntityId) || null;
+  }, [allEntities, selectedEntityId]);
+
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
     if (!config.isHierarchical) return filteredEntities.map((entity) => ({ ...entity, children: [] }));
     const entityMap = new Map<string, EntityWithChildren<T>>();
-    filteredEntities.forEach((entity) => {
+    allEntities.forEach((entity) => {
       entityMap.set(entity.id, { ...entity, children: [] });
     });
     const rootEntities: EntityWithChildren<T>[] = [];
     filteredEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
-      if (isHierarchicalEntity(entity) && entity.parent_id) {
-        const parent = entityMap.get(entity.parent_id);
-        if (parent) {
+      const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
+
+      if (parentId) {
+        const parent = entityMap.get(parentId);
+        if (parent && filteredEntities.some(e => e.id === parentId)) {
           parent.children.push(entityWithChildren);
         } else {
-          rootEntities.push(entityWithChildren);
+           rootEntities.push(entityWithChildren);
         }
       } else {
         rootEntities.push(entityWithChildren);
       }
     });
     return rootEntities;
-  }, [filteredEntities, config.isHierarchical]);
+  }, [filteredEntities, allEntities, config.isHierarchical, config.parentField]);
 
   const handleEntitySelect = useCallback((id: string) => {
     onSelect(id);
@@ -54570,49 +53187,33 @@ export function useEntityManagement<T extends BaseEntity>({
     });
   };
 
-  const handleOpenCreateForm = () => {
-    onCreateNew();
-  };
-
   return {
-    // State
-    searchTerm,
     viewMode,
-    showFilters,
-    filters,
-    selectedEntity, // This is the selected entity object
     showDetailsPanel,
-    expandedEntities,
-
-    // Computed data
-    allEntities,
+    selectedEntity,
     filteredEntities,
     hierarchicalEntities,
-
-    // Handlers
-    setSearchTerm,
+    expandedEntities,
     setViewMode,
-    setShowFilters,
-    setFilters,
     setShowDetailsPanel,
     handleEntitySelect,
     toggleExpanded,
-    handleOpenCreateForm,
+    handleOpenCreateForm: onCreateNew,
     onToggleStatus,
     onDelete,
   };
 }
 ```
 
-<!-- path: hooks/useDeleteManager.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useDeleteManager.ts -->
 ```typescript
-// path: hooks/useDeleteManager.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
 import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers';
+import { PostgrestError } from '@supabase/supabase-js';
 
 interface DeleteItem {
   id: string;
@@ -54677,7 +53278,19 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         toast.success(successMessage);
         onSuccess?.();
       },
-      onError: (err: Error) => toast.error(`Deletion failed: ${err.message}`),
+      onError: (err: Error) => {
+        const pgError = err as PostgrestError;
+        if (pgError.code === '23503') { // Foreign key violation
+          const match = pgError.message.match(/on table "(.*?)"/);
+          const referencingTable = match ? match[1] : 'another table';
+          toast.error("Deletion Failed", {
+            description: `Cannot delete this item because it is still referenced by records in the '${referencingTable}' table. Please reassign or delete those records first.`,
+            duration: 10000,
+          });
+        } else {
+          toast.error(`Deletion failed: ${err.message}`);
+        }
+      },
       onSettled: () => {
         setIsConfirmModalOpen(false);
         setItemsToDelete([]);
@@ -54706,7 +53319,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const getConfirmationMessage = useCallback(() => {
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
-        // THE FIX: Use a generic, safe message.
         return `Are you sure you want to delete "${itemsToDelete[0].name}"? This action cannot be undone.`;
       }
       return `Are you sure you want to delete these ${itemsToDelete.length} items? This action is permanent.`;
@@ -54718,24 +53330,17 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   }, [itemsToDelete, bulkFilter]);
 
   return {
-    deleteSingle,
-    deleteMultiple,
-    deleteBulk,
-    handleConfirm,
-    handleCancel,
-    isConfirmModalOpen,
-    isPending,
-    confirmationMessage: getConfirmationMessage(),
-    itemToDelete: itemsToDelete[0] ?? null, // Keep for single-item context
+    deleteSingle, deleteMultiple, deleteBulk, handleConfirm, handleCancel,
+    isConfirmModalOpen, isPending, confirmationMessage: getConfirmationMessage(),
+    itemToDelete: itemsToDelete[0] ?? null,
   };
 }
 ```
 
-<!-- path: hooks/useSorting.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useSorting.ts -->
 ```typescript
 import { useMemo, useState, useCallback } from 'react';
 
-// Types
 export type SortDirection = 'asc' | 'desc' | null;
 
 export interface SortConfig<T> {
@@ -54766,14 +53371,12 @@ export interface UseSortingReturn<T> {
   getSortDirection: (key: keyof T | string) => SortDirection;
 }
 
-// Union type for supported sortable values
 type SortableValue = string | number | Date | boolean | null | undefined;
 
-// Helper function to get nested property value
 function getNestedValue(obj: Record<string, unknown>, path: string): SortableValue {
   const keys = path.split('.');
   let current: unknown = obj;
-
+  
   for (const key of keys) {
     if (current === null || current === undefined) {
       return undefined;
@@ -54784,8 +53387,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
       return undefined;
     }
   }
-
-  // Type guard to ensure we return only sortable values
+  
   if (
     typeof current === 'string' ||
     typeof current === 'number' ||
@@ -54796,82 +53398,71 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
   ) {
     return current as SortableValue;
   }
-
-  // Convert other types to string for comparison
+  
   return String(current);
 }
 
-// Helper function to compare values
 function compareValues(
-  a: SortableValue,
-  b: SortableValue,
-  direction: SortDirection,
+  a: SortableValue, 
+  b: SortableValue, 
+  direction: SortDirection, 
   options: SortOptions = {}
 ): number {
   const { caseSensitive = false, numericSort = true, locale = 'en' } = options;
-
-  // Handle null/undefined values
+  
   if (a == null && b == null) return 0;
   if (a == null) return direction === 'asc' ? -1 : 1;
   if (b == null) return direction === 'asc' ? 1 : -1;
 
-  // Handle different data types
   if (typeof a === 'string' && typeof b === 'string') {
     const valueA = caseSensitive ? a : a.toLowerCase();
     const valueB = caseSensitive ? b : b.toLowerCase();
-
-    // Use localeCompare for proper string sorting
+    
     const result = valueA.localeCompare(valueB, locale, {
       numeric: numericSort,
       sensitivity: caseSensitive ? 'case' : 'base'
     });
-
+    
     return direction === 'asc' ? result : -result;
   }
 
-  // Handle numbers
   if (typeof a === 'number' && typeof b === 'number') {
     const result = a - b;
     return direction === 'asc' ? result : -result;
   }
 
-  // Handle dates
   if (a instanceof Date && b instanceof Date) {
     const result = a.getTime() - b.getTime();
     return direction === 'asc' ? result : -result;
   }
 
-  // Handle boolean values
   if (typeof a === 'boolean' && typeof b === 'boolean') {
     const result = Number(a) - Number(b);
     return direction === 'asc' ? result : -result;
   }
 
-  // Fallback to string comparison for mixed types
   const stringA = String(a);
   const stringB = String(b);
   const result = stringA.localeCompare(stringB, locale, {
     numeric: numericSort,
     sensitivity: caseSensitive ? 'case' : 'base'
   });
-
+  
   return direction === 'asc' ? result : -result;
 }
 
-// Main sorting hook
 export function useSorting<T extends Record<string, unknown>>({
   data,
   defaultSortKey,
   defaultDirection = 'asc',
   options = {}
 }: UseSortingProps<T>): UseSortingReturn<T> {
-
+  
   const [sortConfig, setSortConfig] = useState<SortConfig<T>>({
     key: defaultSortKey || '',
     direction: defaultSortKey ? defaultDirection : null
   });
 
-  // Memoized sorted data
   const sortedData = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction || !data.length) {
       return data;
@@ -54880,16 +53471,14 @@ export function useSorting<T extends Record<string, unknown>>({
     return [...data].sort((a, b) => {
       const valueA = getNestedValue(a, String(sortConfig.key));
       const valueB = getNestedValue(b, String(sortConfig.key));
-
+      
       return compareValues(valueA, valueB, sortConfig.direction, options);
     });
   }, [data, sortConfig, options]);
 
-  // Handle sort column click
   const handleSort = useCallback((key: keyof T | string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
-        // Cycle through: asc -> desc -> null -> asc
         switch (prevConfig.direction) {
           case 'asc':
             return { key, direction: 'desc' };
@@ -54899,21 +53488,17 @@ export function useSorting<T extends Record<string, unknown>>({
             return { key, direction: 'asc' };
         }
       } else {
-        // New column, start with ascending
         return { key, direction: 'asc' };
       }
     });
   }, []);
 
-  // Reset sorting
   const resetSort = useCallback(() => {
     setSortConfig({ key: '', direction: null });
   }, []);
 
-  // Check if currently sorted
   const isSorted = Boolean(sortConfig.key && sortConfig.direction);
 
-  // Get sort direction for a specific key
   const getSortDirection = useCallback((key: keyof T | string): SortDirection => {
     return sortConfig.key === key ? sortConfig.direction : null;
   }, [sortConfig]);
@@ -54929,9 +53514,7 @@ export function useSorting<T extends Record<string, unknown>>({
   };
 }
 
-// Additional utility hooks for specific use cases
 
-// Hook for multi-column sorting
 export interface MultiSortConfig<T> {
   key: keyof T | string;
   direction: SortDirection;
@@ -54939,7 +53522,7 @@ export interface MultiSortConfig<T> {
 }
 
 export function useMultiSorting<T extends Record<string, unknown>>(
-  data: T[],
+  data: T[], 
   options: SortOptions = {}
 ) {
   const [sortConfigs, setSortConfigs] = useState<MultiSortConfig<T>[]>([]);
@@ -54950,10 +53533,10 @@ export function useMultiSorting<T extends Record<string, unknown>>(
     return [...data].sort((a, b) => {
       for (const config of sortConfigs.sort((x, y) => x.priority - y.priority)) {
         if (!config.direction) continue;
-
+        
         const valueA = getNestedValue(a, String(config.key));
         const valueB = getNestedValue(b, String(config.key));
-
+        
         const result = compareValues(valueA, valueB, config.direction, options);
         if (result !== 0) return result;
       }
@@ -54963,12 +53546,12 @@ export function useMultiSorting<T extends Record<string, unknown>>(
 
   const addSort = useCallback((key: keyof T | string, direction: SortDirection) => {
     if (!direction) return;
-
+    
     setSortConfigs(prev => {
       const existing = prev.find(config => config.key === key);
       if (existing) {
-        return prev.map(config =>
-          config.key === key
+        return prev.map(config => 
+          config.key === key 
             ? { ...config, direction }
             : config
         );
@@ -54994,19 +53577,17 @@ export function useMultiSorting<T extends Record<string, unknown>>(
   };
 }
 
-// Hook for search + sort combination
 export function useSearchAndSort<T extends Record<string, unknown>>(
   data: T[],
   searchKeys: (keyof T | string)[],
   sortOptions: SortOptions = {}
 ) {
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Filter data based on search term
+  
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return data;
-
-    return data.filter(item =>
+    
+    return data.filter(item => 
       searchKeys.some(key => {
         const value = getNestedValue(item, String(key));
         return String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -55014,7 +53595,6 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
     );
   }, [data, searchTerm, searchKeys]);
 
-  // Apply sorting to filtered data
   const sortingResult = useSorting({
     data: filteredData,
     options: sortOptions
@@ -55029,12 +53609,10 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
   };
 }
 
-// Utility type for extracting sortable keys from an object type
 export type SortableKeys<T> = {
   [K in keyof T]: T[K] extends SortableValue ? K : never;
 }[keyof T];
 
-// Hook with strongly typed keys (optional, for better type safety)
 export function useTypedSorting<T extends Record<string, unknown>>(
   data: T[],
   defaultSortKey?: SortableKeys<T>,
@@ -55050,9 +53628,8 @@ export function useTypedSorting<T extends Record<string, unknown>>(
 }
 ```
 
-<!-- path: hooks/useCurrentTableName.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useCurrentTableName.ts -->
 ```typescript
-// hooks/useCurrentTableName.ts
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { TableNames } from "@/config/helper-types";
@@ -55066,7 +53643,6 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
     const path = pathname || "";
     const segments = path.split("/").filter(Boolean); // Remove empty segments
 
-    // Look for the dashboard segment and get the next segment as the route
     const dashboardIndex = segments.findIndex((segment) => segment === "dashboard");
     if (dashboardIndex === -1 || dashboardIndex >= segments.length - 1) {
       return null;
@@ -55074,7 +53650,6 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
 
     const routeSegment = segments[dashboardIndex + 1];
 
-    // Map route segments to table names
     switch (routeSegment) {
       case "users":
         return "user_profiles";
@@ -55091,7 +53666,6 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "lookup":
         return "lookup_types";
       case "ofc":
-        // Check if there's a third segment (ID) after ofc
         const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
         return hasId ? "ofc_connections" : "ofc_cables";
       case "ofc_connections":
@@ -55126,10 +53700,6 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "system_connections";
       case "user-activity-logs":
         return "user_activity_logs";
-      case "vmux":
-        return "vmux_systems";
-      case "vmux_connections":
-        return "vmux_connections";
       default:
         return null;
     }
@@ -55138,7 +53708,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
 
 ```
 
-<!-- path: hooks/ofc/useCableSegmentation.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/ofc/useCableSegmentation.ts -->
 ```typescript
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useState } from 'react';
@@ -55322,12 +53892,11 @@ export const useCableSegmentation = () => {
 
 ```
 
-<!-- path: hooks/useColumnConfig.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useColumnConfig.tsx -->
 ```typescript
 import { useMemo, ReactNode } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-// import { inferColumnWidth } from "@/config/column-width";
 import {
   inferDynamicColumnWidth,
   inferExcelFormat,
@@ -55335,32 +53904,17 @@ import {
 } from '@/config/helper-functions';
 import { Row, PublicTableOrViewName } from '@/hooks/database';
 
-/**
- * This is the final, compatible Column Configuration type.
- * It is generic and includes all properties from your `Column<T>` interface.
- */
 export interface ColumnConfig<T extends PublicTableOrViewName> {
-  /** The unique, type-safe column name. Used as the React key. */
   key: keyof Row<T> & string;
-  /** The human-readable title for the column header. */
   title: string;
-  /** The key for accessing data from a row object. We set it to be the same as `key`. */
   dataIndex: keyof Row<T> & string;
-  /** Optional: The data format for Excel exports. */
   excelFormat?: 'text' | 'number' | 'date' | 'currency' | 'percentage' | 'json';
-  /** Optional: Flag to hide the column in the UI. */
   hidden?: boolean;
-  /** Optional: Column width for UI tables. Use "auto" to fit content width. */
   width?: number | string;
-  /** Optional: Allow sorting on this column. */
   sortable?: boolean;
-  /** Optional: Allow searching on this column. */
   searchable?: boolean;
-  /** Optional: Allow filtering on this column. */
   filterable?: boolean;
-  /** Optional: A custom render function for the cell. */
   render?: (value: unknown, record: Row<T>, index: number) => ReactNode;
-  // ... and any other properties from your master Column<T> type.
   resizable?: boolean;
 }
 
@@ -55374,11 +53928,6 @@ interface UseDynamicColumnConfigOptions<T extends PublicTableOrViewName> {
   data?: Row<T>[];
 }
 
-/**
- * A hook that dynamically generates a detailed and type-safe column configuration array
- * that is fully compatible with the application's standard `Column<T>` interface.
- */
-// FIX: The hook is now fully generic for tables and views.
 export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
   tableName: T,
   options: UseDynamicColumnConfigOptions<T> = {}
@@ -55399,7 +53948,6 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
     []
   ); // Memoize once
 
-  // generate column widths dynamically
   const columnWidths = useMemo(() => {
     const widths: Record<string, number> = {};
     if (data.length > 0) {
@@ -55430,7 +53978,6 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         const columnOverride =
           (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
           {};
-        // console.log(key + ":" + columnWidths?.[key]);
         const defaultConfig: Column<Row<T>> = {
           title: toTitleCase(key),
           dataIndex: key,
@@ -55443,16 +53990,17 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
       });
   }, [tableName, overrides, omit, columnWidths]);
 
+
+
   return columns;
 }
 ```
 
-<!-- path: hooks/defaultUploadConfigs.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/defaultUploadConfigs.ts -->
 ```typescript
 import { TableNames } from "@/config/helper-types";
 import { buildUploadConfig, TABLES } from "@/constants/table-column-keys";
 
-// Thin adapter: build per-table upload config from SSOT
 const defaultUploadConfigs = () => {
   const result: Partial<
     Record<TableNames, ReturnType<typeof buildUploadConfig<TableNames>>>
@@ -55472,7 +54020,7 @@ export default defaultUploadConfigs;
 
 ```
 
-<!-- path: hooks/useDelete.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useDelete.ts -->
 ```typescript
 import { useState } from "react";
 import { useTableDelete } from "@/hooks/database";
@@ -55489,7 +54037,6 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
       onSuccess?.();
       setItemToDelete(null);
     },
-    // ** Add an onError handler to show a toast on failure.**
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
       setItemToDelete(null); // Clear the item even on failure
@@ -55522,9 +54069,8 @@ export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSu
 };
 ```
 
-<!-- path: hooks/useIsMobile.tsx -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useIsMobile.tsx -->
 ```typescript
-// hooks/useIsMobile.tsx
 import { useState, useEffect } from 'react';
 
 const useIsMobile = (breakpoint = 768) => {
@@ -55532,38 +54078,30 @@ const useIsMobile = (breakpoint = 768) => {
 
   useEffect(() => {
     const checkDevice = () => {
-      // Check screen width
       const isSmallScreen = window.innerWidth < breakpoint;
-
-      // Check user agent for mobile indicators
+      
       const userAgent = navigator.userAgent.toLowerCase();
       const mobileKeywords = [
-        'mobile', 'android', 'iphone', 'ipad', 'ipod',
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 
         'blackberry', 'windows phone', 'opera mini'
       ];
-      const isMobileAgent = mobileKeywords.some(keyword =>
+      const isMobileAgent = mobileKeywords.some(keyword => 
         userAgent.includes(keyword)
       );
-
-      // Check for touch capability
+      
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-      // Combine all checks - prioritize screen size but consider other factors
+      
       const mobile = isSmallScreen || (isMobileAgent && hasTouch);
-
+      
       setIsMobile(mobile);
     };
 
-    // Initial check
     checkDevice();
 
-    // Listen for resize events
     window.addEventListener('resize', checkDevice);
-
-    // Listen for orientation changes (mobile specific)
+    
     window.addEventListener('orientationchange', checkDevice);
 
-    // Cleanup
     return () => {
       window.removeEventListener('resize', checkDevice);
       window.removeEventListener('orientationchange', checkDevice);
@@ -55575,13 +54113,9 @@ const useIsMobile = (breakpoint = 768) => {
 
 export default useIsMobile;
 
-// Usage examples:
-// const isMobile = useIsMobile(); // Uses default 768px breakpoint
-// const isMobile = useIsMobile(1024); // Custom breakpoint
-// const isMobile = useIsMobile(480); // Smaller breakpoint for strict mobile-only
 ```
 
-<!-- path: package.json -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/package.json -->
 ```json
 {
   "name": "hnvtx",
@@ -55697,15 +54231,13 @@ export default useIsMobile;
 
 ```
 
-<!-- path: next.config.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/next.config.ts -->
 ```typescript
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     qualities: [25, 50, 75, 90, 100],
-    // **Add modern formats for automatic optimization**
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
@@ -55743,7 +54275,7 @@ export default nextConfig;
 
 ```
 
-<!-- path: eslint.config.mjs -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/eslint.config.mjs -->
 ```mjs
 import { dirname } from "path";
 import { fileURLToPath } from "url";
@@ -55758,359 +54290,10 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"],
-  },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-  {
-    rules: {
-      // '@typescript-eslint/no-explicit-any': 'warn',
-      "@typescript-eslint/no-unused-vars": "warn",
-      "react/no-unescaped-entities": "warn",
-    },
-  },
-];
 
-export default eslintConfig;
 
-```
-
-<!-- path: stores/themeStore.ts -->
-```typescript
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-
-export type Theme = "light" | "dark" | "system";
-
-interface ThemeState {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
-
-export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set) => ({
-      theme: "system", // Default value
-      setTheme: (newTheme: Theme) => {
-        set({ theme: newTheme });
-      },
-    }),
-    {
-      name: "theme-storage", // localStorage key
-      // **RECOMMENDATION: Add partialize to ensure consistent storage format**
-      partialize: (state) => ({ theme: state.theme }),
-    }
-  )
-);
-```
-
-<!-- path: stores/useUploadConfigStore.ts -->
-```typescript
-// src/stores/useUploadConfigStore.ts
-
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { PublicTableName} from "@/hooks/database/queries-type-helpers";
-import { Tables } from "@/types/supabase-types";
-
-type UploadableTableRow<T extends PublicTableName> = Tables<T>;
-
-export interface UploadColumnMapping<T extends PublicTableName> {
-  excelHeader: string;
-  dbKey: keyof UploadableTableRow<T> & string;
-  transform?: (value: unknown) => unknown;
-}
-
-export interface UploadConfig<T extends PublicTableName> {
-  tableName: T;
-  columnMapping: UploadColumnMapping<T>[];
-  uploadType: "insert" | "upsert";
-  conflictColumn?: keyof UploadableTableRow<T> & string;
-  isUploadEnabled: boolean;
-}
-
-interface UploadConfigState {
-  configs: Record<string, UploadConfig<PublicTableName>>;
-  setUploadConfig: <T extends PublicTableName>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<PublicTableName> | undefined;
-  clearUploadConfig: (pageKey: string) => void;
-}
-
-export const useUploadConfigStore = create<UploadConfigState>()(
-  persist(
-    devtools(
-      (set, get) => ({
-        configs: {},
-        setUploadConfig: (pageKey, config) => {
-          if (config?.uploadType === "upsert" && !config.conflictColumn) {
-            console.error(`UploadConfig Error...`);
-          }
-          set((state) => ({
-            configs: { ...state.configs, [pageKey]: config },
-          }));
-        },
-        getUploadConfig: (pageKey) => get().configs[pageKey],
-        clearUploadConfig: (pageKey) => {
-          set((state) => {
-            const newConfigs = { ...state.configs };
-            delete newConfigs[pageKey];
-            return { configs: newConfigs };
-          });
-        },
-      }),
-      { name: "UploadConfigStore" }
-    ),
-    { name: "upload-config-storage" }
-  )
-);
-```
-
-<!-- path: stores/authStore.ts -->
-```typescript
-// stores/authStore.ts
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { AuthError, User } from '@supabase/supabase-js';
-
-export type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
-
-interface AuthStore {
-  // Auth State
-  user: User | null;
-  authState: AuthState;
-
-  // Actions
-  setUser: (user: User | null) => void;
-  setAuthState: (state: AuthState) => void;
-  logout: () => void;
-
-  // Async action wrapper to handle loading states
-  executeWithLoading: <T>(action: () => Promise<T>) => Promise<T>;
-
-  // Getters
-  isLoading: () => boolean;
-  isAuthenticated: () => boolean;
-  getUserId: () => string | null;
-}
-
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    devtools(
-      (set, get) => ({
-        // Initial State
-        user: null,
-        authState: 'loading',
-
-        // Actions
-        setUser: (user) => {
-          // Only update if the user has actually changed
-          const currentUser = get().user;
-          if (user?.id !== currentUser?.id) {
-            set({
-              user,
-              authState: user ? 'authenticated' : 'unauthenticated',
-            });
-          }
-        },
-
-        setAuthState: (newAuthState) => {
-          // Only update if the state has actually changed
-          if (get().authState !== newAuthState) {
-            set({ authState: newAuthState });
-          }
-        },
-
-        logout: () => {
-          set({
-            user: null,
-            authState: 'unauthenticated',
-          });
-        },
-
-        executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-          const previousAuthState = get().authState;
-          if (previousAuthState !== 'loading') {
-            set({ authState: 'loading' });
-          }
-
-          try {
-            const result = await action();
-            // Only revert state if it's still loading, to avoid race conditions
-            // with onAuthStateChange listener.
-            if (get().authState === 'loading') {
-              const finalUser = get().user;
-              set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
-            }
-            return result;
-          } catch (error) {
-            // **REFINED ERROR HANDLING**
-            const isAuthError = error instanceof AuthError && error.status === 401;
-
-            if (isAuthError) {
-              // It's a real authentication error, so log the user out.
-              set({ authState: 'unauthenticated', user: null });
-            } else {
-              // It's a network or other error, revert to the previous state.
-              set({ authState: previousAuthState });
-            }
-            // Re-throw the error to be handled by the caller.
-            throw error;
-          }
-        },
-
-        // Getters
-        isLoading: () => {
-          return get().authState === 'loading';
-        },
-
-        isAuthenticated: () => {
-          const { user, authState } = get();
-          return user !== null && authState === 'authenticated';
-        },
-
-        getUserId: () => {
-          const { user } = get();
-          return user?.id || null;
-        },
-      }),
-      {
-        name: 'AuthenticationStore',
-      }
-    ),
-    {
-      name: 'auth-store',
-      partialize: (state) => ({
-        user: state.user,
-        authState: state.authState,
-      }),
-    }
-  )
-);
-
-```
-
-<!-- path: next-env.d.ts -->
-```typescript
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
-/// <reference path="./.next/types/routes.d.ts" />
-
-// NOTE: This file should not be edited
-// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
-
-```
-
-<!-- path: components.json -->
-```json
-{
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "new-york",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "app/globals.css",
-    "baseColor": "slate",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "iconLibrary": "lucide"
-}
-```
-
-<!-- path: utils/index.ts -->
-```typescript
-// Core utilities
-export { cn } from './classNames';
-export { default as formatters } from './formatters';
-export { default as validation } from './validationUtils';
-export * from './caseConverter';
-
-// Supabase
-export { createClient } from './supabase/server';
-export { createClient as createBrowserClient } from './supabase/client';
-
-```
-
-<!-- path: utils/classNames.tsx -->
-```typescript
-import clsx from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-interface CnFunction {
-    (...args: Parameters<typeof clsx>): string;
-}
-
-export const cn: CnFunction = (...args) => {
-    return twMerge(clsx(...args));
-};
-```
-
-<!-- path: utils/renderKeyValueCell.tsx -->
-```typescript
-import React, { JSX } from "react";
-
-export function renderKeyValueCell(value: unknown): JSX.Element {
-  let elements: JSX.Element[] = [];
-
-  if (value) {
-    try {
-      const parsedValue = typeof value === "string" ? JSON.parse(value) : value;
-
-      if (typeof parsedValue === "object" && parsedValue !== null) {
-        elements = Object.entries(parsedValue)
-          .filter(([_, val]) => val !== null && val !== undefined && val !== "")
-          .map(([key, val]) => (
-            <div key={key} className='flex text-sm text-gray-500'>
-              <span className='font-medium mr-1'>{key}:</span>
-              <span>{String(val)}</span>
-            </div>
-          ));
-      } else {
-        elements = [
-          <div key='single' className='text-sm text-gray-500'>
-            {String(parsedValue)}
-          </div>,
-        ];
-      }
-    } catch (error) {
-      elements = [
-        <div key='error' className='text-sm text-gray-500'>
-          {String(value)}
-        </div>,
-      ];
-    }
-  }
-
-  return elements.length > 0 ? <div className='text-sm text-gray-500'>{elements}</div> : <div className='text-sm text-gray-500'>N/A</div>;
-}
-
-```
-
-<!-- path: utils/caseConverter.ts -->
-```typescript
-/**
- * Type-safe case conversion utilities for JavaScript objects
- * Supports deep nested objects and arrays with proper TypeScript inference
- */
-
-// === TYPE DEFINITIONS ===
-
-/**
- * Primitive values that don't need transformation
- * Note: Functions are treated as primitives and returned as-is
- */
 type Primitive = string | number | boolean | null | undefined | Date | RegExp;
 
-/**
- * Check if a value is a plain object (not Date, Array, etc.)
- */
 type IsPlainObject<T> = T extends Primitive
   ? false
   : T extends readonly unknown[]
@@ -56119,9 +54302,6 @@ type IsPlainObject<T> = T extends Primitive
   ? true
   : false;
 
-/**
- * Transform object keys while preserving type structure
- */
 type TransformKeys<T, U extends string> = T extends Primitive
   ? T
   : T extends readonly (infer Item)[]
@@ -56132,7 +54312,6 @@ type TransformKeys<T, U extends string> = T extends Primitive
     }
   : T;
 
-// Case transformation type mappings
 type CamelCase<S extends string> = S extends `${infer P1}_${infer P2}`
   ? `${P1}${Capitalize<CamelCase<P2>>}`
   : S;
@@ -56159,11 +54338,7 @@ type ScreamingSnakeCase<S extends string> = Uppercase<
     : S
 >;
 
-// === UTILITY FUNCTIONS ===
 
-/**
- * Type guard to check if a value is a plain object
- */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
     value !== null &&
@@ -56175,9 +54350,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
-/**
- * Type guard to check if a value is primitive
- */
 function isPrimitive(value: unknown): value is Primitive {
   return (
     value === null ||
@@ -56191,33 +54363,20 @@ function isPrimitive(value: unknown): value is Primitive {
   );
 }
 
-// === KEY TRANSFORMATION FUNCTIONS ===
 
-/**
- * Convert string to camelCase
- */
 function toCamelCaseKey(key: string): string {
   return key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 }
 
-/**
- * Convert string to snake_case
- */
 function toSnakeCaseKey(key: string): string {
   return key.replace(/[A-Z]/g, (letter: string) => `_${letter.toLowerCase()}`);
 }
 
-/**
- * Convert string to PascalCase
- */
 function toPascalCaseKey(key: string): string {
   const camelKey = toCamelCaseKey(key);
   return camelKey.charAt(0).toUpperCase() + camelKey.slice(1);
 }
 
-/**
- * Convert string to kebab-case
- */
 function toKebabCaseKey(key: string): string {
   return key
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
@@ -56225,9 +54384,6 @@ function toKebabCaseKey(key: string): string {
     .toLowerCase();
 }
 
-/**
- * Convert string to SCREAMING_SNAKE_CASE
- */
 function toScreamingSnakeCaseKey(key: string): string {
   return key
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
@@ -56235,16 +54391,9 @@ function toScreamingSnakeCaseKey(key: string): string {
     .toUpperCase();
 }
 
-// === GENERIC CONVERTER FACTORY ===
 
-/**
- * Key transformation function type
- */
 type KeyTransformer = (key: string) => string;
 
-/**
- * Creates a type-safe object converter function
- */
 function createConverter<T extends KeyTransformer>(transformer: T) {
   function convert<TInput>(input: TInput): TransformKeys<TInput, string> {
     if (isPrimitive(input)) {
@@ -56257,12 +54406,12 @@ function createConverter<T extends KeyTransformer>(transformer: T) {
 
     if (isPlainObject(input)) {
       const result: Record<string, unknown> = {};
-
+      
       for (const [key, value] of Object.entries(input)) {
         const transformedKey = transformer(key);
         result[transformedKey] = convert(value);
       }
-
+      
       return result as TransformKeys<TInput, string>;
     }
 
@@ -56272,87 +54421,20 @@ function createConverter<T extends KeyTransformer>(transformer: T) {
   return convert;
 }
 
-// === EXPORTED CONVERTERS ===
 
-/**
- * Converts object keys to camelCase
- *
- * @example
- * ```typescript
- * const input = { user_name: 'John', user_age: 30 };
- * const output = toCamelCase(input);
- * // Result: { userName: 'John', userAge: 30 }
- * ```
- */
 export const toCamelCase = createConverter(toCamelCaseKey);
 
-/**
- * Converts object keys to snake_case
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toSnakeCase(input);
- * // Result: { user_name: 'John', user_age: 30 }
- * ```
- */
 export const toSnakeCase = createConverter(toSnakeCaseKey);
 
-/**
- * Converts object keys to PascalCase
- *
- * @example
- * ```typescript
- * const input = { user_name: 'John', user_age: 30 };
- * const output = toPascalCase(input);
- * // Result: { UserName: 'John', UserAge: 30 }
- * ```
- */
 export const toPascalCase = createConverter(toPascalCaseKey);
 
-/**
- * Converts object keys to kebab-case
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toKebabCase(input);
- * // Result: { 'user-name': 'John', 'user-age': 30 }
- * ```
- */
 export const toKebabCase = createConverter(toKebabCaseKey);
 
-/**
- * Converts object keys to SCREAMING_SNAKE_CASE
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toScreamingSnakeCase(input);
- * // Result: { USER_NAME: 'John', USER_AGE: 30 }
- * ```
- */
 export const toScreamingSnakeCase = createConverter(toScreamingSnakeCaseKey);
 
-// === ADVANCED USAGE ===
 
-/**
- * Creates a custom converter with a user-defined transformation function
- *
- * @param transformer - Function that transforms a single key
- * @returns A converter function that applies the transformation recursively
- *
- * @example
- * ```typescript
- * const addPrefix = createCustomConverter(key => `prefix_${key}`);
- * const input = { name: 'John', age: 30 };
- * const output = addPrefix(input);
- * // Result: { prefix_name: 'John', prefix_age: 30 }
- * ```
- */
 export const createCustomConverter = createConverter;
 
-// === TYPE EXPORTS FOR ADVANCED USAGE ===
 
 export type {
   TransformKeys,
@@ -56366,65 +54448,14 @@ export type {
   IsPlainObject
 };
 
-// === USAGE EXAMPLES ===
 
-/**
- * Example usage with Supabase or similar database libraries
- *
- * @example
- * ```typescript
- * interface UserProfile {
- *   id: string;
- *   firstName: string;
- *   lastName: string;
- *   createdAt: Date;
- * }
- *
- * // Converting from database (snake_case) to frontend (camelCase)
- * const { data } = await supabase.from('user_profiles').select('*');
- * const profiles: UserProfile[] = data?.map(toCamelCase) ?? [];
- *
- * // Converting from frontend (camelCase) to database (snake_case)
- * const newProfile: Partial<UserProfile> = {
- *   firstName: 'John',
- *   lastName: 'Doe'
- * };
- * await supabase.from('user_profiles').insert(toSnakeCase(newProfile));
- * ```
- */
 
-/**
- * Example with nested objects and arrays
- *
- * @example
- * ```typescript
- * const complexData = {
- *   user_profile: {
- *     personal_info: {
- *       first_name: 'Jane',
- *       last_name: 'Smith'
- *     },
- *     contact_methods: [
- *       { method_type: 'email', contact_value: 'jane@example.com' },
- *       { method_type: 'phone', contact_value: '+1234567890' }
- *     ]
- *   },
- *   created_at: new Date(),
- *   is_active: true
- * };
- *
- * const camelCaseData = toCamelCase(complexData);
- * // TypeScript knows the exact shape of the result!
- * // camelCaseData.userProfile.personalInfo.firstName is properly typed
- * ```
- */
 ```
 
-<!-- path: utils/getNodeIcons.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/getNodeIcons.ts -->
 ```typescript
 import L from "leaflet";
 
-// --- ICONS ---
 export const MaanIcon = L.icon({ iconUrl: "/images/switch_image.png", iconSize: [40, 40], iconAnchor: [20, 20] });
 export const BTSIcon = L.icon({ iconUrl: "/images/bts_image.png", iconSize: [40, 40], iconAnchor: [20, 20] });
 export const BTSRLIcon = L.icon({ iconUrl: "/images/bts_rl_image.png", iconSize: [40, 40], iconAnchor: [20, 20] });
@@ -56442,11 +54473,9 @@ export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: 
   };
 ```
 
-<!-- path: utils/distance.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/distance.ts -->
 ```typescript
-// utils/distance.ts
 
-// Straight-Line Distance (Haversine Formula)
 export function haversineDistance(
     lat1: number,
     lon1: number,
@@ -56456,20 +54485,21 @@ export function haversineDistance(
     const R = 6371; // Radius of the Earth in km
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-
+  
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * (Math.PI / 180)) *
         Math.cos(lat2 * (Math.PI / 180)) *
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
-
+  
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
+
 ```
 
-<!-- path: utils/hashPassword.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/hashPassword.ts -->
 ```typescript
 import bcrypt from "bcrypt";
 
@@ -56480,10 +54510,8 @@ export async function hashPassword(password: string) {
 
 ```
 
-<!-- path: utils/zod-validation.config.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/zod-validation.config.ts -->
 ```typescript
-// path: utils/zod-validation.config.ts
-// Configuration for smart Zod validation rules
 export interface ValidationConfig {
   stringRules: StringValidationRule[];
   numberRules: NumberValidationRule[];
@@ -56518,7 +54546,6 @@ export const defaultValidationConfig: ValidationConfig = {
     },
     {
       fieldPatterns: ['encrypted_password'],
-      // validation: 'z.string().min(1, "Password cannot be empty")',
       validation: `z.string()
         .min(6, "Password must be at least 6 characters long")
         .max(50, "Password must not exceed 50 characters")
@@ -56692,14 +54719,9 @@ export function loadValidationConfig(): ValidationConfig {
 
 ```
 
-<!-- path: utils/formatters.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/formatters.ts -->
 ```typescript
-/**
- * Professional data formatting utility library
- * Provides comprehensive formatting functions with optimizations and error handling
- */
 
-// Types and interfaces
 export interface NumberFormatOptions extends Intl.NumberFormatOptions {
   locale?: string;
 }
@@ -56725,10 +54747,8 @@ export interface ValidationError {
   code?: string;
 }
 
-// Performance optimizations - cached formatters
 const formattersCache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>();
 
-// Overloaded function signatures for type safety
 function getCachedFormatter(
   type: 'number',
   locale: string,
@@ -56750,7 +54770,7 @@ function getCachedFormatter(
   options: Intl.NumberFormatOptions | Intl.DateTimeFormatOptions | Intl.ListFormatOptions
 ): Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat {
   const key = `${type}-${locale}-${JSON.stringify(options)}`;
-
+  
   if (!formattersCache.has(key)) {
     let formatter: Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat;
     switch (type) {
@@ -56768,17 +54788,13 @@ function getCachedFormatter(
     }
     formattersCache.set(key, formatter);
   }
-
+  
   return formattersCache.get(key)!;
 }
 
 // =============================================================================
-// NUMBER FORMATTERS
 // =============================================================================
 
-/**
- * Format a number with locale-aware formatting
- */
 export const formatNumber = (
   num: number,
   options: NumberFormatOptions = {}
@@ -56789,13 +54805,10 @@ export const formatNumber = (
 
   const { locale = 'en-US', ...intlOptions } = options;
   const formatter = getCachedFormatter('number', locale, intlOptions);
-
+  
   return formatter.format(num);
 };
 
-/**
- * Format a number as currency
- */
 export const formatCurrency = (
   amount: number,
   currency: string = 'USD',
@@ -56810,9 +54823,6 @@ export const formatCurrency = (
   });
 };
 
-/**
- * Format a number as percentage
- */
 export const formatPercentage = (
   value: number,
   decimals: number = 1,
@@ -56826,9 +54836,6 @@ export const formatPercentage = (
   });
 };
 
-/**
- * Format a score with optional fraction display
- */
 export const formatScore = (
   score: number,
   total: number,
@@ -56839,22 +54846,19 @@ export const formatScore = (
   } = {}
 ): string => {
   const { showFraction = true, decimals = 1, locale = 'en-US' } = options;
-
+  
   if (total <= 0) {
     return showFraction ? `${score}/0 (0%)` : '0%';
   }
 
   const percentage = (score / total) * 100;
   const formattedPercentage = formatPercentage(percentage, decimals, locale);
-
-  return showFraction
+  
+  return showFraction 
     ? `${formatNumber(score, { locale })}/${formatNumber(total, { locale })} (${formattedPercentage})`
     : formattedPercentage;
 };
 
-/**
- * Format file size in human-readable format
- */
 export const formatFileSize = (
   bytes: number,
   options: {
@@ -56864,19 +54868,19 @@ export const formatFileSize = (
   } = {}
 ): string => {
   const { binary = false, decimals = 2, locale = 'en-US' } = options;
-
+  
   if (bytes === 0) return '0 B';
   if (!Number.isFinite(bytes) || bytes < 0) return 'Invalid size';
 
   const base = binary ? 1024 : 1000;
-  const sizes = binary
-    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+  const sizes = binary 
+    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'] 
     : ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-
+  
   const i = Math.floor(Math.log(bytes) / Math.log(base));
   const size = bytes / Math.pow(base, i);
-
-  return `${formatNumber(size, {
+  
+  return `${formatNumber(size, { 
     locale,
     minimumFractionDigits: i === 0 ? 0 : decimals,
     maximumFractionDigits: i === 0 ? 0 : decimals
@@ -56884,30 +54888,23 @@ export const formatFileSize = (
 };
 
 // =============================================================================
-// STRING FORMATTERS
 // =============================================================================
 
-/**
- * Convert string to title case with smart handling
- */
 export const toTitleCase = (
   str: string,
   options: StringCaseOptions = {}
 ): string => {
   if (!str) return '';
-
+  
   const { preserveAcronyms = true } = options;
-
-  // Common words that should remain lowercase in titles
+  
   const articles = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet']);
-
+  
   return str
     .toLowerCase()
     .split(/\s+/)
     .map((word, index) => {
-      // Always capitalize first and last word
       if (index === 0 || !articles.has(word)) {
-        // Preserve acronyms if option is set
         if (preserveAcronyms && word.toUpperCase() === word && word.length <= 4) {
           return word.toUpperCase();
         }
@@ -56918,59 +54915,41 @@ export const toTitleCase = (
     .join(' ');
 };
 
-/**
- * Convert snake_case to Title Case
- */
 export const snakeToTitleCase = (str: string): string => {
   if (!str) return '';
-
+  
   return str
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
 
-/**
- * Convert camelCase to kebab-case
- */
 export const camelToKebab = (str: string): string => {
   if (!str) return '';
-
+  
   return str
     .replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2')
     .toLowerCase();
 };
 
-/**
- * Convert kebab-case to camelCase
- */
 export const kebabToCamel = (str: string): string => {
   if (!str) return '';
-
+  
   return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
-/**
- * Convert snake_case to camelCase
- */
 export const snakeToCamel = (str: string): string => {
   if (!str) return '';
-
+  
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
-/**
- * Convert camelCase to snake_case
- */
 export const camelToSnake = (str: string): string => {
   if (!str) return '';
-
+  
   return str.replace(/([A-Z])/g, '_$1').toLowerCase();
 };
 
-/**
- * Create URL-friendly slug from text
- */
 export const createSlug = (
   text: string,
   options: {
@@ -56980,30 +54959,27 @@ export const createSlug = (
   } = {}
 ): string => {
   const { maxLength = 50, separator = '-', lowercase = true } = options;
-
+  
   if (!text) return '';
-
+  
   let slug = text
     .trim()
     .replace(/[^\w\s-]/g, '') // Remove special characters
     .replace(/\s+/g, separator) // Replace spaces with separator
     .replace(new RegExp(`${separator}+`, 'g'), separator) // Replace multiple separators
     .replace(new RegExp(`^${separator}|${separator}$`, 'g'), ''); // Remove leading/trailing separators
-
+  
   if (lowercase) {
     slug = slug.toLowerCase();
   }
-
+  
   if (maxLength && slug.length > maxLength) {
     slug = slug.substring(0, maxLength).replace(new RegExp(`${separator}$`), '');
   }
-
+  
   return slug;
 };
 
-/**
- * Truncate text with smart word boundaries
- */
 export const truncateText = (
   text: string,
   maxLength: number,
@@ -57013,16 +54989,16 @@ export const truncateText = (
   } = {}
 ): string => {
   const { suffix = '...', preserveWords = true } = options;
-
+  
   if (!text || text.length <= maxLength) return text;
-
+  
   if (!preserveWords) {
     return text.substring(0, maxLength - suffix.length) + suffix;
   }
-
+  
   const words = text.split(' ');
   let truncated = '';
-
+  
   for (const word of words) {
     const nextText = truncated ? `${truncated} ${word}` : word;
     if (nextText.length > maxLength - suffix.length) {
@@ -57030,17 +55006,13 @@ export const truncateText = (
     }
     truncated = nextText;
   }
-
+  
   return truncated ? truncated + suffix : text.substring(0, maxLength - suffix.length) + suffix;
 };
 
 // =============================================================================
-// CONTACT INFORMATION FORMATTERS
 // =============================================================================
 
-/**
- * Format user name with various display options
- */
 export const formatUserName = (
   firstName: string,
   lastName: string,
@@ -57048,9 +55020,9 @@ export const formatUserName = (
 ): string => {
   const first = firstName?.trim() || '';
   const last = lastName?.trim() || '';
-
+  
   if (!first && !last) return '';
-
+  
   switch (format) {
     case 'full':
       return `${first} ${last}`.trim();
@@ -57065,19 +55037,16 @@ export const formatUserName = (
   }
 };
 
-/**
- * Format phone number with international support
- */
 export const formatPhoneNumber = (
   phone: string,
   options: PhoneFormatOptions = {}
 ): string => {
   const { format = 'US' } = options;
-
+  
   if (!phone) return '';
-
+  
   const cleaned = phone.replace(/\D/g, '');
-
+  
   switch (format) {
     case 'US':
       if (cleaned.length === 10) {
@@ -57087,7 +55056,7 @@ export const formatPhoneNumber = (
         return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
       }
       break;
-
+      
     case 'E164':
       if (cleaned.length === 10) {
         return `+1${cleaned}`;
@@ -57096,34 +55065,26 @@ export const formatPhoneNumber = (
         return `+${cleaned}`;
       }
       break;
-
+      
     case 'international':
-      // Basic international formatting - could be expanded
       if (cleaned.length >= 10) {
         return `+${cleaned}`;
       }
       break;
   }
-
+  
   return phone; // Return original if can't format
 };
 
-/**
- * Format email address (basic validation and normalization)
- */
 export const formatEmail = (email: string): string => {
   if (!email) return '';
-
+  
   return email.trim().toLowerCase();
 };
 
 // =============================================================================
-// DATE AND TIME FORMATTERS
 // =============================================================================
 
-/**
- * Format date with locale support
- */
 type FormatDateOptions = Intl.DateTimeFormatOptions & {
   locale?: string;
   format?: 'short' | 'medium' | 'long' | 'full' | 'ddmmyyyy' | 'yyyy-mm-dd' | 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'dd MMM yyyy' | 'dd-mm-yyyy';
@@ -57155,7 +55116,6 @@ export const formatDate = (
   } = options;
 
   try {
-    // Pre-validate string inputs before creating Date object
     if (typeof date === 'string') {
       const trimmed = date.trim();
       if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
@@ -57164,13 +55124,11 @@ export const formatDate = (
     }
 
     const dateObj = new Date(date);
-
-    // Check for invalid dates (NaN) or suspicious Unix epoch dates
+    
     if (isNaN(dateObj.getTime()) || isSuspiciousUnixEpoch(date, dateObj)) {
       return 'No Date';
     }
 
-    // Handle custom string formats
     if (typeof format === 'string') {
       const day = dateObj.getDate().toString().padStart(2, '0');
       const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
@@ -57191,11 +55149,9 @@ export const formatDate = (
           return `${month}/${day}/${year}`;
         case 'dd MMM yyyy':
           return `${day} ${monthName} ${year}`;
-        // Fall through to Intl formats below
       }
     }
 
-    // Use Intl for short/medium/long/full/custom Intl options
     const mergedOptions = {
       ...(format && DATE_FORMATS[format as keyof typeof DATE_FORMATS]),
       ...intlOptions,
@@ -57208,84 +55164,66 @@ export const formatDate = (
   }
 };
 
-/**
- * Detects if we got Unix epoch from invalid input that was coerced
- * This is very aggressive - assumes most Unix epoch dates are from invalid coercion
- */
 function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: Date): boolean {
   const time = dateObj.getTime();
   const isUnixEpoch = time === 0; // January 1, 1970 00:00:00 UTC
-
+  
   if (!isUnixEpoch) return false;
-
-  // If input is a Date object that's already Unix epoch, it might be valid
+  
   if (originalInput instanceof Date) {
     return false;
   }
-
-  // If input is exactly the number 0, it's intentional
+  
   if (originalInput === 0) {
     return false;
   }
-
-  // For any other number, if it results in Unix epoch, it's suspicious
+  
   if (typeof originalInput === 'number') {
     return true;
   }
-
-  // For strings - be VERY strict. Most Unix epoch results from strings are invalid
+  
   if (typeof originalInput === 'string') {
     const trimmed = originalInput.trim();
-
-    // Only these exact strings are considered valid Unix epoch
+    
     const validUnixEpochStrings = [
       '0',
       '1970-01-01',
       '01/01/1970',
-      '1/1/1970',
+      '1/1/1970', 
       '01-01-1970',
       '1970-01-01T00:00:00.000Z',
       '1970-01-01T00:00:00Z'
     ];
-
-    // Exact match only - no partial matches
-    const isExactMatch = validUnixEpochStrings.includes(trimmed) ||
+    
+    const isExactMatch = validUnixEpochStrings.includes(trimmed) || 
                         validUnixEpochStrings.includes(trimmed.toLowerCase());
-
-    // If it's not an exact match but resulted in Unix epoch, it's from invalid input
+    
     return !isExactMatch;
   }
-
-  // Default to suspicious for any other type
+  
   return true;
 }
 
 
-/**
- * Format time range
- */
 export const formatTimeRange = (
   startTime: Date | string,
   endTime: Date | string,
   options: Intl.DateTimeFormatOptions & { locale?: string } = {}
 ): string => {
   const { locale = 'en-US', ...intlOptions } = options;
-
+  
   const formatOptions = {
     hour: 'numeric' as const,
     minute: '2-digit' as const,
     ...intlOptions
   };
-
+  
   const start = formatDate(startTime, { locale, ...formatOptions });
   const end = formatDate(endTime, { locale, ...formatOptions });
-
+  
   return `${start} - ${end}`;
 };
 
-/**
- * Format relative time (e.g., "2 hours ago")
- */
 export const formatRelativeTime = (
   date: Date | string | number,
   locale: string = 'en-US'
@@ -57298,13 +55236,12 @@ export const formatRelativeTime = (
     const diffMin = Math.floor(diffSec / 60);
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
-
+    
     if (diffSec < 60) return 'just now';
     if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
     if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
     if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
-
-    // For older dates, return formatted date
+    
     return formatDate(dateObj, { locale, dateStyle: 'medium' });
   } catch {
     return 'No Date';
@@ -57312,50 +55249,42 @@ export const formatRelativeTime = (
 };
 
 // =============================================================================
-// LIST AND ARRAY FORMATTERS
 // =============================================================================
 
-/**
- * Format array as a grammatically correct list
- */
 export const formatList = (
   items: (string | number)[],
   options: ListFormatOptions & { locale?: string } = {}
 ): string => {
   const { locale = 'en-US', conjunction = 'and', ...intlOptions } = options;
-
+  
   if (!Array.isArray(items) || items.length === 0) return '';
-
+  
   const stringItems = items.map(String).filter(Boolean);
-
+  
   if (stringItems.length === 0) return '';
   if (stringItems.length === 1) return stringItems[0];
-
+  
   try {
     const listFormatOptions: Intl.ListFormatOptions = {
       style: 'long',
       type: conjunction === 'or' ? 'disjunction' : 'conjunction',
       ...intlOptions
     };
-
+    
     const formatter = getCachedFormatter('list', locale, listFormatOptions);
-
+    
     return formatter.format(stringItems);
   } catch {
-    // Fallback for older browsers
     if (stringItems.length === 2) {
       return `${stringItems[0]} ${conjunction} ${stringItems[1]}`;
     }
-
+    
     const lastItem = stringItems[stringItems.length - 1];
     const otherItems = stringItems.slice(0, -1);
     return `${otherItems.join(', ')}, ${conjunction} ${lastItem}`;
   }
 };
 
-/**
- * Format array with truncation support
- */
 export const formatArrayWithLimit = (
   items: (string | number)[],
   options: {
@@ -57366,28 +55295,24 @@ export const formatArrayWithLimit = (
   } = {}
 ): string => {
   const { maxItems = 5, moreText = 'more', conjunction = 'and', locale = 'en-US' } = options;
-
+  
   if (!Array.isArray(items) || items.length === 0) return '';
-
+  
   const stringItems = items.map(String).filter(Boolean);
-
+  
   if (stringItems.length <= maxItems) {
     return formatList(stringItems, { conjunction, locale });
   }
-
+  
   const visibleItems = stringItems.slice(0, maxItems);
   const remainingCount = stringItems.length - maxItems;
-
+  
   return `${formatList(visibleItems, { conjunction, locale })} and ${remainingCount} ${moreText}`;
 };
 
 // =============================================================================
-// ERROR AND VALIDATION FORMATTERS
 // =============================================================================
 
-/**
- * Format error messages consistently
- */
 export const formatErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') return error;
   if (error instanceof Error) return error.message;
@@ -57402,9 +55327,6 @@ export const formatErrorMessage = (error: unknown): string => {
   return 'An unexpected error occurred';
 };
 
-/**
- * Format validation errors with field names
- */
 export const formatValidationErrors = (
   errors: ValidationError[] | Record<string, string>
 ): string[] => {
@@ -57413,31 +55335,24 @@ export const formatValidationErrors = (
       .filter(error => error.message?.trim())
       .map(error => `${toTitleCase(error.field.replace(/([A-Z])/g, ' $1'))}: ${error.message}`);
   }
-
+  
   return Object.entries(errors)
     .filter(([, message]) => message?.trim())
     .map(([field, message]) => `${toTitleCase(field.replace(/([A-Z])/g, ' $1'))}: ${message}`);
 };
 
 // =============================================================================
-// SEARCH AND UTILITY FORMATTERS
 // =============================================================================
 
-/**
- * Normalize search query
- */
 export const normalizeSearchQuery = (query: string): string => {
   if (!query) return '';
-
+  
   return query
     .trim()
     .replace(/\s+/g, ' ') // Replace multiple spaces with single space
     .toLowerCase();
 };
 
-/**
- * Highlight search terms in text
- */
 export const highlightSearchTerms = (
   text: string,
   searchTerms: string | string[],
@@ -57448,40 +55363,37 @@ export const highlightSearchTerms = (
   } = {}
 ): string => {
   const { className = 'highlight', caseSensitive = false, wholeWords = false } = options;
-
+  
   if (!text || !searchTerms) return text;
-
+  
   const terms = Array.isArray(searchTerms) ? searchTerms : [searchTerms];
   const flags = caseSensitive ? 'g' : 'gi';
-
+  
   let result = text;
-
+  
   terms.forEach(term => {
     if (!term.trim()) return;
-
+    
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const pattern = wholeWords ? `\\b${escapedTerm}\\b` : escapedTerm;
     const regex = new RegExp(pattern, flags);
-
+    
     result = result.replace(regex, `<span class="${className}">$&</span>`);
   });
-
+  
   return result;
 };
 
 // =============================================================================
-// EXPORTS
 // =============================================================================
 
 const formatters = {
-  // Numbers
   formatNumber,
   formatCurrency,
   formatPercentage,
   formatScore,
   formatFileSize,
-
-  // Strings
+  
   toTitleCase,
   snakeToTitleCase,
   camelToKebab,
@@ -57490,26 +55402,21 @@ const formatters = {
   camelToSnake,
   createSlug,
   truncateText,
-
-  // Contact
+  
   formatUserName,
   formatPhoneNumber,
   formatEmail,
-
-  // Dates
+  
   formatDate,
   formatTimeRange,
   formatRelativeTime,
-
-  // Lists
+  
   formatList,
   formatArrayWithLimit,
-
-  // Errors
+  
   formatErrorMessage,
   formatValidationErrors,
-
-  // Search
+  
   normalizeSearchQuery,
   highlightSearchTerms,
 };
@@ -57517,14 +55424,9 @@ const formatters = {
 export default formatters;
 ```
 
-<!-- path: utils/validationUtils.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/validationUtils.ts -->
 ```typescript
-/**
- * Enhanced Validation Utility Functions
- * Improved security, robustness, and modern best practices
- */
 
-// Types for better type safety
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
@@ -57546,23 +55448,19 @@ export interface PasswordOptions {
   maxLength?: number;
 }
 
-// Enhanced email validation with more comprehensive regex
 export const isValidEmail = (email: string): boolean => {
   if (!email || typeof email !== 'string') return false;
-
-  // More comprehensive email regex following RFC 5322 guidelines
+  
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-
-  // Additional checks
+  
   if (email.length > 254) return false; // RFC 5321 limit
   if (email.includes('..')) return false; // Consecutive dots not allowed
-
+  
   return emailRegex.test(email.trim().toLowerCase());
 };
 
-// Enhanced password validation with configurable options
 export const validatePassword = (
-  password: string,
+  password: string, 
   options: PasswordOptions = {}
 ): ValidationResult => {
   const {
@@ -57575,7 +55473,7 @@ export const validatePassword = (
   } = options;
 
   const errors: string[] = [];
-
+  
   if (!password || typeof password !== 'string') {
     errors.push('Password is required');
     return { isValid: false, errors };
@@ -57588,24 +55486,23 @@ export const validatePassword = (
   if (password.length > maxLength) {
     errors.push(`Password must be no more than ${maxLength} characters long`);
   }
-
+  
   if (requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('Password must contain at least one uppercase letter');
   }
-
+  
   if (requireLowercase && !/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
   }
-
+  
   if (requireNumbers && !/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
-
+  
   if (requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>_+=\-\[\]\\;'\/~`]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
 
-  // Check for common weak patterns
   if (password.toLowerCase().includes('password')) {
     errors.push('Password cannot contain the word "password"');
   }
@@ -57620,29 +55517,22 @@ export const validatePassword = (
   };
 };
 
-// Enhanced phone number validation with country code support
 export const isValidPhoneNumber = (phone: string, countryCode?: string): boolean => {
   if (!phone || typeof phone !== 'string') return false;
-
-  // Remove all non-digit characters except +
+  
   const cleanPhone = phone.replace(/[^\d+]/g, '');
-
-  // Basic international format validation
+  
   if (countryCode === 'US') {
-    // US phone number: 10 digits
     const usPhoneRegex = /^(\+1)?[2-9]\d{2}[2-9]\d{2}\d{4}$/;
     return usPhoneRegex.test(cleanPhone);
   }
-
-  // International format: + followed by 1-15 digits
+  
   const intlPhoneRegex = /^\+[1-9]\d{1,14}$/;
-  // National format: 7-15 digits
   const nationalPhoneRegex = /^[1-9]\d{6,14}$/;
-
+  
   return intlPhoneRegex.test(cleanPhone) || nationalPhoneRegex.test(cleanPhone);
 };
 
-// Enhanced name validation
 export const isValidName = (name: string, options: { minLength?: number; maxLength?: number } = {}): ValidationResult => {
   const { minLength = 2, maxLength = 50 } = options;
   const errors: string[] = [];
@@ -57653,21 +55543,19 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
   }
 
   const trimmedName = name.trim();
-
+  
   if (trimmedName.length < minLength) {
     errors.push(`Name must be at least ${minLength} characters long`);
   }
-
+  
   if (trimmedName.length > maxLength) {
     errors.push(`Name must be no more than ${maxLength} characters long`);
   }
 
-  // Allow letters, spaces, hyphens, apostrophes, and common international characters
   if (!/^[a-zA-ZÀ-ÿ\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF\s\-'\.]+$/.test(trimmedName)) {
     errors.push('Name can only contain letters, spaces, hyphens, and apostrophes');
   }
 
-  // Prevent excessive consecutive spaces or special characters
   if (/\s{2,}/.test(trimmedName) || /[\-'\.]{2,}/.test(trimmedName)) {
     errors.push('Name cannot contain consecutive spaces or special characters');
   }
@@ -57678,31 +55566,27 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
   };
 };
 
-// Enhanced URL validation
 export const isValidUrl = (url: string, options: { allowedProtocols?: string[] } = {}): boolean => {
   if (!url || typeof url !== 'string') return false;
-
+  
   const { allowedProtocols = ['http:', 'https:'] } = options;
-
+  
   try {
     const parsedUrl = new URL(url.trim());
-
-    // Check if protocol is allowed
+    
     if (!allowedProtocols.includes(parsedUrl.protocol)) {
       return false;
     }
-
-    // Additional security checks
+    
     if (parsedUrl.hostname === '') return false;
     if (parsedUrl.hostname.includes('..')) return false;
-
+    
     return true;
   } catch {
     return false;
   }
 };
 
-// Enhanced required field validation with better type checking
 export const isRequired = (value: unknown): boolean => {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return value.trim().length > 0;
@@ -57713,10 +55597,9 @@ export const isRequired = (value: unknown): boolean => {
   return Boolean(value);
 };
 
-// Enhanced numeric validation
 export const isValidNumber = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-
+  
   let num: number;
   if (typeof value === 'string') {
     num = parseFloat(value.trim());
@@ -57726,16 +55609,16 @@ export const isValidNumber = (value: unknown, min?: number, max?: number): Valid
     errors.push('Value must be a number');
     return { isValid: false, errors };
   }
-
+  
   if (isNaN(num) || !isFinite(num)) {
     errors.push('Value must be a valid number');
     return { isValid: false, errors };
   }
-
+  
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-
+  
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
@@ -57746,10 +55629,9 @@ export const isValidNumber = (value: unknown, min?: number, max?: number): Valid
   };
 };
 
-// Enhanced integer validation
 export const isValidInteger = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-
+  
   let num: number;
   if (typeof value === 'string') {
     num = parseInt(value.trim(), 10);
@@ -57759,16 +55641,16 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
     errors.push('Value must be an integer');
     return { isValid: false, errors };
   }
-
+  
   if (isNaN(num) || !Number.isInteger(num)) {
     errors.push('Value must be a valid integer');
     return { isValid: false, errors };
   }
-
+  
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-
+  
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
@@ -57779,25 +55661,22 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
   };
 };
 
-// Enhanced time validation with format options
 export const isValidTime = (time: string, format: '12' | '24' = '24'): ValidationResult => {
   const errors: string[] = [];
-
+  
   if (!time || typeof time !== 'string') {
     errors.push('Time is required');
     return { isValid: false, errors };
   }
 
   const trimmedTime = time.trim();
-
+  
   if (format === '24') {
-    // 24-hour format: HH:MM or HH:MM:SS
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
     if (!timeRegex.test(trimmedTime)) {
       errors.push('Time must be in HH:MM or HH:MM:SS format (24-hour)');
     }
   } else {
-    // 12-hour format: HH:MM AM/PM
     const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$/;
     if (!timeRegex.test(trimmedTime)) {
       errors.push('Time must be in HH:MM AM/PM format');
@@ -57810,12 +55689,11 @@ export const isValidTime = (time: string, format: '12' | '24' = '24'): Validatio
   };
 };
 
-// Enhanced date validation
 export const isValidDate = (date: string | Date): ValidationResult => {
   const errors: string[] = [];
-
+  
   let parsedDate: Date;
-
+  
   if (date instanceof Date) {
     parsedDate = date;
   } else if (typeof date === 'string') {
@@ -57828,12 +55706,11 @@ export const isValidDate = (date: string | Date): ValidationResult => {
     errors.push('Date must be a string or Date object');
     return { isValid: false, errors };
   }
-
+  
   if (isNaN(parsedDate.getTime())) {
     errors.push('Invalid date format');
   }
 
-  // Check for reasonable date range (year 1900-2100)
   const year = parsedDate.getFullYear();
   if (year < 1900 || year > 2100) {
     errors.push('Date must be between 1900 and 2100');
@@ -57845,7 +55722,6 @@ export const isValidDate = (date: string | Date): ValidationResult => {
   };
 };
 
-// Enhanced future date validation
 export const isFutureDate = (date: string | Date, allowToday = false): ValidationResult => {
   const dateValidation = isValidDate(date);
   if (!dateValidation.isValid) {
@@ -57855,11 +55731,10 @@ export const isFutureDate = (date: string | Date, allowToday = false): Validatio
   const errors: string[] = [];
   const inputDate = typeof date === 'string' ? new Date(date.trim()) : date;
   const now = new Date();
-
-  // Set time to start of day for comparison
+  
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-
+  
   if (allowToday ? compareDate < today : compareDate <= today) {
     errors.push(allowToday ? 'Date must be today or in the future' : 'Date must be in the future');
   }
@@ -57870,7 +55745,6 @@ export const isFutureDate = (date: string | Date, allowToday = false): Validatio
   };
 };
 
-// Enhanced past date validation
 export const isPastDate = (date: string | Date, allowToday = false): ValidationResult => {
   const dateValidation = isValidDate(date);
   if (!dateValidation.isValid) {
@@ -57880,11 +55754,10 @@ export const isPastDate = (date: string | Date, allowToday = false): ValidationR
   const errors: string[] = [];
   const inputDate = typeof date === 'string' ? new Date(date.trim()) : date;
   const now = new Date();
-
-  // Set time to start of day for comparison
+  
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-
+  
   if (allowToday ? compareDate > today : compareDate >= today) {
     errors.push(allowToday ? 'Date must be today or in the past' : 'Date must be in the past');
   }
@@ -57895,7 +55768,6 @@ export const isPastDate = (date: string | Date, allowToday = false): ValidationR
   };
 };
 
-// Enhanced file validation
 export const validateFile = (
   file: File,
   options: FileValidationOptions = {}
@@ -57907,24 +55779,20 @@ export const validateFile = (
     return { isValid: false, errors };
   }
 
-  // Check minimum file size
   if (options.minSize && file.size < options.minSize) {
     errors.push(`File size must be at least ${formatFileSize(options.minSize)}`);
   }
 
-  // Check maximum file size
   if (options.maxSize && file.size > options.maxSize) {
     errors.push(`File size must be less than ${formatFileSize(options.maxSize)}`);
   }
 
-  // Check file type
   if (options.allowedTypes && options.allowedTypes.length > 0) {
     if (!options.allowedTypes.includes(file.type)) {
       errors.push(`File type "${file.type}" is not allowed. Allowed types: ${options.allowedTypes.join(', ')}`);
     }
   }
 
-  // Check file extension
   if (options.allowedExtensions && options.allowedExtensions.length > 0) {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (!extension || !options.allowedExtensions.map(ext => ext.toLowerCase()).includes(extension)) {
@@ -57932,7 +55800,6 @@ export const validateFile = (
     }
   }
 
-  // Check for potentially dangerous file names
   if (/[<>:"|?*]/.test(file.name)) {
     errors.push('File name contains invalid characters');
   }
@@ -57943,25 +55810,23 @@ export const validateFile = (
   };
 };
 
-// Enhanced file size formatter
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   if (bytes < 0) return 'Invalid size';
-
+  
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-
+  
   if (i >= sizes.length) return 'File too large';
-
+  
   const size = bytes / Math.pow(k, i);
   return `${size.toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`;
 };
 
-// Enhanced sanitization with more comprehensive XSS prevention
 export const sanitizeInput = (input: string): string => {
   if (!input || typeof input !== 'string') return '';
-
+  
   return input
     .replace(/&/g, '&amp;')    // Must be first
     .replace(/</g, '&lt;')
@@ -57974,44 +55839,39 @@ export const sanitizeInput = (input: string): string => {
     .replace(/=/g, '&#x3D;');
 };
 
-// Credit card validation (Luhn algorithm)
 export const isValidCreditCard = (cardNumber: string): ValidationResult => {
   const errors: string[] = [];
-
+  
   if (!cardNumber || typeof cardNumber !== 'string') {
     errors.push('Card number is required');
     return { isValid: false, errors };
   }
 
-  // Remove spaces and hyphens
   const cleanCard = cardNumber.replace(/[\s-]/g, '');
-
-  // Check if all digits
+  
   if (!/^\d+$/.test(cleanCard)) {
     errors.push('Card number must contain only digits');
     return { isValid: false, errors };
   }
 
-  // Check length
   if (cleanCard.length < 13 || cleanCard.length > 19) {
     errors.push('Card number must be between 13 and 19 digits');
     return { isValid: false, errors };
   }
 
-  // Luhn algorithm
   let sum = 0;
   let alternate = false;
-
+  
   for (let i = cleanCard.length - 1; i >= 0; i--) {
     let n = parseInt(cleanCard.charAt(i), 10);
-
+    
     if (alternate) {
       n *= 2;
       if (n > 9) {
         n = (n % 10) + 1;
       }
     }
-
+    
     sum += n;
     alternate = !alternate;
   }
@@ -58026,7 +55886,6 @@ export const isValidCreditCard = (cardNumber: string): ValidationResult => {
   };
 };
 
-// Enhanced validation schemas
 export const validationSchemas = {
   register: {
     firstName: (value: string) => {
@@ -58045,7 +55904,7 @@ export const validationSchemas = {
     },
     email: (value: string) => ({
       isValid: isRequired(value) && isValidEmail(value),
-      error: !isRequired(value) ? 'Email is required' :
+      error: !isRequired(value) ? 'Email is required' : 
              !isValidEmail(value) ? 'Please enter a valid email address' : ''
     }),
     password: (value: string) => {
@@ -58057,7 +55916,7 @@ export const validationSchemas = {
     },
     confirmPassword: (value: string, password: string) => ({
       isValid: isRequired(value) && value === password,
-      error: !isRequired(value) ? 'Please confirm your password' :
+      error: !isRequired(value) ? 'Please confirm your password' : 
              value !== password ? 'Passwords do not match' : ''
     })
   },
@@ -58065,7 +55924,7 @@ export const validationSchemas = {
   login: {
     email: (value: string) => ({
       isValid: isRequired(value) && isValidEmail(value),
-      error: !isRequired(value) ? 'Email is required' :
+      error: !isRequired(value) ? 'Email is required' : 
              !isValidEmail(value) ? 'Please enter a valid email address' : ''
     }),
     password: (value: string) => ({
@@ -58075,7 +55934,6 @@ export const validationSchemas = {
   }
 };
 
-// Enhanced generic form validator with better type safety
 export const validateForm = <T extends Record<string, unknown>>(
   data: T,
   schema: Record<keyof T, (value: T[keyof T], ...args: unknown[]) => { isValid: boolean; error: string }>
@@ -58100,7 +55958,6 @@ export const validateForm = <T extends Record<string, unknown>>(
   return { isValid, errors };
 };
 
-// Comprehensive validation utilities object
 const validationUtils = {
   isValidEmail,
   validatePassword,
@@ -58125,16 +55982,14 @@ const validationUtils = {
 export default validationUtils;
 ```
 
-<!-- path: utils/imageOptimization.ts -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/imageOptimization.ts -->
 ```typescript
-// utils/imageOptimization.ts
 "use client";
 
 import Uppy from "@uppy/core";
 import ImageEditor from "@uppy/image-editor";
 import { useRef, useEffect } from "react";
 
-// Types for better type safety
 interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
@@ -58147,7 +56002,6 @@ interface OptimizedUppyOptions {
   maxNumberOfFiles?: number;
 }
 
-// 1. Improved ImageEditor configuration with better compression
 export const enhancedImageEditorConfig = {
   quality: 0.85,
   cropperOptions: {
@@ -58173,7 +56027,6 @@ export const enhancedImageEditorConfig = {
   },
 };
 
-// 2. Enhanced image compression utility function
 export const compressImage = (
   file: File,
   options: CompressionOptions = {},
@@ -58181,7 +56034,6 @@ export const compressImage = (
   const { maxWidth = 1920, maxHeight = 1080, quality = 0.8 } = options;
 
   return new Promise((resolve) => {
-    // Check if it's actually an image
     if (!file.type.startsWith("image/")) {
       resolve(file);
       return;
@@ -58200,7 +56052,6 @@ export const compressImage = (
 
     img.onload = () => {
       try {
-        // Calculate new dimensions while maintaining aspect ratio
         let { width, height } = img;
 
         if (width > maxWidth || height > maxHeight) {
@@ -58218,7 +56069,6 @@ export const compressImage = (
         canvas.width = width;
         canvas.height = height;
 
-        // Clear canvas and draw image
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
@@ -58258,7 +56108,6 @@ export const compressImage = (
   });
 };
 
-// 3. Enhanced Uppy configuration with compression
 export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   const {
     folderId,
@@ -58274,635 +56123,8 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
       maxFileSize,
       maxNumberOfFiles,
       allowedFileTypes: [
-        "image/*",
-        "application/pdf",
-        ".doc",
-        ".docx",
-        ".txt",
-        ".rtf",
-        "video/*",
-        "audio/*",
-      ],
-    },
-    meta: {
-      folderId: folderId,
-    },
-    onBeforeFileAdded: (currentFile, files) => {
-      // Additional validation
-      if (currentFile.size === 0) {
-        uppy.log(`Skipping file ${currentFile.name} - file is empty`);
-        return false;
-      }
-
-      // Check for duplicate files
-      const existingFile = Object.values(files).find(
-        (file) =>
-          file.name === currentFile.name && file.size === currentFile.size,
-      );
-
-      if (existingFile) {
-        uppy.log(`Skipping file ${currentFile.name} - duplicate file`);
-        return false;
-      }
-
-      return true;
-    },
-  });
-
-  // Add ImageEditor plugin with error handling
-  try {
-    uppy.use(ImageEditor, enhancedImageEditorConfig);
-  } catch (error) {
-    console.warn("Failed to add ImageEditor plugin:", error);
-  }
-
-  return uppy;
-};
-
-// 4. WebP conversion utility (for modern browsers)
-export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith("image/") || file.type === "image/webp") {
-      resolve(file);
-      return;
-    }
-
-    // Check if browser supports WebP
-    const canvas = document.createElement("canvas");
-    const testBlob = canvas.toDataURL("image/webp");
-
-    if (!testBlob.startsWith("data:image/webp")) {
-      resolve(file);
-      return;
-    }
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      resolve(file);
-      return;
-    }
-
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0 && blob.size < file.size) {
-              const webpFile = new File(
-                [blob],
-                file.name.replace(/\.[^/.]+$/, ".webp"),
-                {
-                  type: "image/webp",
-                  lastModified: Date.now(),
-                },
-              );
-              resolve(webpFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/webp",
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error converting to WebP:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-// 5. Progressive JPEG utility
-export const createProgressiveJPEG = (file: File): Promise<File> => {
-  return new Promise((resolve) => {
-    if (file.type !== "image/jpeg") {
-      resolve(file);
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      resolve(file);
-      return;
-    }
-
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              const progressiveFile = new File([blob], file.name, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              });
-              resolve(progressiveFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/jpeg",
-          0.85,
-        );
-      } catch (error) {
-        console.warn("Error creating progressive JPEG:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-// 6. FIXED Smart compression based on image content
-export const smartCompress = async (file: File): Promise<File> => {
-  if (!file.type.startsWith("image/")) {
-    return file;
-  }
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      console.warn("Could not get canvas context for smart compression");
-      resolve(file);
-      return;
-    }
-
-    img.onload = () => {
-      try {
-        // Get optimal settings based on file size
-        const { quality, maxWidth, maxHeight } = getOptimalImageSettings(file);
-
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
-
-        if (width > maxWidth || height > maxHeight) {
-          const aspectRatio = width / height;
-
-          if (width > height) {
-            width = Math.min(width, maxWidth);
-            height = width / aspectRatio;
-          } else {
-            height = Math.min(height, maxHeight);
-            width = height * aspectRatio;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Clear canvas and draw image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              try {
-                const optimizedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-
-                console.log(`Smart compression result: ${file.name}`, {
-                  original: (file.size / 1024 / 1024).toFixed(2) + "MB",
-                  compressed:
-                    (optimizedFile.size / 1024 / 1024).toFixed(2) + "MB",
-                  reduction:
-                    (
-                      ((file.size - optimizedFile.size) / file.size) *
-                      100
-                    ).toFixed(1) + "%",
-                });
-
-                resolve(optimizedFile);
-              } catch (error) {
-                console.warn("Error creating optimized file:", error);
-                resolve(file);
-              }
-            } else {
-              console.warn(
-                "Smart compression produced empty result, using original file",
-              );
-              resolve(file);
-            }
-          },
-          file.type,
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error in smart compression:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = (error) => {
-      console.warn("Error loading image for smart compression:", error);
-      resolve(file);
-    };
-
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-// 7. Custom hook for optimized file uploader
-export const useOptimizedFileUploader = (
-  folderId: string | null,
-): Uppy<{ folderId: string | null }, Record<string, never>> | null => {
-  const uppyRef = useRef<Uppy<
-    { folderId: string | null },
-    Record<string, never>
-  > | null>(null);
-
-  useEffect(() => {
-    // Clean up previous instance
-    if (uppyRef.current) {
-      uppyRef.current.destroy();
-    }
-
-    const uppy = createOptimizedUppy({ folderId });
-
-    // Add comprehensive image optimization preprocessor
-    uppy.addPreProcessor(async (fileIDs) => {
-      const optimizationPromises = fileIDs.map(async (fileID) => {
-        const file = uppy.getFile(fileID);
-
-        if (file && file.type && file.type.startsWith("image/")) {
-          try {
-            let optimizedFile = file.data as File;
-
-            // Validate original file
-            if (optimizedFile.size === 0) {
-              console.warn(
-                `Skipping optimization for ${file.name} - empty file`,
-              );
-              return;
-            }
-
-            // Apply smart compression with fallback
-            try {
-              const compressedFile = await smartCompress(optimizedFile);
-              if (
-                compressedFile.size > 0 &&
-                compressedFile.size < optimizedFile.size
-              ) {
-                optimizedFile = compressedFile;
-              }
-            } catch (compressionError) {
-              console.warn(
-                `Compression failed for ${file.name}:`,
-                compressionError,
-              );
-            }
-
-            // Convert to WebP if beneficial (with validation)
-            try {
-              const webpFile = await convertToWebP(optimizedFile);
-              if (webpFile.size > 0 && webpFile.size < optimizedFile.size) {
-                optimizedFile = webpFile;
-              }
-            } catch (webpError) {
-              console.warn(
-                `WebP conversion failed for ${file.name}:`,
-                webpError,
-              );
-            }
-
-            // For JPEGs, make them progressive (with validation)
-            try {
-              if (optimizedFile.type === "image/jpeg") {
-                const progressiveFile =
-                  await createProgressiveJPEG(optimizedFile);
-                if (progressiveFile.size > 0) {
-                  optimizedFile = progressiveFile;
-                }
-              }
-            } catch (progressiveError) {
-              console.warn(
-                `Progressive JPEG creation failed for ${file.name}:`,
-                progressiveError,
-              );
-            }
-
-            // Final validation before updating Uppy
-            if (optimizedFile.size === 0) {
-              console.error(
-                `Optimization resulted in empty file for ${file.name}, using original`,
-              );
-              return; // Don't update Uppy, keep original
-            }
-
-            // Update the file in Uppy
-            uppy.setFileState(fileID, {
-              data: optimizedFile,
-              size: optimizedFile.size,
-            });
-
-            const originalSizeMB = ((file.size ?? 0) / 1024 / 1024).toFixed(2);
-            const optimizedSizeMB = (optimizedFile.size / 1024 / 1024).toFixed(
-              2,
-            );
-            const compressionRatio = (
-              (((file.size ?? 0) - optimizedFile.size) / (file.size ?? 1)) *
-              100
-            ).toFixed(1);
-
-            console.log(
-              `Optimized ${file.name}: ${originalSizeMB}MB → ${optimizedSizeMB}MB (${compressionRatio}% reduction)`,
-            );
-          } catch (error) {
-            console.warn(`Failed to optimize ${file.name}:`, error);
-            // Keep original file in case of any error
-          }
-        }
-      });
-
-      await Promise.all(optimizationPromises);
-    });
-
-    uppyRef.current = uppy;
-
-    return () => {
-      if (uppyRef.current) {
-        uppyRef.current.destroy();
-        uppyRef.current = null;
-      }
-    };
-  }, [folderId]);
-
-  return uppyRef.current;
-};
-
-// 8. Utility function to get optimal image settings
-export const getOptimalImageSettings = (file: File) => {
-  const sizeInMB = file.size / (1024 * 1024);
-
-  if (sizeInMB > 10) {
-    return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
-  } else if (sizeInMB > 5) {
-    return { quality: 0.7, maxWidth: 1800, maxHeight: 1350 };
-  } else if (sizeInMB > 2) {
-    return { quality: 0.75, maxWidth: 1920, maxHeight: 1440 };
-  } else {
-    return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
-  }
-};
-
-// 9. Batch optimization function
-export const optimizeFilesBatch = async (files: File[]): Promise<File[]> => {
-  const optimizationPromises = files.map(async (file) => {
-    console.log(
-      "Original file:",
-      file.name,
-      "Size:",
-      file.size,
-      "Type:",
-      file.type,
-    );
-
-    if (file.type.startsWith("image/") && file.size > 0) {
-      try {
-        const optimized = await smartCompress(file);
-        return optimized.size > 0 ? optimized : file; // Fallback to original if compression fails
-      } catch (error) {
-        console.warn(`Batch optimization failed for ${file.name}:`, error);
-        return file; // Return original on error
-      }
-    }
-
-    return file;
-  });
-
-  return Promise.all(optimizationPromises);
-};
-
-```
-
-<!-- path: utils/supabase/middleware.ts -->
-```typescript
-
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
-
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  // refreshing the auth token
-  await supabase.auth.getUser()
-
-  return supabaseResponse
-}
-```
-
-<!-- path: utils/supabase/admin.ts -->
-```typescript
-import { createClient as createAdminClient } from '@supabase/supabase-js';
-
-// This is a server-side only client that uses the service role key
-// It should only be used in API routes or server components
-
-export function createAdmin() {
-  // These environment variables should be set in your deployment environment
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log('Service key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'exists' : 'missing');
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error(
-      'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set'
-    );
-  }
-
-  return createAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
-}
-
-```
-
-<!-- path: utils/supabase/server.ts -->
-```typescript
-
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-
-export async function createClient() {
-  const cookieStore = await cookies()
-
-  // Create a server's supabase client with newly configured cookie,
-  // which could be used to maintain user's session
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-      },
-    }
-  )
-}
-```
-
-<!-- path: utils/supabase/client.ts -->
-```typescript
-// utils/supabase/client.ts
-
-import { createBrowserClient } from '@supabase/ssr'
-
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-```
-
-<!-- path: tsconfig.json -->
-```json
-{
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "paths": {
-      "@/*": ["./*"]
-    },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
     "components/table/DataTableDemo.tsx",
     "components/table/ExampleModalUsage.tsx",
     "**/* copy.tsx",
-    "components/debug/**"
-  ]
-}
-
-```
-
-<!-- path: postcss.config.mjs -->
-```mjs
-const config = {
-  plugins: ["@tailwindcss/postcss"],
-};
-
-export default config;
-
-```
-
-<!-- path: lib/utils.ts -->
-```typescript
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-```
-
-<!-- path: lib/queryClient.ts -->
-```typescript
-
-// lib/queryClient.ts
-import { QueryClient } from '@tanstack/react-query'
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      retry: (failureCount, error: Error) => {
-        // Don't retry on 4xx errors
-        if ('status' in error && typeof error.status === 'number' && error.status >= 400 && error.status < 500) {
-          return false
-        }
-        return failureCount < 3
-      },
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-})
-```
-

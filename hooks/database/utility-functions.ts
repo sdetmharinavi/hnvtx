@@ -76,7 +76,15 @@ export function applyFilters(query: any, filters: Filters): any {
     if (value === undefined || value === null) return;
 
     if (key === 'or') {
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // THE FIX: Handle both string and object formats for the 'or' filter.
+      if (typeof value === 'string' && value.trim() !== '') {
+        // Handles strings like `(column1.ilike.%value%,column2.ilike.%value%)`
+        const orConditions = value.replace(/[()]/g, ''); // Remove parentheses
+        if (orConditions) {
+          modifiedQuery = modifiedQuery.or(orConditions);
+        }
+      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // Handles objects like `{ column1: 'value', column2: 'value' }`
         const orConditions = Object.entries(value)
           .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
           .join(',');

@@ -1,4 +1,3 @@
-// path: app/bsnl/page.tsx
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
@@ -20,14 +19,14 @@ import { SystemDetailsModal } from '@/config/system-details-config';
 import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { useDebounce } from '@/hooks/useDebounce';
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
 export default function ScalableFiberNetworkDashboard() {
-  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
+  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('overview');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
 
-  // THE FIX: Add state for the new details modals
   const [isSystemDetailsOpen, setIsSystemDetailsOpen] = useState(false);
   const [isCableDetailsOpen, setIsCableDetailsOpen] = useState(false);
 
@@ -39,14 +38,19 @@ export default function ScalableFiberNetworkDashboard() {
     nodeType: undefined,
     priority: undefined,
   });
+  
+  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
+  const [zoom, setZoom] = useState(13);
+  
+  // THE FIX: Debounce the mapBounds to prevent excessive refetching
+  const debouncedMapBounds = useDebounce(mapBounds, 500); // 500ms delay
 
+  // THE FIX: Pass the debouncedMapBounds to the data fetching hook
   const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-  const [zoom, setZoom] = useState(13);
-
+  
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
   }, []);
@@ -220,7 +224,6 @@ export default function ScalableFiberNetworkDashboard() {
     []
   );
 
-  // THE FIX: onClick now sets the selected item AND opens the details modal.
   const systemTableActions: TableAction<'v_systems_complete'>[] = useMemo(
     () => [
       {
@@ -251,7 +254,7 @@ export default function ScalableFiberNetworkDashboard() {
     []
   );
 
-  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length;
+  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length && !debouncedMapBounds;
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || 'An unknown error occurred.'} />;
@@ -391,7 +394,6 @@ export default function ScalableFiberNetworkDashboard() {
         cables={data.ofcCables}
       />
 
-      {/* THE FIX: Render the new modals and connect them to the state. */}
       <SystemDetailsModal
         system={selectedSystem}
         isOpen={isSystemDetailsOpen}
