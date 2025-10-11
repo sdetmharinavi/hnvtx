@@ -1,4 +1,3 @@
-// path: app/dashboard/maintenance-areas/page.tsx
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
@@ -11,7 +10,6 @@ import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
 import { Filters, PagedQueryResult, Row, useTableQuery, useTableWithRelations } from '@/hooks/database';
 import { useDelete } from '@/hooks/useDelete';
-import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
@@ -28,13 +26,15 @@ export default function MaintenanceAreasPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
 
-  // THE FIX: Remove search term from server-side filters. Data is fetched once.
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
     if (filters.areaType) f.area_type_id = filters.areaType;
+    if (searchTerm) {
+      f.or = `(name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%)`;
+    }
     return f;
-  }, [filters]);
+  }, [filters, searchTerm]);
 
   const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
     supabase, 'maintenance_areas',
@@ -42,7 +42,7 @@ export default function MaintenanceAreasPage() {
     { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }] }
   );
 
-  const { refetch, error, data } = areasQuery;
+  const { refetch, error, data, isFetching } = areasQuery; // THE FIX: Destructure isFetching
   const allAreas = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
   const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
@@ -90,6 +90,7 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
+        isFetching={isFetching} // THE FIX: Pass isFetching to the component
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}

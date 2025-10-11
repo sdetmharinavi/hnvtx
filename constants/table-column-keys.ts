@@ -363,17 +363,6 @@ const TABLE_COLUMN_OBJECTS = {
     node_position: "node_position",
     node_ip: "node_ip",
   },
-  vmux_systems: {
-    system_id: "system_id",
-    vm_id: "vm_id",
-  },
-  vmux_connections: {
-    system_connection_id: "system_connection_id",
-    subscriber: "subscriber",
-    c_code: "c_code",
-    channel: "channel",
-    tk: "tk",
-  },
   ofc_connections: {
     id: "id",
     ofc_id: "ofc_id",
@@ -622,10 +611,6 @@ const TABLE_COLUMN_OBJECTS = {
     sn_ip: "sn_ip",
     updated_at: "updated_at",
     vlan: "vlan",
-    vmux_c_code: "vmux_c_code",
-    vmux_channel: "vmux_channel",
-    vmux_subscriber: "vmux_subscriber",
-    vmux_tk: "vmux_tk",
   },
   v_systems_complete: {
     id: "id",
@@ -654,7 +639,6 @@ const TABLE_COLUMN_OBJECTS = {
     system_type_code: "system_type_code",
     updated_at: "updated_at",
     created_at: "created_at",
-    vmux_vm_id: "vmux_vm_id",
   },
   v_user_profiles_extended: {
     id: "id",
@@ -832,8 +816,6 @@ export const TABLES = {
   sdh_node_associations: "sdh_node_associations",
   sdh_systems: "sdh_systems",
   system_connections: "system_connections",
-  vmux_connections: "vmux_connections",
-  vmux_systems: "vmux_systems",
   files: "files",
   folders: "folders",
   ring_based_systems: "ring_based_systems",

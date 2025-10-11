@@ -1639,45 +1639,6 @@ export type User_profilesUpdate = {
     updated_at?: string | null;
 };
 
-export type Vmux_connectionsRow = {
-    c_code: string | null;
-    channel: string | null;
-    subscriber: string | null;
-    system_connection_id: string;
-    tk: string | null;
-};
-
-export type Vmux_connectionsInsert = {
-    c_code?: string | null;
-    channel?: string | null;
-    subscriber?: string | null;
-    system_connection_id: string;
-    tk?: string | null;
-};
-
-export type Vmux_connectionsUpdate = {
-    c_code?: string | null;
-    channel?: string | null;
-    subscriber?: string | null;
-    system_connection_id?: string;
-    tk?: string | null;
-};
-
-export type Vmux_systemsRow = {
-    system_id: string;
-    vm_id: string | null;
-};
-
-export type Vmux_systemsInsert = {
-    system_id: string;
-    vm_id?: string | null;
-};
-
-export type Vmux_systemsUpdate = {
-    system_id?: string;
-    vm_id?: string | null;
-};
-
 // ============= VIEWS =============
 
 export type V_cable_segments_at_jcRow = {
@@ -1941,10 +1902,6 @@ export type V_system_connections_completeRow = {
     system_type_name: string | null;
     updated_at: string | null;
     vlan: string | null;
-    vmux_c_code: string | null;
-    vmux_channel: string | null;
-    vmux_subscriber: string | null;
-    vmux_tk: string | null;
 };
 
 export type V_system_ring_paths_detailedRow = {
@@ -1989,7 +1946,6 @@ export type V_systems_completeRow = {
     system_type_id: string | null;
     system_type_name: string | null;
     updated_at: string | null;
-    vmux_vm_id: string | null;
 };
 
 export type V_user_profiles_extendedRow = {
@@ -2080,9 +2036,7 @@ export const tableNames = [
   "sfp_based_connections",
   "system_connections",
   "systems",
-  "user_profiles",
-  "vmux_connections",
-  "vmux_systems"
+  "user_profiles"
 ] as const;
 
 export const viewNames = [

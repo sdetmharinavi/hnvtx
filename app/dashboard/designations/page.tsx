@@ -28,18 +28,21 @@ import { toast } from 'sonner';
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
-  // THE FIX: Add state to manage the selected entity ID.
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
+  const [searchTerm, setSearchTerm] = useState(''); // Added search term state
 
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
+    if (searchTerm) {
+      f.or = `(name.ilike.%${searchTerm}%)`;
+    }
     return f;
-  }, [filters]);
+  }, [filters, searchTerm]);
 
   const designationsQuery = useTableWithRelations<
     'employee_designations',
@@ -54,7 +57,7 @@ export default function DesignationManagerPage() {
     }
   );
 
-  const { refetch, error, data } = designationsQuery;
+  const { refetch, error, data, isFetching } = designationsQuery; // THE FIX: Destructure isFetching
 
   const allDesignations = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
@@ -143,12 +146,18 @@ export default function DesignationManagerPage() {
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
+        isFetching={isFetching} // THE FIX: Pass isFetching
         toggleStatusMutation={{ mutate: toggleStatus, isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedDesignationId}
         onSelect={setSelectedDesignationId}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
       />
 
       {isFormOpen && (

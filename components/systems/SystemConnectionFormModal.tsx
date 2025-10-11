@@ -100,10 +100,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           a_customer: editingConnection.sdh_a_customer ?? null,
           b_slot: editingConnection.sdh_b_slot ?? null,
           b_customer: editingConnection.sdh_b_customer ?? null,
-          subscriber: editingConnection.vmux_subscriber ?? null,
-          c_code: editingConnection.vmux_c_code ?? null,
-          channel: editingConnection.vmux_channel ?? null,
-          tk: editingConnection.vmux_tk ?? null,
         });
       } else {
         reset({
@@ -170,18 +166,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
                 <FormInput name='a_customer' label='A-Side Customer' register={register} error={errors.a_customer} />
                 <FormInput name='b_slot' label='B-Side Slot' register={register} error={errors.b_slot} />
                 <FormInput name='b_customer' label='B-Side Customer' register={register} error={errors.b_customer} />
-              </div>
-            </>
-          )}
-
-          {parentSystem.system_type_name === "VMUX" && (
-            <>
-              <h3 className='text-lg font-medium border-b pt-4 pb-2'>VMUX Details</h3>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput name='subscriber' label='Subscriber' register={register} error={errors.subscriber} />
-                <FormInput name='c_code' label='C-Code' register={register} error={errors.c_code} />
-                <FormInput name='channel' label='Channel' register={register} error={errors.channel} />
-                <FormInput name='tk' label='TK' register={register} error={errors.tk} />
               </div>
             </>
           )}

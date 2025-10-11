@@ -29,7 +29,6 @@ const createDefaultFormValues = (): SystemFormValues => ({
   ring_id: null,
   gne: null,
   make: '',
-  vm_id: null,
 });
 
 interface SystemModalProps {
@@ -81,8 +80,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   const selectedSystemType = useMemo(() => systemTypes.find(st => st.id === selectedSystemTypeId), [systemTypes, selectedSystemTypeId]);
   const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based, [selectedSystemType]);
   const isSdhSystem = useMemo(() => selectedSystemType?.is_sdh, [selectedSystemType]);
-  const isVmuxSystem = useMemo(() => selectedSystemType?.name === 'VMUX', [selectedSystemType]);
-  const needsStep2 = isRingBasedSystem || isSdhSystem || isVmuxSystem;
+  const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   const handleClose = useCallback(() => {
     onClose();
@@ -108,7 +106,6 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
                 ring_id: rowData.ring_id ?? null,
                 gne: rowData.sdh_gne ?? null,
                 make: rowData.make ?? '',
-                vm_id: rowData.vmux_vm_id ?? null,
             });
         } else {
             reset(createDefaultFormValues());
@@ -177,7 +174,7 @@ export const SystemModal: FC<SystemModalProps> = ({ isOpen, onClose, rowData, on
   };
 
   const step1Fields = ( <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> <FormInput name="system_name" label="System Name" register={register} error={errors.system_name} required /> <FormSearchableSelect name="system_type_id" label="System Type" control={control} options={systemTypeOptions} error={errors.system_type_id} required /> <FormSearchableSelect name="node_id" label="Node / Location" control={control} options={nodeOptions} error={errors.node_id} required /> <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceTerminalOptions} error={errors.maintenance_terminal_id} /> <FormIPAddressInput name="ip_address" label="IP Address" control={control} error={errors.ip_address} /> <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} /> </div> </motion.div> );
-  const step2Fields = ( <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {isRingBasedSystem && ( <FormSearchableSelect name="ring_id" label="Ring" control={control} options={ringOptions} error={errors.ring_id} /> )} {isSdhSystem && ( <> <FormInput name="gne" label="GNE" register={register} error={errors.gne} /> <FormInput name="make" label="Make" register={register} error={errors.make} /> </> )} {isVmuxSystem && ( <FormInput name="vm_id" label="VM ID" register={register} error={errors.vm_id} /> )} <div className="md:col-span-2"> <FormInput name="s_no" label="Serial Number" register={register} error={errors.s_no} /> </div> <div className="md:col-span-2"> <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} /> </div> <div className="md:col-span-2"> <FormSwitch name="status" label="Status" control={control} className="my-4" /> </div> </div> </motion.div> );
+  const step2Fields = ( <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {isRingBasedSystem && ( <FormSearchableSelect name="ring_id" label="Ring" control={control} options={ringOptions} error={errors.ring_id} /> )} {isSdhSystem && ( <> <FormInput name="gne" label="GNE" register={register} error={errors.gne} /> <FormInput name="make" label="Make" register={register} error={errors.make} /> </> )}  <div className="md:col-span-2"> <FormInput name="s_no" label="Serial Number" register={register} error={errors.s_no} /> </div> <div className="md:col-span-2"> <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} /> </div> <div className="md:col-span-2"> <FormSwitch name="status" label="Status" control={control} className="my-4" /> </div> </div> </motion.div> );
 
   const modalTitle = isEditMode ? 'Edit System' : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 

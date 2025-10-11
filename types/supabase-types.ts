@@ -2747,75 +2747,6 @@ export type Database = {
           },
         ]
       }
-      vmux_connections: {
-        Row: {
-          c_code: string | null
-          channel: string | null
-          subscriber: string | null
-          system_connection_id: string
-          tk: string | null
-        }
-        Insert: {
-          c_code?: string | null
-          channel?: string | null
-          subscriber?: string | null
-          system_connection_id: string
-          tk?: string | null
-        }
-        Update: {
-          c_code?: string | null
-          channel?: string | null
-          subscriber?: string | null
-          system_connection_id?: string
-          tk?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vmux_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vmux_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vmux_systems: {
-        Row: {
-          system_id: string
-          vm_id: string | null
-        }
-        Insert: {
-          system_id: string
-          vm_id?: string | null
-        }
-        Update: {
-          system_id?: string
-          vm_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vmux_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vmux_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       v_cable_segments_at_jc: {
@@ -3643,10 +3574,6 @@ export type Database = {
           system_type_name: string | null
           updated_at: string | null
           vlan: string | null
-          vmux_c_code: string | null
-          vmux_channel: string | null
-          vmux_subscriber: string | null
-          vmux_tk: string | null
         }
         Relationships: [
           {
@@ -3872,7 +3799,6 @@ export type Database = {
           system_type_id: string | null
           system_type_name: string | null
           updated_at: string | null
-          vmux_vm_id: string | null
         }
         Relationships: [
           {
@@ -4448,7 +4374,6 @@ export type Database = {
           p_status: boolean
           p_system_name: string
           p_system_type_id: string
-          p_vm_id?: string
         }
         Returns: {
           commissioned_on: string | null

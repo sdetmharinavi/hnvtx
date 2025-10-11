@@ -17,8 +17,7 @@ SELECT
   ma.name AS system_maintenance_terminal_name,
   rbs.ring_id,
   ring_area.name AS ring_logical_area_name,
-  ss.gne AS sdh_gne,
-  vs.vm_id AS vmux_vm_id
+  ss.gne AS sdh_gne
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -27,7 +26,6 @@ FROM public.systems s
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id
   LEFT JOIN public.sdh_systems ss ON s.id = ss.system_id
-  LEFT JOIN public.vmux_systems vs ON s.id = vs.system_id;
 
 
 -- View for a complete picture of a system connection and its specific details.
@@ -51,9 +49,7 @@ SELECT
   sfpc.sfp_serial_no, sfpc.fiber_in, sfpc.fiber_out, sfpc.customer_name, sfpc.bandwidth_allocated_mbps,
   -- SDH details
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer,
-  -- VMUX details
-  vcs.subscriber AS vmux_subscriber, vcs.c_code AS vmux_c_code, vcs.channel AS vmux_channel, vcs.tk AS vmux_tk
+  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
@@ -66,8 +62,7 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.sfp_based_connections sfpc ON sc.id = sfpc.system_connection_id
   LEFT JOIN public.lookup_types lt_sfp ON sfpc.sfp_type_id = lt_sfp.id
-  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id
-  LEFT JOIN public.vmux_connections vcs ON sc.id = vcs.system_connection_id;
+  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
 
 
 -- View for OFC Connections, now including system details from this module.

@@ -29,7 +29,6 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       "system_type_code",
       "updated_at",
       "created_at",
-      "vmux_vm_id",
     ],
     overrides: {
       system_name: {
