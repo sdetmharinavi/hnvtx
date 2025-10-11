@@ -471,7 +471,7 @@ DECLARE
     v_active_status_id UUID;
 BEGIN
     -- Get the ID for the 'active' operational status from lookup_types
-    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUSES' AND name = 'active' LIMIT 1;
+    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
     IF v_active_status_id IS NULL THEN
         RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
     END IF;
