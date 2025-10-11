@@ -5,7 +5,8 @@ import 'leaflet/dist/leaflet.css';
 import { Network, Settings, RefreshCw, Loader2, Eye } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
-import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
+// THE FIX: Import 'dynamic' from 'next/dynamic'
+import dynamic from 'next/dynamic';
 import { DataTable, TableAction } from '@/components/table';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
@@ -20,6 +21,19 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from '@/hooks/useDebounce';
+
+// THE FIX: Use a dynamic import for the map component with SSR turned off.
+const OptimizedNetworkMap = dynamic(
+  () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <PageSpinner text="Loading Map..." />
+      </div>
+    ),
+  }
+);
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
@@ -42,11 +56,9 @@ export default function ScalableFiberNetworkDashboard() {
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const [zoom, setZoom] = useState(13);
   
-  // THE FIX: Debounce the mapBounds to prevent excessive refetching
-  const debouncedMapBounds = useDebounce(mapBounds, 500); // 500ms delay
+  const debouncedMapBounds = useDebounce(mapBounds, 500);
 
-  // THE FIX: Pass the debouncedMapBounds to the data fetching hook
-  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
+  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters, debouncedMapBounds);
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
@@ -58,7 +70,7 @@ export default function ScalableFiberNetworkDashboard() {
     setZoom(newZoom);
   }, []);
   const handleSaveAllocation = (
-    data: AllocationSaveData // eslint-disable-line @typescript-eslint/no-unused-vars
+    data: AllocationSaveData
   ) => {
     toast.info('Allocation feature is a work in progress.');
   };

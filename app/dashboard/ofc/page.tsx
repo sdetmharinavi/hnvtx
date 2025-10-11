@@ -230,7 +230,7 @@ const OfcPage = () => {
       <OfcForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        ofcCable={editModal.record as OfcCablesWithRelations}
+        ofcCable={editModal.record as Ofc_cablesRowSchema}
         onSubmit={crudActions.handleSave}
         pageLoading={isMutating}
       />

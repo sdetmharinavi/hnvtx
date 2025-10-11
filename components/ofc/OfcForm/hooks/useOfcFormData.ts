@@ -5,13 +5,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import isEqual from 'lodash.isequal';
-import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
+import { Ofc_cablesRowSchema } from '@/schemas/zod-schemas';
 import {
   Ofc_cablesInsertSchema,
   ofc_cablesInsertSchema,
 } from '@/schemas/zod-schemas';
 
-export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
+export const useOfcFormData = (ofcCable?: Ofc_cablesRowSchema) => {
   const isEdit = Boolean(ofcCable);
 
   const defaultValues = useMemo(

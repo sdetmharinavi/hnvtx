@@ -23,8 +23,8 @@ interface NodeFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingNode?: NodesRowSchema | null;
-  onSubmit: (data: NodesInsertSchema) => void; // <--  Single onSubmit handler
-  isLoading: boolean; // <--  Receive loading state from parent
+  onSubmit: (data: NodesInsertSchema) => void;
+  isLoading: boolean;
 }
 
 export function NodeFormModal({
@@ -56,14 +56,14 @@ export function NodeFormModal({
   const supabase = createClient();
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
-  const { data: nodeTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+  const { data: nodeTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
     filters: {
       category: { operator: 'eq', value: 'NODE_TYPES' },
       name: { operator: 'neq', value: 'DEFAULT' },
     },
     orderBy: [{ column: 'name', ascending: true }],
   });
-  const { data: maintenanceAreas = [] } = useTableQuery(
+  const { data: maintenanceAreas = { data: [] } } = useTableQuery(
     supabase,
     'maintenance_areas',
     {
@@ -97,7 +97,6 @@ export function NodeFormModal({
     }
   }, [isOpen, editingNode, reset]);
 
-  //  The form's submit handler now just calls the prop.
   const onValidSubmit = useCallback(
     (formData: NodesInsertSchema) => {
       onSubmit(formData);
@@ -121,7 +120,7 @@ export function NodeFormModal({
               title={isEdit ? 'Edit Node' : 'Add Node'}
               onSubmit={handleSubmit(onValidSubmit)}
               onCancel={onClose}
-              isLoading={isLoading} // <-- Use the loading state from props
+              isLoading={isLoading}
               standalone
             >
               <div className="space-y-6">
@@ -133,8 +132,10 @@ export function NodeFormModal({
                     <div className="md:col-span-2">
                       <FormInput name="name" label="Node Name" register={register} error={errors.name} disabled={isLoading} placeholder="Enter node name" />
                     </div>
-                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
-                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
+                    {/* THE FIX: Access the .data property before mapping */}
+                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.data.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
+                    {/* THE FIX: Access the .data property before mapping */}
+                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.data.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
                   </div>
                 </div>
 

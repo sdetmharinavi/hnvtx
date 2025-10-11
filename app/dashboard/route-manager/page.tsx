@@ -25,7 +25,7 @@ export default function RouteManagerPage() {
     tableName: "junction_closures",
     onSuccess: () => {
       refetchRouteDetails();
-      if (selectedJc && selectedJc.id === deleteManager.deleteConfig?.items[0]?.id) {
+      if (selectedJc && selectedJc.id === deleteManager.itemToDelete?.id) {
         setSelectedJc(null);
         setActiveTab("visualization");
       }

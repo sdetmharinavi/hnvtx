@@ -2,11 +2,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
+import { TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions, PublicTableName } from "./queries-type-helpers";
 import { applyFilters, applyOrdering } from "./utility-functions";
 
 // Enhanced bulk operations with more advanced filtering and performance features
-export function useAdvancedBulkOperations<T extends TableName>(
+export function useAdvancedBulkOperations<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
   options?: {

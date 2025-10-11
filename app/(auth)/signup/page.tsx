@@ -9,12 +9,13 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { loginSchema } from '@/app/(auth)/login/page';
 import { toast } from 'sonner';
 import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
+import { authUsersRowSchema } from '@/schemas/zod-schemas';
+
 
 // THE FIX: Use the central, reusable password schema and correct field names.
-const signupSchema = loginSchema
+const signupSchema = authUsersRowSchema
   .pick({ email: true }) // Only pick email from login schema
   .extend({
     firstName: z

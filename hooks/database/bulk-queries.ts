@@ -2,11 +2,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
+import { PublicTableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
 import { applyFilters } from "./utility-functions";
 
 // Enhanced bulk operations hook with filter support
-export function useTableBulkOperations<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, batchSize = 1000) {
+export function useTableBulkOperations<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, batchSize = 1000) {
   const queryClient = useQueryClient();
 
   const bulkInsert = useMutation({

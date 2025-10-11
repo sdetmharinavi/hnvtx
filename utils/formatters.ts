@@ -1,9 +1,3 @@
-/**
- * Professional data formatting utility library
- * Provides comprehensive formatting functions with optimizations and error handling
- */
-
-// Types and interfaces
 export interface NumberFormatOptions extends Intl.NumberFormatOptions {
   locale?: string;
 }
@@ -29,10 +23,8 @@ export interface ValidationError {
   code?: string;
 }
 
-// Performance optimizations - cached formatters
 const formattersCache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>();
 
-// Overloaded function signatures for type safety
 function getCachedFormatter(
   type: 'number',
   locale: string,
@@ -77,12 +69,8 @@ function getCachedFormatter(
 }
 
 // =============================================================================
-// NUMBER FORMATTERS
 // =============================================================================
 
-/**
- * Format a number with locale-aware formatting
- */
 export const formatNumber = (
   num: number,
   options: NumberFormatOptions = {}
@@ -97,9 +85,6 @@ export const formatNumber = (
   return formatter.format(num);
 };
 
-/**
- * Format a number as currency
- */
 export const formatCurrency = (
   amount: number,
   currency: string = 'USD',
@@ -114,9 +99,6 @@ export const formatCurrency = (
   });
 };
 
-/**
- * Format a number as percentage
- */
 export const formatPercentage = (
   value: number,
   decimals: number = 1,
@@ -130,9 +112,6 @@ export const formatPercentage = (
   });
 };
 
-/**
- * Format a score with optional fraction display
- */
 export const formatScore = (
   score: number,
   total: number,
@@ -156,9 +135,6 @@ export const formatScore = (
     : formattedPercentage;
 };
 
-/**
- * Format file size in human-readable format
- */
 export const formatFileSize = (
   bytes: number,
   options: {
@@ -188,12 +164,8 @@ export const formatFileSize = (
 };
 
 // =============================================================================
-// STRING FORMATTERS
 // =============================================================================
 
-/**
- * Convert string to title case with smart handling
- */
 export const toTitleCase = (
   str: string,
   options: StringCaseOptions = {}
@@ -202,16 +174,13 @@ export const toTitleCase = (
   
   const { preserveAcronyms = true } = options;
   
-  // Common words that should remain lowercase in titles
   const articles = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet']);
   
   return str
     .toLowerCase()
     .split(/\s+/)
     .map((word, index) => {
-      // Always capitalize first and last word
       if (index === 0 || !articles.has(word)) {
-        // Preserve acronyms if option is set
         if (preserveAcronyms && word.toUpperCase() === word && word.length <= 4) {
           return word.toUpperCase();
         }
@@ -222,9 +191,6 @@ export const toTitleCase = (
     .join(' ');
 };
 
-/**
- * Convert snake_case to Title Case
- */
 export const snakeToTitleCase = (str: string): string => {
   if (!str) return '';
   
@@ -234,9 +200,6 @@ export const snakeToTitleCase = (str: string): string => {
     .join(' ');
 };
 
-/**
- * Convert camelCase to kebab-case
- */
 export const camelToKebab = (str: string): string => {
   if (!str) return '';
   
@@ -245,36 +208,24 @@ export const camelToKebab = (str: string): string => {
     .toLowerCase();
 };
 
-/**
- * Convert kebab-case to camelCase
- */
 export const kebabToCamel = (str: string): string => {
   if (!str) return '';
   
   return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
-/**
- * Convert snake_case to camelCase
- */
 export const snakeToCamel = (str: string): string => {
   if (!str) return '';
   
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
-/**
- * Convert camelCase to snake_case
- */
 export const camelToSnake = (str: string): string => {
   if (!str) return '';
   
   return str.replace(/([A-Z])/g, '_$1').toLowerCase();
 };
 
-/**
- * Create URL-friendly slug from text
- */
 export const createSlug = (
   text: string,
   options: {
@@ -305,9 +256,6 @@ export const createSlug = (
   return slug;
 };
 
-/**
- * Truncate text with smart word boundaries
- */
 export const truncateText = (
   text: string,
   maxLength: number,
@@ -339,12 +287,8 @@ export const truncateText = (
 };
 
 // =============================================================================
-// CONTACT INFORMATION FORMATTERS
 // =============================================================================
 
-/**
- * Format user name with various display options
- */
 export const formatUserName = (
   firstName: string,
   lastName: string,
@@ -369,9 +313,6 @@ export const formatUserName = (
   }
 };
 
-/**
- * Format phone number with international support
- */
 export const formatPhoneNumber = (
   phone: string,
   options: PhoneFormatOptions = {}
@@ -402,7 +343,6 @@ export const formatPhoneNumber = (
       break;
       
     case 'international':
-      // Basic international formatting - could be expanded
       if (cleaned.length >= 10) {
         return `+${cleaned}`;
       }
@@ -412,9 +352,6 @@ export const formatPhoneNumber = (
   return phone; // Return original if can't format
 };
 
-/**
- * Format email address (basic validation and normalization)
- */
 export const formatEmail = (email: string): string => {
   if (!email) return '';
   
@@ -422,12 +359,8 @@ export const formatEmail = (email: string): string => {
 };
 
 // =============================================================================
-// DATE AND TIME FORMATTERS
 // =============================================================================
 
-/**
- * Format date with locale support
- */
 type FormatDateOptions = Intl.DateTimeFormatOptions & {
   locale?: string;
   format?: 'short' | 'medium' | 'long' | 'full' | 'ddmmyyyy' | 'yyyy-mm-dd' | 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'dd MMM yyyy' | 'dd-mm-yyyy';
@@ -459,7 +392,6 @@ export const formatDate = (
   } = options;
 
   try {
-    // Pre-validate string inputs before creating Date object
     if (typeof date === 'string') {
       const trimmed = date.trim();
       if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
@@ -469,12 +401,10 @@ export const formatDate = (
 
     const dateObj = new Date(date);
     
-    // Check for invalid dates (NaN) or suspicious Unix epoch dates
     if (isNaN(dateObj.getTime()) || isSuspiciousUnixEpoch(date, dateObj)) {
       return 'No Date';
     }
 
-    // Handle custom string formats
     if (typeof format === 'string') {
       const day = dateObj.getDate().toString().padStart(2, '0');
       const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
@@ -495,11 +425,9 @@ export const formatDate = (
           return `${month}/${day}/${year}`;
         case 'dd MMM yyyy':
           return `${day} ${monthName} ${year}`;
-        // Fall through to Intl formats below
       }
     }
 
-    // Use Intl for short/medium/long/full/custom Intl options
     const mergedOptions = {
       ...(format && DATE_FORMATS[format as keyof typeof DATE_FORMATS]),
       ...intlOptions,
@@ -512,36 +440,27 @@ export const formatDate = (
   }
 };
 
-/**
- * Detects if we got Unix epoch from invalid input that was coerced
- * This is very aggressive - assumes most Unix epoch dates are from invalid coercion
- */
 function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: Date): boolean {
   const time = dateObj.getTime();
   const isUnixEpoch = time === 0; // January 1, 1970 00:00:00 UTC
   
   if (!isUnixEpoch) return false;
   
-  // If input is a Date object that's already Unix epoch, it might be valid
   if (originalInput instanceof Date) {
     return false;
   }
   
-  // If input is exactly the number 0, it's intentional
   if (originalInput === 0) {
     return false;
   }
   
-  // For any other number, if it results in Unix epoch, it's suspicious
   if (typeof originalInput === 'number') {
     return true;
   }
   
-  // For strings - be VERY strict. Most Unix epoch results from strings are invalid
   if (typeof originalInput === 'string') {
     const trimmed = originalInput.trim();
     
-    // Only these exact strings are considered valid Unix epoch
     const validUnixEpochStrings = [
       '0',
       '1970-01-01',
@@ -552,22 +471,16 @@ function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: D
       '1970-01-01T00:00:00Z'
     ];
     
-    // Exact match only - no partial matches
     const isExactMatch = validUnixEpochStrings.includes(trimmed) || 
                         validUnixEpochStrings.includes(trimmed.toLowerCase());
     
-    // If it's not an exact match but resulted in Unix epoch, it's from invalid input
     return !isExactMatch;
   }
   
-  // Default to suspicious for any other type
   return true;
 }
 
 
-/**
- * Format time range
- */
 export const formatTimeRange = (
   startTime: Date | string,
   endTime: Date | string,
@@ -587,9 +500,6 @@ export const formatTimeRange = (
   return `${start} - ${end}`;
 };
 
-/**
- * Format relative time (e.g., "2 hours ago")
- */
 export const formatRelativeTime = (
   date: Date | string | number,
   locale: string = 'en-US'
@@ -608,7 +518,6 @@ export const formatRelativeTime = (
     if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
     if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
     
-    // For older dates, return formatted date
     return formatDate(dateObj, { locale, dateStyle: 'medium' });
   } catch {
     return 'No Date';
@@ -616,12 +525,8 @@ export const formatRelativeTime = (
 };
 
 // =============================================================================
-// LIST AND ARRAY FORMATTERS
 // =============================================================================
 
-/**
- * Format array as a grammatically correct list
- */
 export const formatList = (
   items: (string | number)[],
   options: ListFormatOptions & { locale?: string } = {}
@@ -646,7 +551,6 @@ export const formatList = (
     
     return formatter.format(stringItems);
   } catch {
-    // Fallback for older browsers
     if (stringItems.length === 2) {
       return `${stringItems[0]} ${conjunction} ${stringItems[1]}`;
     }
@@ -657,9 +561,6 @@ export const formatList = (
   }
 };
 
-/**
- * Format array with truncation support
- */
 export const formatArrayWithLimit = (
   items: (string | number)[],
   options: {
@@ -686,12 +587,8 @@ export const formatArrayWithLimit = (
 };
 
 // =============================================================================
-// ERROR AND VALIDATION FORMATTERS
 // =============================================================================
 
-/**
- * Format error messages consistently
- */
 export const formatErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') return error;
   if (error instanceof Error) return error.message;
@@ -706,9 +603,6 @@ export const formatErrorMessage = (error: unknown): string => {
   return 'An unexpected error occurred';
 };
 
-/**
- * Format validation errors with field names
- */
 export const formatValidationErrors = (
   errors: ValidationError[] | Record<string, string>
 ): string[] => {
@@ -724,12 +618,8 @@ export const formatValidationErrors = (
 };
 
 // =============================================================================
-// SEARCH AND UTILITY FORMATTERS
 // =============================================================================
 
-/**
- * Normalize search query
- */
 export const normalizeSearchQuery = (query: string): string => {
   if (!query) return '';
   
@@ -739,9 +629,6 @@ export const normalizeSearchQuery = (query: string): string => {
     .toLowerCase();
 };
 
-/**
- * Highlight search terms in text
- */
 export const highlightSearchTerms = (
   text: string,
   searchTerms: string | string[],
@@ -774,18 +661,15 @@ export const highlightSearchTerms = (
 };
 
 // =============================================================================
-// EXPORTS
 // =============================================================================
 
 const formatters = {
-  // Numbers
   formatNumber,
   formatCurrency,
   formatPercentage,
   formatScore,
   formatFileSize,
   
-  // Strings
   toTitleCase,
   snakeToTitleCase,
   camelToKebab,
@@ -795,25 +679,20 @@ const formatters = {
   createSlug,
   truncateText,
   
-  // Contact
   formatUserName,
   formatPhoneNumber,
   formatEmail,
   
-  // Dates
   formatDate,
   formatTimeRange,
   formatRelativeTime,
   
-  // Lists
   formatList,
   formatArrayWithLimit,
   
-  // Errors
   formatErrorMessage,
   formatValidationErrors,
   
-  // Search
   normalizeSearchQuery,
   highlightSearchTerms,
 };

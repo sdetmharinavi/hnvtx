@@ -82,12 +82,12 @@ const defaultFormatters = {
   address: (
     address:
       | Partial<{
-          street?: string;
-          city?: string;
-          state?: string;
-          zip_code?: string;
-          zipCode?: string;
-          country?: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          zipCode?: string | null;
+          country?: string | null;
         }>
       | null
       | undefined,
@@ -99,7 +99,7 @@ const defaultFormatters = {
       address.state,
       address.zip_code ?? address.zipCode,
       address.country,
-    ].filter(Boolean) as string[];
+    ].filter((part) => part != null) as string[];
     return parts.length > 0 ? parts.join(", ") : null;
   },
 

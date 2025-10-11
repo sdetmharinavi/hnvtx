@@ -9,6 +9,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
 import { allowedRoles } from "@/constants/constants";
+import { UserProvider } from "@/providers/UserProvider";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,7 +29,8 @@ export default function DashboardLayout({
   // Determine table name based on current route
 
   return (
-    <QueryProvider>
+    
+      <UserProvider>
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider
           options={{
@@ -63,6 +65,7 @@ export default function DashboardLayout({
           </div>
         </RouteBasedUploadConfigProvider>
       </Protected>
-    </QueryProvider>
+      </UserProvider>
+    
   );
 }

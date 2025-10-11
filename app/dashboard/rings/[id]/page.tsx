@@ -1,15 +1,21 @@
-// path: app/dashboard/rings/[id]/page.tsx
 "use client";
 
 import { useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiMap } from "react-icons/fi";
 import { useRingNodes } from "@/hooks/database/ring-map-queries";
-import ClientRingMap from "@/components/map/ClientRingMap";
+// THE FIX: Import dynamic
+import dynamic from "next/dynamic";
 import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
 import { RingMapNode } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
+
+// THE FIX: Dynamically import the map component with SSR turned off
+const ClientRingMap = dynamic(() => import("@/components/map/ClientRingMap"), {
+  ssr: false,
+  loading: () => <PageSpinner text="Loading Ring Map..." />,
+});
 
 export default function RingMapPage() {
   const params = useParams();

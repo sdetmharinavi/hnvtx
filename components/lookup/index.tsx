@@ -1,4 +1,3 @@
-export * from "./lookup-types";
 export * from "./lookup-hooks";
 export * from "./LookupModal";
 export * from "./LookupTypesEmptyStates";

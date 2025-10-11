@@ -1,4 +1,3 @@
-// path: components/bsnl/useBsnlDashboardData.ts
 "use client";
 
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
@@ -6,6 +5,7 @@ import { V_systems_completeRowSchema, V_nodes_completeRowSchema, V_ofc_cables_co
 import { createClient } from '@/utils/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { LatLngBounds } from 'leaflet';
 
 type BsnlSystem = V_systems_completeRowSchema;
 type BsnlNode = V_nodes_completeRowSchema;
@@ -17,7 +17,7 @@ interface BsnlDashboardData {
   systems: BsnlSystem[];
 }
 
-export function useBsnlDashboardData(filters: BsnlSearchFilters) {
+export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatLngBounds | null) {
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
@@ -27,11 +27,20 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
     p_cable_types: filters.type ? [filters.type] : undefined,
     p_regions: filters.region ? [filters.region] : undefined,
     p_node_types: filters.nodeType ? [filters.nodeType] : undefined,
-  }), [filters]);
+    // THE FIX: Pass bounds as separate, correctly named numeric parameters
+    p_min_lat: mapBounds?.getSouth(),
+    p_max_lat: mapBounds?.getNorth(),
+    p_min_lng: mapBounds?.getWest(),
+    p_max_lng: mapBounds?.getEast(),
+  }), [filters, mapBounds]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
     queryKey: ['bsnl-dashboard-data', queryParams],
     queryFn: async () => {
+      if (!mapBounds) {
+        return { nodes: [], ofcCables: [], systems: [] };
+      }
+
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_bsnl_dashboard_data', queryParams);
 
       if (rpcError) {
@@ -40,10 +49,9 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
 
       return rpcData as BsnlDashboardData;
     },
-    staleTime: 60 * 60 * 1000,
-    // THE FIX: Keep displaying the last successful fetch's data while new data is being fetched.
-    // This provides a seamless UX by preventing the UI from showing a loading state on filter changes.
+    staleTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
+    enabled: !!mapBounds,
   });
 
   return {

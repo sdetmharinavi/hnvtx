@@ -51,7 +51,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "cpan_connections":
         return null;
       case "fiber-joints":
-        return "fiber_joints";
+        return "fiber_splices";
       case "fiber-joint-connections":
         return null;
       case "logical-fiber-paths":
@@ -71,7 +71,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "system-connections":
         return "system_connections";
       case "user-activity-logs":
-        return "user_activity_logs";
+        return null;
       default:
         return null;
     }
