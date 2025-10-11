@@ -5,6 +5,7 @@ import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
 import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers';
+import { PostgrestError } from '@supabase/supabase-js';
 
 interface DeleteItem {
   id: string;
@@ -69,8 +70,20 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         toast.success(successMessage);
         onSuccess?.();
       },
-      // THE FIX: Add a generic onError handler to provide user feedback on failure.
-      onError: (err: Error) => toast.error(`Deletion failed: ${err.message}`),
+      onError: (err: Error) => {
+        // THE FIX: Add specific error handling for foreign key violations.
+        const pgError = err as PostgrestError;
+        if (pgError.code === '23503') { // Foreign key violation
+          const match = pgError.message.match(/on table "(.*?)"/);
+          const referencingTable = match ? match[1] : 'another table';
+          toast.error("Deletion Failed", {
+            description: `Cannot delete this item because it is still referenced by records in the '${referencingTable}' table. Please reassign or delete those records first.`,
+            duration: 10000,
+          });
+        } else {
+          toast.error(`Deletion failed: ${err.message}`);
+        }
+      },
       onSettled: () => {
         setIsConfirmModalOpen(false);
         setItemsToDelete([]);
@@ -110,14 +123,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   }, [itemsToDelete, bulkFilter]);
 
   return {
-    deleteSingle,
-    deleteMultiple,
-    deleteBulk,
-    handleConfirm,
-    handleCancel,
-    isConfirmModalOpen,
-    isPending,
-    confirmationMessage: getConfirmationMessage(),
+    deleteSingle, deleteMultiple, deleteBulk, handleConfirm, handleCancel,
+    isConfirmModalOpen, isPending, confirmationMessage: getConfirmationMessage(),
     itemToDelete: itemsToDelete[0] ?? null,
   };
 }

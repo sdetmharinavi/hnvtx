@@ -9,8 +9,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useUploadConfigStore } from "@/stores/useUploadConfigStore";
 import { useExcelUpload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
-import { TableName } from "@/hooks/database/queries-type-helpers";
 import { useCurrentTableName } from "@/hooks/useCurrentTableName";
+import { PublicTableName } from "@/hooks/database";
 
 interface QuickActionsProps {
   isCollapsed: boolean;
@@ -40,11 +40,10 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
   // Initialize the upload hook. Note that we don't know the table name here yet.
   const { mutate, isPending } = useExcelUpload(
     supabase,
-    currentTableName as TableName,
+    currentTableName as PublicTableName,
     {
       onSuccess: (result) => {
         // ... success handler
-        console.log("result", result);
         return result.successCount > 0
           ? toast.success(
               `Successfully uploaded ${result.successCount} of ${result.totalRows} records.`

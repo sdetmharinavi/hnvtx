@@ -92,6 +92,11 @@ export function LookupTypesTable({
   getSortDirection
 }: LookupTypesTableProps) {
 
+  // initial sort according to Sort Order
+  const sortedLookups = useMemo(() => {
+    return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
+  }, [lookups]);
+
   // Filter lookups based on search term (if not already filtered externally)
   const filteredLookups = useMemo(() => {
     if (!searchTerm.trim()) return lookups;
@@ -104,7 +109,7 @@ export function LookupTypesTable({
     );
   }, [lookups, searchTerm]);
 
-  const displayedLookups = searchTerm ? filteredLookups : lookups;
+  const displayedLookups = searchTerm ? filteredLookups : sortedLookups;
 
   return (
     <div className="overflow-x-auto">
