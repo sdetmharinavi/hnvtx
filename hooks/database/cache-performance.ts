@@ -1,5 +1,5 @@
 import { useQueryClient, QueryClient } from "@tanstack/react-query";
-import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, TableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
+import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, PublicTableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { applyFilters, applyOrdering, createQueryKey, createRpcQueryKey } from "./utility-functions";
@@ -27,7 +27,7 @@ export function useQueryPerformance() {
     });
   };
 
-  const prefetchCriticalData = async (supabase: SupabaseClient<Database>, criticalTables: TableName[]) => {
+  const prefetchCriticalData = async (supabase: SupabaseClient<Database>, criticalTables: PublicTableName[]) => {
     const promises = criticalTables.map((tableName) =>
       queryClient.prefetchQuery({
         queryKey: ["table", tableName],
@@ -75,7 +75,7 @@ export const tableQueryUtils = {
     queryClient.invalidateQueries({ queryKey: ["rpc"] });
   },
 
-  prefetchTable: async <T extends TableName>(queryClient: QueryClient, supabase: SupabaseClient<Database>, tableName: T, options?: UseTableQueryOptions<T>) => {
+  prefetchTable: async <T extends PublicTableName>(queryClient: QueryClient, supabase: SupabaseClient<Database>, tableName: T, options?: UseTableQueryOptions<T>) => {
     return queryClient.prefetchQuery({
       queryKey: createQueryKey(
         tableName,
@@ -124,11 +124,11 @@ export const tableQueryUtils = {
   },
 
   // Optimized cache management
-  setQueryData: <T extends TableName>(queryClient: QueryClient, tableName: T, data: TableRow<T>[], filters?: Filters, columns?: string) => {
+  setQueryData: <T extends PublicTableName>(queryClient: QueryClient, tableName: T, data: TableRow<T>[], filters?: Filters, columns?: string) => {
     queryClient.setQueryData(createQueryKey(tableName, filters, columns), data);
   },
 
-  getQueryData: <T extends TableName>(queryClient: QueryClient, tableName: T, filters?: Filters, columns?: string): TableRow<T>[] | undefined => {
+  getQueryData: <T extends PublicTableName>(queryClient: QueryClient, tableName: T, filters?: Filters, columns?: string): TableRow<T>[] | undefined => {
     return queryClient.getQueryData(createQueryKey(tableName, filters, columns));
   },
 

@@ -15,7 +15,6 @@ import RouteConfigurationSection from '@/components/ofc/OfcForm/RouteConfigurati
 import CableSpecificationsSection from '@/components/ofc/OfcForm/CableSpecificationsSection';
 import MaintenanceSection from '@/components/ofc/OfcForm/MaintenanceSection';
 import { PathValue, SubmitErrorHandler } from 'react-hook-form';
-import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
 import {
   Ofc_cablesInsertSchema,
   Ofc_cablesRowSchema,
@@ -24,7 +23,7 @@ import {
 import { FormSearchableSelect } from '@/components/common/form';
 
 interface OfcFormProps {
-  ofcCable?: OfcCablesWithRelations;
+  ofcCable?: Ofc_cablesRowSchema;
   onSubmit: (data: Ofc_cablesInsertSchema) => void;
   onClose: () => void;
   pageLoading: boolean;

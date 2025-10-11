@@ -5,7 +5,8 @@ import { z } from "zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form/FormControls";
 import { employee_designationsInsertSchema, Employee_designationsInsertSchema, Employee_designationsRowSchema } from "@/schemas/zod-schemas";
-import { DesignationWithRelations } from "@/app/dashboard/designations/page";
+import { DesignationWithRelations } from "@/config/designations";
+
 
 
 

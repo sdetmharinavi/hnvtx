@@ -1,4 +1,3 @@
-// path: components/auth/Protected.tsx
 "use client";
 
 import { useEffect, useRef, ReactNode } from "react";
@@ -9,7 +8,8 @@ import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { UserProvider, useUser } from "@/providers/UserProvider"; // THE FIX: Import UserProvider
+import { UserProvider, useUser } from "@/providers/UserProvider";
+import { Json } from "@/types/supabase-types";
 
 const useUserProfileCheck = (userId?: string) => {
   const supabase = createClient();
@@ -40,50 +40,46 @@ interface ProtectedProps {
   redirectTo?: string;
 }
 
-// THE FIX: Create a new inner component that can safely use the context.
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
+  // THE FIX: Call ALL hooks unconditionally at the top of the component.
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  
+  const { canAccess, isSuperAdmin, role, isLoading: isRoleLoading } = useUser();
   const { data: profile, isLoading: isProfileLoading } = useUserProfileCheck(user?.id);
-  const { canAccess, isSuperAdmin, isLoading: isRoleLoading } = useUser();
 
+  // Derive state from the results of the hooks. This is safe to do before conditional returns.
+  const needsOnboarding = 
+    !isProfileLoading && // Only check if profile is loaded
+    profile && 
+    typeof profile.preferences === 'object' && 
+    profile.preferences !== null && 
+    !Array.isArray(profile.preferences) &&
+    'needsOnboarding' in profile.preferences &&
+    (profile.preferences as { needsOnboarding?: boolean }).needsOnboarding === true;
+
+  // THE FIX: The useEffect hook is now also called unconditionally at the top level.
   useEffect(() => {
-    if (!isProfileLoading && !isRoleLoading) {
-      const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
-
-      if (needsOnboarding) {
-        if (window.location.pathname !== '/onboarding') {
-          router.replace('/onboarding');
-        }
-        return;
-      }
-
-      if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-        return;
-      }
+    // The logic *inside* the effect can be conditional. This is the correct pattern.
+    if (!isProfileLoading && !isRoleLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
+      router.replace('/onboarding');
     }
-  }, [
-    profile, isProfileLoading, isRoleLoading,
-    canAccess, isSuperAdmin, allowedRoles, router
-  ]);
-
-  if (isProfileLoading) {
-     return <PageSpinner text="Loading user profile..." />;
+  }, [isProfileLoading, isRoleLoading, needsOnboarding, router]);
+  
+  // THE FIX: All conditional returns now happen AFTER all hooks have been called.
+  if (isRoleLoading || isProfileLoading) {
+     return <PageSpinner text="Verifying permissions..." />;
   }
   
-  const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
   if (needsOnboarding) {
-    return <PageSpinner text="Finalizing session..." />;
+    return <PageSpinner text="Redirecting to onboarding..." />;
   }
 
   if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={user?.role} />;
+    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
   }
 
   return <>{children}</>;
 }
-
 
 export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, redirectTo = "/login" }) => {
   const authState = useAuthStore((state) => state.authState);
@@ -106,13 +102,12 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
   }
 
   if (authState === 'authenticated') {
-    // THE FIX: The UserProvider is now placed here, wrapping all protected children.
+    // The UserProvider is still wrapping the content in the layout, which is correct.
+    // We just render the content gatekeeper here.
     return (
-      <UserProvider>
-        <ProtectedContent allowedRoles={allowedRoles}>
-          {children}
-        </ProtectedContent>
-      </UserProvider>
+      <ProtectedContent allowedRoles={allowedRoles}>
+        {children}
+      </ProtectedContent>
     );
   }
 

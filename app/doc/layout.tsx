@@ -6,6 +6,7 @@ import DocSidebar from '@/components/doc/DocSidebar';
 import { workflowSections } from '@/components/doc/data/workflowData';
 import { allowedRoles } from '@/constants/constants';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { UserProvider } from '@/providers/UserProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
@@ -13,7 +14,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <QueryProvider>
+      <UserProvider>
       <Protected allowedRoles={allowedRoles}>
       <div className="flex min-h-[calc(100vh-64px)] bg-gray-100 dark:bg-gray-950">
 
@@ -37,7 +38,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </Protected>
-    </QueryProvider>
+    </UserProvider>
   );
 }
 
