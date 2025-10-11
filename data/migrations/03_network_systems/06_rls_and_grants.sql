@@ -1,5 +1,5 @@
 -- path: data/migrations/03_network_systems/06_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module. [SELF-CONTAINED]
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [CORRECTED & SECURED]
 
 -- =================================================================
 -- PART 1: GRANTS AND RLS SETUP FOR SYSTEM-SPECIFIC TABLES
@@ -47,7 +47,7 @@ BEGIN
   USING (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM' AND (
+      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -57,7 +57,7 @@ BEGIN
   ) WITH CHECK (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM' AND (
+      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -79,36 +79,76 @@ BEGIN
   USING (
     EXISTS (
       SELECT 1 FROM public.systems s
-      WHERE s.id = system_connections.system_id AND s.system_type_id IN (
-        SELECT lt.id FROM public.lookup_types lt
-        WHERE lt.category = 'SYSTEM' AND (
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE s.id = system_connections.system_id 
+      AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
       )
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.systems s
-      WHERE s.id = system_connections.system_id AND s.system_type_id IN (
-        SELECT lt.id FROM public.lookup_types lt
-        WHERE lt.category = 'SYSTEM' AND (
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE s.id = system_connections.system_id 
+      AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
       )
     )
   );
 END;
 $$;
 
+-- =================================================================
+-- PART 3: THE FIX - SPECIFIC RLS POLICIES FOR SUBTYPE TABLES
+-- =================================================================
+DO $$
+BEGIN
+  -- Policies for 'sfp_based_connections' table
+  DROP POLICY IF EXISTS "Allow admin full access" ON public.sfp_based_connections;
+  DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.sfp_based_connections;
+  DROP POLICY IF EXISTS "Allow full access based on parent system type" ON public.sfp_based_connections;
+
+  CREATE POLICY "Allow admin full access" ON public.sfp_based_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
+  CREATE POLICY "Allow authenticated read-access" ON public.sfp_based_connections FOR SELECT TO authenticated USING (true);
+  
+  CREATE POLICY "Allow full access based on parent system type" ON public.sfp_based_connections
+  FOR ALL TO cpan_admin, maan_admin, asset_admin, mng_admin
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.system_connections sc
+      JOIN public.systems s ON sc.system_id = s.id
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE sc.id = sfp_based_connections.system_connection_id
+      AND lt.category = 'SYSTEM_TYPES' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
+      )
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.system_connections sc
+      JOIN public.systems s ON sc.system_id = s.id
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE sc.id = sfp_based_connections.system_connection_id
+      AND lt.category = 'SYSTEM_TYPES' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
+      )
+    )
+  );
+
+  -- You can add similar specific policies for sdh_connections, ring_based_systems etc. if needed
+END;
+$$;
 
 -- =================================================================
--- PART 3: GRANTS FOR VIEWS (Created in this module)
+-- PART 4: GRANTS FOR VIEWS (Created in this module)
 -- =================================================================
 DO $$
 BEGIN

@@ -54,7 +54,7 @@ const useNodesData = (
     return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
     'v_nodes_complete',
     {
@@ -70,6 +70,7 @@ const useNodesData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
@@ -83,6 +84,7 @@ const NodesPage = () => {
     inactiveCount,
     isLoading,
     isMutating,
+    isFetching,
     error,
     refetch,
     pagination,
@@ -96,6 +98,8 @@ const NodesPage = () => {
     tableName: 'nodes',
     dataQueryHook: useNodesData,
   });
+
+  const isInitialLoad = isLoading && nodes.length === 0;
 
   const nodeTypes = useMemo(() => {
     const uniqueNodeTypes = new Map();
@@ -148,7 +152,8 @@ const NodesPage = () => {
         icon={<FiCpu />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
 
       <NodeDetailsModal

@@ -72,7 +72,7 @@ function NavItems() {
             label: 'Designations',
             icon: <ImUserTie className="h-5 w-5" />,
             href: '/dashboard/designations',
-            roles: [],
+            roles: [UserRole.ADMIN],
           },
           {
             id: 'categories',

@@ -90,7 +90,7 @@ const EmployeesPage = () => {
     [...TABLE_COLUMN_KEYS.v_employees] 
   );
 
-  
+  const isInitialLoad = isLoading && employees.length === 0;
 
   const tableActions = useMemo(
     () => createStandardActions<V_employeesRowSchema>({
@@ -128,7 +128,8 @@ const EmployeesPage = () => {
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
 
       <BulkActions

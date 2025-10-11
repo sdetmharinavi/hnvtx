@@ -15,7 +15,7 @@ import {
   useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
-import { useDelete } from '@/hooks/useDelete';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 import {
   Employee_designationsInsertSchema,
   Employee_designationsUpdateSchema,
@@ -33,7 +33,7 @@ export default function DesignationManagerPage() {
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
-  const [searchTerm, setSearchTerm] = useState(''); // Added search term state
+  const [searchTerm, setSearchTerm] = useState('');
 
   const serverFilters = useMemo(() => {
     const f: Filters = {};
@@ -54,13 +54,16 @@ export default function DesignationManagerPage() {
     {
       filters: serverFilters,
       orderBy: [{ column: 'name', ascending: true }],
+      placeholderData: (prev) => prev,
     }
   );
 
-  const { refetch, error, data, isFetching } = designationsQuery; // THE FIX: Destructure isFetching
+  const { refetch, error, data, isLoading, isFetching } = designationsQuery;
 
   const allDesignations = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
+
+  const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const onMutationSuccess = () => {
     refetch();
@@ -81,10 +84,10 @@ export default function DesignationManagerPage() {
 
   const { isPending } = toggleStatusMutation;
 
-  const deleteManager = useDelete({
+  const deleteManager = useDeleteManager({
     tableName: 'employee_designations',
     onSuccess: () => {
-      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
+      if (selectedDesignationId && deleteManager.itemToDelete?.id === selectedDesignationId) {
         setSelectedDesignationId(null);
       }
       refetch();
@@ -126,12 +129,9 @@ export default function DesignationManagerPage() {
     { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error && isInitialLoad) {
+    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
-
-  const isLoading = designationsQuery.isLoading || createDesignationMutation.isPending || updateDesignationMutation.isPending || toggleStatusMutation.isPending;
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -140,13 +140,14 @@ export default function DesignationManagerPage() {
         icon={<ImUserTie />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
         className="mb-4"
       />
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
-        isFetching={isFetching} // THE FIX: Pass isFetching
+        isFetching={isFetching}
         toggleStatusMutation={{ mutate: toggleStatus, isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}

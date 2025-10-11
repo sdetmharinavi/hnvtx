@@ -6,6 +6,7 @@ export interface StatProps {
   label: string;
   icon?: ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'default';
+  isLoading?: boolean; // THE FIX: Add isLoading prop
 }
 
 export const StatCard: React.FC<StatProps> = ({
@@ -13,6 +14,7 @@ export const StatCard: React.FC<StatProps> = ({
   label,
   icon,
   color = 'default',
+  isLoading = false, // THE FIX: Add isLoading prop
 }) => {
   const statColors = {
     primary: 'text-blue-600 dark:text-blue-400',
@@ -52,7 +54,14 @@ export const StatCard: React.FC<StatProps> = ({
         </div>
       )}
       <div>
-        <div className={`text-2xl font-bold ${statColors[color]}`}>{value}</div>
+        {/* THE FIX: Conditionally render a skeleton for the value */}
+        <div className={`text-2xl font-bold ${statColors[color]}`}>
+          {isLoading ? (
+            <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+          ) : (
+            value
+          )}
+        </div>
         <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
       </div>
     </div>

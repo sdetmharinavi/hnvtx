@@ -101,6 +101,8 @@ const OfcPage = () => {
     displayNameField: 'route_name',
   });
 
+  const isInitialLoad = isLoading && ofcData.length === 0;
+
   const { data: ofcTypesData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_TYPES' } });
   const { data: maintenanceAreasData } = useTableQuery(createClient(), 'maintenance_areas', { filters: { status: true } });
   const { data: ofcOwnersData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_OWNER' } });
@@ -149,7 +151,8 @@ const OfcPage = () => {
         icon={<AiFillMerge />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <BulkActions
         selectedCount={bulkActions.selectedCount}

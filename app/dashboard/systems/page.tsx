@@ -46,7 +46,7 @@ const useSystemsData = (
     return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
     'v_systems_complete',
      {
       filters: searchFilters,
@@ -61,6 +61,7 @@ const useSystemsData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
@@ -72,7 +73,7 @@ export default function SystemsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const {
-    data: systems, totalCount, activeCount, inactiveCount, isLoading, error, refetch,
+    data: systems, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch,
     pagination, search, filters, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'systems', V_systems_completeRowSchema>({
     tableName: 'systems',
@@ -80,6 +81,8 @@ export default function SystemsPage() {
     searchColumn: 'system_name',
     displayNameField: 'system_name'
   });
+
+  const isInitialLoad = isLoading && systems.length === 0;
 
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
@@ -158,7 +161,8 @@ export default function SystemsPage() {
         icon={<FiDatabase />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <DataTable
         tableName="v_systems_complete"
