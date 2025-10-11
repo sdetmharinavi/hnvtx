@@ -1,7 +1,7 @@
 import { Separator } from "@/components/common/ui/separator";
 import StepList from "@/components/doc/StepList";
 import { WorkflowSectionProps } from "@/components/doc/types/workflowTypes";
-import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
+import { useUser } from "@/providers/UserProvider";
 import { User, Monitor, Zap } from "lucide-react";
 
 export default function WorkflowSection({ 
@@ -10,7 +10,7 @@ export default function WorkflowSection({
   colors, 
   isLast 
 }: WorkflowSectionProps) {
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">

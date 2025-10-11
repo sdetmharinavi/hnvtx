@@ -4,8 +4,6 @@ import React, { useEffect } from 'react';
 import { FiShield } from 'react-icons/fi';
 import {
   useAdminUpdateUserProfile,
-  useGetMyRole,
-  useIsSuperAdmin,
 } from '@/hooks/useAdminUsers';
 import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
@@ -17,6 +15,7 @@ import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
 import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
+import { useUser } from '@/providers/UserProvider';
 
 // ** Define types based on the Zod schema, not manually.**
 const addressSchema = user_profilesUpdateSchema.shape.address;
@@ -81,8 +80,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   }, [isOpen, reset, user]);
 
   const avatarUrl = watch('avatar_url');
-  const { data: currentUserRole } = useGetMyRole();
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin, role: currentUserRole } = useUser();
   const updateProfile = useAdminUpdateUserProfile();
 
   const onValidSubmit = async (data: UserProfileFormData) => {

@@ -4127,10 +4127,6 @@ export type Database = {
         Args: { p_path_id: string }
         Returns: undefined
       }
-      deprovision_path: {
-        Args: { p_logical_path_id: string; p_system_id: string }
-        Returns: undefined
-      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json

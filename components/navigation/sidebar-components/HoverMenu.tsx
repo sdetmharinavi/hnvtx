@@ -2,10 +2,10 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { NavItem as NavItemType } from "./sidebar-types";
-import { useUserPermissions } from "@/hooks/useRoleFunctions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
+import { useUser } from "@/providers/UserProvider";
 
 interface HoverMenuProps {
   hoveredItem: NavItemType | null;
@@ -14,7 +14,7 @@ interface HoverMenuProps {
 
 export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
   const router = useRouter();
-  const { isSuperAdmin, role } = useUserPermissions();
+  const { isSuperAdmin, role } = useUser();
 
   const hasPermission = (roles: UserRole[]) => {
     if (isSuperAdmin) return true;

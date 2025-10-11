@@ -4,11 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { FiChevronDown } from "react-icons/fi";
 import { NavItem as NavItemType, submenuVariants } from "./sidebar-types";
-import { useUserPermissions } from "@/hooks/useRoleFunctions";
 import { toast } from "sonner";
 import { UserRole } from "@/types/user-roles";
 import { ButtonSpinner } from "@/components/common/ui/LoadingSpinner";
 import { useState, useEffect } from "react";
+import { useUser } from "@/providers/UserProvider";
 
 interface NavItemProps {
   item: NavItemType;
@@ -29,7 +29,9 @@ export const NavItem = ({
 }: NavItemProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { isSuperAdmin, role } = useUserPermissions();
+  // const { isSuperAdmin, role } = useUserPermissions();
+  // THE FIX: Get permissions from the context instead of a direct hook call.
+  const { isSuperAdmin, role } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
