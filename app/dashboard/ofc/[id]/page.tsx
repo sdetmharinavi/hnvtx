@@ -12,7 +12,6 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { GitCommit, GitBranch } from 'lucide-react'; // Changed icon for better context
@@ -27,6 +26,7 @@ import {
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header'; // Import PageHeader components
+import { useUser } from '@/providers/UserProvider';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,7 +124,7 @@ export default function OfcCableDetailsPage() {
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
   ]);
 
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
 
   const tableActions = useMemo(
     () => [

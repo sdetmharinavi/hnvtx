@@ -16,7 +16,6 @@ import { Row } from '@/hooks/database';
 import {
   useAdminGetAllUsersExtended,
   useAdminUserOperations,
-  useIsSuperAdmin,
   UserCreateInput,
 } from '@/hooks/useAdminUsers';
 import {
@@ -31,6 +30,7 @@ import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from '@/
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
+import { useUser } from '@/providers/UserProvider';
 
 // This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
 // 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
@@ -63,7 +63,8 @@ const useUsersData = (
 const AdminUsersPage = () => {
   // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  // Get permissions from the context.
+  const { isSuperAdmin } = useUser();
   const {
     createUser,
     deleteUsers: bulkDelete,

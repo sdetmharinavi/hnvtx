@@ -26,7 +26,7 @@ import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { useIsSuperAdmin } from '@/hooks/useAdminUsers';
+import { useUser } from '@/providers/UserProvider';
 import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { AiFillMerge } from 'react-icons/ai';
 
@@ -71,7 +71,7 @@ const useOfcData = (
 const OfcPage = () => {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
-  const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
 
   const {
     data: ofcData,

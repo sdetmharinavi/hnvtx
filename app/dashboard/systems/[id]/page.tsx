@@ -1,15 +1,14 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
@@ -19,108 +18,92 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 
-const useSystemConnectionsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_system_connections_completeRowSchema> => {
-  const { currentPage, pageLimit, searchQuery, filters } = params;
+export default function SystemConnectionsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const systemId = params.id as string;
   const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = usePagedData<V_system_connections_completeRowSchema>(
+  // THE FIX: Manually manage state instead of using useCrudManager
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLimit, setPageLimit] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
+
+  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
+    supabase,
+    'v_systems_complete',
+    { filters: { id: systemId } }
+  );
+  const parentSystem = systemData?.data?.[0];
+
+  // THE FIX: Call usePagedData directly, passing the necessary systemId filter
+  const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase,
     'v_system_connections_complete',
     {
       filters: {
-        ...filters,
-        ...(searchQuery ? { or: `customer_name.ilike.%${searchQuery}%` } : {}),
+        system_id: systemId,
+        ...(searchQuery ? { or: { customer_name: searchQuery, connected_system_name: searchQuery } } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
   );
 
-  return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
-    isLoading,
-    error,
-    refetch,
-  };
-};
-
-export default function SystemConnectionsPage() {
-  const params = useParams();
-  const systemId = params.id as string;
-  const supabase = createClient();
-
-  const { data: system, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
-    supabase,
-    'v_systems_complete',
-    {
-      filters: { id: systemId },
-    }
-  );
+  const connections = connectionsData?.data || [];
+  const totalCount = connectionsData?.total_count || 0;
 
   const upsertMutation = useUpsertSystemConnection();
-
-  const {
-    data: connections,
-    totalCount,
-    isLoading: isLoadingConnections,
-    refetch,
-    pagination,
-    search,
-    editModal,
-    deleteModal,
-    actions: crudActions,
-  } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
+  const deleteManager = useDeleteManager({
     tableName: 'system_connections',
-    dataQueryHook: (params) => useSystemConnectionsData({ ...params, filters: { ...params.filters, system_id: systemId } }),
-    displayNameField: ['customer_name', 'connected_system_name', 'system_name'],
+    onSuccess: () => refetch(),
   });
 
   const columns = SystemConnectionsTableColumns(connections);
 
+  const openEditModal = (record: V_system_connections_completeRowSchema) => {
+    setEditingRecord(record);
+    setIsEditModalOpen(true);
+  };
+  const openAddModal = () => {
+    setEditingRecord(null);
+    setIsEditModalOpen(true);
+  };
+  const closeModal = () => {
+    setEditingRecord(null);
+    setIsEditModalOpen(false);
+  };
+
   const tableActions = useMemo(
-    () =>
-      createStandardActions<V_system_connections_completeRowSchema>({
-        onEdit: editModal.openEdit,
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
+    () => createStandardActions<V_system_connections_completeRowSchema>({
+        onEdit: openEditModal,
+        onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
+        onToggleStatus: (record) => { /* In this table, status toggle is handled via the upsert RPC */ },
       }) as TableAction<'v_system_connections_complete'>[],
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
+    [deleteManager]
   );
-  
-  const parentSystem = system?.data?.[0];
-  
-  // THE FIX: The exportConfig property is now correctly provided.
+
   const headerActions = useStandardHeaderActions({
-    onRefresh: () => {
-      refetch();
-      toast.success('Connections refreshed!');
-    },
-    onAddNew: editModal.openAdd,
+    onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
+    onAddNew: openAddModal,
     isLoading: isLoadingConnections,
     exportConfig: {
-      tableName: 'v_system_connections_complete',
-      fileName: `${parentSystem?.system_name || 'system'}_connections`,
-      filters: { system_id: systemId }
+        tableName: 'v_system_connections_complete',
+        fileName: `${parentSystem?.system_name || 'system'}_connections`,
+        filters: { system_id: systemId }
     }
   });
 
-  if (isLoadingSystem) {
-    return <PageSpinner text="Loading system details..." />;
-  }
-  
-  if (!parentSystem) {
-    return <ErrorDisplay error="System not found." />;
-  }
+  if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
+  if (!parentSystem) return <ErrorDisplay error="System not found." />;
 
   const handleSave = (formData: SystemConnectionFormValues) => {
     const payload = {
-      p_id: editModal.record?.id ?? undefined,
+      p_id: editingRecord?.id ?? undefined,
       p_system_id: parentSystem.id!,
       p_media_type_id: formData.media_type_id,
       p_status: formData.status ?? true,
@@ -158,7 +141,7 @@ export default function SystemConnectionsPage() {
     upsertMutation.mutate(payload, {
       onSuccess: () => {
         refetch();
-        editModal.close();
+        closeModal();
       }
     });
   };
@@ -180,37 +163,37 @@ export default function SystemConnectionsPage() {
         loading={isLoadingConnections}
         actions={tableActions}
         pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
+          current: currentPage,
+          pageSize: pageLimit,
           total: totalCount,
           showSizeChanger: true,
           onChange: (page, limit) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(limit);
+            setCurrentPage(page);
+            setPageLimit(limit);
           },
         }}
         searchable
-        onSearchChange={search.setSearchQuery}
+        onSearchChange={setSearchQuery}
       />
 
-      {editModal.isOpen && (
+      {isEditModalOpen && (
         <SystemConnectionFormModal
-          isOpen={editModal.isOpen}
-          onClose={editModal.close}
+          isOpen={isEditModalOpen}
+          onClose={closeModal}
           parentSystem={parentSystem}
-          editingConnection={editModal.record}
+          editingConnection={editingRecord}
           onSubmit={handleSave}
           isLoading={upsertMutation.isPending}
         />
       )}
 
       <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
         title="Confirm Delete"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
         type="danger"
       />
     </div>

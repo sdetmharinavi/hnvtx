@@ -8,6 +8,7 @@ import DashboardContent from "@/components/dashboard/DashboardContent";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
+import { allowedRoles } from "@/constants/constants";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,15 +21,6 @@ export default function DashboardLayout({
   children,
   showFileUpload = true,
   showColumnManagement = true,
-  allowedRoles = [
-    UserRole.VIEWER,
-    UserRole.ADMIN,
-    UserRole.CPANADMIN,
-    UserRole.MAANADMIN,
-    UserRole.SDHADMIN,
-    UserRole.ASSETADMIN,
-    UserRole.MNGADMIN,
-  ],
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const isMobile = useIsMobile();

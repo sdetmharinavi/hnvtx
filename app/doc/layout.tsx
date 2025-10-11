@@ -1,8 +1,10 @@
 // path: app/doc/layout.tsx
 'use client';
 
+import { Protected } from '@/components/auth/Protected';
 import DocSidebar from '@/components/doc/DocSidebar';
 import { workflowSections } from '@/components/doc/data/workflowData';
+import { allowedRoles } from '@/constants/constants';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
@@ -12,6 +14,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryProvider>
+      <Protected allowedRoles={allowedRoles}>
       <div className="flex min-h-[calc(100vh-64px)] bg-gray-100 dark:bg-gray-950">
 
         <DocSidebar sections={workflowSections} />
@@ -33,6 +36,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
           <ScrollToTopButton />
         </main>
       </div>
+    </Protected>
     </QueryProvider>
   );
 }

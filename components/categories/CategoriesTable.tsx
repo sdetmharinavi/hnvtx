@@ -4,7 +4,7 @@ import { Button } from "@/components/common/ui/Button";
 import { Card } from "@/components/common/ui/card";
 import { formatCategoryName } from "@/components/categories/utils";
 import { Categories, CategoryInfo } from "./categories-types";
-import { useIsSuperAdmin } from "@/hooks/useAdminUsers";
+import { useUser } from "@/providers/UserProvider";
 
 interface CategoriesTableProps {
   categories: Categories[];
@@ -26,7 +26,7 @@ export function CategoriesTable({
   searchTerm,
 }: CategoriesTableProps) {
 
-  const {data: isSuperAdmin} = useIsSuperAdmin();
+  const { isSuperAdmin } = useUser();
   return (
     <Card className="overflow-hidden dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">

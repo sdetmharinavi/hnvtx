@@ -102,24 +102,6 @@ export const useAdminGetUserById = (userId: string, enabled = true) => {
   });
 };
 
-// Hook to get current user's role
-export const useGetMyRole = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.role(),
-    queryFn: async (): Promise<string> => {
-      const { data, error } = await supabase.rpc("get_my_role");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || "";
-    },
-    staleTime: 15 * 60 * 1000, // 15 minutes (roles don't change often)
-  });
-};
-
 // Hook to get current user's details
 export const useGetMyUserDetails = () => {
   const supabase = createClient();
@@ -135,24 +117,6 @@ export const useGetMyUserDetails = () => {
       return data?.[0] as User_profilesUpdateSchema || null;
     },
     staleTime: 10 * 60 * 1000,
-  });
-};
-
-// Hook to check if current user is super admin
-export const useIsSuperAdmin = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.superAdmin(),
-    queryFn: async (): Promise<boolean> => {
-      const { data, error } = await supabase.rpc("is_super_admin");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || false;
-    },
-    staleTime: 15 * 60 * 1000,
   });
 };
 
