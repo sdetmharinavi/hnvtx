@@ -17,7 +17,6 @@ import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
 import { FiMapPin } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { useDebounce } from 'use-debounce';
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
@@ -29,20 +28,13 @@ export default function MaintenanceAreasPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
 
-  const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
-
+  // THE FIX: Remove search term from server-side filters. Data is fetched once.
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
     if (filters.areaType) f.area_type_id = filters.areaType;
-    
-    // THE FIX: Construct the 'or' filter as a string according to PostgREST syntax.
-    if (debouncedSearchTerm) {
-      f.or = `(name.ilike.%${debouncedSearchTerm}%,code.ilike.%${debouncedSearchTerm}%)`;
-    }
-    
     return f;
-  }, [filters, debouncedSearchTerm]);
+  }, [filters]);
 
   const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
     supabase, 'maintenance_areas',

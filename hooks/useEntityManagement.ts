@@ -1,3 +1,4 @@
+// path: hooks/useEntityManagement.ts
 "use client";
 
 import { BaseEntity, EntityWithChildren, isHierarchicalEntity, UseEntityManagementProps } from "@/components/common/entity-management/types";
@@ -6,26 +7,20 @@ import { useCallback, useMemo, useState } from "react";
 export function useEntityManagement<T extends BaseEntity>({
   entitiesQuery,
   config,
+  // THE FIX: onEdit is removed from the destructuring as it's no longer a prop.
   onDelete,
   onCreateNew,
   selectedEntityId,
   onSelect,
   onToggleStatus,
-}: UseEntityManagementProps<T>) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"tree" | "list">("list");
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  searchTerm,
+  filters,
+}: UseEntityManagementProps<T> & { searchTerm: string, filters: Record<string, string> }) {
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
-  // CHANGED: Data is now accessed from the .data property of the query result.
   const allEntities = useMemo(() => entitiesQuery.data?.data || [], [entitiesQuery.data]);
-
-  const selectedEntity = useMemo(() => {
-    return allEntities.find(e => e.id === selectedEntityId) || null;
-  }, [allEntities, selectedEntityId]);
-
 
   const searchedEntities = useMemo(() => {
     if (!searchTerm) return allEntities;
@@ -38,6 +33,7 @@ export function useEntityManagement<T extends BaseEntity>({
   }, [allEntities, searchTerm, config.searchFields]);
 
   const filteredEntities = useMemo(() => {
+    if (Object.keys(filters).length === 0) return searchedEntities;
     return searchedEntities.filter((entity) => {
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
@@ -50,29 +46,35 @@ export function useEntityManagement<T extends BaseEntity>({
     });
   }, [searchedEntities, filters]);
 
+  const selectedEntity = useMemo(() => {
+    return allEntities.find(e => e.id === selectedEntityId) || null;
+  }, [allEntities, selectedEntityId]);
+
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
     if (!config.isHierarchical) return filteredEntities.map((entity) => ({ ...entity, children: [] }));
     const entityMap = new Map<string, EntityWithChildren<T>>();
-    filteredEntities.forEach((entity) => {
+    allEntities.forEach((entity) => {
       entityMap.set(entity.id, { ...entity, children: [] });
     });
     const rootEntities: EntityWithChildren<T>[] = [];
     filteredEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
-      if (isHierarchicalEntity(entity) && entity.parent_id) {
-        const parent = entityMap.get(entity.parent_id);
-        if (parent) {
+      const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
+
+      if (parentId) {
+        const parent = entityMap.get(parentId);
+        if (parent && filteredEntities.some(e => e.id === parentId)) {
           parent.children.push(entityWithChildren);
         } else {
-          rootEntities.push(entityWithChildren);
+           rootEntities.push(entityWithChildren);
         }
       } else {
         rootEntities.push(entityWithChildren);
       }
     });
     return rootEntities;
-  }, [filteredEntities, config.isHierarchical]);
+  }, [filteredEntities, allEntities, config.isHierarchical, config.parentField]);
 
   const handleEntitySelect = useCallback((id: string) => {
     onSelect(id);
@@ -88,34 +90,18 @@ export function useEntityManagement<T extends BaseEntity>({
     });
   };
 
-  const handleOpenCreateForm = () => {
-    onCreateNew();
-  };
-
   return {
-    // State
-    searchTerm,
     viewMode,
-    showFilters,
-    filters,
-    selectedEntity, // This is the selected entity object
     showDetailsPanel,
-    expandedEntities,
-
-    // Computed data
-    allEntities,
+    selectedEntity,
     filteredEntities,
     hierarchicalEntities,
-
-    // Handlers
-    setSearchTerm,
+    expandedEntities,
     setViewMode,
-    setShowFilters,
-    setFilters,
     setShowDetailsPanel,
     handleEntitySelect,
     toggleExpanded,
-    handleOpenCreateForm,
+    handleOpenCreateForm: onCreateNew,
     onToggleStatus,
     onDelete,
   };

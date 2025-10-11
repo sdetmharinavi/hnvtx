@@ -27,9 +27,6 @@ DECLARE
   where_clause TEXT := '';
   filter_key TEXT;
   filter_value JSONB;
-  or_conditions TEXT[];
-  or_key TEXT;
-  or_value TEXT;
   alias_prefix TEXT;
 BEGIN
     alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
@@ -41,31 +38,27 @@ BEGIN
     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
-        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
-            or_conditions := ARRAY[]::TEXT[];
-            FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
-                IF public.column_exists('public', p_view_name, or_key) THEN
-                    or_conditions := array_append(or_conditions, format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%'));
-                END IF;
-            END LOOP;
-
-            IF array_length(or_conditions, 1) > 0 THEN
-                where_clause := where_clause || ' AND (' || array_to_string(or_conditions, ' OR ') || ')';
-            END IF;
-        ELSE
-            IF public.column_exists('public', p_view_name, filter_key) THEN
-                IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
-                    -- Handle complex filters like { "operator": "in", "value": [...] }
-                ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                    where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
-                ELSE
-                    where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
-                END IF;
+        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'string' THEN
+            -- Handle string format like '(col1.ilike.%val%,col2.ilike.%val%)'
+            where_clause := where_clause || ' AND ' || regexp_replace(filter_value::text, '([a-zA-Z0-9_]+)\.', alias_prefix || '\1.', 'g');
+        ELSIF public.column_exists('public', p_view_name, filter_key) THEN
+            -- This part handles standard key-value filters
+            IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
+                -- Handle complex filters if needed in the future, e.g., { "operator": "gt", "value": 10 }
+            ELSIF jsonb_typeof(filter_value) = 'array' THEN
+                where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
+            ELSE
+                where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
             END IF;
         END IF;
     END LOOP;
 
-    RETURN where_clause;
+    -- Prepend WHERE if there are any clauses
+    IF where_clause != '' THEN
+        RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
+    END IF;
+
+    RETURN '';
 END;
 $$;
 
