@@ -9,7 +9,7 @@ import { RingsFilters } from '@/components/rings/RingsFilters';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager, DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema, Lookup_typesRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useCallback, useState } from 'react';
@@ -21,52 +21,60 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
 
-// OFFLINE-FIRST REFACTOR: This data hook is refactored to use useOfflineQuery
 const useRingsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ringsRowSchema> => {
-  const { currentPage, pageLimit, searchQuery } = params;
+  const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher: Fetches all data from the Supabase view.
+  // Online Fetcher: Uses the consistent RPC function pattern
   const onlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-    const { data, error } = await createClient().from('v_rings').select('*');
-    if (error) throw error;
-    return data || [];
-  };
-
-  // 2. Offline Fetcher: Fetches all data from the local Dexie table.
-  const offlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-    return await localDb.v_rings.toArray();
-  };
-
-  const { data: allRings = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
-    ['rings-data', 'all'],
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
-  );
-  
-  // 3. Client-side filtering and pagination
-  const processedData = useMemo(() => {
-    let filtered = allRings;
+    const rpcFilters = buildRpcFilters({ ...filters, or: `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)` });
     
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_rings',
+      p_limit: 1000, // Fetch all for client-side pagination when online too
+      p_offset: 0,
+      p_filters: rpcFilters,
+    });
+
+    if (error) throw error;
+    // The RPC returns a JSON object with a 'data' property
+    return (data as { data: V_ringsRowSchema[] })?.data || [];
+  };
+
+  // Offline Fetcher: Remains the same, reads from Dexie
+  const offlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
+    const allRings = await localDb.v_rings.toArray();
+    // Perform client-side filtering for offline data
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter((ring: V_ringsRowSchema) =>
+      return allRings.filter((ring: V_ringsRowSchema) =>
         ring.name?.toLowerCase().includes(lowerQuery) ||
         ring.description?.toLowerCase().includes(lowerQuery) ||
         ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
         ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
       );
     }
-    
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((r: V_ringsRowSchema) => r.status === true).length;
+    return allRings;
+  };
+
+  const { data: allRings = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
+    ['rings-data', searchQuery, filters], // Query key now includes filters
+    onlineQueryFn,
+    offlineQueryFn,
+    { staleTime: 5 * 60 * 1000 }
+  );
+  
+  // Client-side pagination is now applied to both online and offline results
+  const processedData = useMemo(() => {
+    const totalCount = allRings.length;
+    const activeCount = allRings.filter((r: V_ringsRowSchema) => r.status === true).length;
 
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    const paginatedData = allRings.slice(start, end);
 
     return {
       data: paginatedData,
@@ -74,7 +82,7 @@ const useRingsData = (
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
-  }, [allRings, searchQuery, currentPage, pageLimit]);
+  }, [allRings, currentPage, pageLimit]);
 
   return {
     ...processedData,
@@ -97,7 +105,6 @@ const RingsPage = () => {
     tableName: 'rings', dataQueryHook: useRingsData,
   });
   
-  // Offline-first queries for filter dropdowns
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ring-types-for-filter'],
     async () => (await createClient().from('lookup_types').select('*').eq('category', 'RING_TYPES').neq('name', 'DEFAULT')).data ?? [],
@@ -198,8 +205,7 @@ const RingsPage = () => {
 
       <ConfirmModal
         isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel}
-        title="Confirm Deletion" message={deleteModal.message} confirmText="Delete"
-        cancelText="Cancel" type="danger" showIcon loading={deleteModal.loading}
+        title="Confirm Deletion" message={deleteModal.message} confirmText="Delete" cancelText="Cancel" type="danger" showIcon loading={deleteModal.loading}
       />
     </div>
   );

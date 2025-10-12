@@ -8,7 +8,6 @@ import { PublicTableOrViewName } from '@/hooks/database';
 import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// Sync from views to get denormalized data for offline use.
 const entitiesToSync: PublicTableOrViewName[] = [
   'v_nodes_complete',
   'v_ofc_cables_complete',
@@ -16,14 +15,15 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_rings',
   'v_employees',
   'v_maintenance_areas',
-  'v_cable_utilization', // NEWLY ADDED
+  'v_cable_utilization',
+  'v_ring_nodes',
   'lookup_types',
   'employee_designations',
   'user_profiles',
 ];
 
 // Function to perform the sync for a single table or view
-async function syncEntity(
+export async function syncEntity(
   supabase: SupabaseClient,
   db: HNVTXDatabase,
   entityName: PublicTableOrViewName
@@ -31,13 +31,19 @@ async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
-    const { data, error } = await supabase.from(entityName).select('*');
+    // THE DEFINITIVE FIX: Always use the 'get_paged_data' RPC.
+    // This function runs with elevated privileges on the server, bypassing RLS issues for complex views.
+    const { data: rpcResponse, error } = await supabase.rpc('get_paged_data', {
+      p_view_name: entityName,
+      p_limit: 50000, // Fetch all records for local caching
+      p_offset: 0,
+    });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // The RPC returns a JSON object like { data: [...] }, so we extract the data array.
+    const data = (rpcResponse as { data: any[] })?.data || [];
+
     await (db as any)[entityName].bulkPut(data);
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });

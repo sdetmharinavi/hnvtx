@@ -5,22 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { FiDatabase } from 'react-icons/fi';
 import { toast } from 'sonner';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { useRpcMutation, RpcFunctionArgs } from '@/hooks/database';
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from '@/hooks/useCrudManager';
+import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from '@/hooks/database';
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { Lookup_typesRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
@@ -35,22 +28,36 @@ const useSystemsData = (
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  const onlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
+        : undefined
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_systems_complete',
+      p_limit: 1000,
+      p_offset: 0,
+      p_filters: rpcFilters
+    });
+    if (error) throw error;
+    return (data as { data: V_systems_completeRowSchema[] })?.data || [];
+  };
+
+  const offlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
+    return await localDb.v_systems_complete.toArray();
+  };
+
   const { data: allSystems = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
-    ['systems-data', 'all'],
-    async () => {
-      const { data, error } = await createClient().from('v_systems_complete').select('*');
-      if (error) throw error;
-      return data || [];
-    },
-    async () => {
-      return await localDb.v_systems_complete.toArray();
-    },
+    ['systems-data', searchQuery, filters],
+    onlineQueryFn,
+    offlineQueryFn,
     { staleTime: 5 * 60 * 1000 }
   );
 
   const processedData = useMemo(() => {
     let filtered = allSystems;
-
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter((system: V_systems_completeRowSchema) =>
@@ -60,37 +67,23 @@ const useSystemsData = (
         String(system.ip_address)?.toLowerCase().includes(lowerQuery)
       );
     }
-
     if (filters.system_type_name) {
       filtered = filtered.filter((system: V_systems_completeRowSchema) => system.system_type_name === filters.system_type_name);
     }
     if (filters.status) {
-      const statusBool = filters.status === 'true';
-      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.status === statusBool);
+      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.status === (filters.status === 'true'));
     }
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((s: V_systems_completeRowSchema) => s.status === true).length;
-    
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
 
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
+    return { data: paginatedData, totalCount, activeCount, inactiveCount: totalCount - activeCount };
   }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
 
-  return {
-    ...processedData,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  };
+  return { ...processedData, isLoading, isFetching, error, refetch };
 };
 
 export default function SystemsPage() {
@@ -102,10 +95,7 @@ export default function SystemsPage() {
     data: systems, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch,
     pagination, search, filters, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'systems', V_systems_completeRowSchema>({
-    tableName: 'systems',
-    dataQueryHook: useSystemsData,
-    searchColumn: 'system_name',
-    displayNameField: 'system_name'
+    tableName: 'systems', dataQueryHook: useSystemsData, searchColumn: 'system_name', displayNameField: 'system_name'
   });
 
   const isInitialLoad = isLoading && systems.length === 0;
@@ -134,24 +124,8 @@ export default function SystemsPage() {
     }
   }, [router]);
 
-  const tableActions = useMemo(
-    () => createStandardActions<V_systems_completeRowSchema>({
-        onEdit: editModal.openEdit,
-        onView: handleView,
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
-      }),
-    [editModal.openEdit, handleView, crudActions]
-  );
-
-  const headerActions = useStandardHeaderActions({
-    data: systems,
-    onRefresh: () => { refetch(); toast.success('Systems refreshed.'); },
-    onAddNew: editModal.openAdd,
-    isLoading: isLoading,
-    exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
-  });
-
+  const tableActions = useMemo(() => createStandardActions<V_systems_completeRowSchema>({ onEdit: editModal.openEdit, onView: handleView, onDelete: crudActions.handleDelete, onToggleStatus: crudActions.handleToggleStatus }), [editModal.openEdit, handleView, crudActions]);
+  const headerActions = useStandardHeaderActions({ data: systems, onRefresh: () => { refetch(); toast.success('Systems refreshed.'); }, onAddNew: editModal.openAdd, isLoading: isLoading, exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' } });
   const headerStats = [
     { value: totalCount, label: 'Total Systems' },
     { value: activeCount, label: 'Active', color: 'success' as const },
@@ -164,17 +138,10 @@ export default function SystemsPage() {
     const isSdh = selectedSystemType?.is_sdh;
 
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
-        p_id: editModal.record?.id ?? undefined,
-        p_system_name: formData.system_name!,
-        p_system_type_id: formData.system_type_id!,
-        p_node_id: formData.node_id!,
-        p_status: formData.status ?? true,
-        p_ip_address: formData.ip_address || undefined,
-        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
-        p_commissioned_on: formData.commissioned_on || undefined,
-        p_s_no: formData.s_no || undefined,
-        p_remark: formData.remark || undefined,
-        p_make: formData.make || undefined,
+        p_id: editModal.record?.id ?? undefined, p_system_name: formData.system_name!, p_system_type_id: formData.system_type_id!,
+        p_node_id: formData.node_id!, p_status: formData.status ?? true, p_ip_address: formData.ip_address || undefined,
+        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined, p_commissioned_on: formData.commissioned_on || undefined,
+        p_s_no: formData.s_no || undefined, p_remark: formData.remark || undefined, p_make: formData.make || undefined,
         p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
         p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
     };
@@ -186,13 +153,8 @@ export default function SystemsPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="System Management"
-        description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc."
-        icon={<FiDatabase />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isInitialLoad}
-        isFetching={isFetching}
+        title="System Management" description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc." icon={<FiDatabase />}
+        stats={headerStats} actions={headerActions} isLoading={isInitialLoad} isFetching={isFetching}
       />
       <DataTable
         tableName="v_systems_complete"
@@ -201,58 +163,24 @@ export default function SystemsPage() {
         loading={isLoading}
         actions={tableActions as TableAction<'v_systems_complete'>[]}
         pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
+          current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
           onChange: (page, limit) => { pagination.setCurrentPage(page); pagination.setPageLimit(limit); },
         }}
         customToolbar={
           <SearchAndFilters
-            searchTerm={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(p => !p)}
-            onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+            searchTerm={search.searchQuery} onSearchChange={search.setSearchQuery} showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(p => !p)} onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
             hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
             searchPlaceholder="Search by system name or type..."
           >
-            <SelectFilter
-              label="System Type"
-              filterKey="system_type_name"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={(systemTypes || []).map(t => ({ value: t.name, label: t.name }))}
-            />
-            <SelectFilter
-              label="Status"
-              filterKey="status"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
-            />
+            <SelectFilter label="System Type" filterKey="system_type_name" filters={filters.filters} setFilters={filters.setFilters} options={(systemTypes || []).map(t => ({ value: t.name, label: t.name }))} />
+            <SelectFilter label="Status" filterKey="status" filters={filters.filters} setFilters={filters.setFilters} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} />
           </SearchAndFilters>
         }
       />
-
-      <SystemModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        rowData={editModal.record}
-        onSubmit={handleSave}
-        isLoading={upsertSystemMutation.isPending}
-      />
-
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type="danger"
-      />
+      <SystemModal isOpen={editModal.isOpen} onClose={editModal.close} rowData={editModal.record} onSubmit={handleSave} isLoading={upsertSystemMutation.isPending} />
+      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title="Confirm Deletion" message={deleteModal.message} loading={deleteModal.loading} type="danger" />
     </div>
   );
 }

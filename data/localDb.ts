@@ -22,6 +22,7 @@ import {
   V_employeesRowSchema,
   V_maintenance_areasRowSchema,
   V_cable_utilizationRowSchema,
+  V_ring_nodesRowSchema, // NEWLY ADDED
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row } from '@/hooks/database';
 
@@ -69,6 +70,7 @@ export class HNVTXDatabase extends Dexie {
   v_employees!: Table<V_employeesRowSchema, string>;
   v_maintenance_areas!: Table<V_maintenance_areasRowSchema, string>;
   v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
+  v_ring_nodes!: Table<V_ring_nodesRowSchema, string>; // NEWLY ADDED
 
   // Local-only tables for managing offline state
   sync_status!: Table<SyncStatus, string>;
@@ -76,8 +78,8 @@ export class HNVTXDatabase extends Dexie {
 
   constructor() {
     super('HNVTXDatabase');
-    // THE FIX: Increment version number to 3 to apply the new schema changes.
-    this.version(3).stores({
+    // THE FIX: Increment version number to 4 to apply the new schema changes.
+    this.version(4).stores({
       // Base Tables
       lookup_types: 'id, category, name',
       maintenance_areas: 'id, name, parent_id, area_type_id',
@@ -100,7 +102,8 @@ export class HNVTXDatabase extends Dexie {
       v_rings: 'id, name, ring_type_name, maintenance_area_name',
       v_employees: 'id, employee_name, employee_designation_name, maintenance_area_name',
       v_maintenance_areas: 'id, name, code, maintenance_area_type_name',
-      v_cable_utilization: 'cable_id, route_name', // NEWLY ADDED
+      v_cable_utilization: 'cable_id, route_name',
+      v_ring_nodes: 'id, ring_id, name', // NEWLY ADDED
       
       // Local-only tables
       sync_status: 'tableName',
