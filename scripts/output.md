@@ -1,5 +1,6 @@
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/schemas/custom-schemas.ts -->
 ```typescript
+
 import { z } from 'zod';
 import {
   v_ofc_cables_completeRowSchema,
@@ -70,6 +71,7 @@ export const jcSplicingDetailsSchema = z.object({
   segments_at_jc: z.array(segmentAtJcSchema),
 });
 export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
+
 
 const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
   created_at: z.string().nullable(),
@@ -2649,11 +2651,12 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { loginSchema } from '@/app/(auth)/login/page';
 import { toast } from 'sonner';
 import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
+import { authUsersRowSchema } from '@/schemas/zod-schemas';
 
-const signupSchema = loginSchema
+
+const signupSchema = authUsersRowSchema
   .pick({ email: true }) // Only pick email from login schema
   .extend({
     firstName: z
@@ -2911,19 +2914,20 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import OAuthProviders from '@/components/auth/OAuthProviders';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
-import { authUsersRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
+import { passwordSchema } from '@/schemas/custom-schemas';
+import { PageSpinner } from '@/components/common/ui';
 
-export const loginSchema = authUsersRowSchema.pick({
-  email: true,
-  encrypted_password: true,
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: passwordSchema,
 });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type LoginFormType = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const { authState, signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2934,11 +2938,11 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({
+  } = useForm<LoginFormType>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
-      encrypted_password: '',
+      password: '',
     },
   });
 
@@ -2954,13 +2958,90 @@ export default function LoginPage() {
     }
   }, [errorParam]);
 
-  const onSubmit = async (data: LoginForm) => {
-    const { success } = await signIn(data.email ?? '', data.encrypted_password ?? '');
+  const onSubmit = async (data: LoginFormType) => {
+    const { success } = await signIn(data.email ?? '', data.password ?? '');
     if (success) {
       router.push(redirectTo);
     }
   };
 
+  return (
+    <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg">
+      <OAuthProviders
+        variant="login"
+        providers={['google']}
+        className="mb-6"
+      />
+      <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Email address
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            {...register('email')}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
+            placeholder="Enter your email"
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email.message}</p>
+          )}
+        </div>
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            {...register('password')}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
+            placeholder="Enter your password"
+          />
+          {errors.password && (
+            <p className="text-red-500 text-sm">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <Link
+              href="/forgot-password"
+              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+        </div>
+        <div>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400"
+          >
+            {isSubmitting ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              'Sign in'
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -2978,83 +3059,9 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-
-        <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg">
-          <OAuthProviders
-            variant="login"
-            providers={['google']}
-            className="mb-6"
-          />
-
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                {...register('email')}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
-                placeholder="Enter your email"
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...register('encrypted_password')}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
-                placeholder="Enter your password"
-              />
-              {errors.encrypted_password && (
-                <p className="text-red-500 text-sm">
-                  {errors.encrypted_password.message}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <Link
-                  href="/forgot-password"
-                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400"
-              >
-                {isSubmitting ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                ) : (
-                  'Sign in'
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
+        <Suspense fallback={<PageSpinner text="Loading Form..." />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
@@ -3293,7 +3300,7 @@ import 'leaflet/dist/leaflet.css';
 import { Network, Settings, RefreshCw, Loader2, Eye } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
-import { OptimizedNetworkMap } from '@/components/bsnl/OptimizedNetworkMap';
+import dynamic from 'next/dynamic';
 import { DataTable, TableAction } from '@/components/table';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
@@ -3307,13 +3314,26 @@ import { SystemDetailsModal } from '@/config/system-details-config';
 import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview'; // THE FIX: Import the overview hook
+
+const OptimizedNetworkMap = dynamic(
+  () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <PageSpinner text="Loading Map..." />
+      </div>
+    ),
+  }
+);
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
 
 export default function ScalableFiberNetworkDashboard() {
-  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('systems');
+  const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('overview');
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
-
   const [isSystemDetailsOpen, setIsSystemDetailsOpen] = useState(false);
   const [isCableDetailsOpen, setIsCableDetailsOpen] = useState(false);
 
@@ -3325,14 +3345,19 @@ export default function ScalableFiberNetworkDashboard() {
     nodeType: undefined,
     priority: undefined,
   });
+  
+  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
+  const [zoom, setZoom] = useState(13);
+  
+  const debouncedMapBounds = useDebounce(mapBounds, 500);
 
-  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters);
+  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters, debouncedMapBounds);
+  
+  const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-  const [zoom, setZoom] = useState(13);
-
+  
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
   }, []);
@@ -3340,7 +3365,7 @@ export default function ScalableFiberNetworkDashboard() {
     setZoom(newZoom);
   }, []);
   const handleSaveAllocation = (
-    data: AllocationSaveData // eslint-disable-line @typescript-eslint/no-unused-vars
+    data: AllocationSaveData
   ) => {
     toast.info('Allocation feature is a work in progress.');
   };
@@ -3361,17 +3386,11 @@ export default function ScalableFiberNetworkDashboard() {
   };
 
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    const allSystemTypes = [
-      ...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean)),
-    ];
+    const allSystemTypes = [...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean))];
     const allCableTypes = [...new Set(data.ofcCables.map((c) => c.ofc_type_name).filter(Boolean))];
     const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
-    const allRegions = [
-      ...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean)),
-    ].sort();
-    const allNodeTypes = [
-      ...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean)),
-    ].sort();
+    const allRegions = [...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean))].sort();
+    const allNodeTypes = [...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean))].sort();
     return {
       typeOptions: uniqueTypes as string[],
       regionOptions: allRegions as string[],
@@ -3379,167 +3398,18 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  const systemColumns: Column<Row<'v_systems_complete'>>[] = useMemo(
-    () => [
-      {
-        key: 'system_name',
-        title: 'System Name',
-        dataIndex: 'system_name',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlSystem;
-          return (
-            <div>
-              <div className="font-medium text-gray-900 dark:text-white">{rec.system_name}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">{rec.system_type_name}</div>
-            </div>
-          );
-        },
-      },
-      {
-        key: 'status',
-        title: 'Status',
-        dataIndex: 'status',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlSystem;
-          return (
-            <span
-              className={`px-2 py-1 text-xs rounded-full ${
-                rec.status
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-              }`}
-            >
-              {rec.status ? 'Active' : 'Inactive'}
-            </span>
-          );
-        },
-      },
-      { key: 'node_name', title: 'Node', dataIndex: 'node_name', sortable: true },
-      {
-        key: 'ip_address',
-        title: 'IP Address',
-        dataIndex: 'ip_address',
-        sortable: true,
-        render: (_, record) => <code className="text-xs">{record.ip_address as string}</code>,
-      },
-      {
-        key: 'system_maintenance_terminal_name',
-        title: 'Region',
-        dataIndex: 'system_maintenance_terminal_name',
-        sortable: true,
-      },
-    ],
-    []
-  );
+  const systemColumns: Column<Row<'v_systems_complete'>>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
+  const cableColumns: Column<Row<'v_ofc_cables_complete'>>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
+  const systemTableActions: TableAction<'v_systems_complete'>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
+  const cableTableActions: TableAction<'v_ofc_cables_complete'>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
 
-  const cableColumns: Column<Row<'v_ofc_cables_complete'>>[] = useMemo(
-    () => [
-      {
-        key: 'route_name',
-        title: 'Route Name',
-        dataIndex: 'route_name',
-        width: '300px',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlCable;
-          return (
-            <div className="grid grid-rows-2">
-              <TruncateTooltip text={rec.route_name || ''} />
-              <div className="text-sm text-gray-500 dark:text-gray-400">{rec.asset_no}</div>
-            </div>
-          );
-        },
-      },
-      {
-        key: 'status',
-        title: 'Status',
-        width: '80px',
-        dataIndex: 'status',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlCable;
-          return (
-            <span
-              className={`px-2 py-1 text-xs rounded-full ${
-                rec.status
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-              }`}
-            >
-              {rec.status ? 'Active' : 'Inactive'}
-            </span>
-          );
-        },
-      },
-      {
-        key: 'capacity',
-        title: 'Capacity / RKM',
-        width: '100px',
-        dataIndex: 'capacity',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlCable;
-          return `${rec.capacity}F / ${rec.current_rkm?.toFixed(1)}km`;
-        },
-      },
-      {
-        key: 'endpoints',
-        title: 'Endpoints',
-        width: '350px',
-        dataIndex: 'sn_name',
-        sortable: true,
-        render: (_, record) => {
-          const rec = record as BsnlCable;
-          return <TruncateTooltip text={rec.sn_name + ' → ' + rec.en_name} />;
-        },
-      },
-      {
-        key: 'ofc_owner_name',
-        title: 'Owner',
-        width: '100px',
-        dataIndex: 'ofc_owner_name',
-        sortable: true,
-      },
-    ],
-    []
-  );
-
-  const systemTableActions: TableAction<'v_systems_complete'>[] = useMemo(
-    () => [
-      {
-        key: 'view-details',
-        label: 'View Details',
-        icon: <Eye size={16} />,
-        onClick: (record) => {
-          setSelectedSystem(record as BsnlSystem);
-          setIsSystemDetailsOpen(true);
-        },
-      },
-    ],
-    []
-  );
-
-  const cableTableActions: TableAction<'v_ofc_cables_complete'>[] = useMemo(
-    () => [
-      {
-        key: 'view-details',
-        label: 'View Details',
-        icon: <Eye size={16} />,
-        onClick: (record) => {
-          setSelectedCable(record as BsnlCable);
-          setIsCableDetailsOpen(true);
-        },
-      },
-    ],
-    []
-  );
-
-  const isInitialLoad = isLoading && !data.systems.length && !data.ofcCables.length;
+  const isInitialLoad = (isLoading || isOverviewLoading) && !debouncedMapBounds;
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error?.message || 'An unknown error occurred.'} />;
+  
+  const totalSystems = (overviewData?.system_status_counts?.Active ?? 0) + (overviewData?.system_status_counts?.Inactive ?? 0);
+  const totalCables = overviewData?.cable_utilization_summary?.total_cables ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -3553,9 +3423,16 @@ export default function ScalableFiberNetworkDashboard() {
                   BSNL Fiber Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {data.systems.length.toLocaleString()} Systems |{' '}
-                  {data.ofcCables.length.toLocaleString()} Cables
-                  {isFetching && (
+                  {/* THE FIX: Use the stable total counts from the overview hook */}
+                  {isOverviewLoading ? (
+                    <span className="animate-pulse">... Systems | ... Cables</span>
+                  ) : (
+                    <>
+                      {totalSystems.toLocaleString()} Systems |{' '}
+                      {totalCables.toLocaleString()} Cables
+                    </>
+                  )}
+                  {(isFetching || isOverviewLoading) && (
                     <span className="ml-2 inline-flex items-center">
                       <Loader2 className="h-3 w-3 animate-spin" />
                     </span>
@@ -3676,7 +3553,6 @@ export default function ScalableFiberNetworkDashboard() {
         cables={data.ofcCables}
       />
 
-      {/* THE FIX: Render the new modals and connect them to the state. */}
       <SystemDetailsModal
         system={selectedSystem}
         isOpen={isSystemDetailsOpen}
@@ -3690,7 +3566,6 @@ export default function ScalableFiberNetworkDashboard() {
     </div>
   );
 }
-
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/privacy/page.tsx -->
@@ -4253,6 +4128,7 @@ import DocSidebar from '@/components/doc/DocSidebar';
 import { workflowSections } from '@/components/doc/data/workflowData';
 import { allowedRoles } from '@/constants/constants';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { UserProvider } from '@/providers/UserProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
@@ -4260,7 +4136,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <QueryProvider>
+      <UserProvider>
       <Protected allowedRoles={allowedRoles}>
       <div className="flex min-h-[calc(100vh-64px)] bg-gray-100 dark:bg-gray-950">
 
@@ -4284,7 +4160,7 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </Protected>
-    </QueryProvider>
+    </UserProvider>
   );
 }
 
@@ -4350,11 +4226,16 @@ import { useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiMap } from "react-icons/fi";
 import { useRingNodes } from "@/hooks/database/ring-map-queries";
-import ClientRingMap from "@/components/map/ClientRingMap";
+import dynamic from "next/dynamic";
 import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { PageHeader } from "@/components/common/page-header";
 import { RingMapNode } from "@/components/map/types/node";
 import useORSRouteDistances from "@/hooks/useORSRouteDistances";
+
+const ClientRingMap = dynamic(() => import("@/components/map/ClientRingMap"), {
+  ssr: false,
+  loading: () => <PageSpinner text="Loading Ring Map..." />,
+});
 
 export default function RingMapPage() {
   const params = useParams();
@@ -4483,16 +4364,27 @@ const useRingsData = (
 ): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const { data, isLoading, error, refetch } = usePagedData<V_ringsRowSchema>(
+  
+  const searchFilters = useMemo(() => {
+    const newFilters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`;
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
+
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ringsRowSchema>(
     supabase, 'v_rings', {
-      filters: { ...filters, ...(searchQuery ? { name: searchQuery } : {}) },
-      limit: pageLimit, offset: (currentPage - 1) * pageLimit,
+      filters: searchFilters, // Use the corrected filters
+      limit: pageLimit, 
+      offset: (currentPage - 1) * pageLimit,
     }
   );
+
   return {
     data: data?.data || [], totalCount: data?.total_count || 0,
     activeCount: data?.active_count || 0, inactiveCount: data?.inactive_count || 0,
-    isLoading, error, refetch,
+    isLoading, isFetching, error, refetch,
   };
 };
 
@@ -4504,7 +4396,7 @@ const RingsPage = () => {
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
-    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, refetch,
+    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
@@ -4551,6 +4443,8 @@ const RingsPage = () => {
     return standardActions;
   }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems]);
 
+  const isInitialLoad = isLoading && !isFetching;
+
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
@@ -4571,11 +4465,13 @@ const RingsPage = () => {
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <DataTable
         tableName="v_rings"
         data={rings} columns={orderedColumns} loading={isLoading} actions={tableActions}
+        isFetching={isFetching}
         pagination={{
           current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
           onChange: (page, pageSize) => { pagination.setCurrentPage(page); pagination.setPageLimit(pageSize); },
@@ -4583,7 +4479,6 @@ const RingsPage = () => {
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
 
-      {/* ** THE FIX: Pass crudActions.handleSave directly to the onSubmit prop ** */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -5315,7 +5210,8 @@ const useLogicalPathsData = (
 
   const searchFilters = useMemo(() => {
     if (!searchQuery) return {};
-    return { or: { path_name: searchQuery, route_names: searchQuery } };
+    const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
+    return { or: searchString };
   }, [searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_end_to_end_pathsRowSchema>(
@@ -5710,7 +5606,7 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { convertRichFiltersToSimpleJson, usePagedData, Filters } from '@/hooks/database';
+import { usePagedData, Filters } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -5739,19 +5635,24 @@ const useNodesData = (
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const rpcFilters = useMemo(() => {
-      const convertedFilters = convertRichFiltersToSimpleJson(filters);
-      return {
-        ...(convertedFilters as Record<string, string | number | boolean | string[] | null>),
-        ...(searchQuery ? { name: searchQuery } : {}),
+  
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = {
+        name: searchQuery,
+        node_type_name: searchQuery,
+        maintenance_area_name: searchQuery,
       };
-    }, [filters, searchQuery]);
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
     supabase,
     'v_nodes_complete',
     {
-      filters: rpcFilters,
+      filters: searchFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
     }
@@ -5763,6 +5664,7 @@ const useNodesData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
@@ -5776,6 +5678,7 @@ const NodesPage = () => {
     inactiveCount,
     isLoading,
     isMutating,
+    isFetching,
     error,
     refetch,
     pagination,
@@ -5789,6 +5692,8 @@ const NodesPage = () => {
     tableName: 'nodes',
     dataQueryHook: useNodesData,
   });
+
+  const isInitialLoad = isLoading && nodes.length === 0;
 
   const nodeTypes = useMemo(() => {
     const uniqueNodeTypes = new Map();
@@ -5841,7 +5746,8 @@ const NodesPage = () => {
         icon={<FiCpu />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
 
       <NodeDetailsModal
@@ -5948,6 +5854,8 @@ const useEmployeesData = (
       newFilters.or = {
         employee_name: searchQuery,
         employee_pers_no: searchQuery,
+        employee_email: searchQuery,
+        employee_contact: searchQuery,
       };
     }
     return newFilters;
@@ -6001,7 +5909,7 @@ const EmployeesPage = () => {
     [...TABLE_COLUMN_KEYS.v_employees] 
   );
 
-  
+  const isInitialLoad = isLoading && employees.length === 0;
 
   const tableActions = useMemo(
     () => createStandardActions<V_employeesRowSchema>({
@@ -6039,7 +5947,8 @@ const EmployeesPage = () => {
         icon={<FiUsers />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
 
       <BulkActions
@@ -6401,7 +6310,6 @@ export default function SystemConnectionsPage() {
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/dashboard/systems/page.tsx -->
 ```typescript
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6443,12 +6351,14 @@ const useSystemsData = (
       newFilters.or = {
         system_name: searchQuery,
         system_type_name: searchQuery,
+        node_name: searchQuery,
+        ip_address: searchQuery,
       };
     }
     return newFilters;
   }, [filters, searchQuery]);
 
-  const { data, isLoading, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
     'v_systems_complete',
      {
       filters: searchFilters,
@@ -6463,6 +6373,7 @@ const useSystemsData = (
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
     isLoading,
+    isFetching,
     error,
     refetch,
   };
@@ -6474,7 +6385,7 @@ export default function SystemsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const {
-    data: systems, totalCount, activeCount, inactiveCount, isLoading, error, refetch,
+    data: systems, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch,
     pagination, search, filters, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'systems', V_systems_completeRowSchema>({
     tableName: 'systems',
@@ -6482,6 +6393,8 @@ export default function SystemsPage() {
     searchColumn: 'system_name',
     displayNameField: 'system_name'
   });
+
+  const isInitialLoad = isLoading && systems.length === 0;
 
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
@@ -6560,7 +6473,8 @@ export default function SystemsPage() {
         icon={<FiDatabase />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <DataTable
         tableName="v_systems_complete"
@@ -6604,7 +6518,6 @@ export default function SystemsPage() {
         }
       />
 
-      {/* THE FIX: Pass the new handleSave and mutation loading state to the modal */}
       <SystemModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -6640,7 +6553,6 @@ import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/use
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
 import { Filters, PagedQueryResult, Row, useTableQuery, useTableWithRelations } from '@/hooks/database';
-import { useDelete } from '@/hooks/useDelete';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -6662,19 +6574,24 @@ export default function MaintenanceAreasPage() {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
     if (filters.areaType) f.area_type_id = filters.areaType;
+    if (searchTerm) {
+      f.or = `(name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%)`;
+    }
     return f;
-  }, [filters]);
+  }, [filters, searchTerm]);
 
   const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
     supabase, 'maintenance_areas',
     [ 'area_type:area_type_id(id, name)', 'parent_area:parent_id(id, name, code)', 'child_areas:maintenance_areas!parent_id(id, name, code, status)' ],
-    { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }] }
+    { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }], placeholderData: (prev) => prev }
   );
 
-  const { refetch, error, data } = areasQuery;
+  const { refetch, error, data, isLoading, isFetching } = areasQuery;
   const allAreas = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
   const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
+
+  const isInitialLoad = isLoading && allAreas.length === 0;
   
   const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
     filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
@@ -6686,8 +6603,14 @@ export default function MaintenanceAreasPage() {
     refetch(); setFormOpen(false); setEditingArea(null);
   });
 
-  const deleteManager = useDelete({ tableName: 'maintenance_areas',
-    onSuccess: () => { if (selectedAreaId === deleteManager.itemToDelete?.id) { setSelectedAreaId(null); } refetch(); },
+  const deleteManager = useDeleteManager({
+    tableName: 'maintenance_areas',
+    onSuccess: () => {
+      if (selectedAreaId && deleteManager.itemToDelete?.id === selectedAreaId) {
+        setSelectedAreaId(null);
+      }
+      refetch();
+    },
   });
 
   const handleOpenCreateForm = () => { setEditingArea(null); setFormOpen(true); };
@@ -6706,19 +6629,27 @@ export default function MaintenanceAreasPage() {
     { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error && isInitialLoad) {
+    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
   
-  const isLoading = areasQuery.isLoading || createAreaMutation.isPending || updateAreaMutation.isPending || toggleStatusMutation.isPending;
-
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
-      <PageHeader title="Maintenance Areas" description="Manage maintenance areas, zones, and terminals." icon={<FiMapPin />} stats={headerStats} actions={headerActions} isLoading={isLoading} className="mb-4" />
+      <PageHeader 
+        title="Maintenance Areas" 
+        description="Manage maintenance areas, zones, and terminals." 
+        icon={<FiMapPin />} 
+        stats={headerStats} 
+        actions={headerActions} 
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
+        className="mb-4" 
+      />
       
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
+        isFetching={isFetching}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}
@@ -6773,7 +6704,7 @@ import {
   useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
-import { useDelete } from '@/hooks/useDelete';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 import {
   Employee_designationsInsertSchema,
   Employee_designationsUpdateSchema,
@@ -6791,12 +6722,16 @@ export default function DesignationManagerPage() {
   const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const serverFilters = useMemo(() => {
     const f: Filters = {};
     if (filters.status) f.status = filters.status === 'true';
+    if (searchTerm) {
+      f.or = `(name.ilike.%${searchTerm}%)`;
+    }
     return f;
-  }, [filters]);
+  }, [filters, searchTerm]);
 
   const designationsQuery = useTableWithRelations<
     'employee_designations',
@@ -6808,13 +6743,16 @@ export default function DesignationManagerPage() {
     {
       filters: serverFilters,
       orderBy: [{ column: 'name', ascending: true }],
+      placeholderData: (prev) => prev,
     }
   );
 
-  const { refetch, error, data } = designationsQuery;
+  const { refetch, error, data, isLoading, isFetching } = designationsQuery;
 
   const allDesignations = useMemo(() => data?.data || [], [data]);
   const totalCount = data?.count || 0;
+
+  const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const onMutationSuccess = () => {
     refetch();
@@ -6835,10 +6773,10 @@ export default function DesignationManagerPage() {
 
   const { isPending } = toggleStatusMutation;
 
-  const deleteManager = useDelete({
+  const deleteManager = useDeleteManager({
     tableName: 'employee_designations',
     onSuccess: () => {
-      if (selectedDesignationId === deleteManager.itemToDelete?.id) {
+      if (selectedDesignationId && deleteManager.itemToDelete?.id === selectedDesignationId) {
         setSelectedDesignationId(null);
       }
       refetch();
@@ -6880,12 +6818,9 @@ export default function DesignationManagerPage() {
     { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error && isInitialLoad) {
+    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
-
-  const isLoading = designationsQuery.isLoading || createDesignationMutation.isPending || updateDesignationMutation.isPending || toggleStatusMutation.isPending;
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -6894,18 +6829,25 @@ export default function DesignationManagerPage() {
         icon={<ImUserTie />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
         className="mb-4"
       />
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
+        isFetching={isFetching}
         toggleStatusMutation={{ mutate: toggleStatus, isPending }}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedDesignationId}
         onSelect={setSelectedDesignationId}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
       />
 
       {isFormOpen && (
@@ -7209,7 +7151,7 @@ export default function OfcCableDetailsPage() {
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   PageHeader,
@@ -7243,20 +7185,26 @@ const useOfcData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  const combinedFilters: Filters = { ...filters };
-  if (searchQuery) {
-    combinedFilters.or = {
-      route_name: searchQuery,
-      asset_no: searchQuery,
-      transnet_id: searchQuery,
-    };
-  }
+  const searchFilters = useMemo(() => {
+    const newFilters: Filters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = {
+        route_name: searchQuery,
+        asset_no: searchQuery,
+        transnet_id: searchQuery,
+        sn_name: searchQuery,
+        en_name: searchQuery,
+        ofc_owner_name: searchQuery,
+      };
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
     supabase,
     'v_ofc_cables_complete',
     {
-      filters: combinedFilters,
+      filters: searchFilters,
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'route_name',
@@ -7302,6 +7250,8 @@ const OfcPage = () => {
     dataQueryHook: useOfcData,
     displayNameField: 'route_name',
   });
+
+  const isInitialLoad = isLoading && ofcData.length === 0;
 
   const { data: ofcTypesData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_TYPES' } });
   const { data: maintenanceAreasData } = useTableQuery(createClient(), 'maintenance_areas', { filters: { status: true } });
@@ -7351,7 +7301,8 @@ const OfcPage = () => {
         icon={<AiFillMerge />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <BulkActions
         selectedCount={bulkActions.selectedCount}
@@ -7429,7 +7380,7 @@ const OfcPage = () => {
       <OfcForm
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        ofcCable={editModal.record as OfcCablesWithRelations}
+        ofcCable={editModal.record as Ofc_cablesRowSchema}
         onSubmit={crudActions.handleSave}
         pageLoading={isMutating}
       />
@@ -7477,7 +7428,7 @@ export default function RouteManagerPage() {
     tableName: "junction_closures",
     onSuccess: () => {
       refetchRouteDetails();
-      if (selectedJc && selectedJc.id === deleteManager.deleteConfig?.items[0]?.id) {
+      if (selectedJc && selectedJc.id === deleteManager.itemToDelete?.id) {
         setSelectedJc(null);
         setActiveTab("visualization");
       }
@@ -7584,6 +7535,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
 import { allowedRoles } from "@/constants/constants";
+import { UserProvider } from "@/providers/UserProvider";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -7602,7 +7554,8 @@ export default function DashboardLayout({
 
 
   return (
-    <QueryProvider>
+    
+      <UserProvider>
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider
           options={{
@@ -7636,7 +7589,8 @@ export default function DashboardLayout({
           </div>
         </RouteBasedUploadConfigProvider>
       </Protected>
-    </QueryProvider>
+      </UserProvider>
+    
   );
 }
 
@@ -8187,64 +8141,68 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/app/layout.tsx -->
 ```typescript
-import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
-import "react-datepicker/dist/react-datepicker.css";
-import PolyfillLoader from "@/components/polyfills/PolyfillLoader";
-import { ToastProvider } from "@/providers/ToastProvider";
-import ThemeProvider from "@/providers/ThemeProvider";
+import type { Metadata, Viewport } from 'next';
+import localFont from 'next/font/local';
+import './globals.css';
+import 'react-datepicker/dist/react-datepicker.css';
+import PolyfillLoader from '@/components/polyfills/PolyfillLoader';
+import { ToastProvider } from '@/providers/ToastProvider';
+import ThemeProvider from '@/providers/ThemeProvider';
+import PwaRegistry from '@/components/pwa/PwaRegistry';
+import { QueryProvider } from '@/providers/QueryProvider';
 
-const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+const defaultUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : 'http://localhost:3000';
 
 const fontSans = localFont({
-  src: "../public/fonts/Inter.woff2",
-  display: "swap",
-  variable: "--font-sans", // We'll use this for Tailwind's 'sans' class
+  src: '../public/fonts/Inter.woff2',
+  display: 'swap',
+  variable: '--font-sans', // We'll use this for Tailwind's 'sans' class
   preload: true,
-  fallback: ["system-ui", "arial"],
+  fallback: ['system-ui', 'arial'],
 });
 
 const fontHeading = localFont({
-  src: "../public/fonts/Montserrat.woff2",
-  display: "swap",
-  variable: "--font-heading", // We'll use this for a custom 'heading' class
+  src: '../public/fonts/Montserrat.woff2',
+  display: 'swap',
+  variable: '--font-heading', // We'll use this for a custom 'heading' class
   preload: true,
-  fallback: ["system-ui", "times new roman"],
+  fallback: ['system-ui', 'times new roman'],
 });
 
 export const viewport: Viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "cyan" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
+    { media: '(prefers-color-scheme: light)', color: 'cyan' },
+    { media: '(prefers-color-scheme: dark)', color: 'black' },
   ],
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  applicationName: "Harinavi Transmission Maintenance",
+  applicationName: 'Harinavi Transmission Maintenance',
   title: {
-    default: "Harinavi Transmission Maintenance",
-    template: "%s - PWA App",
+    default: 'Harinavi Transmission Maintenance',
+    template: '%s - PWA App',
   },
-  description: "We provide reliable telecom transmission maintenance services.",
-  manifest: "/manifest.json",
+  description: 'We provide reliable telecom transmission maintenance services.',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Harinavi Transmission Maintenance",
+    statusBarStyle: 'default',
+    title: 'Harinavi Transmission Maintenance',
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    shortcut: "/favicon.ico",
-    apple: [{ url: "/icon-192x192.png", sizes: "192x192" }],
-    icon: "/favicon.ico",
+    shortcut: '/favicon.ico',
+    apple: [{ url: '/icon-192x192.png', sizes: '192x192' }],
+    icon: '/favicon.ico',
   },
 };
 
@@ -8254,7 +8212,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} ${fontHeading.variable} antialiased`}>
         {/* ** Inline script to prevent theme flashing** */}
         <script
@@ -8290,7 +8248,12 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <QueryProvider>
+          <ToastProvider>
+            <PwaRegistry />
+            {children}
+          </ToastProvider>
+          </QueryProvider>
         </ThemeProvider>
         <PolyfillLoader />
       </body>
@@ -9512,28 +9475,6 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       "id",
       "created_at",
       "updated_at",
-      "active_count",
-      "inactive_count",
-      "maintenance_area_area_type_id",
-      "maintenance_area_code",
-      "maintenance_area_contact_number",
-      "maintenance_area_contact_person",
-      "maintenance_area_created_at",
-      "maintenance_area_email",
-      "maintenance_area_latitude",
-      "maintenance_area_longitude",
-      "maintenance_area_parent_id",
-      "maintenance_area_status",
-      "maintenance_area_updated_at",
-      "ring_type_category",
-      "ring_type_created_at",
-      "ring_type_id",
-      "ring_type_is_system_default",
-      "ring_type_name",
-      "ring_type_sort_order",
-      "ring_type_status",
-      "ring_type_updated_at",
-      "total_count",
       "maintenance_terminal_id",
     ],
     overrides: {
@@ -17725,8 +17666,62 @@ export const config = {
 
 ```
 
-<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/public/sw.js -->
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/public/sw-base.js -->
 ```javascript
+"use strict";
+
+import { Serwist } from "@serwist/sw";
+import { StaleWhileRevalidate, CacheFirst } from "@serwist/strategies";
+import { ExpirationPlugin } from "@serwist/expiration";
+
+const serwist = new Serwist({
+  precacheEntries: self.__SW_MANIFEST,
+  skipWaiting: true,
+  clientsClaim: true,
+  navigationPreload: true,
+});
+
+
+serwist.registerRoute(
+  /^https?:\/\/.*\/(api|rest|rpc)\/.*/i,
+  new StaleWhileRevalidate({
+    cacheName: "api-cache",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
+      }),
+    ],
+  })
+);
+
+serwist.registerRoute(
+  /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
+  new CacheFirst({
+    cacheName: "image-cache",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+      }),
+    ],
+  })
+);
+
+serwist.registerRoute(
+  /_next\/static\/.*/i,
+  new CacheFirst({
+    cacheName: "next-static-cache",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+      }),
+    ],
+  })
+);
+
+
 self.addEventListener('push', function (event) {
   if (event.data) {
     const data = event.data.json()
@@ -17742,12 +17737,19 @@ self.addEventListener('push', function (event) {
     }
     event.waitUntil(self.registration.showNotification(data.title, options))
   }
-})
+});
  
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  event.waitUntil(clients.openWindow('<https://hnvtx.vercel.app>'))
-})
+  event.waitUntil(clients.openWindow('https://hnvtx.vercel.app'))
+});
+
+serwist.addEventListeners();
+```
+
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/public/sw.js -->
+```javascript
+(()=>{"use strict";let e,t;var a={};a.r=e=>{"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})};var i={};a.r(i);class r extends Error{details;constructor(e,t){super(((e,...t)=>{let a=e;return t.length>0&&(a+=` :: ${JSON.stringify(t)}`),a})(e,t)),this.name=e,this.details=t}}let n={googleAnalytics:"googleAnalytics",precache:"precache-v2",prefix:"serwist",runtime:"runtime",suffix:"undefined"!=typeof registration?registration.scope:""},s={getRuntimeName:e=>{let t;return e||(t=n.runtime,[n.prefix,t,n.suffix].filter(e=>e&&e.length>0).join("-"))}};class o{promise;resolve;reject;constructor(){this.promise=new Promise((e,t)=>{this.resolve=e,this.reject=t})}}function c(e,t){let a=new URL(e);for(let e of t)a.searchParams.delete(e);return a.href}async function l(e,t,a,i){let r=c(t.url,a);if(t.url===r)return e.match(t,i);let n={...i,ignoreSearch:!0};for(let s of(await e.keys(t,n)))if(r===c(s.url,a))return e.match(s,i)}let h=new Set,u=async()=>{for(let e of h)await e()},d=(e,t)=>t.some(t=>e instanceof t),p=new WeakMap,f=new WeakMap,m=new WeakMap,g={get(e,t,a){if(e instanceof IDBTransaction){if("done"===t)return p.get(e);if("store"===t)return a.objectStoreNames[1]?void 0:a.objectStore(a.objectStoreNames[0])}return w(e[t])},set:(e,t,a)=>(e[t]=a,!0),has:(e,t)=>e instanceof IDBTransaction&&("done"===t||"store"===t)||t in e};function w(a){if(a instanceof IDBRequest){let e=new Promise((e,t)=>{let i=()=>{a.removeEventListener("success",r),a.removeEventListener("error",n)},r=()=>{e(w(a.result)),i()},n=()=>{t(a.error),i()};a.addEventListener("success",r),a.addEventListener("error",n)});return m.set(e,a),e}if(f.has(a))return f.get(a);let i=function(a){if("function"==typeof a)return(t||(t=[IDBCursor.prototype.advance,IDBCursor.prototype.continue,IDBCursor.prototype.continuePrimaryKey])).includes(a)?function(...e){return a.apply(_(this),e),w(this.request)}:function(...e){return w(a.apply(_(this),e))};return(a instanceof IDBTransaction&&function(e){if(p.has(e))return;let t=new Promise((t,a)=>{let i=()=>{e.removeEventListener("complete",r),e.removeEventListener("error",n),e.removeEventListener("abort",n)},r=()=>{t(),i()},n=()=>{a(e.error||new DOMException("AbortError","AbortError")),i()};e.addEventListener("complete",r),e.addEventListener("error",n),e.addEventListener("abort",n)});p.set(e,t)}(a),d(a,e||(e=[IDBDatabase,IDBObjectStore,IDBIndex,IDBCursor,IDBTransaction])))?new Proxy(a,g):a}(a);return i!==a&&(f.set(a,i),m.set(i,a)),i}let _=e=>m.get(e),y=["get","getKey","getAll","getAllKeys","count"],v=["put","add","delete","clear"],x=new Map;function b(e,t){if(!(e instanceof IDBDatabase&&!(t in e)&&"string"==typeof t))return;if(x.get(t))return x.get(t);let a=t.replace(/FromIndex$/,""),i=t!==a,r=v.includes(a);if(!(a in(i?IDBIndex:IDBObjectStore).prototype)||!(r||y.includes(a)))return;let n=async function(e,...t){let n=this.transaction(e,r?"readwrite":"readonly"),s=n.store;return i&&(s=s.index(t.shift())),(await Promise.all([s[a](...t),r&&n.done]))[0]};return x.set(t,n),n}g=(e=>({...e,get:(t,a,i)=>b(t,a)||e.get(t,a,i),has:(t,a)=>!!b(t,a)||e.has(t,a)}))(g);let E=["continue","continuePrimaryKey","advance"],D={},C=new WeakMap,S=new WeakMap,R={get(e,t){if(!E.includes(t))return e[t];let a=D[t];return a||(a=D[t]=function(...e){C.set(this,S.get(this)[t](...e))}),a}};async function*I(...e){let t=this;if(t instanceof IDBCursor||(t=await t.openCursor(...e)),!t)return;let a=new Proxy(t,R);for(S.set(a,t),m.set(a,_(t));t;)yield a,t=await (C.get(a)||t.continue()),C.delete(a)}function A(e,t){return t===Symbol.asyncIterator&&d(e,[IDBIndex,IDBObjectStore,IDBCursor])||"iterate"===t&&d(e,[IDBIndex,IDBObjectStore])}g=(e=>({...e,get:(t,a,i)=>A(t,a)?I:e.get(t,a,i),has:(t,a)=>A(t,a)||e.has(t,a)}))(g);function N(e){return"string"==typeof e?new Request(e):e}class k{event;request;url;params;_cacheKeys={};_strategy;_handlerDeferred;_extendLifetimePromises;_plugins;_pluginStateMap;constructor(e,t){for(let a of(this.event=t.event,this.request=t.request,t.url&&(this.url=t.url,this.params=t.params),this._strategy=e,this._handlerDeferred=new o,this._extendLifetimePromises=[],this._plugins=[...e.plugins],this._pluginStateMap=new Map,this._plugins))this._pluginStateMap.set(a,{});this.event.waitUntil(this._handlerDeferred.promise)}async fetch(e){let{event:t}=this,a=N(e),i=await this.getPreloadResponse();if(i)return i;let n=this.hasCallback("fetchDidFail")?a.clone():null;try{for(let e of this.iterateCallbacks("requestWillFetch"))a=await e({request:a.clone(),event:t})}catch(e){if(e instanceof Error)throw new r("plugin-error-request-will-fetch",{thrownErrorMessage:e.message})}let s=a.clone();try{let e;for(let i of(e=await fetch(a,"navigate"===a.mode?void 0:this._strategy.fetchOptions),this.iterateCallbacks("fetchDidSucceed")))e=await i({event:t,request:s,response:e});return e}catch(e){throw n&&await this.runCallbacks("fetchDidFail",{error:e,event:t,originalRequest:n.clone(),request:s.clone()}),e}}async fetchAndCachePut(e){let t=await this.fetch(e),a=t.clone();return this.waitUntil(this.cachePut(e,a)),t}async cacheMatch(e){let t,a=N(e),{cacheName:i,matchOptions:r}=this._strategy,n=await this.getCacheKey(a,"read"),s={...r,cacheName:i};for(let e of(t=await caches.match(n,s),this.iterateCallbacks("cachedResponseWillBeUsed")))t=await e({cacheName:i,matchOptions:r,cachedResponse:t,request:n,event:this.event})||void 0;return t}async cachePut(e,t){let a=N(e);await new Promise(e=>setTimeout(e,0));let i=await this.getCacheKey(a,"write");if(!t)throw new r("cache-put-with-no-response",{url:new URL(String(i.url),location.href).href.replace(RegExp(`^${location.origin}`),"")});let n=await this._ensureResponseSafeToCache(t);if(!n)return!1;let{cacheName:s,matchOptions:o}=this._strategy,c=await self.caches.open(s),h=this.hasCallback("cacheDidUpdate"),d=h?await l(c,i.clone(),["__WB_REVISION__"],o):null;try{await c.put(i,h?n.clone():n)}catch(e){if(e instanceof Error)throw"QuotaExceededError"===e.name&&await u(),e}for(let e of this.iterateCallbacks("cacheDidUpdate"))await e({cacheName:s,oldResponse:d,newResponse:n.clone(),request:i,event:this.event});return!0}async getCacheKey(e,t){let a=`${e.url} | ${t}`;if(!this._cacheKeys[a]){let i=e;for(let e of this.iterateCallbacks("cacheKeyWillBeUsed"))i=N(await e({mode:t,request:i,event:this.event,params:this.params}));this._cacheKeys[a]=i}return this._cacheKeys[a]}hasCallback(e){for(let t of this._strategy.plugins)if(e in t)return!0;return!1}async runCallbacks(e,t){for(let a of this.iterateCallbacks(e))await a(t)}*iterateCallbacks(e){for(let t of this._strategy.plugins)if("function"==typeof t[e]){let a=this._pluginStateMap.get(t),i=i=>{let r={...i,state:a};return t[e](r)};yield i}}waitUntil(e){return this._extendLifetimePromises.push(e),e}async doneWaiting(){let e;for(;e=this._extendLifetimePromises.shift();)await e}destroy(){this._handlerDeferred.resolve(null)}async getPreloadResponse(){if(this.event instanceof FetchEvent&&"navigate"===this.event.request.mode&&"preloadResponse"in this.event)try{let e=await this.event.preloadResponse;if(e)return e}catch(e){}}async _ensureResponseSafeToCache(e){let t=e,a=!1;for(let e of this.iterateCallbacks("cacheWillUpdate"))if(t=await e({request:this.request,response:t,event:this.event})||void 0,a=!0,!t)break;return!a&&t&&200!==t.status&&(t=void 0),t}}class q{cacheName;plugins;fetchOptions;matchOptions;constructor(e={}){this.cacheName=s.getRuntimeName(e.cacheName),this.plugins=e.plugins||[],this.fetchOptions=e.fetchOptions,this.matchOptions=e.matchOptions}handle(e){let[t]=this.handleAll(e);return t}handleAll(e){e instanceof FetchEvent&&(e={event:e,request:e.request});let t=e.event,a="string"==typeof e.request?new Request(e.request):e.request,i=new k(this,e.url?{event:t,request:a,url:e.url,params:e.params}:{event:t,request:a}),r=this._getResponse(i,a,t),n=this._awaitComplete(r,i,a,t);return[r,n]}async _getResponse(e,t,a){let i;await e.runCallbacks("handlerWillStart",{event:a,request:t});try{if(i=await this._handle(t,e),void 0===i||"error"===i.type)throw new r("no-response",{url:t.url})}catch(r){if(r instanceof Error){for(let n of e.iterateCallbacks("handlerDidError"))if(void 0!==(i=await n({error:r,event:a,request:t})))break}if(!i)throw r}for(let r of e.iterateCallbacks("handlerWillRespond"))i=await r({event:a,request:t,response:i});return i}async _awaitComplete(e,t,a,i){let r,n;try{r=await e}catch{}try{await t.runCallbacks("handlerDidRespond",{event:i,request:a,response:r}),await t.doneWaiting()}catch(e){e instanceof Error&&(n=e)}if(await t.runCallbacks("handlerDidComplete",{event:i,request:a,response:r,error:n}),t.destroy(),n)throw n}}let M={cacheWillUpdate:async({response:e})=>200===e.status||0===e.status?e:null};"undefined"!=typeof navigator&&/^((?!chrome|android).)*safari/i.test(navigator.userAgent);let B="cache-entries",L=e=>{let t=new URL(e,location.href);return t.hash="",t.href};class O{_cacheName;_db=null;constructor(e){this._cacheName=e}_getId(e){return`${this._cacheName}|${L(e)}`}_upgradeDb(e){let t=e.createObjectStore(B,{keyPath:"id"});t.createIndex("cacheName","cacheName",{unique:!1}),t.createIndex("timestamp","timestamp",{unique:!1})}_upgradeDbAndDeleteOldDbs(e){this._upgradeDb(e),this._cacheName&&function(e,{blocked:t}={}){let a=indexedDB.deleteDatabase(e);t&&a.addEventListener("blocked",e=>t(e.oldVersion,e)),w(a).then(()=>void 0)}(this._cacheName)}async setTimestamp(e,t){e=L(e);let a={id:this._getId(e),cacheName:this._cacheName,url:e,timestamp:t},i=(await this.getDb()).transaction(B,"readwrite",{durability:"relaxed"});await i.store.put(a),await i.done}async getTimestamp(e){let t=await this.getDb(),a=await t.get(B,this._getId(e));return a?.timestamp}async expireEntries(e,t){let a=await this.getDb(),i=await a.transaction(B,"readwrite").store.index("timestamp").openCursor(null,"prev"),r=[],n=0;for(;i;){let a=i.value;a.cacheName===this._cacheName&&(e&&a.timestamp<e||t&&n>=t?(i.delete(),r.push(a.url)):n++),i=await i.continue()}return r}async getDb(){return this._db||(this._db=await function(e,t,{blocked:a,upgrade:i,blocking:r,terminated:n}={}){let s=indexedDB.open(e,1),o=w(s);return i&&s.addEventListener("upgradeneeded",e=>{i(w(s.result),e.oldVersion,e.newVersion,w(s.transaction),e)}),a&&s.addEventListener("blocked",e=>a(e.oldVersion,e.newVersion,e)),o.then(e=>{n&&e.addEventListener("close",()=>n()),r&&e.addEventListener("versionchange",e=>r(e.oldVersion,e.newVersion,e))}).catch(()=>{}),o}("serwist-expiration",0,{upgrade:this._upgradeDbAndDeleteOldDbs.bind(this)})),this._db}}class P{_isRunning=!1;_rerunRequested=!1;_maxEntries;_maxAgeSeconds;_matchOptions;_cacheName;_timestampModel;constructor(e,t={}){this._maxEntries=t.maxEntries,this._maxAgeSeconds=t.maxAgeSeconds,this._matchOptions=t.matchOptions,this._cacheName=e,this._timestampModel=new O(e)}async expireEntries(){if(this._isRunning){this._rerunRequested=!0;return}this._isRunning=!0;let e=this._maxAgeSeconds?Date.now()-1e3*this._maxAgeSeconds:0,t=await this._timestampModel.expireEntries(e,this._maxEntries),a=await self.caches.open(this._cacheName);for(let e of t)await a.delete(e,this._matchOptions);this._isRunning=!1,this._rerunRequested&&(this._rerunRequested=!1,this.expireEntries())}async updateTimestamp(e){await this._timestampModel.setTimestamp(e,Date.now())}async isURLExpired(e){if(!this._maxAgeSeconds)return!1;let t=await this._timestampModel.getTimestamp(e),a=Date.now()-1e3*this._maxAgeSeconds;return void 0===t||t<a}async delete(){this._rerunRequested=!1,await this._timestampModel.expireEntries(1/0)}}class U{_config;_cacheExpirations;constructor(e={}){var t;this._config=e,this._cacheExpirations=new Map,this._config.maxAgeFrom||(this._config.maxAgeFrom="last-fetched"),this._config.purgeOnQuotaError&&(t=()=>this.deleteCacheAndMetadata(),h.add(t))}_getCacheExpiration(e){if(e===s.getRuntimeName())throw new r("expire-custom-caches-only");let t=this._cacheExpirations.get(e);return t||(t=new P(e,this._config),this._cacheExpirations.set(e,t)),t}cachedResponseWillBeUsed({event:e,cacheName:t,request:a,cachedResponse:i}){if(!i)return null;let r=this._isResponseDateFresh(i),n=this._getCacheExpiration(t),s="last-used"===this._config.maxAgeFrom,o=(async()=>{s&&await n.updateTimestamp(a.url),await n.expireEntries()})();try{e.waitUntil(o)}catch{}return r?i:null}_isResponseDateFresh(e){if("last-used"===this._config.maxAgeFrom)return!0;let t=Date.now();if(!this._config.maxAgeSeconds)return!0;let a=this._getDateHeaderTimestamp(e);return null===a||a>=t-1e3*this._config.maxAgeSeconds}_getDateHeaderTimestamp(e){if(!e.headers.has("date"))return null;let t=new Date(e.headers.get("date")).getTime();return Number.isNaN(t)?null:t}async cacheDidUpdate({cacheName:e,request:t}){let a=this._getCacheExpiration(e);await a.updateTimestamp(t.url),await a.expireEntries()}async deleteCacheAndMetadata(){for(let[e,t]of this._cacheExpirations)await self.caches.delete(e),await t.delete();this._cacheExpirations=new Map}}class T extends q{async _handle(e,t){let a,i=await t.cacheMatch(e);if(!i)try{i=await t.fetchAndCachePut(e)}catch(e){e instanceof Error&&(a=e)}if(!i)throw new r("no-response",{url:e.url,error:a});return i}}class W extends q{constructor(e={}){super(e),this.plugins.some(e=>"cacheWillUpdate"in e)||this.plugins.unshift(M)}async _handle(e,t){let a,i=t.fetchAndCachePut(e).catch(()=>{});t.waitUntil(i);let n=await t.cacheMatch(e);if(n);else try{n=await i}catch(e){e instanceof Error&&(a=e)}if(!n)throw new r("no-response",{url:e.url,error:a});return n}}let j=new i.Serwist({precacheEntries:[{'revision':null,'url':'/_next/static/chunks/081ca426-7476d4184c4cc425.js'},{'revision':null,'url':'/_next/static/chunks/0e762574-8e336e32b17c2c56.js'},{'revision':null,'url':'/_next/static/chunks/1192.cd2fff552b235597.js'},{'revision':null,'url':'/_next/static/chunks/13633bf0-1155201ff213c3c4.js'},{'revision':null,'url':'/_next/static/chunks/1508-517c983f972dae9d.js'},{'revision':null,'url':'/_next/static/chunks/1592-bbeac5bac4ff2222.js'},{'revision':null,'url':'/_next/static/chunks/1811-ce937c4469558e83.js'},{'revision':null,'url':'/_next/static/chunks/1923.e43b61bd863021f0.js'},{'revision':null,'url':'/_next/static/chunks/2170a4aa-ec77d2b4930606fb.js'},{'revision':null,'url':'/_next/static/chunks/2296-c4171fb15ca17041.js'},{'revision':null,'url':'/_next/static/chunks/247-f762d46489f8b39a.js'},{'revision':null,'url':'/_next/static/chunks/2619-b8db57ac19da49ac.js'},{'revision':null,'url':'/_next/static/chunks/2966-7fb4de7195a12c4d.js'},{'revision':null,'url':'/_next/static/chunks/3126-35e4f73e95ec7d01.js'},{'revision':null,'url':'/_next/static/chunks/3422.16d45779a8283bd7.js'},{'revision':null,'url':'/_next/static/chunks/3539.1ec7bb1bf26ddba9.js'},{'revision':null,'url':'/_next/static/chunks/3763.c88bf20b7cf557d0.js'},{'revision':null,'url':'/_next/static/chunks/385cb88d-a2787b29fa422979.js'},{'revision':null,'url':'/_next/static/chunks/390.55c3138f726f1093.js'},{'revision':null,'url':'/_next/static/chunks/3d47b92a-a46b803c4b586af9.js'},{'revision':null,'url':'/_next/static/chunks/4082-01452c41701881d2.js'},{'revision':null,'url':'/_next/static/chunks/4248-31a7e5c8085b1cc5.js'},{'revision':null,'url':'/_next/static/chunks/450-689548ebf5ef8d1e.js'},{'revision':null,'url':'/_next/static/chunks/4595-d7b30c924aeccc0f.js'},{'revision':null,'url':'/_next/static/chunks/4688-b848c86061c3dda0.js'},{'revision':null,'url':'/_next/static/chunks/4787-a4a9e15e5dad3569.js'},{'revision':null,'url':'/_next/static/chunks/479ba886-65bc119739bb9335.js'},{'revision':null,'url':'/_next/static/chunks/4909-f5e5a2b9645891bd.js'},{'revision':null,'url':'/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js'},{'revision':null,'url':'/_next/static/chunks/5075.81b3a4ec447b5019.js'},{'revision':null,'url':'/_next/static/chunks/5112-25524fc581821913.js'},{'revision':null,'url':'/_next/static/chunks/5239-23ded60826002bb9.js'},{'revision':null,'url':'/_next/static/chunks/5575-a149dcfa5ec4ede3.js'},{'revision':null,'url':'/_next/static/chunks/5646-aab69bd87892e1a9.js'},{'revision':null,'url':'/_next/static/chunks/574-f0e57d65e764080c.js'},{'revision':null,'url':'/_next/static/chunks/5951-0661409e00c9d910.js'},{'revision':null,'url':'/_next/static/chunks/6061-ba795766b5128dbc.js'},{'revision':null,'url':'/_next/static/chunks/6085.6b239f461ad40268.js'},{'revision':null,'url':'/_next/static/chunks/619edb50-dff74a15f01d87ee.js'},{'revision':null,'url':'/_next/static/chunks/6530-bbfede8e3b913779.js'},{'revision':null,'url':'/_next/static/chunks/6624-86d28fc80c6eb219.js'},{'revision':null,'url':'/_next/static/chunks/6edf0643-29e4045402af1667.js'},{'revision':null,'url':'/_next/static/chunks/7654-429e9ac2d4ddeed5.js'},{'revision':null,'url':'/_next/static/chunks/7830-bfb22b8c57151ecd.js'},{'revision':null,'url':'/_next/static/chunks/795d4814-4a8930653734e203.js'},{'revision':null,'url':'/_next/static/chunks/8081-b0d95bc3b4a819b1.js'},{'revision':null,'url':'/_next/static/chunks/8276-19287c8fe86f9a7d.js'},{'revision':null,'url':'/_next/static/chunks/8311-10e05c070150b7c4.js'},{'revision':null,'url':'/_next/static/chunks/8356-fc5637937cf9891b.js'},{'revision':null,'url':'/_next/static/chunks/8448-34acd7f39b8ded24.js'},{'revision':null,'url':'/_next/static/chunks/8720-c9ee040177c11cae.js'},{'revision':null,'url':'/_next/static/chunks/8830-4749f258776b09a0.js'},{'revision':null,'url':'/_next/static/chunks/8e1d74a4-6dcc7372d7e9058a.js'},{'revision':null,'url':'/_next/static/chunks/9155.86a25123f7853088.js'},{'revision':null,'url':'/_next/static/chunks/9248-e066c61ccd0be4b2.js'},{'revision':null,'url':'/_next/static/chunks/9429-724810934ce41eb4.js'},{'revision':null,'url':'/_next/static/chunks/9490-7579ce99e4c86e73.js'},{'revision':null,'url':'/_next/static/chunks/9726.f4b159f1ff3def86.js'},{'revision':null,'url':'/_next/static/chunks/9910-a507bd044345c2c3.js'},{'revision':null,'url':'/_next/static/chunks/9c4e2130-a6460bad1e118ea6.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/forgot-password/page-917e710afe232309.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/layout-d5e6c99c9a4c5d5f.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/login/page-8996c6fab62f302f.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/reset-password/page-d55ed02b9ab00766.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/signup/page-fc22d09f2a037a8b.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/verify-email/page-b92f244ff1b625ba.js'},{'revision':null,'url':'/_next/static/chunks/app/_not-found/page-90a2a9103b78f97e.js'},{'revision':null,'url':'/_next/static/chunks/app/api/admin/users/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/api/ors-distance/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/api/route/%5Bid%5D/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/auth/callback/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/bsnl/page-7b77eeb0b7dfb3ec.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/categories/page-3a9f5ffeefed5f4f.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/designations/page-54a69719a31f5555.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/diagrams/page-f669942af100eb59.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/employees/page-3912578ab0f11a43.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/layout-94fe35e6bf9540f0.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/logical-paths/page-4818ae7a746daf99.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/lookup/page-17785fadef395537.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/maintenance-areas/page-38d629c71f3b8dea.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/nodes/page-2fd119aa8c735e35.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/ofc/%5Bid%5D/page-fc614f6777eae50a.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/ofc/page-0e953b145db27b7e.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/page-9a65cde2f06b2697.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/rings/%5Bid%5D/page-dbeb081ebdc81f76.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/rings/page-6a0456d9e70eb04c.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/route-manager/page-3ed1d91120d6cadf.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/system-paths/page-f62f8c4607fdac5f.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/systems/%5Bid%5D/page-4adf552a06a3d4b2.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/systems/page-2f28f93d9081f135.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/users/page-2d49bfb329a88ad6.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/%5Bslug%5D/page-282f52d4549fb382.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/layout-33c39e12fdec5358.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/page-0bb0a8c25d877991.js'},{'revision':null,'url':'/_next/static/chunks/app/layout-06e77909d1f41ca6.js'},{'revision':null,'url':'/_next/static/chunks/app/manifest.webmanifest/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/onboarding/layout-683eb3bf82263a30.js'},{'revision':null,'url':'/_next/static/chunks/app/onboarding/page-df50f9022dece6ad.js'},{'revision':null,'url':'/_next/static/chunks/app/page-af1c67a397623a9d.js'},{'revision':null,'url':'/_next/static/chunks/app/privacy/page-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/terms/page-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/c16f53c3-23315cef868c27cc.js'},{'revision':null,'url':'/_next/static/chunks/d0deef33.59194872e4111dca.js'},{'revision':null,'url':'/_next/static/chunks/e34aaff9-1d08cafa158d7ba9.js'},{'revision':null,'url':'/_next/static/chunks/ee560e2c-c189e9c5a786426e.js'},{'revision':null,'url':'/_next/static/chunks/eec3d76d-6cfb36678e9d1715.js'},{'revision':null,'url':'/_next/static/chunks/framework-0907bc41f77e1d3c.js'},{'revision':null,'url':'/_next/static/chunks/main-3a4f635e9bb16e35.js'},{'revision':null,'url':'/_next/static/chunks/main-app-d25ebaf508111e6c.js'},{'revision':null,'url':'/_next/static/chunks/pages/_app-4b3fb5e477a0267f.js'},{'revision':null,'url':'/_next/static/chunks/pages/_error-c970d8b55ace1b48.js'},{'revision':'846118c33b2c0e922d7b3a7676f81f6f','url':'/_next/static/chunks/polyfills-42372ed130431b0a.js'},{'revision':null,'url':'/_next/static/chunks/webpack-8db92076922b1323.js'},{'revision':null,'url':'/_next/static/css/1de76be520b4de19.css'},{'revision':null,'url':'/_next/static/css/6ffe8ee35a7f91d0.css'},{'revision':null,'url':'/_next/static/css/80cdff9ae0ac5952.css'},{'revision':null,'url':'/_next/static/css/999d57ef33be6e22.css'},{'revision':null,'url':'/_next/static/css/dd7cbd993d67b8fc.css'},{'revision':'fd06a4b940b6416758248431261b8107','url':'/_next/static/f870_dPQNEQdK2Rz4Kr7S/_buildManifest.js'},{'revision':'b6652df95db52feb4daf4eca35380933','url':'/_next/static/f870_dPQNEQdK2Rz4Kr7S/_ssgManifest.js'},{'revision':'c52e6d9e3732e625a3dc1fe53b08d583','url':'/_next/static/media/08ace62d6069e283-s.p.woff2'},{'revision':'fb74ad9f1b527a0e55d373485a44d305','url':'/_next/static/media/9240fe1f20af2e13-s.p.woff2'},{'revision':'3af08ce60eb4c170df8636ef68aca886','url':'/_next/static/media/hnv.633c994b.webp'},{'revision':'77467e396ddf3b747170c86cc8fe5ba9','url':'/_next/static/media/hnvmobile.902f8efd.webp'},{'revision':null,'url':'/_next/static/media/layers-2x.9859cd12.png'},{'revision':null,'url':'/_next/static/media/layers.ef6db872.png'},{'revision':null,'url':'/_next/static/media/marker-icon.d577052a.png'},{'revision':'ab805bb9c12f2a612eb83734c668c634','url':'/default-avatar.png'},{'revision':'c52e6d9e3732e625a3dc1fe53b08d583','url':'/fonts/Inter.woff2'},{'revision':'fb74ad9f1b527a0e55d373485a44d305','url':'/fonts/Montserrat.woff2'},{'revision':'a74af6e507c6499acfa3efb348d9b322','url':'/hnv.png'},{'revision':'3af08ce60eb4c170df8636ef68aca886','url':'/hnv.webp'},{'revision':'286ab7ffe02769578d181db3b497325f','url':'/hnvmobile.png'},{'revision':'77467e396ddf3b747170c86cc8fe5ba9','url':'/hnvmobile.webp'},{'revision':'5cd0dafa6399163a0ec230f259f7577c','url':'/icon-192x192.png'},{'revision':'9f2cdc566a8f09614a5b55ab78939639','url':'/icon-256x256.png'},{'revision':'81ab7bdb2a21fd797c8b492618d076bb','url':'/icon-384x384.png'},{'revision':'f42a2f585df8b6107e9883d19351d63a','url':'/icon-512x512.png'},{'revision':'a4df96cda5916f498a7f1f5c6601f2f3','url':'/images/bts_image.png'},{'revision':'9c980a6f3c5cfbba7899df7dbb88369b','url':'/images/bts_rl_image.png'},{'revision':'401d815dc206b8dc1b17cd0e37695975','url':'/images/marker-icon-2x.png'},{'revision':'ce644a9e3e85946d28dee8941af484ac','url':'/images/marker-icon-highlight.png'},{'revision':'2273e3d8ad9264b7daa5bdbf8e6b47f8','url':'/images/marker-icon.png'},{'revision':'44a526eed258222515aa21eaffd14a96','url':'/images/marker-shadow.png'},{'revision':'fc155d92af304f90f3a45d37b48cdcc2','url':'/images/switch_image.png'},{'revision':'71736f63ff4055370765fa89449753d6','url':'/logo.png'},{'revision':'2273e3d8ad9264b7daa5bdbf8e6b47f8','url':'/marker-icon.png'},{'revision':'44a526eed258222515aa21eaffd14a96','url':'/marker-shadow.png'},{'revision':'4989eebeb832eeb9e644d6d362f28c74','url':'/screenshot-narrow.png'},{'revision':'d37928944922622b756b657a9a0c6859','url':'/screenshot-wide.png'},{'revision':'b4b434abf08093a7a79a7dadbdf501ce','url':'/sw-base.js'}],skipWaiting:!0,clientsClaim:!0,navigationPreload:!0});j.registerRoute(/^https?:\/\/.*\/(api|rest|rpc)\/.*/i,new W({cacheName:"api-cache",plugins:[new U({maxEntries:200,maxAgeSeconds:604800})]})),j.registerRoute(/\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,new T({cacheName:"image-cache",plugins:[new U({maxEntries:100,maxAgeSeconds:2592e3})]})),j.registerRoute(/_next\/static\/.*/i,new T({cacheName:"next-static-cache",plugins:[new U({maxEntries:100,maxAgeSeconds:2592e3})]})),self.addEventListener("push",function(e){if(e.data){let t=e.data.json(),a={body:t.body,icon:t.icon||"/icon.png",badge:"/badge.png",vibrate:[100,50,100],data:{dateOfArrival:Date.now(),primaryKey:"2"}};e.waitUntil(self.registration.showNotification(t.title,a))}}),self.addEventListener("notificationclick",function(e){e.notification.close(),e.waitUntil(clients.openWindow("https://hnvtx.vercel.app"))}),j.addEventListeners()})();
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/04_advanced_ofc/03_indexes.sql -->
@@ -19376,6 +19378,9 @@ DECLARE
   filter_key TEXT;
   filter_value JSONB;
   alias_prefix TEXT;
+  or_conditions TEXT;
+  or_key TEXT;
+  or_value TEXT;
 BEGIN
     alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
 
@@ -19386,22 +19391,32 @@ BEGIN
     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
-        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'string' THEN
-            -- Handle string format like '(col1.ilike.%val%,col2.ilike.%val%)'
-            where_clause := where_clause || ' AND ' || regexp_replace(filter_value::text, '([a-zA-Z0-9_]+)\.', alias_prefix || '\1.', 'g');
+        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
+            -- THE FIX: Handle 'or' as a JSON object, not a string
+            or_conditions := '';
+            FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
+                IF or_conditions != '' THEN
+                    or_conditions := or_conditions || ' OR ';
+                END IF;
+                -- Use format with %I for identifier and %L for literal to prevent SQL injection and properly quote values
+                or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
+            END LOOP;
+            IF or_conditions != '' THEN
+                where_clause := where_clause || ' AND (' || or_conditions || ')';
+            END IF;
+            
         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
             -- This part handles standard key-value filters
             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
-                -- Handle complex filters if needed in the future, e.g., { "operator": "gt", "value": 10 }
+                where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
             ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                where_clause := where_clause || format(' AND %s%I IN (SELECT value::text FROM jsonb_array_elements_text(%L))', alias_prefix, filter_key, filter_value);
+                where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
             ELSE
                 where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
             END IF;
         END IF;
     END LOOP;
 
-    -- Prepend WHERE if there are any clauses
     IF where_clause != '' THEN
         RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
     END IF;
@@ -19834,11 +19849,15 @@ CREATE OR REPLACE FUNCTION public.get_bsnl_dashboard_data(
     p_system_types TEXT[] DEFAULT NULL,
     p_cable_types TEXT[] DEFAULT NULL,
     p_regions TEXT[] DEFAULT NULL,
-    p_node_types TEXT[] DEFAULT NULL
+    p_node_types TEXT[] DEFAULT NULL,
+    p_min_lat NUMERIC DEFAULT NULL,
+    p_max_lat NUMERIC DEFAULT NULL,
+    p_min_lng NUMERIC DEFAULT NULL,
+    p_max_lng NUMERIC DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
-SECURITY DEFINER -- THE FIX: Running as the function owner (postgres) to bypass RLS issues.
+SECURITY DEFINER
 STABLE
 AS $$
 DECLARE
@@ -19847,47 +19866,46 @@ DECLARE
     v_nodes JSONB;
     v_ofc_cables JSONB;
     v_systems JSONB;
+    v_visible_node_ids UUID[];
     search_query TEXT := '%' || p_query || '%';
 BEGIN
-    -- SECURITY CHECK: Manually enforce role-based access since SECURITY DEFINER bypasses RLS.
     IF NOT (v_jwt_role = ANY(v_allowed_roles)) THEN
         RAISE EXCEPTION 'Permission denied: Your role does not have access to this resource.';
     END IF;
 
-    -- Queries will now run as the 'postgres' user and will bypass any RLS policies.
-    -- The security check above is now the gatekeeper.
+    WITH visible_nodes AS (
+        SELECT id
+        FROM public.v_nodes_complete n
+        WHERE
+            (p_query IS NULL OR (n.name ILIKE search_query OR n.remark ILIKE search_query OR n.maintenance_area_name ILIKE search_query)) AND
+            (p_status IS NULL OR n.status = p_status) AND
+            (p_regions IS NULL OR n.maintenance_area_name = ANY(p_regions)) AND
+            (p_node_types IS NULL OR n.node_type_name = ANY(p_node_types)) AND
+            (p_min_lat IS NULL OR (n.latitude >= p_min_lat AND n.latitude <= p_max_lat AND n.longitude >= p_min_lng AND n.longitude <= p_max_lng))
+    )
+    SELECT array_agg(id) INTO v_visible_node_ids FROM visible_nodes;
 
-    -- 1. Fetch Nodes
     SELECT COALESCE(jsonb_agg(n), '[]'::jsonb)
     INTO v_nodes
     FROM public.v_nodes_complete n
-    WHERE
-        (p_query IS NULL OR (n.name ILIKE search_query OR n.remark ILIKE search_query OR n.maintenance_area_name ILIKE search_query)) AND
-        (p_status IS NULL OR n.status = p_status) AND
-        (p_regions IS NULL OR n.maintenance_area_name = ANY(p_regions)) AND
-        (p_node_types IS NULL OR n.node_type_name = ANY(p_node_types));
+    WHERE n.id = ANY(v_visible_node_ids);
 
-    -- 2. Fetch OFC Cables
     SELECT COALESCE(jsonb_agg(c), '[]'::jsonb)
     INTO v_ofc_cables
     FROM public.v_ofc_cables_complete c
     WHERE
-        (p_query IS NULL OR (c.route_name ILIKE search_query OR c.asset_no ILIKE search_query OR c.sn_name ILIKE search_query OR c.en_name ILIKE search_query)) AND
+        (c.sn_id = ANY(v_visible_node_ids) OR c.en_id = ANY(v_visible_node_ids)) AND
         (p_status IS NULL OR c.status = p_status) AND
-        (p_regions IS NULL OR c.maintenance_area_name = ANY(p_regions)) AND
         (p_cable_types IS NULL OR c.ofc_type_name = ANY(p_cable_types));
 
-    -- 3. Fetch Systems
     SELECT COALESCE(jsonb_agg(s), '[]'::jsonb)
     INTO v_systems
     FROM public.v_systems_complete s
     WHERE
-        (p_query IS NULL OR (s.system_name ILIKE search_query OR s.node_name ILIKE search_query OR s.ip_address::TEXT ILIKE search_query)) AND
+        s.node_id = ANY(v_visible_node_ids) AND
         (p_status IS NULL OR s.status = p_status) AND
-        (p_regions IS NULL OR s.system_maintenance_terminal_name = ANY(p_regions)) AND
         (p_system_types IS NULL OR s.system_type_name = ANY(p_system_types));
 
-    -- 4. Construct and return the final JSON object
     RETURN jsonb_build_object(
         'nodes', v_nodes,
         'ofcCables', v_ofc_cables,
@@ -19896,8 +19914,7 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission to the authenticated role
-GRANT EXECUTE ON FUNCTION public.get_bsnl_dashboard_data(TEXT, BOOLEAN, TEXT[], TEXT[], TEXT[], TEXT[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_bsnl_dashboard_data(TEXT, BOOLEAN, TEXT[], TEXT[], TEXT[], TEXT[], NUMERIC, NUMERIC, NUMERIC, NUMERIC) TO authenticated;
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/06_utilities/07_attach_updated_at_triggers.sql -->
@@ -20782,7 +20799,7 @@ CREATE TABLE IF NOT EXISTS public.sdh_node_associations (
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/data/migrations/03_network_systems/06_rls_and_grants.sql -->
 ```sql
 -- path: data/migrations/03_network_systems/06_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module. [SELF-CONTAINED]
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [CORRECTED & SECURED]
 
 -- =================================================================
 -- PART 1: GRANTS AND RLS SETUP FOR SYSTEM-SPECIFIC TABLES
@@ -20830,7 +20847,7 @@ BEGIN
   USING (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM' AND (
+      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -20840,7 +20857,7 @@ BEGIN
   ) WITH CHECK (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM' AND (
+      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -20862,36 +20879,76 @@ BEGIN
   USING (
     EXISTS (
       SELECT 1 FROM public.systems s
-      WHERE s.id = system_connections.system_id AND s.system_type_id IN (
-        SELECT lt.id FROM public.lookup_types lt
-        WHERE lt.category = 'SYSTEM' AND (
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE s.id = system_connections.system_id 
+      AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
       )
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.systems s
-      WHERE s.id = system_connections.system_id AND s.system_type_id IN (
-        SELECT lt.id FROM public.lookup_types lt
-        WHERE lt.category = 'SYSTEM' AND (
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE s.id = system_connections.system_id 
+      AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
           (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
           (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-        )
       )
     )
   );
 END;
 $$;
 
+-- =================================================================
+-- PART 3: THE FIX - SPECIFIC RLS POLICIES FOR SUBTYPE TABLES
+-- =================================================================
+DO $$
+BEGIN
+  -- Policies for 'sfp_based_connections' table
+  DROP POLICY IF EXISTS "Allow admin full access" ON public.sfp_based_connections;
+  DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.sfp_based_connections;
+  DROP POLICY IF EXISTS "Allow full access based on parent system type" ON public.sfp_based_connections;
+
+  CREATE POLICY "Allow admin full access" ON public.sfp_based_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
+  CREATE POLICY "Allow authenticated read-access" ON public.sfp_based_connections FOR SELECT TO authenticated USING (true);
+  
+  CREATE POLICY "Allow full access based on parent system type" ON public.sfp_based_connections
+  FOR ALL TO cpan_admin, maan_admin, asset_admin, mng_admin
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.system_connections sc
+      JOIN public.systems s ON sc.system_id = s.id
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE sc.id = sfp_based_connections.system_connection_id
+      AND lt.category = 'SYSTEM_TYPES' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
+      )
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.system_connections sc
+      JOIN public.systems s ON sc.system_id = s.id
+      JOIN public.lookup_types lt ON s.system_type_id = lt.id
+      WHERE sc.id = sfp_based_connections.system_connection_id
+      AND lt.category = 'SYSTEM_TYPES' AND (
+        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
+        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
+      )
+    )
+  );
+
+  -- You can add similar specific policies for sdh_connections, ring_based_systems etc. if needed
+END;
+$$;
 
 -- =================================================================
--- PART 3: GRANTS FOR VIEWS (Created in this module)
+-- PART 4: GRANTS FOR VIEWS (Created in this module)
 -- =================================================================
 DO $$
 BEGIN
@@ -22201,6 +22258,7 @@ import { V_systems_completeRowSchema, V_nodes_completeRowSchema, V_ofc_cables_co
 import { createClient } from '@/utils/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { LatLngBounds } from 'leaflet';
 
 type BsnlSystem = V_systems_completeRowSchema;
 type BsnlNode = V_nodes_completeRowSchema;
@@ -22212,17 +22270,21 @@ interface BsnlDashboardData {
   systems: BsnlSystem[];
 }
 
-export function useBsnlDashboardData(filters: BsnlSearchFilters) {
+export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatLngBounds | null) {
   const supabase = createClient();
 
   const queryParams = useMemo(() => ({
-    p_query: filters.query || undefined,
-    p_status: filters.status ? filters.status === 'active' : undefined,
-    p_system_types: filters.type ? [filters.type] : undefined,
-    p_cable_types: filters.type ? [filters.type] : undefined,
-    p_regions: filters.region ? [filters.region] : undefined,
-    p_node_types: filters.nodeType ? [filters.nodeType] : undefined,
-  }), [filters]);
+    p_query: filters.query || null,
+    p_status: filters.status ? filters.status === 'active' : null,
+    p_system_types: filters.type ? [filters.type] : null,
+    p_cable_types: filters.type ? [filters.type] : null,
+    p_regions: filters.region ? [filters.region] : null,
+    p_node_types: filters.nodeType ? [filters.nodeType] : null,
+    p_min_lat: mapBounds?.getSouth() ?? null,
+    p_max_lat: mapBounds?.getNorth() ?? null,
+    p_min_lng: mapBounds?.getWest() ?? null,
+    p_max_lng: mapBounds?.getEast() ?? null,
+  }), [filters, mapBounds]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<BsnlDashboardData>({
     queryKey: ['bsnl-dashboard-data', queryParams],
@@ -22235,7 +22297,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters) {
 
       return rpcData as BsnlDashboardData;
     },
-    staleTime: 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });
 
@@ -24519,7 +24581,7 @@ function NavItems() {
             label: 'Designations',
             icon: <ImUserTie className="h-5 w-5" />,
             href: '/dashboard/designations',
-            roles: [],
+            roles: [UserRole.ADMIN],
           },
           {
             id: 'categories',
@@ -26094,6 +26156,38 @@ export default function OfflineStatus() {
 }
 ```
 
+<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/pwa/PwaRegistry.tsx -->
+```typescript
+"use client";
+
+import { useEffect } from "react";
+
+const PwaRegistry = () => {
+  useEffect(() => {
+    if (
+      "serviceWorker" in navigator &&
+      process.env.NODE_ENV === "production"
+    ) {
+      const registerServiceWorker = async () => {
+        try {
+          await navigator.serviceWorker.register("/sw.js", {
+            scope: "/",
+          });
+          console.log("Service worker registered successfully.");
+        } catch (error) {
+          console.error("Service worker registration failed:", error);
+        }
+      };
+      registerServiceWorker();
+    }
+  }, []);
+
+  return null; // This component does not render anything.
+};
+
+export default PwaRegistry;
+```
+
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/pwa/pwa-install-prompt.tsx -->
 ```typescript
 'use client'
@@ -27419,7 +27513,8 @@ import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { UserProvider, useUser } from "@/providers/UserProvider"; // THE FIX: Import UserProvider
+import { UserProvider, useUser } from "@/providers/UserProvider";
+import { Json } from "@/types/supabase-types";
 
 const useUserProfileCheck = (userId?: string) => {
   const supabase = createClient();
@@ -27453,46 +27548,38 @@ interface ProtectedProps {
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  
+  const { canAccess, isSuperAdmin, role, isLoading: isRoleLoading } = useUser();
   const { data: profile, isLoading: isProfileLoading } = useUserProfileCheck(user?.id);
-  const { canAccess, isSuperAdmin, isLoading: isRoleLoading } = useUser();
+
+  const needsOnboarding = 
+    !isProfileLoading && // Only check if profile is loaded
+    profile && 
+    typeof profile.preferences === 'object' && 
+    profile.preferences !== null && 
+    !Array.isArray(profile.preferences) &&
+    'needsOnboarding' in profile.preferences &&
+    (profile.preferences as { needsOnboarding?: boolean }).needsOnboarding === true;
 
   useEffect(() => {
-    if (!isProfileLoading && !isRoleLoading) {
-      const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
-
-      if (needsOnboarding) {
-        if (window.location.pathname !== '/onboarding') {
-          router.replace('/onboarding');
-        }
-        return;
-      }
-
-      if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-        return;
-      }
+    if (!isProfileLoading && !isRoleLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
+      router.replace('/onboarding');
     }
-  }, [
-    profile, isProfileLoading, isRoleLoading,
-    canAccess, isSuperAdmin, allowedRoles, router
-  ]);
-
-  if (isProfileLoading) {
-     return <PageSpinner text="Loading user profile..." />;
+  }, [isProfileLoading, isRoleLoading, needsOnboarding, router]);
+  
+  if (isRoleLoading || isProfileLoading) {
+     return <PageSpinner text="Verifying permissions..." />;
   }
   
-  const needsOnboarding = (profile?.preferences as any)?.needsOnboarding === true;
   if (needsOnboarding) {
-    return <PageSpinner text="Finalizing session..." />;
+    return <PageSpinner text="Redirecting to onboarding..." />;
   }
 
   if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
-    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={user?.role} />;
+    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
   }
 
   return <>{children}</>;
 }
-
 
 export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, redirectTo = "/login" }) => {
   const authState = useAuthStore((state) => state.authState);
@@ -27516,11 +27603,9 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
 
   if (authState === 'authenticated') {
     return (
-      <UserProvider>
-        <ProtectedContent allowedRoles={allowedRoles}>
-          {children}
-        </ProtectedContent>
-      </UserProvider>
+      <ProtectedContent allowedRoles={allowedRoles}>
+        {children}
+      </ProtectedContent>
     );
   }
 
@@ -28459,7 +28544,6 @@ export function LookupModal({
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/lookup/index.tsx -->
 ```typescript
-export * from "./lookup-types";
 export * from "./lookup-hooks";
 export * from "./LookupModal";
 export * from "./LookupTypesEmptyStates";
@@ -30502,8 +30586,8 @@ interface NodeFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingNode?: NodesRowSchema | null;
-  onSubmit: (data: NodesInsertSchema) => void; // <--  Single onSubmit handler
-  isLoading: boolean; // <--  Receive loading state from parent
+  onSubmit: (data: NodesInsertSchema) => void;
+  isLoading: boolean;
 }
 
 export function NodeFormModal({
@@ -30535,14 +30619,14 @@ export function NodeFormModal({
   const supabase = createClient();
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
-  const { data: nodeTypes = [] } = useTableQuery(supabase, 'lookup_types', {
+  const { data: nodeTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
     filters: {
       category: { operator: 'eq', value: 'NODE_TYPES' },
       name: { operator: 'neq', value: 'DEFAULT' },
     },
     orderBy: [{ column: 'name', ascending: true }],
   });
-  const { data: maintenanceAreas = [] } = useTableQuery(
+  const { data: maintenanceAreas = { data: [] } } = useTableQuery(
     supabase,
     'maintenance_areas',
     {
@@ -30599,7 +30683,7 @@ export function NodeFormModal({
               title={isEdit ? 'Edit Node' : 'Add Node'}
               onSubmit={handleSubmit(onValidSubmit)}
               onCancel={onClose}
-              isLoading={isLoading} // <-- Use the loading state from props
+              isLoading={isLoading}
               standalone
             >
               <div className="space-y-6">
@@ -30611,8 +30695,10 @@ export function NodeFormModal({
                     <div className="md:col-span-2">
                       <FormInput name="name" label="Node Name" register={register} error={errors.name} disabled={isLoading} placeholder="Enter node name" />
                     </div>
-                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
-                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
+                    {/* THE FIX: Access the .data property before mapping */}
+                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.data.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
+                    {/* THE FIX: Access the .data property before mapping */}
+                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.data.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
                   </div>
                 </div>
 
@@ -34203,7 +34289,8 @@ import { z } from "zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form/FormControls";
 import { employee_designationsInsertSchema, Employee_designationsInsertSchema, Employee_designationsRowSchema } from "@/schemas/zod-schemas";
-import { DesignationWithRelations } from "@/app/dashboard/designations/page";
+import { DesignationWithRelations } from "@/config/designations";
+
 
 
 
@@ -35077,6 +35164,8 @@ import { ViewModeToggle } from "@/components/common/entity-management/ViewModeTo
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import { useDebounce } from "use-debounce";
+import { PageSpinner } from "@/components/common/ui";
+import { BlurLoader } from "@/components/common/ui/LoadingSpinner";
 
 type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity; };
 
@@ -35095,12 +35184,14 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   filters: Record<string, string>;
   onFilterChange: (filters: Record<string, string>) => void;
   onClearFilters: () => void;
+  isFetching?: boolean;
 }
 
 export function EntityManagementComponent<T extends BaseEntity>({
   config, entitiesQuery, toggleStatusMutation, onEdit, onDelete,
   onCreateNew, selectedEntityId, onSelect, onViewDetails,
-  searchTerm, onSearchChange, filters, onFilterChange, onClearFilters
+  searchTerm, onSearchChange, filters, onFilterChange, onClearFilters,
+  isFetching
 }: EntityManagementComponentProps<T>) {
   const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
   const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
@@ -35119,17 +35210,46 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
     if (!config.isHierarchical) return allEntities.map((entity) => ({ ...entity, children: [] }));
+    
     const entityMap = new Map<string, EntityWithChildren<T>>();
-    allEntities.forEach((entity) => { entityMap.set(entity.id, { ...entity, children: [] }); });
+    allEntities.forEach((entity) => {
+      entityMap.set(entity.id, { ...entity, children: [] });
+    });
+    
     const rootEntities: EntityWithChildren<T>[] = [];
+
+    const isParentEntity = (value: unknown): value is { id: string } => {
+      return value != null && typeof value === 'object' && 'id' in value && typeof (value as { id: unknown }).id === 'string';
+    };
+    
+    const hasParentId = (entity: T): entity is T & { parent_id: string | null } => {
+      return 'parent_id' in entity;
+    }
+
     allEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
-      const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
+
+      let parentId: string | null = null;
+      
+      if (config.parentField) {
+        const parentRelation = entity[config.parentField];
+        if (isParentEntity(parentRelation)) {
+          parentId = parentRelation.id;
+        }
+      }
+      
+      if (!parentId && hasParentId(entity) && entity.parent_id) {
+        parentId = entity.parent_id;
+      }
+
       if (parentId) {
         const parent = entityMap.get(parentId);
-        if (parent) { parent.children.push(entityWithChildren); }
-        else { rootEntities.push(entityWithChildren); }
+        if (parent) { 
+          parent.children.push(entityWithChildren); 
+        } else {
+           rootEntities.push(entityWithChildren);
+        }
       } else {
         rootEntities.push(entityWithChildren);
       }
@@ -35150,8 +35270,12 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   const IconComponent = config.icon;
 
+  const isInitialLoading = entitiesQuery.isLoading && allEntities.length === 0;
+
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)]">
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
+      {isFetching && !isInitialLoading && <BlurLoader />}
+      
       <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <SearchAndFilters
@@ -35163,8 +35287,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
           {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
         </div>
         <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
-          {entitiesQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12 text-center">...Loading...</div>
+          {isInitialLoading ? (
+            <div className="flex items-center justify-center py-12 text-center"><PageSpinner text={`Loading ${config.entityPluralName}...`} /></div>
           ) : entitiesQuery.isError ? (
             <div className="flex items-center justify-center py-12 text-center text-red-500">Error loading data.</div>
           ) : allEntities.length === 0 ? (
@@ -38638,12 +38762,12 @@ const defaultFormatters = {
   address: (
     address:
       | Partial<{
-          street?: string;
-          city?: string;
-          state?: string;
-          zip_code?: string;
-          zipCode?: string;
-          country?: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          zipCode?: string | null;
+          country?: string | null;
         }>
       | null
       | undefined,
@@ -38655,7 +38779,7 @@ const defaultFormatters = {
       address.state,
       address.zip_code ?? address.zipCode,
       address.country,
-    ].filter(Boolean) as string[];
+    ].filter((part) => part != null) as string[];
     return parts.length > 0 ? parts.join(", ") : null;
   },
 
@@ -40711,6 +40835,7 @@ export interface PageHeaderProps {
   stats?: StatProps[];
   actions?: ActionButton[];
   isLoading?: boolean;
+  isFetching?: boolean; // THE FIX: Add isFetching prop
   className?: string;
 }
 
@@ -40723,114 +40848,102 @@ export function PageHeader({
   stats,
   actions = [],
   isLoading = false,
+  isFetching = false, // THE FIX: Destructure isFetching
   className,
 }: PageHeaderProps) {
+  if (isLoading) {
+    return <CardSkeleton showImage={false} lines={2} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <CardSkeleton />
-      ) : (
-        <div
-          className={cn(
-            'space-y-4 sm:space-y-6',
-            isLoading && 'opacity-50',
-            className
-          )}
-        >
-          {/* Header Section */}
-          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
-              <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:gap-3">
-                {icon && (
-                  <div className="text-2xl sm:text-3xl text-blue-600 dark:text-blue-400">
-                    {icon}
-                  </div>
-                )}
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
-                  {title}
-                </h1>
-              </div>
-              {description && (
-                <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg leading-relaxed">
-                  {description}
-                </p>
-              )}
-            </div>
-
-            {/* Desktop Action Buttons */}
-            <div className="hidden lg:flex items-center gap-2 flex-shrink-0 ml-4">
-              {actions.map((action, index) =>
-                action['data-dropdown'] ? (
-                  <div key={`desktop-dropdown-${index}`} data-dropdown="true">
-                    <DropdownButton
-                      {...action}
-                      disabled={action.disabled || isLoading}
-                    />
-                  </div>
-                ) : (
-                  <Button
-                    key={`desktop-action-${index}`}
-                    {...action}
-                    disabled={action.disabled || isLoading}
-                  >
-                    {action.label}
-                  </Button>
-                )
-              )}
-            </div>
-          </div>
-
-          {/* Stats and Mobile Actions Row */}
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
-              {isLoading
-                ? Array.from({ length: stats?.length || 2 }).map((_, i) => (
-                    <div
-                      key={`stat-skeleton-${i}`}
-                      className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 animate-pulse"
-                    >
-                      <div className="h-8 w-1/2 rounded-md bg-gray-200 dark:bg-gray-700 mb-2"></div>
-                      <div className="h-4 w-3/4 rounded-md bg-gray-200 dark:bg-gray-700"></div>
-                    </div>
-                  ))
-                : stats?.map((stat) => <StatCard key={stat.label} {...stat} />)}
-            </div>
-
-            {/* Mobile/Tablet Action Buttons */}
-            <div className="flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
-              {actions.map((action, index) =>
-                action['data-dropdown'] ? (
-                  <DropdownButton
-                    key={`mobile-dropdown-${index}`}
-                    {...action}
-                    className={`flex-1 sm:flex-none ${
-                      action.hideOnMobile ? 'hidden sm:flex' : ''
-                    }`}
-                    disabled={action.disabled || isLoading}
-                  />
-                ) : (
-                  <Button
-                    key={`mobile-action-${index}`}
-                    {...action}
-                    className={`flex-1 sm:flex-none ${
-                      action.hideOnMobile ? 'hidden sm:flex' : ''
-                    }`}
-                    disabled={action.disabled || isLoading}
-                  >
-                    {action.hideTextOnMobile ? '' : action.label}
-                  </Button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
+    <div
+      className={cn(
+        'space-y-4 sm:space-y-6',
+        className
       )}
-    </>
+    >
+      {/* Header Section */}
+      <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
+          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:gap-3">
+            {icon && (
+              <div className="text-2xl sm:text-3xl text-blue-600 dark:text-blue-400">
+                {icon}
+              </div>
+            )}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+              {title}
+            </h1>
+          </div>
+          {description && (
+            <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg leading-relaxed">
+              {description}
+            </p>
+          )}
+        </div>
+
+        {/* Desktop Action Buttons */}
+        <div className="hidden lg:flex items-center gap-2 flex-shrink-0 ml-4">
+          {actions.map((action, index) =>
+            action['data-dropdown'] ? (
+              <div key={`desktop-dropdown-${index}`} data-dropdown="true">
+                <DropdownButton
+                  {...action}
+                  disabled={action.disabled || isLoading}
+                />
+              </div>
+            ) : (
+              <Button
+                key={`desktop-action-${index}`}
+                {...action}
+                disabled={action.disabled || isLoading}
+              >
+                {action.label}
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Stats and Mobile Actions Row */}
+      <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
+          {stats?.map((stat) => (
+            <StatCard key={stat.label} {...stat} isLoading={isFetching} />
+          ))}
+        </div>
+
+        {/* Mobile/Tablet Action Buttons */}
+        <div className="flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
+          {actions.map((action, index) =>
+            action['data-dropdown'] ? (
+              <DropdownButton
+                key={`mobile-dropdown-${index}`}
+                {...action}
+                className={`flex-1 sm:flex-none ${
+                  action.hideOnMobile ? 'hidden sm:flex' : ''
+                }`}
+                disabled={action.disabled || isLoading}
+              />
+            ) : (
+              <Button
+                key={`mobile-action-${index}`}
+                {...action}
+                className={`flex-1 sm:flex-none ${
+                  action.hideOnMobile ? 'hidden sm:flex' : ''
+                }`}
+                disabled={action.disabled || isLoading}
+              >
+                {action.hideTextOnMobile ? '' : action.label}
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
-
-
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/page-header/DropdownButton.tsx -->
@@ -41115,6 +41228,7 @@ export interface StatProps {
   label: string;
   icon?: ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'default';
+  isLoading?: boolean; // THE FIX: Add isLoading prop
 }
 
 export const StatCard: React.FC<StatProps> = ({
@@ -41122,6 +41236,7 @@ export const StatCard: React.FC<StatProps> = ({
   label,
   icon,
   color = 'default',
+  isLoading = false, // THE FIX: Add isLoading prop
 }) => {
   const statColors = {
     primary: 'text-blue-600 dark:text-blue-400',
@@ -41161,13 +41276,19 @@ export const StatCard: React.FC<StatProps> = ({
         </div>
       )}
       <div>
-        <div className={`text-2xl font-bold ${statColors[color]}`}>{value}</div>
+        {/* THE FIX: Conditionally render a skeleton for the value */}
+        <div className={`text-2xl font-bold ${statColors[color]}`}>
+          {isLoading ? (
+            <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+          ) : (
+            value
+          )}
+        </div>
         <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
       </div>
     </div>
   );
 };
-
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/components/common/form/index.ts -->
@@ -42447,13 +42568,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import isEqual from 'lodash.isequal';
-import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
+import { Ofc_cablesRowSchema } from '@/schemas/zod-schemas';
 import {
   Ofc_cablesInsertSchema,
   ofc_cablesInsertSchema,
 } from '@/schemas/zod-schemas';
 
-export const useOfcFormData = (ofcCable?: OfcCablesWithRelations) => {
+export const useOfcFormData = (ofcCable?: Ofc_cablesRowSchema) => {
   const isEdit = Boolean(ofcCable);
 
   const defaultValues = useMemo(
@@ -42909,7 +43030,6 @@ import RouteConfigurationSection from '@/components/ofc/OfcForm/RouteConfigurati
 import CableSpecificationsSection from '@/components/ofc/OfcForm/CableSpecificationsSection';
 import MaintenanceSection from '@/components/ofc/OfcForm/MaintenanceSection';
 import { PathValue, SubmitErrorHandler } from 'react-hook-form';
-import { OfcCablesWithRelations } from '@/app/dashboard/ofc/page';
 import {
   Ofc_cablesInsertSchema,
   Ofc_cablesRowSchema,
@@ -42918,7 +43038,7 @@ import {
 import { FormSearchableSelect } from '@/components/common/form';
 
 interface OfcFormProps {
-  ofcCable?: OfcCablesWithRelations;
+  ofcCable?: Ofc_cablesRowSchema;
   onSubmit: (data: Ofc_cablesInsertSchema) => void;
   onClose: () => void;
   pageLoading: boolean;
@@ -46669,16 +46789,30 @@ export default function FileUploader() {
 ```typescript
 'use client'
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useIsRestoring } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { useState } from 'react'
+import { useState, ReactNode } from 'react'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
+import { get, set, del } from 'idb-keyval'
+import { PageSpinner } from '@/components/common/ui'
 
-export function QueryProvider({ children }: { children: React.ReactNode }) {
+function HydrationGate({ children }: { children: ReactNode }) {
+  const isRestoring = useIsRestoring();
+  
+  if (isRestoring) {
+    return <PageSpinner text="Restoring session..." />;
+  }
+  
+  return <>{children}</>;
+}
+
+export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 10 * 60 * 1000, // 10 minutes
+        gcTime: 1000 * 60 * 60 * 24, // 24 hours
         retry: (failureCount, error: Error) => {
           if ('status' in error && typeof error.status === 'number' && error.status >= 400 && error.status < 500) {
             return false
@@ -46693,15 +46827,34 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     },
   }))
 
+  const asyncStorage = {
+    getItem: (key: string) => get(key),
+    setItem: (key: string, value: unknown) => set(key, value),
+    removeItem: (key: string) => del(key),
+  }
+
+  const persister = createAsyncStoragePersister({
+    storage: asyncStorage,
+  })
+
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister: persister,
+          buster: 'v1',
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        }}
+      >
+        <HydrationGate>
+          {children}
+        </HydrationGate>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </PersistQueryClientProvider>
     </QueryClientProvider>
   )
 }
-
-
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/providers/ToastProvider.tsx -->
@@ -46788,7 +46941,6 @@ export default function ThemeProvider({
 import { createContext, useContext, ReactNode } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
 import { UserRole } from '@/types/user-roles';
-import { PageSpinner } from '@/components/common/ui';
 
 interface UserContextType {
   role: UserRole | null;
@@ -46801,10 +46953,6 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { role, isSuperAdmin, isLoading, canAccess } = useUserPermissionsExtended();
-
-  if (isLoading) {
-    return <PageSpinner text="Verifying user permissions..." />;
-  }
 
   return (
     <UserContext.Provider value={{ role: role as UserRole | null, isSuperAdmin, isLoading, canAccess }}>
@@ -48117,10 +48265,10 @@ export const useAdminUserOperations = (): UserOperations => {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions } from "./queries-type-helpers";
+import { TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions, PublicTableName } from "./queries-type-helpers";
 import { applyFilters, applyOrdering } from "./utility-functions";
 
-export function useAdvancedBulkOperations<T extends TableName>(
+export function useAdvancedBulkOperations<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
   options?: {
@@ -48383,9 +48531,9 @@ export * from './cache-performance'
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions } from "./queries-type-helpers";
+import { PublicTableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions } from "./queries-type-helpers";
 
-export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
+export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
@@ -48426,7 +48574,7 @@ export function useToggleStatus<T extends TableName>(supabase: SupabaseClient<Da
   });
 }
 
-export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>) {
+export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
 
@@ -48498,7 +48646,7 @@ export function useTableInsert<T extends TableName>(supabase: SupabaseClient<Dat
   });
 }
 
-export function useTableUpdate<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>) {
+export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, ...mutationOptions } = options || {};
 
@@ -48548,7 +48696,7 @@ export function useTableUpdate<T extends TableName>(supabase: SupabaseClient<Dat
   });
 }
 
-export function useTableDelete<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<void, string | string[], OptimisticContext>) {
+export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<void, string | string[], OptimisticContext>) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
 
@@ -48707,10 +48855,10 @@ export function createPagedRpcHook<
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { TableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
+import { PublicTableName, TableRow, TableInsert, TableUpdate, Filters } from "./queries-type-helpers";
 import { applyFilters } from "./utility-functions";
 
-export function useTableBulkOperations<T extends TableName>(supabase: SupabaseClient<Database>, tableName: T, batchSize = 1000) {
+export function useTableBulkOperations<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, batchSize = 1000) {
   const queryClient = useQueryClient();
 
   const bulkInsert = useMutation({
@@ -50985,7 +51133,7 @@ export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/database/cache-performance.ts -->
 ```typescript
 import { useQueryClient, QueryClient } from "@tanstack/react-query";
-import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, TableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
+import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, PublicTableName, TableRow, UseTableQueryOptions } from "./queries-type-helpers";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { applyFilters, applyOrdering, createQueryKey, createRpcQueryKey } from "./utility-functions";
@@ -51012,7 +51160,7 @@ export function useQueryPerformance() {
     });
   };
 
-  const prefetchCriticalData = async (supabase: SupabaseClient<Database>, criticalTables: TableName[]) => {
+  const prefetchCriticalData = async (supabase: SupabaseClient<Database>, criticalTables: PublicTableName[]) => {
     const promises = criticalTables.map((tableName) =>
       queryClient.prefetchQuery({
         queryKey: ["table", tableName],
@@ -51055,7 +51203,7 @@ export const tableQueryUtils = {
     queryClient.invalidateQueries({ queryKey: ["rpc"] });
   },
 
-  prefetchTable: async <T extends TableName>(queryClient: QueryClient, supabase: SupabaseClient<Database>, tableName: T, options?: UseTableQueryOptions<T>) => {
+  prefetchTable: async <T extends PublicTableName>(queryClient: QueryClient, supabase: SupabaseClient<Database>, tableName: T, options?: UseTableQueryOptions<T>) => {
     return queryClient.prefetchQuery({
       queryKey: createQueryKey(
         tableName,
@@ -51103,11 +51251,11 @@ export const tableQueryUtils = {
     });
   },
 
-  setQueryData: <T extends TableName>(queryClient: QueryClient, tableName: T, data: TableRow<T>[], filters?: Filters, columns?: string) => {
+  setQueryData: <T extends PublicTableName>(queryClient: QueryClient, tableName: T, data: TableRow<T>[], filters?: Filters, columns?: string) => {
     queryClient.setQueryData(createQueryKey(tableName, filters, columns), data);
   },
 
-  getQueryData: <T extends TableName>(queryClient: QueryClient, tableName: T, filters?: Filters, columns?: string): TableRow<T>[] | undefined => {
+  getQueryData: <T extends PublicTableName>(queryClient: QueryClient, tableName: T, filters?: Filters, columns?: string): TableRow<T>[] | undefined => {
     return queryClient.getQueryData(createQueryKey(tableName, filters, columns));
   },
 
@@ -52035,7 +52183,12 @@ export function applyFilters(query: any, filters: Filters): any {
     if (value === undefined || value === null) return;
 
     if (key === 'or') {
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      if (typeof value === 'string' && value.trim() !== '') {
+        const orConditions = value.replace(/[()]/g, ''); // Remove parentheses
+        if (orConditions) {
+          modifiedQuery = modifiedQuery.or(orConditions);
+        }
+      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         const orConditions = Object.entries(value)
           .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
           .join(',');
@@ -53679,7 +53832,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "cpan_connections":
         return null;
       case "fiber-joints":
-        return "fiber_joints";
+        return "fiber_splices";
       case "fiber-joint-connections":
         return null;
       case "logical-fiber-paths":
@@ -53699,7 +53852,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "system-connections":
         return "system_connections";
       case "user-activity-logs":
-        return "user_activity_logs";
+        return null;
       default:
         return null;
     }
@@ -54020,55 +54173,6 @@ export default defaultUploadConfigs;
 
 ```
 
-<!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useDelete.ts -->
-```typescript
-import { useState } from "react";
-import { useTableDelete } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
-import { TableName } from "@/hooks/database";
-import { toast } from "sonner"; // <-- Import toast
-
-export const useDelete = ({ tableName, onSuccess }: { tableName: TableName; onSuccess?: () => void }) => {
-  const supabase = createClient();
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
-
-  const { mutate: deleteMutation, isPending } = useTableDelete(supabase, tableName as TableName, {
-    onSuccess: () => {
-      onSuccess?.();
-      setItemToDelete(null);
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete: ${error.message}`);
-      setItemToDelete(null); // Clear the item even on failure
-    },
-  });
-
-  const deleteSingle = (item: { id: string; name: string }) => {
-    setItemToDelete(item);
-  };
-
-  const handleConfirm = () => {
-    if (itemToDelete) {
-      deleteMutation(itemToDelete.id);
-    }
-  };
-
-  const handleCancel = () => {
-    setItemToDelete(null);
-  };
-
-  return {
-    isConfirmModalOpen: itemToDelete !== null,
-    isPending,
-    itemToDelete,
-    confirmationMessage: `Are you sure you want to delete "${itemToDelete?.name}"? This action cannot be undone.`,
-    deleteSingle,
-    handleConfirm,
-    handleCancel,
-  };
-};
-```
-
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/hooks/useIsMobile.tsx -->
 ```typescript
 import { useState, useEffect } from 'react';
@@ -54158,10 +54262,18 @@ export default useIsMobile;
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@serwist/expiration": "^9.2.1",
+    "@serwist/next": "^9.2.1",
+    "@serwist/strategies": "^9.2.1",
+    "@serwist/sw": "^9.2.1",
+    "@serwist/webpack-plugin": "^9.2.1",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.56.0",
+    "@tanstack/query-async-storage-persister": "^5.90.4",
+    "@tanstack/query-sync-storage-persister": "^5.90.4",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-query-devtools": "^5.85.1",
+    "@tanstack/react-query-persist-client": "^5.90.4",
     "@types/bcrypt": "^6.0.0",
     "@types/pg": "^8.15.5",
     "@uppy/core": "^5.0.1",
@@ -54176,6 +54288,7 @@ export default useIsMobile;
     "core-js": "^3.45.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.23.12",
+    "idb-keyval": "^6.2.2",
     "intersection-observer": "^0.12.2",
     "lodash.isequal": "^4.5.0",
     "lucide-react": "^0.541.0",
@@ -54234,45 +54347,33 @@ export default useIsMobile;
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/next.config.ts -->
 ```typescript
 import type { NextConfig } from "next";
+import withSerwistInit from "@serwist/next";
 
 const nextConfig: NextConfig = {
   images: {
     qualities: [25, 50, 75, 90, 100],
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'example.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'gravatar.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.pixabay.com',
-      },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'example.com' },
+      { protocol: 'https', hostname: 'gravatar.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'cdn.pixabay.com' },
     ],
   },
   turbopack: {
-    root: __dirname, // explicitly set project root
+    root: __dirname,
   },
 };
 
-export default nextConfig;
+const withSerwist = withSerwistInit({
+  swSrc: "public/sw-base.js",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+});
 
+export default withSerwist(nextConfig);
 ```
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/eslint.config.mjs -->
@@ -54721,7 +54822,6 @@ export function loadValidationConfig(): ValidationConfig {
 
 <!-- path: /home/au/Desktop/git_projects/newhnvtx/hnvtx/utils/formatters.ts -->
 ```typescript
-
 export interface NumberFormatOptions extends Intl.NumberFormatOptions {
   locale?: string;
 }

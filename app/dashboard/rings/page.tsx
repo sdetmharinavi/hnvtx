@@ -1,4 +1,3 @@
-// path: app/dashboard/rings/page.tsx
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
@@ -26,16 +25,28 @@ const useRingsData = (
 ): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
-  const { data, isLoading, error, refetch } = usePagedData<V_ringsRowSchema>(
+  
+  // THE FIX: Correctly construct the search filter string for the 'or' clause
+  const searchFilters = useMemo(() => {
+    const newFilters = { ...filters };
+    if (searchQuery) {
+      newFilters.or = `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`;
+    }
+    return newFilters;
+  }, [filters, searchQuery]);
+
+  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ringsRowSchema>(
     supabase, 'v_rings', {
-      filters: { ...filters, ...(searchQuery ? { name: searchQuery } : {}) },
-      limit: pageLimit, offset: (currentPage - 1) * pageLimit,
+      filters: searchFilters, // Use the corrected filters
+      limit: pageLimit, 
+      offset: (currentPage - 1) * pageLimit,
     }
   );
+
   return {
     data: data?.data || [], totalCount: data?.total_count || 0,
     activeCount: data?.active_count || 0, inactiveCount: data?.inactive_count || 0,
-    isLoading, error, refetch,
+    isLoading, isFetching, error, refetch,
   };
 };
 
@@ -47,7 +58,7 @@ const RingsPage = () => {
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
   const {
-    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, refetch,
+    data: rings, totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings', dataQueryHook: useRingsData,
@@ -94,6 +105,8 @@ const RingsPage = () => {
     return standardActions;
   }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems]);
 
+  const isInitialLoad = isLoading && !isFetching;
+
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
@@ -114,11 +127,13 @@ const RingsPage = () => {
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isLoading}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
       <DataTable
         tableName="v_rings"
         data={rings} columns={orderedColumns} loading={isLoading} actions={tableActions}
+        isFetching={isFetching}
         pagination={{
           current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
           onChange: (page, pageSize) => { pagination.setCurrentPage(page); pagination.setPageLimit(pageSize); },
@@ -126,7 +141,6 @@ const RingsPage = () => {
         customToolbar={<RingsFilters searchQuery={search.searchQuery} onSearchChange={search.setSearchQuery} />}
       />
 
-      {/* ** THE FIX: Pass crudActions.handleSave directly to the onSubmit prop ** */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
