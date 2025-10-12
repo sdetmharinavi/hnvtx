@@ -1,3 +1,4 @@
+// app/dashboard/systems/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -14,52 +15,77 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import type { TableAction } from '@/components/table/datatable-types';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { Filters, usePagedData, useTableQuery, useRpcMutation, RpcFunctionArgs } from '@/hooks/database';
+import { useRpcMutation, RpcFunctionArgs } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { Lookup_typesRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemModal } from '@/components/systems/SystemModal';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SystemFormData } from '@/schemas/system-schemas';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
 
 const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
 
-  const searchFilters = useMemo(() => {
-    const newFilters: Filters = { ...filters };
-    if (searchQuery) {
-      newFilters.or = {
-        system_name: searchQuery,
-        system_type_name: searchQuery,
-        node_name: searchQuery,
-        ip_address: searchQuery,
-      };
-    }
-    return newFilters;
-  }, [filters, searchQuery]);
-
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_systems_completeRowSchema>(supabase,
-    'v_systems_complete',
-     {
-      filters: searchFilters,
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-    }
+  const { data: allSystems = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
+    ['systems-data', 'all'],
+    async () => {
+      const { data, error } = await createClient().from('v_systems_complete').select('*');
+      if (error) throw error;
+      return data || [];
+    },
+    async () => {
+      return await localDb.v_systems_complete.toArray();
+    },
+    { staleTime: 5 * 60 * 1000 }
   );
 
+  const processedData = useMemo(() => {
+    let filtered = allSystems;
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter((system: V_systems_completeRowSchema) =>
+        system.system_name?.toLowerCase().includes(lowerQuery) ||
+        system.system_type_name?.toLowerCase().includes(lowerQuery) ||
+        system.node_name?.toLowerCase().includes(lowerQuery) ||
+        String(system.ip_address)?.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    if (filters.system_type_name) {
+      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.system_type_name === filters.system_type_name);
+    }
+    if (filters.status) {
+      const statusBool = filters.status === 'true';
+      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.status === statusBool);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((s: V_systems_completeRowSchema) => s.status === true).length;
+    
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
+
   return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
+    ...processedData,
     isLoading,
     isFetching,
     error,
@@ -93,8 +119,12 @@ export default function SystemsPage() {
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
   });
 
-  const { data: systemTypesResult = { data: [] } } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'SYSTEM_TYPES' } });
-  const systemTypes = systemTypesResult.data;
+  const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['system-types-for-filter'],
+    async () => (await createClient().from('lookup_types').select('*').eq('category', 'SYSTEM_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'SYSTEM_TYPES' }).toArray()
+  );
+  const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
 
   const handleView = useCallback((system: V_systems_completeRowSchema) => {
     if (system.is_ring_based) {

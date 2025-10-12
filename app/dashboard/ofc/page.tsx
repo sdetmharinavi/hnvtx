@@ -1,3 +1,4 @@
+// app/dashboard/ofc/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -12,13 +13,12 @@ import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
-import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
   useCrudManager,
 } from '@/hooks/useCrudManager';
-import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema, Lookup_typesRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
@@ -26,46 +26,74 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useUser } from '@/providers/UserProvider';
-import { OfcCablesWithRelations } from '@/components/ofc/ofc-types';
 import { AiFillMerge } from 'react-icons/ai';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
 
 const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
 
-  const searchFilters = useMemo(() => {
-    const newFilters: Filters = { ...filters };
-    if (searchQuery) {
-      newFilters.or = {
-        route_name: searchQuery,
-        asset_no: searchQuery,
-        transnet_id: searchQuery,
-        sn_name: searchQuery,
-        en_name: searchQuery,
-        ofc_owner_name: searchQuery,
-      };
-    }
-    return newFilters;
-  }, [filters, searchQuery]);
-
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ofc_cables_completeRowSchema>(
-    supabase,
-    'v_ofc_cables_complete',
-    {
-      filters: searchFilters,
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-      orderBy: 'route_name',
-    }
+  const { data: allCables = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
+    ['ofc-cables-data', 'all'],
+    async () => {
+      const { data, error } = await createClient().from('v_ofc_cables_complete').select('*');
+      if (error) throw error;
+      return data || [];
+    },
+    async () => {
+      return await localDb.v_ofc_cables_complete.toArray();
+    },
+    { staleTime: 5 * 60 * 1000 }
   );
+  
+  const processedData = useMemo(() => {
+    let filtered = allCables;
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter((cable: V_ofc_cables_completeRowSchema) =>
+        cable.route_name?.toLowerCase().includes(lowerQuery) ||
+        cable.asset_no?.toLowerCase().includes(lowerQuery) ||
+        cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
+        cable.sn_name?.toLowerCase().includes(lowerQuery) ||
+        cable.en_name?.toLowerCase().includes(lowerQuery) ||
+        cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    if (filters.ofc_type_id) {
+        filtered = filtered.filter((cable: V_ofc_cables_completeRowSchema) => cable.ofc_type_id === filters.ofc_type_id);
+    }
+    if (filters.status) {
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter((cable: V_ofc_cables_completeRowSchema) => cable.status === statusBool);
+    }
+    if (filters.ofc_owner_id) {
+        filtered = filtered.filter((cable: V_ofc_cables_completeRowSchema) => cable.ofc_owner_id === filters.ofc_owner_id);
+    }
+    if (filters.maintenance_terminal_id) {
+        filtered = filtered.filter((cable: V_ofc_cables_completeRowSchema) => cable.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((c: V_ofc_cables_completeRowSchema) => c.status === true).length;
+
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allCables, searchQuery, filters, currentPage, pageLimit]);
 
   return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
+    ...processedData,
     isLoading,
     isFetching,
     error,
@@ -103,13 +131,26 @@ const OfcPage = () => {
 
   const isInitialLoad = isLoading && ofcData.length === 0;
 
-  const { data: ofcTypesData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_TYPES' } });
-  const { data: maintenanceAreasData } = useTableQuery(createClient(), 'maintenance_areas', { filters: { status: true } });
-  const { data: ofcOwnersData } = useTableQuery(createClient(), 'lookup_types', { filters: { category: 'OFC_OWNER' } });
+  // THE FIX: Changed select('id, name') to select('*') for all filter data queries
+  const { data: ofcTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['ofc-types-for-filter'],
+    async () => (await createClient().from('lookup_types').select('*').eq('category', 'OFC_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'OFC_TYPES' }).toArray()
+  );
+  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
+    ['maintenance-areas-for-filter'],
+    async () => (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
+  );
+  const { data: ofcOwnersData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['ofc-owners-for-filter'],
+    async () => (await createClient().from('lookup_types').select('*').eq('category', 'OFC_OWNER')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'OFC_OWNER' }).toArray()
+  );
 
-  const ofcTypes = useMemo(() => ofcTypesData?.data || [], [ofcTypesData]);
-  const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
-  const ofcOwners = useMemo(() => ofcOwnersData?.data || [], [ofcOwnersData]);
+  const ofcTypes = useMemo(() => ofcTypesData || [], [ofcTypesData]);
+  const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
+  const ofcOwners = useMemo(() => ofcOwnersData || [], [ofcOwnersData]);
 
   const columns = OfcTableColumns(ofcData);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);

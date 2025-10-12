@@ -1,3 +1,4 @@
+// app/bsnl/page.tsx
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
@@ -9,7 +10,7 @@ import dynamic from 'next/dynamic';
 import { DataTable, TableAction } from '@/components/table';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
 import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
-import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
+import { PageSpinner, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
@@ -20,7 +21,7 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview'; // THE FIX: Import the overview hook
+import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview';
 
 const OptimizedNetworkMap = dynamic(
   () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
@@ -56,9 +57,8 @@ export default function ScalableFiberNetworkDashboard() {
   
   const debouncedMapBounds = useDebounce(mapBounds, 500);
 
-  const { data, isLoading, isError, error, refetchAll, isFetching } = useBsnlDashboardData(filters, debouncedMapBounds);
+  const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds);
   
-  // THE FIX: Fetch global overview data for consistent counts.
   const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
@@ -85,14 +85,12 @@ export default function ScalableFiberNetworkDashboard() {
       priority: undefined,
     });
   }, []);
+  
   const handleRefresh = async () => {
-    toast.info('Refreshing network data...');
-    await refetchAll();
-    toast.success('Dashboard data refreshed.');
+    toast.info('Manual sync not yet implemented. Data syncs automatically.');
   };
 
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    // This part is for filter dropdowns, so it should still be based on the currently VISIBLE data.
     const allSystemTypes = [...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean))];
     const allCableTypes = [...new Set(data.ofcCables.map((c) => c.ofc_type_name).filter(Boolean))];
     const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
@@ -105,18 +103,54 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  // All column definitions and table actions remain the same...
-  const systemColumns: Column<Row<'v_systems_complete'>>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
-  const cableColumns: Column<Row<'v_ofc_cables_complete'>>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
-  const systemTableActions: TableAction<'v_systems_complete'>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
-  const cableTableActions: TableAction<'v_ofc_cables_complete'>[] = useMemo(() => [ /* ...omitted for brevity... */ ], []);
+  // THE FIX: Define column and action configurations for the DataTables
+  const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
+    { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
+    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },
+    { key: 'node_name', title: 'Node', dataIndex: 'node_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
+    { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{String(val)}</code> : null },
+    { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
+  ], []);
 
-  const isInitialLoad = (isLoading || isOverviewLoading) && !debouncedMapBounds;
+  const cableColumns = useMemo((): Column<Row<'v_ofc_cables_complete'>>[] => [
+    { key: 'route_name', title: 'Route Name', dataIndex: 'route_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
+    { key: 'ofc_type_name', title: 'Type', dataIndex: 'ofc_type_name' },
+    { key: 'capacity', title: 'Capacity', dataIndex: 'capacity' },
+    { key: 'sn_name', title: 'Start Node', dataIndex: 'sn_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
+    { key: 'en_name', title: 'End Node', dataIndex: 'en_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
+    { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
+  ], []);
+
+  const systemTableActions = useMemo((): TableAction<'v_systems_complete'>[] => [
+    {
+      key: 'view-system',
+      label: 'View Details',
+      icon: <Eye />,
+      onClick: (record) => {
+        setSelectedSystem(record as BsnlSystem);
+        setIsSystemDetailsOpen(true);
+      },
+    },
+  ], []);
+  
+  const cableTableActions = useMemo((): TableAction<'v_ofc_cables_complete'>[] => [
+    {
+      key: 'view-cable',
+      label: 'View Details',
+      icon: <Eye />,
+      onClick: (record) => {
+        setSelectedCable(record as BsnlCable);
+        setIsCableDetailsOpen(true);
+      },
+    },
+  ], []);
+
+
+  const isInitialLoad = (isLoading || isOverviewLoading);
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
-  if (isError) return <ErrorDisplay error={error?.message || 'An unknown error occurred.'} />;
+  if (isError) return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
   
-  // THE FIX: Calculate total counts from the overview data.
   const totalSystems = (overviewData?.system_status_counts?.Active ?? 0) + (overviewData?.system_status_counts?.Inactive ?? 0);
   const totalCables = overviewData?.cable_utilization_summary?.total_cables ?? 0;
 
@@ -132,7 +166,6 @@ export default function ScalableFiberNetworkDashboard() {
                   BSNL Fiber Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {/* THE FIX: Use the stable total counts from the overview hook */}
                   {isOverviewLoading ? (
                     <span className="animate-pulse">... Systems | ... Cables</span>
                   ) : (
@@ -141,7 +174,7 @@ export default function ScalableFiberNetworkDashboard() {
                       {totalCables.toLocaleString()} Cables
                     </>
                   )}
-                  {(isFetching || isOverviewLoading) && (
+                  {isLoading && (
                     <span className="ml-2 inline-flex items-center">
                       <Loader2 className="h-3 w-3 animate-spin" />
                     </span>
@@ -152,10 +185,10 @@ export default function ScalableFiberNetworkDashboard() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleRefresh}
-                disabled={isFetching}
+                disabled={isLoading}
                 className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
                 <Settings className="h-5 w-5" />
@@ -191,7 +224,7 @@ export default function ScalableFiberNetworkDashboard() {
           </nav>
         </div>
         <div className="relative">
-          {isFetching && !isInitialLoad && (
+          {isLoading && !isInitialLoad && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
               <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
