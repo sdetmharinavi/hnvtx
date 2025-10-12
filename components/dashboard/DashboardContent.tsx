@@ -1,9 +1,10 @@
+// components/dashboard/DashboardContent.tsx
 import { ReactNode, useState, useEffect } from "react";
 import ColumnManagementProvider from "./ColumnManagementProvider";
 import DashboardHeader from "./DashboardHeader";
 import Sidebar from "../navigation/sidebar";
 import { usePathname } from "next/navigation";
-
+import { useDataSync } from "@/hooks/data/useDataSync"; // Added import
 
 interface DashboardContentProps {
   children: ReactNode | ReactNode[] | Record<string, unknown>[] | null;
@@ -23,6 +24,9 @@ function DashboardContent({
   const pathname = usePathname();
   const isDashboard = pathname === "/dashboard";
   const [sidebarWidth, setSidebarWidth] = useState(0);
+
+  // Initiate data synchronization when the dashboard is loaded
+  useDataSync();
 
   useEffect(() => {
     const updateSidebarWidth = () => {

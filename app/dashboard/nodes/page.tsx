@@ -1,3 +1,4 @@
+// app/dashboard/nodes/page.tsx
 'use client';
 
 import {
@@ -12,7 +13,7 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { usePagedData, Filters } from '@/hooks/database';
+import { Filters } from '@/hooks/database';
 import {
   DataQueryHookParams,
   DataQueryHookReturn,
@@ -24,6 +25,8 @@ import { createClient } from '@/utils/supabase/client';
 import { useMemo } from 'react';
 import { FiCpu } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: {
@@ -36,39 +39,73 @@ export type NodeRowsWithRelations = NodesRowSchema & {
   } | null;
 };
 
+// OFFLINE-FIRST: This data hook is refactored to use useOfflineQuery
 const useNodesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
-  
-  const searchFilters = useMemo(() => {
-    const newFilters: Filters = { ...filters };
-    if (searchQuery) {
-      newFilters.or = {
-        name: searchQuery,
-        node_type_name: searchQuery,
-        maintenance_area_name: searchQuery,
-      };
-    }
-    return newFilters;
-  }, [filters, searchQuery]);
 
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_nodes_completeRowSchema>(
-    supabase,
-    'v_nodes_complete',
-    {
-      filters: searchFilters,
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-    }
+  const queryKey = ['nodes-data', 'all'];
+
+  // 1. Online Fetcher: Fetches all data from the Supabase view.
+  const onlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
+    const { data, error } = await createClient().from('v_nodes_complete').select('*');
+    if (error) throw error;
+    return data || [];
+  };
+
+  // 2. Offline Fetcher: Fetches all data from the local Dexie table.
+  const offlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
+    return await localDb.v_nodes_complete.toArray();
+  };
+
+  const { data: allNodes = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
+    queryKey,
+    onlineQueryFn,
+    offlineQueryFn,
+    { staleTime: 5 * 60 * 1000 }
   );
 
+  // 3. Client-side filtering and pagination
+  const processedData = useMemo(() => {
+    let filtered = allNodes;
+
+    // Apply text search
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      // FIX: Explicitly type the 'node' parameter
+      filtered = filtered.filter((node: V_nodes_completeRowSchema) => 
+        node.name?.toLowerCase().includes(lowerQuery) ||
+        node.node_type_name?.toLowerCase().includes(lowerQuery) ||
+        node.maintenance_area_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    // Apply structured filters (e.g., from dropdowns)
+    if (filters.node_type_id) {
+        // FIX: Explicitly type the 'node' parameter
+        filtered = filtered.filter((node: V_nodes_completeRowSchema) => node.node_type_id === filters.node_type_id);
+    }
+
+    const totalCount = filtered.length;
+    // FIX: Explicitly type the 'n' parameter
+    const activeCount = filtered.filter((n: V_nodes_completeRowSchema) => n.status === true).length;
+
+    // Apply pagination
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
+
   return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
+    ...processedData,
     isLoading,
     isFetching,
     error,
@@ -98,13 +135,27 @@ const NodesPage = () => {
     tableName: 'nodes',
     dataQueryHook: useNodesData,
   });
-
-  const isInitialLoad = isLoading && nodes.length === 0;
+  
+  // Separate offline-first query just for populating the filter dropdown
+  const { data: nodeTypeOptionsData } = useOfflineQuery(
+    ['node-types-for-filter'],
+    async () => {
+      const { data, error } = await createClient().from('v_nodes_complete').select('node_type_id, node_type_name');
+      if (error) throw error;
+      return data || [];
+    },
+    async () => {
+        const allNodes = await localDb.v_nodes_complete.toArray();
+        return allNodes.map(n => ({ node_type_id: n.node_type_id, node_type_name: n.node_type_name }));
+    }
+  );
 
   const nodeTypes = useMemo(() => {
-    const uniqueNodeTypes = new Map();
-    nodes.forEach((node) => {
-      if (node.node_type_id) {
+    if (!nodeTypeOptionsData) return [];
+    const uniqueNodeTypes = new Map<string, { id: string; name: string }>();
+    // FIX: Explicitly type the 'node' parameter
+    nodeTypeOptionsData.forEach((node: { node_type_id: string | null; node_type_name: string | null; }) => {
+      if (node.node_type_id && node.node_type_name && !uniqueNodeTypes.has(node.node_type_id)) {
         uniqueNodeTypes.set(node.node_type_id, {
           id: node.node_type_id,
           name: node.node_type_name,
@@ -112,8 +163,10 @@ const NodesPage = () => {
       }
     });
     return Array.from(uniqueNodeTypes.values());
-  }, [nodes]);
+  }, [nodeTypeOptionsData]);
 
+
+  const isInitialLoad = isLoading && nodes.length === 0;
   const columns = NodesTableColumns(nodes);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
 
