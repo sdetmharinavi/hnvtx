@@ -42,6 +42,7 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any[] | null = null;
 
     // THE DEFINITIVE FIX: Use the correct data fetching strategy based on entity type.
@@ -53,6 +54,7 @@ export async function syncEntity(
         p_offset: 0,
       });
       if (rpcError) throw rpcError;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data = (rpcResponse as { data: any[] })?.data || [];
     } else {
       // For TABLES, use a direct select.
