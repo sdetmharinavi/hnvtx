@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Eye, Download, Trash2, Search, Filter, Grid, List, X } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
 import "../../app/customuppy.css"; // Custom styles for Uppy
+import Image from "next/image";
 
 // Define file type for better type safety
 interface FileType {
@@ -257,9 +258,11 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                     {/* File Preview */}
                     <div className="aspect-square mb-3 overflow-hidden rounded">
                       {file.file_type.includes("image") ? (
-                        <img
+                        <Image
                           src={file.file_url}
                           alt={file.file_name}
+                          width={200}
+                          height={200}
                           className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         />
                       ) : (
