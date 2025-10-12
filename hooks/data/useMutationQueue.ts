@@ -7,31 +7,33 @@ import { localDb, MutationTask } from '@/data/localDb';
 import { createClient } from '@/utils/supabase/client';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
-/**
- * A hook that manages an offline mutation queue. It automatically processes
- * pending tasks when the application comes online.
- */
 export function useMutationQueue() {
   const isOnline = useOnlineStatus();
   const queryClient = useQueryClient();
   const supabase = createClient();
-  const isProcessing = useRef(false); // Lock to prevent concurrent processing
+  const isProcessing = useRef(false);
 
-  // useLiveQuery will re-render the component whenever the pending tasks change
+  // Separate live queries for pending and failed tasks
   const pendingTasks = useLiveQuery(() =>
-    localDb.mutation_queue.where('status').anyOf('pending', 'failed').toArray(),
+    localDb.mutation_queue.where('status').equals('pending').toArray(),
+    []
+  );
+  const failedTasks = useLiveQuery(() =>
+    localDb.mutation_queue.where('status').equals('failed').toArray(),
     []
   );
 
   const processQueue = async () => {
-    if (isProcessing.current || !pendingTasks || pendingTasks.length === 0) {
+    // Process only pending tasks
+    const tasksToProcess = pendingTasks;
+    if (isProcessing.current || !tasksToProcess || tasksToProcess.length === 0) {
       return;
     }
 
     isProcessing.current = true;
-    toast.info(`Syncing ${pendingTasks.length} offline change(s)...`, { id: 'mutation-sync' });
+    toast.info(`Syncing ${tasksToProcess.length} offline change(s)...`, { id: 'mutation-sync' });
 
-    for (const task of pendingTasks) {
+    for (const task of tasksToProcess) {
       try {
         await localDb.mutation_queue.update(task.id!, { status: 'processing', lastAttempt: new Date().toISOString() });
         let error: Error | null = null;
@@ -48,11 +50,7 @@ export function useMutationQueue() {
             break;
         }
 
-        if (error) {
-          throw error;
-        }
-
-        // On success, remove the task from the queue
+        if (error) throw error;
         await localDb.mutation_queue.delete(task.id!);
         console.log(`✅ [Queue] Processed task #${task.id} (${task.type} on ${task.tableName})`);
 
@@ -69,7 +67,6 @@ export function useMutationQueue() {
     toast.success("Offline changes synced successfully!", { id: 'mutation-sync' });
     isProcessing.current = false;
     
-    // Invalidate all queries to refetch fresh data after sync
     await queryClient.invalidateQueries();
   };
   
@@ -78,18 +75,15 @@ export function useMutationQueue() {
       processQueue();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, pendingTasks]); // Effect runs when online status changes or when new tasks are added
+  }, [isOnline, pendingTasks]);
 
   return {
     pendingCount: pendingTasks?.length ?? 0,
+    failedCount: failedTasks?.length ?? 0,
     processQueue,
   };
 }
 
-/**
- * A utility function to add a new task to the mutation queue.
- * This will be called by our data management hooks (e.g., useCrudManager).
- */
 export const addMutationToQueue = async (task: Omit<MutationTask, 'id' | 'timestamp' | 'status' | 'attempts'>): Promise<void> => {
   await localDb.mutation_queue.add({
     ...task,
