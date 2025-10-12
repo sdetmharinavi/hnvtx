@@ -11,6 +11,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       "created_at",
       "updated_at",
       "maintenance_terminal_id",
+      "ring_type_id"
     ],
     overrides: {
       name: {

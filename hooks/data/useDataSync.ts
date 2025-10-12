@@ -8,17 +8,18 @@ import { PublicTableOrViewName } from '@/hooks/database';
 import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// CORRECTED: Sync from the 'v_employees' view, not the 'employees' base table.
+// Sync from views to get denormalized data for offline use.
 const entitiesToSync: PublicTableOrViewName[] = [
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
   'v_rings',
-  'v_employees', // <-- CORRECTED
+  'v_employees',
   'v_maintenance_areas',
+  'v_cable_utilization', // NEWLY ADDED
   'lookup_types',
+  'employee_designations',
   'user_profiles',
-  'employee_designations', // Sync this base table for the filter dropdown
 ];
 
 // Function to perform the sync for a single table or view
