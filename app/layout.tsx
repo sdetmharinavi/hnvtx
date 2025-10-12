@@ -7,6 +7,7 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import ThemeProvider from '@/providers/ThemeProvider';
 import PwaRegistry from '@/components/pwa/PwaRegistry';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { LocalDbProvider } from '@/providers/LocalDbProvider';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -110,10 +111,12 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <QueryProvider>
-          <ToastProvider>
-            <PwaRegistry />
-            {children}
-          </ToastProvider>
+            <LocalDbProvider>
+              <ToastProvider>
+                <PwaRegistry />
+                {children}
+              </ToastProvider>
+            </LocalDbProvider>
           </QueryProvider>
         </ThemeProvider>
         <PolyfillLoader />
