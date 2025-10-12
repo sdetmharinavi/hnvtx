@@ -1,6 +1,36 @@
 -- Path: data/migrations/03_network_systems/03_functions.sql
 -- Description: Contains functions for the Network Systems module.
 
+-- CREATE OR REPLACE FUNCTION public.get_all_rings_with_node_counts()
+-- RETURNS SETOF public.v_rings
+-- LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+--   SELECT
+--     r.id, r.name, r.description, r.ring_type_id, r.maintenance_terminal_id, r.status,
+--     r.created_at, r.updated_at,
+--     (SELECT COUNT(*) FROM public.ring_based_systems rbs WHERE rbs.ring_id = r.id) as total_nodes,
+--     lt_ring.name AS ring_type_name, lt_ring.code AS ring_type_code, ma.name AS maintenance_area_name
+--   FROM public.rings r
+--   LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
+--   LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
+-- $$;
+-- GRANT EXECUTE ON FUNCTION public.get_all_rings_with_node_counts() TO authenticated;
+
+-- -- NEW FUNCTION: This function will perform the complex join for v_ring_nodes with the correct permissions.
+-- CREATE OR REPLACE FUNCTION public.get_all_ring_nodes()
+-- RETURNS SETOF public.v_ring_nodes
+-- LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+--   SELECT
+--     n.id, r.id as ring_id, r.name as ring_name, n.name, n.latitude as lat, n.longitude as long,
+--     ROW_NUMBER() OVER(PARTITION BY r.id ORDER BY n.name) as order_in_ring,
+--     lt.name as type, r.status AS ring_status, s.status AS system_status, s.ip_address::text as ip, n.remark
+--   FROM public.rings r
+--   JOIN public.ring_based_systems rbs ON r.id = rbs.ring_id
+--   JOIN public.systems s ON rbs.system_id = s.id
+--   JOIN public.nodes n ON s.node_id = n.id
+--   LEFT JOIN public.lookup_types lt ON n.node_type_id = lt.id;
+-- $$;
+-- GRANT EXECUTE ON FUNCTION public.get_all_ring_nodes() TO authenticated;
+
 -- The function logic is now restructured to handle all system subtypes correctly.
 CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_system_name TEXT,

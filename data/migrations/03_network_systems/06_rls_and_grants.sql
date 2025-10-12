@@ -1,5 +1,5 @@
 -- path: data/migrations/03_network_systems/06_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module. [CORRECTED & SECURED]
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [FINAL CORRECTION for ring_based_systems RLS]
 
 -- =================================================================
 -- PART 1: GRANTS AND RLS SETUP FOR SYSTEM-SPECIFIC TABLES
@@ -30,7 +30,19 @@ $$;
 
 
 -- =================================================================
--- PART 2: RLS POLICIES FOR GENERIC TABLES (systems, system_connections)
+-- PART 2: THE FIX - ADD RLS POLICY FOR ring_based_systems
+-- =================================================================
+-- This was the missing piece. Without a policy, no rows are visible.
+DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.ring_based_systems;
+CREATE POLICY "Allow authenticated read-access" 
+ON public.ring_based_systems 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+
+-- =================================================================
+-- PART 3: RLS POLICIES FOR GENERIC TABLES (systems, system_connections)
 -- =================================================================
 DO $$
 BEGIN
@@ -47,7 +59,7 @@ BEGIN
   USING (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
+      WHERE lt.category = 'SYSTEM_TYPES' AND (
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -57,7 +69,7 @@ BEGIN
   ) WITH CHECK (
     systems.system_type_id IN (
       SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM_TYPES' AND ( -- Corrected Category Name
+      WHERE lt.category = 'SYSTEM_TYPES' AND (
         (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
         (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
         (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
@@ -105,7 +117,7 @@ END;
 $$;
 
 -- =================================================================
--- PART 3: THE FIX - SPECIFIC RLS POLICIES FOR SUBTYPE TABLES
+-- PART 4: RLS POLICIES FOR SUBTYPE TABLES
 -- =================================================================
 DO $$
 BEGIN
@@ -142,17 +154,14 @@ BEGIN
       )
     )
   );
-
-  -- You can add similar specific policies for sdh_connections, ring_based_systems etc. if needed
 END;
 $$;
 
 -- =================================================================
--- PART 4: GRANTS FOR VIEWS (Created in this module)
+-- PART 5: GRANTS FOR VIEWS
 -- =================================================================
 DO $$
 BEGIN
-  -- Grant SELECT on all views created in this module to all relevant roles.
   GRANT SELECT ON 
     public.v_systems_complete,
     public.v_system_connections_complete,

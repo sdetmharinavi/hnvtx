@@ -18,6 +18,8 @@ export function useRingNodes(ringId: string | null) {
         .select('*')
         .eq('ring_id', ringId);
 
+      console.log(data);
+
       if (error) {
         console.error("Error fetching ring nodes:", error);
         throw new Error(error.message);

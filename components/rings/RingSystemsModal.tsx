@@ -8,6 +8,8 @@ import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui
 import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { syncEntity } from '@/hooks/data/useDataSync'; // THE FIX: Import syncEntity
+import { localDb } from '@/data/localDb'; // THE FIX: Import localDb
 
 interface SystemOption {
   id: string;
@@ -20,7 +22,6 @@ interface RingSystemsModalProps {
   ring: V_ringsRowSchema | null;
 }
 
-// Data fetching hook
 const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
   const supabase = createClient();
   return useQuery({
@@ -30,20 +31,18 @@ const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
         return { associated: [], available: [] };
       }
 
-      // Fetch systems already associated with this ring (no change here)
       const { data: associated, error: assocError } = await supabase
         .from('v_systems_complete')
         .select('id, system_name')
         .eq('ring_id', ring.id);
       if (assocError) throw new Error(`Failed to fetch associated systems: ${assocError.message}`);
 
-      // CORRECTED QUERY: Fetch available systems ONLY from the same maintenance area
       const { data: available, error: availError } = await supabase
         .from('v_systems_complete')
         .select('id, system_name')
         .in('system_type_name', ['CPAN', 'MAAN', 'SDH'])
         .is('ring_id', null)
-        .eq('maintenance_terminal_id', ring.maintenance_terminal_id); // <-- THE FIX
+        .eq('maintenance_terminal_id', ring.maintenance_terminal_id);
 
       if (availError) throw new Error(`Failed to fetch available systems: ${availError.message}`);
 
@@ -63,12 +62,10 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
   const [selectedAssociated, setSelectedAssociated] = useState<Set<string>>(new Set());
   const [selectedAvailable, setSelectedAvailable] = useState<Set<string>>(new Set());
 
-  // CORRECTED: This effect, with your provided fix, correctly maps the
-  // data from the API shape (`system_name`) to the component state shape (`name`).
   useEffect(() => {
     if (data) {
-      setAssociated(data.associated.map(item => ({ id: item.id, name: item.system_name })));
-      setAvailable(data.available.map(item => ({ id: item.id, name: item.system_name })));
+      setAssociated(data.associated.map(item => ({ id: item.id!, name: item.system_name })));
+      setAvailable(data.available.map(item => ({ id: item.id!, name: item.system_name })));
     }
   }, [data]);
   
@@ -81,11 +78,16 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    // THE FIX: Implement the correct two-step offline sync process on success
+    onSuccess: async () => {
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
-      queryClient.invalidateQueries({ queryKey: ['ring-systems-data', ring?.id] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'rings'] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'v_rings'] });
+      
+      // Step 1: Manually trigger a re-sync of the v_rings view to update IndexedDB
+      await syncEntity(supabase, localDb, 'v_rings');
+
+      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB
+      await queryClient.invalidateQueries({ queryKey: ['rings-data', 'all'] });
+
       onClose();
     },
     onError: (err) => toast.error(`Failed to update systems: ${err.message}`),
