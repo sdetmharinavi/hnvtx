@@ -1,3 +1,4 @@
+// app/dashboard/employees/page.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -8,11 +9,12 @@ import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
-import { Filters, usePagedData, useTableQuery } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_employeesRowSchema,
   EmployeesRowSchema,
+  Employee_designationsRowSchema,
+  Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -22,42 +24,80 @@ import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
 
 const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
 
-  const searchFilters = useMemo(() => {
-    const newFilters: Filters = { ...filters };
-    if (searchQuery) {
-      newFilters.or = {
-        employee_name: searchQuery,
-        employee_pers_no: searchQuery,
-        employee_email: searchQuery,
-        employee_contact: searchQuery,
-      };
-    }
-    return newFilters;
-  }, [filters, searchQuery]);
+  const queryKey = ['employees-data', 'all'];
 
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_employeesRowSchema>(
-    supabase,
-    'v_employees',
-    {
-      filters: searchFilters,
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-      orderBy: 'employee_name',
-    }
+  // 1. Online Fetcher: Fetches all data from the Supabase view.
+  const onlineQueryFn = async (): Promise<V_employeesRowSchema[]> => {
+    const { data, error } = await createClient().from('v_employees').select('*');
+    if (error) throw error;
+    return data || [];
+  };
+
+  // 2. Offline Fetcher: Fetches all data from the local Dexie table.
+  const offlineQueryFn = async (): Promise<V_employeesRowSchema[]> => {
+    return await localDb.v_employees.toArray();
+  };
+
+  const { data: allEmployees = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
+    queryKey,
+    onlineQueryFn,
+    offlineQueryFn,
+    { staleTime: 5 * 60 * 1000 }
   );
 
+  // 3. Client-side filtering and pagination
+  const processedData = useMemo(() => {
+    let filtered = allEmployees;
+
+    // Apply text search
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter((emp: V_employeesRowSchema) =>
+        emp.employee_name?.toLowerCase().includes(lowerQuery) ||
+        emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
+        emp.employee_email?.toLowerCase().includes(lowerQuery) ||
+        emp.employee_contact?.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    // Apply structured filters
+    if (filters.employee_designation_id) {
+      filtered = filtered.filter((emp: V_employeesRowSchema) => emp.employee_designation_id === filters.employee_designation_id);
+    }
+    if (filters.maintenance_terminal_id) {
+        filtered = filtered.filter((emp: V_employeesRowSchema) => emp.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+    if (filters.status) {
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter((emp: V_employeesRowSchema) => emp.status === statusBool);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((n: V_employeesRowSchema) => n.status === true).length;
+
+    // Apply pagination
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
+
   return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
+    ...processedData,
     isLoading,
     isFetching,
     error,
@@ -66,7 +106,6 @@ const useEmployeesData = (
 };
 
 const EmployeesPage = () => {
-  const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
 
   const {
@@ -79,10 +118,20 @@ const EmployeesPage = () => {
     displayNameField: 'employee_name'
   });
 
-  const { data: designationsData } = useTableQuery(supabase, 'employee_designations', { orderBy: [{ column: 'name' }] });
-  const designations = useMemo(() => designationsData?.data || [], [designationsData]);
-  const { data: maintenanceAreasData } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true }, orderBy: [{ column: 'name' }] });
-  const maintenanceAreas = useMemo(() => maintenanceAreasData?.data || [], [maintenanceAreasData]);
+  // Offline-first queries for filter dropdowns
+  const { data: designationsData } = useOfflineQuery<Employee_designationsRowSchema[]>(
+    ['all-designations-filter'],
+    async () => (await createClient().from('employee_designations').select('*')).data ?? [],
+    async () => await localDb.employee_designations.toArray()
+  );
+  const designations = useMemo(() => designationsData || [], [designationsData]);
+  
+  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
+    ['all-maintenance-areas-filter'],
+    async () => (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
+  );
+  const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
 
   const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(

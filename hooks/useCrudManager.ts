@@ -3,6 +3,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useDebounce } from "use-debounce";
+import { v4 as uuidv4 } from 'uuid';
 import { createClient } from "@/utils/supabase/client";
 import {
   useTableInsert,
@@ -14,9 +15,13 @@ import {
   TableInsert,
   TableUpdate,
   TableInsertWithDates,
+  Row,
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
+import { useOnlineStatus } from "./useOnlineStatus";
+import { addMutationToQueue } from "./data/useMutationQueue";
+import { getTable } from "@/data/localDb";
 
 // --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
@@ -56,7 +61,6 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   tableName: T;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
-  // THE FIX: Allow displayNameField to be a string or an array of strings.
   displayNameField?: (keyof V & string) | (keyof V & string)[];
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
@@ -70,6 +74,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   processDataForSave,
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
+  const isOnline = useOnlineStatus();
 
   // --- STATE MANAGEMENT ---
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
@@ -83,7 +88,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
-  // Combine search query and other filters
   const combinedFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (debouncedSearch && searchColumn) {
@@ -99,12 +103,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     return newFilters;
   }, [debouncedSearch, filters, searchColumn]);
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filters]);
 
-  // --- DATA FETCHING ---
   const { data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch } = dataQueryHook({
     currentPage,
     pageLimit,
@@ -112,108 +114,76 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- MUTATIONS ---
-  const { mutate: insertItem, isPending: isInserting } = useTableInsert(
-    supabase,
-    tableName,
-    {
-      onSuccess: () => {
-        refetch();
-        closeModal();
-        toast.success("Record created successfully.");
-      },
-      onError: (error) => {
-        toast.error(`Failed to create record: ${error.message}`);
-      },
-    }
-  );
+  // --- ONLINE MUTATIONS ---
+  const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
+    onSuccess: () => { refetch(); closeModal(); toast.success("Record created successfully."); },
+    onError: (error) => toast.error(`Failed to create record: ${error.message}`),
+  });
 
-  const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(
-    supabase,
-    tableName,
-    {
-      onSuccess: () => {
-        refetch();
-        closeModal();
-        toast.success("Record updated successfully.");
-      },
-      onError: (error) => {
-        toast.error(`Failed to update record: ${error.message}`);
-      },
-    }
-  );
+  const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(supabase, tableName, {
+    onSuccess: () => { refetch(); closeModal(); toast.success("Record updated successfully."); },
+    onError: (error) => toast.error(`Failed to update record: ${error.message}`),
+  });
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
-    onSuccess: () => {
-      refetch();
-      toast.success("Status updated successfully.");
-    },
-    onError: (error) => {
-      toast.error(`Failed to update status: ${error.message}`);
-    },
+    onSuccess: () => { refetch(); toast.success("Status updated successfully."); },
+    onError: (error) => toast.error(`Failed to update status: ${error.message}`),
   });
 
-  const deleteManager = useDeleteManager({
-    tableName,
-    onSuccess: () => {
-      refetch();
-      handleClearSelection();
-    }
-  });
-
+  const deleteManager = useDeleteManager({ tableName, onSuccess: () => { refetch(); handleClearSelection(); } });
   const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
-
-  const isMutating =
-    isInserting ||
-    isUpdating ||
-    deleteManager.isPending ||
-    bulkUpdate.isPending;
+  const isMutating = isInserting || isUpdating || deleteManager.isPending || bulkUpdate.isPending;
 
   // --- MODAL HANDLERS ---
-  const openAddModal = useCallback(() => {
-    setEditingRecord(null);
-    setIsEditModalOpen(true);
-  }, []);
+  const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
+  const openEditModal = useCallback((record: V) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
+  const openViewModal = useCallback((record: V) => { setViewingRecord(record); setIsViewModalOpen(true); }, []);
+  const closeModal = useCallback(() => { setIsEditModalOpen(false); setEditingRecord(null); setIsViewModalOpen(false); setViewingRecord(null); }, []);
 
-  const openEditModal = useCallback((record: V) => {
-    setEditingRecord(record);
-    setIsEditModalOpen(true);
-  }, []);
+  // --- OFFLINE & ONLINE SAVE HANDLER ---
+  const handleSave = useCallback(async (formData: TableInsertWithDates<T>) => {
+    const processedData = processDataForSave ? processDataForSave(formData) : (formData as TableInsert<T>);
 
-  const openViewModal = useCallback((record: V) => {
-    setViewingRecord(record);
-    setIsViewModalOpen(true);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setIsEditModalOpen(false);
-    setEditingRecord(null);
-    setIsViewModalOpen(false);
-    setViewingRecord(null);
-  }, []);
-
-  // --- SAVE HANDLER ---
-  const handleSave = useCallback(
-    (formData: TableInsertWithDates<T>) => {
-      const processedData = processDataForSave
-        ? processDataForSave(formData)
-        : (formData as TableInsert<T>);
-
+    if (isOnline) {
       if (editingRecord && "id" in editingRecord && editingRecord.id) {
-        updateItem({
-          id: String(editingRecord.id),
-          data: processedData as TableUpdate<T>,
-        });
+        updateItem({ id: String(editingRecord.id), data: processedData as TableUpdate<T> });
       } else {
         insertItem(processedData as TableInsert<T>);
       }
-    },
-    [editingRecord, insertItem, updateItem, processDataForSave]
-  );
+    } else { // OFFLINE LOGIC
+      try {
+        const table = getTable(tableName);
+        if (editingRecord && "id" in editingRecord && editingRecord.id) {
+          // Offline Update
+          const idToUpdate = String(editingRecord.id);
+          // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (table.update as any)(idToUpdate, processedData);
+          await addMutationToQueue({
+            tableName,
+            type: 'update',
+            payload: { id: idToUpdate, data: processedData },
+          });
+        } else {
+          // Offline Insert
+          const tempId = `offline_${uuidv4()}`;
+          const newRecord = { ...processedData, id: tempId };
+          await table.add(newRecord as Row<T>);
+          await addMutationToQueue({
+            tableName,
+            type: 'insert',
+            payload: newRecord,
+          });
+        }
+        refetch(); // Refetch from local data source
+        closeModal();
+      } catch (err) {
+        toast.error(`Offline operation failed: ${(err as Error).message}`);
+      }
+    }
+  }, [isOnline, editingRecord, tableName, processDataForSave, updateItem, insertItem, refetch, closeModal]);
 
-  // --- DELETE HANDLERS ---
-   const getDisplayName = useCallback((record: RecordWithId): string => {
-    // THE FIX: Handle both string and array for displayNameField.
+  const getDisplayName = useCallback((record: RecordWithId): string => {
     if (displayNameField) {
       const fields = Array.isArray(displayNameField) ? displayNameField : [displayNameField];
       for (const field of fields) {
@@ -221,119 +191,140 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         if (name) return String(name);
       }
     }
-
     if (record.name) return String(record.name);
     if (record.employee_name) return String(record.employee_name);
-    if (record.first_name && record.last_name) {
-      return `${record.first_name} ${record.last_name}`;
-    }
+    if (record.first_name && record.last_name) return `${record.first_name} ${record.last_name}`;
     if (record.first_name) return String(record.first_name);
-
     return String(record.id) || 'Unknown';
   }, [displayNameField]);
 
+  const handleDelete = useCallback(async (record: RecordWithId) => {
+    if (!record.id) { toast.error("Cannot delete record: Invalid ID"); return; }
+    const idToDelete = String(record.id);
+    const displayName = getDisplayName(record);
 
-  const handleDelete = useCallback(
-    (record: RecordWithId) => {
-      if (!record.id) {
-        toast.error("Cannot delete record: Invalid ID");
-        return;
+    if (isOnline) {
+      deleteManager.deleteSingle({ id: idToDelete, name: displayName });
+    } else { // OFFLINE LOGIC
+      if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
+        try {
+          const table = getTable(tableName);
+          await table.delete(idToDelete);
+          await addMutationToQueue({
+            tableName,
+            type: 'delete',
+            payload: { ids: [idToDelete] },
+          });
+          refetch();
+        } catch (err) {
+          toast.error(`Offline deletion failed: ${(err as Error).message}`);
+        }
       }
-      const displayName = getDisplayName(record);
-      deleteManager.deleteSingle({
-        id: String(record.id),
-        name: displayName,
-      });
-    },
-    [deleteManager, getDisplayName]
-  );
+    }
+  }, [isOnline, tableName, deleteManager, getDisplayName, refetch]);
 
-  // --- STATUS TOGGLE HANDLER ---
-  const handleToggleStatus = useCallback(
-    (record: RecordWithId & { status?: boolean | null }) => {
-      if (!record.id) {
-        toast.error("Cannot update status: Invalid record ID");
-        return;
+  const handleToggleStatus = useCallback(async (record: RecordWithId & { status?: boolean | null }) => {
+    if (!record.id) { toast.error("Cannot update status: Invalid ID"); return; }
+    const idToUpdate = String(record.id);
+    const newStatus = !(record.status ?? false);
+    
+    if (isOnline) {
+      toggleStatus({ id: idToUpdate, status: newStatus });
+    } else { // OFFLINE LOGIC
+      try {
+        const table = getTable(tableName);
+        // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (table.update as any)(idToUpdate, { status: newStatus });
+        await addMutationToQueue({
+          tableName,
+          type: 'update',
+          payload: { id: idToUpdate, data: { status: newStatus } },
+        });
+        refetch();
+      } catch (err) {
+        toast.error(`Offline status update failed: ${(err as Error).message}`);
       }
-      toggleStatus({
-        id: String(record.id),
-        status: !(record.status ?? false),
-      });
-    },
-    [toggleStatus]
-  );
+    }
+  }, [isOnline, tableName, toggleStatus, refetch]);
 
-  // --- BULK SELECTION HANDLERS ---
-  const handleRowSelect = useCallback(
-    (rows: Array<V & { id?: string | number }>) => {
-      const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
-      setSelectedRowIds(validIds);
-    },
-    []
-  );
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedRowIds([]);
+  const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
+    const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
+    setSelectedRowIds(validIds);
   }, []);
 
-  // --- BULK DELETE HANDLER ---
-  const handleBulkDelete = useCallback(() => {
-    if (selectedRowIds.length === 0) {
-      toast.error("No records selected for deletion");
-      return;
-    }
-    const selectedRecords = data.filter(record => selectedRowIds.includes(String(record.id))).map(record => ({
-      id: String(record.id),
-      name: getDisplayName(record as RecordWithId),
-    }));
-    deleteManager.deleteMultiple(selectedRecords);
-  }, [selectedRowIds, data, deleteManager, getDisplayName]);
+  const handleClearSelection = useCallback(() => { setSelectedRowIds([]); }, []);
 
-  // --- BULK STATUS UPDATE HANDLER ---
-  const handleBulkUpdateStatus = useCallback(
-    (status: "active" | "inactive") => {
-      if (selectedRowIds.length === 0) return;
-      const updates = selectedRowIds.map((id) => ({
-        id,
-        data: { status: status === "active" } as unknown as TableUpdate<T>,
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedRowIds.length === 0) { toast.error("No records selected"); return; }
+    
+    if (isOnline) {
+      const selectedRecords = data.filter(record => selectedRowIds.includes(String(record.id))).map(record => ({
+        id: String(record.id), name: getDisplayName(record as RecordWithId),
       }));
+      deleteManager.deleteMultiple(selectedRecords);
+    } else { // OFFLINE LOGIC
+      if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
+        try {
+          const table = getTable(tableName);
+          await table.bulkDelete(selectedRowIds);
+          await addMutationToQueue({
+            tableName,
+            type: 'delete',
+            payload: { ids: selectedRowIds },
+          });
+          refetch();
+          handleClearSelection();
+        } catch (err) {
+          toast.error(`Offline bulk delete failed: ${(err as Error).message}`);
+        }
+      }
+    }
+  }, [isOnline, selectedRowIds, data, tableName, deleteManager, getDisplayName, refetch, handleClearSelection]);
+
+  const handleBulkUpdateStatus = useCallback(async (status: "active" | "inactive") => {
+    if (selectedRowIds.length === 0) return;
+    const newStatus = status === 'active';
+
+    if (isOnline) {
+      const updates = selectedRowIds.map((id) => ({ id, data: { status: newStatus } as unknown as TableUpdate<T> }));
       bulkUpdate.mutate({ updates }, {
         onSuccess: () => {
-          toast.success(`Successfully updated ${updates.length} records to ${status}`);
-          setSelectedRowIds([]);
+          toast.success(`Updated ${updates.length} records to ${status}`);
+          handleClearSelection();
           refetch();
         },
-        onError: (err) => {
-          toast.error(`Failed to update status: ${err.message}`);
-        },
+        onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
-    },
-    [selectedRowIds, bulkUpdate, refetch]
-  );
+    } else { // OFFLINE LOGIC
+      try {
+        const table = getTable(tableName);
+        // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await table.where('id').anyOf(selectedRowIds).modify({ status: newStatus } as any);
+        for (const id of selectedRowIds) {
+          await addMutationToQueue({
+            tableName,
+            type: 'update',
+            payload: { id, data: { status: newStatus } },
+          });
+        }
+        refetch();
+        handleClearSelection();
+      } catch (err) {
+        toast.error(`Offline bulk status update failed: ${(err as Error).message}`);
+      }
+    }
+  }, [isOnline, selectedRowIds, tableName, bulkUpdate, refetch, handleClearSelection]);
 
-  // --- BULK DELETE BY FILTER ---
-  const handleBulkDeleteByFilter = useCallback(
-    (column: string, value: string | number | boolean | null, displayName: string) => {
-      deleteManager.deleteBulk({
-        column,
-        value,
-        displayName,
-      });
-    },
-    [deleteManager]
-  );
+  const handleBulkDeleteByFilter = useCallback((column: string, value: string | number | boolean | null, displayName: string) => {
+      deleteManager.deleteBulk({ column, value, displayName });
+    }, [deleteManager]);
 
-  // --- RETURN VALUE ---
   return {
     data: data || [],
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    isFetching,
-    error,
-    isMutating,
-    refetch,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isFetching, error, isMutating, refetch,
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },

@@ -4,7 +4,8 @@ import ColumnManagementProvider from "./ColumnManagementProvider";
 import DashboardHeader from "./DashboardHeader";
 import Sidebar from "../navigation/sidebar";
 import { usePathname } from "next/navigation";
-import { useDataSync } from "@/hooks/data/useDataSync"; // Added import
+import { useDataSync } from "@/hooks/data/useDataSync";
+import { useMutationQueue } from "@/hooks/data/useMutationQueue"; // Added import
 
 interface DashboardContentProps {
   children: ReactNode | ReactNode[] | Record<string, unknown>[] | null;
@@ -27,6 +28,8 @@ function DashboardContent({
 
   // Initiate data synchronization when the dashboard is loaded
   useDataSync();
+  // Activate the mutation queue processor
+  useMutationQueue();
 
   useEffect(() => {
     const updateSidebarWidth = () => {

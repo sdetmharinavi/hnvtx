@@ -8,16 +8,17 @@ import { PublicTableOrViewName } from '@/hooks/database';
 import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// CORRECTED: Sync from views to get denormalized data for offline use.
+// CORRECTED: Sync from the 'v_employees' view, not the 'employees' base table.
 const entitiesToSync: PublicTableOrViewName[] = [
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
   'v_rings',
-  'v_employees',
+  'v_employees', // <-- CORRECTED
   'v_maintenance_areas',
-  'lookup_types', // This is a base table but acts like a view in usage
+  'lookup_types',
   'user_profiles',
+  'employee_designations', // Sync this base table for the filter dropdown
 ];
 
 // Function to perform the sync for a single table or view
@@ -35,7 +36,6 @@ async function syncEntity(
       throw error;
     }
     
-    // Dexie doesn't care if it's a table or view name, as long as it's a valid object store.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db as any)[entityName].bulkPut(data);
 
