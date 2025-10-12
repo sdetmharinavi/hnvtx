@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTXDatabase } from '@/data/localDb';
+import { localDb, HNVTXDatabase, getTable } from '@/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -22,7 +22,18 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'user_profiles',
 ];
 
-// Function to perform the sync for a single table or view
+// A set of our view names for a fast lookup
+const viewNames = new Set<PublicTableOrViewName>([
+    'v_nodes_complete',
+    'v_ofc_cables_complete',
+    'v_systems_complete',
+    'v_rings',
+    'v_employees',
+    'v_maintenance_areas',
+    'v_cable_utilization',
+    'v_ring_nodes',
+]);
+
 export async function syncEntity(
   supabase: SupabaseClient,
   db: HNVTXDatabase,
@@ -31,59 +42,71 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
-    // THE DEFINITIVE FIX: Always use the 'get_paged_data' RPC.
-    // This function runs with elevated privileges on the server, bypassing RLS issues for complex views.
-    const { data: rpcResponse, error } = await supabase.rpc('get_paged_data', {
-      p_view_name: entityName,
-      p_limit: 50000, // Fetch all records for local caching
-      p_offset: 0,
-    });
+    let data: any[] | null = null;
 
-    if (error) throw error;
+    // THE DEFINITIVE FIX: Use the correct data fetching strategy based on entity type.
+    if (viewNames.has(entityName)) {
+      // For VIEWS, use the RPC to bypass RLS issues.
+      const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+        p_view_name: entityName,
+        p_limit: 50000,
+        p_offset: 0,
+      });
+      if (rpcError) throw rpcError;
+      data = (rpcResponse as { data: any[] })?.data || [];
+    } else {
+      // For TABLES, use a direct select.
+      const { data: tableData, error: tableError } = await supabase.from(entityName).select('*');
+      if (tableError) throw tableError;
+      data = tableData;
+    }
     
-    // The RPC returns a JSON object like { data: [...] }, so we extract the data array.
-    const data = (rpcResponse as { data: any[] })?.data || [];
+    if (!data) {
+        throw new Error("No data returned from the server.");
+    }
 
-    await (db as any)[entityName].bulkPut(data);
+    const validData = data.filter(item => item.id != null);
+    
+    const table = getTable(entityName);
+    await table.bulkPut(validData);
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
     console.log(`✅ [Sync] Successfully synced entity: ${entityName}`);
 
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage);
+  } catch (err) {
+    // IMPROVED ERROR LOGGING
+    const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
+    console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage, JSON.stringify(err, null, 2));
     await db.sync_status.put({
       tableName: entityName,
       status: 'error',
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
-    throw error;
+    throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
 
-/**
- * Custom hook to manage the data synchronization process between Supabase and IndexedDB.
- */
 export function useDataSync() {
   const supabase = createClient();
-
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
 
   const { isLoading, isError, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
       console.log('🚀 [Sync] Starting full data synchronization...');
-      const syncPromises = entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName));
+      const results = await Promise.allSettled(
+        entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
+      );
       
-      const results = await Promise.allSettled(syncPromises);
-
       const failedEntities = results
-        .filter(result => result.status === 'rejected')
-        .map((_, index) => entitiesToSync[index]);
+        .map((result, index) => ({ result, name: entitiesToSync[index] }))
+        .filter(item => item.result.status === 'rejected');
 
       if (failedEntities.length > 0) {
-        throw new Error(`Failed to sync the following entities: ${failedEntities.join(', ')}`);
+        // Construct a more detailed error message
+        const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
+        throw new Error(`Failed to sync the following entities: ${errorDetails}`);
       }
       
       console.log('🎉 [Sync] Full data synchronization complete.');
@@ -104,10 +127,5 @@ export function useDataSync() {
     }
   }, [isLoading, isError, error, syncStatus]);
 
-  return {
-    isSyncing: isLoading,
-    syncError: error,
-    syncStatus,
-    refetchSync: refetch,
-  };
+  return { isSyncing: isLoading, syncError: error, syncStatus, refetchSync: refetch };
 }

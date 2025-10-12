@@ -14,7 +14,6 @@ import {
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
   User_profilesRowSchema as User_profilesRow,
-  // Import View types
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
   V_systems_completeRowSchema,
@@ -22,9 +21,9 @@ import {
   V_employeesRowSchema,
   V_maintenance_areasRowSchema,
   V_cable_utilizationRowSchema,
-  V_ring_nodesRowSchema, // NEWLY ADDED
+  V_ring_nodesRowSchema,
 } from '@/schemas/zod-schemas';
-import { PublicTableName, Row } from '@/hooks/database';
+import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 
 export interface SyncStatus {
   tableName: string;
@@ -34,11 +33,11 @@ export interface SyncStatus {
 }
 
 export interface MutationTask {
-  id?: number; // Auto-incremented primary key
+  id?: number;
   tableName: PublicTableName;
   type: 'insert' | 'update' | 'delete';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any; // The data for the operation
+  payload: any;
   timestamp: string;
   status: 'pending' | 'processing' | 'success' | 'failed';
   attempts: number;
@@ -47,7 +46,6 @@ export interface MutationTask {
 }
 
 export class HNVTXDatabase extends Dexie {
-  // Mirrored tables from Supabase
   lookup_types!: Table<Lookup_typesRow, string>;
   maintenance_areas!: Table<Maintenance_areasRow, string>;
   employee_designations!: Table<Employee_designationsRow, string>;
@@ -62,7 +60,6 @@ export class HNVTXDatabase extends Dexie {
   system_connections!: Table<System_connectionsRow, string>;
   user_profiles!: Table<User_profilesRow, string>;
 
-  // Tables for Supabase Views
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
   v_systems_complete!: Table<V_systems_completeRowSchema, string>;
@@ -70,17 +67,14 @@ export class HNVTXDatabase extends Dexie {
   v_employees!: Table<V_employeesRowSchema, string>;
   v_maintenance_areas!: Table<V_maintenance_areasRowSchema, string>;
   v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
-  v_ring_nodes!: Table<V_ring_nodesRowSchema, string>; // NEWLY ADDED
+  v_ring_nodes!: Table<V_ring_nodesRowSchema, string>;
 
-  // Local-only tables for managing offline state
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTXDatabase');
-    // THE FIX: Increment version number to 4 to apply the new schema changes.
     this.version(4).stores({
-      // Base Tables
       lookup_types: 'id, category, name',
       maintenance_areas: 'id, name, parent_id, area_type_id',
       employee_designations: 'id, name, parent_id',
@@ -95,17 +89,16 @@ export class HNVTXDatabase extends Dexie {
       system_connections: 'id, system_id, sn_id, en_id, connected_system_id',
       user_profiles: 'id, first_name, last_name, role',
 
-      // View Tables
-      v_nodes_complete: 'id, name, node_type_name, maintenance_area_name',
-      v_ofc_cables_complete: 'id, route_name, sn_name, en_name, ofc_type_name',
-      v_systems_complete: 'id, system_name, node_name, system_type_name',
-      v_rings: 'id, name, ring_type_name, maintenance_area_name',
-      v_employees: 'id, employee_name, employee_designation_name, maintenance_area_name',
-      v_maintenance_areas: 'id, name, code, maintenance_area_type_name',
-      v_cable_utilization: 'cable_id, route_name',
-      v_ring_nodes: 'id, ring_id, name', // NEWLY ADDED
+      // THE FIX: Simplify view indexes to prevent potential conflicts.
+      v_nodes_complete: 'id, name, node_type_id',
+      v_ofc_cables_complete: 'id, route_name, sn_id, en_id',
+      v_systems_complete: 'id, system_name, node_id, system_type_id',
+      v_rings: 'id, name, ring_type_id',
+      v_employees: 'id, employee_name, employee_designation_id',
+      v_maintenance_areas: 'id, name, area_type_id',
+      v_cable_utilization: 'cable_id',
+      v_ring_nodes: 'id, ring_id, name',
       
-      // Local-only tables
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status, tableName',
     });
@@ -114,22 +107,10 @@ export class HNVTXDatabase extends Dexie {
 
 export const localDb = new HNVTXDatabase();
 
-export function getTable<T extends PublicTableName>(tableName: T): Table<Row<T>, string> {
-    switch (tableName) {
-        case 'lookup_types': return localDb.lookup_types as Table<Row<T>, string>;
-        case 'maintenance_areas': return localDb.maintenance_areas as Table<Row<T>, string>;
-        case 'employee_designations': return localDb.employee_designations as Table<Row<T>, string>;
-        case 'employees': return localDb.employees as Table<Row<T>, string>;
-        case 'nodes': return localDb.nodes as Table<Row<T>, string>;
-        case 'rings': return localDb.rings as Table<Row<T>, string>;
-        case 'ofc_cables': return localDb.ofc_cables as Table<Row<T>, string>;
-        case 'systems': return localDb.systems as Table<Row<T>, string>;
-        case 'cable_segments': return localDb.cable_segments as Table<Row<T>, string>;
-        case 'junction_closures': return localDb.junction_closures as Table<Row<T>, string>;
-        case 'fiber_splices': return localDb.fiber_splices as Table<Row<T>, string>;
-        case 'system_connections': return localDb.system_connections as Table<Row<T>, string>;
-        case 'user_profiles': return localDb.user_profiles as Table<Row<T>, string>;
-        default:
-            throw new Error(`Invalid table name "${tableName}" provided to getTable.`);
+export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
+    const table = localDb.table(tableName);
+    if (!table) {
+        throw new Error(`Invalid table or view name "${tableName}" provided to getTable.`);
     }
+    return table as Table<Row<T>, string>;
 }
