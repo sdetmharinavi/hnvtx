@@ -10,9 +10,9 @@ import { snakeToTitleCase } from "@/utils/formatters";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import z from "zod";
 import { generateCodeFromName } from "@/config/helper-functions";
+import { FormCard } from "@/components/common/form";
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -61,8 +61,6 @@ export function CategoryModal({
   });
 
   const watchedName = watch('name');
-  const watchedCategory = watch("category");
-  const showSystemFlags = watchedCategory === 'SYSTEM_TYPES';
 
   useEffect(() => {
     if (isOpen) {
@@ -112,11 +110,10 @@ export function CategoryModal({
   const canSubmit = Boolean(watch("category")?.trim() && !isLoading);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent bg-gray-700 rounded-2xl">
-      <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent w-0 h-0">
+      <FormCard isLoading={isLoading} standalone title={isEditMode ? "Edit Category" : "Add Category"} onSubmit={handleSubmit(onValidSubmit)} onCancel={onClose} >
         <div className="md:col-span-2">
           <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Category Name <span className="text-red-500">*</span></label>
-          {/* THE FIX: Always render an editable text input for the category name. */}
           <Input
             type="text"
             {...register("category")}
@@ -138,11 +135,7 @@ export function CategoryModal({
             {!isEditMode && <li>• A default 'DEFAULT' lookup type will be created.</li>}
           </ul>
         </div>
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
-          <Button type="submit" disabled={!canSubmit}>{submitButtonText}</Button>
-        </div>
-      </form>
+      </FormCard>
     </Modal>
   );
 }
