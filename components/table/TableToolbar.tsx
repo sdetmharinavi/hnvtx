@@ -13,8 +13,8 @@ import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
 import { TableOrViewName } from "@/hooks/database";
-import { useDebounce } from "@/hooks/useDebounce";
 import { DEFAULTS } from "@/constants/constants";
+import { useDebounce } from "use-debounce";
 
 interface TableToolbarProps<T extends TableOrViewName>
   extends Pick<
@@ -81,8 +81,8 @@ export function TableToolbar<T extends TableOrViewName>({
 
   // Only react to content changes, not function identity changes
   useEffect(() => {
-    setSearchQueryRef.current(debouncedSearchQuery);
-    onSearchChangeRef.current?.(debouncedSearchQuery);
+    setSearchQueryRef.current(debouncedSearchQuery[0]);
+    onSearchChangeRef.current?.(debouncedSearchQuery[0]);
   }, [debouncedSearchQuery]);
 
   useEffect(() => {

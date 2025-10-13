@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TableOrViewName, Row, Filters } from "@/hooks/database";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useDebounce } from "use-debounce";
 import { DEFAULTS } from "@/constants/constants";
 
 interface TableFilterPanelProps<T extends TableOrViewName> {
@@ -18,7 +18,7 @@ const DebouncedInput = ({ value, onChange, placeholder, className }: { value: st
     const debouncedValue = useDebounce(internalValue, DEFAULTS.DEBOUNCE_DELAY);
 
     useEffect(() => {
-        onChange(debouncedValue);
+        onChange(debouncedValue[0]);
     }, [debouncedValue, onChange]);
 
     useEffect(() => {

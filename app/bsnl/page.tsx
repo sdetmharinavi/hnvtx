@@ -20,7 +20,7 @@ import { SystemDetailsModal } from '@/config/system-details-config';
 import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from 'use-debounce';
 import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview';
 
 const OptimizedNetworkMap = dynamic(
@@ -57,7 +57,7 @@ export default function ScalableFiberNetworkDashboard() {
   
   const debouncedMapBounds = useDebounce(mapBounds, 500);
 
-  const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds);
+  const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds[0]);
   
   const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 

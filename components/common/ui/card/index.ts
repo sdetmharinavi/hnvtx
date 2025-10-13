@@ -1,4 +1,8 @@
-export { Card } from './_Card';
-export { CardHeader } from './_Card';
-export { CardBody } from './_Card';
-export { CardFooter } from './_Card';
+export { Card } from './card';
+export { CardHeader } from './card';
+export { CardContent } from './card';
+export { CardFooter } from './card';
+export { CardTitle } from './card';
+export { CardDescription } from './card';
+export { CardAction } from './card';
+
