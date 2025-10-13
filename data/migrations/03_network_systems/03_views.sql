@@ -25,7 +25,7 @@ FROM public.systems s
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id
-  LEFT JOIN public.sdh_systems ss ON s.id = ss.system_id
+  LEFT JOIN public.sdh_systems ss ON s.id = ss.system_id;
 
 
 -- View for a complete picture of a system connection and its specific details.
