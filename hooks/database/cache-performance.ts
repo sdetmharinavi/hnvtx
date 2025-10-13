@@ -3,6 +3,7 @@ import { Filters, RpcFunctionArgs, RpcFunctionName, RpcFunctionReturns, PublicTa
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
 import { applyFilters, applyOrdering, createQueryKey, createRpcQueryKey } from "./utility-functions";
+import { DEFAULTS } from "@/constants/constants";
 
 // Performance monitoring hook
 export function useQueryPerformance() {
@@ -32,11 +33,11 @@ export function useQueryPerformance() {
       queryClient.prefetchQuery({
         queryKey: ["table", tableName],
         queryFn: async () => {
-          const { data, error } = await supabase.from(tableName).select("*").limit(100);
+          const { data, error } = await supabase.from(tableName).select("*").limit(DEFAULTS.PAGE_SIZE);
           if (error) throw error;
           return data;
         },
-        staleTime: 10 * 60 * 1000, // 10 minutes
+        staleTime: DEFAULTS.CACHE_TIME
       })
     );
 

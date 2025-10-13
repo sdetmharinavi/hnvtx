@@ -10,7 +10,7 @@ import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
-import { Filters, Row, buildRpcFilters } from '@/hooks/database';
+import { buildRpcFilters } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema, Lookup_typesRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -23,6 +23,7 @@ import { useUser } from '@/providers/UserProvider';
 import { AiFillMerge } from 'react-icons/ai';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
+import { DEFAULTS } from '@/constants/constants';
 
 const useOfcData = (
   params: DataQueryHookParams
@@ -38,7 +39,7 @@ const useOfcData = (
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_ofc_cables_complete',
-      p_limit: 1000,
+      p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters
     });
@@ -54,7 +55,7 @@ const useOfcData = (
     ['ofc-cables-data', searchQuery, filters],
     onlineQueryFn,
     offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
+    { staleTime: DEFAULTS.CACHE_TIME }
   );
   
   const processedData = useMemo(() => {

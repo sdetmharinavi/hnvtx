@@ -22,6 +22,7 @@ import { useDeleteManager } from "./useDeleteManager";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { addMutationToQueue } from "./data/useMutationQueue";
 import { getTable } from "@/data/localDb";
+import { DEFAULTS } from "@/constants/constants";
 
 // --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
@@ -80,7 +81,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, _setCurrentPage] = useState(1);
-  const [pageLimit, _setPageLimit] = useState(10);
+  const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, _setSearchQuery] = useState("");
   const [filters, _setFilters] = useState<Filters>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

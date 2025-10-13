@@ -21,6 +21,7 @@ import {
   V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { FormSearchableSelect } from '@/components/common/form';
+import { DEFAULTS } from '@/constants/constants';
 
 interface OfcFormProps {
   ofcCable?: Ofc_cablesRowSchema;
@@ -66,7 +67,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
           value: OFC_FORM_CONFIG.ALLOWED_NODE_TYPES,
         },
       },
-      limit: OFC_FORM_CONFIG.NODES_FETCH_LIMIT,
+      limit: DEFAULTS.PAGE_SIZE,
     }
   );
 
@@ -80,7 +81,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
       },
       orderBy: [{ column: 'name', ascending: true }],
       columns: 'id, name',
-      staleTime: OFC_FORM_CONFIG.CACHE_TIME,
+      staleTime: DEFAULTS.CACHE_TIME,
     }
   );
   const ofcTypesData = ofcTypesResult?.data;
@@ -92,7 +93,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
     filters: { status: true },
     orderBy: [{ column: 'name', ascending: true }],
     columns: 'id, name',
-    staleTime: OFC_FORM_CONFIG.CACHE_TIME,
+    staleTime: DEFAULTS.CACHE_TIME,
   });
   const maintenanceTerminalsData = maintenanceTerminalsResult?.data;
 
@@ -160,7 +161,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
 
   const {
     data: lookupTypesResult,
-    isLoading: lookupLoading,
   } = useTableQuery(supabase, "lookup_types", {
     orderBy: [{ column: "name", ascending: true }],
     filters: {
@@ -173,7 +173,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const ownerOptions = useMemo(
     (): Option[] =>
       lookupTypes?.map((owner) => ({ value: owner.id, label: owner.name })) || [],
-    [lookupTypes, lookupLoading]
+    [lookupTypes]
   );
 
   const isLoading =

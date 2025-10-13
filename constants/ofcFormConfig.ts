@@ -23,7 +23,4 @@ export const OFC_FORM_CONFIG = {
     'Customer Premises',
     'Gram Panchayat',
   ],
-
-  NODES_FETCH_LIMIT: 1000,
-  CACHE_TIME: 5 * 60 * 1000, // 5 minutes
 } as const;
