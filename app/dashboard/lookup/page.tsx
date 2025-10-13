@@ -1,10 +1,11 @@
+// path: app/dashboard/lookup/page.tsx
 'use client';
 
 import {
   PageHeader,
   useStandardHeaderActions,
 } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { Card } from '@/components/common/ui/card';
 import { useLookupTypes } from '@/components/lookup/lookup-hooks';
 import { LookupModal } from '@/components/lookup/LookupModal';
@@ -17,12 +18,20 @@ import {
 import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
 import { Filters } from '@/hooks/database';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useSorting } from '@/hooks/useSorting';
 import { useMemo } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 export default function LookupTypesPage() {
+  const deleteManager = useDeleteManager({
+    tableName: 'lookup_types',
+    onSuccess: () => {
+      handleRefresh();
+    },
+  });
+
   const {
     state: {
       selectedCategory,
@@ -49,9 +58,8 @@ export default function LookupTypesPage() {
       handleLookupCreated,
       handleLookupUpdated,
     },
-  } = useLookupTypes();
+  } = useLookupTypes({ deleteHandler: deleteManager.deleteSingle });
 
-  // Apply sorting to lookup types
   const {
     sortedData: sortedLookupTypes,
     handleSort,
@@ -60,16 +68,10 @@ export default function LookupTypesPage() {
     data: lookupTypes,
     defaultSortKey: 'category',
     defaultDirection: 'asc',
-    options: {
-      caseSensitive: false,
-      numericSort: true,
-    },
   });
 
-  // Filter sorted data based on search term
   const filteredAndSortedLookupTypes = useMemo(() => {
     if (!searchTerm.trim()) return sortedLookupTypes;
-
     const lowerSearchTerm = searchTerm.toLowerCase();
     return sortedLookupTypes.filter(
       (lookup) =>
@@ -79,17 +81,11 @@ export default function LookupTypesPage() {
     );
   }, [sortedLookupTypes, searchTerm]);
 
-  // --- Define header content using the hook ---
-  const serverFilters = useMemo(() => {
-    const f: Filters = {
-      // Filter to download only categories with name not equal to "DEFAULT"
-      name: {
-        operator: 'neq',
-        value: 'DEFAULT',
-      },
-    };
+  const serverFilters = useMemo((): Filters => {
+    const f: Filters = { name: { operator: 'neq', value: 'DEFAULT' } };
     return f;
   }, []);
+
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
     onRefresh: async () => {
@@ -101,31 +97,19 @@ export default function LookupTypesPage() {
     exportConfig: { tableName: 'lookup_types', filters: serverFilters },
   });
 
-  // --- Define header stats ---
   const activeLookups = lookupTypes.filter((lookup) => lookup.status);
   const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
   const headerStats = [
     { value: lookupTypes.length, label: 'Total Lookup Types' },
     { value: activeLookups.length, label: 'Active', color: 'success' as const },
-    {
-      value: inactiveLookups.length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: inactiveLookups.length, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // Error handling
   if (lookupError) {
     return (
       <ErrorDisplay
         error={lookupError.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: handleRefresh,
-            variant: 'primary',
-          },
-        ]}
+        actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]}
       />
     );
   }
@@ -142,10 +126,7 @@ export default function LookupTypesPage() {
       />
 
       {!hasCategories && !isLoading && (
-        <NoCategoriesState
-          error={categoriesError as Error}
-          isLoading={isLoading}
-        />
+        <NoCategoriesState error={categoriesError as Error} isLoading={isLoading} />
       )}
 
       {hasCategories && (
@@ -171,17 +152,13 @@ export default function LookupTypesPage() {
         <Card className="overflow-hidden">
           <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredAndSortedLookupTypes.length} of{' '}
-              {lookupTypes.length} lookup types for category:{' '}
+              Showing {filteredAndSortedLookupTypes.length} of {lookupTypes.length} lookup types for category:{' '}
               <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
               {searchTerm && (
-                <span className="ml-2">
-                  (filtered by: <em>&quot;{searchTerm}&quot;</em>)
-                </span>
+                <span className="ml-2">(filtered by: <em>&quot;{searchTerm}&quot;</em>)</span>
               )}
             </p>
           </div>
-
           <LookupTypesTable
             lookups={filteredAndSortedLookupTypes}
             onEdit={handleEdit}
@@ -195,9 +172,7 @@ export default function LookupTypesPage() {
         </Card>
       )}
 
-      {!hasSelectedCategory && !isLoading && hasCategories && (
-        <SelectCategoryPrompt />
-      )}
+      {!hasSelectedCategory && !isLoading && hasCategories && <SelectCategoryPrompt />}
 
       <LookupModal
         isOpen={isLookupModalOpen}
@@ -207,6 +182,16 @@ export default function LookupTypesPage() {
         editingLookup={editingLookup}
         category={selectedCategory}
         categories={categories}
+      />
+
+      <ConfirmModal
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
+        title="Confirm Deletion"
+        message={deleteManager.confirmationMessage}
+        type="danger"
+        loading={deleteManager.isPending}
       />
     </div>
   );
