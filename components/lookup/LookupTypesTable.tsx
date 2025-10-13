@@ -9,7 +9,7 @@ import { Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 interface LookupTypesTableProps {
   lookups: Lookup_typesRowSchema[];
   onEdit: (lookup: Lookup_typesRowSchema) => void;
-  onDelete: (id: string) => void;
+  onDelete: (lookup: Lookup_typesRowSchema) => void;
   onToggleStatus: (id: string, currentStatus: boolean) => void;
   selectedCategory: string;
   searchTerm: string;
@@ -194,11 +194,7 @@ export function LookupTypesTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to delete "${lookup.name}"?`)) {
-                        onDelete(lookup.id!);
-                      }
-                    }}
+                    onClick={() => onDelete(lookup)}
                     className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                     disabled={!!lookup.is_system_default}
                     title={
