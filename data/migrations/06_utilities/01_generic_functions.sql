@@ -21,6 +21,60 @@ $$;
 
 -- ** Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
 -- Helper function to build the WHERE clause dynamically
+-- CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
+-- RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
+-- DECLARE
+--   where_clause TEXT := '';
+--   filter_key TEXT;
+--   filter_value JSONB;
+--   alias_prefix TEXT;
+--   or_conditions TEXT;
+--   or_key TEXT;
+--   or_value TEXT;
+-- BEGIN
+--     alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
+
+--     IF p_filters IS NULL OR jsonb_typeof(p_filters) != 'object' THEN
+--         RETURN '';
+--     END IF;
+
+--     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
+--         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
+
+--         IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
+--             -- THE FIX: Handle 'or' as a JSON object, not a string
+--             or_conditions := '';
+--             FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
+--                 IF or_conditions != '' THEN
+--                     or_conditions := or_conditions || ' OR ';
+--                 END IF;
+--                 -- Use format with %I for identifier and %L for literal to prevent SQL injection and properly quote values
+--                 or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
+--             END LOOP;
+--             IF or_conditions != '' THEN
+--                 where_clause := where_clause || ' AND (' || or_conditions || ')';
+--             END IF;
+            
+--         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
+--             -- This part handles standard key-value filters
+--             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
+--                 where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
+--             ELSIF jsonb_typeof(filter_value) = 'array' THEN
+--                 where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
+--             ELSE
+--                 where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
+--             END IF;
+--         END IF;
+--     END LOOP;
+
+--     IF where_clause != '' THEN
+--         RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
+--     END IF;
+
+--     RETURN '';
+-- END;
+-- $$;
+
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
 DECLARE
@@ -42,13 +96,11 @@ BEGIN
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
         IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
-            -- THE FIX: Handle 'or' as a JSON object, not a string
             or_conditions := '';
             FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
                 IF or_conditions != '' THEN
                     or_conditions := or_conditions || ' OR ';
                 END IF;
-                -- Use format with %I for identifier and %L for literal to prevent SQL injection and properly quote values
                 or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
             END LOOP;
             IF or_conditions != '' THEN
@@ -56,13 +108,16 @@ BEGIN
             END IF;
             
         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
-            -- This part handles standard key-value filters
+            -- THE FIX: Handle different filter value types correctly
             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
+                -- Handle complex operators like { "operator": "gt", "value": 10 }
                 where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
             ELSIF jsonb_typeof(filter_value) = 'array' THEN
+                -- Handle IN clauses like: { "status": ["active", "pending"] }
                 where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
             ELSE
-                where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, filter_value->>0);
+                -- Handle simple equality for strings, numbers, booleans
+                where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, trim(both '"' from filter_value::text));
             END IF;
         END IF;
     END LOOP;
@@ -74,6 +129,7 @@ BEGIN
     RETURN '';
 END;
 $$;
+
 
 -- =================================================================
 -- Section 2: Generic Query & Data Operation Functions

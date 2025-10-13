@@ -79,14 +79,21 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   // --- STATE MANAGEMENT ---
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<Filters>({});
+  const [currentPage, _setCurrentPage] = useState(1);
+  const [pageLimit, _setPageLimit] = useState(10);
+  const [searchQuery, _setSearchQuery] = useState("");
+  const [filters, _setFilters] = useState<Filters>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
+
+  // THE FIX: Wrap all state setters in useCallback to stabilize their references.
+  const setCurrentPage = useCallback((page: number) => _setCurrentPage(page), []);
+  const setPageLimit = useCallback((limit: number) => _setPageLimit(limit), []);
+  const setSearchQuery = useCallback((query: string) => _setSearchQuery(query), []);
+  const setFilters = useCallback((newFilters: Filters | ((prev: Filters) => Filters)) => _setFilters(newFilters), []);
+  const setSelectedRowIds = useCallback((ids: string[]) => _setSelectedRowIds(ids), []);
 
   const combinedFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
@@ -105,7 +112,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters]);
+  }, [debouncedSearch, filters, setCurrentPage]);
 
   const { data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch } = dataQueryHook({
     currentPage,
@@ -154,9 +161,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       try {
         const table = getTable(tableName);
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
-          // Offline Update
           const idToUpdate = String(editingRecord.id);
-          // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (table.update as any)(idToUpdate, processedData);
           await addMutationToQueue({
@@ -165,7 +170,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id: idToUpdate, data: processedData },
           });
         } else {
-          // Offline Insert
           const tempId = `offline_${uuidv4()}`;
           const newRecord = { ...processedData, id: tempId };
           await table.add(newRecord as Row<T>);
@@ -233,7 +237,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { // OFFLINE LOGIC
       try {
         const table = getTable(tableName);
-        // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (table.update as any)(idToUpdate, { status: newStatus });
         await addMutationToQueue({
@@ -247,13 +250,14 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     }
   }, [isOnline, tableName, toggleStatus, refetch]);
-
+  
+  // THE FIX: Wrap row selection handlers in useCallback
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
     setSelectedRowIds(validIds);
-  }, []);
+  }, [setSelectedRowIds]);
 
-  const handleClearSelection = useCallback(() => { setSelectedRowIds([]); }, []);
+  const handleClearSelection = useCallback(() => { setSelectedRowIds([]); }, [setSelectedRowIds]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) { toast.error("No records selected"); return; }
@@ -299,7 +303,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { // OFFLINE LOGIC
       try {
         const table = getTable(tableName);
-        // FIX: Cast to satisfy Dexie's UpdateSpec type constraints - known TypeScript limitation with complex generics
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await table.where('id').anyOf(selectedRowIds).modify({ status: newStatus } as any);
         for (const id of selectedRowIds) {

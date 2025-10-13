@@ -1,5 +1,5 @@
 -- path: data/migrations/03_network_systems/06_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module. [FINAL CORRECTION for ring_based_systems RLS]
+-- Description: Defines all RLS policies and Grants for the Network Systems module. [FINAL CORRECTION for system sub-tables RLS]
 
 -- =================================================================
 -- PART 1: GRANTS AND RLS SETUP FOR SYSTEM-SPECIFIC TABLES
@@ -30,15 +30,35 @@ $$;
 
 
 -- =================================================================
--- PART 2: THE FIX - ADD RLS POLICY FOR ring_based_systems
+-- PART 2: THE FIX - RLS POLICIES FOR SYSTEM SUB-TABLES
 -- =================================================================
--- This was the missing piece. Without a policy, no rows are visible.
-DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.ring_based_systems;
-CREATE POLICY "Allow authenticated read-access" 
-ON public.ring_based_systems 
-FOR SELECT 
-TO authenticated 
-USING (true);
+-- This was the missing piece. This policy grants write access to specialized admins
+-- on tables like management_ports, sdh_connections, etc.
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'management_ports', 'ring_based_systems', 'sfp_based_connections',
+    'sdh_systems', 'sdh_connections', 'sdh_node_associations'
+  ]
+  LOOP
+    -- Drop existing policies for idempotency, now correctly targeting the loop variable
+    EXECUTE format('DROP POLICY IF EXISTS "Allow admin full access" ON public.%I;', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.%I;', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow system admins full access" ON public.%I;', tbl);
+
+    -- Policy 1: Admins and Super-Admins have unrestricted access.
+    EXECUTE format('CREATE POLICY "Allow admin full access" ON public.%I FOR ALL TO admin USING (is_super_admin() OR get_my_role() = ''admin'') WITH CHECK (is_super_admin() OR get_my_role() = ''admin'');', tbl);
+
+    -- Policy 2: All authenticated users can read (for views and dropdowns).
+    EXECUTE format('CREATE POLICY "Allow authenticated read-access" ON public.%I FOR SELECT TO authenticated USING (true);', tbl);
+
+    -- Policy 3: Specialized system admins have full access.
+    EXECUTE format('CREATE POLICY "Allow system admins full access" ON public.%I FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin USING (get_my_role() IN (''cpan_admin'', ''maan_admin'', ''sdh_admin'', ''asset_admin'', ''mng_admin'')) WITH CHECK (get_my_role() IN (''cpan_admin'', ''maan_admin'', ''sdh_admin'', ''asset_admin'', ''mng_admin''));', tbl);
+  END LOOP;
+END;
+$$;
 
 
 -- =================================================================
@@ -117,45 +137,10 @@ END;
 $$;
 
 -- =================================================================
--- PART 4: RLS POLICIES FOR SUBTYPE TABLES
+-- PART 4: This is now a duplicate of PART 2 and is no longer needed.
+-- Policies for 'sfp_based_connections' are handled by the loop in PART 2.
 -- =================================================================
-DO $$
-BEGIN
-  -- Policies for 'sfp_based_connections' table
-  DROP POLICY IF EXISTS "Allow admin full access" ON public.sfp_based_connections;
-  DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.sfp_based_connections;
-  DROP POLICY IF EXISTS "Allow full access based on parent system type" ON public.sfp_based_connections;
 
-  CREATE POLICY "Allow admin full access" ON public.sfp_based_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-  CREATE POLICY "Allow authenticated read-access" ON public.sfp_based_connections FOR SELECT TO authenticated USING (true);
-  
-  CREATE POLICY "Allow full access based on parent system type" ON public.sfp_based_connections
-  FOR ALL TO cpan_admin, maan_admin, asset_admin, mng_admin
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.system_connections sc
-      JOIN public.systems s ON sc.system_id = s.id
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE sc.id = sfp_based_connections.system_connection_id
-      AND lt.category = 'SYSTEM_TYPES' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
-      )
-    )
-  ) WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.system_connections sc
-      JOIN public.systems s ON sc.system_id = s.id
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE sc.id = sfp_based_connections.system_connection_id
-      AND lt.category = 'SYSTEM_TYPES' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN')
-      )
-    )
-  );
-END;
-$$;
 
 -- =================================================================
 -- PART 5: GRANTS FOR VIEWS

@@ -170,13 +170,15 @@ export function OptimizedNetworkMap({
 
   if (!bounds) return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
 
-  const mapUrl = theme === 'dark'
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  // const mapUrl = theme === 'dark'
+  //   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+  //   : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-  const mapAttribution = theme === 'dark'
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    : '&copy; OpenStreetMap contributors';
+  // const mapAttribution = theme === 'dark'
+  //   ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  //   : '&copy; OpenStreetMap contributors';
+  const mapAttribution = "&copy; OpenStreetMap contributors";
 
   return (
     <>

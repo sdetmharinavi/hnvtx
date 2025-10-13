@@ -1,5 +1,5 @@
 // @/components/table/TableToolbar.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   FiSearch,
   FiFilter,
@@ -13,8 +13,6 @@ import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
 import { TableOrViewName } from "@/hooks/database";
-import { DEFAULTS } from "@/constants/constants";
-import { useDebounce } from "use-debounce";
 
 interface TableToolbarProps<T extends TableOrViewName>
   extends Pick<
@@ -52,7 +50,6 @@ export function TableToolbar<T extends TableOrViewName>({
   customToolbar,
   searchQuery,
   setSearchQuery,
-  onSearchChange,
   showFilters,
   setShowFilters,
   showColumnSelector,
@@ -66,28 +63,6 @@ export function TableToolbar<T extends TableOrViewName>({
   loading,
   isExporting,
 }: TableToolbarProps<T>) {
-  const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
-  const debouncedSearchQuery = useDebounce(internalSearchQuery, DEFAULTS.DEBOUNCE_DELAY);
-  const setSearchQueryRef = useRef(setSearchQuery);
-  const onSearchChangeRef = useRef(onSearchChange);
-
-  // Keep refs in sync with latest props without retriggering the search effect
-  useEffect(() => {
-    setSearchQueryRef.current = setSearchQuery;
-  }, [setSearchQuery]);
-  useEffect(() => {
-    onSearchChangeRef.current = onSearchChange;
-  }, [onSearchChange]);
-
-  // Only react to content changes, not function identity changes
-  useEffect(() => {
-    setSearchQueryRef.current(debouncedSearchQuery[0]);
-    onSearchChangeRef.current?.(debouncedSearchQuery[0]);
-  }, [debouncedSearchQuery]);
-
-  useEffect(() => {
-    setInternalSearchQuery(searchQuery);
-  }, [searchQuery]);
 
   return (
     <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
@@ -109,8 +84,8 @@ export function TableToolbar<T extends TableOrViewName>({
                   <input
                     type="text"
                     placeholder="Search..."
-                    value={internalSearchQuery}
-                    onChange={(e) => setInternalSearchQuery(e.target.value)}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

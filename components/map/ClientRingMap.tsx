@@ -138,7 +138,8 @@ export default function ClientRingMap({
 
   if (nodes.length === 0) return <div className='py-10 text-center'>No nodes to display</div>;
 
-  const mapUrl = theme === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  // const mapUrl = theme === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapAttribution = "&copy; OpenStreetMap contributors &copy; CARTO";
   const mapContainerClass = isFullScreen ? "fixed inset-0 z-[100]" : "relative h-full w-full rounded-lg overflow-hidden";
 

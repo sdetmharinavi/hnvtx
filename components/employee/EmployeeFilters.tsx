@@ -1,12 +1,10 @@
 // path: components/employee/EmployeeFilters.tsx
 'use client';
 
-import React, { memo, useState, useEffect } from 'react';
-import { useDebounce } from 'use-debounce';
+import React, { memo } from 'react';
 import { FiFilter, FiSearch } from 'react-icons/fi';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
 import { Filters } from '@/hooks/database';
-import { DEFAULTS } from '@/constants/constants';
 import {
   Employee_designationsRowSchema,
   Maintenance_areasRowSchema,
@@ -34,18 +32,7 @@ const EmployeeFiltersComponent = memo(
     onFilterToggle,
     setFilters,
   }: EmployeeFiltersProps) => {
-    const [internalSearch, setInternalSearch] = useState(searchQuery);
-    const [debouncedSearch] = useDebounce(internalSearch, DEFAULTS.DEBOUNCE_DELAY);
 
-    useEffect(() => {
-      onSearchChange(debouncedSearch);
-    }, [debouncedSearch, onSearchChange]);
-
-    useEffect(() => {
-      setInternalSearch(searchQuery);
-    }, [searchQuery]);
-
-    // REVISED: These handlers now safely update the state without type conflicts.
     const onDesignationChange = (value: string | null) => {
       setFilters(prev => {
         const newFilters: Filters = { ...prev };
@@ -91,8 +78,8 @@ const EmployeeFiltersComponent = memo(
               <input
                 type="text"
                 placeholder="Search employees..."
-                value={internalSearch}
-                onChange={(e) => setInternalSearch(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
                 onKeyDown={(e) => e.stopPropagation()}
                 className="w-full rounded-md border border-gray-300 py-2 pr-4 pl-10 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-600 sm:w-80"
               />
