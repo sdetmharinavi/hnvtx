@@ -22,6 +22,7 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SystemFormData } from '@/schemas/system-schemas';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
+import { DEFAULTS } from '@/constants/constants';
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -37,7 +38,7 @@ const useSystemsData = (
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_systems_complete',
-      p_limit: 1000,
+      p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters
     });
@@ -53,7 +54,7 @@ const useSystemsData = (
     ['systems-data', searchQuery, filters],
     onlineQueryFn,
     offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
+    { staleTime: DEFAULTS.CACHE_TIME }
   );
 
   const processedData = useMemo(() => {

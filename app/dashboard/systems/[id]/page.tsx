@@ -1,8 +1,8 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
@@ -19,16 +19,16 @@ import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/compone
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { DEFAULTS } from '@/constants/constants';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
-  const router = useRouter();
   const systemId = params.id as string;
   const supabase = createClient();
 
   // THE FIX: Manually manage state instead of using useCrudManager
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);

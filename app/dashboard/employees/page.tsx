@@ -9,7 +9,7 @@ import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
-import { Filters, Row, buildRpcFilters } from '@/hooks/database';
+import { buildRpcFilters } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { V_employeesRowSchema, EmployeesRowSchema, Employee_designationsRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -22,6 +22,7 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
+import { DEFAULTS } from '@/constants/constants';
 
 const useEmployeesData = (
   params: DataQueryHookParams
@@ -37,7 +38,7 @@ const useEmployeesData = (
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
-      p_limit: 1000,
+      p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
     });
@@ -53,7 +54,7 @@ const useEmployeesData = (
     ['employees-data', searchQuery, filters],
     onlineQueryFn,
     offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
+    { staleTime: DEFAULTS.CACHE_TIME }
   );
 
   const processedData = useMemo(() => {
