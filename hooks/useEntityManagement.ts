@@ -7,7 +7,6 @@ import { useCallback, useMemo, useState } from "react";
 export function useEntityManagement<T extends BaseEntity>({
   entitiesQuery,
   config,
-  // THE FIX: onEdit is removed from the destructuring as it's no longer a prop.
   onDelete,
   onCreateNew,
   selectedEntityId,
@@ -60,6 +59,7 @@ export function useEntityManagement<T extends BaseEntity>({
     filteredEntities.forEach((entity) => {
       const entityWithChildren = entityMap.get(entity.id);
       if (!entityWithChildren) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
 
       if (parentId) {
