@@ -1,3 +1,4 @@
+// path: components/ofc-details/OfcDetailsTableColumns.tsx
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { formatDate } from '@/utils/formatters';
@@ -7,67 +8,25 @@ export const OfcDetailsTableColumns = (
 ) => {
   return useDynamicColumnConfig('v_ofc_connections_complete', {
     data: data,
-
+    // THE FIX: Removed the problematic columns from the omit list so their overrides can be applied.
     omit: [
-      'id',
-      'ofc_id',
-      'created_at',
-      'updated_at',
-      'sn_id',
-      'en_id',
-      'connection_category',
-      'destination_port',
-      'en_name',
-      'path_segment_order',
-      'sn_name',
-      'source_port',
-      'system_id',
-      'system_name',
-      'ofc_type_name',
-      'ofc_route_name',
-      'fiber_no_sn',
-      'fiber_no_en',
-      'destination_port',
-      'logical_path_id',
-      'ofc_id',
-      'path_segment_order',
-      'source_port',
-      'system_id',
-      'updated_at',
-      'otdr_distance_sn_km',
-      'otdr_distance_en_km',
-      'en_dom',
-      'en_power_dbm',
-      'sn_dom',
-      'sn_power_dbm',
-      'route_loss_db',
-      'connection_type',
-      'ofc_type_name',
-      'ofc_route_name',
-      'remark',
-      'status',
-      'maintenance_area_name'
+      'id', 'ofc_id', 'created_at', 'updated_at', 'sn_id', 'en_id', 'connection_category',
+      'destination_port', 'en_name', 'path_segment_order', 'sn_name', 'source_port',
+      'system_id', 'system_name', 'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
+      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name'
     ],
     overrides: {
-      updated_fiber_no_sn: { 
-        title: 'End A Fiber', 
-        sortable: true, 
+      updated_fiber_no_sn: {
+        title: 'End A Fiber',
+        sortable: true,
         searchable: true,
-        excelFormat: 'number',
-        // render: (value) => {
-        //   if (value === null || value === undefined) return '';
-        //   return String(value);
-        // }
+        excelFormat: 'integer', // Explicitly format as integer
       },
-      updated_fiber_no_en: { 
-        title: 'End B Fiber', 
-        sortable: true, 
+      updated_fiber_no_en: {
+        title: 'End B Fiber',
+        sortable: true,
         searchable: true,
-        excelFormat: 'number',
-        // render: (value) => {
-        //   if (value === null || value === undefined) return '';
-        //   return String(value);
-        // }
+        excelFormat: 'integer', // Explicitly format as integer
       },
       otdr_distance_sn_km: {
         title: 'End A OTDR Distance (km)',
@@ -80,15 +39,17 @@ export const OfcDetailsTableColumns = (
         searchable: true,
       },
       updated_sn_id: {
-        title: 'End A',
-        render(value, record, index) {
-          return record.updated_sn_name || '';
+        title: 'End A ID',
+        excelFormat: 'text', // Explicitly format as text to prevent conversion to number
+        render(value, record) {
+          return record.updated_sn_name || (value as string);
         },
       },
       updated_en_id: {
-        title: 'End B',
-        render(value, record, index) {
-          return record.updated_en_name || '';
+        title: 'End B ID',
+        excelFormat: 'text', // Explicitly format as text
+        render(value, record) {
+          return record.updated_en_name || (value as string);
         },
       },
       en_dom: { title: 'End B D.O.M.', sortable: true, width: '150px', searchable: true, render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) },
@@ -112,41 +73,6 @@ export const OfcDetailsTableColumns = (
         title: 'Connection Type',
         sortable: true,
         searchable: true,
-      },
-      ofc_type_name: { title: 'Ofc Type', sortable: true, searchable: true },
-      // destination_port: {
-      //   title: 'Destination Port',
-      //   sortable: true,
-      //   searchable: true,
-      // },
-      // logical_path_id: {
-      //   title: 'Logical Path ID',
-      //   sortable: true,
-      //   searchable: true,
-      // },
-      // ofc_id: { title: 'OFC ID', sortable: true, searchable: true },
-      // path_segment_order: {
-      //   title: 'Path Segment Order',
-      //   sortable: true,
-      //   searchable: true,
-      // },
-      remark: { title: 'Remark', sortable: true, searchable: true },
-      // source_port: { title: 'Source Port', sortable: true, searchable: true },
-      // system_id: { title: 'System ID', sortable: true, searchable: true },
-      // updated_at: { title: 'Updated At', sortable: true, searchable: true },
-      status: {
-        title: 'Status',
-        sortable: true,
-        searchable: true,
-        render: (value) => (
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {value ? 'Active' : 'Inactive'}
-          </span>
-        ),
       },
     },
   });

@@ -21,7 +21,7 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   /** The key for accessing data from a row object. We set it to be the same as `key`. */
   dataIndex: keyof Row<T> & string;
   /** Optional: The data format for Excel exports. */
-  excelFormat?: 'text' | 'number' | 'date' | 'currency' | 'percentage' | 'json';
+  excelFormat?: 'text' | 'number' | 'integer' | 'date' | 'currency' | 'percentage' | 'json';
   /** Optional: Flag to hide the column in the UI. */
   hidden?: boolean;
   /** Optional: Column width for UI tables. Use "auto" to fit content width. */

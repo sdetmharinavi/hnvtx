@@ -81,6 +81,10 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     en_dom: { transform: toPgDate, excelFormat: "date" },
     sn_dom: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
+    updated_fiber_no_sn: { excelFormat: 'integer' },
+    updated_fiber_no_en: { excelFormat: 'integer' },
+    updated_sn_id: { excelFormat: 'text' },
+    updated_en_id: { excelFormat: 'text' },
   },
   nodes: { status: { transform: toPgBoolean } },
   systems: {
