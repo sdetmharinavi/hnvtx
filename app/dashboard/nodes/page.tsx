@@ -43,6 +43,7 @@ const useNodesData = (
       p_limit: 1000,
       p_offset: 0,
       p_filters: rpcFilters,
+      p_order_by: 'name',
     });
     if (error) throw error;
     return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
