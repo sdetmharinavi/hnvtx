@@ -108,12 +108,17 @@ BEGIN
             END IF;
             
         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
-            -- THE FIX: Handle different filter value types correctly
+            -- THE FIX: Handle complex operator objects, including the 'in' operator.
             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
-                -- Handle complex operators like { "operator": "gt", "value": 10 }
-                where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
+                -- Special handling for the 'in' operator with an array value
+                IF filter_value->>'operator' = 'in' AND jsonb_typeof(filter_value->'value') = 'array' THEN
+                    where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
+                ELSE
+                    -- Handle other simple operators like gt, lt, etc.
+                    where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
+                END IF;
             ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                -- Handle IN clauses like: { "status": ["active", "pending"] }
+                -- Handle top-level array for IN clauses, e.g., { "status": ["active", "pending"] }
                 where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
             ELSE
                 -- Handle simple equality for strings, numbers, booleans
