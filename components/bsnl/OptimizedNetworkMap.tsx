@@ -10,7 +10,6 @@ import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 
-// THE FIX: Component props are updated to accept stable callbacks.
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
 
@@ -43,7 +42,7 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
       map.off('zoomend moveend', handler);
       window.removeEventListener('resize', invalidateSize);
     };
-  }, [map, setBounds, setZoom]); // This effect now correctly depends on stable functions.
+  }, [map, setBounds, setZoom]);
 
   return null;
 }
@@ -51,7 +50,7 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
 const MapContent = memo<{
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
-  visibleNodes: BsnlNode[];
+  visibleNodes: BsnlNode[]; // This now receives pre-filtered nodes
   nodeMap: Map<string, BsnlNode>;
   mapUrl: string;
   mapAttribution: string;
@@ -87,6 +86,7 @@ const MapContent = memo<{
         return null;
     })}
 
+    {/* THE FIX: Only map over the pre-filtered visibleNodes for markers */}
     {visibleNodes.map((node: BsnlNode) => (
       (node.latitude && node.longitude) && (
           <Marker key={node.id} position={[node.latitude, node.longitude]}>
@@ -107,7 +107,6 @@ const MapContent = memo<{
 ));
 MapContent.displayName = 'MapContent';
 
-// THE FIX: Updated props for the main component.
 interface OptimizedNetworkMapProps {
   nodes: BsnlNode[];
   cables: BsnlCable[];
@@ -147,7 +146,7 @@ export function OptimizedNetworkMap({
     }
   }, [isFullScreen]);
 
-  const bounds = useMemo(() => {
+  const initialBounds = useMemo(() => {
     if (nodes.length === 0) return null;
     const lats = nodes.map(n => n.latitude ?? 0).filter(lat => lat !== 0 && isFinite(lat));
     const lngs = nodes.map(n => n.longitude ?? 0).filter(lng => lng !== 0 && isFinite(lng));
@@ -157,33 +156,41 @@ export function OptimizedNetworkMap({
 
   const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
+  // THE FIX: Create a new memoized array of only the nodes that should be visible as markers.
   const visibleNodes = useMemo(() => {
     if (!mapBounds || !visibleLayers.nodes) return [];
+    // Performance optimization: Render fewer markers when zoomed out.
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
     return nodes.slice(0, maxItems).filter(node => {
         const lat = node.latitude;
         const lng = node.longitude;
         if (lat == null || lng == null || !isFinite(lat) || !isFinite(lng)) return false;
-        return lat >= mapBounds.getSouth() && lat <= mapBounds.getNorth() && lng >= mapBounds.getWest() && lng <= mapBounds.getEast();
+        return mapBounds.contains([lat, lng]);
     });
   }, [nodes, mapBounds, zoom, visibleLayers.nodes]);
-
-  if (!bounds) return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
+  
+  if (nodes.length > 0 && !initialBounds) {
+    return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No valid location data in the provided nodes.</p></div>;
+  }
+  
+  if (nodes.length === 0) {
+    return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
+  }
 
   // const mapUrl = theme === 'dark'
   //   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
   //   : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
   // const mapAttribution = theme === 'dark'
   //   ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   //   : '&copy; OpenStreetMap contributors';
-  const mapAttribution = "&copy; OpenStreetMap contributors";
+    const mapAttribution = '&copy; OpenStreetMap contributors';
 
   return (
     <>
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
-        <MapContainer key="normal" bounds={bounds} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
+        <MapContainer key="normal" bounds={initialBounds!} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
           <MapContent
             cables={cables}
             visibleLayers={visibleLayers}
@@ -205,7 +212,7 @@ export function OptimizedNetworkMap({
       </div>
       {isFullScreen && (
         <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
-          <MapContainer key="fullscreen" bounds={bounds} className="h-full w-full bg-gray-200 dark:bg-gray-800">
+          <MapContainer key="fullscreen" bounds={initialBounds!} className="h-full w-full bg-gray-200 dark:bg-gray-800">
             <MapContent
               cables={cables}
               visibleLayers={visibleLayers}

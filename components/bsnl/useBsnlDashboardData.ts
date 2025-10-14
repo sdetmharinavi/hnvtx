@@ -1,4 +1,4 @@
-// components/bsnl/useBsnlDashboardData.ts
+// path: components/bsnl/useBsnlDashboardData.ts
 "use client";
 
 import { useMemo } from 'react';
@@ -15,14 +15,12 @@ interface BsnlDashboardData {
 }
 
 export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatLngBounds | null) {
-  // Use Dexie's live queries to get realtime data from IndexedDB
   const allNodes = useLiveQuery(() => localDb.v_nodes_complete.toArray(), []);
   const allCables = useLiveQuery(() => localDb.v_ofc_cables_complete.toArray(), []);
   const allSystems = useLiveQuery(() => localDb.v_systems_complete.toArray(), []);
 
   const isLoading = !allNodes || !allCables || !allSystems;
 
-  // Perform all filtering on the client side
   const data = useMemo((): BsnlDashboardData => {
     if (isLoading) return { nodes: [], ofcCables: [], systems: [] };
 
@@ -30,7 +28,6 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     let visibleCables = allCables!;
     let visibleSystems = allSystems!;
 
-    // Apply text query filter
     if (filters.query) {
       const lowerQuery = filters.query.toLowerCase();
       const nodeIds = new Set<string>();
@@ -46,7 +43,6 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleSystems = allSystems!.filter(s => systemIds.has(s.id!));
     }
 
-    // Apply status filter
     if (filters.status) {
       const isActive = filters.status === 'active';
       visibleNodes = visibleNodes.filter(n => n.status === isActive);
@@ -54,7 +50,6 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleSystems = visibleSystems.filter(s => s.status === isActive);
     }
     
-    // Apply structured filters
     if (filters.region) visibleNodes = visibleNodes.filter(n => n.maintenance_area_name === filters.region);
     if (filters.nodeType) visibleNodes = visibleNodes.filter(n => n.node_type_name === filters.nodeType);
     if (filters.type) {
@@ -62,16 +57,16 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleSystems = visibleSystems.filter(s => s.system_type_name === filters.type);
     }
 
-    // Apply map bounds filter
+    // THE FIX: Instead of filtering strictly by mapBounds, create a larger "buffered" bounds.
     if (mapBounds) {
+      // Expand the bounds by 50% to fetch a wider area of data.
+      const bufferedBounds = mapBounds.pad(0.5); 
       visibleNodes = visibleNodes.filter(n => 
         n.latitude && n.longitude &&
-        n.latitude >= mapBounds.getSouth() && n.latitude <= mapBounds.getNorth() &&
-        n.longitude >= mapBounds.getWest() && n.longitude <= mapBounds.getEast()
+        bufferedBounds.contains([n.latitude, n.longitude])
       );
     }
 
-    // After filtering nodes, filter cables and systems to only those connected to visible nodes
     const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
     visibleCables = visibleCables.filter(c => visibleNodeIds.has(c.sn_id!) || visibleNodeIds.has(c.en_id!));
     visibleSystems = visibleSystems.filter(s => visibleNodeIds.has(s.node_id!));
@@ -86,7 +81,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
   return {
     data,
     isLoading,
-    isError: false, // Errors are handled by the sync process, Dexie reads are not expected to fail
+    isError: false,
     error: null,
   };
 }
