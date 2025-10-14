@@ -125,9 +125,8 @@ SELECT
     n.name,
     n.latitude as lat,
     n.longitude as long,
-    ROW_NUMBER() OVER(PARTITION BY r.id ORDER BY n.name) as order_in_ring,
+    s.order_in_ring as order_in_ring,
     lt.name as type,
-    -- [THE FIX] Expose both the ring's status and the system's status for accurate representation.
     r.status AS ring_status,
     s.status AS system_status,
     s.ip_address::text as ip,

@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.management_ports (
 CREATE TABLE IF NOT EXISTS public.ring_based_systems (
   system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
   ring_id UUID REFERENCES public.rings (id),
+  order_in_ring INTEGER,
   maintenance_area_id UUID REFERENCES public.maintenance_areas (id)
 );
 
