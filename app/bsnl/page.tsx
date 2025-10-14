@@ -22,6 +22,7 @@ import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
 import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview';
+import { useDataSync } from '@/hooks/data/useDataSync';
 
 const OptimizedNetworkMap = dynamic(
   () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
@@ -63,6 +64,14 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
+  const { isSyncing: isDataSyncing, refetchSync } = useDataSync();
+  const handleRefresh = useCallback(async () => {
+    toast.promise(refetchSync(), {
+      loading: 'Starting manual data sync with the server...',
+      success: 'Local data successfully synced!',
+      error: (err) => `Sync failed: ${err.message}`,
+    });
+  }, [refetchSync]);
   
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -85,10 +94,6 @@ export default function ScalableFiberNetworkDashboard() {
       priority: undefined,
     });
   }, []);
-  
-  const handleRefresh = async () => {
-    toast.info('Manual sync not yet implemented. Data syncs automatically.');
-  };
 
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
     const allSystemTypes = [...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean))];
