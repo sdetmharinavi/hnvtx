@@ -8,8 +8,6 @@ import { PublicTableName, ViewName } from "@/hooks/database";
 
 export type TableNames = keyof typeof TABLES;
 export type ViewNames = keyof typeof VIEWS;
-
-
 export type CurrentTableName = keyof typeof TABLES;
 
 // This Mapped Type now correctly includes both Tables and Views.
@@ -25,9 +23,11 @@ export type AllColumnKeys = {
 export type ExcelFormat =
   | "text"
   | "number"
+  | "integer"
   | "date"
   | "currency"
-  | "percentage";
+  | "percentage"
+  | "json";
 export type ColumnTransform = (value: unknown) => unknown;
 
 export type ColumnMeta = {

@@ -1,12 +1,9 @@
-// hooks/database/excel-queries.ts
+// hooks/database/excel-queries/excel-helpers.ts
 import * as ExcelJS from "exceljs";
 import { Filters, UploadResult } from "@/hooks/database";
 import { TableOrViewName, Row } from "@/hooks/database";
 
-//================================================================================
-// TYPES AND INTERFACES
-//================================================================================
-
+// ... (other interfaces remain the same) ...
 export interface Column<T> {
   key: string;
   title: string;
@@ -20,21 +17,15 @@ export interface Column<T> {
   filterOptions?: { label: string; value: unknown }[];
   align?: "left" | "center" | "right";
   hidden?: boolean;
-  excelFormat?: "text" | "number" | "date" | "currency" | "percentage" | "json";
+  excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
 }
-
-// Generic RPC Configuration that works with any function
 export interface RPCConfig<TParams = Record<string, unknown>> {
   functionName: string;
   parameters?: TParams;
   selectFields?: string;
 }
-
-// NOTE: T refers to a table/view name. Columns should describe a Row<T>.
-export interface DownloadOptions<
-  T extends TableOrViewName = TableOrViewName
-> {
+export interface DownloadOptions<T extends TableOrViewName = TableOrViewName> {
   fileName?: string;
   filters?: Filters;
   columns?: Column<Row<T>>[];
@@ -43,7 +34,6 @@ export interface DownloadOptions<
   customStyles?: ExcelStyles;
   rpcConfig?: RPCConfig;
 }
-
 export interface ExcelStyles {
   headerFont?: Partial<ExcelJS.Font>;
   headerFill?: ExcelJS.FillPattern;
@@ -51,27 +41,18 @@ export interface ExcelStyles {
   alternateRowFill?: ExcelJS.FillPattern;
   borderStyle?: Partial<ExcelJS.Borders>;
 }
-
 export interface ExcelDownloadResult {
   fileName: string;
   rowCount: number;
   columnCount: number;
 }
-
-export interface UseExcelDownloadOptions<
-  T extends TableOrViewName = TableOrViewName
-> {
-  onSuccess?: (
-    data: ExcelDownloadResult,
-    variables: DownloadOptions<T>
-  ) => void;
+export interface UseExcelDownloadOptions<T extends TableOrViewName = TableOrViewName> {
+  onSuccess?: (data: ExcelDownloadResult, variables: DownloadOptions<T>) => void;
   onError?: (error: Error, variables: DownloadOptions<T>) => void;
   showToasts?: boolean;
   batchSize?: number;
   defaultRPCConfig?: RPCConfig;
 }
-
-// Enhanced error tracking interfaces
 export interface ValidationError {
   rowIndex: number;
   column: string;
@@ -79,7 +60,6 @@ export interface ValidationError {
   error: string;
   data?: Record<string, unknown>;
 }
-
 export interface ProcessingLog {
   rowIndex: number;
   excelRowNumber: number;
@@ -89,16 +69,11 @@ export interface ProcessingLog {
   isSkipped: boolean;
   skipReason?: string;
 }
-
 export interface EnhancedUploadResult extends UploadResult {
   processingLogs: ProcessingLog[];
   validationErrors: ValidationError[];
   skippedRows: number;
 }
-
-//================================================================================
-// UTILITY FUNCTIONS
-//================================================================================
 
 export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   type: "pattern",
@@ -106,82 +81,47 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   fgColor: { argb: color },
 });
 
-export const formatCellValue = <T = unknown>(
-  value: unknown,
-  column: Column<T>
-): unknown => {
+// THE FIX: Reordered logic to prioritize excelFormat over generic type checks.
+export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>): unknown => {
   if (value === null || value === undefined) return "";
-  
-  // Handle number types first
-  if (typeof value === 'number') {
-    return value;
-  }
-  
-  // Handle object values
-  if (typeof value === 'object' && value !== null) {
-    // If it's a Date object
-    if (value instanceof Date) {
-      return value;
-    }
-    // If it's an array, join with comma
-    if (Array.isArray(value)) {
-      return value.join(', ');
-    }
-    // For other objects, try to stringify
-    try {
-      const str = JSON.stringify(value);
-      // If it's a JSON object string, parse and get a simple string representation
-      if (str.startsWith('{') || str.startsWith('[')) {
-        const parsed = JSON.parse(str);
-        if (typeof parsed === 'object' && parsed !== null) {
-          // For objects, get values and join
-          if (Array.isArray(parsed)) {
-            return parsed.join(', ');
-          }
-          return Object.values(parsed).filter(v => v !== undefined && v !== null).join(', ');
-        }
-        return String(parsed);
-      }
-      return str;
-    } catch {
-      return String(value);
-    }
-  }
 
-  // Handle non-object values
   switch (column.excelFormat) {
     case "date":
       return value instanceof Date ? value : new Date(value as string);
     case "number":
       return typeof value === "string" ? parseFloat(value) || 0 : value;
+    case "integer":
+      return typeof value === "string" ? parseInt(value, 10) || 0 : value;
     case "currency":
-      return typeof value === "string"
-        ? parseFloat(value.replace(/[^0-9.-]/g, "")) || 0
-        : value;
+      return typeof value === "string" ? parseFloat(value.replace(/[^0-9.-]/g, "")) || 0 : value;
     case "percentage":
-      return typeof value === "number"
-        ? value / 100
-        : parseFloat(String(value)) / 100 || 0;
+      return typeof value === "number" ? value / 100 : parseFloat(String(value)) / 100 || 0;
     case "json": {
       if (typeof value === "string") {
         try {
           const parsed = JSON.parse(value);
-          return JSON.stringify(parsed);
+          return JSON.stringify(parsed, null, 2); // Prettify for readability
         } catch {
           return value;
         }
       }
       return String(value);
     }
+    case "text":
+      return String(value);
     default:
+      // Fallback logic for when no excelFormat is specified
+      if (typeof value === "number") return value;
+      if (typeof value === "object" && value !== null) {
+        if (value instanceof Date) return value;
+        if (Array.isArray(value)) return value.join(", ");
+        return JSON.stringify(value);
+      }
       return String(value);
   }
 };
 
-export const applyCellFormatting = <T = unknown>(
-  cell: ExcelJS.Cell,
-  column: Column<T>
-): void => {
+export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Column<T>): void => {
   switch (column.excelFormat) {
     case "date":
       cell.numFmt = "mm/dd/yyyy";
@@ -195,12 +135,19 @@ export const applyCellFormatting = <T = unknown>(
     case "number":
       cell.numFmt = "#,##0.00";
       break;
+    case "integer":
+      cell.numFmt = "0";
+      break;
+    case "text":
+      cell.numFmt = "@";
+      break;
   }
   if (column.align) {
     cell.alignment = { horizontal: column.align };
   }
 };
 
+// ... (rest of the file remains the same) ...
 export const getDefaultStyles = (): ExcelStyles => ({
   headerFont: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
   headerFill: createFillPattern("FF2563EB"),
@@ -213,42 +160,25 @@ export const getDefaultStyles = (): ExcelStyles => ({
     right: { style: "thin" },
   },
 });
-
-export const sanitizeFileName = (fileName: string): string => {
-  return fileName.replace(/[^a-z0-9.-]/gi, "_").replace(/_{2,}/g, "_");
-};
-
-export const convertFiltersToRPCParams = (
-  filters?: Filters
-): Record<string, unknown> => {
+export const sanitizeFileName = (fileName: string): string =>
+  fileName.replace(/[^a-z0-9.-]/gi, "_").replace(/_{2,}/g, "_");
+export const convertFiltersToRPCParams = (filters?: Filters): Record<string, unknown> => {
   if (!filters) return {};
-
   const rpcParams: Record<string, unknown> = {};
-
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      rpcParams[key] = value;
-    }
+    if (value !== undefined && value !== null && value !== "") rpcParams[key] = value;
   });
-
   return rpcParams;
 };
-
-// Safe UUID generator: uses crypto.randomUUID if available, otherwise a lightweight fallback
 export const generateUUID = (): string => {
   const g = globalThis as { crypto?: { randomUUID?: () => string } };
-  if (g && g.crypto && typeof g.crypto.randomUUID === "function") {
-    return g.crypto.randomUUID();
-  }
-  // RFC4122 version 4 fallback
+  if (g && g.crypto && typeof g.crypto.randomUUID === "function") return g.crypto.randomUUID();
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    const r = (Math.random() * 16) | 0,
+      v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 };
-
-// Enhanced logging utilities
 export const logRowProcessing = (
   rowIndex: number,
   excelRowNumber: number,
@@ -267,24 +197,8 @@ export const logRowProcessing = (
     isSkipped,
     skipReason,
   };
-
-  // console.group(`🔍 Processing Row ${excelRowNumber} (Index: ${rowIndex})`);
-  // console.log("📊 Original Data:", originalData);
-  // console.log("🔄 Processed Data:", processedData);
-
-  if (validationErrors.length > 0) {
-    console.warn("❌ Validation Errors:", validationErrors);
-  }
-
-  if (isSkipped) {
-    console.warn("⏭️ Row Skipped:", skipReason);
-  }
-
-  console.groupEnd();
-
   return log;
 };
-
 export const logColumnTransformation = (
   rowIndex: number,
   column: string,
@@ -292,22 +206,8 @@ export const logColumnTransformation = (
   transformedValue: unknown,
   error?: string
 ): void => {
-  // console.log(`🔧 Column "${column}" (Row ${rowIndex + 2}):`);
-  // console.log(
-  //   `   Original: ${JSON.stringify(originalValue)} (${typeof originalValue})`
-  // );
-  // console.log(
-  //   `   Transformed: ${JSON.stringify(
-  //     transformedValue
-  //   )} (${typeof transformedValue})`
-  // );
-
-  if (error) {
-    console.error(`   ❌ Error: ${error}`);
-  }
+  if (error) console.error(`   ❌ Error: ${error}`);
 };
-
-// Enhanced value validation
 export const validateValue = (
   value: unknown,
   columnName: string,
@@ -315,70 +215,53 @@ export const validateValue = (
 ): ValidationError | null => {
   if (isRequired) {
     const isEmpty =
-      value === null ||
-      value === undefined ||
-      (typeof value === "string" && value.trim() === "");
-
-    if (isEmpty) {
+      value === null || value === undefined || (typeof value === "string" && value.trim() === "");
+    if (isEmpty)
       return {
-        rowIndex: -1, // Will be set by caller
+        rowIndex: -1,
         column: columnName,
         value,
         error: `Required field "${columnName}" is empty`,
       };
-    }
   }
-
-  // Type-specific validations
   if (value !== null && value !== undefined && value !== "") {
-    // Check for UUID format if column suggests it's an ID
-    if ((columnName === "id" || columnName.endsWith("_id") ) && columnName !== "transnet_id") {
+    if ((columnName === "id" || columnName.endsWith("_id")) && columnName !== "transnet_id") {
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const strValue = String(value).trim();
-      if (strValue && !uuidRegex.test(strValue) && strValue !== "") {
+      if (strValue && !uuidRegex.test(strValue) && strValue !== "")
         return {
           rowIndex: -1,
           column: columnName,
           value,
           error: `Invalid UUID format for "${columnName}": ${strValue}`,
         };
-      }
     }
-
-    // Check for email format
     if (columnName.toLowerCase().includes("email")) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const strValue = String(value).trim();
-      if (strValue && !emailRegex.test(strValue)) {
+      if (strValue && !emailRegex.test(strValue))
         return {
           rowIndex: -1,
           column: columnName,
           value,
           error: `Invalid email format for "${columnName}": ${strValue}`,
         };
-      }
     }
-
-    // Check for IP address format
     const isIPField =
-      columnName === "ip_address" ||
-      columnName.endsWith("_ip") ||
-      columnName.includes("ipaddr");
+      columnName === "ip_address" || columnName.endsWith("_ip") || columnName.includes("ipaddr");
     if (isIPField) {
       const ipRegex =
         /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
       const strValue = String(value).trim();
-      if (strValue && !ipRegex.test(strValue)) {
+      if (strValue && !ipRegex.test(strValue))
         return {
           rowIndex: -1,
           column: columnName,
           value,
           error: `Invalid IP address format for "${columnName}": ${strValue}`,
         };
-      }
     }
   }
-
   return null;
 };
