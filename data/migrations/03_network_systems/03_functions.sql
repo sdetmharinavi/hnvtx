@@ -14,6 +14,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_remark TEXT DEFAULT NULL,
     p_id UUID DEFAULT NULL,
     p_ring_id UUID DEFAULT NULL,
+    p_order_in_ring INTEGER DEFAULT NULL, -- ADDED
     p_gne TEXT DEFAULT NULL,
     p_make TEXT DEFAULT NULL
 )
@@ -55,9 +56,11 @@ BEGIN
 
     -- Handle Ring-Based Systems using the new 'is_ring_based' flag
     IF v_system_type_record.is_ring_based = true THEN
-        INSERT INTO public.ring_based_systems (system_id, ring_id)
-        VALUES (v_system_id, p_ring_id)
-        ON CONFLICT (system_id) DO UPDATE SET ring_id = EXCLUDED.ring_id;
+        INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
+        VALUES (v_system_id, p_ring_id, p_order_in_ring)
+        ON CONFLICT (system_id) DO UPDATE SET 
+            ring_id = EXCLUDED.ring_id,
+            order_in_ring = EXCLUDED.order_in_ring;
     END IF;
 
     -- Handle SDH-Specific Systems using the new 'is_sdh' flag
@@ -72,7 +75,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, TEXT, TEXT) TO authenticated;
+-- UPDATED GRANT to include the new INTEGER parameter
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     -- Core system_connections fields
@@ -256,7 +260,8 @@ BEGIN
         JOIN public.systems s ON n.id = s.node_id
         JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
         WHERE rbs.ring_id = p_ring_id
-        ORDER BY n.name -- Or some other defined order
+        -- Order by the specified ring order, not alphabetically
+        ORDER BY rbs.order_in_ring 
     LOOP
         IF first_node_rec IS NULL THEN
             first_node_rec := node_rec;

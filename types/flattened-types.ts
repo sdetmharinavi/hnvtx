@@ -232,10 +232,67 @@ export type AuthMfa_factorsUpdate = {
     web_authn_credential?: Json | null;
 };
 
-export type AuthOauth_clientsRow = {
+export type AuthOauth_authorizationsRow = {
+    approved_at: string | null;
+    authorization_code: string | null;
+    authorization_id: string;
     client_id: string;
+    code_challenge: string | null;
+    code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"] | null;
+    created_at: string;
+    expires_at: string;
+    id: string;
+    redirect_uri: string;
+    resource: string | null;
+    response_type: Database["auth"]["Enums"]["oauth_response_type"];
+    scope: string;
+    state: string | null;
+    status: Database["auth"]["Enums"]["oauth_authorization_status"];
+    user_id: string | null;
+};
+
+export type AuthOauth_authorizationsInsert = {
+    approved_at?: string | null;
+    authorization_code?: string | null;
+    authorization_id: string;
+    client_id: string;
+    code_challenge?: string | null;
+    code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"] | null;
+    created_at?: string;
+    expires_at?: string;
+    id: string;
+    redirect_uri: string;
+    resource?: string | null;
+    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
+    scope: string;
+    state?: string | null;
+    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
+    user_id?: string | null;
+};
+
+export type AuthOauth_authorizationsUpdate = {
+    approved_at?: string | null;
+    authorization_code?: string | null;
+    authorization_id?: string;
+    client_id?: string;
+    code_challenge?: string | null;
+    code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"] | null;
+    created_at?: string;
+    expires_at?: string;
+    id?: string;
+    redirect_uri?: string;
+    resource?: string | null;
+    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
+    scope?: string;
+    state?: string | null;
+    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
+    user_id?: string | null;
+};
+
+export type AuthOauth_clientsRow = {
     client_name: string | null;
-    client_secret_hash: string;
+    client_secret_hash: string | null;
+    client_type: Database["auth"]["Enums"]["oauth_client_type"];
     client_uri: string | null;
     created_at: string;
     deleted_at: string | null;
@@ -248,9 +305,9 @@ export type AuthOauth_clientsRow = {
 };
 
 export type AuthOauth_clientsInsert = {
-    client_id: string;
     client_name?: string | null;
-    client_secret_hash: string;
+    client_secret_hash?: string | null;
+    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
     client_uri?: string | null;
     created_at?: string;
     deleted_at?: string | null;
@@ -263,9 +320,9 @@ export type AuthOauth_clientsInsert = {
 };
 
 export type AuthOauth_clientsUpdate = {
-    client_id?: string;
     client_name?: string | null;
-    client_secret_hash?: string;
+    client_secret_hash?: string | null;
+    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
     client_uri?: string | null;
     created_at?: string;
     deleted_at?: string | null;
@@ -275,6 +332,33 @@ export type AuthOauth_clientsUpdate = {
     redirect_uris?: string;
     registration_type?: Database["auth"]["Enums"]["oauth_registration_type"];
     updated_at?: string;
+};
+
+export type AuthOauth_consentsRow = {
+    client_id: string;
+    granted_at: string;
+    id: string;
+    revoked_at: string | null;
+    scopes: string;
+    user_id: string;
+};
+
+export type AuthOauth_consentsInsert = {
+    client_id: string;
+    granted_at?: string;
+    id: string;
+    revoked_at?: string | null;
+    scopes: string;
+    user_id: string;
+};
+
+export type AuthOauth_consentsUpdate = {
+    client_id?: string;
+    granted_at?: string;
+    id?: string;
+    revoked_at?: string | null;
+    scopes?: string;
+    user_id?: string;
 };
 
 export type AuthOne_time_tokensRow = {
@@ -431,6 +515,7 @@ export type AuthSessionsRow = {
     id: string;
     ip: unknown | null;
     not_after: string | null;
+    oauth_client_id: string | null;
     refreshed_at: string | null;
     tag: string | null;
     updated_at: string | null;
@@ -445,6 +530,7 @@ export type AuthSessionsInsert = {
     id: string;
     ip?: unknown | null;
     not_after?: string | null;
+    oauth_client_id?: string | null;
     refreshed_at?: string | null;
     tag?: string | null;
     updated_at?: string | null;
@@ -459,6 +545,7 @@ export type AuthSessionsUpdate = {
     id?: string;
     ip?: unknown | null;
     not_after?: string | null;
+    oauth_client_id?: string | null;
     refreshed_at?: string | null;
     tag?: string | null;
     updated_at?: string | null;
@@ -1326,18 +1413,21 @@ export type Ofc_connectionsUpdate = {
 
 export type Ring_based_systemsRow = {
     maintenance_area_id: string | null;
+    order_in_ring: number | null;
     ring_id: string | null;
     system_id: string;
 };
 
 export type Ring_based_systemsInsert = {
     maintenance_area_id?: string | null;
+    order_in_ring?: number | null;
     ring_id?: string | null;
     system_id: string;
 };
 
 export type Ring_based_systemsUpdate = {
     maintenance_area_id?: string | null;
+    order_in_ring?: number | null;
     ring_id?: string | null;
     system_id?: string;
 };
@@ -1933,6 +2023,7 @@ export type V_systems_completeRow = {
     node_id: string | null;
     node_name: string | null;
     node_type_name: string | null;
+    order_in_ring: number | null;
     remark: string | null;
     ring_id: string | null;
     ring_logical_area_name: string | null;
@@ -1988,7 +2079,13 @@ export type AuthFactor_status = "unverified" | "verified";
 
 export type AuthFactor_type = "totp" | "webauthn" | "phone";
 
+export type AuthOauth_authorization_status = "pending" | "approved" | "denied" | "expired";
+
+export type AuthOauth_client_type = "public" | "confidential";
+
 export type AuthOauth_registration_type = "dynamic" | "manual";
+
+export type AuthOauth_response_type = "code";
 
 export type AuthOne_time_token_type = "confirmation_token" | "reauthentication_token" | "recovery_token" | "email_change_token_new" | "email_change_token_current" | "phone_change_token";
 
@@ -2002,7 +2099,9 @@ export const tableNames = [
   "mfa_amr_claims",
   "mfa_challenges",
   "mfa_factors",
+  "oauth_authorizations",
   "oauth_clients",
+  "oauth_consents",
   "one_time_tokens",
   "refresh_tokens",
   "saml_providers",

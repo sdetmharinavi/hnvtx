@@ -172,7 +172,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-  private extractEnums(
+   private extractEnums(
     enumsNode: ts.TypeLiteralNode,
     schemaName: string,
     enums: EnumInfo[]
@@ -186,11 +186,18 @@ class SupabaseTypeExtractor {
           values: [],
         };
 
-        if (member.type && ts.isUnionTypeNode(member.type)) {
-          enumInfo.values = this.extractUnionValues(member.type);
+        // THE FIX: Handle both single literal types and union types for enums.
+        if (member.type) {
+          if (ts.isUnionTypeNode(member.type)) {
+            enumInfo.values = this.extractUnionValues(member.type);
+          } else if (ts.isLiteralTypeNode(member.type) && ts.isStringLiteral(member.type.literal)) {
+            enumInfo.values.push(member.type.literal.text);
+          }
         }
 
-        enums.push(enumInfo);
+        if (enumInfo.values.length > 0) {
+          enums.push(enumInfo);
+        }
       }
     }
   }

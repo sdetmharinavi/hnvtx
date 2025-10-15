@@ -16,7 +16,9 @@ export function useRingNodes(ringId: string | null) {
       const { data, error } = await supabase
         .from('v_ring_nodes')
         .select('*')
-        .eq('ring_id', ringId);
+        .eq('ring_id', ringId)
+        // Added ordering by the 'order_in_ring' column.
+        .order('order_in_ring', { ascending: true });
 
       console.log(data);
 
