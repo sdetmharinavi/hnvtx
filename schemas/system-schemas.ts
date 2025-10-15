@@ -16,8 +16,15 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    // CORRECTED: Use a more robust transformation that handles '', null, and undefined.
     ring_id: ring_based_systemsInsertSchema.shape.ring_id.transform((val) => val || null).optional(),
+    // ADDED: order_in_ring with transformation to handle empty form inputs
+    order_in_ring: ring_based_systemsInsertSchema.shape.order_in_ring.transform(val => {
+      if (val == null) return null; // This catches both null and undefined
+      const stringVal = String(val);
+      if (stringVal === '') return null;
+      const num = Number(stringVal);
+      return Number.isNaN(num) ? null : num;
+    }).optional(),
     gne: sdh_systemsInsertSchema.shape.gne.transform((val) => val || null).optional(),
   });
 

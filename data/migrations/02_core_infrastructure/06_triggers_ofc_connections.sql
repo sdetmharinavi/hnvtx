@@ -1,4 +1,4 @@
--- Path: migrations/02_core_infrastructure/07_triggers_ofc_connections.sql
+-- Path: data/migrations/02_core_infrastructure/06_triggers_ofc_connections.sql
 -- Description: Creates a trigger to automatically populate ofc_connections when a new ofc_cable is inserted.
 
 -- 1. Define the trigger function

@@ -187,6 +187,9 @@ class TypeScriptToZodConverter {
           if (type.includes('"') && type.includes('|')) {
             const literalValues = type.split(' | ').map((v) => v.trim());
             zodType = `z.enum([${literalValues.join(', ')}])`;
+          } else if (type.trim() === 'unknown' || type.trim() === '') {
+            // Add a safe fallback for unknown or empty types
+            zodType = 'z.any()'; 
           } else {
             zodType = 'z.string()'; // Fallback for complex/unknown types
           }

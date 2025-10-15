@@ -236,10 +236,67 @@ export const authMfa_factorsUpdateSchema = z.object({
   web_authn_credential: JsonSchema.nullable().optional(),
 });
 
-export const authOauth_clientsRowSchema = z.object({
+export const authOauth_authorizationsRowSchema = z.object({
+  approved_at: z.iso.datetime().nullable(),
+  authorization_code: z.string().nullable(),
+  authorization_id: z.uuid(),
   client_id: z.uuid(),
+  code_challenge: z.string().nullable(),
+  code_challenge_method: z.string().nullable(),
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime(),
+  id: z.uuid(),
+  redirect_uri: z.string(),
+  resource: z.string().nullable(),
+  response_type: z.string(),
+  scope: z.string(),
+  state: z.string().nullable(),
+  status: z.string(),
+  user_id: z.uuid().nullable(),
+});
+
+export const authOauth_authorizationsInsertSchema = z.object({
+  approved_at: z.iso.datetime().nullable().optional(),
+  authorization_code: z.string().nullable().optional(),
+  authorization_id: z.uuid(),
+  client_id: z.uuid(),
+  code_challenge: z.string().nullable().optional(),
+  code_challenge_method: z.string().nullable().optional(),
+  created_at: z.iso.datetime().optional(),
+  expires_at: z.iso.datetime().optional(),
+  id: z.uuid(),
+  redirect_uri: z.string(),
+  resource: z.string().nullable().optional(),
+  response_type: z.string().optional(),
+  scope: z.string(),
+  state: z.string().nullable().optional(),
+  status: z.string().optional(),
+  user_id: z.uuid().nullable().optional(),
+});
+
+export const authOauth_authorizationsUpdateSchema = z.object({
+  approved_at: z.iso.datetime().nullable().optional(),
+  authorization_code: z.string().nullable().optional(),
+  authorization_id: z.uuid().optional(),
+  client_id: z.uuid().optional(),
+  code_challenge: z.string().nullable().optional(),
+  code_challenge_method: z.string().nullable().optional(),
+  created_at: z.iso.datetime().optional(),
+  expires_at: z.iso.datetime().optional(),
+  id: z.uuid().optional(),
+  redirect_uri: z.string().optional(),
+  resource: z.string().nullable().optional(),
+  response_type: z.string().optional(),
+  scope: z.string().optional(),
+  state: z.string().nullable().optional(),
+  status: z.string().optional(),
+  user_id: z.uuid().nullable().optional(),
+});
+
+export const authOauth_clientsRowSchema = z.object({
   client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  client_secret_hash: z.string(),
+  client_secret_hash: z.string().nullable(),
+  client_type: z.string(),
   client_uri: z.string().nullable(),
   created_at: z.iso.datetime(),
   deleted_at: z.iso.datetime().nullable(),
@@ -252,9 +309,9 @@ export const authOauth_clientsRowSchema = z.object({
 });
 
 export const authOauth_clientsInsertSchema = z.object({
-  client_id: z.uuid(),
   client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  client_secret_hash: z.string(),
+  client_secret_hash: z.string().nullable().optional(),
+  client_type: z.string().optional(),
   client_uri: z.string().nullable().optional(),
   created_at: z.iso.datetime().optional(),
   deleted_at: z.iso.datetime().nullable().optional(),
@@ -267,9 +324,9 @@ export const authOauth_clientsInsertSchema = z.object({
 });
 
 export const authOauth_clientsUpdateSchema = z.object({
-  client_id: z.uuid().optional(),
   client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  client_secret_hash: z.string().optional(),
+  client_secret_hash: z.string().nullable().optional(),
+  client_type: z.string().optional(),
   client_uri: z.string().nullable().optional(),
   created_at: z.iso.datetime().optional(),
   deleted_at: z.iso.datetime().nullable().optional(),
@@ -279,6 +336,33 @@ export const authOauth_clientsUpdateSchema = z.object({
   redirect_uris: z.string().optional(),
   registration_type: z.string().optional(),
   updated_at: z.iso.datetime().optional(),
+});
+
+export const authOauth_consentsRowSchema = z.object({
+  client_id: z.uuid(),
+  granted_at: z.iso.datetime(),
+  id: z.uuid(),
+  revoked_at: z.iso.datetime().nullable(),
+  scopes: z.string(),
+  user_id: z.uuid(),
+});
+
+export const authOauth_consentsInsertSchema = z.object({
+  client_id: z.uuid(),
+  granted_at: z.iso.datetime().optional(),
+  id: z.uuid(),
+  revoked_at: z.iso.datetime().nullable().optional(),
+  scopes: z.string(),
+  user_id: z.uuid(),
+});
+
+export const authOauth_consentsUpdateSchema = z.object({
+  client_id: z.uuid().optional(),
+  granted_at: z.iso.datetime().optional(),
+  id: z.uuid().optional(),
+  revoked_at: z.iso.datetime().nullable().optional(),
+  scopes: z.string().optional(),
+  user_id: z.uuid().optional(),
 });
 
 export const authOne_time_tokensRowSchema = z.object({
@@ -435,6 +519,7 @@ export const authSessionsRowSchema = z.object({
   id: z.uuid(),
   ip: z.string().nullable(),
   not_after: z.string().nullable(),
+  oauth_client_id: z.uuid().nullable(),
   refreshed_at: z.iso.datetime().nullable(),
   tag: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -449,6 +534,7 @@ export const authSessionsInsertSchema = z.object({
   id: z.uuid(),
   ip: z.string().nullable().optional(),
   not_after: z.string().nullable().optional(),
+  oauth_client_id: z.uuid().nullable().optional(),
   refreshed_at: z.iso.datetime().nullable().optional(),
   tag: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -463,6 +549,7 @@ export const authSessionsUpdateSchema = z.object({
   id: z.uuid().optional(),
   ip: z.string().nullable().optional(),
   not_after: z.string().nullable().optional(),
+  oauth_client_id: z.uuid().nullable().optional(),
   refreshed_at: z.iso.datetime().nullable().optional(),
   tag: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1348,18 +1435,21 @@ export const ofc_connectionsUpdateSchema = z.object({
 
 export const ring_based_systemsRowSchema = z.object({
   maintenance_area_id: z.uuid().nullable(),
+  order_in_ring: z.number().nullable(),
   ring_id: z.uuid().nullable(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsInsertSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
+  order_in_ring: z.number().nullable().optional(),
   ring_id: z.uuid().nullable().optional(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsUpdateSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
+  order_in_ring: z.number().nullable().optional(),
   ring_id: z.uuid().nullable().optional(),
   system_id: z.uuid().optional(),
 });
@@ -1953,6 +2043,7 @@ export const v_systems_completeRowSchema = z.object({
   node_id: z.uuid().nullable(),
   node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  order_in_ring: z.number().nullable(),
   remark: z.string().nullable(),
   ring_id: z.uuid().nullable(),
   ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -2021,9 +2112,15 @@ export type AuthMfa_challengesUpdateSchema = z.infer<typeof authMfa_challengesUp
 export type AuthMfa_factorsRowSchema = z.infer<typeof authMfa_factorsRowSchema>;
 export type AuthMfa_factorsInsertSchema = z.infer<typeof authMfa_factorsInsertSchema>;
 export type AuthMfa_factorsUpdateSchema = z.infer<typeof authMfa_factorsUpdateSchema>;
+export type AuthOauth_authorizationsRowSchema = z.infer<typeof authOauth_authorizationsRowSchema>;
+export type AuthOauth_authorizationsInsertSchema = z.infer<typeof authOauth_authorizationsInsertSchema>;
+export type AuthOauth_authorizationsUpdateSchema = z.infer<typeof authOauth_authorizationsUpdateSchema>;
 export type AuthOauth_clientsRowSchema = z.infer<typeof authOauth_clientsRowSchema>;
 export type AuthOauth_clientsInsertSchema = z.infer<typeof authOauth_clientsInsertSchema>;
 export type AuthOauth_clientsUpdateSchema = z.infer<typeof authOauth_clientsUpdateSchema>;
+export type AuthOauth_consentsRowSchema = z.infer<typeof authOauth_consentsRowSchema>;
+export type AuthOauth_consentsInsertSchema = z.infer<typeof authOauth_consentsInsertSchema>;
+export type AuthOauth_consentsUpdateSchema = z.infer<typeof authOauth_consentsUpdateSchema>;
 export type AuthOne_time_tokensRowSchema = z.infer<typeof authOne_time_tokensRowSchema>;
 export type AuthOne_time_tokensInsertSchema = z.infer<typeof authOne_time_tokensInsertSchema>;
 export type AuthOne_time_tokensUpdateSchema = z.infer<typeof authOne_time_tokensUpdateSchema>;

@@ -274,11 +274,89 @@ export type Database = {
           },
         ]
       }
+      oauth_authorizations: {
+        Row: {
+          approved_at: string | null
+          authorization_code: string | null
+          authorization_id: string
+          client_id: string
+          code_challenge: string | null
+          code_challenge_method:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
+          created_at: string
+          expires_at: string
+          id: string
+          redirect_uri: string
+          resource: string | null
+          response_type: Database["auth"]["Enums"]["oauth_response_type"]
+          scope: string
+          state: string | null
+          status: Database["auth"]["Enums"]["oauth_authorization_status"]
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          authorization_code?: string | null
+          authorization_id: string
+          client_id: string
+          code_challenge?: string | null
+          code_challenge_method?:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
+          created_at?: string
+          expires_at?: string
+          id: string
+          redirect_uri: string
+          resource?: string | null
+          response_type?: Database["auth"]["Enums"]["oauth_response_type"]
+          scope: string
+          state?: string | null
+          status?: Database["auth"]["Enums"]["oauth_authorization_status"]
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          authorization_code?: string | null
+          authorization_id?: string
+          client_id?: string
+          code_challenge?: string | null
+          code_challenge_method?:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string
+          resource?: string | null
+          response_type?: Database["auth"]["Enums"]["oauth_response_type"]
+          scope?: string
+          state?: string | null
+          status?: Database["auth"]["Enums"]["oauth_authorization_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_authorizations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_authorizations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oauth_clients: {
         Row: {
-          client_id: string
           client_name: string | null
-          client_secret_hash: string
+          client_secret_hash: string | null
+          client_type: Database["auth"]["Enums"]["oauth_client_type"]
           client_uri: string | null
           created_at: string
           deleted_at: string | null
@@ -290,9 +368,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          client_id: string
           client_name?: string | null
-          client_secret_hash: string
+          client_secret_hash?: string | null
+          client_type?: Database["auth"]["Enums"]["oauth_client_type"]
           client_uri?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -304,9 +382,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          client_id?: string
           client_name?: string | null
-          client_secret_hash?: string
+          client_secret_hash?: string | null
+          client_type?: Database["auth"]["Enums"]["oauth_client_type"]
           client_uri?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -318,6 +396,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      oauth_consents: {
+        Row: {
+          client_id: string
+          granted_at: string
+          id: string
+          revoked_at: string | null
+          scopes: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          granted_at?: string
+          id: string
+          revoked_at?: string | null
+          scopes: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          granted_at?: string
+          id?: string
+          revoked_at?: string | null
+          scopes?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_consents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_consents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       one_time_tokens: {
         Row: {
@@ -513,6 +633,7 @@ export type Database = {
           id: string
           ip: unknown | null
           not_after: string | null
+          oauth_client_id: string | null
           refreshed_at: string | null
           tag: string | null
           updated_at: string | null
@@ -526,6 +647,7 @@ export type Database = {
           id: string
           ip?: unknown | null
           not_after?: string | null
+          oauth_client_id?: string | null
           refreshed_at?: string | null
           tag?: string | null
           updated_at?: string | null
@@ -539,6 +661,7 @@ export type Database = {
           id?: string
           ip?: unknown | null
           not_after?: string | null
+          oauth_client_id?: string | null
           refreshed_at?: string | null
           tag?: string | null
           updated_at?: string | null
@@ -546,6 +669,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_oauth_client_id_fkey"
+            columns: ["oauth_client_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessions_user_id_fkey"
             columns: ["user_id"]
@@ -752,7 +882,10 @@ export type Database = {
       code_challenge_method: "s256" | "plain"
       factor_status: "unverified" | "verified"
       factor_type: "totp" | "webauthn" | "phone"
+      oauth_authorization_status: "pending" | "approved" | "denied" | "expired"
+      oauth_client_type: "public" | "confidential"
       oauth_registration_type: "dynamic" | "manual"
+      oauth_response_type: "code"
       one_time_token_type:
         | "confirmation_token"
         | "reauthentication_token"
@@ -2139,16 +2272,19 @@ export type Database = {
       ring_based_systems: {
         Row: {
           maintenance_area_id: string | null
+          order_in_ring: number | null
           ring_id: string | null
           system_id: string
         }
         Insert: {
           maintenance_area_id?: string | null
+          order_in_ring?: number | null
           ring_id?: string | null
           system_id: string
         }
         Update: {
           maintenance_area_id?: string | null
+          order_in_ring?: number | null
           ring_id?: string | null
           system_id?: string
         }
@@ -3786,6 +3922,7 @@ export type Database = {
           node_id: string | null
           node_name: string | null
           node_type_name: string | null
+          order_in_ring: number | null
           remark: string | null
           ring_id: string | null
           ring_logical_area_name: string | null
@@ -4122,6 +4259,10 @@ export type Database = {
       get_bsnl_dashboard_data: {
         Args: {
           p_cable_types?: string[]
+          p_max_lat?: number
+          p_max_lng?: number
+          p_min_lat?: number
+          p_min_lng?: number
           p_node_types?: string[]
           p_query?: string
           p_regions?: string[]
@@ -4311,9 +4452,7 @@ export type Database = {
           p_b_slot?: string
           p_bandwidth_allocated_mbps?: number
           p_bandwidth_mbps?: number
-          p_c_code?: string
           p_carrier?: string
-          p_channel?: string
           p_commissioned_on?: string
           p_connected_system_id?: string
           p_customer_name?: string
@@ -4334,9 +4473,7 @@ export type Database = {
           p_sn_ip?: unknown
           p_status: boolean
           p_stm_no?: string
-          p_subscriber?: string
           p_system_id: string
-          p_tk?: string
           p_vlan?: string
         }
         Returns: {
@@ -4368,6 +4505,7 @@ export type Database = {
           p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
+          p_order_in_ring?: number
           p_remark?: string
           p_ring_id?: string
           p_s_no?: string
@@ -4540,7 +4678,10 @@ export const Constants = {
       code_challenge_method: ["s256", "plain"],
       factor_status: ["unverified", "verified"],
       factor_type: ["totp", "webauthn", "phone"],
+      oauth_authorization_status: ["pending", "approved", "denied", "expired"],
+      oauth_client_type: ["public", "confidential"],
       oauth_registration_type: ["dynamic", "manual"],
+      oauth_response_type: ["code"],
       one_time_token_type: [
         "confirmation_token",
         "reauthentication_token",

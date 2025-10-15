@@ -122,10 +122,11 @@ Add inline comments for complex logic
 Follow the existing code style and patterns
 strictly follow @typescript-eslint/no-explicit-any.
 Never try to edit auto generated files like types/supabase-types.ts, types/flattened-types.ts, schemas/zod-schemas.ts.
+Always mention which part of the code has been edited and why.
 
 
 📂 Project Structure & Codebase
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! We will first fix search and filter functionalities as they are not working in many pages.
+Let's begin! We will first fix rings map plotting according to order_in_ring and check if all sql is correctly used or not and if UI for any sql is remaining or any sql is redundant and can be removed.

@@ -16,6 +16,7 @@ SELECT
   lt_system.category AS system_category,
   ma.name AS system_maintenance_terminal_name,
   rbs.ring_id,
+  rbs.order_in_ring, -- ADDED
   ring_area.name AS ring_logical_area_name,
   ss.gne AS sdh_gne
 FROM public.systems s
@@ -125,7 +126,7 @@ SELECT
     n.name,
     n.latitude as lat,
     n.longitude as long,
-    s.order_in_ring as order_in_ring,
+    rbs.order_in_ring as order_in_ring,
     lt.name as type,
     r.status AS ring_status,
     s.status AS system_status,

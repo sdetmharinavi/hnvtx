@@ -118,10 +118,10 @@ export default function SystemsPage() {
   const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
 
   const handleView = useCallback((system: V_systems_completeRowSchema) => {
-    if (system.is_ring_based) {
+    if (system.id) {
       router.push(`/dashboard/systems/${system.id}`);
     } else {
-      toast.info("Detailed path provisioning is only available for ring-based systems.");
+      toast.info("System needs to be created before managing connections.");
     }
   }, [router]);
 
@@ -137,13 +137,23 @@ export default function SystemsPage() {
     const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
     const isRingBased = selectedSystemType?.is_ring_based;
     const isSdh = selectedSystemType?.is_sdh;
-
+  
+    // THE FIX: The payload now correctly includes p_order_in_ring and matches the RPC function signature.
+    // The previous type error `Property 'order_in_ring' does not exist on type...` is now resolved.
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
-        p_id: editModal.record?.id ?? undefined, p_system_name: formData.system_name!, p_system_type_id: formData.system_type_id!,
-        p_node_id: formData.node_id!, p_status: formData.status ?? true, p_ip_address: formData.ip_address || undefined,
-        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined, p_commissioned_on: formData.commissioned_on || undefined,
-        p_s_no: formData.s_no || undefined, p_remark: formData.remark || undefined, p_make: formData.make || undefined,
+        p_id: editModal.record?.id ?? undefined,
+        p_system_name: formData.system_name!,
+        p_system_type_id: formData.system_type_id!,
+        p_node_id: formData.node_id!,
+        p_status: formData.status ?? true,
+        p_ip_address: formData.ip_address || undefined,
+        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
+        p_commissioned_on: formData.commissioned_on || undefined,
+        p_s_no: formData.s_no || undefined,
+        p_remark: formData.remark || undefined,
+        p_make: formData.make || undefined,
         p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
+        p_order_in_ring: (isRingBased && formData.order_in_ring != null) ? Number(formData.order_in_ring) : undefined,
         p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
     };
     upsertSystemMutation.mutate(payload);
