@@ -25,23 +25,20 @@ export default function RingMapPage() {
   const router = useRouter();
   const ringId = params.id as string;
 
-  // THE DEFINITIVE FIX: Use the correct useOfflineQuery hook, mirroring other functional pages.
   const { data: nodes, isLoading } = useOfflineQuery(
     ['ring-nodes-detail', ringId],
-    // Online Fetcher: Call the get_paged_data RPC for the v_ring_nodes view.
     async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
       const { data, error } = await createClient().rpc('get_paged_data', {
         p_view_name: 'v_ring_nodes',
-        p_limit: 1000, // Get all nodes for this ring
+        p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
       });
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
     },
-    // Offline Fetcher: Read directly from the local Dexie table.
     async () => {
       if (!ringId) return [];
       return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
@@ -63,7 +60,8 @@ export default function RingMapPage() {
         lat: node.lat!,
         long: node.long!,
         order_in_ring: node.order_in_ring,
-        type: node.type,
+        type: node.system_type, // intentionally done
+        system_type: node.system_type,
         ring_status: node.ring_status,
         system_status: node.system_status,
         ring_name: node.ring_name,
@@ -72,25 +70,51 @@ export default function RingMapPage() {
       }));
   }, [nodes]);
 
+  // THE FIX: Re-implement the sophisticated logic from your old component.
   const { mainSegments, spurConnections, allPairs } = useMemo(() => {
-    const ringStatusNodes = mappedNodes.filter(node => node.ring_status);
-    const main = (ringStatusNodes.length > 0 ? ringStatusNodes : mappedNodes)
-      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-    if (main.length === 0) return { mainSegments: [], spurConnections: [], allPairs: [] };
-    const segments: Array<[RingMapNode, RingMapNode]> = [];
-    if (main.length > 1) {
-      main.forEach((node, index) => {
-        const nextNode = main[(index + 1) % main.length];
-        segments.push([node, nextNode]);
+    if (mappedNodes.length === 0) {
+      return { mainSegments: [], spurConnections: [], allPairs: [] };
+    }
+
+    const ringStatusNodes = mappedNodes.filter((node) => node.system_status);  // intentionally done
+    const hasRingStatus = ringStatusNodes.length > 0;
+
+    const mainNodes = hasRingStatus
+      ? ringStatusNodes.sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0))
+      : mappedNodes.filter(node => node.type === 'Metro Access Aggregation Node' || node.type === 'Compact Passive Access Node'); // Fallback to MAAN, CPAN nodes
+
+    if (mainNodes.length === 0) {
+        // Ultimate fallback if no ring status or MAAN nodes are found
+        return { mainSegments: [], spurConnections: [], allPairs: [] };
+    }
+    
+    const mainSegments: Array<[RingMapNode, RingMapNode]> = [];
+    const spurConnections: Array<[RingMapNode, RingMapNode]> = [];
+
+    if (hasRingStatus) {
+      // Normal Ring Logic
+      mainNodes.forEach((node, index) => {
+        const nextNode = mainNodes[(index + 1) % mainNodes.length];
+        mainSegments.push([node, nextNode]);
+      });
+
+      mappedNodes.filter(node => !node.system_status).forEach(spurNode => {
+        const parentNode = mainNodes.find(m => m.order_in_ring === spurNode.order_in_ring);
+        if (parentNode) spurConnections.push([parentNode, spurNode]);
+      });
+    } else {
+      // Hub-and-Spoke Fallback Logic
+      const centralHub = mainNodes[0];
+      mappedNodes.forEach(node => {
+        if (node.id !== centralHub.id) {
+          spurConnections.push([centralHub, node]);
+        }
       });
     }
-    const spurs: Array<[RingMapNode, RingMapNode]> = [];
-    mappedNodes.filter(node => !node.ring_status).forEach(spurNode => {
-      const parentNode = main.find(m => m.order_in_ring === spurNode.order_in_ring);
-      if (parentNode) spurs.push([parentNode, spurNode]);
-    });
-    return { mainSegments: segments, spurConnections: spurs, allPairs: [...segments, ...spurs] };
+
+    return { mainSegments, spurConnections, allPairs: [...mainSegments, ...spurConnections] };
   }, [mappedNodes]);
+
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
   

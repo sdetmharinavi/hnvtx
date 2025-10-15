@@ -11,7 +11,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
     omit: [
       "id",
       "node_type_name",
-      "is_ring_based",
+      // "is_ring_based",
       "is_sdh",
       "ring_id",
       "system_type_id",
@@ -26,7 +26,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       "sdh_gne",
       "system_category",
       "system_maintenance_terminal_name",
-      "system_type_code",
+      // "system_type_code",
       "updated_at",
       "created_at",
     ],
@@ -86,6 +86,27 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
             {(value as string) || 'N/A'}
           </code>
         ),
+      },
+      is_ring_based: {
+        key: 'is_ring_based',
+        title: 'Is Ring Based',
+        dataIndex: 'is_ring_based',
+        width: 150,
+      },
+      order_in_ring: {
+        key: 'order_in_ring',
+        title: 'Order In Ring',
+        dataIndex: 'order_in_ring',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 150,
+      },
+      system_type_code: {
+        key: 'system_type_code',
+        title: 'System Type',
+        dataIndex: 'system_type_code',
+        width: 150,
       },
       status: {
         key: 'status',

@@ -109,7 +109,8 @@ export function SystemRingPath({ system }: Props) {
           ring_name: null, 
           order_in_ring: null, 
           ring_status: null, 
-          system_status: null 
+          system_status: null,
+          system_type: node.node_type_name || ''
       }));
   }, [nodesInAreaResult, pathNodesResult]);
   

@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { PublicTableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions } from "./queries-type-helpers";
+import { PublicTableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions, PagedQueryResult, Row } from "./queries-type-helpers";
 
 // Generic toggle status hook
 export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
@@ -24,10 +24,22 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
       ? async ({ id, status }) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            return old.map((item) => ("id" in item && (item as { id: unknown }).id === id ? { ...item, status, updated_at: new Date().toISOString() } : item)) as TableRow<T>[];
+          
+          // THE FIX: Expect a PagedQueryResult object, not an array.
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: PagedQueryResult<Row<T>> | undefined) => {
+            if (!old || !old.data) return old;
+            
+            // Perform the map on the 'data' property.
+            const updatedData = old.data.map((item) => 
+              ("id" in item && (item as { id: unknown }).id === id 
+                ? { ...item, status, updated_at: new Date().toISOString() } 
+                : item
+            ));
+            
+            // Return the full object structure.
+            return { ...old, data: updatedData };
           });
+          
           return { previousData };
         }
       : undefined,

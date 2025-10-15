@@ -3617,6 +3617,7 @@ export type Database = {
           ring_name: string | null
           ring_status: boolean | null
           system_status: boolean | null
+          system_type: string | null
           type: string | null
         }
         Relationships: []

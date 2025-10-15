@@ -127,7 +127,8 @@ SELECT
     n.latitude as lat,
     n.longitude as long,
     rbs.order_in_ring as order_in_ring,
-    lt.name as type,
+    lt_node.name as type, -- This is the physical node type
+    lt_system.name as system_type, -- This is the logical system type for the icon
     r.status AS ring_status,
     s.status AS system_status,
     s.ip_address::text as ip,
@@ -141,7 +142,9 @@ JOIN
 JOIN
     public.nodes n ON s.node_id = n.id
 LEFT JOIN
-    public.lookup_types lt ON n.node_type_id = lt.id;
+    public.lookup_types lt_node ON n.node_type_id = lt_node.id
+LEFT JOIN -- Added this join
+    public.lookup_types lt_system ON s.system_type_id = lt_system.id;
 
 -- View for rings with joined data
 CREATE OR REPLACE VIEW public.v_rings WITH (security_invoker = true) AS
