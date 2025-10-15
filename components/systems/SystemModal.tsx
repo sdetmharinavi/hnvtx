@@ -1,3 +1,5 @@
+// path: components/systems/SystemModal.tsx
+
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
@@ -33,7 +35,6 @@ const createDefaultFormValues = (): SystemFormValues => ({
   s_no: "",
   status: true,
   ring_id: null,
-  order_in_ring: null,
   gne: null,
   make: "",
 });
@@ -125,6 +126,8 @@ export const SystemModal: FC<SystemModalProps> = ({
     }, 200);
   }, [onClose, reset]);
 
+  // THE FIX: The dependency array is now corrected to only react to props changes,
+  // not internal form state changes.
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && rowData) {
@@ -139,15 +142,17 @@ export const SystemModal: FC<SystemModalProps> = ({
           s_no: rowData.s_no || "",
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? null,
-          order_in_ring: rowData.order_in_ring ?? null,
           gne: rowData.sdh_gne ?? null,
           make: rowData.make ?? "",
         });
       } else {
         reset(createDefaultFormValues());
       }
+      // Always reset to step 1 when the modal opens.
+      setStep(1);
     }
   }, [isOpen, isEditMode, rowData, reset]);
+
 
   useEffect(() => {
     if (selectedNodeId) {
@@ -186,11 +191,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     ];
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
-      if (needsStep2) {
-        setStep(2);
-      } else {
-        handleSubmit(onValidSubmit)();
-      }
+      if (needsStep2) setStep(2);
     } else {
       toast.error("Please fill in all required fields to continue.");
     }
@@ -239,50 +240,99 @@ export const SystemModal: FC<SystemModalProps> = ({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      transition={{ duration: 0.3 }}
-    >
+      transition={{ duration: 0.3 }}>
+      {" "}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-        <FormInput name='system_name' label='System Name' register={register} error={errors.system_name} required />
-        <FormSearchableSelect name='system_type_id' label='System Type' control={control} options={systemTypeOptions} error={errors.system_type_id} required />
-        <FormSearchableSelect name='node_id' label='Node / Location' control={control} options={nodeOptions} error={errors.node_id} required />
-        <FormSearchableSelect name='maintenance_terminal_id' label='Maintenance Terminal' control={control} options={maintenanceTerminalOptions} error={errors.maintenance_terminal_id} />
-        <FormIPAddressInput name='ip_address' label='IP Address' control={control} error={errors.ip_address} />
-        <FormDateInput name='commissioned_on' label='Commissioned On' control={control} error={errors.commissioned_on} />
-      </div>
+        {" "}
+        <FormInput
+          name='system_name'
+          label='System Name'
+          register={register}
+          error={errors.system_name}
+          required
+        />{" "}
+        <FormSearchableSelect
+          name='system_type_id'
+          label='System Type'
+          control={control}
+          options={systemTypeOptions}
+          error={errors.system_type_id}
+          required
+        />{" "}
+        <FormSearchableSelect
+          name='node_id'
+          label='Node / Location'
+          control={control}
+          options={nodeOptions}
+          error={errors.node_id}
+          required
+        />{" "}
+        <FormSearchableSelect
+          name='maintenance_terminal_id'
+          label='Maintenance Terminal'
+          control={control}
+          options={maintenanceTerminalOptions}
+          error={errors.maintenance_terminal_id}
+        />{" "}
+        <FormIPAddressInput
+          name='ip_address'
+          label='IP Address'
+          control={control}
+          error={errors.ip_address}
+        />{" "}
+        <FormDateInput
+          name='commissioned_on'
+          label='Commissioned On'
+          control={control}
+          error={errors.commissioned_on}
+        />{" "}
+      </div>{" "}
     </motion.div>
   );
-
   const step2Fields = (
     <motion.div
       key='step2'
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-    >
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.3 }}>
+      {" "}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        {" "}
         {isRingBasedSystem && (
-          <>
-            <FormSearchableSelect name='ring_id' label='Ring' control={control} options={ringOptions} error={errors.ring_id} />
-            <FormInput name='order_in_ring' label='Order in Ring' type='number' register={register} error={errors.order_in_ring} placeholder="e.g., 1, 2, 3..." />
-          </>
-        )}
+          <FormSearchableSelect
+            name='ring_id'
+            label='Ring'
+            control={control}
+            options={ringOptions}
+            error={errors.ring_id}
+          />
+        )}{" "}
         {isSdhSystem && (
           <>
-            <FormInput name='gne' label='GNE' register={register} error={errors.gne} />
-            <FormInput name='make' label='Make' register={register} error={errors.make} />
+            {" "}
+            <FormInput name='gne' label='GNE' register={register} error={errors.gne} />{" "}
+            <FormInput name='make' label='Make' register={register} error={errors.make} />{" "}
           </>
-        )}
+        )}{" "}
         <div className='md:col-span-2'>
-          <FormInput name='s_no' label='Serial Number' register={register} error={errors.s_no} />
-        </div>
+          {" "}
+          <FormInput
+            name='s_no'
+            label='Serial Number'
+            register={register}
+            error={errors.s_no}
+          />{" "}
+        </div>{" "}
         <div className='md:col-span-2'>
-          <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />
-        </div>
+          {" "}
+          <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />{" "}
+        </div>{" "}
         <div className='md:col-span-2'>
-          <FormSwitch name='status' label='Status' control={control} className='my-4' />
-        </div>
-      </div>
+          {" "}
+          <FormSwitch name='status' label='Status' control={control} className='my-4' />{" "}
+        </div>{" "}
+      </div>{" "}
     </motion.div>
   );
 
@@ -297,16 +347,14 @@ export const SystemModal: FC<SystemModalProps> = ({
       title={modalTitle}
       size='xl'
       visible={false}
-      className='h-0 w-0 bg-transparent'
-    >
+      className='h-0 w-0 bg-transparent'>
       <FormCard
         standalone
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
         isLoading={isLoading}
         title={modalTitle}
-        footerContent={renderFooter()}
-      >
+        footerContent={renderFooter()}>
         <AnimatePresence mode='wait'>{step === 1 ? step1Fields : step2Fields}</AnimatePresence>
       </FormCard>
     </Modal>
