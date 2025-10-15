@@ -35,6 +35,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   s_no: "",
   status: true,
   ring_id: null,
+  order_in_ring: 0,
   gne: null,
   make: "",
 });
@@ -142,6 +143,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           s_no: rowData.s_no || "",
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? null,
+          order_in_ring: rowData.order_in_ring ?? 0,
           gne: rowData.sdh_gne ?? null,
           make: rowData.make ?? "",
         });
@@ -300,6 +302,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
         {" "}
         {isRingBasedSystem && (
+          <>
           <FormSearchableSelect
             name='ring_id'
             label='Ring'
@@ -307,6 +310,15 @@ export const SystemModal: FC<SystemModalProps> = ({
             options={ringOptions}
             error={errors.ring_id}
           />
+          <FormInput
+              name="order_in_ring"
+              label="Order in Ring"
+              type="number"
+              register={register}
+              error={errors.order_in_ring}
+              placeholder="e.g., 1, 2, 3..."
+            />
+            </>
         )}{" "}
         {isSdhSystem && (
           <>

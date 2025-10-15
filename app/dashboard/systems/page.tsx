@@ -23,6 +23,8 @@ import { SystemFormData } from '@/schemas/system-schemas';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -99,6 +101,10 @@ export default function SystemsPage() {
     tableName: 'systems', dataQueryHook: useSystemsData, searchColumn: 'system_name', displayNameField: 'system_name'
   });
 
+  const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [...TABLE_COLUMN_KEYS.v_systems_complete]); // order will be as per TABLE_COLUMN_KEYS.v_systems_complete
+
+  console.log(orderedSystems);
+
   const isInitialLoad = isLoading && systems.length === 0;
 
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
@@ -170,7 +176,7 @@ export default function SystemsPage() {
       <DataTable
         tableName="v_systems_complete"
         data={systems}
-        columns={SystemsTableColumns(systems)}
+        columns={orderedSystems}
         loading={isLoading}
         actions={tableActions as TableAction<'v_systems_complete'>[]}
         pagination={{

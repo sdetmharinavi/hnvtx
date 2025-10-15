@@ -18,9 +18,10 @@ interface ClientRingMapProps {
   onNodeClick?: (nodeId: string) => void;
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
-  showControls?: boolean;
+  showControls?: boolean; // NEW PROP
 }
 
+// ... (Helper components like MapController and FullscreenControl remain the same)
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -87,7 +88,7 @@ export default function ClientRingMap({
   highlightedNodeIds = [],
   onNodeClick,
   flyToCoordinates = null,
-  showControls = false,
+  showControls = false, // NEW PROP with default value
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -99,33 +100,10 @@ export default function ClientRingMap({
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
   console.log(nodes);
-  
-  // THE FIX: Re-implemented the popup offset logic from the old component.
-  const popupOffsets = useMemo(() => {
-    const groups: Record<string, string[]> = {};
-    nodes.forEach((node) => {
-      const key = `${node.lat},${node.long}`;
-      if (!groups[key]) groups[key] = [];
-      if(node.id) groups[key].push(node.id);
-    });
-
-    const offsets: Record<string, [number, number]> = {};
-    Object.values(groups).forEach((nodeIds) => {
-      const total = nodeIds.length;
-      if (total > 1) {
-        nodeIds.forEach((nodeId, index) => {
-          const angle = (index / total) * (Math.PI * 2) - Math.PI / 2;
-          const radius = 40; // pixels from marker center
-          const offsetX = Math.cos(angle) * radius;
-          const offsetY = Math.sin(angle) * radius;
-          offsets[nodeId] = [offsetX, offsetY];
-        });
-      }
-    });
-    return offsets;
-  }, [nodes]);
 
   useEffect(() => {
+    // Fix for default marker icons in React Leaflet
+    // We need to delete the private _getIconUrl method to override with custom icons
     const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
       _getIconUrl?: () => string;
     };
@@ -148,21 +126,28 @@ export default function ClientRingMap({
 
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
+
+    // Filter out nodes with invalid coordinates
     const validNodes = nodes.filter((n) => n.lat !== null && n.long !== null && typeof n.lat === "number" && typeof n.long === "number");
+
     if (validNodes.length === 0) return null;
+
     const lats = validNodes.map((n) => n.lat as number);
     const lngs = validNodes.map((n) => n.long as number);
+
     return new LatLngBounds([Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]);
   }, [nodes]);
 
   if (nodes.length === 0) return <div className='py-10 text-center'>No nodes to display</div>;
 
+  // const mapUrl = theme === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapAttribution = "&copy; OpenStreetMap contributors &copy; CARTO";
   const mapContainerClass = isFullScreen ? "fixed inset-0 z-[100]" : "relative h-full w-full rounded-lg overflow-hidden";
 
   return (
     <div className={mapContainerClass}>
+      {/* --- THIS UI BLOCK IS NOW CONDITIONAL --- */}
       {showControls && (
         <div className='absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white'>
           {onBack && (
@@ -252,7 +237,7 @@ export default function ClientRingMap({
                 ref={(el) => {
                   if (el) markerRefs.current[node.id!] = el;
                 }}>
-                <Popup autoClose={false} closeOnClick={false} className={theme === "dark" ? "dark-popup" : ""} offset={popupOffsets[node.id!] || [0, 0]}>
+                <Popup autoClose={false} closeOnClick={false} className={theme === "dark" ? "dark-popup" : ""}>
                   <div className='text-sm'>
                     <h4 className='font-bold'>{node.name}</h4>
                     <p>Type: {node.type}</p>
