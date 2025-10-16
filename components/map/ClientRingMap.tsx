@@ -114,7 +114,7 @@ export default function ClientRingMap({
 
   console.log(nodes);
 
-  // THE FIX: Re-implemented the popup offset logic from the old component.
+  // Re-implemented the popup offset logic from the old component.
   const popupOffsets = useMemo(() => {
     const groups: Record<string, string[]> = {};
     nodes.forEach((node) => {
@@ -310,7 +310,7 @@ export default function ClientRingMap({
               <Marker
                 key={node.id!}
                 position={[node.lat as number, node.long as number]}
-                icon={getNodeIcon(node.type, isHighlighted)}
+                icon={getNodeIcon(node.system_type, isHighlighted)}
                 eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
                 ref={(el) => {
                   if (el) markerRefs.current[node.id!] = el;
