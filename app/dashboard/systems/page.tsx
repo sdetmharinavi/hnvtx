@@ -142,7 +142,6 @@ export default function SystemsPage() {
   const handleSave = useCallback((formData: SystemFormData) => {
     const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
     const isRingBased = selectedSystemType?.is_ring_based;
-    const isSdh = selectedSystemType?.is_sdh;
   
     // THE FIX: The payload now correctly includes p_order_in_ring and matches the RPC function signature.
     // The previous type error `Property 'order_in_ring' does not exist on type...` is now resolved.
@@ -160,7 +159,6 @@ export default function SystemsPage() {
         p_make: formData.make || undefined,
         p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
         p_order_in_ring: (isRingBased && formData.order_in_ring != null) ? Number(formData.order_in_ring) : undefined,
-        p_gne: (isSdh && formData.gne) ? formData.gne : undefined,
     };
     upsertSystemMutation.mutate(payload);
   }, [editModal.record, upsertSystemMutation, systemTypes]);

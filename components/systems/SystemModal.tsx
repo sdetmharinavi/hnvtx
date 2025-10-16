@@ -59,7 +59,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const [step, setStep] = useState(1);
 
   const { data: systemTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name, is_ring_based, is_sdh, code",
+    columns: "id, name, is_ring_based, code",
     filters: { category: "SYSTEM_TYPES" },
     orderBy: [{ column: "code", ascending: true }],
   });

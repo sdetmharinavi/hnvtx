@@ -56,7 +56,7 @@ export function LookupModal({
   const lookupTypeFormSchema = lookup_typesInsertSchema.pick({
     category: true, code: true, description: true, name: true,
     sort_order: true, is_system_default: true, status: true,
-    is_ring_based: true, is_sdh: true, // ADDED
+    is_ring_based: true,
   });
   type LookupTypeFormData = z.infer<typeof lookupTypeFormSchema>;
 
@@ -68,7 +68,7 @@ export function LookupModal({
     defaultValues: {
       category: "", code: "", description: "", name: "",
       sort_order: 0, is_system_default: false, status: true,
-      is_ring_based: false, is_sdh: false, // ADDED
+      is_ring_based: false, 
     },
   });
   
@@ -87,7 +87,6 @@ export function LookupModal({
         is_system_default: editingLookup?.is_system_default || false,
         status: editingLookup?.status !== false,
         is_ring_based: editingLookup?.is_ring_based || false, // ADDED
-        is_sdh: editingLookup?.is_sdh || false, // ADDED
       };
       reset(resetData);
     }
@@ -190,10 +189,6 @@ export function LookupModal({
                 <div className="flex items-center">
                   <input type="checkbox" id="is_ring_based" {...register("is_ring_based")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
                   <label htmlFor="is_ring_based" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Is Ring-Based System</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="checkbox" id="is_sdh" {...register("is_sdh")} disabled={isSubmitting} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600" />
-                  <label htmlFor="is_sdh" className="ml-2 text-sm text-gray-700 dark:text-gray-300">Is SDH System</label>
                 </div>
               </>
             )}
