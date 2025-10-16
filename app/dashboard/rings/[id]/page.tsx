@@ -62,7 +62,7 @@ export default function RingMapPage() {
         lat: node.lat!,
         long: node.long!,
         order_in_ring: node.order_in_ring,
-        type: node.system_type, // intentionally done
+        type: node.type!,
         system_type: node.system_type,
         ring_status: node.ring_status,
         system_status: node.system_status,
@@ -72,50 +72,40 @@ export default function RingMapPage() {
       }));
   }, [nodes]);
 
-  // THE FIX: Re-implement the sophisticated logic from your old component.
+
   const { mainSegments, spurConnections, allPairs } = useMemo(() => {
     if (mappedNodes.length === 0) {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
-    const ringStatusNodes = mappedNodes.filter((node) => node.system_status);  // intentionally done
-    const hasRingStatus = ringStatusNodes.length > 0;
+    const mainNodes = mappedNodes
+      .filter(node => node.system_status && node.system_type !== 'BTS Microwave Link')
+      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
-    const mainNodes = hasRingStatus
-      ? ringStatusNodes.sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0))
-      : mappedNodes.filter(node => node.type === 'Metro Access Aggregation Node' || node.type === 'Compact Passive Access Node'); // Fallback to MAAN, CPAN nodes
-
-    if (mainNodes.length === 0) {
-        // Ultimate fallback if no ring status or MAAN nodes are found
-        return { mainSegments: [], spurConnections: [], allPairs: [] };
-    }
-    
     const mainSegments: Array<[RingMapNode, RingMapNode]> = [];
     const spurConnections: Array<[RingMapNode, RingMapNode]> = [];
 
-    if (hasRingStatus) {
-      // Normal Ring Logic
-      mainNodes.forEach((node, index) => {
-        const nextNode = mainNodes[(index + 1) % mainNodes.length];
-        mainSegments.push([node, nextNode]);
-      });
-
-      mappedNodes.filter(node => !node.system_status).forEach(spurNode => {
-        const parentNode = mainNodes.find(m => m.order_in_ring === spurNode.order_in_ring);
-        if (parentNode) spurConnections.push([parentNode, spurNode]);
-      });
-    } else {
-      // Hub-and-Spoke Fallback Logic
-      const centralHub = mainNodes[0];
-      mappedNodes.forEach(node => {
-        if (node.id !== centralHub.id) {
-          spurConnections.push([centralHub, node]);
-        }
-      });
+    if (mainNodes.length > 1) {
+        mainNodes.forEach((node, index) => {
+            const nextNode = mainNodes[(index + 1) % mainNodes.length];
+            mainSegments.push([node, nextNode]);
+        });
     }
+
+    const btsMicrowaveNodes = mappedNodes.filter(node => node.system_type === 'BTS Microwave Link');
+
+    btsMicrowaveNodes.forEach(spurNode => {
+      const parentNode = mainNodes.find(m => m.order_in_ring === spurNode.order_in_ring);
+      if (parentNode) {
+        spurConnections.push([parentNode, spurNode]);
+      }
+    });
 
     return { mainSegments, spurConnections, allPairs: [...mainSegments, ...spurConnections] };
   }, [mappedNodes]);
+
+  console.log("mainSegments", mainSegments);
+  console.log("spurConnections", spurConnections);
 
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
