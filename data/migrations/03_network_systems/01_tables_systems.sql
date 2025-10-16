@@ -57,9 +57,7 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   fiber_in INTEGER,
   fiber_out INTEGER,
   customer_name TEXT,
-  bandwidth_allocated_mbps INTEGER,
-  commissioned_on DATE,
-  remark TEXT
+  bandwidth_allocated_mbps INTEGER
 );
 
 -- 5. Dedicated Table for SDH Connection Specific Details

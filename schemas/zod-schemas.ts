@@ -438,7 +438,7 @@ export const authSaml_providersRowSchema = z.object({
   id: z.uuid(),
   metadata_url: z.url().nullable(),
   metadata_xml: z.string(),
-  name_id_format: z.string().nullable(),
+  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sso_provider_id: z.uuid(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -450,7 +450,7 @@ export const authSaml_providersInsertSchema = z.object({
   id: z.uuid(),
   metadata_url: z.url().nullable().optional(),
   metadata_xml: z.string(),
-  name_id_format: z.string().nullable().optional(),
+  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   sso_provider_id: z.uuid(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -462,7 +462,7 @@ export const authSaml_providersUpdateSchema = z.object({
   id: z.uuid().optional(),
   metadata_url: z.url().nullable().optional(),
   metadata_xml: z.string().optional(),
-  name_id_format: z.string().nullable().optional(),
+  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   sso_provider_id: z.uuid().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1393,42 +1393,36 @@ export const ofc_connectionsUpdateSchema = z.object({
 
 export const ports_managementRowSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable(),
-  commissioned_on: z.iso.date().nullable(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   port: z.string().nullable(),
   port_capacity: z.string().nullable(),
   port_type_id: z.uuid().nullable(),
-  remark: z.string().nullable(),
   sfp_serial_no: z.string().nullable(),
   system_connection_id: z.uuid(),
 });
 
 export const ports_managementInsertSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable().optional(),
-  commissioned_on: z.iso.date().nullable().optional(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_connection_id: z.uuid(),
 });
 
 export const ports_managementUpdateSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable().optional(),
-  commissioned_on: z.iso.date().nullable().optional(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
-  remark: z.string().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_connection_id: z.uuid().optional(),
 });
@@ -1728,7 +1722,7 @@ export const v_end_to_end_pathsRowSchema = z.object({
   operational_status: z.string().min(1, "Status cannot be empty").nullable(),
   path_id: z.uuid().nullable(),
   path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  route_names: z.string().nullable(),
+  route_names: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   segment_count: z.number().int().min(0).nullable(),
   source_system_id: z.uuid().nullable(),
   total_distance_km: z.number().nullable(),

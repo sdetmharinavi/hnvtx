@@ -1371,42 +1371,36 @@ export type Ofc_connectionsUpdate = {
 
 export type Ports_managementRow = {
     bandwidth_allocated_mbps: number | null;
-    commissioned_on: string | null;
     customer_name: string | null;
     fiber_in: number | null;
     fiber_out: number | null;
     port: string | null;
     port_capacity: string | null;
     port_type_id: string | null;
-    remark: string | null;
     sfp_serial_no: string | null;
     system_connection_id: string;
 };
 
 export type Ports_managementInsert = {
     bandwidth_allocated_mbps?: number | null;
-    commissioned_on?: string | null;
     customer_name?: string | null;
     fiber_in?: number | null;
     fiber_out?: number | null;
     port?: string | null;
     port_capacity?: string | null;
     port_type_id?: string | null;
-    remark?: string | null;
     sfp_serial_no?: string | null;
     system_connection_id: string;
 };
 
 export type Ports_managementUpdate = {
     bandwidth_allocated_mbps?: number | null;
-    commissioned_on?: string | null;
     customer_name?: string | null;
     fiber_in?: number | null;
     fiber_out?: number | null;
     port?: string | null;
     port_capacity?: string | null;
     port_type_id?: string | null;
-    remark?: string | null;
     sfp_serial_no?: string | null;
     system_connection_id?: string;
 };

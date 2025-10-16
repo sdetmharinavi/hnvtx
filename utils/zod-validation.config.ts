@@ -97,7 +97,7 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'Username format validation',
     },
     {
-      fieldPatterns: ['.*name$', 'title'],
+      fieldPatterns: ['first_name', 'last_name','name', 'title'],
       validation: 'z.string().min(1, "Name cannot be empty").max(255, "Name is too long")',
       description: 'Name fields validation',
     },
