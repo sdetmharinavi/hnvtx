@@ -33,32 +33,26 @@ export const HighlightedIcon = L.icon({
 // making the icons more representative of the network equipment.
 export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: boolean) => {
 
-  console.log(nodeType);
   
   if (isHighlighted) return HighlightedIcon;
   // Normalize the node type for case-insensitive matching
   const type = nodeType?.toLowerCase() ?? '';
 
   if (
-    type.includes('Metro Access Aggregation Node') ||
-    type.includes('Compact Passive Access Node') ||
-    type.includes('Terminal Node') ||
-    type.includes('Telephone Exchange (Exch.)') ||
-    type.includes('Transmission Nodes')
+    type.includes('metro access aggregation node') ||
+    type.includes('compact passive access node') ||
+    type.includes('converged packet aggregation node') ||
+    type.includes('terminal node') ||
+    type.includes('telephone exchange (exch.)') ||
+    type.includes('transmission nodes')
   ) {
     return MaanIcon;
   }
-  if (type.includes('BTS (running over radiolink)')) {
+  if (type.includes('bts (running over radiolink)') || type.includes('bts microwave link')) {
     return BTSRLIcon;
   }
-  if (type.includes('Base Transceiver Station')) {
+  if (type.includes('base transceiver station') || type.includes('baseband unit')) {
     return BTSIcon;
-  }
-  if (type.includes('BTS Microwave Link')) {
-    return BTSRLIcon;
-  }
-  if (type.includes('Converged Packet Aggregation Node')) {
-    return MaanIcon;
   }
   // Fallback for other types like 'Joint / Splice Point'
   return DefaultIcon;
