@@ -17,16 +17,14 @@ SELECT
   ma.name AS system_maintenance_terminal_name,
   rbs.ring_id,
   rbs.order_in_ring, -- ADDED
-  ring_area.name AS ring_logical_area_name,
-  ss.gne AS sdh_gne
+  ring_area.name AS ring_logical_area_name
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
-  LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id
-  LEFT JOIN public.sdh_systems ss ON s.id = ss.system_id;
+  LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
 
 
 -- View for a complete picture of a system connection and its specific details.
@@ -38,7 +36,7 @@ SELECT
   sc.en_id,
   sc.connected_system_id,
   sc.media_type_id,
-  sfpc.sfp_type_id,
+  pm.port_type_id,
   -- Existing human-readable name fields
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
@@ -46,8 +44,8 @@ SELECT
   lt_cs_type.name AS connected_system_type_name, sc.vlan, sc.commissioned_on,
   sc.remark, sc.status, sc.created_at, sc.updated_at,
   -- SFP-based details
-  sfpc.sfp_port, lt_sfp.name as sfp_type_name, sfpc.sfp_capacity,
-  sfpc.sfp_serial_no, sfpc.fiber_in, sfpc.fiber_out, sfpc.customer_name, sfpc.bandwidth_allocated_mbps,
+  pm.port, lt_port_type.name as port_type_name, pm.port_capacity,
+  pm.sfp_serial_no, pm.fiber_in, pm.fiber_out, pm.customer_name, pm.bandwidth_allocated_mbps,
   -- SDH details
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
@@ -61,8 +59,8 @@ FROM public.system_connections sc
   LEFT JOIN public.systems cs ON sc.connected_system_id = cs.id
   LEFT JOIN public.lookup_types lt_cs_type ON cs.system_type_id = lt_cs_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
-  LEFT JOIN public.sfp_based_connections sfpc ON sc.id = sfpc.system_connection_id
-  LEFT JOIN public.lookup_types lt_sfp ON sfpc.sfp_type_id = lt_sfp.id
+  LEFT JOIN public.ports_management pm ON sc.id = pm.system_connection_id
+  LEFT JOIN public.lookup_types lt_port_type ON pm.port_type_id = lt_port_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
 
 

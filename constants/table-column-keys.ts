@@ -639,7 +639,6 @@ const TABLE_COLUMN_OBJECTS = {
     latitude: "latitude",
     longitude: "longitude",
     ring_logical_area_name: "ring_logical_area_name",
-    sdh_gne: "sdh_gne",
     system_category: "system_category",
     system_maintenance_terminal_name: "system_maintenance_terminal_name",
     updated_at: "updated_at",

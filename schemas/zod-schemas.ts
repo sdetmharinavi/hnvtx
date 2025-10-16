@@ -1205,45 +1205,6 @@ export const maintenance_areasUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const management_portsRowSchema = z.object({
-  commissioned_on: z.iso.date().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  node_id: z.uuid().nullable(),
-  port_no: z.string(),
-  remark: z.string().nullable(),
-  status: z.boolean().nullable(),
-  system_id: z.uuid().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const management_portsInsertSchema = z.object({
-  commissioned_on: z.iso.date().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  node_id: z.uuid().nullable().optional(),
-  port_no: z.string(),
-  remark: z.string().nullable().optional(),
-  status: z.boolean().nullable().optional(),
-  system_id: z.uuid().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const management_portsUpdateSchema = z.object({
-  commissioned_on: z.iso.date().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  node_id: z.uuid().nullable().optional(),
-  port_no: z.string().optional(),
-  remark: z.string().nullable().optional(),
-  status: z.boolean().nullable().optional(),
-  system_id: z.uuid().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
 export const nodesRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -1433,6 +1394,48 @@ export const ofc_connectionsUpdateSchema = z.object({
   updated_sn_id: z.uuid().nullable().optional(),
 });
 
+export const ports_managementRowSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable(),
+  commissioned_on: z.iso.date().nullable(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  fiber_in: z.number().nullable(),
+  fiber_out: z.number().nullable(),
+  port: z.string().nullable(),
+  port_capacity: z.string().nullable(),
+  port_type_id: z.uuid().nullable(),
+  remark: z.string().nullable(),
+  sfp_serial_no: z.string().nullable(),
+  system_connection_id: z.uuid(),
+});
+
+export const ports_managementInsertSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  fiber_in: z.number().nullable().optional(),
+  fiber_out: z.number().nullable().optional(),
+  port: z.string().nullable().optional(),
+  port_capacity: z.string().nullable().optional(),
+  port_type_id: z.uuid().nullable().optional(),
+  remark: z.string().nullable().optional(),
+  sfp_serial_no: z.string().nullable().optional(),
+  system_connection_id: z.uuid(),
+});
+
+export const ports_managementUpdateSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable().optional(),
+  commissioned_on: z.iso.date().nullable().optional(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  fiber_in: z.number().nullable().optional(),
+  fiber_out: z.number().nullable().optional(),
+  port: z.string().nullable().optional(),
+  port_capacity: z.string().nullable().optional(),
+  port_type_id: z.uuid().nullable().optional(),
+  remark: z.string().nullable().optional(),
+  sfp_serial_no: z.string().nullable().optional(),
+  system_connection_id: z.uuid().optional(),
+});
+
 export const ring_based_systemsRowSchema = z.object({
   maintenance_area_id: z.uuid().nullable(),
   order_in_ring: z.number().nullable(),
@@ -1517,81 +1520,6 @@ export const sdh_connectionsUpdateSchema = z.object({
   b_slot: z.string().nullable().optional(),
   carrier: z.string().nullable().optional(),
   stm_no: z.string().nullable().optional(),
-  system_connection_id: z.uuid().optional(),
-});
-
-export const sdh_node_associationsRowSchema = z.object({
-  id: z.uuid(),
-  node_id: z.uuid(),
-  node_ip: z.any().nullable(),
-  node_position: z.string().nullable(),
-  sdh_system_id: z.uuid(),
-});
-
-export const sdh_node_associationsInsertSchema = z.object({
-  id: z.uuid().optional(),
-  node_id: z.uuid(),
-  node_ip: z.any().nullable().optional(),
-  node_position: z.string().nullable().optional(),
-  sdh_system_id: z.uuid(),
-});
-
-export const sdh_node_associationsUpdateSchema = z.object({
-  id: z.uuid().optional(),
-  node_id: z.uuid().optional(),
-  node_ip: z.any().nullable().optional(),
-  node_position: z.string().nullable().optional(),
-  sdh_system_id: z.uuid().optional(),
-});
-
-export const sdh_systemsRowSchema = z.object({
-  gne: z.string().nullable(),
-  system_id: z.uuid(),
-});
-
-export const sdh_systemsInsertSchema = z.object({
-  gne: z.string().nullable().optional(),
-  system_id: z.uuid(),
-});
-
-export const sdh_systemsUpdateSchema = z.object({
-  gne: z.string().nullable().optional(),
-  system_id: z.uuid().optional(),
-});
-
-export const sfp_based_connectionsRowSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  fiber_in: z.number().nullable(),
-  fiber_out: z.number().nullable(),
-  sfp_capacity: z.string().nullable(),
-  sfp_port: z.string().nullable(),
-  sfp_serial_no: z.string().nullable(),
-  sfp_type_id: z.uuid().nullable(),
-  system_connection_id: z.uuid(),
-});
-
-export const sfp_based_connectionsInsertSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  fiber_in: z.number().nullable().optional(),
-  fiber_out: z.number().nullable().optional(),
-  sfp_capacity: z.string().nullable().optional(),
-  sfp_port: z.string().nullable().optional(),
-  sfp_serial_no: z.string().nullable().optional(),
-  sfp_type_id: z.uuid().nullable().optional(),
-  system_connection_id: z.uuid(),
-});
-
-export const sfp_based_connectionsUpdateSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  fiber_in: z.number().nullable().optional(),
-  fiber_out: z.number().nullable().optional(),
-  sfp_capacity: z.string().nullable().optional(),
-  sfp_port: z.string().nullable().optional(),
-  sfp_serial_no: z.string().nullable().optional(),
-  sfp_type_id: z.uuid().nullable().optional(),
   system_connection_id: z.uuid().optional(),
 });
 
@@ -1990,6 +1918,10 @@ export const v_system_connections_completeRowSchema = z.object({
   id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  port: z.string().nullable(),
+  port_capacity: z.string().nullable(),
+  port_type_id: z.uuid().nullable(),
+  port_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   sdh_a_customer: z.string().nullable(),
   sdh_a_slot: z.string().nullable(),
@@ -1997,11 +1929,7 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_b_slot: z.string().nullable(),
   sdh_carrier: z.string().nullable(),
   sdh_stm_no: z.string().nullable(),
-  sfp_capacity: z.string().nullable(),
-  sfp_port: z.string().nullable(),
   sfp_serial_no: z.string().nullable(),
-  sfp_type_id: z.uuid().nullable(),
-  sfp_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any().nullable(),
@@ -2049,7 +1977,6 @@ export const v_systems_completeRowSchema = z.object({
   ring_id: z.uuid().nullable(),
   ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   s_no: z.string().nullable(),
-  sdh_gne: z.string().nullable(),
   status: z.boolean().nullable(),
   system_category: z.string().nullable(),
   system_maintenance_terminal_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -2185,9 +2112,6 @@ export type Lookup_typesUpdateSchema = z.infer<typeof lookup_typesUpdateSchema>;
 export type Maintenance_areasRowSchema = z.infer<typeof maintenance_areasRowSchema>;
 export type Maintenance_areasInsertSchema = z.infer<typeof maintenance_areasInsertSchema>;
 export type Maintenance_areasUpdateSchema = z.infer<typeof maintenance_areasUpdateSchema>;
-export type Management_portsRowSchema = z.infer<typeof management_portsRowSchema>;
-export type Management_portsInsertSchema = z.infer<typeof management_portsInsertSchema>;
-export type Management_portsUpdateSchema = z.infer<typeof management_portsUpdateSchema>;
 export type NodesRowSchema = z.infer<typeof nodesRowSchema>;
 export type NodesInsertSchema = z.infer<typeof nodesInsertSchema>;
 export type NodesUpdateSchema = z.infer<typeof nodesUpdateSchema>;
@@ -2197,6 +2121,9 @@ export type Ofc_cablesUpdateSchema = z.infer<typeof ofc_cablesUpdateSchema>;
 export type Ofc_connectionsRowSchema = z.infer<typeof ofc_connectionsRowSchema>;
 export type Ofc_connectionsInsertSchema = z.infer<typeof ofc_connectionsInsertSchema>;
 export type Ofc_connectionsUpdateSchema = z.infer<typeof ofc_connectionsUpdateSchema>;
+export type Ports_managementRowSchema = z.infer<typeof ports_managementRowSchema>;
+export type Ports_managementInsertSchema = z.infer<typeof ports_managementInsertSchema>;
+export type Ports_managementUpdateSchema = z.infer<typeof ports_managementUpdateSchema>;
 export type Ring_based_systemsRowSchema = z.infer<typeof ring_based_systemsRowSchema>;
 export type Ring_based_systemsInsertSchema = z.infer<typeof ring_based_systemsInsertSchema>;
 export type Ring_based_systemsUpdateSchema = z.infer<typeof ring_based_systemsUpdateSchema>;
@@ -2206,15 +2133,6 @@ export type RingsUpdateSchema = z.infer<typeof ringsUpdateSchema>;
 export type Sdh_connectionsRowSchema = z.infer<typeof sdh_connectionsRowSchema>;
 export type Sdh_connectionsInsertSchema = z.infer<typeof sdh_connectionsInsertSchema>;
 export type Sdh_connectionsUpdateSchema = z.infer<typeof sdh_connectionsUpdateSchema>;
-export type Sdh_node_associationsRowSchema = z.infer<typeof sdh_node_associationsRowSchema>;
-export type Sdh_node_associationsInsertSchema = z.infer<typeof sdh_node_associationsInsertSchema>;
-export type Sdh_node_associationsUpdateSchema = z.infer<typeof sdh_node_associationsUpdateSchema>;
-export type Sdh_systemsRowSchema = z.infer<typeof sdh_systemsRowSchema>;
-export type Sdh_systemsInsertSchema = z.infer<typeof sdh_systemsInsertSchema>;
-export type Sdh_systemsUpdateSchema = z.infer<typeof sdh_systemsUpdateSchema>;
-export type Sfp_based_connectionsRowSchema = z.infer<typeof sfp_based_connectionsRowSchema>;
-export type Sfp_based_connectionsInsertSchema = z.infer<typeof sfp_based_connectionsInsertSchema>;
-export type Sfp_based_connectionsUpdateSchema = z.infer<typeof sfp_based_connectionsUpdateSchema>;
 export type System_connectionsRowSchema = z.infer<typeof system_connectionsRowSchema>;
 export type System_connectionsInsertSchema = z.infer<typeof system_connectionsInsertSchema>;
 export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUpdateSchema>;

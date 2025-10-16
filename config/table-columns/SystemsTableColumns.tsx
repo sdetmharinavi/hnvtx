@@ -23,7 +23,6 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       "latitude",
       "longitude",
       "ring_logical_area_name",
-      "sdh_gne",
       "system_category",
       "system_maintenance_terminal_name",
       // "system_type_code",

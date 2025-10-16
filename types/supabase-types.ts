@@ -1771,81 +1771,6 @@ export type Database = {
           },
         ]
       }
-      management_ports: {
-        Row: {
-          commissioned_on: string | null
-          created_at: string | null
-          id: string
-          name: string | null
-          node_id: string | null
-          port_no: string
-          remark: string | null
-          status: boolean | null
-          system_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          commissioned_on?: string | null
-          created_at?: string | null
-          id?: string
-          name?: string | null
-          node_id?: string | null
-          port_no: string
-          remark?: string | null
-          status?: boolean | null
-          system_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          commissioned_on?: string | null
-          created_at?: string | null
-          id?: string
-          name?: string | null
-          node_id?: string | null
-          port_no?: string
-          remark?: string | null
-          status?: boolean | null
-          system_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "management_ports_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "management_ports_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "management_ports_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "management_ports_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "management_ports_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       nodes: {
         Row: {
           created_at: string | null
@@ -2269,6 +2194,77 @@ export type Database = {
           },
         ]
       }
+      ports_management: {
+        Row: {
+          bandwidth_allocated_mbps: number | null
+          commissioned_on: string | null
+          customer_name: string | null
+          fiber_in: number | null
+          fiber_out: number | null
+          port: string | null
+          port_capacity: string | null
+          port_type_id: string | null
+          remark: string | null
+          sfp_serial_no: string | null
+          system_connection_id: string
+        }
+        Insert: {
+          bandwidth_allocated_mbps?: number | null
+          commissioned_on?: string | null
+          customer_name?: string | null
+          fiber_in?: number | null
+          fiber_out?: number | null
+          port?: string | null
+          port_capacity?: string | null
+          port_type_id?: string | null
+          remark?: string | null
+          sfp_serial_no?: string | null
+          system_connection_id: string
+        }
+        Update: {
+          bandwidth_allocated_mbps?: number | null
+          commissioned_on?: string | null
+          customer_name?: string | null
+          fiber_in?: number | null
+          fiber_out?: number | null
+          port?: string | null
+          port_capacity?: string | null
+          port_type_id?: string | null
+          remark?: string | null
+          sfp_serial_no?: string | null
+          system_connection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_connection_id_fkey"
+            columns: ["system_connection_id"]
+            isOneToOne: true
+            referencedRelation: "system_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_connection_id_fkey"
+            columns: ["system_connection_id"]
+            isOneToOne: true
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ring_based_systems: {
         Row: {
           maintenance_area_id: string | null
@@ -2443,154 +2439,6 @@ export type Database = {
           },
           {
             foreignKeyName: "sdh_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sdh_node_associations: {
-        Row: {
-          id: string
-          node_id: string
-          node_ip: unknown | null
-          node_position: string | null
-          sdh_system_id: string
-        }
-        Insert: {
-          id?: string
-          node_id: string
-          node_ip?: unknown | null
-          node_position?: string | null
-          sdh_system_id: string
-        }
-        Update: {
-          id?: string
-          node_id?: string
-          node_ip?: unknown | null
-          node_position?: string | null
-          sdh_system_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sdh_node_associations_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sdh_node_associations_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sdh_node_associations_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sdh_node_associations_sdh_system_id_fkey"
-            columns: ["sdh_system_id"]
-            isOneToOne: false
-            referencedRelation: "sdh_systems"
-            referencedColumns: ["system_id"]
-          },
-        ]
-      }
-      sdh_systems: {
-        Row: {
-          gne: string | null
-          system_id: string
-        }
-        Insert: {
-          gne?: string | null
-          system_id: string
-        }
-        Update: {
-          gne?: string | null
-          system_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sdh_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sdh_systems_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: true
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sfp_based_connections: {
-        Row: {
-          bandwidth_allocated_mbps: number | null
-          customer_name: string | null
-          fiber_in: number | null
-          fiber_out: number | null
-          sfp_capacity: string | null
-          sfp_port: string | null
-          sfp_serial_no: string | null
-          sfp_type_id: string | null
-          system_connection_id: string
-        }
-        Insert: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id: string
-        }
-        Update: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
-          sfp_capacity?: string | null
-          sfp_port?: string | null
-          sfp_serial_no?: string | null
-          sfp_type_id?: string | null
-          system_connection_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sfp_based_connections_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sfp_based_connections_system_connection_id_fkey"
             columns: ["system_connection_id"]
             isOneToOne: true
             referencedRelation: "v_system_connections_complete"
@@ -3688,6 +3536,10 @@ export type Database = {
           id: string | null
           media_type_id: string | null
           media_type_name: string | null
+          port: string | null
+          port_capacity: string | null
+          port_type_id: string | null
+          port_type_name: string | null
           remark: string | null
           sdh_a_customer: string | null
           sdh_a_slot: string | null
@@ -3695,11 +3547,7 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
-          sfp_capacity: string | null
-          sfp_port: string | null
           sfp_serial_no: string | null
-          sfp_type_id: string | null
-          sfp_type_name: string | null
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown | null
@@ -3714,15 +3562,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sfp_based_connections_sfp_type_id_fkey"
-            columns: ["sfp_type_id"]
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
@@ -3928,7 +3776,6 @@ export type Database = {
           ring_id: string | null
           ring_logical_area_name: string | null
           s_no: string | null
-          sdh_gne: string | null
           status: boolean | null
           system_category: string | null
           system_maintenance_terminal_name: string | null

@@ -10,9 +10,9 @@ DECLARE
 BEGIN
   -- List all tables related to network systems
   FOREACH tbl IN ARRAY ARRAY[
-    'systems', 'system_connections', 'management_ports',
-    'ring_based_systems', 'sfp_based_connections',
-    'sdh_systems', 'sdh_connections', 'sdh_node_associations', 'logical_paths'
+    'systems', 'system_connections', 'ports_management',
+    'ring_based_systems',
+    'sdh_connections', 'logical_paths'
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
@@ -33,14 +33,14 @@ $$;
 -- PART 2: THE FIX - RLS POLICIES FOR SYSTEM SUB-TABLES
 -- =================================================================
 -- This was the missing piece. This policy grants write access to specialized admins
--- on tables like management_ports, sdh_connections, etc.
+-- on tables like ports_management, sdh_connections, etc.
 DO $$
 DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'management_ports', 'ring_based_systems', 'sfp_based_connections',
-    'sdh_systems', 'sdh_connections', 'sdh_node_associations'
+    'ports_management', 'ring_based_systems',
+    'sdh_connections'
   ]
   LOOP
     -- Drop existing policies for idempotency, now correctly targeting the loop variable
@@ -138,7 +138,6 @@ $$;
 
 -- =================================================================
 -- PART 4: This is now a duplicate of PART 2 and is no longer needed.
--- Policies for 'sfp_based_connections' are handled by the loop in PART 2.
 -- =================================================================
 
 

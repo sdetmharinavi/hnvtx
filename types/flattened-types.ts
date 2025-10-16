@@ -1183,45 +1183,6 @@ export type Maintenance_areasUpdate = {
     updated_at?: string | null;
 };
 
-export type Management_portsRow = {
-    commissioned_on: string | null;
-    created_at: string | null;
-    id: string;
-    name: string | null;
-    node_id: string | null;
-    port_no: string;
-    remark: string | null;
-    status: boolean | null;
-    system_id: string | null;
-    updated_at: string | null;
-};
-
-export type Management_portsInsert = {
-    commissioned_on?: string | null;
-    created_at?: string | null;
-    id?: string;
-    name?: string | null;
-    node_id?: string | null;
-    port_no: string;
-    remark?: string | null;
-    status?: boolean | null;
-    system_id?: string | null;
-    updated_at?: string | null;
-};
-
-export type Management_portsUpdate = {
-    commissioned_on?: string | null;
-    created_at?: string | null;
-    id?: string;
-    name?: string | null;
-    node_id?: string | null;
-    port_no?: string;
-    remark?: string | null;
-    status?: boolean | null;
-    system_id?: string | null;
-    updated_at?: string | null;
-};
-
 export type NodesRow = {
     created_at: string | null;
     id: string;
@@ -1411,6 +1372,48 @@ export type Ofc_connectionsUpdate = {
     updated_sn_id?: string | null;
 };
 
+export type Ports_managementRow = {
+    bandwidth_allocated_mbps: number | null;
+    commissioned_on: string | null;
+    customer_name: string | null;
+    fiber_in: number | null;
+    fiber_out: number | null;
+    port: string | null;
+    port_capacity: string | null;
+    port_type_id: string | null;
+    remark: string | null;
+    sfp_serial_no: string | null;
+    system_connection_id: string;
+};
+
+export type Ports_managementInsert = {
+    bandwidth_allocated_mbps?: number | null;
+    commissioned_on?: string | null;
+    customer_name?: string | null;
+    fiber_in?: number | null;
+    fiber_out?: number | null;
+    port?: string | null;
+    port_capacity?: string | null;
+    port_type_id?: string | null;
+    remark?: string | null;
+    sfp_serial_no?: string | null;
+    system_connection_id: string;
+};
+
+export type Ports_managementUpdate = {
+    bandwidth_allocated_mbps?: number | null;
+    commissioned_on?: string | null;
+    customer_name?: string | null;
+    fiber_in?: number | null;
+    fiber_out?: number | null;
+    port?: string | null;
+    port_capacity?: string | null;
+    port_type_id?: string | null;
+    remark?: string | null;
+    sfp_serial_no?: string | null;
+    system_connection_id?: string;
+};
+
 export type Ring_based_systemsRow = {
     maintenance_area_id: string | null;
     order_in_ring: number | null;
@@ -1495,81 +1498,6 @@ export type Sdh_connectionsUpdate = {
     b_slot?: string | null;
     carrier?: string | null;
     stm_no?: string | null;
-    system_connection_id?: string;
-};
-
-export type Sdh_node_associationsRow = {
-    id: string;
-    node_id: string;
-    node_ip: unknown | null;
-    node_position: string | null;
-    sdh_system_id: string;
-};
-
-export type Sdh_node_associationsInsert = {
-    id?: string;
-    node_id: string;
-    node_ip?: unknown | null;
-    node_position?: string | null;
-    sdh_system_id: string;
-};
-
-export type Sdh_node_associationsUpdate = {
-    id?: string;
-    node_id?: string;
-    node_ip?: unknown | null;
-    node_position?: string | null;
-    sdh_system_id?: string;
-};
-
-export type Sdh_systemsRow = {
-    gne: string | null;
-    system_id: string;
-};
-
-export type Sdh_systemsInsert = {
-    gne?: string | null;
-    system_id: string;
-};
-
-export type Sdh_systemsUpdate = {
-    gne?: string | null;
-    system_id?: string;
-};
-
-export type Sfp_based_connectionsRow = {
-    bandwidth_allocated_mbps: number | null;
-    customer_name: string | null;
-    fiber_in: number | null;
-    fiber_out: number | null;
-    sfp_capacity: string | null;
-    sfp_port: string | null;
-    sfp_serial_no: string | null;
-    sfp_type_id: string | null;
-    system_connection_id: string;
-};
-
-export type Sfp_based_connectionsInsert = {
-    bandwidth_allocated_mbps?: number | null;
-    customer_name?: string | null;
-    fiber_in?: number | null;
-    fiber_out?: number | null;
-    sfp_capacity?: string | null;
-    sfp_port?: string | null;
-    sfp_serial_no?: string | null;
-    sfp_type_id?: string | null;
-    system_connection_id: string;
-};
-
-export type Sfp_based_connectionsUpdate = {
-    bandwidth_allocated_mbps?: number | null;
-    customer_name?: string | null;
-    fiber_in?: number | null;
-    fiber_out?: number | null;
-    sfp_capacity?: string | null;
-    sfp_port?: string | null;
-    sfp_serial_no?: string | null;
-    sfp_type_id?: string | null;
     system_connection_id?: string;
 };
 
@@ -1970,6 +1898,10 @@ export type V_system_connections_completeRow = {
     id: string | null;
     media_type_id: string | null;
     media_type_name: string | null;
+    port: string | null;
+    port_capacity: string | null;
+    port_type_id: string | null;
+    port_type_name: string | null;
     remark: string | null;
     sdh_a_customer: string | null;
     sdh_a_slot: string | null;
@@ -1977,11 +1909,7 @@ export type V_system_connections_completeRow = {
     sdh_b_slot: string | null;
     sdh_carrier: string | null;
     sdh_stm_no: string | null;
-    sfp_capacity: string | null;
-    sfp_port: string | null;
     sfp_serial_no: string | null;
-    sfp_type_id: string | null;
-    sfp_type_name: string | null;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown | null;
@@ -2029,7 +1957,6 @@ export type V_systems_completeRow = {
     ring_id: string | null;
     ring_logical_area_name: string | null;
     s_no: string | null;
-    sdh_gne: string | null;
     status: boolean | null;
     system_category: string | null;
     system_maintenance_terminal_name: string | null;
@@ -2124,16 +2051,13 @@ export const tableNames = [
   "logical_paths",
   "lookup_types",
   "maintenance_areas",
-  "management_ports",
   "nodes",
   "ofc_cables",
   "ofc_connections",
+  "ports_management",
   "ring_based_systems",
   "rings",
   "sdh_connections",
-  "sdh_node_associations",
-  "sdh_systems",
-  "sfp_based_connections",
   "system_connections",
   "systems",
   "user_profiles"
