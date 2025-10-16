@@ -9,7 +9,7 @@
 -- This file now only contains the get_paged_data function which depends on them.
 
 CREATE OR REPLACE FUNCTION public.get_paged_data(
-    p_view_name TEXT, p_limit INT, p_offset INT, p_order_by TEXT DEFAULT 'id',
+    p_view_name TEXT, p_limit INT, p_offset INT, p_order_by TEXT DEFAULT 'name',
     p_order_dir TEXT DEFAULT 'asc', p_filters JSONB DEFAULT '{}'
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$

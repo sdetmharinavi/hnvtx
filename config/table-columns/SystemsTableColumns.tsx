@@ -11,6 +11,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
     omit: [
       "id",
       "node_type_name",
+      "system_type_name",
       // "is_ring_based",
       "ring_id",
       "system_type_id",
