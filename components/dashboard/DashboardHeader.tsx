@@ -8,8 +8,11 @@ import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 import ThemeToggle from "../common/ui/theme/ThemeToggle";
 import { useMutationQueue } from "@/hooks/data/useMutationQueue";
-import { Cloud, CloudOff, AlertTriangle } from "lucide-react";
+import { Cloud, CloudOff, AlertTriangle, RefreshCw } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useDataSync } from "@/hooks/data/useDataSync";
+import { useCallback } from "react";
+import { toast } from "sonner";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -62,6 +65,14 @@ export default function DashboardHeader({
   title = "Dashboard",
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
+    const { isSyncing, refetchSync } = useDataSync();
+  const handleRefresh = useCallback(() => {
+    toast.promise(refetchSync(), {
+      loading: 'Starting manual data sync with the server...',
+      success: 'Local data successfully synced!',
+      error: (err: Error) => `Sync failed: ${err.message}`,
+    });
+  }, [refetchSync]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -77,6 +88,14 @@ export default function DashboardHeader({
 
           <div className="space-x-4 relative flex items-center">
             <SyncStatusIndicator />
+            <button
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh all data"
+            >
+              <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+            </button>
             {user && (
               <div className="group">
                 <Link
