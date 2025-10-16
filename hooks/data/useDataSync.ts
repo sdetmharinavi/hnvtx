@@ -73,7 +73,6 @@ export async function syncEntity(
     await table.bulkPut(validData);
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
-    console.log(`✅ [Sync] Successfully synced entity: ${entityName}`);
 
   } catch (err) {
     // IMPROVED ERROR LOGGING
@@ -96,7 +95,6 @@ export function useDataSync() {
   const { isLoading, isError, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
-      console.log('🚀 [Sync] Starting full data synchronization...');
       const results = await Promise.allSettled(
         entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
       );
@@ -110,8 +108,6 @@ export function useDataSync() {
         const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
         throw new Error(`Failed to sync the following entities: ${errorDetails}`);
       }
-      
-      console.log('🎉 [Sync] Full data synchronization complete.');
       return { lastSynced: new Date().toISOString() };
     },
     staleTime: 15 * 60 * 1000,
