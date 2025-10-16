@@ -1654,7 +1654,6 @@ export type Database = {
           description: string | null
           id: string
           is_ring_based: boolean | null
-          is_sdh: boolean | null
           is_system_default: boolean | null
           name: string
           sort_order: number | null
@@ -1668,7 +1667,6 @@ export type Database = {
           description?: string | null
           id?: string
           is_ring_based?: boolean | null
-          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name: string
           sort_order?: number | null
@@ -1682,7 +1680,6 @@ export type Database = {
           description?: string | null
           id?: string
           is_ring_based?: boolean | null
-          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string
           sort_order?: number | null
@@ -2997,7 +2994,6 @@ export type Database = {
           description: string | null
           id: string | null
           is_ring_based: boolean | null
-          is_sdh: boolean | null
           is_system_default: boolean | null
           name: string | null
           sort_order: number | null
@@ -3011,7 +3007,6 @@ export type Database = {
           description?: string | null
           id?: string | null
           is_ring_based?: boolean | null
-          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string | null
           sort_order?: number | null
@@ -3025,7 +3020,6 @@ export type Database = {
           description?: string | null
           id?: string | null
           is_ring_based?: boolean | null
-          is_sdh?: boolean | null
           is_system_default?: boolean | null
           name?: string | null
           sort_order?: number | null
@@ -3763,7 +3757,6 @@ export type Database = {
           id: string | null
           ip_address: unknown | null
           is_ring_based: boolean | null
-          is_sdh: boolean | null
           latitude: number | null
           longitude: number | null
           maintenance_terminal_id: string | null
@@ -4311,11 +4304,11 @@ export type Database = {
           p_fiber_out?: number
           p_id?: string
           p_media_type_id: string
+          p_port?: string
+          p_port_capacity?: string
+          p_port_type_id?: string
           p_remark?: string
-          p_sfp_capacity?: string
-          p_sfp_port?: string
           p_sfp_serial_no?: string
-          p_sfp_type_id?: string
           p_sn_id?: string
           p_sn_interface?: string
           p_sn_ip?: unknown
@@ -4347,7 +4340,6 @@ export type Database = {
       upsert_system_with_details: {
         Args: {
           p_commissioned_on?: string
-          p_gne?: string
           p_id?: string
           p_ip_address?: unknown
           p_maintenance_terminal_id?: string

@@ -8,7 +8,6 @@ SELECT
   n.name AS node_name,
   lt_node_type.name AS node_type_name,
   lt_system.is_ring_based,
-  lt_system.is_sdh,
   n.latitude,
   n.longitude,
   lt_system.name AS system_type_name,
@@ -16,7 +15,7 @@ SELECT
   lt_system.category AS system_category,
   ma.name AS system_maintenance_terminal_name,
   rbs.ring_id,
-  rbs.order_in_ring, -- ADDED
+  rbs.order_in_ring,
   ring_area.name AS ring_logical_area_name
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
