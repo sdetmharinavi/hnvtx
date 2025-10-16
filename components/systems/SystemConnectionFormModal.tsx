@@ -11,7 +11,7 @@ import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from "@/schemas/zod-schemas";
-import { RpcFunctionArgs, useTableQuery } from "@/hooks/database";
+import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal } from "@/components/common/ui";
 import {
@@ -27,27 +27,10 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/common/ui";
 
-// THE FIX: Create a single, unified schema with optional fields for subtypes.
+// Create a single, unified schema by merging all required fields
 const formSchema = system_connectionsInsertSchema
-  .extend({
-    // Fields from ports_management (all optional)
-    port: ports_managementInsertSchema.shape.port.optional(),
-    port_type_id: ports_managementInsertSchema.shape.port_type_id.optional(),
-    port_capacity: ports_managementInsertSchema.shape.port_capacity.optional(),
-    sfp_serial_no: ports_managementInsertSchema.shape.sfp_serial_no.optional(),
-    fiber_in: ports_managementInsertSchema.shape.fiber_in.optional(),
-    fiber_out: ports_managementInsertSchema.shape.fiber_out.optional(),
-    customer_name: ports_managementInsertSchema.shape.customer_name.optional(),
-    bandwidth_allocated_mbps: ports_managementInsertSchema.shape.bandwidth_allocated_mbps.optional(),
-    // Fields from sdh_connections (all optional)
-    stm_no: sdh_connectionsInsertSchema.shape.stm_no.optional(),
-    carrier: sdh_connectionsInsertSchema.shape.carrier.optional(),
-    a_slot: sdh_connectionsInsertSchema.shape.a_slot.optional(),
-    a_customer: sdh_connectionsInsertSchema.shape.a_customer.optional(),
-    b_slot: sdh_connectionsInsertSchema.shape.b_slot.optional(),
-    b_customer: sdh_connectionsInsertSchema.shape.b_customer.optional(),
-  })
-  .omit({ system_connection_id: true }); // Omit the foreign key itself from the form
+  .extend(ports_managementInsertSchema.omit({ system_connection_id: true }).shape)
+  .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
@@ -231,16 +214,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const modalTitle = isEditMode ? "Edit Connection" : `New Connection ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" visible={false} className="w-0 h-0 transparent">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone footerContent={renderFooter()}>
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4'>
           <AnimatePresence mode="wait">
             {step === 1 ? step1Fields : step2Fields}
           </AnimatePresence>
           {step === 2 && (
-             <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
-                <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />
-                <FormSwitch name='status' label='Status' control={control} className='my-4' />
+            <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
+              <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />
+              <FormSwitch name='status' label='Status' control={control} className='my-4' />
             </div>
           )}
         </div>
