@@ -2,7 +2,6 @@
 import { z } from 'zod';
 import {
   systemsInsertSchema,
-  sdh_systemsInsertSchema,
   ring_based_systemsInsertSchema,
 } from './zod-schemas';
 
@@ -25,7 +24,6 @@ export const systemFormValidationSchema = systemsInsertSchema
       const num = Number(stringVal);
       return Number.isNaN(num) ? null : num;
     }).optional(),
-    gne: sdh_systemsInsertSchema.shape.gne.transform((val) => val || null).optional(),
   });
 
 // This is the type that will be used by the form state.

@@ -1094,7 +1094,6 @@ export type Lookup_typesRow = {
     description: string | null;
     id: string;
     is_ring_based: boolean | null;
-    is_sdh: boolean | null;
     is_system_default: boolean | null;
     name: string;
     sort_order: number | null;
@@ -1109,7 +1108,6 @@ export type Lookup_typesInsert = {
     description?: string | null;
     id?: string;
     is_ring_based?: boolean | null;
-    is_sdh?: boolean | null;
     is_system_default?: boolean | null;
     name: string;
     sort_order?: number | null;
@@ -1124,7 +1122,6 @@ export type Lookup_typesUpdate = {
     description?: string | null;
     id?: string;
     is_ring_based?: boolean | null;
-    is_sdh?: boolean | null;
     is_system_default?: boolean | null;
     name?: string;
     sort_order?: number | null;
@@ -1735,7 +1732,6 @@ export type V_lookup_typesRow = {
     description: string | null;
     id: string | null;
     is_ring_based: boolean | null;
-    is_sdh: boolean | null;
     is_system_default: boolean | null;
     name: string | null;
     sort_order: number | null;
@@ -1944,7 +1940,6 @@ export type V_systems_completeRow = {
     id: string | null;
     ip_address: unknown | null;
     is_ring_based: boolean | null;
-    is_sdh: boolean | null;
     latitude: number | null;
     longitude: number | null;
     maintenance_terminal_id: string | null;

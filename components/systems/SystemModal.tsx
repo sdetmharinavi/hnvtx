@@ -114,8 +114,11 @@ export const SystemModal: FC<SystemModalProps> = ({
     () => systemTypes.find((st) => st.id === selectedSystemTypeId),
     [systemTypes, selectedSystemTypeId]
   );
-  const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based, [selectedSystemType]);
-  const isSdhSystem = useMemo(() => selectedSystemType?.is_sdh, [selectedSystemType]);
+  const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based === true, [selectedSystemType]);
+  const isSdhSystem = useMemo(() => {
+    const name = selectedSystemType?.name?.toLowerCase() || '';
+    return name.includes('synchronous') || name.includes('sdh');
+  }, [selectedSystemType]);
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   const handleClose = useCallback(() => {
@@ -152,7 +155,6 @@ export const SystemModal: FC<SystemModalProps> = ({
       setStep(1);
     }
   }, [isOpen, isEditMode, rowData, reset]);
-
 
   useEffect(() => {
     if (selectedNodeId) {
@@ -301,22 +303,22 @@ export const SystemModal: FC<SystemModalProps> = ({
         {" "}
         {isRingBasedSystem && (
           <>
-          <FormSearchableSelect
-            name='ring_id'
-            label='Ring'
-            control={control}
-            options={ringOptions}
-            error={errors.ring_id}
-          />
-          <FormInput
-              name="order_in_ring"
-              label="Order in Ring"
-              type="number"
+            <FormSearchableSelect
+              name='ring_id'
+              label='Ring'
+              control={control}
+              options={ringOptions}
+              error={errors.ring_id}
+            />
+            <FormInput
+              name='order_in_ring'
+              label='Order in Ring'
+              type='number'
               register={register}
               error={errors.order_in_ring}
-              placeholder="e.g., 1, 2, 3..."
+              placeholder='e.g., 1, 2, 3...'
             />
-            </>
+          </>
         )}{" "}
         {isSdhSystem && (
           <>

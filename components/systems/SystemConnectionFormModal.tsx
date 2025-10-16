@@ -13,9 +13,9 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 const formSchema = system_connectionsInsertSchema.extend({
-  sfp_port: z.string().nullable().optional(),
-  sfp_type_id: z.uuid().nullable().optional(),
-  sfp_capacity: z.string().nullable().optional(),
+  port: z.string().nullable().optional(),
+  port_type_id: z.uuid().nullable().optional(),
+  port_capacity: z.string().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   fiber_in: z.number().nullable().optional(),
   fiber_out: z.number().nullable().optional(),
@@ -86,9 +86,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           vlan: editingConnection.vlan ?? null,
           commissioned_on: editingConnection.commissioned_on ?? null,
           remark: editingConnection.remark ?? null,
-          sfp_port: editingConnection.sfp_port ?? null,
-          sfp_type_id: editingConnection.sfp_type_id ?? null,
-          sfp_capacity: editingConnection.sfp_capacity ?? null,
+          port: editingConnection.port ?? null,
+          port_type_id: editingConnection.port_type_id ?? null,
+          port_capacity: editingConnection.port_capacity ?? null,
           sfp_serial_no: editingConnection.sfp_serial_no ?? null,
           fiber_in: editingConnection.fiber_in ?? null,
           fiber_out: editingConnection.fiber_out ?? null,
@@ -110,6 +110,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
       }
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
+
+  const isRingBasedSystem = parentSystem.is_ring_based === true;
+  const systemTypeName = parentSystem.system_type_name?.toLowerCase() || '';
+  const isSdhSystem = systemTypeName.includes('Plesiochronous Digital Hierarchy') || systemTypeName.includes('Synchronous Digital Hierarchy') || systemTypeName.includes('Next Generation SDH');
 
   // THE FIX: This function now simply calls the onSubmit prop.
   const onValidSubmit = useCallback(
@@ -144,19 +148,19 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
             <FormSearchableSelect name='connected_system_id' label='Connected To System' control={control} options={systemOptions} error={errors.connected_system_id} />
           </div>
 
-          {parentSystem.is_ring_based && (
+          {isRingBasedSystem && (
             <>
               <h3 className='text-lg font-medium border-b pt-4 pb-2'>SFP Details</h3>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <FormInput name='customer_name' label='Customer Name' register={register} error={errors.customer_name} />
-                <FormInput name='sfp_port' label='SFP Port' register={register} error={errors.sfp_port} />
-                <FormSearchableSelect name='sfp_type_id' label='SFP Type' control={control} options={sfpTypeOptions} error={errors.sfp_type_id} />
-                <FormInput name='sfp_capacity' label='SFP Capacity' register={register} error={errors.sfp_capacity} />
+                <FormInput name='port' label='Port' register={register} error={errors.port} />
+                <FormSearchableSelect name='port_type_id' label='Port Type' control={control} options={sfpTypeOptions} error={errors.port_type_id} />
+                <FormInput name='port_capacity' label='Port Capacity' register={register} error={errors.port_capacity} />
               </div>
             </>
           )}
 
-          {parentSystem.is_sdh && (
+          {isSdhSystem && (
             <>
               <h3 className='text-lg font-medium border-b pt-4 pb-2'>SDH Details</h3>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
