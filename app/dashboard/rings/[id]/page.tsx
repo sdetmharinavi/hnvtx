@@ -35,6 +35,8 @@ export default function RingMapPage() {
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
+        p_order_by: 'order_in_ring',
+        p_order_dir: 'asc',
       });
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];

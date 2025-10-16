@@ -193,7 +193,7 @@ export default function ScalableFiberNetworkDashboard() {
                 disabled={isLoading}
                 className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-5 w-5 ${isDataSyncing || isLoading ? 'animate-spin' : ''}`} />
               </button>
               <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
                 <Settings className="h-5 w-5" />

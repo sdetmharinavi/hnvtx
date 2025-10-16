@@ -38,8 +38,11 @@ export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: 
   // Normalize the node type for case-insensitive matching
   const type = nodeType?.toLowerCase() ?? '';
 
+  console.log(type);
+
   if (
     type.includes('metro access aggregation node') ||
+    type.includes('multi-access aggregation node') ||
     type.includes('compact passive access node') ||
     type.includes('converged packet aggregation node') ||
     type.includes('terminal node') ||
