@@ -36,7 +36,7 @@ const OptimizedNetworkMap = dynamic(
   }
 );
 
-type BsnlDashboardTab = 'overview' | 'systems' | 'allocations';
+type BsnlDashboardTab = 'overview' | 'systems' | 'routes';
 
 export default function ScalableFiberNetworkDashboard() {
   const [activeTab, setActiveTab] = useState<BsnlDashboardTab>('overview');
@@ -213,7 +213,7 @@ export default function ScalableFiberNetworkDashboard() {
         />
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
-            {(['overview', 'systems', 'allocations'] as BsnlDashboardTab[]).map((tab) => (
+            {(['overview', 'systems', 'routes'] as BsnlDashboardTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -272,7 +272,7 @@ export default function ScalableFiberNetworkDashboard() {
               }}
             />
           )}
-          {activeTab === 'allocations' && (
+          {activeTab === 'routes' && (
             <DataTable
               tableName="v_ofc_cables_complete"
               data={data.ofcCables}

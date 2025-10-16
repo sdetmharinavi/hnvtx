@@ -1,14 +1,14 @@
 // path: components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
-import React, { useMemo, useEffect, memo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProps } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
-import { useThemeStore } from '@/stores/themeStore';
+// import { useThemeStore } from '@/stores/themeStore';
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -47,16 +47,25 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
   return null;
 }
 
-const MapContent = memo<{
+const MapContent = ({
+  cables,
+  visibleLayers,
+  visibleNodes,
+  nodeMap,
+  mapUrl,
+  mapAttribution,
+  setMapBounds,
+  setZoom,
+}: {
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
-  visibleNodes: BsnlNode[]; // This now receives pre-filtered nodes
+  visibleNodes: BsnlNode[];
   nodeMap: Map<string, BsnlNode>;
   mapUrl: string;
   mapAttribution: string;
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
-}>(({ cables, visibleLayers, visibleNodes, nodeMap, mapUrl, mapAttribution, setMapBounds, setZoom }) => (
+}) => (
   <>
     <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
     <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
@@ -86,7 +95,6 @@ const MapContent = memo<{
         return null;
     })}
 
-    {/* THE FIX: Only map over the pre-filtered visibleNodes for markers */}
     {visibleNodes.map((node: BsnlNode) => (
       (node.latitude && node.longitude) && (
           <Marker key={node.id} position={[node.latitude, node.longitude]}>
@@ -104,7 +112,7 @@ const MapContent = memo<{
       )
     ))}
   </>
-));
+);
 MapContent.displayName = 'MapContent';
 
 interface OptimizedNetworkMapProps {
@@ -128,7 +136,7 @@ export function OptimizedNetworkMap({
   onZoomChange
 }: OptimizedNetworkMapProps) {
   const [isFullScreen, setIsFullScreen] = React.useState(false);
-  const { theme } = useThemeStore();
+  // const { theme } = useThemeStore();
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
