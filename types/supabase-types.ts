@@ -2194,40 +2194,34 @@ export type Database = {
       ports_management: {
         Row: {
           bandwidth_allocated_mbps: number | null
-          commissioned_on: string | null
           customer_name: string | null
           fiber_in: number | null
           fiber_out: number | null
           port: string | null
           port_capacity: string | null
           port_type_id: string | null
-          remark: string | null
           sfp_serial_no: string | null
           system_connection_id: string
         }
         Insert: {
           bandwidth_allocated_mbps?: number | null
-          commissioned_on?: string | null
           customer_name?: string | null
           fiber_in?: number | null
           fiber_out?: number | null
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
-          remark?: string | null
           sfp_serial_no?: string | null
           system_connection_id: string
         }
         Update: {
           bandwidth_allocated_mbps?: number | null
-          commissioned_on?: string | null
           customer_name?: string | null
           fiber_in?: number | null
           fiber_out?: number | null
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
-          remark?: string | null
           sfp_serial_no?: string | null
           system_connection_id?: string
         }

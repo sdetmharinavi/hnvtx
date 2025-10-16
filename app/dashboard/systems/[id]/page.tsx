@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { usePagedData } from '@/hooks/database';
+import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase } from 'react-icons/fi';
@@ -26,7 +26,6 @@ export default function SystemConnectionsPage() {
   const systemId = params.id as string;
   const supabase = createClient();
 
-  // THE FIX: Manually manage state instead of using useCrudManager
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +39,6 @@ export default function SystemConnectionsPage() {
   );
   const parentSystem = systemData?.data?.[0];
 
-  // THE FIX: Call usePagedData directly, passing the necessary systemId filter
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase,
     'v_system_connections_complete',
@@ -82,7 +80,6 @@ export default function SystemConnectionsPage() {
     () => createStandardActions<V_system_connections_completeRowSchema>({
         onEdit: openEditModal,
         onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
-        onToggleStatus: (record) => { /* In this table, status toggle is handled via the upsert RPC */ },
       }) as TableAction<'v_system_connections_complete'>[],
     [deleteManager]
   );
@@ -100,12 +97,13 @@ export default function SystemConnectionsPage() {
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
-
+  
+  // THE FIX: Logic to build the RPC payload now lives in the parent component.
   const handleSave = (formData: SystemConnectionFormValues) => {
-    const payload = {
+    const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
       p_id: editingRecord?.id ?? undefined,
       p_system_id: parentSystem.id!,
-      p_media_type_id: formData.media_type_id,
+      p_media_type_id: formData.media_type_id!,
       p_status: formData.status ?? true,
       p_sn_id: formData.sn_id ?? undefined,
       p_en_id: formData.en_id ?? undefined,
@@ -118,9 +116,9 @@ export default function SystemConnectionsPage() {
       p_vlan: formData.vlan ?? undefined,
       p_commissioned_on: formData.commissioned_on ?? undefined,
       p_remark: formData.remark ?? undefined,
-      p_sfp_port: formData.sfp_port ?? undefined,
-      p_sfp_type_id: formData.sfp_type_id ?? undefined,
-      p_sfp_capacity: formData.sfp_capacity ?? undefined,
+      p_port: formData.port ?? undefined,
+      p_port_type_id: formData.port_type_id ?? undefined,
+      p_port_capacity: formData.port_capacity ?? undefined,
       p_sfp_serial_no: formData.sfp_serial_no ?? undefined,
       p_fiber_in: formData.fiber_in ?? undefined,
       p_fiber_out: formData.fiber_out ?? undefined,
@@ -132,10 +130,6 @@ export default function SystemConnectionsPage() {
       p_a_customer: formData.a_customer ?? undefined,
       p_b_slot: formData.b_slot ?? undefined,
       p_b_customer: formData.b_customer ?? undefined,
-      p_subscriber: formData.subscriber ?? undefined,
-      p_c_code: formData.c_code ?? undefined,
-      p_channel: formData.channel ?? undefined,
-      p_tk: formData.tk ?? undefined,
     };
 
     upsertMutation.mutate(payload, {

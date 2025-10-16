@@ -19,5 +19,3 @@ CREATE INDEX IF NOT EXISTS idx_systems_make ON public.systems (make);
 -- =================================================================
 
 CREATE INDEX IF NOT EXISTS idx_systems_remark_fts ON public.systems USING gin(to_tsvector('english', remark));
-CREATE INDEX IF NOT EXISTS idx_system_connections_remark_fts ON public.system_connections USING gin(to_tsvector('english', remark));
-CREATE INDEX IF NOT EXISTS idx_ports_management_remark_fts ON public.ports_management USING gin(to_tsvector('english', remark));
