@@ -36,7 +36,6 @@ const createDefaultFormValues = (): SystemFormValues => ({
   status: true,
   ring_id: null,
   order_in_ring: 0,
-  gne: null,
   make: "",
 });
 
@@ -144,7 +143,6 @@ export const SystemModal: FC<SystemModalProps> = ({
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? null,
           order_in_ring: rowData.order_in_ring ?? 0,
-          gne: rowData.sdh_gne ?? null,
           make: rowData.make ?? "",
         });
       } else {
@@ -323,7 +321,6 @@ export const SystemModal: FC<SystemModalProps> = ({
         {isSdhSystem && (
           <>
             {" "}
-            <FormInput name='gne' label='GNE' register={register} error={errors.gne} />{" "}
             <FormInput name='make' label='Make' register={register} error={errors.make} />{" "}
           </>
         )}{" "}
