@@ -33,7 +33,6 @@ const categoryFormSchema = lookup_typesInsertSchema.pick({
   is_system_default: true,
   status: true,
   is_ring_based: true,
-  is_sdh: true,
 });
 type CategoryForm = z.infer<typeof categoryFormSchema>;
 
@@ -56,7 +55,7 @@ export function CategoryModal({
     defaultValues: {
       category: "", code: "default", description: "", name: "DEFAULT",
       sort_order: 0, is_system_default: true, status: true,
-      is_ring_based: false, is_sdh: false,
+      is_ring_based: false,
     },
   });
 
@@ -74,14 +73,13 @@ export function CategoryModal({
             name: template.name || "DEFAULT", sort_order: template.sort_order || 0,
             is_system_default: template.is_system_default ?? true,
             status: template.status ?? true, is_ring_based: template.is_ring_based || false,
-            is_sdh: template.is_sdh || false,
           });
         }
       } else {
         reset({
           category: "", code: "default", description: "", name: "DEFAULT",
           sort_order: 0, is_system_default: true, status: true,
-          is_ring_based: false, is_sdh: false,
+          is_ring_based: false,
         });
       }
     }

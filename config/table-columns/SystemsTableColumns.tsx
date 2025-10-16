@@ -12,7 +12,6 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       "id",
       "node_type_name",
       // "is_ring_based",
-      "is_sdh",
       "ring_id",
       "system_type_id",
       "node_id",
