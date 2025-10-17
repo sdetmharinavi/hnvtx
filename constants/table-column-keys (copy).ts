@@ -2,7 +2,7 @@ import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
 import { Tables } from "@/types/supabase-types";
 import type { UploadConfig } from "@/stores/useUploadConfigStore";
-import { PublicTableName, PublicTableOrViewName, Row, isTableName } from "@/hooks/database";
+import { PublicTableName, PublicTableOrViewName, Row } from "@/hooks/database";
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -91,18 +91,13 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
   },
-  // THE FIX: Add the new entry for the view to satisfy the type checker.
-  v_system_connections_complete: {
-    commissioned_on: { transform: toPgDate, excelFormat: 'date' },
-    status: { transform: toPgBoolean },
-  },
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
   const keys = TABLE_COLUMN_KEYS[
     tableName as keyof typeof TABLE_COLUMN_KEYS
   ] as unknown as readonly (keyof Row<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Record<
+  const meta = (TABLE_COLUMN_META[tableName as PublicTableName] || {}) as Record<
     string,
     ColumnMeta
   >;
@@ -112,15 +107,13 @@ export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T)
     return { key, dataIndex: key, title, excelFormat: m.excelFormat };
   });
 }
-export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T) {
-  type RowType = Row<T>;
+export function buildUploadConfig<T extends PublicTableName>(tableName: T) {
+  type RowType = Tables<T>;
   type ColumnKey = keyof RowType & string;
   const tableColumnKeys = TABLE_COLUMN_KEYS as Record<string, readonly string[]>;
   const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
-  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
-  
-  const tableMeta = isTableName(tableName) ? UPLOAD_TABLE_META[tableName as PublicTableName] : undefined;
-  
+  const meta = (TABLE_COLUMN_META[tableName] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
+  const tableMeta = UPLOAD_TABLE_META[tableName];
   const uploadType = tableMeta?.uploadType ?? "upsert";
   const conflictColumn = tableMeta?.conflictColumn;
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
@@ -151,9 +144,7 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     tableName,
     columnMapping,
     uploadType,
-    // THE FIX: Use `as any` here as a pragmatic way to bypass the complex conditional type.
-    // The logic is sound: conflictColumn will be undefined for views because `tableMeta` will be undefined.
-    conflictColumn: conflictColumn as any,
+    conflictColumn,
     isUploadEnabled,
   } satisfies UploadConfig<T>;
 }
@@ -329,6 +320,7 @@ const TABLE_COLUMN_OBJECTS = {
   },
   ports_management: {
     bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
+    commissioned_on: "commissioned_on",
     customer_name: "customer_name",
     fiber_in: "fiber_in",
     fiber_out: "fiber_out",
@@ -336,6 +328,7 @@ const TABLE_COLUMN_OBJECTS = {
     port_type_id: "port_type_id",
     system_connection_id: "system_connection_id",
     port_capacity: "port_capacity",
+    remark: "remark",
     sfp_serial_no: "sfp_serial_no",
   },
   ring_based_systems: {

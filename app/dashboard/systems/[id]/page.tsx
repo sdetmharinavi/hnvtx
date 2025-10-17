@@ -1,13 +1,13 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase } from 'react-icons/fi';
+import { FiDatabase, FiUpload } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
@@ -20,17 +20,21 @@ import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConn
 import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { DEFAULTS } from '@/constants/constants';
+import { buildUploadConfig } from '@/constants/table-column-keys';
+import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
+  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
     supabase,
@@ -61,6 +65,12 @@ export default function SystemConnectionsPage() {
     onSuccess: () => refetch(),
   });
 
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    }
+  });
+
   const columns = SystemConnectionsTableColumns(connections);
 
   const openEditModal = (record: V_system_connections_completeRowSchema) => {
@@ -74,6 +84,26 @@ export default function SystemConnectionsPage() {
   const closeModal = () => {
     setEditingRecord(null);
     setIsEditModalOpen(false);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && parentSystem?.id) {
+      const uploadConfig = buildUploadConfig('v_system_connections_complete');
+      
+      uploadConnections({
+        file,
+        columns: uploadConfig.columnMapping,
+        parentSystemId: parentSystem.id,
+      });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const tableActions = useMemo(
@@ -94,11 +124,18 @@ export default function SystemConnectionsPage() {
         filters: { system_id: systemId }
     }
   });
+  
+  headerActions.splice(1, 0, {
+    label: isUploading ? 'Uploading...' : 'Upload Connections',
+    onClick: handleUploadClick,
+    variant: 'outline',
+    leftIcon: <FiUpload />,
+    disabled: isUploading || isLoadingConnections,
+  });
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
   
-  // THE FIX: Logic to build the RPC payload now lives in the parent component.
   const handleSave = (formData: SystemConnectionFormValues) => {
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
       p_id: editingRecord?.id ?? undefined,
@@ -148,6 +185,14 @@ export default function SystemConnectionsPage() {
         icon={<FiDatabase />}
         actions={headerActions}
         stats={[{ label: 'Total Connections', value: totalCount }]}
+      />
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
       />
 
       <DataTable
