@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
+  maan_node_id TEXT, 
   node_id UUID REFERENCES public.nodes (id) NOT NULL,
   system_name TEXT,
   ip_address INET,

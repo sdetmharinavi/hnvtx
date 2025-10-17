@@ -303,12 +303,12 @@ export default function ClientRingMap({
 
         {nodes
           .filter((node) => node.lat !== null && node.long !== null)
-          .map((node) => {
+          .map((node, i) => {
             const isHighlighted = highlightedNodeIds.includes(node.id!);
             const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
             return (
               <Marker
-                key={node.id!}
+                key={node.id! + i}
                 position={[node.lat as number, node.long as number]}
                 icon={getNodeIcon(node.system_type, isHighlighted)}
                 eventHandlers={{ click: () => onNodeClick?.(node.id!) }}

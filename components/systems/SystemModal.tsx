@@ -28,6 +28,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   system_name: "",
   system_type_id: "",
   node_id: "",
+  maan_node_id: null,
   maintenance_terminal_id: null,
   ip_address: "",
   commissioned_on: null,
@@ -114,13 +115,15 @@ export const SystemModal: FC<SystemModalProps> = ({
     () => systemTypes.find((st) => st.id === selectedSystemTypeId),
     [systemTypes, selectedSystemTypeId]
   );
-  const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based === true, [selectedSystemType]);
+  const isRingBasedSystem = useMemo(
+    () => selectedSystemType?.is_ring_based === true,
+    [selectedSystemType]
+  );
   const isSdhSystem = useMemo(() => {
-    const name = selectedSystemType?.name?.toLowerCase() || '';
-    return name.includes('synchronous') || name.includes('sdh');
+    const name = selectedSystemType?.name?.toLowerCase() || "";
+    return name.includes("synchronous") || name.includes("sdh");
   }, [selectedSystemType]);
   const needsStep2 = isRingBasedSystem || isSdhSystem;
-
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
@@ -138,6 +141,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           system_name: rowData.system_name || "",
           system_type_id: rowData.system_type_id || "",
           node_id: rowData.node_id || "",
+          maan_node_id: rowData.maan_node_id || null,
           maintenance_terminal_id: rowData.maintenance_terminal_id,
           ip_address: (rowData.ip_address as string) || "",
           commissioned_on: rowData.commissioned_on || null,
@@ -269,6 +273,14 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.node_id}
           required
         />{" "}
+        {selectedSystemType?.code?.trim() === "MAAN" && (
+          <FormInput
+            name='maan_node_id'
+            label='MAAN Node'
+            register={register}
+            error={errors.maan_node_id}
+          />
+        )}
         <FormSearchableSelect
           name='maintenance_terminal_id'
           label='Maintenance Terminal'
