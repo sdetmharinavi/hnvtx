@@ -234,9 +234,9 @@ export default function ClientRingMap({
             ([start, end]) =>
               start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
           )
-          .map(([start, end]) => (
+          .map(([start, end], i) => (
             <Polyline
-              key={`solid-${start.id}-${end.id}`}
+              key={`solid-${start.id}-${end.id}-${i}`}
               positions={[
                 [start.lat as number, start.long as number],
                 [end.lat as number, end.long as number],
@@ -245,7 +245,7 @@ export default function ClientRingMap({
               weight={4}
               opacity={0.8}
               ref={(el) => {
-                if (el) polylineRefs.current[`solid-${start.id}-${end.id}`] = el;
+                if (el) polylineRefs.current[`solid-${start.id}-${end.id}-${i}`] = el;
               }}
             >
               <Popup
@@ -271,7 +271,7 @@ export default function ClientRingMap({
               target.lat !== null &&
               target.long !== null
           )
-          .map(([source, target]) => (
+          .map(([source, target],i) => (
             <Polyline
               key={`dashed-${source.id}-${target.id}`}
               positions={[
@@ -283,7 +283,7 @@ export default function ClientRingMap({
               opacity={0.7}
               dashArray="6"
               ref={(el) => {
-                if (el) polylineRefs.current[`dashed-${source.id}-${target.id}`] = el;
+                if (el) polylineRefs.current[`dashed-${source.id}-${target.id}-${i}`] = el;
               }}
             >
               <Popup
