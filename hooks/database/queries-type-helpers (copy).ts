@@ -1,6 +1,6 @@
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database, Tables } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types';
 
 // --- Type for a structured query result with a count ---
@@ -106,19 +106,19 @@ export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, 
 }
 export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
 
-// ... (Excel Upload types with corrected generics) ...
-export interface UploadColumnMapping<T extends TableOrViewName> {
+// ... (Excel Upload types remain the same) ...
+export interface UploadColumnMapping<T extends TableName> {
     excelHeader: string;
-    dbKey: keyof Row<T> & string;
+    dbKey: keyof TableInsert<T> & string;
     transform?: (value: unknown) => unknown;
     required?: boolean;
 }
 export type UploadType = "insert" | "upsert";
-export interface UploadOptions<T extends TableOrViewName> {
+export interface UploadOptions<T extends TableName> {
     file: File;
     columns: UploadColumnMapping<T>[];
     uploadType?: UploadType;
-    conflictColumn?: T extends PublicTableName ? keyof TableInsert<T> & string : never;
+    conflictColumn?: keyof TableInsert<T> & string;
 }
 export interface UploadResult {
     successCount: number;
@@ -126,7 +126,7 @@ export interface UploadResult {
     totalRows: number;
     errors: { rowIndex: number; data: unknown; error: string }[];
 }
-export interface UseExcelUploadOptions<T extends TableOrViewName> {
+export interface UseExcelUploadOptions<T extends TableName> {
     onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
     onError?: (error: Error, variables: UploadOptions<T>) => void;
     showToasts?: boolean;
