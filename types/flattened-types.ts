@@ -1557,6 +1557,7 @@ export type SystemsRow = {
     created_at: string | null;
     id: string;
     ip_address: unknown | null;
+    maan_node_id: string | null;
     maintenance_terminal_id: string | null;
     make: string | null;
     node_id: string;
@@ -1573,6 +1574,7 @@ export type SystemsInsert = {
     created_at?: string | null;
     id?: string;
     ip_address?: unknown | null;
+    maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
     node_id: string;
@@ -1589,6 +1591,7 @@ export type SystemsUpdate = {
     created_at?: string | null;
     id?: string;
     ip_address?: unknown | null;
+    maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
     node_id?: string;
@@ -1936,6 +1939,7 @@ export type V_systems_completeRow = {
     is_ring_based: boolean | null;
     latitude: number | null;
     longitude: number | null;
+    maan_node_id: string | null;
     maintenance_terminal_id: string | null;
     make: string | null;
     node_id: string | null;

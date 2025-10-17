@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_system_type_id UUID,
     p_node_id UUID,
     p_status BOOLEAN,
+    p_maan_node_id TEXT DEFAULT NULL,
     p_ip_address INET DEFAULT NULL,
     p_maintenance_terminal_id UUID DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
@@ -31,15 +32,16 @@ BEGIN
 
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
-        id, system_name, system_type_id, node_id, ip_address,
+        id, system_name, system_type_id,maan_node_id, node_id, ip_address,
         maintenance_terminal_id, commissioned_on, s_no, remark, status, make
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_node_id, p_ip_address,
+        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id,p_maan_node_id, p_node_id, p_ip_address,
         p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
         system_type_id = EXCLUDED.system_type_id,
+        maan_node_id = EXCLUDED.maan_node_id,
         node_id = EXCLUDED.node_id,
         ip_address = EXCLUDED.ip_address,
         maintenance_terminal_id = EXCLUDED.maintenance_terminal_id,
@@ -68,7 +70,7 @@ END;
 $$;
 
 -- UPDATED GRANT to include the new INTEGER parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,

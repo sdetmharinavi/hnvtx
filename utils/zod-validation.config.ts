@@ -199,6 +199,12 @@ export const defaultValidationConfig: ValidationConfig = {
       validation: 'z.string()',
       description: 'Ensures the node name is treated as a string',
     },
+    {
+      fieldName: 'maan_node_id',
+      tableName: 'systems',
+      validation: 'z.string()',
+      description: 'Ensures the node name is treated as a string',
+    },
   ],
 };
 

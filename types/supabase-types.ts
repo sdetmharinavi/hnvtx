@@ -2574,6 +2574,7 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: unknown | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
@@ -2589,6 +2590,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: unknown | null
+          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id: string
@@ -2604,6 +2606,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: unknown | null
+          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id?: string
@@ -3753,6 +3756,7 @@ export type Database = {
           is_ring_based: boolean | null
           latitude: number | null
           longitude: number | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string | null
@@ -4336,6 +4340,7 @@ export type Database = {
           p_commissioned_on?: string
           p_id?: string
           p_ip_address?: unknown
+          p_maan_node_id?: string
           p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
@@ -4352,6 +4357,7 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: unknown | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
