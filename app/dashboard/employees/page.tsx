@@ -74,7 +74,8 @@ const useEmployeesData = (
           emp.employee_name?.toLowerCase().includes(lowerQuery) ||
           emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
           emp.employee_email?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_contact?.toLowerCase().includes(lowerQuery)
+          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.employee_designation_id) {
