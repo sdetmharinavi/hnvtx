@@ -4175,6 +4175,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_route_topology_for_export: {
+        Args: { p_route_id: string }
+        Returns: Json
+      }
       get_segments_at_jc: {
         Args: { p_jc_id: string }
         Returns: {
@@ -4277,6 +4281,15 @@ export type Database = {
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
+        Returns: undefined
+      }
+      upsert_route_topology_from_excel: {
+        Args: {
+          p_cable_segments: Json
+          p_fiber_splices: Json
+          p_junction_closures: Json
+          p_route_id: string
+        }
         Returns: undefined
       }
       upsert_system_connection_with_details: {
