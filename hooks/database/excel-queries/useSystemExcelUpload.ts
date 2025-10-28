@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 
 import { Database } from '@/types/supabase-types';
 import {
-  RpcFunctionArgs,
   UploadColumnMapping,
   UseExcelUploadOptions,
 } from '@/hooks/database/queries-type-helpers';
@@ -16,14 +15,13 @@ import {
   validateValue,
   ValidationError,
 } from './excel-helpers';
+import { Ring_based_systemsInsertSchema, SystemsInsertSchema } from '@/schemas/zod-schemas';
 
 // Options specific to this upload hook.
 export interface SystemUploadOptions {
   file: File;
   columns: UploadColumnMapping<'v_systems_complete'>[];
 }
-
-type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
 
 const parseExcelFile = (file: File): Promise<unknown[][]> => {
   return new Promise((resolve, reject) => {
@@ -49,8 +47,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
 
 /**
  * A specialized React hook for uploading Systems from an Excel file to Supabase.
- * This hook calls the `upsert_system_with_details` RPC for each row, ensuring
- * that data is correctly inserted/updated across both the `systems` and `ring_based_systems` tables.
+ * This hook now uses efficient batch upserts instead of row-by-row RPC calls.
  */
 export function useSystemExcelUpload(
   supabase: SupabaseClient<Database>,
@@ -85,7 +82,8 @@ export function useSystemExcelUpload(
       });
 
       const dataRows = jsonData.slice(1);
-      const recordsToProcess: RpcPayload[] = [];
+      const systemsToUpsert: SystemsInsertSchema[] = [];
+      const ringDataToUpsert: Ring_based_systemsInsertSchema[] = [];
 
       toast.info(`Found ${dataRows.length} rows. Processing data...`);
 
@@ -129,57 +127,65 @@ export function useSystemExcelUpload(
           continue;
         }
 
-        // Map the processed data to the specific payload format of the RPC function
-        const rpcPayload: RpcPayload = {
-          p_id: processedData.id as string | undefined,
-          p_system_name: processedData.system_name as string,
-          p_system_type_id: processedData.system_type_id as string,
-          p_node_id: processedData.node_id as string,
-          p_status: processedData.status as boolean,
-          p_ip_address: processedData.ip_address as string | undefined,
-          p_maintenance_terminal_id: processedData.maintenance_terminal_id as string | undefined,
-          p_commissioned_on: processedData.commissioned_on as string | undefined,
-          p_s_no: processedData.s_no as string | undefined,
-          p_remark: processedData.remark as string | undefined,
-          p_make: processedData.make as string | undefined,
-          p_ring_id: processedData.ring_id as string | undefined,
-          p_order_in_ring: processedData.order_in_ring as number | undefined,
+        // Separate data for the two tables
+        const systemRecord: SystemsInsertSchema = {
+          id: processedData.id as string,
+          system_name: processedData.system_name as string,
+          system_type_id: processedData.system_type_id as string,
+          node_id: processedData.node_id as string,
+          status: processedData.status as boolean,
+          is_hub: processedData.is_hub as boolean, // Correctly include is_hub
+          maan_node_id: processedData.maan_node_id as string | null,
+          ip_address: processedData.ip_address as string | null,
+          maintenance_terminal_id: processedData.maintenance_terminal_id as string | null,
+          commissioned_on: processedData.commissioned_on as string | null,
+          s_no: processedData.s_no as string | null,
+          remark: processedData.remark as string | null,
+          make: processedData.make as string | null,
         };
+        systemsToUpsert.push(systemRecord);
+
+        if (processedData.ring_id) {
+            const ringRecord: Ring_based_systemsInsertSchema = {
+                system_id: processedData.id as string,
+                ring_id: processedData.ring_id as string,
+                order_in_ring: processedData.order_in_ring as number | null,
+            };
+            ringDataToUpsert.push(ringRecord);
+        }
         
-        recordsToProcess.push(rpcPayload);
         processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, [], false));
       }
 
-      uploadResult.totalRows = recordsToProcess.length;
-      if (recordsToProcess.length === 0) {
+      uploadResult.totalRows = systemsToUpsert.length;
+      if (systemsToUpsert.length === 0) {
         toast.warning("No valid records to upload.");
         return uploadResult;
       }
 
-      toast.info(`Uploading ${recordsToProcess.length} valid records...`);
-      for (let i = 0; i < recordsToProcess.length; i++) {
-        const record = recordsToProcess[i];
-        try {
-          const { error } = await supabase.rpc('upsert_system_with_details', record);
-          if (error) throw new Error(error.message);
-          uploadResult.successCount++;
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          uploadResult.errorCount++;
-          uploadResult.errors.push({
-            rowIndex: processingLogs.find(p => JSON.stringify(p.processedData) === JSON.stringify(record))?.excelRowNumber || i + 2,
-            data: processingLogs.find(p => JSON.stringify(p.processedData) === JSON.stringify(record))?.originalData || record,
-            error: errorMessage,
-          });
+      toast.info(`Uploading ${systemsToUpsert.length} valid system records...`);
+
+      // Batch Upsert for Systems table
+      const { error: systemError } = await supabase.from('systems').upsert(systemsToUpsert, { onConflict: 'id' });
+      if (systemError) {
+        toast.error(`System Upload Failed: ${systemError.message}`);
+        throw systemError;
+      }
+
+      // Batch Upsert for Ring-based Systems table
+      if (ringDataToUpsert.length > 0) {
+        toast.info(`Updating ${ringDataToUpsert.length} ring associations...`);
+        const { error: ringError } = await supabase.from('ring_based_systems').upsert(ringDataToUpsert, { onConflict: 'system_id' });
+        if (ringError) {
+          toast.warning(`Ring association update failed: ${ringError.message}. Systems were saved.`);
+          // We don't throw here, as the main data was saved.
         }
       }
 
+      uploadResult.successCount = systemsToUpsert.length;
+
       if (showToasts) {
-        if (uploadResult.errorCount > 0) {
-          toast.warning(`${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed.`);
-        } else {
-          toast.success(`Successfully saved ${uploadResult.successCount} systems.`);
-        }
+        toast.success(`Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} systems.`);
       }
 
       return uploadResult;
