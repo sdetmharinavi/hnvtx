@@ -1,24 +1,23 @@
 import { PageHeader } from "@/components/common/page-header";
+import { ActionButton } from "@/components/common/page-header";
 import { Option, SearchableSelect } from "@/components/common/ui/select/SearchableSelect";
 import { useOfcRoutesForSelection } from "@/hooks/database/route-manager-hooks";
 import React, { useCallback, useMemo } from "react";
 import { FaRoute } from "react-icons/fa";
-import { FiPlus } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
 
-// RouteSelection Component
 interface RouteSelectionProps {
   selectedRouteId: string | null;
   onRouteChange: (routeId: string | null) => void;
-  onAddJunctionClosure: () => void;
   isLoadingRouteDetails: boolean;
+  actions?: ActionButton[];
 }
 
 const RouteSelection: React.FC<RouteSelectionProps> = ({
   selectedRouteId,
   onRouteChange,
-  onAddJunctionClosure,
-  isLoadingRouteDetails
+  isLoadingRouteDetails,
+  actions
 }) => {
   const queryClient = useQueryClient();
   const { data: routesForSelection, isLoading: isLoadingRoutesData } = useOfcRoutesForSelection();
@@ -32,8 +31,6 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
 
   const handleRouteChange = useCallback((value: string | null) => {
     onRouteChange(value);
-    // Invalidate ALL splice details when the route changes.
-    // This forces a refetch for any JC on the newly selected route.
     queryClient.invalidateQueries({ queryKey: ['jc-splicing-details'] });
   }, [onRouteChange, queryClient]);
 
@@ -44,13 +41,7 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
         description='Visualize routes, add junction closures, and manage fiber splices.'
         icon={<FaRoute />}
         isLoading={isLoadingRoutesData}
-        actions={[{
-          label: "Add Junction Closure",
-          onClick: onAddJunctionClosure,
-          variant: "primary",
-          leftIcon: <FiPlus />,
-          disabled: !selectedRouteId || isLoadingRouteDetails,
-        }]}
+        actions={actions}
       />
       
       <div className='bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border dark:border-gray-700'>
@@ -62,7 +53,7 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
           value={selectedRouteId || ""} 
           onChange={handleRouteChange} 
           placeholder={isLoadingRoutesData ? "Loading routes..." : "Select a route"} 
-          disabled={isLoadingRoutesData} 
+          disabled={isLoadingRoutesData || isLoadingRouteDetails} 
           clearable 
         />
       </div>
