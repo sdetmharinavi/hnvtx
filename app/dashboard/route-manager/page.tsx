@@ -11,13 +11,11 @@ import { FiberSpliceManager } from "@/components/route-manager/FiberSpliceManage
 import { JointBox } from "@/schemas/custom-schemas";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import RouteSelection from "@/components/route-manager/RouteSelection";
-import { useStandardHeaderActions } from "@/components/common/page-header";
 import { toast } from "sonner";
-import { Row } from "@/hooks/database";
-import { useCableSegmentsExcelUpload } from "@/hooks/database/excel-queries/useCableSegmentsExcelUpload";
-import { buildUploadConfig } from "@/constants/table-column-keys";
 import { createClient } from "@/utils/supabase/client";
-import { FiUpload } from "react-icons/fi";
+import { FiUpload, FiDownload, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { useExportRouteTopology, useImportRouteTopology } from "@/hooks/database/excel-queries/excel-queries/useRouteTopologyExcel";
+import { ActionButton } from "@/components/common/page-header";
 
 export default function RouteManagerPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -26,9 +24,10 @@ export default function RouteManagerPage() {
   const [isJcFormModalOpen, setIsJcFormModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("visualization");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails, refetch: refetchRouteDetails, error: routeDetailsError, isError: routeDetailsIsError } = useRouteDetails(selectedRouteId as string);
-
+  
   const deleteManager = useDeleteManager({
     tableName: "junction_closures",
     onSuccess: () => {
@@ -40,7 +39,8 @@ export default function RouteManagerPage() {
     },
   });
 
-  const { mutate: uploadSegments, isPending: isUploading } = useCableSegmentsExcelUpload(createClient());
+  const { mutate: exportTopology, isPending: isExporting } = useExportRouteTopology(supabase);
+  const { mutate: importTopology, isPending: isUploading } = useImportRouteTopology(supabase);
 
   const allJointBoxesOnRoute = useMemo(() => routeDetails?.jointBoxes || [], [routeDetails]);
   const currentSegments = useMemo(() => routeDetails?.segments || [], [routeDetails]);
@@ -56,24 +56,27 @@ export default function RouteManagerPage() {
     setIsJcFormModalOpen(true);
   }, []);
   
-  const handleUploadClick = () => {
+  const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && selectedRouteId) {
-      const uploadConfig = buildUploadConfig('cable_segments');
-      uploadSegments({
-        file,
-        columns: uploadConfig.columnMapping,
-        original_cable_id: selectedRouteId,
-      });
+      importTopology({ file, routeId: selectedRouteId });
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  const handleExportClick = useCallback(() => {
+  if (selectedRouteId && routeDetails?.route?.route_name) {
+    exportTopology({ routeId: selectedRouteId, routeName: routeDetails.route.route_name });
+  } else {
+    toast.error("Please select a route to export.");
+  }
+}, [selectedRouteId, routeDetails?.route?.route_name, exportTopology]);
 
   const handleOpenEditJcModal = useCallback((jc: JointBox) => {
     setEditingJc(jc);
@@ -95,40 +98,36 @@ export default function RouteManagerPage() {
     [allJointBoxesOnRoute, deleteManager]
   );
   
-  const headerActions = useStandardHeaderActions<'cable_segments'>({
-    data: currentSegments as Row<'cable_segments'>[],
-    onRefresh: async () => {
-      await refetchRouteDetails();
-      toast.success('Route details refreshed!');
+  const headerActions = useMemo((): ActionButton[] => [
+    {
+      label: 'Refresh',
+      onClick: () => { refetchRouteDetails(); toast.success('Route details refreshed!'); },
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
+      disabled: isLoadingRouteDetails,
     },
-    onAddNew: handleAddJunctionClosure,
-    isLoading: isLoadingRouteDetails,
-    exportConfig: {
-      tableName: 'cable_segments',
-      fileName: `segments_${routeDetails?.route?.route_name ?? selectedRouteId}`,
-      filters: selectedRouteId ? { original_cable_id: selectedRouteId } : undefined,
+    {
+      label: isExporting ? 'Exporting...' : 'Export Topology',
+      onClick: handleExportClick,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || !selectedRouteId,
     },
-  });
-
-  // Inject the upload button into the header actions
-  const finalHeaderActions = useMemo(() => {
-    const uploadAction = {
-      label: isUploading ? 'Uploading...' : 'Upload Segments',
+    {
+      label: isUploading ? 'Importing...' : 'Import Topology',
       onClick: handleUploadClick,
-      variant: 'outline' as const,
+      variant: 'outline',
       leftIcon: <FiUpload />,
       disabled: isUploading || !selectedRouteId,
-    };
-    // Insert the upload button before the "Add New" button
-    const addNewIndex = headerActions.findIndex(a => a.label === 'Add New');
-    if (addNewIndex !== -1) {
-      const actions = [...headerActions];
-      actions.splice(addNewIndex, 0, uploadAction);
-      return actions;
-    }
-    return [...headerActions, uploadAction];
-  }, [headerActions, isUploading, selectedRouteId, handleUploadClick]);
-
+    },
+    {
+      label: 'Add Junction Closure',
+      onClick: handleAddJunctionClosure,
+      variant: 'primary',
+      leftIcon: <FiPlus />,
+      disabled: !selectedRouteId || isLoadingRouteDetails,
+    },
+  ], [isLoadingRouteDetails, isExporting, isUploading, selectedRouteId, handleAddJunctionClosure, refetchRouteDetails, handleExportClick, handleUploadClick]);
 
   return (
     <div className='p-6 space-y-6'>
@@ -137,13 +136,13 @@ export default function RouteManagerPage() {
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
-        accept=".xlsx, .xls, .csv"
+        accept=".xlsx"
       />
       <RouteSelection 
         selectedRouteId={selectedRouteId} 
         onRouteChange={handleRouteChange} 
         isLoadingRouteDetails={isLoadingRouteDetails}
-        actions={finalHeaderActions}
+        actions={headerActions}
       />
 
       {isLoadingRouteDetails && <PageSpinner text='Loading route details...' />}
