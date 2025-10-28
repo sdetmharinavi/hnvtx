@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.systems (
   maan_node_id TEXT, 
   node_id UUID REFERENCES public.nodes (id) NOT NULL,
   system_name TEXT,
+  is_hub BOOLEAN DEFAULT false,
   ip_address INET,
   maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
   commissioned_on DATE,

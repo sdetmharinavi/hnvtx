@@ -84,6 +84,8 @@
       "transnet",
       "tsvector",
       "turbopack",
+      "unpositioned",
+      "unprovisioned",
       "unspliced",
       "uuidv",
       "VARCHAR",

@@ -27,6 +27,7 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
       });
 
       if (!response.ok) {
+        // Log the error but don't throw, so other requests can succeed.
         console.error(`API error for pair ${startNode.id}-${endNode.id}: ${response.statusText}`);
         return null;
       }
@@ -48,7 +49,7 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
 
   results.forEach(result => {
     if (result) {
-      //  Create keys for both directions
+      //  Create keys for both directions so the map can look up A-B or B-A
       distances[`${result.startId}-${result.endId}`] = result.distance;
       distances[`${result.endId}-${result.startId}`] = result.distance;
     }
@@ -58,16 +59,17 @@ async function fetchRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>): Pr
 }
 
 export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>) {
-  // The queryKey should also be consistently sorted to ensure caching works correctly
+  // The queryKey should also be consistently sorted to ensure caching works correctly.
   const sortedUniqueKeys = useMemo(() => {
     const keys = pairs.map(p => [p[0].id, p[1].id].sort().join('-'));
+    // Use a Set to get unique keys, then sort them to ensure the query key is stable.
     return [...new Set(keys)].sort();;
   }, [pairs]);
 
   return useQuery({
     queryKey: ['ors-distances', sortedUniqueKeys],
     queryFn: () => fetchRouteDistances(pairs),
-    staleTime: Infinity,
+    staleTime: Infinity, // Distances are static, no need to refetch unless keys change.
     enabled: pairs.length > 0,
   });
 }
