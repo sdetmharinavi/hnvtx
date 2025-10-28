@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_system_type_id UUID,
     p_node_id UUID,
     p_status BOOLEAN,
+    p_is_hub BOOLEAN,
     p_maan_node_id TEXT DEFAULT NULL,
     p_ip_address INET DEFAULT NULL,
     p_maintenance_terminal_id UUID DEFAULT NULL,
@@ -33,10 +34,10 @@ BEGIN
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
         id, system_name, system_type_id,maan_node_id, node_id, ip_address,
-        maintenance_terminal_id, commissioned_on, s_no, remark, status, make
+        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id,p_maan_node_id, p_node_id, p_ip_address,
-        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make
+        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
@@ -50,6 +51,7 @@ BEGIN
         remark = EXCLUDED.remark,
         status = EXCLUDED.status,
         make = EXCLUDED.make,
+        is_hub = EXCLUDED.is_hub,
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
@@ -70,7 +72,7 @@ END;
 $$;
 
 -- UPDATED GRANT to include the new INTEGER parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
@@ -266,27 +268,3 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID) TO authenticated;
-
--- -- NEW FUNCTION: Deprovisions all fibers for a system on a specific logical path
--- CREATE OR REPLACE FUNCTION public.deprovision_path(
---     p_system_id UUID,
---     p_logical_path_id UUID
--- )
--- RETURNS VOID
--- LANGUAGE plpgsql
--- AS $$
--- BEGIN
---     -- Unassign the system from all connections that were part of this provisioning
---     UPDATE public.ofc_connections
---     SET system_id = NULL
---     WHERE system_id = p_system_id;
---     -- Note: A more complex system might store which fibers belong to which path
---     -- For now, we deprovision all fibers for that system ID.
-
---     -- Mark the logical path as unprovisioned
---     UPDATE public.logical_paths
---     SET status = 'unprovisioned', updated_at = NOW()
---     WHERE id = p_logical_path_id;
--- END;
--- $$;
--- GRANT EXECUTE ON FUNCTION public.deprovision_path(UUID, UUID) TO authenticated;

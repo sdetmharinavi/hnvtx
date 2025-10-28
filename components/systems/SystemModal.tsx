@@ -38,6 +38,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   ring_id: null,
   order_in_ring: 0,
   make: "",
+  is_hub: false,
 });
 
 interface SystemModalProps {
@@ -151,6 +152,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           ring_id: rowData.ring_id ?? null,
           order_in_ring: rowData.order_in_ring ?? 0,
           make: rowData.make ?? "",
+          is_hub: rowData.is_hub ?? false,
         });
       } else {
         reset(createDefaultFormValues());
@@ -355,10 +357,12 @@ export const SystemModal: FC<SystemModalProps> = ({
           {" "}
           <FormSwitch name='status' label='Status' control={control} className='my-4' />{" "}
         </div>{" "}
+        <div className='md:col-span-2'>
+          <FormSwitch name='is_hub' label='Is Hub System' control={control} />
+        </div>
       </div>{" "}
     </motion.div>
   );
-
   const modalTitle = isEditMode
     ? "Edit System"
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ""}`;

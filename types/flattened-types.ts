@@ -513,7 +513,7 @@ export type AuthSessionsRow = {
     created_at: string | null;
     factor_id: string | null;
     id: string;
-    ip: unknown | null;
+    ip: unknown;
     not_after: string | null;
     oauth_client_id: string | null;
     refreshed_at: string | null;
@@ -528,7 +528,7 @@ export type AuthSessionsInsert = {
     created_at?: string | null;
     factor_id?: string | null;
     id: string;
-    ip?: unknown | null;
+    ip?: unknown;
     not_after?: string | null;
     oauth_client_id?: string | null;
     refreshed_at?: string | null;
@@ -543,7 +543,7 @@ export type AuthSessionsUpdate = {
     created_at?: string | null;
     factor_id?: string | null;
     id?: string;
-    ip?: unknown | null;
+    ip?: unknown;
     not_after?: string | null;
     oauth_client_id?: string | null;
     refreshed_at?: string | null;
@@ -1499,13 +1499,13 @@ export type System_connectionsRow = {
     created_at: string | null;
     en_id: string | null;
     en_interface: string | null;
-    en_ip: unknown | null;
+    en_ip: unknown;
     id: string;
     media_type_id: string | null;
     remark: string | null;
     sn_id: string | null;
     sn_interface: string | null;
-    sn_ip: unknown | null;
+    sn_ip: unknown;
     status: boolean | null;
     system_id: string;
     updated_at: string | null;
@@ -1519,13 +1519,13 @@ export type System_connectionsInsert = {
     created_at?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
-    en_ip?: unknown | null;
+    en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
-    sn_ip?: unknown | null;
+    sn_ip?: unknown;
     status?: boolean | null;
     system_id: string;
     updated_at?: string | null;
@@ -1539,13 +1539,13 @@ export type System_connectionsUpdate = {
     created_at?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
-    en_ip?: unknown | null;
+    en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
-    sn_ip?: unknown | null;
+    sn_ip?: unknown;
     status?: boolean | null;
     system_id?: string;
     updated_at?: string | null;
@@ -1556,7 +1556,8 @@ export type SystemsRow = {
     commissioned_on: string | null;
     created_at: string | null;
     id: string;
-    ip_address: unknown | null;
+    ip_address: unknown;
+    is_hub: boolean | null;
     maan_node_id: string | null;
     maintenance_terminal_id: string | null;
     make: string | null;
@@ -1573,7 +1574,8 @@ export type SystemsInsert = {
     commissioned_on?: string | null;
     created_at?: string | null;
     id?: string;
-    ip_address?: unknown | null;
+    ip_address?: unknown;
+    is_hub?: boolean | null;
     maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
@@ -1590,7 +1592,8 @@ export type SystemsUpdate = {
     commissioned_on?: string | null;
     created_at?: string | null;
     id?: string;
-    ip_address?: unknown | null;
+    ip_address?: unknown;
+    is_hub?: boolean | null;
     maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
@@ -1844,6 +1847,7 @@ export type V_ofc_connections_completeRow = {
 export type V_ring_nodesRow = {
     id: string | null;
     ip: string | null;
+    is_hub: boolean | null;
     lat: number | null;
     long: number | null;
     name: string | null;
@@ -1883,7 +1887,7 @@ export type V_system_connections_completeRow = {
     customer_name: string | null;
     en_id: string | null;
     en_interface: string | null;
-    en_ip: unknown | null;
+    en_ip: unknown;
     en_name: string | null;
     en_node_name: string | null;
     fiber_in: number | null;
@@ -1905,7 +1909,7 @@ export type V_system_connections_completeRow = {
     sfp_serial_no: string | null;
     sn_id: string | null;
     sn_interface: string | null;
-    sn_ip: unknown | null;
+    sn_ip: unknown;
     sn_name: string | null;
     sn_node_name: string | null;
     status: boolean | null;
@@ -1935,7 +1939,8 @@ export type V_systems_completeRow = {
     commissioned_on: string | null;
     created_at: string | null;
     id: string | null;
-    ip_address: unknown | null;
+    ip_address: unknown;
+    is_hub: boolean | null;
     is_ring_based: boolean | null;
     latitude: number | null;
     longitude: number | null;

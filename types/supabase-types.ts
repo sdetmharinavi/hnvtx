@@ -631,7 +631,7 @@ export type Database = {
           created_at: string | null
           factor_id: string | null
           id: string
-          ip: unknown | null
+          ip: unknown
           not_after: string | null
           oauth_client_id: string | null
           refreshed_at: string | null
@@ -645,7 +645,7 @@ export type Database = {
           created_at?: string | null
           factor_id?: string | null
           id: string
-          ip?: unknown | null
+          ip?: unknown
           not_after?: string | null
           oauth_client_id?: string | null
           refreshed_at?: string | null
@@ -659,7 +659,7 @@ export type Database = {
           created_at?: string | null
           factor_id?: string | null
           id?: string
-          ip?: unknown | null
+          ip?: unknown
           not_after?: string | null
           oauth_client_id?: string | null
           refreshed_at?: string | null
@@ -860,22 +860,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      jwt: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      uid: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      email: { Args: never; Returns: string }
+      jwt: { Args: never; Returns: Json }
+      role: { Args: never; Returns: string }
+      uid: { Args: never; Returns: string }
     }
     Enums: {
       aal_level: "aal1" | "aal2" | "aal3"
@@ -2445,13 +2433,13 @@ export type Database = {
           created_at: string | null
           en_id: string | null
           en_interface: string | null
-          en_ip: unknown | null
+          en_ip: unknown
           id: string
           media_type_id: string | null
           remark: string | null
           sn_id: string | null
           sn_interface: string | null
-          sn_ip: unknown | null
+          sn_ip: unknown
           status: boolean | null
           system_id: string
           updated_at: string | null
@@ -2464,13 +2452,13 @@ export type Database = {
           created_at?: string | null
           en_id?: string | null
           en_interface?: string | null
-          en_ip?: unknown | null
+          en_ip?: unknown
           id?: string
           media_type_id?: string | null
           remark?: string | null
           sn_id?: string | null
           sn_interface?: string | null
-          sn_ip?: unknown | null
+          sn_ip?: unknown
           status?: boolean | null
           system_id: string
           updated_at?: string | null
@@ -2483,13 +2471,13 @@ export type Database = {
           created_at?: string | null
           en_id?: string | null
           en_interface?: string | null
-          en_ip?: unknown | null
+          en_ip?: unknown
           id?: string
           media_type_id?: string | null
           remark?: string | null
           sn_id?: string | null
           sn_interface?: string | null
-          sn_ip?: unknown | null
+          sn_ip?: unknown
           status?: boolean | null
           system_id?: string
           updated_at?: string | null
@@ -2573,7 +2561,8 @@ export type Database = {
           commissioned_on: string | null
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
+          is_hub: boolean | null
           maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
@@ -2589,7 +2578,8 @@ export type Database = {
           commissioned_on?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
+          is_hub?: boolean | null
           maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
@@ -2605,7 +2595,8 @@ export type Database = {
           commissioned_on?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
+          is_hub?: boolean | null
           maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
@@ -3447,6 +3438,7 @@ export type Database = {
         Row: {
           id: string | null
           ip: string | null
+          is_hub: boolean | null
           lat: number | null
           long: number | null
           name: string | null
@@ -3519,7 +3511,7 @@ export type Database = {
           customer_name: string | null
           en_id: string | null
           en_interface: string | null
-          en_ip: unknown | null
+          en_ip: unknown
           en_name: string | null
           en_node_name: string | null
           fiber_in: number | null
@@ -3541,7 +3533,7 @@ export type Database = {
           sfp_serial_no: string | null
           sn_id: string | null
           sn_interface: string | null
-          sn_ip: unknown | null
+          sn_ip: unknown
           sn_name: string | null
           sn_node_name: string | null
           status: boolean | null
@@ -3752,7 +3744,8 @@ export type Database = {
           commissioned_on: string | null
           created_at: string | null
           id: string | null
-          ip_address: unknown | null
+          ip_address: unknown
+          is_hub: boolean | null
           is_ring_based: boolean | null
           latitude: number | null
           longitude: number | null
@@ -4029,10 +4022,7 @@ export type Database = {
         Args: { p_path_id: string }
         Returns: undefined
       }
-      execute_sql: {
-        Args: { sql_query: string }
-        Returns: Json
-      }
+      execute_sql: { Args: { sql_query: string }; Returns: Json }
       find_cable_between_nodes: {
         Args: { p_node1_id: string; p_node2_id: string }
         Returns: {
@@ -4052,9 +4042,15 @@ export type Database = {
           status: string | null
           updated_at: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "logical_paths"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_all_splices: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           incoming_fiber_no: number
           incoming_segment_id: string
@@ -4088,6 +4084,12 @@ export type Database = {
           transnet_rkm: number | null
           updated_at: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "ofc_cables"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_available_fibers_for_cable: {
         Args: { p_cable_id: string }
@@ -4116,10 +4118,7 @@ export type Database = {
           fiber_no: number
         }[]
       }
-      get_dashboard_overview: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_dashboard_overview: { Args: never; Returns: Json }
       get_entity_counts: {
         Args: { p_entity_name: string; p_filters?: Json }
         Returns: {
@@ -4128,10 +4127,7 @@ export type Database = {
           total_count: number
         }[]
       }
-      get_jc_splicing_details: {
-        Args: { p_jc_id: string }
-        Returns: Json
-      }
+      get_jc_splicing_details: { Args: { p_jc_id: string }; Returns: Json }
       get_lookup_type_id: {
         Args: { p_category: string; p_name: string }
         Returns: string
@@ -4146,12 +4142,9 @@ export type Database = {
           sort_order: number
         }[]
       }
-      get_my_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_my_role: { Args: never; Returns: string }
       get_my_user_details: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           address: Json
           avatar_url: string
@@ -4207,6 +4200,12 @@ export type Database = {
           start_node_id: string | null
           start_node_name: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_system_ring_paths_detailed"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_unique_values: {
         Args: {
@@ -4220,10 +4219,7 @@ export type Database = {
           value: Json
         }[]
       }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_super_admin: { Args: never; Returns: boolean }
       manage_splice: {
         Args: {
           p_action: string
@@ -4322,24 +4318,31 @@ export type Database = {
           created_at: string | null
           en_id: string | null
           en_interface: string | null
-          en_ip: unknown | null
+          en_ip: unknown
           id: string
           media_type_id: string | null
           remark: string | null
           sn_id: string | null
           sn_interface: string | null
-          sn_ip: unknown | null
+          sn_ip: unknown
           status: boolean | null
           system_id: string
           updated_at: string | null
           vlan: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "system_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       upsert_system_with_details: {
         Args: {
           p_commissioned_on?: string
           p_id?: string
           p_ip_address?: unknown
+          p_is_hub: boolean
           p_maan_node_id?: string
           p_maintenance_terminal_id?: string
           p_make?: string
@@ -4356,7 +4359,8 @@ export type Database = {
           commissioned_on: string | null
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
+          is_hub: boolean | null
           maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
@@ -4368,11 +4372,14 @@ export type Database = {
           system_type_id: string
           updated_at: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "systems"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      validate_ring_path: {
-        Args: { p_path_id: string }
-        Returns: Json
-      }
+      validate_ring_path: { Args: { p_path_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

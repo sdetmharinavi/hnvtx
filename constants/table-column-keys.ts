@@ -308,6 +308,7 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: "created_at",
     updated_at: "updated_at",
     make: "make",
+    is_hub: "is_hub",
   },
   system_connections: {
     id: "id",
@@ -607,6 +608,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_name: "system_name",
     system_type_name: "system_type_name",
     node_name: "node_name",
+    is_hub: "is_hub",
     ip_address: "ip_address",
     is_ring_based: "is_ring_based",
     order_in_ring: "order_in_ring",
@@ -766,6 +768,7 @@ const TABLE_COLUMN_OBJECTS = {
   v_ring_nodes: {
     id: "id",
     ip: "ip",
+    is_hub: "is_hub",
     lat: "lat",
     long: "long",
     name: "name",
