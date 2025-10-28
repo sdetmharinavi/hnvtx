@@ -58,7 +58,7 @@ import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
 import { Tables } from "@/types/supabase-types";
 import type { UploadConfig } from "@/stores/useUploadConfigStore";
-import { PublicTableName, PublicTableOrViewName, Row } from "@/hooks/database";
+import { PublicTableName, PublicTableOrViewName, Row, isTableName } from "@/hooks/database";
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -147,13 +147,18 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
   },
+  // THE FIX: Add the new entry for the view to satisfy the type checker.
+  v_system_connections_complete: {
+    commissioned_on: { transform: toPgDate, excelFormat: 'date' },
+    status: { transform: toPgBoolean },
+  },
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
   const keys = TABLE_COLUMN_KEYS[
     tableName as keyof typeof TABLE_COLUMN_KEYS
   ] as unknown as readonly (keyof Row<T> & string)[];
-  const meta = (TABLE_COLUMN_META[tableName as PublicTableName] || {}) as Record<
+  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Record<
     string,
     ColumnMeta
   >;
@@ -163,13 +168,15 @@ export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T)
     return { key, dataIndex: key, title, excelFormat: m.excelFormat };
   });
 }
-export function buildUploadConfig<T extends PublicTableName>(tableName: T) {
-  type RowType = Tables<T>;
+export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T) {
+  type RowType = Row<T>;
   type ColumnKey = keyof RowType & string;
   const tableColumnKeys = TABLE_COLUMN_KEYS as Record<string, readonly string[]>;
   const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
-  const meta = (TABLE_COLUMN_META[tableName] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
-  const tableMeta = UPLOAD_TABLE_META[tableName];
+  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
+  
+  const tableMeta = isTableName(tableName) ? UPLOAD_TABLE_META[tableName as PublicTableName] : undefined;
+  
   const uploadType = tableMeta?.uploadType ?? "upsert";
   const conflictColumn = tableMeta?.conflictColumn;
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
@@ -200,7 +207,9 @@ export function buildUploadConfig<T extends PublicTableName>(tableName: T) {
     tableName,
     columnMapping,
     uploadType,
-    conflictColumn,
+    // THE FIX: Use `as any` here as a pragmatic way to bypass the complex conditional type.
+    // The logic is sound: conflictColumn will be undefined for views because `tableMeta` will be undefined.
+    conflictColumn: conflictColumn as any,
     isUploadEnabled,
   } satisfies UploadConfig<T>;
 }
@@ -346,6 +355,7 @@ const TABLE_COLUMN_OBJECTS = {
     s_no: "s_no",
     node_id: "node_id",
     system_type_id: "system_type_id",
+    maan_node_id: "maan_node_id",
     ip_address: "ip_address",
     maintenance_terminal_id: "maintenance_terminal_id",
     commissioned_on: "commissioned_on",
@@ -376,7 +386,6 @@ const TABLE_COLUMN_OBJECTS = {
   },
   ports_management: {
     bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
-    commissioned_on: "commissioned_on",
     customer_name: "customer_name",
     fiber_in: "fiber_in",
     fiber_out: "fiber_out",
@@ -384,7 +393,6 @@ const TABLE_COLUMN_OBJECTS = {
     port_type_id: "port_type_id",
     system_connection_id: "system_connection_id",
     port_capacity: "port_capacity",
-    remark: "remark",
     sfp_serial_no: "sfp_serial_no",
   },
   ring_based_systems: {
@@ -659,6 +667,7 @@ const TABLE_COLUMN_OBJECTS = {
     is_ring_based: "is_ring_based",
     order_in_ring: "order_in_ring",
     system_type_code: "system_type_code",
+    maan_node_id: "maan_node_id",
     node_type_name: "node_type_name",
     status: "status",
     commissioned_on: "commissioned_on",
@@ -889,7 +898,6 @@ export const TABLE_NAMES = {
   ...TABLES,
   ...VIEWS,
 } as const;
-
 ```
 
 <!-- path: postcss.config.mjs -->
@@ -1028,33 +1036,31 @@ export const useAuthStore = create<AuthStore>()(
 
 <!-- path: stores/useUploadConfigStore.ts -->
 ```typescript
-// src/stores/useUploadConfigStore.ts
+// stores/useUploadConfigStore.ts
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { PublicTableName} from "@/hooks/database/queries-type-helpers";
+import { PublicTableOrViewName, Row, PublicTableName } from "@/hooks/database/queries-type-helpers";
 import { Tables } from "@/types/supabase-types";
 
-type UploadableTableRow<T extends PublicTableName> = Tables<T>;
-
-export interface UploadColumnMapping<T extends PublicTableName> {
+export interface UploadColumnMapping<T extends PublicTableOrViewName> {
   excelHeader: string;
-  dbKey: keyof UploadableTableRow<T> & string;
+  dbKey: keyof Row<T> & string;
   transform?: (value: unknown) => unknown;
 }
 
-export interface UploadConfig<T extends PublicTableName> {
+export interface UploadConfig<T extends PublicTableOrViewName> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
   uploadType: "insert" | "upsert";
-  conflictColumn?: keyof UploadableTableRow<T> & string;
+  conflictColumn?: T extends PublicTableName ? keyof Tables<T> & string : never;
   isUploadEnabled: boolean;
 }
 
 interface UploadConfigState {
-  configs: Record<string, UploadConfig<PublicTableName>>;
-  setUploadConfig: <T extends PublicTableName>(pageKey: string, config: UploadConfig<T>) => void;
-  getUploadConfig: (pageKey: string) => UploadConfig<PublicTableName> | undefined;
+  configs: Record<string, UploadConfig<PublicTableOrViewName>>;
+  setUploadConfig: <T extends PublicTableOrViewName>(pageKey: string, config: UploadConfig<T>) => void;
+  getUploadConfig: (pageKey: string) => UploadConfig<PublicTableOrViewName> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
 
@@ -1065,10 +1071,10 @@ export const useUploadConfigStore = create<UploadConfigState>()(
         configs: {},
         setUploadConfig: (pageKey, config) => {
           if (config?.uploadType === "upsert" && !config.conflictColumn) {
-            console.error(`UploadConfig Error...`);
+            console.error(`UploadConfig Error: An 'upsert' operation requires a 'conflictColumn'.`);
           }
           set((state) => ({
-            configs: { ...state.configs, [pageKey]: config },
+            configs: { ...state.configs, [pageKey]: config as UploadConfig<PublicTableOrViewName> },
           }));
         },
         getUploadConfig: (pageKey) => get().configs[pageKey],
@@ -1709,6 +1715,235 @@ async function main() {
 
 main();
 
+```
+
+<!-- path: scripts/push-sql.js -->
+```javascript
+#!/usr/bin/env node
+/**
+ * Push SQL files or folders to PostgreSQL using existing PG environment variables.
+ *
+ * This script can handle:
+ * - Individual .sql files
+ * - Folders containing .sql files (recursively processed)
+ * - Multiple files/folders in one command
+ *
+ * It correctly handles numbered prefixes in folders and files (e.g., '2_folder'
+ * comes before '10_folder') by using a "natural sort" algorithm. It also stops
+ * execution immediately if any SQL script fails.
+ */
+
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// --- 1. MAIN EXECUTION ---
+
+export function runPushSql(targets = process.argv.slice(2)) {
+  if (targets.length === 0) {
+    console.error('❌ Please provide SQL files or folders to process.');
+    console.error('   Examples:');
+    console.error('     node push-all.js migrations/                    # Push entire folder');
+    console.error('     node push-all.js script.sql                    # Push single file');
+    console.error('     node push-all.js file1.sql migrations/ file2.sql  # Push multiple targets');
+    process.exit(1);
+  }
+
+  // Validate all targets exist
+  for (const target of targets) {
+    if (!fs.existsSync(target)) {
+      console.error(`❌ File or folder not found: ${target}`);
+      process.exit(1);
+    }
+  }
+
+  // Check for database connection info from environment variables
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  const pgHost = process.env.PGHOST;
+  const pgUser = process.env.PGUSER;
+  const pgPassword = process.env.PGPASSWORD;
+  const pgDatabase = process.env.PGDATABASE;
+  const pgPort = process.env.PGPORT;
+
+  if (!dbUrl && !pgHost) {
+    console.error('❌ Database connection not configured. Set either:');
+    console.error("   SUPABASE_DB_URL='postgresql://user:pass@host:port/database'");
+    console.error('   OR individual PG variables: PGHOST, PGUSER, PGPASSWORD, etc.');
+    process.exit(1);
+  }
+
+  console.log(`📂 Processing targets: ${targets.join(', ')}`);
+  if (dbUrl) {
+    console.log(`🔗 Using SUPABASE_DB_URL`);
+  } else {
+    console.log(`🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`);
+  }
+
+  // --- 3. MAIN EXECUTION ---
+
+  try {
+    console.log('\n🔍 Processing all targets...');
+
+    let allSqlFiles = [];
+
+    // Process each target and collect all SQL files
+    for (const target of targets) {
+      const stat = fs.statSync(target);
+
+      if (stat.isFile()) {
+        if (target.endsWith('.sql')) {
+          allSqlFiles.push(target);
+          console.log(`📄 Added file: ${target}`);
+        } else {
+          console.warn(`⚠️  Skipping non-SQL file: ${target}`);
+        }
+      } else if (stat.isDirectory()) {
+        const folderFiles = getAllSqlFiles(target);
+        allSqlFiles = allSqlFiles.concat(folderFiles);
+        console.log(`📁 Added ${folderFiles.length} files from folder: ${target}`);
+      }
+    }
+
+    if (allSqlFiles.length === 0) {
+      console.log('🟡 No .sql files found to execute.');
+      process.exit(0);
+    }
+
+    console.log('🔀 Sorting files using natural sort to ensure correct execution order...');
+    allSqlFiles.sort(naturalSort); // Use the custom sort function
+
+    console.log(`\n▶️  Found ${allSqlFiles.length} scripts to execute in the following order:`);
+    allSqlFiles.forEach((file, index) => {
+      // Show relative path for cleaner display
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ${(index + 1).toString().padStart(2, ' ')}. ${displayPath}`);
+    });
+    console.log('---\n');
+
+    // Prepare environment variables for the psql command
+    const psqlEnv = { ...process.env };
+    if (dbUrl) {
+      const url = new URL(dbUrl.trim());
+      psqlEnv.PGHOST = url.hostname;
+      psqlEnv.PGPORT = url.port || '5432';
+      psqlEnv.PGDATABASE = url.pathname.slice(1) || 'postgres';
+      psqlEnv.PGUSER = url.username;
+      psqlEnv.PGPASSWORD = url.password;
+    } else {
+      psqlEnv.PGHOST = pgHost;
+      psqlEnv.PGPORT = pgPort || '5432';
+      psqlEnv.PGDATABASE = pgDatabase || 'postgres';
+      psqlEnv.PGUSER = pgUser;
+      psqlEnv.PGPASSWORD = pgPassword;
+    }
+
+    // Execute each file in the correctly sorted order
+    for (const file of allSqlFiles) {
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ▶ Running: ${displayPath}`);
+      // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
+      // Use -q to suppress NOTICE messages (quiet mode)
+      const command = `psql -q -v ON_ERROR_STOP=1 -f "${file}"`;
+
+      execSync(command, {
+        stdio: 'inherit', // Show psql output in real-time
+        env: psqlEnv,
+      });
+    }
+
+    console.log('\n✅ All scripts executed successfully.');
+  } catch (err) {
+    console.error(`\n❌ An error occurred during execution.`);
+    console.error(`   The script has been halted. Please check the error message from psql above`);
+    console.error(`   to debug the issue in the failed SQL file.`);
+    process.exit(1);
+  }
+}
+
+// --- 2. HELPER FUNCTIONS ---
+
+/**
+ * Recursively finds all .sql files within a directory and returns them as a flat array.
+ * @param {string} dir - The directory to start searching from.
+ * @returns {string[]} A flat array of full file paths.
+ */
+function getAllSqlFiles(dir) {
+  let filesToReturn = [];
+  const items = fs.readdirSync(dir);
+  for (const item of items) {
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      filesToReturn = filesToReturn.concat(getAllSqlFiles(fullPath));
+    } else if (item.endsWith('.sql')) {
+      filesToReturn.push(fullPath);
+    }
+  }
+  return filesToReturn;
+}
+
+/**
+ * A natural sort comparator for file paths. It splits paths into segments
+ * and compares the leading numbers of each segment numerically. This correctly
+ * sorts '2_file.sql' before '10_file.sql'.
+ * @param {string} a - The first file path.
+ * @param {string} b - The second file path.
+ * @returns {number} - A negative, zero, or positive value for sorting.
+ */
+function naturalSort(a, b) {
+  // Regex to find leading numbers followed by an underscore or period.
+  const re = /^(\d+)[_.]/;
+  const segmentsA = a.split(path.sep);
+  const segmentsB = b.split(path.sep);
+  const len = Math.min(segmentsA.length, segmentsB.length);
+
+  for (let i = 0; i < len; i++) {
+    const segA = segmentsA[i];
+    const segB = segmentsB[i];
+
+    const matchA = segA.match(re);
+    const matchB = segB.match(re);
+
+    if (matchA && matchB) {
+      const numA = parseInt(matchA[1], 10);
+      const numB = parseInt(matchB[1], 10);
+      if (numA !== numB) {
+        return numA - numB; // Compare the extracted numbers directly.
+      }
+    }
+
+    // If numbers are the same or not present, fall back to standard string comparison.
+    const comparison = segA.localeCompare(segB);
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  // If one path is a subdirectory of the other, the shorter path comes first.
+  return segmentsA.length - segmentsB.length;
+}
+
+const __filename = fileURLToPath(import.meta.url);
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  runPushSql();
+}
+
+export default runPushSql;
+
+// # Push multiple folders
+// node push-all.js migrations/ seeds/
+
+// # Push specific folder
+// npm run push:migrations
+// npm run push:seeds
+
+// # Push custom files/folders (pass arguments)
+// npm run push:sql -- file1.sql migrations/ file2.sql
+
+// # Push single file
+// npm run push:sql -- data/init.sql
 ```
 
 <!-- path: scripts/generate-zod-schemas.ts -->
@@ -2829,6 +3064,7 @@ CREATE INDEX IF NOT EXISTS idx_logical_paths_status ON public.logical_paths(stat
 CREATE TABLE IF NOT EXISTS public.systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
+  maan_node_id TEXT, 
   node_id UUID REFERENCES public.nodes (id) NOT NULL,
   system_name TEXT,
   ip_address INET,
@@ -2932,6 +3168,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_system_type_id UUID,
     p_node_id UUID,
     p_status BOOLEAN,
+    p_maan_node_id TEXT DEFAULT NULL,
     p_ip_address INET DEFAULT NULL,
     p_maintenance_terminal_id UUID DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
@@ -2956,15 +3193,16 @@ BEGIN
 
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
-        id, system_name, system_type_id, node_id, ip_address,
+        id, system_name, system_type_id,maan_node_id, node_id, ip_address,
         maintenance_terminal_id, commissioned_on, s_no, remark, status, make
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_node_id, p_ip_address,
+        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id,p_maan_node_id, p_node_id, p_ip_address,
         p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
         system_type_id = EXCLUDED.system_type_id,
+        maan_node_id = EXCLUDED.maan_node_id,
         node_id = EXCLUDED.node_id,
         ip_address = EXCLUDED.ip_address,
         maintenance_terminal_id = EXCLUDED.maintenance_terminal_id,
@@ -2993,7 +3231,7 @@ END;
 $$;
 
 -- UPDATED GRANT to include the new INTEGER parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
@@ -7741,6 +7979,7 @@ export const systemsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   ip_address: z.any().nullable(),
+  maan_node_id: z.string().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   make: z.string().nullable(),
   node_id: z.uuid(),
@@ -7757,6 +7996,7 @@ export const systemsInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   ip_address: z.any().nullable().optional(),
+  maan_node_id: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   make: z.string().nullable().optional(),
   node_id: z.uuid(),
@@ -7773,6 +8013,7 @@ export const systemsUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   ip_address: z.any().nullable().optional(),
+  maan_node_id: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   make: z.string().nullable().optional(),
   node_id: z.uuid().optional(),
@@ -8118,6 +8359,7 @@ export const v_systems_completeRowSchema = z.object({
   is_ring_based: z.boolean().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+  maan_node_id: z.string().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   make: z.string().nullable(),
   node_id: z.uuid().nullable(),
@@ -9672,6 +9914,159 @@ export function useUpsertSystemConnection() {
 
 // THE FIX: The payload type must match the RPC function's arguments exactly, not partially.
 export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection_with_details'>;
+```
+
+<!-- path: hooks/database/queries-type-helpers (copy).ts -->
+```typescript
+// hooks/database/queries-type-helpers.ts
+import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
+import { Database } from "@/types/supabase-types";
+import { tableNames } from '@/types/flattened-types';
+
+// --- Type for a structured query result with a count ---
+export type PagedQueryResult<T> = {
+  data: T[];
+  count: number;
+};
+
+// --- TYPE HELPERS DERIVED FROM SUPABASE ---
+
+export type PublicTableName = keyof Database["public"]["Tables"];
+export type AuthTableName = keyof Database["auth"]["Tables"];
+export type TableName = PublicTableName | AuthTableName;
+export type PublicTableOrViewName = PublicTableName | ViewName;
+export type ViewName = keyof Database["public"]["Views"];
+export type TableOrViewName = TableName | ViewName;
+
+// Helper to check if a name is a table (and not a view)
+export const isTableName = (name: TableOrViewName): name is TableName => {
+  return (tableNames as readonly string[]).includes(name);
+};
+
+
+// Generic row types for any read operation
+export type Row<T extends TableOrViewName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Row"]
+  : T extends keyof Database["public"]["Views"]
+  ? Database["public"]["Views"][T]["Row"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Row"]
+  : never;
+
+export type TableRow<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Row"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Row"]
+  : never;
+
+export type TableInsert<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Insert"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Insert"]
+  : never;
+
+export type TableUpdate<T extends TableName> = T extends keyof Database["public"]["Tables"]
+  ? Database["public"]["Tables"][T]["Update"]
+  : T extends keyof Database["auth"]["Tables"]
+  ? Database["auth"]["Tables"][T]["Update"]
+  : never;
+
+// These types now correctly infer from the robust types above.
+export type TableInsertWithDates<T extends TableName> = { [K in keyof TableInsert<T>]?: TableInsert<T>[K] | Date | null; };
+export type TableUpdateWithDates<T extends TableName> = { [K in keyof TableUpdate<T>]?: TableUpdate<T>[K] | Date | null; };
+
+// RPC function type helpers (unchanged)
+export type RpcFunctionName = keyof Database["public"]["Functions"];
+export type RpcFunctionArgs<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Args"];
+export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Returns"];
+
+// --- ADVANCED TYPES FOR HOOK OPTIONS (Unchanged) ---
+
+export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
+export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
+export type Filters = {
+  or?: Record<string, string> | string;
+  [key: string]: FilterValue | Record<string, string> | string | undefined;
+};
+export type OrderBy = { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; };
+export interface EnhancedOrderBy { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; dataType?: 'text' | 'numeric' | 'date' | 'timestamp' | 'boolean' | 'json'; }
+export type DeduplicationOptions = { columns: string[]; orderBy?: OrderBy[]; };
+export type AggregationOptions = { count?: boolean | string; sum?: string[]; avg?: string[]; min?: string[]; max?: string[]; groupBy?: string[]; };
+export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout?: number; connection?: "read" | "write"; };
+export type RowWithCount<T> = T & { total_count?: number };
+
+// --- HOOK OPTIONS INTERFACES (Unchanged) ---
+export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
+  extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
+  columns?: string;
+  filters?: Filters;
+  orderBy?: OrderBy[];
+  limit?: number;
+  offset?: number;
+  deduplication?: DeduplicationOptions;
+  aggregation?: AggregationOptions;
+  performance?: PerformanceOptions;
+  includeCount?: boolean;
+}
+export type InfiniteQueryPage<T extends TableOrViewName> = { data: Row<T>[]; nextCursor?: number; count?: number; };
+export interface UseTableInfiniteQueryOptions<T extends TableOrViewName, TData = InfiniteData<InfiniteQueryPage<T>>> extends Omit<UseInfiniteQueryOptions<InfiniteQueryPage<T>, Error, TData, readonly unknown[], number | undefined>, "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"> {
+  columns?: string; filters?: Filters; orderBy?: OrderBy[]; pageSize?: number; performance?: PerformanceOptions;
+}
+export interface UseTableRecordOptions<T extends TableOrViewName, TData = Row<T> | null> extends Omit<UseQueryOptions<Row<T> | null, Error, TData>, "queryKey" | "queryFn"> {
+  columns?: string; performance?: PerformanceOptions;
+}
+export interface UseUniqueValuesOptions<T extends TableOrViewName, TData = unknown[]> extends Omit<UseQueryOptions<unknown[], Error, TData>, "queryKey" | "queryFn"> {
+  tableName: T; filters?: Filters; orderBy?: OrderBy[]; limit?: number; performance?: PerformanceOptions;
+}
+export interface UseRpcQueryOptions<T extends RpcFunctionName, TData = RpcFunctionReturns<T>> extends Omit<UseQueryOptions<RpcFunctionReturns<T>, Error, TData>, "queryKey" | "queryFn"> {
+  performance?: PerformanceOptions;
+}
+export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, TContext = unknown> extends Omit<UseMutationOptions<TData, Error, TVariables, TContext>, "mutationFn"> {
+  invalidateQueries?: boolean; optimisticUpdate?: boolean; batchSize?: number;
+}
+export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
+
+// ... (Excel Upload types remain the same) ...
+export interface UploadColumnMapping<T extends TableName> {
+    excelHeader: string;
+    dbKey: keyof TableInsert<T> & string;
+    transform?: (value: unknown) => unknown;
+    required?: boolean;
+}
+export type UploadType = "insert" | "upsert";
+export interface UploadOptions<T extends TableName> {
+    file: File;
+    columns: UploadColumnMapping<T>[];
+    uploadType?: UploadType;
+    conflictColumn?: keyof TableInsert<T> & string;
+}
+export interface UploadResult {
+    successCount: number;
+    errorCount: number;
+    totalRows: number;
+    errors: { rowIndex: number; data: unknown; error: string }[];
+}
+export interface UseExcelUploadOptions<T extends TableName> {
+    onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
+    onError?: (error: Error, variables: UploadOptions<T>) => void;
+    showToasts?: boolean;
+    batchSize?: number;
+}
+export type DashboardOverviewData = {
+  system_status_counts: { [key: string]: number };
+  node_status_counts: { [key: string]: number };
+  path_operational_status: { [key: string]: number };
+  cable_utilization_summary: {
+    average_utilization_percent: number;
+    high_utilization_count: number;
+    total_cables: number;
+  };
+  user_activity_last_30_days: {
+    date: string;
+    count: number;
+  }[];
+  systems_per_maintenance_area: { [key: string]: number };
+};
 ```
 
 <!-- path: hooks/database/basic-mutation-hooks.ts -->
@@ -11832,7 +12227,7 @@ export const tableQueryUtils = {
 ```typescript
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database } from "@/types/supabase-types";
+import { Database, Tables } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types';
 
 // --- Type for a structured query result with a count ---
@@ -11938,19 +12333,19 @@ export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, 
 }
 export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
 
-// ... (Excel Upload types remain the same) ...
-export interface UploadColumnMapping<T extends TableName> {
+// ... (Excel Upload types with corrected generics) ...
+export interface UploadColumnMapping<T extends TableOrViewName> {
     excelHeader: string;
-    dbKey: keyof TableInsert<T> & string;
+    dbKey: keyof Row<T> & string;
     transform?: (value: unknown) => unknown;
     required?: boolean;
 }
 export type UploadType = "insert" | "upsert";
-export interface UploadOptions<T extends TableName> {
+export interface UploadOptions<T extends TableOrViewName> {
     file: File;
     columns: UploadColumnMapping<T>[];
     uploadType?: UploadType;
-    conflictColumn?: keyof TableInsert<T> & string;
+    conflictColumn?: T extends PublicTableName ? keyof TableInsert<T> & string : never;
 }
 export interface UploadResult {
     successCount: number;
@@ -11958,7 +12353,7 @@ export interface UploadResult {
     totalRows: number;
     errors: { rowIndex: number; data: unknown; error: string }[];
 }
-export interface UseExcelUploadOptions<T extends TableName> {
+export interface UseExcelUploadOptions<T extends TableOrViewName> {
     onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
     onError?: (error: Error, variables: UploadOptions<T>) => void;
     showToasts?: boolean;
@@ -12518,6 +12913,232 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
 
 ```
 
+<!-- path: hooks/database/excel-queries/useSystemConnectionExcelUpload.ts -->
+```typescript
+// hooks/database/excel-queries/useSystemConnectionExcelUpload.ts
+import * as XLSX from 'xlsx';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+
+import { Database } from '@/types/supabase-types';
+import {
+  RpcFunctionArgs,
+  UploadColumnMapping,
+  UseExcelUploadOptions,
+} from '@/hooks/database/queries-type-helpers';
+import {
+  EnhancedUploadResult,
+  logRowProcessing,
+  validateValue,
+  ValidationError,
+} from './excel-helpers';
+
+// A stricter type for the options to ensure parentSystemId is always provided.
+export interface SystemConnectionUploadOptions {
+  file: File;
+  columns: UploadColumnMapping<'v_system_connections_complete'>[];
+  parentSystemId: string; // The ID of the system these connections belong to.
+}
+
+type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
+
+/**
+ * Parses an Excel file and returns its content as a 2D array.
+ * @param file The File object to read.
+ * @returns A Promise resolving to a 2D array of the sheet data.
+ */
+const parseExcelFile = (file: File): Promise<unknown[][]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        if (!event.target?.result) throw new Error('File reading failed.');
+        const buffer = event.target.result as ArrayBuffer;
+        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+        const worksheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetName];
+        if (!worksheet) throw new Error('No worksheet found.');
+        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+/**
+ * A specialized React hook for uploading System Connections from an Excel file to Supabase.
+ * This hook calls the `upsert_system_connection_with_details` RPC for each row, ensuring
+ * that data is correctly inserted/updated across `system_connections`, `ports_management`,
+ * and `sdh_connections` tables in a single transaction.
+ */
+export function useSystemConnectionExcelUpload(
+  supabase: SupabaseClient<Database>,
+  options?: UseExcelUploadOptions<'v_system_connections_complete'>
+) {
+  const { showToasts = true, ...mutationOptions } = options || {};
+  const queryClient = useQueryClient();
+
+  return useMutation<EnhancedUploadResult, Error, SystemConnectionUploadOptions>({
+    mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
+      const { file, columns, parentSystemId } = uploadOptions;
+
+      const processingLogs: ReturnType<typeof logRowProcessing>[] = [];
+      const allValidationErrors: ValidationError[] = [];
+      const uploadResult: EnhancedUploadResult = {
+        successCount: 0,
+        errorCount: 0,
+        totalRows: 0,
+        errors: [],
+        processingLogs,
+        validationErrors: allValidationErrors,
+        skippedRows: 0,
+      };
+
+      toast.info('Reading and parsing Excel file...');
+      const jsonData = await parseExcelFile(file);
+
+      if (!jsonData || jsonData.length < 2) {
+        toast.warning('No data found in the Excel file (header and at least one data row required).');
+        return uploadResult;
+      }
+
+      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const headerMap: Record<string, number> = {};
+      excelHeaders.forEach((header, index) => {
+        headerMap[header.toLowerCase()] = index;
+      });
+
+      const dataRows = jsonData.slice(1);
+      const recordsToProcess: RpcPayload[] = [];
+
+      toast.info(`Found ${dataRows.length} rows. Processing data for upload...`);
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i] as unknown[];
+        const excelRowNumber = i + 2;
+        const originalData: Record<string, unknown> = {};
+        excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
+
+        const isRowEmpty = row.every(cell => cell === null || String(cell).trim() === '');
+        if (isRowEmpty) {
+          uploadResult.skippedRows++;
+          processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, {}, [], true, 'Row is empty.'));
+          continue;
+        }
+
+        const rowValidationErrors: ValidationError[] = [];
+        const processedData: Record<string, unknown> = {};
+
+        for (const mapping of columns) {
+          const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
+          const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
+
+          // Apply transformation if it exists
+          let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
+          if (typeof finalValue === 'string') finalValue = finalValue.trim();
+
+          // Validate the final value
+          const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
+          if (validationError) {
+            rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
+          }
+          processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
+        }
+
+        if (rowValidationErrors.length > 0) {
+          allValidationErrors.push(...rowValidationErrors);
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: excelRowNumber,
+            data: originalData,
+            error: rowValidationErrors.map(e => e.error).join('; '),
+          });
+          processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, rowValidationErrors, true, 'Validation failed.'));
+          continue;
+        }
+
+        // Map processed data to RPC payload format (p_ prefix)
+        const rpcPayload: RpcPayload = {
+          p_system_id: parentSystemId,
+          p_media_type_id: processedData.media_type_id as string,
+          p_status: processedData.status as boolean,
+        };
+
+        for (const key in processedData) {
+          if (Object.prototype.hasOwnProperty.call(processedData, key)) {
+            const rpcKey = `p_${key}` as keyof RpcPayload;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (rpcPayload as any)[rpcKey] = processedData[key];
+          }
+        }
+        
+        recordsToProcess.push(rpcPayload);
+        processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, [], false));
+      }
+
+      uploadResult.totalRows = recordsToProcess.length;
+
+      if (recordsToProcess.length === 0) {
+        toast.warning("No valid records found to upload after processing.");
+        return uploadResult;
+      }
+
+      toast.info(`Uploading ${recordsToProcess.length} valid records...`);
+
+      for (let i = 0; i < recordsToProcess.length; i++) {
+        const record = recordsToProcess[i];
+        try {
+          const { error } = await supabase.rpc('upsert_system_connection_with_details', record);
+          if (error) {
+            throw new Error(error.message);
+          }
+          uploadResult.successCount++;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: processingLogs.find(p => p.processedData === record)?.excelRowNumber || i + 2,
+            data: processingLogs.find(p => p.processedData === record)?.originalData || record,
+            error: errorMessage,
+          });
+        }
+      }
+
+      if (showToasts) {
+        if (uploadResult.errorCount > 0) {
+          toast.warning(`${uploadResult.successCount} connections saved, but ${uploadResult.errorCount} failed. Check console for details.`);
+        } else {
+          toast.success(`Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} connections.`);
+        }
+      }
+
+      return uploadResult;
+    },
+    onSuccess: (result, variables) => {
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['table', 'system_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'v_system_connections_complete'] });
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_system_connections_complete'] });
+
+      // Call user-provided onSuccess callback
+      mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
+    },
+    onError: (error, variables) => {
+      if (showToasts) {
+        toast.error(`Upload failed: ${error.message}`);
+      }
+       // Call user-provided onError callback
+      mutationOptions.onError?.(error, { ...variables, uploadType: 'upsert' });
+    }
+  });
+}
+```
+
 <!-- path: hooks/database/excel-queries/excel-helpers.ts -->
 ```typescript
 // hooks/database/excel-queries/excel-helpers.ts
@@ -12790,10 +13411,215 @@ export const validateValue = (
 
 ```
 
+<!-- path: hooks/database/excel-queries/useSystemExcelUpload.ts -->
+```typescript
+// hooks/database/excel-queries/useSystemExcelUpload.ts
+import * as XLSX from 'xlsx';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+
+import { Database } from '@/types/supabase-types';
+import {
+  RpcFunctionArgs,
+  UploadColumnMapping,
+  UseExcelUploadOptions,
+} from '@/hooks/database/queries-type-helpers';
+import {
+  EnhancedUploadResult,
+  logRowProcessing,
+  validateValue,
+  ValidationError,
+} from './excel-helpers';
+
+// Options specific to this upload hook.
+export interface SystemUploadOptions {
+  file: File;
+  columns: UploadColumnMapping<'v_systems_complete'>[];
+}
+
+type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
+
+const parseExcelFile = (file: File): Promise<unknown[][]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        if (!event.target?.result) throw new Error('File reading failed.');
+        const buffer = event.target.result as ArrayBuffer;
+        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+        const worksheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetName];
+        if (!worksheet) throw new Error('No worksheet found.');
+        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+/**
+ * A specialized React hook for uploading Systems from an Excel file to Supabase.
+ * This hook calls the `upsert_system_with_details` RPC for each row, ensuring
+ * that data is correctly inserted/updated across both the `systems` and `ring_based_systems` tables.
+ */
+export function useSystemExcelUpload(
+  supabase: SupabaseClient<Database>,
+  options?: UseExcelUploadOptions<'v_systems_complete'>
+) {
+  const { showToasts = true, ...mutationOptions } = options || {};
+  const queryClient = useQueryClient();
+
+  return useMutation<EnhancedUploadResult, Error, SystemUploadOptions>({
+    mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
+      const { file, columns } = uploadOptions;
+
+      const processingLogs: ReturnType<typeof logRowProcessing>[] = [];
+      const allValidationErrors: ValidationError[] = [];
+      const uploadResult: EnhancedUploadResult = {
+        successCount: 0, errorCount: 0, totalRows: 0, errors: [],
+        processingLogs, validationErrors: allValidationErrors, skippedRows: 0,
+      };
+
+      toast.info('Reading and parsing Excel file...');
+      const jsonData = await parseExcelFile(file);
+
+      if (!jsonData || jsonData.length < 2) {
+        toast.warning('No data found in the Excel file.');
+        return uploadResult;
+      }
+
+      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const headerMap: Record<string, number> = {};
+      excelHeaders.forEach((header, index) => {
+        headerMap[header.toLowerCase()] = index;
+      });
+
+      const dataRows = jsonData.slice(1);
+      const recordsToProcess: RpcPayload[] = [];
+
+      toast.info(`Found ${dataRows.length} rows. Processing data...`);
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i] as unknown[];
+        const excelRowNumber = i + 2;
+        const originalData: Record<string, unknown> = {};
+        excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
+
+        if (row.every(cell => cell === null || String(cell).trim() === '')) {
+          uploadResult.skippedRows++;
+          processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, {}, [], true, 'Row is empty.'));
+          continue;
+        }
+
+        const rowValidationErrors: ValidationError[] = [];
+        const processedData: Record<string, unknown> = {};
+
+        for (const mapping of columns) {
+          const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
+          const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
+          let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
+          if (typeof finalValue === 'string') finalValue = finalValue.trim();
+          
+          const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
+          if (validationError) {
+            rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
+          }
+          processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
+        }
+
+        if (rowValidationErrors.length > 0) {
+          allValidationErrors.push(...rowValidationErrors);
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: excelRowNumber,
+            data: originalData,
+            error: rowValidationErrors.map(e => e.error).join('; '),
+          });
+          processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, rowValidationErrors, true, 'Validation failed.'));
+          continue;
+        }
+
+        // Map the processed data to the specific payload format of the RPC function
+        const rpcPayload: RpcPayload = {
+          p_id: processedData.id as string | undefined,
+          p_system_name: processedData.system_name as string,
+          p_system_type_id: processedData.system_type_id as string,
+          p_node_id: processedData.node_id as string,
+          p_status: processedData.status as boolean,
+          p_ip_address: processedData.ip_address as string | undefined,
+          p_maintenance_terminal_id: processedData.maintenance_terminal_id as string | undefined,
+          p_commissioned_on: processedData.commissioned_on as string | undefined,
+          p_s_no: processedData.s_no as string | undefined,
+          p_remark: processedData.remark as string | undefined,
+          p_make: processedData.make as string | undefined,
+          p_ring_id: processedData.ring_id as string | undefined,
+          p_order_in_ring: processedData.order_in_ring as number | undefined,
+        };
+        
+        recordsToProcess.push(rpcPayload);
+        processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, [], false));
+      }
+
+      uploadResult.totalRows = recordsToProcess.length;
+      if (recordsToProcess.length === 0) {
+        toast.warning("No valid records to upload.");
+        return uploadResult;
+      }
+
+      toast.info(`Uploading ${recordsToProcess.length} valid records...`);
+      for (let i = 0; i < recordsToProcess.length; i++) {
+        const record = recordsToProcess[i];
+        try {
+          const { error } = await supabase.rpc('upsert_system_with_details', record);
+          if (error) throw new Error(error.message);
+          uploadResult.successCount++;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: processingLogs.find(p => JSON.stringify(p.processedData) === JSON.stringify(record))?.excelRowNumber || i + 2,
+            data: processingLogs.find(p => JSON.stringify(p.processedData) === JSON.stringify(record))?.originalData || record,
+            error: errorMessage,
+          });
+        }
+      }
+
+      if (showToasts) {
+        if (uploadResult.errorCount > 0) {
+          toast.warning(`${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed.`);
+        } else {
+          toast.success(`Successfully saved ${uploadResult.successCount} systems.`);
+        }
+      }
+
+      return uploadResult;
+    },
+    onSuccess: (result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['table', 'systems'] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'v_systems_complete'] });
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_systems_complete'] });
+      mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
+    },
+    onError: (error, variables) => {
+      if (showToasts) toast.error(`Upload failed: ${error.message}`);
+      mutationOptions.onError?.(error, { ...variables, uploadType: 'upsert' });
+    }
+  });
+}
+
+```
+
 <!-- path: hooks/database/excel-queries/index.ts -->
 ```typescript
 export * from "./excel-download";
 export * from "./excel-upload";
+export * from "./useSystemConnectionExcelUpload";
+export * from "./useSystemExcelUpload";
 ```
 
 <!-- path: hooks/database/excel-queries/excel-upload.ts -->
@@ -14620,7 +15446,6 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         const columnOverride =
           (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
           {};
-        // console.log(key + ":" + columnWidths?.[key]);
         const defaultConfig: Column<Row<T>> = {
           title: toTitleCase(key),
           dataIndex: key,
@@ -17847,6 +18672,12 @@ export const defaultValidationConfig: ValidationConfig = {
       validation: 'z.string()',
       description: 'Ensures the node name is treated as a string',
     },
+    {
+      fieldName: 'maan_node_id',
+      tableName: 'systems',
+      validation: 'z.string()',
+      description: 'Ensures the node name is treated as a string',
+    },
   ],
 };
 
@@ -18142,92 +18973,9 @@ export async function updateSession(request: NextRequest) {
 
 ```
 
-<!-- path: public/sw-base.js -->
+<!-- path: public/sw.js -->
 ```javascript
-"use strict";
-
-import { Serwist } from "@serwist/sw";
-import { StaleWhileRevalidate, CacheFirst } from "@serwist/strategies";
-import { ExpirationPlugin } from "@serwist/expiration";
-
-// This is the Serwist instance that will be used to handle all the caching and routing.
-const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
-  skipWaiting: true,
-  clientsClaim: true,
-  navigationPreload: true,
-});
-
-// --- THE FIX: Runtime Caching logic is now defined here directly ---
-
-// 1. API Cache (Stale-While-Revalidate)
-serwist.registerRoute(
-  /^https?:\/\/.*\/(api|rest|rpc)\/.*/i,
-  new StaleWhileRevalidate({
-    cacheName: "api-cache",
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 200,
-        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
-      }),
-    ],
-  })
-);
-
-// 2. Image Cache (CacheFirst)
-serwist.registerRoute(
-  /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
-  new CacheFirst({
-    cacheName: "image-cache",
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
-      }),
-    ],
-  })
-);
-
-// 3. Next.js Static Assets Cache (CacheFirst)
-serwist.registerRoute(
-  /_next\/static\/.*/i,
-  new CacheFirst({
-    cacheName: "next-static-cache",
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
-      }),
-    ],
-  })
-);
-
-// --- Your existing Push Notification logic remains unchanged ---
-
-self.addEventListener('push', function (event) {
-  if (event.data) {
-    const data = event.data.json()
-    const options = {
-      body: data.body,
-      icon: data.icon || '/icon.png',
-      badge: '/badge.png',
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: '2',
-      },
-    }
-    event.waitUntil(self.registration.showNotification(data.title, options))
-  }
-});
- 
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close()
-  event.waitUntil(clients.openWindow('https://hnvtx.vercel.app'))
-});
-
-// This is the magic that makes all of the above work.
-serwist.addEventListeners();
+(()=>{"use strict";let e,t;var a={};a.r=e=>{"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})};var i={};a.r(i);class r extends Error{details;constructor(e,t){super(((e,...t)=>{let a=e;return t.length>0&&(a+=` :: ${JSON.stringify(t)}`),a})(e,t)),this.name=e,this.details=t}}let n={googleAnalytics:"googleAnalytics",precache:"precache-v2",prefix:"serwist",runtime:"runtime",suffix:"undefined"!=typeof registration?registration.scope:""},s={getRuntimeName:e=>{let t;return e||(t=n.runtime,[n.prefix,t,n.suffix].filter(e=>e&&e.length>0).join("-"))}};class o{promise;resolve;reject;constructor(){this.promise=new Promise((e,t)=>{this.resolve=e,this.reject=t})}}function c(e,t){let a=new URL(e);for(let e of t)a.searchParams.delete(e);return a.href}async function l(e,t,a,i){let r=c(t.url,a);if(t.url===r)return e.match(t,i);let n={...i,ignoreSearch:!0};for(let s of(await e.keys(t,n)))if(r===c(s.url,a))return e.match(s,i)}let h=new Set,u=async()=>{for(let e of h)await e()},d=(e,t)=>t.some(t=>e instanceof t),p=new WeakMap,f=new WeakMap,m=new WeakMap,g={get(e,t,a){if(e instanceof IDBTransaction){if("done"===t)return p.get(e);if("store"===t)return a.objectStoreNames[1]?void 0:a.objectStore(a.objectStoreNames[0])}return w(e[t])},set:(e,t,a)=>(e[t]=a,!0),has:(e,t)=>e instanceof IDBTransaction&&("done"===t||"store"===t)||t in e};function w(a){if(a instanceof IDBRequest){let e=new Promise((e,t)=>{let i=()=>{a.removeEventListener("success",r),a.removeEventListener("error",n)},r=()=>{e(w(a.result)),i()},n=()=>{t(a.error),i()};a.addEventListener("success",r),a.addEventListener("error",n)});return m.set(e,a),e}if(f.has(a))return f.get(a);let i=function(a){if("function"==typeof a)return(t||(t=[IDBCursor.prototype.advance,IDBCursor.prototype.continue,IDBCursor.prototype.continuePrimaryKey])).includes(a)?function(...e){return a.apply(_(this),e),w(this.request)}:function(...e){return w(a.apply(_(this),e))};return(a instanceof IDBTransaction&&function(e){if(p.has(e))return;let t=new Promise((t,a)=>{let i=()=>{e.removeEventListener("complete",r),e.removeEventListener("error",n),e.removeEventListener("abort",n)},r=()=>{t(),i()},n=()=>{a(e.error||new DOMException("AbortError","AbortError")),i()};e.addEventListener("complete",r),e.addEventListener("error",n),e.addEventListener("abort",n)});p.set(e,t)}(a),d(a,e||(e=[IDBDatabase,IDBObjectStore,IDBIndex,IDBCursor,IDBTransaction])))?new Proxy(a,g):a}(a);return i!==a&&(f.set(a,i),m.set(i,a)),i}let _=e=>m.get(e),y=["get","getKey","getAll","getAllKeys","count"],v=["put","add","delete","clear"],x=new Map;function b(e,t){if(!(e instanceof IDBDatabase&&!(t in e)&&"string"==typeof t))return;if(x.get(t))return x.get(t);let a=t.replace(/FromIndex$/,""),i=t!==a,r=v.includes(a);if(!(a in(i?IDBIndex:IDBObjectStore).prototype)||!(r||y.includes(a)))return;let n=async function(e,...t){let n=this.transaction(e,r?"readwrite":"readonly"),s=n.store;return i&&(s=s.index(t.shift())),(await Promise.all([s[a](...t),r&&n.done]))[0]};return x.set(t,n),n}g=(e=>({...e,get:(t,a,i)=>b(t,a)||e.get(t,a,i),has:(t,a)=>!!b(t,a)||e.has(t,a)}))(g);let E=["continue","continuePrimaryKey","advance"],D={},C=new WeakMap,S=new WeakMap,R={get(e,t){if(!E.includes(t))return e[t];let a=D[t];return a||(a=D[t]=function(...e){C.set(this,S.get(this)[t](...e))}),a}};async function*I(...e){let t=this;if(t instanceof IDBCursor||(t=await t.openCursor(...e)),!t)return;let a=new Proxy(t,R);for(S.set(a,t),m.set(a,_(t));t;)yield a,t=await (C.get(a)||t.continue()),C.delete(a)}function A(e,t){return t===Symbol.asyncIterator&&d(e,[IDBIndex,IDBObjectStore,IDBCursor])||"iterate"===t&&d(e,[IDBIndex,IDBObjectStore])}g=(e=>({...e,get:(t,a,i)=>A(t,a)?I:e.get(t,a,i),has:(t,a)=>A(t,a)||e.has(t,a)}))(g);function N(e){return"string"==typeof e?new Request(e):e}class k{event;request;url;params;_cacheKeys={};_strategy;_handlerDeferred;_extendLifetimePromises;_plugins;_pluginStateMap;constructor(e,t){for(let a of(this.event=t.event,this.request=t.request,t.url&&(this.url=t.url,this.params=t.params),this._strategy=e,this._handlerDeferred=new o,this._extendLifetimePromises=[],this._plugins=[...e.plugins],this._pluginStateMap=new Map,this._plugins))this._pluginStateMap.set(a,{});this.event.waitUntil(this._handlerDeferred.promise)}async fetch(e){let{event:t}=this,a=N(e),i=await this.getPreloadResponse();if(i)return i;let n=this.hasCallback("fetchDidFail")?a.clone():null;try{for(let e of this.iterateCallbacks("requestWillFetch"))a=await e({request:a.clone(),event:t})}catch(e){if(e instanceof Error)throw new r("plugin-error-request-will-fetch",{thrownErrorMessage:e.message})}let s=a.clone();try{let e;for(let i of(e=await fetch(a,"navigate"===a.mode?void 0:this._strategy.fetchOptions),this.iterateCallbacks("fetchDidSucceed")))e=await i({event:t,request:s,response:e});return e}catch(e){throw n&&await this.runCallbacks("fetchDidFail",{error:e,event:t,originalRequest:n.clone(),request:s.clone()}),e}}async fetchAndCachePut(e){let t=await this.fetch(e),a=t.clone();return this.waitUntil(this.cachePut(e,a)),t}async cacheMatch(e){let t,a=N(e),{cacheName:i,matchOptions:r}=this._strategy,n=await this.getCacheKey(a,"read"),s={...r,cacheName:i};for(let e of(t=await caches.match(n,s),this.iterateCallbacks("cachedResponseWillBeUsed")))t=await e({cacheName:i,matchOptions:r,cachedResponse:t,request:n,event:this.event})||void 0;return t}async cachePut(e,t){let a=N(e);await new Promise(e=>setTimeout(e,0));let i=await this.getCacheKey(a,"write");if(!t)throw new r("cache-put-with-no-response",{url:new URL(String(i.url),location.href).href.replace(RegExp(`^${location.origin}`),"")});let n=await this._ensureResponseSafeToCache(t);if(!n)return!1;let{cacheName:s,matchOptions:o}=this._strategy,c=await self.caches.open(s),h=this.hasCallback("cacheDidUpdate"),d=h?await l(c,i.clone(),["__WB_REVISION__"],o):null;try{await c.put(i,h?n.clone():n)}catch(e){if(e instanceof Error)throw"QuotaExceededError"===e.name&&await u(),e}for(let e of this.iterateCallbacks("cacheDidUpdate"))await e({cacheName:s,oldResponse:d,newResponse:n.clone(),request:i,event:this.event});return!0}async getCacheKey(e,t){let a=`${e.url} | ${t}`;if(!this._cacheKeys[a]){let i=e;for(let e of this.iterateCallbacks("cacheKeyWillBeUsed"))i=N(await e({mode:t,request:i,event:this.event,params:this.params}));this._cacheKeys[a]=i}return this._cacheKeys[a]}hasCallback(e){for(let t of this._strategy.plugins)if(e in t)return!0;return!1}async runCallbacks(e,t){for(let a of this.iterateCallbacks(e))await a(t)}*iterateCallbacks(e){for(let t of this._strategy.plugins)if("function"==typeof t[e]){let a=this._pluginStateMap.get(t),i=i=>{let r={...i,state:a};return t[e](r)};yield i}}waitUntil(e){return this._extendLifetimePromises.push(e),e}async doneWaiting(){let e;for(;e=this._extendLifetimePromises.shift();)await e}destroy(){this._handlerDeferred.resolve(null)}async getPreloadResponse(){if(this.event instanceof FetchEvent&&"navigate"===this.event.request.mode&&"preloadResponse"in this.event)try{let e=await this.event.preloadResponse;if(e)return e}catch(e){}}async _ensureResponseSafeToCache(e){let t=e,a=!1;for(let e of this.iterateCallbacks("cacheWillUpdate"))if(t=await e({request:this.request,response:t,event:this.event})||void 0,a=!0,!t)break;return!a&&t&&200!==t.status&&(t=void 0),t}}class q{cacheName;plugins;fetchOptions;matchOptions;constructor(e={}){this.cacheName=s.getRuntimeName(e.cacheName),this.plugins=e.plugins||[],this.fetchOptions=e.fetchOptions,this.matchOptions=e.matchOptions}handle(e){let[t]=this.handleAll(e);return t}handleAll(e){e instanceof FetchEvent&&(e={event:e,request:e.request});let t=e.event,a="string"==typeof e.request?new Request(e.request):e.request,i=new k(this,e.url?{event:t,request:a,url:e.url,params:e.params}:{event:t,request:a}),r=this._getResponse(i,a,t),n=this._awaitComplete(r,i,a,t);return[r,n]}async _getResponse(e,t,a){let i;await e.runCallbacks("handlerWillStart",{event:a,request:t});try{if(i=await this._handle(t,e),void 0===i||"error"===i.type)throw new r("no-response",{url:t.url})}catch(r){if(r instanceof Error){for(let n of e.iterateCallbacks("handlerDidError"))if(void 0!==(i=await n({error:r,event:a,request:t})))break}if(!i)throw r}for(let r of e.iterateCallbacks("handlerWillRespond"))i=await r({event:a,request:t,response:i});return i}async _awaitComplete(e,t,a,i){let r,n;try{r=await e}catch{}try{await t.runCallbacks("handlerDidRespond",{event:i,request:a,response:r}),await t.doneWaiting()}catch(e){e instanceof Error&&(n=e)}if(await t.runCallbacks("handlerDidComplete",{event:i,request:a,response:r,error:n}),t.destroy(),n)throw n}}let M={cacheWillUpdate:async({response:e})=>200===e.status||0===e.status?e:null};"undefined"!=typeof navigator&&/^((?!chrome|android).)*safari/i.test(navigator.userAgent);let B="cache-entries",L=e=>{let t=new URL(e,location.href);return t.hash="",t.href};class O{_cacheName;_db=null;constructor(e){this._cacheName=e}_getId(e){return`${this._cacheName}|${L(e)}`}_upgradeDb(e){let t=e.createObjectStore(B,{keyPath:"id"});t.createIndex("cacheName","cacheName",{unique:!1}),t.createIndex("timestamp","timestamp",{unique:!1})}_upgradeDbAndDeleteOldDbs(e){this._upgradeDb(e),this._cacheName&&function(e,{blocked:t}={}){let a=indexedDB.deleteDatabase(e);t&&a.addEventListener("blocked",e=>t(e.oldVersion,e)),w(a).then(()=>void 0)}(this._cacheName)}async setTimestamp(e,t){e=L(e);let a={id:this._getId(e),cacheName:this._cacheName,url:e,timestamp:t},i=(await this.getDb()).transaction(B,"readwrite",{durability:"relaxed"});await i.store.put(a),await i.done}async getTimestamp(e){let t=await this.getDb(),a=await t.get(B,this._getId(e));return a?.timestamp}async expireEntries(e,t){let a=await this.getDb(),i=await a.transaction(B,"readwrite").store.index("timestamp").openCursor(null,"prev"),r=[],n=0;for(;i;){let a=i.value;a.cacheName===this._cacheName&&(e&&a.timestamp<e||t&&n>=t?(i.delete(),r.push(a.url)):n++),i=await i.continue()}return r}async getDb(){return this._db||(this._db=await function(e,t,{blocked:a,upgrade:i,blocking:r,terminated:n}={}){let s=indexedDB.open(e,1),o=w(s);return i&&s.addEventListener("upgradeneeded",e=>{i(w(s.result),e.oldVersion,e.newVersion,w(s.transaction),e)}),a&&s.addEventListener("blocked",e=>a(e.oldVersion,e.newVersion,e)),o.then(e=>{n&&e.addEventListener("close",()=>n()),r&&e.addEventListener("versionchange",e=>r(e.oldVersion,e.newVersion,e))}).catch(()=>{}),o}("serwist-expiration",0,{upgrade:this._upgradeDbAndDeleteOldDbs.bind(this)})),this._db}}class P{_isRunning=!1;_rerunRequested=!1;_maxEntries;_maxAgeSeconds;_matchOptions;_cacheName;_timestampModel;constructor(e,t={}){this._maxEntries=t.maxEntries,this._maxAgeSeconds=t.maxAgeSeconds,this._matchOptions=t.matchOptions,this._cacheName=e,this._timestampModel=new O(e)}async expireEntries(){if(this._isRunning){this._rerunRequested=!0;return}this._isRunning=!0;let e=this._maxAgeSeconds?Date.now()-1e3*this._maxAgeSeconds:0,t=await this._timestampModel.expireEntries(e,this._maxEntries),a=await self.caches.open(this._cacheName);for(let e of t)await a.delete(e,this._matchOptions);this._isRunning=!1,this._rerunRequested&&(this._rerunRequested=!1,this.expireEntries())}async updateTimestamp(e){await this._timestampModel.setTimestamp(e,Date.now())}async isURLExpired(e){if(!this._maxAgeSeconds)return!1;let t=await this._timestampModel.getTimestamp(e),a=Date.now()-1e3*this._maxAgeSeconds;return void 0===t||t<a}async delete(){this._rerunRequested=!1,await this._timestampModel.expireEntries(1/0)}}class U{_config;_cacheExpirations;constructor(e={}){var t;this._config=e,this._cacheExpirations=new Map,this._config.maxAgeFrom||(this._config.maxAgeFrom="last-fetched"),this._config.purgeOnQuotaError&&(t=()=>this.deleteCacheAndMetadata(),h.add(t))}_getCacheExpiration(e){if(e===s.getRuntimeName())throw new r("expire-custom-caches-only");let t=this._cacheExpirations.get(e);return t||(t=new P(e,this._config),this._cacheExpirations.set(e,t)),t}cachedResponseWillBeUsed({event:e,cacheName:t,request:a,cachedResponse:i}){if(!i)return null;let r=this._isResponseDateFresh(i),n=this._getCacheExpiration(t),s="last-used"===this._config.maxAgeFrom,o=(async()=>{s&&await n.updateTimestamp(a.url),await n.expireEntries()})();try{e.waitUntil(o)}catch{}return r?i:null}_isResponseDateFresh(e){if("last-used"===this._config.maxAgeFrom)return!0;let t=Date.now();if(!this._config.maxAgeSeconds)return!0;let a=this._getDateHeaderTimestamp(e);return null===a||a>=t-1e3*this._config.maxAgeSeconds}_getDateHeaderTimestamp(e){if(!e.headers.has("date"))return null;let t=new Date(e.headers.get("date")).getTime();return Number.isNaN(t)?null:t}async cacheDidUpdate({cacheName:e,request:t}){let a=this._getCacheExpiration(e);await a.updateTimestamp(t.url),await a.expireEntries()}async deleteCacheAndMetadata(){for(let[e,t]of this._cacheExpirations)await self.caches.delete(e),await t.delete();this._cacheExpirations=new Map}}class T extends q{async _handle(e,t){let a,i=await t.cacheMatch(e);if(!i)try{i=await t.fetchAndCachePut(e)}catch(e){e instanceof Error&&(a=e)}if(!i)throw new r("no-response",{url:e.url,error:a});return i}}class W extends q{constructor(e={}){super(e),this.plugins.some(e=>"cacheWillUpdate"in e)||this.plugins.unshift(M)}async _handle(e,t){let a,i=t.fetchAndCachePut(e).catch(()=>{});t.waitUntil(i);let n=await t.cacheMatch(e);if(n);else try{n=await i}catch(e){e instanceof Error&&(a=e)}if(!n)throw new r("no-response",{url:e.url,error:a});return n}}let j=new i.Serwist({precacheEntries:[{'revision':'fd06a4b940b6416758248431261b8107','url':'/_next/static/-22iGTq1aTj4PvTctR6Yl/_buildManifest.js'},{'revision':'b6652df95db52feb4daf4eca35380933','url':'/_next/static/-22iGTq1aTj4PvTctR6Yl/_ssgManifest.js'},{'revision':null,'url':'/_next/static/chunks/081ca426-7476d4184c4cc425.js'},{'revision':null,'url':'/_next/static/chunks/0e762574-8e336e32b17c2c56.js'},{'revision':null,'url':'/_next/static/chunks/1192.cd2fff552b235597.js'},{'revision':null,'url':'/_next/static/chunks/13633bf0-1155201ff213c3c4.js'},{'revision':null,'url':'/_next/static/chunks/1508-517c983f972dae9d.js'},{'revision':null,'url':'/_next/static/chunks/1923.e43b61bd863021f0.js'},{'revision':null,'url':'/_next/static/chunks/2170a4aa-ec77d2b4930606fb.js'},{'revision':null,'url':'/_next/static/chunks/247-f762d46489f8b39a.js'},{'revision':null,'url':'/_next/static/chunks/2619-b8db57ac19da49ac.js'},{'revision':null,'url':'/_next/static/chunks/2966-a86504efd5b3e5cf.js'},{'revision':null,'url':'/_next/static/chunks/3039-6a3ccd97ae2e2285.js'},{'revision':null,'url':'/_next/static/chunks/3126-35e4f73e95ec7d01.js'},{'revision':null,'url':'/_next/static/chunks/3278-456349a6936b5599.js'},{'revision':null,'url':'/_next/static/chunks/3422.16d45779a8283bd7.js'},{'revision':null,'url':'/_next/static/chunks/3539.c5c4ab362203f9cb.js'},{'revision':null,'url':'/_next/static/chunks/3763.c88bf20b7cf557d0.js'},{'revision':null,'url':'/_next/static/chunks/385cb88d-a2787b29fa422979.js'},{'revision':null,'url':'/_next/static/chunks/3d47b92a-a46b803c4b586af9.js'},{'revision':null,'url':'/_next/static/chunks/4096.35745f12de541071.js'},{'revision':null,'url':'/_next/static/chunks/4248-31a7e5c8085b1cc5.js'},{'revision':null,'url':'/_next/static/chunks/4595-d7b30c924aeccc0f.js'},{'revision':null,'url':'/_next/static/chunks/4787-a4a9e15e5dad3569.js'},{'revision':null,'url':'/_next/static/chunks/479ba886-65bc119739bb9335.js'},{'revision':null,'url':'/_next/static/chunks/4909-f5e5a2b9645891bd.js'},{'revision':null,'url':'/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js'},{'revision':null,'url':'/_next/static/chunks/5075.81b3a4ec447b5019.js'},{'revision':null,'url':'/_next/static/chunks/5095-ae229dbe02f4febf.js'},{'revision':null,'url':'/_next/static/chunks/5111-471261182cdc2ebf.js'},{'revision':null,'url':'/_next/static/chunks/5239-23ded60826002bb9.js'},{'revision':null,'url':'/_next/static/chunks/5646-aab69bd87892e1a9.js'},{'revision':null,'url':'/_next/static/chunks/574-f0e57d65e764080c.js'},{'revision':null,'url':'/_next/static/chunks/5933-422b05ec85cd9350.js'},{'revision':null,'url':'/_next/static/chunks/6061-ba795766b5128dbc.js'},{'revision':null,'url':'/_next/static/chunks/6085.ec3e342b4ab97ec5.js'},{'revision':null,'url':'/_next/static/chunks/619edb50-dff74a15f01d87ee.js'},{'revision':null,'url':'/_next/static/chunks/6530-bbfede8e3b913779.js'},{'revision':null,'url':'/_next/static/chunks/6624-86d28fc80c6eb219.js'},{'revision':null,'url':'/_next/static/chunks/6edf0643-29e4045402af1667.js'},{'revision':null,'url':'/_next/static/chunks/7084-86ed60eec84720e2.js'},{'revision':null,'url':'/_next/static/chunks/7654-429e9ac2d4ddeed5.js'},{'revision':null,'url':'/_next/static/chunks/7823-876c25087df45551.js'},{'revision':null,'url':'/_next/static/chunks/795d4814-4a8930653734e203.js'},{'revision':null,'url':'/_next/static/chunks/8081-193f4dccbdc9626e.js'},{'revision':null,'url':'/_next/static/chunks/8276-19287c8fe86f9a7d.js'},{'revision':null,'url':'/_next/static/chunks/8356-fc5637937cf9891b.js'},{'revision':null,'url':'/_next/static/chunks/8408-0c16840e8a75d436.js'},{'revision':null,'url':'/_next/static/chunks/8448-34acd7f39b8ded24.js'},{'revision':null,'url':'/_next/static/chunks/8720-c9ee040177c11cae.js'},{'revision':null,'url':'/_next/static/chunks/8801-eaac021c569b1d38.js'},{'revision':null,'url':'/_next/static/chunks/8830-4749f258776b09a0.js'},{'revision':null,'url':'/_next/static/chunks/8e1d74a4-6dcc7372d7e9058a.js'},{'revision':null,'url':'/_next/static/chunks/9155.c5fbcf5382bc645b.js'},{'revision':null,'url':'/_next/static/chunks/9248-f61aeb4c131f45ad.js'},{'revision':null,'url':'/_next/static/chunks/9429-724810934ce41eb4.js'},{'revision':null,'url':'/_next/static/chunks/9431-ef9a841ef69fc7a5.js'},{'revision':null,'url':'/_next/static/chunks/9490-fe645e2ecf0f0fdc.js'},{'revision':null,'url':'/_next/static/chunks/9706-c0d8885970b9532b.js'},{'revision':null,'url':'/_next/static/chunks/9726.6d9560703c739928.js'},{'revision':null,'url':'/_next/static/chunks/9910-550f8f43b8720937.js'},{'revision':null,'url':'/_next/static/chunks/9c4e2130-a6460bad1e118ea6.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/forgot-password/page-85f21b854e06d676.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/layout-82122a02ca0de11c.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/login/page-a21f46042354d169.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/reset-password/page-604db6b5556d460c.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/signup/page-4f3491f839417282.js'},{'revision':null,'url':'/_next/static/chunks/app/(auth)/verify-email/page-6a919a7d7b4d69c4.js'},{'revision':null,'url':'/_next/static/chunks/app/_not-found/page-40a1b3d7ae1593ea.js'},{'revision':null,'url':'/_next/static/chunks/app/api/admin/users/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/api/ors-distance/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/api/route/%5Bid%5D/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/auth/callback/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/bsnl/page-4ade86fa5168fa37.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/categories/page-3698fcd5d6cc4723.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/designations/page-dad6882f88aae9ce.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/diagrams/page-c1a19abd3992f9c9.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/employees/page-d7a89ba8e58d1e13.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/layout-a4ec61d8c9c43b9f.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/logical-paths/page-bd1a6317d677cecb.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/lookup/page-7e6d314ada5883fa.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/maintenance-areas/page-57462abdd6dc23ab.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/nodes/page-48abda9914ab2ce7.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/ofc/%5Bid%5D/page-384a9ccf1415bc71.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/ofc/page-3942afeffe5dda35.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/page-60aab8a770026765.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/rings/%5Bid%5D/page-536dbeca16a1aecf.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/rings/page-5ef4562797591340.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/route-manager/page-79c5b94fe6166297.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/system-paths/page-9c9ab4a5f71ba605.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/systems/%5Bid%5D/page-24225b482bf472a1.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/systems/page-21faab5b24c51558.js'},{'revision':null,'url':'/_next/static/chunks/app/dashboard/users/page-960fb354fd2ebded.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/%5Bslug%5D/page-edb1ae7dfa6162f5.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/layout-009740f44013a205.js'},{'revision':null,'url':'/_next/static/chunks/app/doc/page-1db35452b981203a.js'},{'revision':null,'url':'/_next/static/chunks/app/layout-55db9f331afedfda.js'},{'revision':null,'url':'/_next/static/chunks/app/manifest.webmanifest/route-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/onboarding/layout-e5753e7b0f8ffdcc.js'},{'revision':null,'url':'/_next/static/chunks/app/onboarding/page-46cf5b4de9728392.js'},{'revision':null,'url':'/_next/static/chunks/app/page-a6014090af2689f1.js'},{'revision':null,'url':'/_next/static/chunks/app/privacy/page-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/app/terms/page-d1261a19f44b3f15.js'},{'revision':null,'url':'/_next/static/chunks/c16f53c3-23315cef868c27cc.js'},{'revision':null,'url':'/_next/static/chunks/d0deef33.59194872e4111dca.js'},{'revision':null,'url':'/_next/static/chunks/e34aaff9-1d08cafa158d7ba9.js'},{'revision':null,'url':'/_next/static/chunks/ee560e2c-c189e9c5a786426e.js'},{'revision':null,'url':'/_next/static/chunks/eec3d76d-6cfb36678e9d1715.js'},{'revision':null,'url':'/_next/static/chunks/framework-0907bc41f77e1d3c.js'},{'revision':null,'url':'/_next/static/chunks/main-3a4f635e9bb16e35.js'},{'revision':null,'url':'/_next/static/chunks/main-app-28131a41df9cc244.js'},{'revision':null,'url':'/_next/static/chunks/pages/_app-4b3fb5e477a0267f.js'},{'revision':null,'url':'/_next/static/chunks/pages/_error-c970d8b55ace1b48.js'},{'revision':'846118c33b2c0e922d7b3a7676f81f6f','url':'/_next/static/chunks/polyfills-42372ed130431b0a.js'},{'revision':null,'url':'/_next/static/chunks/webpack-00ba690708a4e49e.js'},{'revision':null,'url':'/_next/static/css/1de76be520b4de19.css'},{'revision':null,'url':'/_next/static/css/6ffe8ee35a7f91d0.css'},{'revision':null,'url':'/_next/static/css/999d57ef33be6e22.css'},{'revision':null,'url':'/_next/static/css/dd7cbd993d67b8fc.css'},{'revision':null,'url':'/_next/static/css/e2a0471526e848fd.css'},{'revision':'c52e6d9e3732e625a3dc1fe53b08d583','url':'/_next/static/media/08ace62d6069e283-s.p.woff2'},{'revision':'fb74ad9f1b527a0e55d373485a44d305','url':'/_next/static/media/9240fe1f20af2e13-s.p.woff2'},{'revision':'3af08ce60eb4c170df8636ef68aca886','url':'/_next/static/media/hnv.633c994b.webp'},{'revision':'77467e396ddf3b747170c86cc8fe5ba9','url':'/_next/static/media/hnvmobile.902f8efd.webp'},{'revision':null,'url':'/_next/static/media/layers-2x.9859cd12.png'},{'revision':null,'url':'/_next/static/media/layers.ef6db872.png'},{'revision':null,'url':'/_next/static/media/marker-icon.d577052a.png'},{'revision':'ab805bb9c12f2a612eb83734c668c634','url':'/default-avatar.png'},{'revision':'c52e6d9e3732e625a3dc1fe53b08d583','url':'/fonts/Inter.woff2'},{'revision':'fb74ad9f1b527a0e55d373485a44d305','url':'/fonts/Montserrat.woff2'},{'revision':'a74af6e507c6499acfa3efb348d9b322','url':'/hnv.png'},{'revision':'3af08ce60eb4c170df8636ef68aca886','url':'/hnv.webp'},{'revision':'286ab7ffe02769578d181db3b497325f','url':'/hnvmobile.png'},{'revision':'77467e396ddf3b747170c86cc8fe5ba9','url':'/hnvmobile.webp'},{'revision':'5cd0dafa6399163a0ec230f259f7577c','url':'/icon-192x192.png'},{'revision':'9f2cdc566a8f09614a5b55ab78939639','url':'/icon-256x256.png'},{'revision':'81ab7bdb2a21fd797c8b492618d076bb','url':'/icon-384x384.png'},{'revision':'f42a2f585df8b6107e9883d19351d63a','url':'/icon-512x512.png'},{'revision':'a4df96cda5916f498a7f1f5c6601f2f3','url':'/images/bts_image.png'},{'revision':'9c980a6f3c5cfbba7899df7dbb88369b','url':'/images/bts_rl_image.png'},{'revision':'401d815dc206b8dc1b17cd0e37695975','url':'/images/marker-icon-2x.png'},{'revision':'ce644a9e3e85946d28dee8941af484ac','url':'/images/marker-icon-highlight.png'},{'revision':'2273e3d8ad9264b7daa5bdbf8e6b47f8','url':'/images/marker-icon.png'},{'revision':'44a526eed258222515aa21eaffd14a96','url':'/images/marker-shadow.png'},{'revision':'fc155d92af304f90f3a45d37b48cdcc2','url':'/images/switch_image.png'},{'revision':'71736f63ff4055370765fa89449753d6','url':'/logo.png'},{'revision':'2273e3d8ad9264b7daa5bdbf8e6b47f8','url':'/marker-icon.png'},{'revision':'44a526eed258222515aa21eaffd14a96','url':'/marker-shadow.png'},{'revision':'4989eebeb832eeb9e644d6d362f28c74','url':'/screenshot-narrow.png'},{'revision':'d37928944922622b756b657a9a0c6859','url':'/screenshot-wide.png'},{'revision':'b4b434abf08093a7a79a7dadbdf501ce','url':'/sw-base.js'}],skipWaiting:!0,clientsClaim:!0,navigationPreload:!0});j.registerRoute(/^https?:\/\/.*\/(api|rest|rpc)\/.*/i,new W({cacheName:"api-cache",plugins:[new U({maxEntries:200,maxAgeSeconds:604800})]})),j.registerRoute(/\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,new T({cacheName:"image-cache",plugins:[new U({maxEntries:100,maxAgeSeconds:2592e3})]})),j.registerRoute(/_next\/static\/.*/i,new T({cacheName:"next-static-cache",plugins:[new U({maxEntries:100,maxAgeSeconds:2592e3})]})),self.addEventListener("push",function(e){if(e.data){let t=e.data.json(),a={body:t.body,icon:t.icon||"/icon.png",badge:"/badge.png",vibrate:[100,50,100],data:{dateOfArrival:Date.now(),primaryKey:"2"}};e.waitUntil(self.registration.showNotification(t.title,a))}}),self.addEventListener("notificationclick",function(e){e.notification.close(),e.waitUntil(clients.openWindow("https://hnvtx.vercel.app"))}),j.addEventListeners()})();
 ```
 
 <!-- path: components/lookup/lookup-hooks.ts -->
@@ -25805,8 +26553,6 @@ export function OAuthButton({
   //  Use ref to track if action is in progress
   const isProcessingRef = useRef(false);
 
-  //  Remove authState and isLocalLoading from dependencies
-  // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
     debug("handleGoogleSignIn called");
 
@@ -26805,6 +27551,348 @@ export default function ClientRingMap({
             ([start, end]) =>
               start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
           )
+          .map(([start, end], i) => (
+            <Polyline
+              key={`solid-${start.id}-${end.id}-${i}`}
+              positions={[
+                [start.lat as number, start.long as number],
+                [end.lat as number, end.long as number],
+              ]}
+              color={theme === 'dark' ? '#3b82f6' : '#2563eb'}
+              weight={4}
+              opacity={0.8}
+              ref={(el) => {
+                if (el) polylineRefs.current[`solid-${start.id}-${end.id}-${i}`] = el;
+              }}
+            >
+              <Popup
+                autoClose={false}
+                closeOnClick={false}
+                className={theme === 'dark' ? 'dark-popup' : ''}
+              >
+                <div className="text-sm">
+                  <p>
+                    {start.name} → {end.name}
+                  </p>
+                  <p>Road Distance: {distances[`${start.id}-${end.id}`] ?? '...'}</p>
+                </div>
+              </Popup>
+            </Polyline>
+          ))}
+
+        {dashedLines
+          .filter(
+            ([source, target]) =>
+              source.lat !== null &&
+              source.long !== null &&
+              target.lat !== null &&
+              target.long !== null
+          )
+          .map(([source, target],i) => (
+            <Polyline
+              key={`dashed-${source.id}-${target.id}`}
+              positions={[
+                [source.lat as number, source.long as number],
+                [target.lat as number, target.long as number],
+              ]}
+              color={theme === 'dark' ? '#ef4444' : '#dc2626'}
+              weight={2.5}
+              opacity={0.7}
+              dashArray="6"
+              ref={(el) => {
+                if (el) polylineRefs.current[`dashed-${source.id}-${target.id}-${i}`] = el;
+              }}
+            >
+              <Popup
+                autoClose={false}
+                closeOnClick={false}
+                className={theme === 'dark' ? 'dark-popup' : ''}
+              >
+                <div className="text-sm">
+                  <p>
+                    {source.name} ↔ {target.name}
+                  </p>
+                  <p>Road Distance: {distances[`${source.id}-${target.id}`] ?? '...'}</p>
+                </div>
+              </Popup>
+            </Polyline>
+          ))}
+
+        {nodes
+          .filter((node) => node.lat !== null && node.long !== null)
+          .map((node, i) => {
+            const isHighlighted = highlightedNodeIds.includes(node.id!);
+            const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
+            return (
+              <Marker
+                key={node.id! + i}
+                position={[node.lat as number, node.long as number]}
+                icon={getNodeIcon(node.system_type, isHighlighted)}
+                eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
+                ref={(el) => {
+                  if (el) markerRefs.current[node.id!] = el;
+                }}
+              >
+                <Popup
+                  autoClose={false}
+                  closeOnClick={false}
+                  className={theme === 'dark' ? 'dark-popup' : ''}
+                  offset={popupOffsets[node.id!] || [0, 0]}
+                >
+                  <div className="text-sm">
+                    <h4 className="font-bold">{node.name}</h4>
+                    <p>Type: {node.system_type}</p>
+                    <p>IP: {displayIp}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+      </MapContainer>
+    </div>
+  );
+}
+
+```
+
+<!-- path: components/map/ClientRingMap (copy).tsx -->
+```typescript
+// path: components/map/ClientRingMap.tsx
+'use client';
+
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L, { LatLngBounds } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useThemeStore } from '@/stores/themeStore';
+import { getNodeIcon } from '@/utils/getNodeIcons';
+import { MapNode, RingMapNode } from './types/node';
+
+interface ClientRingMapProps {
+  nodes: MapNode[];
+  solidLines?: Array<[MapNode, MapNode]>;
+  dashedLines?: Array<[RingMapNode, RingMapNode]>;
+  distances?: Record<string, string>;
+  highlightedNodeIds?: string[];
+  onNodeClick?: (nodeId: string) => void;
+  onBack?: () => void;
+  flyToCoordinates?: [number, number] | null;
+  showControls?: boolean;
+}
+
+const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 100);
+    return () => clearTimeout(timer);
+  }, [isFullScreen, map]);
+  return null;
+};
+
+const FullscreenControl = ({
+  isFullScreen,
+  setIsFullScreen,
+}: {
+  isFullScreen: boolean;
+  setIsFullScreen: (fs: boolean) => void;
+}) => {
+  const map = useMap();
+  useEffect(() => {
+    const Fullscreen = L.Control.extend({
+      onAdd: function () {
+        const container = L.DomUtil.create(
+          'div',
+          'leaflet-bar leaflet-control leaflet-control-custom'
+        );
+        container.style.backgroundColor = 'white';
+        container.style.color = 'black';
+        container.style.width = '34px';
+        container.style.height = '34px';
+        container.style.borderRadius = '4px';
+        container.style.cursor = 'pointer';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
+
+        const iconHTML = isFullScreen
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
+
+        container.innerHTML = iconHTML;
+
+        L.DomEvent.on(container, 'click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          setIsFullScreen(!isFullScreen);
+        });
+        return container;
+      },
+    });
+    // Wait for the map to be ready before adding the control.
+    const control = new Fullscreen({ position: "topleft" });
+    map.whenReady(() => {
+      control.addTo(map);
+    });
+
+    return () => {
+      control.remove();
+    };
+  }, [map, isFullScreen, setIsFullScreen]);
+  return null;
+};
+
+const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (coords) {
+      map.flyTo(coords as [number, number], 16);
+    }
+  }, [coords, map]);
+  return null;
+};
+
+export default function ClientRingMap({
+  nodes,
+  solidLines = [],
+  dashedLines = [],
+  distances = {},
+  onBack,
+  highlightedNodeIds = [],
+  onNodeClick,
+  flyToCoordinates = null,
+  showControls = false,
+}: ClientRingMapProps) {
+  const { theme } = useThemeStore();
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showAllNodePopups, setShowAllNodePopups] = useState(false);
+  const [showAllLinePopups, setShowAllLinePopups] = useState(false);
+
+  const mapRef = useRef<L.Map>(null);
+  const markerRefs = useRef<{ [key: string]: L.Marker }>({});
+  const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
+
+  console.log(nodes);
+
+  // THE FIX: Re-implemented the popup offset logic from the old component.
+  const popupOffsets = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    nodes.forEach((node) => {
+      const key = `${node.lat},${node.long}`;
+      if (!groups[key]) groups[key] = [];
+      if (node.id) groups[key].push(node.id);
+    });
+
+    const offsets: Record<string, [number, number]> = {};
+    Object.values(groups).forEach((nodeIds) => {
+      const total = nodeIds.length;
+      if (total > 1) {
+        nodeIds.forEach((nodeId, index) => {
+          const angle = (index / total) * (Math.PI * 2) - Math.PI / 2;
+          const radius = 40; // pixels from marker center
+          const offsetX = Math.cos(angle) * radius;
+          const offsetY = Math.sin(angle) * radius;
+          offsets[nodeId] = [offsetX, offsetY];
+        });
+      }
+    });
+    return offsets;
+  }, [nodes]);
+
+  useEffect(() => {
+    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
+      _getIconUrl?: () => string;
+    };
+    delete iconPrototype._getIconUrl;
+
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    });
+  }, []);
+
+  useEffect(() => {
+    Object.values(markerRefs.current).forEach((marker) =>
+      showAllNodePopups ? marker.openPopup() : marker.closePopup()
+    );
+  }, [showAllNodePopups]);
+
+  useEffect(() => {
+    Object.values(polylineRefs.current).forEach((polyline) =>
+      showAllLinePopups ? polyline.openPopup() : polyline.closePopup()
+    );
+  }, [showAllLinePopups]);
+
+  const bounds = useMemo(() => {
+    if (nodes.length === 0) return null;
+    const validNodes = nodes.filter(
+      (n) =>
+        n.lat !== null && n.long !== null && typeof n.lat === 'number' && typeof n.long === 'number'
+    );
+    if (validNodes.length === 0) return null;
+    const lats = validNodes.map((n) => n.lat as number);
+    const lngs = validNodes.map((n) => n.long as number);
+    return new LatLngBounds(
+      [Math.min(...lats), Math.min(...lngs)],
+      [Math.max(...lats), Math.max(...lngs)]
+    );
+  }, [nodes]);
+
+  if (nodes.length === 0) return <div className="py-10 text-center">No nodes to display</div>;
+
+  const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const mapAttribution = '&copy; OpenStreetMap contributors &copy; CARTO';
+  const mapContainerClass = isFullScreen
+    ? 'fixed inset-0 z-[100]'
+    : 'relative h-full w-full rounded-lg overflow-hidden';
+
+  return (
+    <div className={mapContainerClass}>
+      {showControls && (
+        <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+            >
+              ← Back to List
+            </button>
+          )}
+          <button
+            onClick={() => setShowAllNodePopups(!showAllNodePopups)}
+            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+          >
+            <span className={showAllNodePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
+            {showAllNodePopups ? 'Hide' : 'Show'} Node Info
+          </button>
+          <button
+            onClick={() => setShowAllLinePopups(!showAllLinePopups)}
+            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+          >
+            <span className={showAllLinePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
+            {showAllLinePopups ? 'Hide' : 'Show'} Line Info
+          </button>
+        </div>
+      )}
+
+      <MapContainer
+        center={bounds?.getCenter() || [22.57, 88.36]}
+        bounds={bounds || undefined}
+        zoom={13}
+        ref={mapRef}
+        style={{ height: '100%', width: '100%' }}
+        className="z-0"
+      >
+        <MapController isFullScreen={isFullScreen} />
+        <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
+        <MapFlyToController coords={flyToCoordinates} />
+        <TileLayer url={mapUrl} attribution={mapAttribution} />
+
+        {solidLines
+          .filter(
+            ([start, end]) =>
+              start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
+          )
           .map(([start, end]) => (
             <Polyline
               key={`solid-${start.id}-${end.id}`}
@@ -26881,7 +27969,7 @@ export default function ClientRingMap({
               <Marker
                 key={node.id!}
                 position={[node.lat as number, node.long as number]}
-                icon={getNodeIcon(node.system_type, isHighlighted)}
+                icon={getNodeIcon(node.type, isHighlighted)}
                 eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
                 ref={(el) => {
                   if (el) markerRefs.current[node.id!] = el;
@@ -30716,13 +31804,13 @@ const DataListView = (props: DataListViewProps) => {
 };
 
 export default DataListView;
+
 ```
 
 <!-- path: components/common/form/IPAddressInput.tsx -->
 ```typescript
 import React, { useState, useCallback, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
-// import { Label } from '@/components/common/ui';
 
 // The ValidationState type remains useful for internal logic
 interface ValidationState {
@@ -34521,6 +35609,7 @@ export { ScrollArea, ScrollBar }
 
 <!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
+
 "use client";
 
 import { useThemeStore, Theme } from "@/stores/themeStore";
@@ -40617,14 +41706,8 @@ export function OptimizedNetworkMap({
     return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
   }
 
-  // const mapUrl = theme === 'dark'
-  //   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-  //   : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
-  // const mapAttribution = theme === 'dark'
-  //   ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  //   : '&copy; OpenStreetMap contributors';
     const mapAttribution = '&copy; OpenStreetMap contributors';
 
   return (
@@ -41952,6 +43035,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   system_name: "",
   system_type_id: "",
   node_id: "",
+  maan_node_id: null,
   maintenance_terminal_id: null,
   ip_address: "",
   commissioned_on: null,
@@ -42038,13 +43122,15 @@ export const SystemModal: FC<SystemModalProps> = ({
     () => systemTypes.find((st) => st.id === selectedSystemTypeId),
     [systemTypes, selectedSystemTypeId]
   );
-  const isRingBasedSystem = useMemo(() => selectedSystemType?.is_ring_based === true, [selectedSystemType]);
+  const isRingBasedSystem = useMemo(
+    () => selectedSystemType?.is_ring_based === true,
+    [selectedSystemType]
+  );
   const isSdhSystem = useMemo(() => {
-    const name = selectedSystemType?.name?.toLowerCase() || '';
-    return name.includes('synchronous') || name.includes('sdh');
+    const name = selectedSystemType?.name?.toLowerCase() || "";
+    return name.includes("synchronous") || name.includes("sdh");
   }, [selectedSystemType]);
   const needsStep2 = isRingBasedSystem || isSdhSystem;
-
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
@@ -42062,6 +43148,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           system_name: rowData.system_name || "",
           system_type_id: rowData.system_type_id || "",
           node_id: rowData.node_id || "",
+          maan_node_id: rowData.maan_node_id || null,
           maintenance_terminal_id: rowData.maintenance_terminal_id,
           ip_address: (rowData.ip_address as string) || "",
           commissioned_on: rowData.commissioned_on || null,
@@ -42193,6 +43280,14 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.node_id}
           required
         />{" "}
+        {selectedSystemType?.code?.trim() === "MAAN" && (
+          <FormInput
+            name='maan_node_id'
+            label='MAAN Node'
+            register={register}
+            error={errors.maan_node_id}
+          />
+        )}
         <FormSearchableSelect
           name='maintenance_terminal_id'
           label='Maintenance Terminal'
@@ -46860,6 +47955,7 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: unknown | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
@@ -46875,6 +47971,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: unknown | null
+          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id: string
@@ -46890,6 +47987,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: unknown | null
+          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id?: string
@@ -48039,6 +49137,7 @@ export type Database = {
           is_ring_based: boolean | null
           latitude: number | null
           longitude: number | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string | null
@@ -48622,6 +49721,7 @@ export type Database = {
           p_commissioned_on?: string
           p_id?: string
           p_ip_address?: unknown
+          p_maan_node_id?: string
           p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
@@ -48638,6 +49738,7 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: unknown | null
+          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
@@ -50380,6 +51481,7 @@ export type SystemsRow = {
     created_at: string | null;
     id: string;
     ip_address: unknown | null;
+    maan_node_id: string | null;
     maintenance_terminal_id: string | null;
     make: string | null;
     node_id: string;
@@ -50396,6 +51498,7 @@ export type SystemsInsert = {
     created_at?: string | null;
     id?: string;
     ip_address?: unknown | null;
+    maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
     node_id: string;
@@ -50412,6 +51515,7 @@ export type SystemsUpdate = {
     created_at?: string | null;
     id?: string;
     ip_address?: unknown | null;
+    maan_node_id?: string | null;
     maintenance_terminal_id?: string | null;
     make?: string | null;
     node_id?: string;
@@ -50759,6 +51863,7 @@ export type V_systems_completeRow = {
     is_ring_based: boolean | null;
     latitude: number | null;
     longitude: number | null;
+    maan_node_id: string | null;
     maintenance_terminal_id: string | null;
     make: string | null;
     node_id: string | null;
@@ -54102,7 +55207,8 @@ const useEmployeesData = (
           emp.employee_name?.toLowerCase().includes(lowerQuery) ||
           emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
           emp.employee_email?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_contact?.toLowerCase().includes(lowerQuery)
+          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.employee_designation_id) {
@@ -55366,13 +56472,13 @@ export default OfcPage;
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase } from 'react-icons/fi';
+import { FiDatabase, FiUpload } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
@@ -55385,17 +56491,21 @@ import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConn
 import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { DEFAULTS } from '@/constants/constants';
+import { buildUploadConfig } from '@/constants/table-column-keys';
+import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
+  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
     supabase,
@@ -55426,6 +56536,12 @@ export default function SystemConnectionsPage() {
     onSuccess: () => refetch(),
   });
 
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    }
+  });
+
   const columns = SystemConnectionsTableColumns(connections);
 
   const openEditModal = (record: V_system_connections_completeRowSchema) => {
@@ -55439,6 +56555,26 @@ export default function SystemConnectionsPage() {
   const closeModal = () => {
     setEditingRecord(null);
     setIsEditModalOpen(false);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && parentSystem?.id) {
+      const uploadConfig = buildUploadConfig('v_system_connections_complete');
+      
+      uploadConnections({
+        file,
+        columns: uploadConfig.columnMapping,
+        parentSystemId: parentSystem.id,
+      });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const tableActions = useMemo(
@@ -55459,11 +56595,18 @@ export default function SystemConnectionsPage() {
         filters: { system_id: systemId }
     }
   });
+  
+  headerActions.splice(1, 0, {
+    label: isUploading ? 'Uploading...' : 'Upload Connections',
+    onClick: handleUploadClick,
+    variant: 'outline',
+    leftIcon: <FiUpload />,
+    disabled: isUploading || isLoadingConnections,
+  });
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
   
-  // THE FIX: Logic to build the RPC payload now lives in the parent component.
   const handleSave = (formData: SystemConnectionFormValues) => {
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
       p_id: editingRecord?.id ?? undefined,
@@ -55515,6 +56658,14 @@ export default function SystemConnectionsPage() {
         stats={[{ label: 'Total Connections', value: totalCount }]}
       />
 
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
+
       <DataTable
         tableName="v_system_connections_complete"
         data={connections}
@@ -55563,32 +56714,34 @@ export default function SystemConnectionsPage() {
 <!-- path: app/dashboard/systems/page.tsx -->
 ```typescript
 // app/dashboard/systems/page.tsx
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
-import { FiDatabase } from 'react-icons/fi';
-import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { DataTable } from '@/components/table/DataTable';
-import type { TableAction } from '@/components/table/datatable-types';
-import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
-import { Lookup_typesRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { SystemModal } from '@/components/systems/SystemModal';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SystemFormData } from '@/schemas/system-schemas';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
-import { DEFAULTS } from '@/constants/constants';
-import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState, useRef } from "react";
+import { FiDatabase, FiUpload } from "react-icons/fi";
+import { toast } from "sonner";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
+import { ErrorDisplay } from "@/components/common/ui";
+import { ConfirmModal } from "@/components/common/ui/Modal/confirmModal";
+import { createStandardActions } from "@/components/table/action-helpers";
+import { DataTable } from "@/components/table/DataTable";
+import type { TableAction } from "@/components/table/datatable-types";
+import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
+import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
+import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
+import { createClient } from "@/utils/supabase/client";
+import { SystemModal } from "@/components/systems/SystemModal";
+import { SelectFilter } from "@/components/common/filters/FilterInputs";
+import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
+import { SystemFormData } from "@/schemas/system-schemas";
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { localDb } from "@/data/localDb";
+import { DEFAULTS } from "@/constants/constants";
+import useOrderedColumns from "@/hooks/useOrderedColumns";
+import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
+import { buildUploadConfig } from "@/constants/table-column-keys";
+import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -55600,13 +56753,13 @@ const useSystemsData = (
       ...filters,
       or: searchQuery
         ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
-        : undefined
+        : undefined,
     });
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_systems_complete',
+    const { data, error } = await createClient().rpc("get_paged_data", {
+      p_view_name: "v_systems_complete",
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
-      p_filters: rpcFilters
+      p_filters: rpcFilters,
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];
@@ -55616,38 +56769,54 @@ const useSystemsData = (
     return await localDb.v_systems_complete.toArray();
   };
 
-  const { data: allSystems = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
-    ['systems-data', searchQuery, filters],
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: DEFAULTS.CACHE_TIME }
-  );
+  const {
+    data: allSystems = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useOfflineQuery(["systems-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
+    staleTime: DEFAULTS.CACHE_TIME,
+  });
 
   const processedData = useMemo(() => {
     let filtered = allSystems;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter((system: V_systems_completeRowSchema) =>
-        system.system_name?.toLowerCase().includes(lowerQuery) ||
-        system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-        system.node_name?.toLowerCase().includes(lowerQuery) ||
-        String(system.ip_address)?.toLowerCase().includes(lowerQuery)
+      filtered = filtered.filter(
+        (system: V_systems_completeRowSchema) =>
+          system.system_name?.toLowerCase().includes(lowerQuery) ||
+          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
+          system.node_name?.toLowerCase().includes(lowerQuery) ||
+          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.system_type_name) {
-      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.system_type_name === filters.system_type_name);
+      filtered = filtered.filter(
+        (system: V_systems_completeRowSchema) =>
+          system.system_type_name === filters.system_type_name
+      );
     }
     if (filters.status) {
-      filtered = filtered.filter((system: V_systems_completeRowSchema) => system.status === (filters.status === 'true'));
+      filtered = filtered.filter(
+        (system: V_systems_completeRowSchema) => system.status === (filters.status === "true")
+      );
     }
 
     const totalCount = filtered.length;
-    const activeCount = filtered.filter((s: V_systems_completeRowSchema) => s.status === true).length;
+    const activeCount = filtered.filter(
+      (s: V_systems_completeRowSchema) => s.status === true
+    ).length;
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
 
-    return { data: paginatedData, totalCount, activeCount, inactiveCount: totalCount - activeCount };
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
   }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -55657,59 +56826,128 @@ export default function SystemsPage() {
   const router = useRouter();
   const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
-    data: systems, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch,
-    pagination, search, filters, editModal, deleteModal, actions: crudActions,
-  } = useCrudManager<'systems', V_systems_completeRowSchema>({
-    tableName: 'systems', dataQueryHook: useSystemsData, searchColumn: 'system_name', displayNameField: 'system_name'
+    data: systems,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters,
+    editModal,
+    deleteModal,
+    actions: crudActions,
+  } = useCrudManager<"systems", V_systems_completeRowSchema>({
+    tableName: "systems",
+    dataQueryHook: useSystemsData,
+    searchColumn: "system_name",
+    displayNameField: "system_name",
   });
 
-  const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [...TABLE_COLUMN_KEYS.v_systems_complete]); // order will be as per TABLE_COLUMN_KEYS.v_systems_complete
-
-  console.log(orderedSystems);
+  const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
+    ...TABLE_COLUMN_KEYS.v_systems_complete,
+  ]);
 
   const isInitialLoad = isLoading && systems.length === 0;
 
-  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
+  const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
     onSuccess: () => {
-      toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
+      toast.success(`System ${editModal.record ? "updated" : "created"} successfully.`);
       refetch();
       editModal.close();
     },
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
   });
 
+  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    },
+  });
+
   const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['system-types-for-filter'],
-    async () => (await createClient().from('lookup_types').select('*').eq('category', 'SYSTEM_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'SYSTEM_TYPES' }).toArray()
+    ["system-types-for-filter"],
+    async () =>
+      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ??
+      [],
+    async () => await localDb.lookup_types.where({ category: "SYSTEM_TYPES" }).toArray()
   );
   const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
 
-  const handleView = useCallback((system: V_systems_completeRowSchema) => {
-    if (system.id) {
-      router.push(`/dashboard/systems/${system.id}`);
-    } else {
-      toast.info("System needs to be created before managing connections.");
-    }
-  }, [router]);
+  const handleView = useCallback(
+    (system: V_systems_completeRowSchema) => {
+      if (system.id) {
+        router.push(`/dashboard/systems/${system.id}`);
+      } else {
+        toast.info("System needs to be created before managing connections.");
+      }
+    },
+    [router]
+  );
 
-  const tableActions = useMemo(() => createStandardActions<V_systems_completeRowSchema>({ onEdit: editModal.openEdit, onView: handleView, onDelete: crudActions.handleDelete, onToggleStatus: crudActions.handleToggleStatus }), [editModal.openEdit, handleView, crudActions]);
-  const headerActions = useStandardHeaderActions({ data: systems, onRefresh: () => { refetch(); toast.success('Systems refreshed.'); }, onAddNew: editModal.openAdd, isLoading: isLoading, exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' } });
+  const tableActions = useMemo(
+    () =>
+      createStandardActions<V_systems_completeRowSchema>({
+        onEdit: editModal.openEdit,
+        onView: handleView,
+        onDelete: crudActions.handleDelete,
+        onToggleStatus: crudActions.handleToggleStatus,
+      }),
+    [editModal.openEdit, handleView, crudActions]
+  );
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const uploadConfig = buildUploadConfig("v_systems_complete");
+      uploadSystems({ file, columns: uploadConfig.columnMapping });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const headerActions = useStandardHeaderActions({
+    data: systems,
+    onRefresh: () => {
+      refetch();
+      toast.success("Systems refreshed.");
+    },
+    onAddNew: editModal.openAdd,
+    isLoading: isLoading,
+    exportConfig: { tableName: "v_systems_complete", fileName: "systems" },
+  });
+
+  headerActions.splice(1, 0, {
+    label: isUploading ? "Uploading..." : "Upload Systems",
+    onClick: handleUploadClick,
+    variant: "outline",
+    leftIcon: <FiUpload />,
+    disabled: isUploading || isLoading,
+  });
+
   const headerStats = [
-    { value: totalCount, label: 'Total Systems' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+    { value: totalCount, label: "Total Systems" },
+    { value: activeCount, label: "Active", color: "success" as const },
+    { value: inactiveCount, label: "Inactive", color: "danger" as const },
   ];
 
-  const handleSave = useCallback((formData: SystemFormData) => {
-    const selectedSystemType = systemTypes.find(st => st.id === formData.system_type_id);
-    const isRingBased = selectedSystemType?.is_ring_based;
-  
-    // THE FIX: The payload now correctly includes p_order_in_ring and matches the RPC function signature.
-    // The previous type error `Property 'order_in_ring' does not exist on type...` is now resolved.
-    const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+  const handleSave = useCallback(
+    (formData: SystemFormData) => {
+      const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
+      const isRingBased = selectedSystemType?.is_ring_based;
+
+      const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
         p_system_type_id: formData.system_type_id!,
@@ -55721,48 +56959,114 @@ export default function SystemsPage() {
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
-        p_ring_id: (isRingBased && formData.ring_id) ? formData.ring_id : undefined,
-        p_order_in_ring: (isRingBased && formData.order_in_ring != null) ? Number(formData.order_in_ring) : undefined,
-    };
-    upsertSystemMutation.mutate(payload);
-  }, [editModal.record, upsertSystemMutation, systemTypes]);
+        p_ring_id: isRingBased && formData.ring_id ? formData.ring_id : undefined,
+        p_order_in_ring:
+          isRingBased && formData.order_in_ring != null
+            ? Number(formData.order_in_ring)
+            : undefined,
+      };
+      upsertSystemMutation.mutate(payload);
+    },
+    [editModal.record, upsertSystemMutation, systemTypes]
+  );
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: "Retry", onClick: refetch, variant: "primary" }]}
+      />
+    );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className='p-6 space-y-6'>
       <PageHeader
-        title="System Management" description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc." icon={<FiDatabase />}
-        stats={headerStats} actions={headerActions} isLoading={isInitialLoad} isFetching={isFetching}
+        title='System Management'
+        description='Manage all network systems, including CPAN, MAAN, SDH, DWDM etc.'
+        icon={<FiDatabase />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
       />
+
+      <input
+        type='file'
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className='hidden'
+        accept='.xlsx, .xls, .csv'
+      />
+
       <DataTable
-        tableName="v_systems_complete"
+        tableName='v_systems_complete'
         data={systems}
         columns={orderedSystems}
         loading={isLoading}
-        actions={tableActions as TableAction<'v_systems_complete'>[]}
+        actions={tableActions as TableAction<"v_systems_complete">[]}
         pagination={{
-          current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
-          onChange: (page, limit) => { pagination.setCurrentPage(page); pagination.setPageLimit(limit); },
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (page, limit) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(limit);
+          },
         }}
         customToolbar={
           <SearchAndFilters
-            searchTerm={search.searchQuery} onSearchChange={search.setSearchQuery} showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(p => !p)} onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+            searchTerm={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters((p) => !p)}
+            onClearFilters={() => {
+              search.setSearchQuery("");
+              filters.setFilters({});
+            }}
             hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
-            searchPlaceholder="Search by system name or type..."
-          >
-            <SelectFilter label="System Type" filterKey="system_type_name" filters={filters.filters} setFilters={filters.setFilters} options={(systemTypes || []).map(t => ({ value: t.name, label: t.name }))} />
-            <SelectFilter label="Status" filterKey="status" filters={filters.filters} setFilters={filters.setFilters} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} />
+            searchPlaceholder='Search by system name or type...'>
+            <SelectFilter
+              label='System Type'
+              filterKey='system_type_name'
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={(systemTypes || []).filter((s)=> s.name !== "DEFAULT").map((t) => ({ value: t.name, label: t.code }))}
+            />
+            <SelectFilter
+              label='Status'
+              filterKey='status'
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: "true", label: "Active" },
+                { value: "false", label: "Inactive" },
+              ]}
+            />
           </SearchAndFilters>
         }
       />
-      <SystemModal isOpen={editModal.isOpen} onClose={editModal.close} rowData={editModal.record} onSubmit={handleSave} isLoading={upsertSystemMutation.isPending} />
-      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title="Confirm Deletion" message={deleteModal.message} loading={deleteModal.loading} type="danger" />
+      <SystemModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        rowData={editModal.record}
+        onSubmit={handleSave}
+        isLoading={upsertSystemMutation.isPending}
+      />
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title='Confirm Deletion'
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type='danger'
+      />
     </div>
   );
 }
+
 ```
 
 <!-- path: app/dashboard/nodes/page.tsx -->
@@ -57916,7 +59220,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
 
 import { Database, Tables } from "@/types/supabase-types";
 import { TABLES, VIEWS } from "@/constants/table-column-keys";
-import { PublicTableName, ViewName } from "@/hooks/database";
+import { PublicTableName, Row, ViewName } from "@/hooks/database";
 
 // Database schema types
 
@@ -57951,8 +59255,9 @@ export type ColumnMeta = {
   transform?: ColumnTransform;
 };
 
+// THE FIX: Allow TableMetaMap to accept view names as keys.
 export type TableMetaMap = {
-  [K in PublicTableName]?: Partial<Record<keyof Tables<K> & string, ColumnMeta>>;
+  [K in keyof (Database['public']['Tables'] & Database['public']['Views'])]?: Partial<Record<keyof Row<K> & string, ColumnMeta>>;
 };
 
 export type UploadTableMeta<T extends PublicTableName> = {
@@ -58396,7 +59701,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         sortable: true,
         searchable: true,
         filterable: true,
-        width: 150,
+        width: 180,
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
             {(value as string) || 'N/A'}

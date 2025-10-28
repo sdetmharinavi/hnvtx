@@ -317,7 +317,7 @@ export default function SystemsPage() {
               filterKey='system_type_name'
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={(systemTypes || []).map((t) => ({ value: t.name, label: t.name }))}
+              options={(systemTypes || []).filter((s)=> s.name !== "DEFAULT").map((t) => ({ value: t.name, label: t.code }))}
             />
             <SelectFilter
               label='Status'

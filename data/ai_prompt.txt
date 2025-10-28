@@ -129,4 +129,16 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! We will first fix rings map plotting according to order_in_ring and check if all sql is correctly used or not and if UI for any sql is remaining or any sql is redundant and can be removed.
+Let's begin! We will first fix the existing errors, for examle for dashboard/rings/id getting errors like:
+API error for pair aafe2bfb-6e18-4053-97b5-bf7fb9992fcb-abfa36d3-d0ed-486e-8f97-62651f7a9b9e: Too Many Requests
+
+hooks/useORSRouteDistances.ts (30:17) @ <unknown>
+
+
+  28 |
+  29 |       if (!response.ok) {
+> 30 |         console.error(`API error for pair ${startNode.id}-${endNode.id}: ${response.statusText}`);
+     |                 ^
+  31 |         return null;
+  32 |       }
+
