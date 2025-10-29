@@ -68,11 +68,8 @@ export function useDiaryExcelUpload(
       excelHeaders.forEach((header, index) => {
         headerMap[header.toLowerCase()] = index;
       });
-
-      // For admins, the user_id column is required in the Excel file
-      if (isAdmin && !headerMap['user_id']) {
-          throw new Error('Upload failed: Excel file must contain a "user_id" column for admin uploads.');
-      }
+      
+      const hasUserIdColumn = 'user_id' in headerMap;
 
       const dataRows = jsonData.slice(1);
       const notesToUpsert: Diary_notesInsertSchema[] = [];
@@ -94,6 +91,9 @@ export function useDiaryExcelUpload(
         const processedData: Record<string, unknown> = {};
 
         for (const mapping of columns) {
+            // Skip user_id processing for now, we'll handle it specially
+            if (mapping.dbKey === 'user_id') continue;
+
             const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
             const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
             let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
@@ -106,13 +106,22 @@ export function useDiaryExcelUpload(
             processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
         
-        // Inject or validate user_id based on role
+        // THE FIX: Implement the new flexible logic for user_id
         if (isAdmin) {
-            if (!processedData.user_id) {
-                rowValidationErrors.push({ rowIndex: i, column: 'user_id', value: processedData.user_id, error: 'user_id is required for admin uploads.' });
+            if (hasUserIdColumn) {
+                const userIdFromCell = row[headerMap['user_id']];
+                if (!userIdFromCell) {
+                    rowValidationErrors.push({ rowIndex: i, column: 'user_id', value: userIdFromCell, error: 'User ID is required for every row when uploading as an admin with a user_id column.' });
+                } else {
+                    processedData.user_id = userIdFromCell;
+                }
+            } else {
+                // If admin uploads without a user_id column, assume it's for themselves.
+                processedData.user_id = currentUserId;
             }
         } else {
-            processedData.user_id = currentUserId; // Force user_id for non-admins
+            // For non-admins, always force their own user ID for security.
+            processedData.user_id = currentUserId;
         }
 
         if (rowValidationErrors.length > 0) {
