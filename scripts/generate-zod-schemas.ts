@@ -155,6 +155,15 @@ class TypeScriptToZodConverter {
       return isNullable ? `${zodEnum}.nullable()` : zodEnum;
     }
 
+    // Add specific handling for array types before the switch statement.
+    if (type.endsWith('[]')) {
+      const baseType = type.slice(0, -2); // e.g., "string[]" becomes "string"
+      // Recursively get the schema for the base type. Nullability is handled at the end.
+      const baseSchema = this.typeToZodSchema(baseType, false, fieldName, tableName);
+      const arraySchema = `z.array(${baseSchema})`;
+      return isNullable ? `${arraySchema}.nullable()` : arraySchema;
+    }
+
     // Handle single literal types
     if (type.startsWith('"') && type.endsWith('"')) {
       const literal = `z.literal(${type})`;
