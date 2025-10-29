@@ -15,7 +15,9 @@ export const DiaryCalendar = ({ selectedDate, onDateChange, highlightedDates }: 
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border dark:border-gray-700 flex justify-center">
       <DatePicker
         selected={selectedDate}
-        onChange={onDateChange}
+        onChange={(date: Date | null) => {
+          if (date) onDateChange(date);
+        }}
         inline
         highlightDates={highlightedDates}
         className="react-datepicker-custom"
