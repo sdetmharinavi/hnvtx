@@ -12,6 +12,7 @@ import {
   FiGitBranch,
   FiHelpCircle,
   FiBookOpen,
+  FiCalendar,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -43,7 +44,7 @@ function NavItems() {
       {
         id: 'diary',
         label: 'Diary',
-        icon: <FiBookOpen className="h-5 w-5" />,
+        icon: <FiCalendar className="h-5 w-5" />, // Use the Calendar icon
         href: '/dashboard/diary',
         roles: [
           UserRole.ADMIN,

@@ -4157,6 +4157,19 @@ export type Database = {
         }[]
       }
       get_dashboard_overview: { Args: never; Returns: Json }
+      get_diary_notes_for_range: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          content: string
+          created_at: string
+          full_name: string
+          id: string
+          note_date: string
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_entity_counts: {
         Args: { p_entity_name: string; p_filters?: Json }
         Returns: {
