@@ -47,6 +47,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  diary_notes: {
+    uploadType: "upsert",
+    conflictColumn: "user_id,note_date",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -95,6 +100,9 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   v_system_connections_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: 'date' },
     status: { transform: toPgBoolean },
+  },
+  diary_notes: {
+    note_date: { transform: toPgDate, excelFormat: 'date' }
   },
 };
 
@@ -454,6 +462,15 @@ const TABLE_COLUMN_OBJECTS = {
     logical_path_id: "logical_path_id",
     ofc_cable_id: "ofc_cable_id",
     path_order: "path_order",
+    created_at: "created_at",
+    updated_at: "updated_at",
+  },
+  diary_notes: {
+    id: "id",
+    user_id: "user_id",
+    tags: "tags",
+    note_date: "note_date",
+    content: "content",
     created_at: "created_at",
     updated_at: "updated_at",
   },

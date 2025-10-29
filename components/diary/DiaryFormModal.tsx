@@ -12,15 +12,12 @@ interface DiaryFormModalProps {
   onSubmit: (data: Diary_notesInsertSchema) => void;
   isLoading: boolean;
   editingNote?: Diary_notesInsertSchema | null;
+  selectedDate?: Date; // New prop for pre-filling date
 }
 
-export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNote }: DiaryFormModalProps) => {
+export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNote, selectedDate }: DiaryFormModalProps) => {
   const { control, handleSubmit, reset, formState: { errors } } = useForm<Diary_notesInsertSchema>({
     resolver: zodResolver(diary_notesInsertSchema.pick({ note_date: true, content: true })),
-    defaultValues: {
-      note_date: new Date().toISOString().split('T')[0],
-      content: '',
-    },
   });
 
   useEffect(() => {
@@ -31,25 +28,27 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
           content: editingNote.content,
         });
       } else {
+        // Pre-fill with the selected date from the calendar
+        const dateToSet = selectedDate ? new Date(selectedDate.setHours(0,0,0,0)).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
         reset({
-          note_date: new Date().toISOString().split('T')[0],
+          note_date: dateToSet,
           content: '',
         });
       }
     }
-  }, [isOpen, editingNote, reset]);
+  }, [isOpen, editingNote, selectedDate, reset]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editingNote ? 'Edit Diary Note' : 'Add New Note'} className='w-0 h-0'>
+    <Modal isOpen={isOpen} onClose={onClose} title={editingNote ? 'Edit Diary Note' : 'Add New Note'} size="lg">
       <FormCard
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isLoading}
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
-        standalone
+        standalone={false}
       >
         <div className="space-y-4">
-          <FormDateInput name="note_date" label="Note Date" control={control} error={errors.note_date} required />
+          <FormDateInput name="note_date" label="Note Date" control={control} error={errors.note_date} required pickerProps={{ readOnly: !editingNote }} />
           <FormTextarea name="content" label="Content" control={control} error={errors.content} rows={8} placeholder="Write your daily notes here..." />
         </div>
       </FormCard>

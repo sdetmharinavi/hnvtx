@@ -47,7 +47,7 @@ export type TableMetaMap = {
 
 export type UploadTableMeta<T extends PublicTableName> = {
   uploadType: "insert" | "upsert";
-  conflictColumn?: keyof Tables<T> & string;
+  conflictColumn?: string;
   isUploadEnabled?: boolean;
 };
 

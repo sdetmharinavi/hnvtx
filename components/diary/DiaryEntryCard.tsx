@@ -1,16 +1,18 @@
 // components/diary/DiaryEntryCard.tsx
 import { motion } from 'framer-motion';
-import { FiCalendar, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiCalendar, FiEdit, FiTrash2, FiUser } from 'react-icons/fi';
 import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 import { Button } from '@/components/common/ui';
+import { useUser } from '@/providers/UserProvider';
 
 interface DiaryEntryCardProps {
-  entry: Diary_notesRowSchema;
+  entry: Diary_notesRowSchema & { full_name?: string | null }; // Allow full_name for admins
   onEdit: (entry: Diary_notesRowSchema) => void;
   onDelete: (entry: { id: string; name: string }) => void;
 }
 
 export const DiaryEntryCard = ({ entry, onEdit, onDelete }: DiaryEntryCardProps) => {
+  const { isSuperAdmin } = useUser();
   const formattedDate = new Date(entry.note_date!).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -37,6 +39,14 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete }: DiaryEntryCardProps)
             </Button>
           </div>
         </div>
+
+        {isSuperAdmin && entry.full_name && (
+          <div className="flex items-center gap-2 mt-2 pl-8 text-sm text-gray-500 dark:text-gray-400">
+            <FiUser className="w-4 h-4" />
+            <span>{entry.full_name}</span>
+          </div>
+        )}
+
         <div className="mt-4 pl-8 border-l-2 border-gray-200 dark:border-gray-700">
           <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{entry.content}</p>
         </div>

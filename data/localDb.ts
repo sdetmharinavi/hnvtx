@@ -14,7 +14,6 @@ import {
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
   User_profilesRowSchema as User_profilesRow,
-  Diary_notesRowSchema as Diary_notesRow,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
   V_systems_completeRowSchema,
@@ -23,6 +22,7 @@ import {
   V_maintenance_areasRowSchema,
   V_cable_utilizationRowSchema,
   V_ring_nodesRowSchema,
+  Diary_notesRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 
@@ -60,7 +60,8 @@ export class HNVTXDatabase extends Dexie {
   fiber_splices!: Table<Fiber_splicesRow, string>;
   system_connections!: Table<System_connectionsRow, string>;
   user_profiles!: Table<User_profilesRow, string>;
-  diary_notes!: Table<Diary_notesRow, string>;
+  diary_notes!: Table<Diary_notesRowSchema, string>;
+
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
   v_systems_complete!: Table<V_systems_completeRowSchema, string>;
@@ -75,7 +76,8 @@ export class HNVTXDatabase extends Dexie {
 
   constructor() {
     super('HNVTXDatabase');
-    this.version(5).stores({
+    // THE FIX: Incremented version number to apply schema changes.
+    this.version(6).stores({
       lookup_types: 'id, category, name',
       maintenance_areas: 'id, name, parent_id, area_type_id',
       employee_designations: 'id, name, parent_id',
@@ -89,8 +91,8 @@ export class HNVTXDatabase extends Dexie {
       fiber_splices: 'id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
       system_connections: 'id, system_id, sn_id, en_id, connected_system_id',
       user_profiles: 'id, first_name, last_name, role',
-      diary_notes: 'id, user_id, note_date, content, tags',
-      // THE FIX: Simplify view indexes to prevent potential conflicts.
+      // THE FIX: Added a compound index on user_id and note_date for efficient lookups.
+      diary_notes: 'id, &[user_id+note_date], note_date',
       v_nodes_complete: 'id, name, node_type_id',
       v_ofc_cables_complete: 'id, route_name, sn_id, en_id',
       v_systems_complete: 'id, system_name, node_id, system_type_id',
