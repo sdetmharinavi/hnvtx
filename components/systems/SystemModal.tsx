@@ -173,6 +173,7 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const onValidSubmit = useCallback(
     (formData: SystemFormValues) => {
+      console.log(formData);
       onSubmit(formData);
     },
     [onSubmit]
@@ -278,7 +279,7 @@ export const SystemModal: FC<SystemModalProps> = ({
         {selectedSystemType?.code?.trim() === "MAAN" && (
           <FormInput
             name='maan_node_id'
-            label='MAAN Node'
+            label='MAAN Node ID'
             register={register}
             error={errors.maan_node_id}
           />
@@ -328,9 +329,10 @@ export const SystemModal: FC<SystemModalProps> = ({
               name='order_in_ring'
               label='Order in Ring'
               type='number'
+              step='0.01'
               register={register}
               error={errors.order_in_ring}
-              placeholder='e.g., 1, 2, 3...'
+              placeholder='e.g., 0.1, 0.2, 0.3...'
             />
           </>
         )}{" "}
