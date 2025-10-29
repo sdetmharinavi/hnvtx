@@ -20,6 +20,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
   'user_profiles',
+  'diary_notes',
 ];
 
 // A set of our view names for a fast lookup

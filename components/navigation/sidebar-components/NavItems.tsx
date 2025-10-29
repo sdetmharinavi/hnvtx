@@ -11,6 +11,7 @@ import {
   FiList,
   FiGitBranch,
   FiHelpCircle,
+  FiBookOpen,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -37,6 +38,22 @@ function NavItems() {
           UserRole.MAANADMIN,
           UserRole.SDHADMIN,
           UserRole.ASSETADMIN,
+        ],
+      },
+      {
+        id: 'diary',
+        label: 'Diary',
+        icon: <FiBookOpen className="h-5 w-5" />,
+        href: '/dashboard/diary',
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+          UserRole.MNGADMIN,
         ],
       },
       {

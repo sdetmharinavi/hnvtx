@@ -952,6 +952,44 @@ export type Database = {
           },
         ]
       }
+      diary_notes: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          note_date: string
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          note_date?: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          note_date?: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_designations: {
         Row: {
           created_at: string | null

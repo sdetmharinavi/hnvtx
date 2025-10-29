@@ -779,6 +779,36 @@ export const cable_segmentsUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const diary_notesRowSchema = z.object({
+  content: z.string().max(10000, "Text is too long").nullable(),
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
+  note_date: z.iso.datetime(),
+  tags: z.array(z.string()).nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  user_id: z.uuid(),
+});
+
+export const diary_notesInsertSchema = z.object({
+  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  note_date: z.iso.datetime().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  user_id: z.uuid().optional(),
+});
+
+export const diary_notesUpdateSchema = z.object({
+  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  note_date: z.iso.datetime().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  user_id: z.uuid().optional(),
+});
+
 export const employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -2077,6 +2107,9 @@ export type AuthUsersUpdateSchema = z.infer<typeof authUsersUpdateSchema>;
 export type Cable_segmentsRowSchema = z.infer<typeof cable_segmentsRowSchema>;
 export type Cable_segmentsInsertSchema = z.infer<typeof cable_segmentsInsertSchema>;
 export type Cable_segmentsUpdateSchema = z.infer<typeof cable_segmentsUpdateSchema>;
+export type Diary_notesRowSchema = z.infer<typeof diary_notesRowSchema>;
+export type Diary_notesInsertSchema = z.infer<typeof diary_notesInsertSchema>;
+export type Diary_notesUpdateSchema = z.infer<typeof diary_notesUpdateSchema>;
 export type Employee_designationsRowSchema = z.infer<typeof employee_designationsRowSchema>;
 export type Employee_designationsInsertSchema = z.infer<typeof employee_designationsInsertSchema>;
 export type Employee_designationsUpdateSchema = z.infer<typeof employee_designationsUpdateSchema>;

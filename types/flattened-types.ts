@@ -757,6 +757,36 @@ export type Cable_segmentsUpdate = {
     updated_at?: string | null;
 };
 
+export type Diary_notesRow = {
+    content: string | null;
+    created_at: string | null;
+    id: string;
+    note_date: string;
+    tags: string[] | null;
+    updated_at: string | null;
+    user_id: string;
+};
+
+export type Diary_notesInsert = {
+    content?: string | null;
+    created_at?: string | null;
+    id?: string;
+    note_date?: string;
+    tags?: string[] | null;
+    updated_at?: string | null;
+    user_id?: string;
+};
+
+export type Diary_notesUpdate = {
+    content?: string | null;
+    created_at?: string | null;
+    id?: string;
+    note_date?: string;
+    tags?: string[] | null;
+    updated_at?: string | null;
+    user_id?: string;
+};
+
 export type Employee_designationsRow = {
     created_at: string | null;
     id: string;
@@ -2038,6 +2068,7 @@ export const tableNames = [
   "sso_providers",
   "users",
   "cable_segments",
+  "diary_notes",
   "employee_designations",
   "employees",
   "fiber_splices",
