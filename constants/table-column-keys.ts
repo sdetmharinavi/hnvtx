@@ -1,6 +1,5 @@
 import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
-import { Tables } from "@/types/supabase-types";
 import type { UploadConfig } from "@/stores/useUploadConfigStore";
 import { PublicTableName, PublicTableOrViewName, Row, isTableName } from "@/hooks/database";
 
@@ -161,6 +160,7 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     uploadType,
     // THE FIX: Use `as any` here as a pragmatic way to bypass the complex conditional type.
     // The logic is sound: conflictColumn will be undefined for views because `tableMeta` will be undefined.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conflictColumn: conflictColumn as any,
     isUploadEnabled,
   } satisfies UploadConfig<T>;
@@ -623,29 +623,29 @@ const TABLE_COLUMN_OBJECTS = {
   },
   v_systems_complete: {
     system_name: "system_name",
-    system_type_name: "system_type_name",
+    system_type_code: "system_type_code",
     node_name: "node_name",
     is_hub: "is_hub",
     ip_address: "ip_address",
     is_ring_based: "is_ring_based",
     order_in_ring: "order_in_ring",
-    system_type_code: "system_type_code",
     maan_node_id: "maan_node_id",
     node_type_name: "node_type_name",
+    make: "make",
+    remark: "remark",
+    s_no: "s_no",
+    latitude: "latitude",
+    longitude: "longitude",
+    system_category: "system_category",
     status: "status",
     commissioned_on: "commissioned_on",
     ring_id: "ring_id",
     system_type_id: "system_type_id",
     node_id: "node_id",
     maintenance_terminal_id: "maintenance_terminal_id",
-    make: "make",
-    remark: "remark",
-    s_no: "s_no",
-    latitude: "latitude",
-    longitude: "longitude",
     ring_logical_area_name: "ring_logical_area_name",
-    system_category: "system_category",
     system_maintenance_terminal_name: "system_maintenance_terminal_name",
+    system_type_name: "system_type_name",
     updated_at: "updated_at",
     created_at: "created_at",
     id: "id",
