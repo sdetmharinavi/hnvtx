@@ -129,16 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! We will first fix the existing errors, for examle for dashboard/rings/id getting errors like:
-API error for pair aafe2bfb-6e18-4053-97b5-bf7fb9992fcb-abfa36d3-d0ed-486e-8f97-62651f7a9b9e: Too Many Requests
-
-hooks/useORSRouteDistances.ts (30:17) @ <unknown>
-
-
-  28 |
-  29 |       if (!response.ok) {
-> 30 |         console.error(`API error for pair ${startNode.id}-${endNode.id}: ${response.statusText}`);
-     |                 ^
-  31 |         return null;
-  32 |       }
-
+Let's begin! We will first fix dashboard/rings/id .Suppose A,B,C are hubs. D,E,F is connected as C-D-E-F-C, G is connected as B-G and K,L as A-K and A-L. A,B,C is obviously as A-B-C-A. Then how these will be achieved. I mean how we know which system belongs to which hub. 

@@ -1,24 +1,21 @@
 // app/dashboard/rings/[id]/page.tsx
-"use client";
+'use client';
 
-import { useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiMap } from "react-icons/fi";
-import dynamic from "next/dynamic";
-import { localDb } from "@/data/localDb";
-import { PageSpinner } from "@/components/common/ui";
-import { PageHeader } from "@/components/common/page-header";
-import { RingMapNode } from "@/components/map/types/node";
-import useORSRouteDistances from "@/hooks/useORSRouteDistances";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { createClient } from "@/utils/supabase/client";
-import { V_ring_nodesRowSchema } from "@/schemas/zod-schemas";
-import { buildRpcFilters, useTableRecord } from "@/hooks/database";
+import { useMemo, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { FiArrowLeft, FiMap } from 'react-icons/fi';
+import dynamic from 'next/dynamic';
+import { localDb } from '@/data/localDb';
+import { PageSpinner } from '@/components/common/ui';
+import { PageHeader } from '@/components/common/page-header';
+import { RingMapNode } from '@/components/map/types/node';
+import useORSRouteDistances from '@/hooks/useORSRouteDistances';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { createClient } from '@/utils/supabase/client';
+import { V_ring_nodesRowSchema } from '@/schemas/zod-schemas';
+import { buildRpcFilters, useTableRecord } from '@/hooks/database';
 
-// No need for MeshDiagram component
-// import MeshDiagram from "@/components/map/MeshDiagram";
-
-const ClientRingMap = dynamic(() => import("@/components/map/ClientRingMap"), {
+const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Ring Map..." />,
 });
@@ -64,8 +61,8 @@ export default function RingMapPage() {
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!nodes) return [];
     return nodes
-      .filter(node => node.lat != null && node.long != null)
-      .map(node => ({
+      .filter((node) => node.lat != null && node.long != null)
+      .map((node) => ({
         id: node.id!,
         ring_id: node.ring_id,
         name: node.name!,
@@ -88,66 +85,58 @@ export default function RingMapPage() {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
 
-    // NEW LOGIC FOR MESH TOPOLOGY
-    if (ringDetails?.ring_type_name === 'Mesh') {
-      const hubs = mappedNodes.filter(node => node.is_hub).sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-      const spokes = mappedNodes.filter(node => !node.is_hub);
+    const hubs = mappedNodes
+      .filter((node) => node.is_hub)
+      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+    const spokes = mappedNodes.filter((node) => !node.is_hub);
 
-      const hubConnections: Array<[RingMapNode, RingMapNode]> = [];
-      if (hubs.length > 1) {
-        hubs.forEach((hub, index) => {
-          const nextHub = hubs[(index + 1) % hubs.length];
-          hubConnections.push([hub, nextHub]);
+    // If there are no hubs, treat it as a simple ring connecting all nodes.
+    if (hubs.length === 0) {
+      const allNodesSorted = mappedNodes.sort(
+        (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
+      );
+      const segments: Array<[RingMapNode, RingMapNode]> = [];
+      if (allNodesSorted.length > 1) {
+        allNodesSorted.forEach((node, index) => {
+          const nextNode = allNodesSorted[(index + 1) % allNodesSorted.length];
+          segments.push([node, nextNode]);
         });
       }
+      return { mainSegments: segments, spurConnections: [], allPairs: segments };
+    }
 
-      const spokeToHubConnections: Array<[RingMapNode, RingMapNode]> = [];
-      const hubMapByOrder = new Map(hubs.map(h => [h.order_in_ring, h]));
-
-      spokes.forEach(spoke => {
-        const parentHub = hubMapByOrder.get(spoke.order_in_ring);
-        if (parentHub) {
-          spokeToHubConnections.push([parentHub, spoke]);
-        }
+    // Logic for topologies with hubs (Ring, Mesh, etc.)
+    const hubConnections: Array<[RingMapNode, RingMapNode]> = [];
+    if (hubs.length > 1) {
+      hubs.forEach((hub, index) => {
+        const nextHub = hubs[(index + 1) % hubs.length];
+        hubConnections.push([hub, nextHub]);
       });
-      
-      return { 
-        mainSegments: hubConnections,      // Solid lines between hubs
-        spurConnections: spokeToHubConnections, // Dashed lines from hubs to spokes
-        allPairs: [...hubConnections, ...spokeToHubConnections] 
-      };
     }
 
-    // ORIGINAL LOGIC FOR RING/SPUR TOPOLOGIES
-    const mainNodes = mappedNodes
-      .filter(node => node.system_status && node.system_type !== 'BTS Microwave Link')
-      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+    const spokeToHubConnections: Array<[RingMapNode, RingMapNode]> = [];
+    // Create a map of hubs using their integer order_in_ring as the key.
+    const hubMapByOrder = new Map(hubs.map((h) => [Math.floor(h.order_in_ring || 0), h]));
 
-    const mainSegments: Array<[RingMapNode, RingMapNode]> = [];
-    if (mainNodes.length > 1) {
-        mainNodes.forEach((node, index) => {
-            const nextNode = mainNodes[(index + 1) % mainNodes.length];
-            mainSegments.push([node, nextNode]);
-        });
-    }
-
-    const spurConnections: Array<[RingMapNode, RingMapNode]> = [];
-    const btsMicrowaveNodes = mappedNodes.filter(node => node.system_type === 'BTS Microwave Link');
-
-    btsMicrowaveNodes.forEach(spurNode => {
-      const parentNode = mainNodes.find(m => m.order_in_ring === spurNode.order_in_ring);
-      if (parentNode) {
-        spurConnections.push([parentNode, spurNode]);
+    spokes.forEach((spoke) => {
+      // Find the parent hub by matching the integer part of the spoke's order_in_ring.
+      const parentHub = hubMapByOrder.get(Math.floor(spoke.order_in_ring || 0));
+      if (parentHub) {
+        spokeToHubConnections.push([parentHub, spoke]);
       }
     });
 
-    return { mainSegments, spurConnections, allPairs: [...mainSegments, ...spurConnections] };
-  }, [mappedNodes, ringDetails]);
+    return {
+      mainSegments: hubConnections,
+      spurConnections: spokeToHubConnections,
+      allPairs: [...hubConnections, ...spokeToHubConnections],
+    };
+  }, [mappedNodes]);
 
   const { data: distances = {} } = useORSRouteDistances(allPairs);
-  
+
   const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
-  
+
   const handleBack = useCallback(() => {
     router.push('/dashboard/rings');
   }, [router]);
@@ -155,8 +144,16 @@ export default function RingMapPage() {
   const renderContent = () => {
     const isLoading = isLoadingNodes || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
-    if (mappedNodes.length === 0) return <div className="text-center py-12"><FiMap className="mx-auto h-12 w-12 text-gray-400" /> <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Nodes Found For This Ring</h3></div>;
-    
+    if (mappedNodes.length === 0)
+      return (
+        <div className="text-center py-12">
+          <FiMap className="mx-auto h-12 w-12 text-gray-400" />{' '}
+          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+            No Nodes Found For This Ring
+          </h3>
+        </div>
+      );
+
     // The ClientRingMap component can now handle both topologies based on the lines it receives.
     return (
       <ClientRingMap
@@ -165,7 +162,7 @@ export default function RingMapPage() {
         dashedLines={spurConnections}
         distances={distances}
         onBack={handleBack}
-        showControls={true} 
+        showControls={true}
       />
     );
   };
@@ -174,9 +171,18 @@ export default function RingMapPage() {
     <div className="p-4 md:p-6 space-y-6">
       <PageHeader
         title={ringName}
-        description={`Visualizing the ${ringDetails?.ring_type_name || 'ring'} and connected nodes.`}
+        description={`Visualizing the ${
+          ringDetails?.ring_type_name || 'ring'
+        } and connected nodes.`}
         icon={<FiMap />}
-        actions={[{ label: "Back to Rings List", onClick: handleBack, variant: "outline", leftIcon: <FiArrowLeft /> }]}
+        actions={[
+          {
+            label: 'Back to Rings List',
+            onClick: handleBack,
+            variant: 'outline',
+            leftIcon: <FiArrowLeft />,
+          },
+        ]}
       />
       <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
         {renderContent()}

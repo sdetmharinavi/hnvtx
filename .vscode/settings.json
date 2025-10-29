@@ -79,6 +79,7 @@
       "SSOT",
       "supabase",
       "TABLESPACE",
+      "tanstack",
       "Targetable",
       "tgname",
       "totp",
@@ -96,7 +97,8 @@
       "wfts",
       "yunvefyvwbqaigkawcvj",
       "yxxx",
-      "zoomend"
+      "zoomend",
+      "Zustand"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative"
