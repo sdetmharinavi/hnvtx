@@ -49,6 +49,8 @@ export default function DiaryPage() {
   const { role: currentUserRole } = useUser();
   const supabase = createClient();
 
+  // ToDo : add search functionality
+
   const { data: notesForMonth = [], isLoading, error, refetch } = useDiaryEntries(currentDate);
 
   const {
