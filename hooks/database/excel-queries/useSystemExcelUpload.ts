@@ -188,6 +188,9 @@ export function useSystemExcelUpload(
         toast.success(`Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} systems.`);
       }
 
+      console.log(uploadResult);
+      
+
       return uploadResult;
     },
     onSuccess: (result, variables) => {

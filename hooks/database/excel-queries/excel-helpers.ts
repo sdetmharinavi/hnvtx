@@ -225,7 +225,7 @@ export const validateValue = (
       };
   }
   if (value !== null && value !== undefined && value !== "") {
-    if ((columnName === "id" || columnName.endsWith("_id")) && columnName !== "transnet_id") {
+    if ((columnName === "id" || columnName.endsWith("_id")) && columnName !== "transnet_id" && columnName !== "maan_node_id") {
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const strValue = String(value).trim();

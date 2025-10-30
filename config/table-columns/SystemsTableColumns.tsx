@@ -4,6 +4,7 @@ import { FiMapPin } from 'react-icons/fi';
 import { formatDate } from '@/utils/formatters';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
   return useDynamicColumnConfig('v_systems_complete', {
@@ -43,7 +44,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           return (
             <div className="flex flex-col">
               <span className="font-medium text-gray-900 dark:text-white">{stringValue}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">S/N: {record.s_no}</span>
+              <TruncateTooltip className="text-xs text-gray-500 dark:text-gray-400 w-2xs" text={"S/N: " + record.s_no} />
             </div>
           );
         },
