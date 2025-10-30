@@ -390,9 +390,14 @@ export function FormDateInput<T extends FieldValues>({
               id={name}
               // --- recommended defaults for date-only fields ---
               selected={selected}
-              onChange={(d: Date | null) =>
-                field.onChange(d ? d.toISOString().split('T')[0] : null)
-              }
+              onChange={(d: Date | null) => {
+                if (!d) return field.onChange(null);
+                // Format as local date (YYYY-MM-DD) to avoid UTC shifting
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                field.onChange(`${y}-${m}-${day}`);
+              }}
               onBlur={field.onBlur}
               // Keep keyboard nav and accessibility
               // Use a date-only format; adjust as you like
