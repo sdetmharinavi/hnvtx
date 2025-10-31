@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! We will first fix dashboard/rings/id .Suppose A,B,C are hubs. D,E,F is connected as C-D-E-F-C, G is connected as B-G and K,L as A-K and A-L. A,B,C is obviously as A-B-C-A. Then how these will be achieved. I mean how we know which system belongs to which hub. 
+Let's begin! We will first fix ring-manager. on selecting systems from dropdown, selected system is not visible on ring manager form.

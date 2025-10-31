@@ -1,360 +1,329 @@
-// app/dashboard/systems/page.tsx
-"use client";
+// path: app/dashboard/ring-manager/page.tsx
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useRef } from "react";
-import { FiDatabase, FiUpload } from "react-icons/fi";
-import { toast } from "sonner";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
-import { ErrorDisplay } from "@/components/common/ui";
-import { ConfirmModal } from "@/components/common/ui/Modal/confirmModal";
-import { createStandardActions } from "@/components/table/action-helpers";
-import { DataTable } from "@/components/table/DataTable";
-import type { TableAction } from "@/components/table/datatable-types";
-import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
-import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
-import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
-import { createClient } from "@/utils/supabase/client";
-import { SelectFilter } from "@/components/common/filters/FilterInputs";
-import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
-import { SystemFormData } from "@/schemas/system-schemas";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
-import useOrderedColumns from "@/hooks/useOrderedColumns";
-import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
-import { buildUploadConfig } from "@/constants/table-column-keys";
-import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
-import { SystemRingModal } from "@/components/ring-manager/SystemRingModal";
+import { useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { GiLinkedRings } from 'react-icons/gi';
+import { FaNetworkWired } from 'react-icons/fa';
 
-const useSystemsData = (
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { RingModal } from '@/components/rings/RingModal';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
+import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
+
+import {
+  Filters,
+  PagedQueryResult,
+  useTableInsert,
+  useTableUpdate,
+  RpcFunctionArgs,
+  useRpcMutation,
+} from '@/hooks/database';
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import {
+  RingsInsertSchema,
+  Lookup_typesRowSchema,
+  Maintenance_areasRowSchema,
+  V_ringsRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
+import { buildRpcFilters } from '@/hooks/database/utility-functions';
+import { DEFAULTS } from '@/constants/constants';
+import { ringConfig, RingEntity } from '@/config/ring-config';
+import { useUser } from '@/providers/UserProvider';
+import { SystemFormData } from '@/schemas/system-schemas';
+
+
+const useRingsData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<V_systems_completeRowSchema> => {
+): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  const onlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
+  const onlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchQuery
-        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
+        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`
         : undefined,
     });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_systems_complete",
-      p_limit: DEFAULTS.PAGE_SIZE,
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_rings',
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
+      p_order_by: 'name',
     });
     if (error) throw error;
-    return (data as { data: V_systems_completeRowSchema[] })?.data || [];
+    return (data as { data: V_ringsRowSchema[] })?.data || [];
   };
 
-  const offlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    return await localDb.v_systems_complete.toArray();
+  const offlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
+    return await localDb.v_rings.toArray();
   };
 
   const {
-    data: allSystems = [],
+    data: allRings = [],
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useOfflineQuery(["systems-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
+  } = useOfflineQuery(
+    ['rings-manager-data', searchQuery, filters],
+    onlineQueryFn,
+    offlineQueryFn,
+    { staleTime: DEFAULTS.CACHE_TIME }
+  );
 
   const processedData = useMemo(() => {
-    let filtered = allSystems;
+    let filtered = allRings;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_name?.toLowerCase().includes(lowerQuery) ||
-          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-          system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
+        (ring) =>
+          ring.name?.toLowerCase().includes(lowerQuery) ||
+          ring.description?.toLowerCase().includes(lowerQuery) ||
+          ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
+          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
       );
     }
-    if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_type_name === filters.system_type_name
-      );
-    }
-    if (filters.status) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) => system.status === (filters.status === "true")
-      );
-    }
+    Object.keys(filters).forEach(key => {
+        if (filters[key]) {
+            filtered = filtered.filter(item => item[key as keyof V_ringsRowSchema] === filters[key]);
+        }
+    });
+
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
 
     const totalCount = filtered.length;
-    const activeCount = filtered.filter(
-      (s: V_systems_completeRowSchema) => s.status === true
-    ).length;
+    const activeCount = filtered.filter((r) => r.status === true).length;
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
+    
     return {
-      data: paginatedData,
+      data: filtered.slice(start, end),
       totalCount,
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
-  }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
+  }, [allRings, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
 };
 
-export default function SystemsRingManagerPage() {
+
+export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [showFilters, setShowFilters] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const { isSuperAdmin } = useUser();
+  
+  const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
+  
   const {
-    data: systems,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-    pagination,
-    search,
-    filters,
-    editModal,
-    deleteModal,
+    data: rings,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isMutating: isCrudMutating, isFetching, error, refetch,
+    pagination, search, filters,
+    editModal, deleteModal, viewModal,
     actions: crudActions,
-  } = useCrudManager<"systems", V_systems_completeRowSchema>({
-    tableName: "systems",
-    dataQueryHook: useSystemsData,
-    searchColumn: "system_name",
-    displayNameField: "system_name",
+  } = useCrudManager<'rings', V_ringsRowSchema>({
+    tableName: 'rings',
+    dataQueryHook: useRingsData,
+    displayNameField: 'name',
   });
 
-  const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
-    ...TABLE_COLUMN_KEYS.v_systems_complete,
-  ]);
-
-  const isInitialLoad = isLoading && systems.length === 0;
+  const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
+  const isMutating = isCrudMutating || isInserting || isUpdating;
 
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
-    onSuccess: () => {
-      toast.success(`System ${editModal.record ? "updated" : "created"} successfully.`);
-      refetch();
-      editModal.close();
-    },
-    onError: (err) => toast.error(`Failed to save system: ${err.message}`),
+    onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
 
-  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
-    },
-  });
+  const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
+    toast.info(`Saving ${systemsData.length} system associations...`);
+    
+    const promises = systemsData.map(systemData => {
+        const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+            p_id: systemData.id ?? undefined,
+            p_system_name: systemData.system_name!,
+            p_system_type_id: systemData.system_type_id!,
+            p_node_id: systemData.node_id!,
+            p_status: systemData.status ?? true,
+            p_is_hub: systemData.is_hub ?? false,
+            p_ring_id: systemData.ring_id!,
+            p_order_in_ring: systemData.order_in_ring != null ? Number(systemData.order_in_ring) : undefined,
+            p_ip_address: systemData.ip_address as any,
+            p_s_no: systemData.s_no ?? undefined,
+            p_make: systemData.make ?? undefined,
+            p_maan_node_id: systemData.maan_node_id ?? undefined,
+            p_maintenance_terminal_id: systemData.maintenance_terminal_id ?? undefined,
+            p_commissioned_on: systemData.commissioned_on ?? undefined,
+            p_remark: systemData.remark ?? undefined,
+        };
+        return upsertSystemMutation.mutateAsync(payload);
+    });
 
-  const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["system-types-for-filter"],
-    async () =>
-      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ??
-      [],
-    async () => await localDb.lookup_types.where({ category: "SYSTEM_TYPES" }).toArray()
-  );
-  const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
-
-  const handleView = useCallback(
-    (system: V_systems_completeRowSchema) => {
-      if (system.id) {
-        router.push(`/dashboard/systems/${system.id}`);
-      } else {
-        toast.info("System needs to be created before managing connections.");
-      }
-    },
-    [router]
-  );
-
-  const tableActions = useMemo(
-    () =>
-      createStandardActions<V_systems_completeRowSchema>({
-        onEdit: editModal.openEdit,
-        onView: handleView,
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
-      }),
-    [editModal.openEdit, handleView, crudActions]
-  );
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    try {
+        await Promise.all(promises);
+        toast.success("All system associations saved successfully!");
+        refetch();
+    } catch (error) {
+        toast.error("One or more system associations failed to save.");
+    }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const uploadConfig = buildUploadConfig("v_systems_complete");
-      uploadSystems({ file, columns: uploadConfig.columnMapping });
+  const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['ring-types-for-modal'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'RING_TYPES' }).toArray()
+  );
+  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
+    ['maintenance-areas-for-modal'],
+    async () => (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
+  );
+
+  const handleMutationSuccess = () => {
+    toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
+    editModal.close();
+    refetch();
+  };
+
+  const handleSave = (data: RingsInsertSchema) => {
+    if (editModal.record?.id) {
+      updateRing({ id: editModal.record.id, data }, { onSuccess: handleMutationSuccess });
+    } else {
+      insertRing(data, { onSuccess: handleMutationSuccess });
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+  };
+
+  const handleViewDetails = (record: V_ringsRowSchema) => {
+    if (record.id) router.push(`/dashboard/rings/${record.id}`);
   };
 
   const headerActions = useStandardHeaderActions({
-    data: systems,
-    onRefresh: () => {
-      refetch();
-      toast.success("Systems refreshed.");
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: isLoading,
-    exportConfig: { tableName: "v_systems_complete", fileName: "systems" },
+    data: rings, onRefresh: refetch, onAddNew: editModal.openAdd,
+    isLoading: isLoading, exportConfig: { tableName: 'v_rings' }
   });
 
-  headerActions.splice(1, 0, {
-    label: isUploading ? "Uploading..." : "Upload Systems",
-    onClick: handleUploadClick,
-    variant: "outline",
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading,
+  // Add the "Add Systems to Ring" button
+  headerActions.push({
+    label: 'Add Systems to Ring',
+    onClick: () => setIsSystemsModalOpen(true),
+    variant: 'primary',
+    leftIcon: <FaNetworkWired />,
+    disabled: isLoading,
   });
 
-  const headerStats = [
-    { value: totalCount, label: "Total Systems" },
-    { value: activeCount, label: "Active", color: "success" as const },
-    { value: inactiveCount, label: "Inactive", color: "danger" as const },
-  ];
+  const headerStats = useMemo(() => [
+    { value: totalCount, label: 'Total Rings' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+  ], [totalCount, activeCount, inactiveCount]);
 
-  const handleSave = useCallback(
-    async (formDataArray: SystemFormData[]) => {
-      for (const formData of formDataArray) {
-        const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
-        const isRingBased = selectedSystemType?.is_ring_based;
+  const ringEntities: RingEntity[] = useMemo(() =>
+    (rings || [])
+      .filter((r): r is V_ringsRowSchema & { id: string; name: string } => !!r.id && !!r.name)
+      .map(r => ({ ...r, id: r.id, name: r.name })),
+  [rings]);
+  
+  const entityActions = useMemo(() => createStandardActions<V_ringsRowSchema>({
+    onEdit: editModal.openEdit,
+    onView: handleViewDetails,
+    onDelete: crudActions.handleDelete,
+    canDelete: () => isSuperAdmin === true,
+  }), [editModal.openEdit, handleViewDetails, crudActions.handleDelete, isSuperAdmin]);
 
-        const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
-          p_id: editModal.record?.id ?? undefined,
-          p_system_name: formData.system_name!,
-          p_system_type_id: formData.system_type_id!,
-          p_node_id: formData.node_id!,
-          p_status: formData.status ?? true,
-          p_is_hub: formData.is_hub ?? false,
-          p_maan_node_id: formData.maan_node_id || undefined,
-          p_ip_address: formData.ip_address || undefined,
-          p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
-          p_commissioned_on: formData.commissioned_on || undefined,
-          p_s_no: formData.s_no || undefined,
-          p_remark: formData.remark || undefined,
-          p_make: formData.make || undefined,
-          p_ring_id: isRingBased && formData.ring_id ? formData.ring_id : undefined,
-          p_order_in_ring:
-            isRingBased && formData.order_in_ring != null
-              ? Number(formData.order_in_ring)
-              : undefined,
-        };
-        await upsertSystemMutation.mutateAsync(payload);
+  const dynamicFilterConfig = useMemo(() => ({
+    ...ringConfig,
+    filterOptions: ringConfig.filterOptions.map(opt => {
+      if (opt.key === 'ring_type_id') {
+        return { ...opt, options: (ringTypesData || []).map(t => ({ value: t.id, label: t.name })) };
       }
-    },
-    [editModal.record, upsertSystemMutation, systemTypes]
-  );
+      if (opt.key === 'maintenance_terminal_id') {
+        return { ...opt, options: (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })) };
+      }
+      return opt;
+    })
+  }), [ringTypesData, maintenanceAreasData]);
 
-  if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: "Retry", onClick: refetch, variant: "primary" }]}
-      />
-    );
+  const uiFilters = useMemo<Record<string, string>>(() => {
+    const src = (filters.filters || {}) as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    Object.keys(src).forEach((k) => {
+      const v: any = src[k as keyof typeof src];
+      if (v === undefined || v === null) return;
+      out[k] = typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
+    });
+    return out;
+  }, [filters.filters]);
 
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+  
   return (
-    <div className='p-6 space-y-6'>
+    <div className="p-4 md:p-6 h-full flex flex-col">
       <PageHeader
-        title='Rings Management'
-        description='Manage all network rings.'
-        icon={<FiDatabase />}
+        title="Ring Manager"
+        description="A modern interface to create, manage, and visualize network rings and their associated systems."
+        icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
-        isLoading={isInitialLoad}
+        isLoading={isLoading}
         isFetching={isFetching}
       />
-
-      <input
-        type='file'
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className='hidden'
-        accept='.xlsx, .xls, .csv'
-      />
-
-      <DataTable
-        tableName='v_systems_complete'
-        data={systems}
-        columns={orderedSystems}
-        loading={isLoading}
-        actions={tableActions as TableAction<"v_systems_complete">[]}
-        pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, limit) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(limit);
-          },
-        }}
-        customToolbar={
-          <SearchAndFilters
-            searchTerm={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters((p) => !p)}
-            onClearFilters={() => {
-              search.setSearchQuery("");
-              filters.setFilters({});
-            }}
-            hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
-            activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
-            searchPlaceholder='Search by system name or type...'>
-            <SelectFilter
-              label='System Type'
-              filterKey='system_type_name'
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={(systemTypes || [])
-                .filter((s) => s.name !== "DEFAULT")
-                .map((t) => ({
-                  value: t.name,
-                  label: t.code || t.name, // Fallback to t.name if code is null
-                }))}
-            />
-            <SelectFilter
-              label='Status'
-              filterKey='status'
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: "true", label: "Active" },
-                { value: "false", label: "Inactive" },
-              ]}
-            />
-          </SearchAndFilters>
-        }
-      />
-      <SystemRingModal
+      <div className="flex-grow mt-6">
+        <EntityManagementComponent
+          config={dynamicFilterConfig}
+          entitiesQuery={{ data: { data: ringEntities, count: totalCount }, isLoading, isFetching, error, refetch } as any}
+          toggleStatusMutation={{ mutate: crudActions.handleToggleStatus as any, isPending: isMutating }}
+          onEdit={(e) => { const orig = rings.find(r => r.id === e.id); if (orig) editModal.openEdit(orig); }}
+          onDelete={crudActions.handleDelete}
+          onCreateNew={editModal.openAdd}
+          selectedEntityId={viewModal.record?.id ?? null}
+          onSelect={(id) => {
+            if (!id) { viewModal.close(); return; }
+            const rec = rings.find(r => r.id === id);
+            if (rec) viewModal.open(rec);
+          }}
+          onViewDetails={() => handleViewDetails(viewModal.record!)}
+          searchTerm={search.searchQuery}
+          onSearchChange={search.setSearchQuery}
+          filters={uiFilters}
+          onFilterChange={(f) => filters.setFilters(f as Filters)}
+          onClearFilters={() => filters.setFilters({})}
+          isFetching={isFetching}
+        />
+      </div>
+      
+      <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
-        isLoading={upsertSystemMutation.isPending}
+        ringTypes={ringTypesData || []}
+        maintenanceAreas={maintenanceAreasData || []}
+        isLoading={isMutating}
       />
+
+      <SystemRingModal
+        isOpen={isSystemsModalOpen}
+        onClose={() => setIsSystemsModalOpen(false)}
+        onSubmit={handleSaveSystems}
+        isLoading={isMutating || upsertSystemMutation.isPending}
+      />
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteModal.message}
         loading={deleteModal.loading}
-        type='danger'
+        type="danger"
       />
     </div>
   );

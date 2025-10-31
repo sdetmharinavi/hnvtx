@@ -316,26 +316,6 @@ export const SystemModal: FC<SystemModalProps> = ({
       {" "}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
         {" "}
-        {isRingBasedSystem && (
-          <>
-            <FormSearchableSelect
-              name='ring_id'
-              label='Ring'
-              control={control}
-              options={ringOptions}
-              error={errors.ring_id}
-            />
-            <FormInput
-              name='order_in_ring'
-              label='Order in Ring'
-              type='number'
-              step='0.01'
-              register={register}
-              error={errors.order_in_ring}
-              placeholder='e.g., 0.1, 0.2, 0.3...'
-            />
-          </>
-        )}{" "}
         {isSdhSystem && (
           <>
             {" "}
@@ -355,13 +335,6 @@ export const SystemModal: FC<SystemModalProps> = ({
           {" "}
           <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />{" "}
         </div>{" "}
-        <div className='md:col-span-2'>
-          {" "}
-          <FormSwitch name='status' label='Status' control={control} className='my-4' />{" "}
-        </div>{" "}
-        <div className='md:col-span-2'>
-          <FormSwitch name='is_hub' label='Is Hub System' control={control} />
-        </div>
       </div>{" "}
     </motion.div>
   );
