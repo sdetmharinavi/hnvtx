@@ -1,15 +1,17 @@
 // path: config/ring-config.ts
 import { EntityConfig } from "@/components/common/entity-management/types";
-import { v_ringsRowSchema } from "@/schemas/zod-schemas";
+import { v_ringsRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { GiLinkedRings } from "react-icons/gi";
 import { z } from 'zod';
 
 export type RingWithRelations = z.infer<typeof v_ringsRowSchema>;
 
-// Narrow to meet BaseEntity constraint (id and name must be non-null strings)
+// THE FIX: Added an optional 'associatedSystems' property to create a valid key
+// for the custom detail field that will display the list of systems.
 export type RingEntity = Omit<RingWithRelations, 'id' | 'name'> & {
   id: string;
   name: string;
+  associatedSystems?: V_systems_completeRowSchema[];
 };
 
 export const ringConfig: EntityConfig<RingEntity> = {

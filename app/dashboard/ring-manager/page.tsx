@@ -8,11 +8,12 @@ import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
+import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
 
 import {
   Filters,
@@ -21,6 +22,7 @@ import {
   useTableUpdate,
   RpcFunctionArgs,
   useRpcMutation,
+  useTableQuery,
 } from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -28,6 +30,7 @@ import {
   Lookup_typesRowSchema,
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
+  V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -37,7 +40,9 @@ import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { SystemFormData } from '@/schemas/system-schemas';
-
+import { FiEdit } from 'react-icons/fi';
+import { UseQueryResult } from '@tanstack/react-query';
+import { EntityConfig } from '@/components/common/entity-management/types';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -112,7 +117,7 @@ const useRingsData = (
     };
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
 
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
 };
 
 
@@ -122,12 +127,14 @@ export default function RingManagerPage() {
   const { isSuperAdmin } = useUser();
   
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
+  const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
+  const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
   
   const {
     data: rings,
     totalCount, activeCount, inactiveCount,
     isLoading, isMutating: isCrudMutating, isFetching, error, refetch,
-    pagination, search, filters,
+    queryResult, search, filters,
     editModal, deleteModal, viewModal,
     actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
@@ -141,8 +148,19 @@ export default function RingManagerPage() {
   const isMutating = isCrudMutating || isInserting || isUpdating;
 
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
+    onSuccess: () => {
+      void refetch();
+      void refetchSystems();
+    },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
+
+  // THE FIX: Explicitly set a high limit to ensure all systems are fetched.
+  const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(supabase, 'v_systems_complete', {
+    limit: 5000, // Fetch up to 5000 systems to ensure the list is complete
+  });
+
+  const allSystems = useMemo(() => allSystemsResult?.data || [], [allSystemsResult]);
 
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
@@ -155,9 +173,9 @@ export default function RingManagerPage() {
             p_node_id: systemData.node_id!,
             p_status: systemData.status ?? true,
             p_is_hub: systemData.is_hub ?? false,
-            p_ring_id: systemData.ring_id!,
+            p_ring_id: systemData.ring_id ?? undefined,
             p_order_in_ring: systemData.order_in_ring != null ? Number(systemData.order_in_ring) : undefined,
-            p_ip_address: systemData.ip_address as any,
+            p_ip_address: (systemData.ip_address as string) || undefined,
             p_s_no: systemData.s_no ?? undefined,
             p_make: systemData.make ?? undefined,
             p_maan_node_id: systemData.maan_node_id ?? undefined,
@@ -171,10 +189,40 @@ export default function RingManagerPage() {
     try {
         await Promise.all(promises);
         toast.success("All system associations saved successfully!");
-        refetch();
-    } catch (error) {
-        toast.error("One or more system associations failed to save.");
+        void refetch();
+    } catch {
+        toast.error("One or more system associations failed to save. Errors are logged in the console.");
     }
+  };
+
+  const handleUpdateSystemInRing = (formData: { order_in_ring: number | null; is_hub: boolean | null; }) => {
+    if (!systemToEdit) return;
+
+    const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+      p_id: systemToEdit.id!,
+      p_system_name: systemToEdit.system_name!,
+      p_system_type_id: systemToEdit.system_type_id!,
+      p_node_id: systemToEdit.node_id!,
+      p_status: systemToEdit.status!,
+      p_is_hub: formData.is_hub ?? systemToEdit.is_hub ?? false,
+      p_ring_id: systemToEdit.ring_id ?? undefined,
+      p_order_in_ring: formData.order_in_ring != null ? Number(formData.order_in_ring) : (systemToEdit.order_in_ring ?? undefined),
+      p_ip_address: (systemToEdit.ip_address as string) || undefined,
+      p_s_no: systemToEdit.s_no ?? undefined,
+      p_make: systemToEdit.make ?? undefined,
+      p_maan_node_id: systemToEdit.maan_node_id ?? undefined,
+      p_maintenance_terminal_id: systemToEdit.maintenance_terminal_id ?? undefined,
+      p_commissioned_on: systemToEdit.commissioned_on ?? undefined,
+      p_remark: systemToEdit.remark ?? undefined,
+    };
+    upsertSystemMutation.mutate(payload, {
+      onSuccess: () => {
+        toast.success(`Updated "${systemToEdit.system_name}" in ring.`);
+        setIsEditSystemModalOpen(false);
+        setSystemToEdit(null);
+        void refetchSystems();
+      }
+    });
   };
 
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -210,8 +258,7 @@ export default function RingManagerPage() {
     data: rings, onRefresh: refetch, onAddNew: editModal.openAdd,
     isLoading: isLoading, exportConfig: { tableName: 'v_rings' }
   });
-
-  // Add the "Add Systems to Ring" button
+  
   headerActions.push({
     label: 'Add Systems to Ring',
     onClick: () => setIsSystemsModalOpen(true),
@@ -239,24 +286,60 @@ export default function RingManagerPage() {
     canDelete: () => isSuperAdmin === true,
   }), [editModal.openEdit, handleViewDetails, crudActions.handleDelete, isSuperAdmin]);
 
-  const dynamicFilterConfig = useMemo(() => ({
-    ...ringConfig,
-    filterOptions: ringConfig.filterOptions.map(opt => {
-      if (opt.key === 'ring_type_id') {
-        return { ...opt, options: (ringTypesData || []).map(t => ({ value: t.id, label: t.name })) };
-      }
-      if (opt.key === 'maintenance_terminal_id') {
-        return { ...opt, options: (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })) };
-      }
-      return opt;
-    })
-  }), [ringTypesData, maintenanceAreasData]);
+
+  const dynamicFilterConfig: EntityConfig<RingEntity> = {
+  ...ringConfig,
+  filterOptions: ringConfig.filterOptions.map(opt => {
+    if (opt.key === 'ring_type_id') {
+      return { ...opt, options: (ringTypesData || []).map(t => ({ value: t.id, label: t.name })) };
+    }
+    if (opt.key === 'maintenance_terminal_id') {
+      return { ...opt, options: (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })) };
+    }
+    return opt;
+  }),
+  detailFields: [
+    ...ringConfig.detailFields,
+    {
+      key: 'id',
+      label: 'Associated Systems',
+      type: 'custom' as const,
+      render: (_value: unknown, entity: RingEntity) => {
+        const associatedSystems = allSystems.filter(s => s.ring_id === entity.id)
+          .sort((a,b) => (a.order_in_ring ?? 999) - (b.order_in_ring ?? 999));
+        
+        if (associatedSystems.length === 0) {
+          return <div className="text-sm text-gray-500 italic">No systems associated with this ring.</div>;
+        }
+        
+        return (
+          <div className="space-y-2">
+            {associatedSystems.map(system => (
+              <div key={system.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                <div>
+                  <p className="font-medium text-sm">{system.system_name}</p>
+                  <p className="text-xs text-gray-500">Order: {system.order_in_ring ?? 'N/A'}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => {
+                  setSystemToEdit(system);
+                  setIsEditSystemModalOpen(true);
+                }}>
+                  <FiEdit className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        );
+      },
+    },
+  ],
+};
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
     const out: Record<string, string> = {};
     Object.keys(src).forEach((k) => {
-      const v: any = src[k as keyof typeof src];
+      const v: unknown = src[k as keyof typeof src];
       if (v === undefined || v === null) return;
       out[k] = typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
     });
@@ -279,8 +362,8 @@ export default function RingManagerPage() {
       <div className="flex-grow mt-6">
         <EntityManagementComponent
           config={dynamicFilterConfig}
-          entitiesQuery={{ data: { data: ringEntities, count: totalCount }, isLoading, isFetching, error, refetch } as any}
-          toggleStatusMutation={{ mutate: crudActions.handleToggleStatus as any, isPending: isMutating }}
+          entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
+          toggleStatusMutation={{ mutate: crudActions.handleToggleStatus, isPending: isMutating }}
           onEdit={(e) => { const orig = rings.find(r => r.id === e.id); if (orig) editModal.openEdit(orig); }}
           onDelete={crudActions.handleDelete}
           onCreateNew={editModal.openAdd}
@@ -314,6 +397,14 @@ export default function RingManagerPage() {
         onClose={() => setIsSystemsModalOpen(false)}
         onSubmit={handleSaveSystems}
         isLoading={isMutating || upsertSystemMutation.isPending}
+      />
+
+      <EditSystemInRingModal
+        isOpen={isEditSystemModalOpen}
+        onClose={() => setIsEditSystemModalOpen(false)}
+        system={systemToEdit}
+        onSubmit={handleUpdateSystemInRing}
+        isLoading={upsertSystemMutation.isPending}
       />
 
       <ConfirmModal
