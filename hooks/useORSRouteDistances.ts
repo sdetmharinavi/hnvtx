@@ -1,97 +1,59 @@
 // path: hooks/useORSRouteDistances.ts
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { RingMapNode } from '@/components/map/types/node';
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 
 // --- Module-level Singleton for Rate-Limited Fetching ---
 
-interface FetchJob {
-  key: string; // "node1-id-node2-id"
-  queryKey: readonly unknown[]; // ['ors-distance', 'node1-id-node2-id']
-  startNode: RingMapNode;
-  endNode: RingMapNode;
-}
+// A promise chain that ensures requests are sent one after another with a delay.
+// THE FIX: Initialize as a resolved promise of type void.
+let fetchChain: Promise<void> = Promise.resolve();
+const requestDelay = 1600; // 1.6 seconds delay to stay well below 40 requests/minute.
 
-// Global queue and processing flag to ensure only one fetch runs at a time.
-let isProcessing = false;
-const fetchQueue: FetchJob[] = [];
-const requestDelay = 1600; // 1.6 seconds to stay well below 40 requests/minute.
-
-async function processQueue(queryClient: ReturnType<typeof useQueryClient>) {
-  if (isProcessing) return;
-  isProcessing = true;
-
-  while (fetchQueue.length > 0) {
-    const job = fetchQueue.shift();
-    if (!job) continue;
-
-    try {
-      // Set placeholder data to indicate loading for this specific query
-      queryClient.setQueryData(job.queryKey, '...');
-
-      const response = await fetch('/api/ors-distance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ a: job.startNode, b: job.endNode }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const distance = data.distance_km ? `${data.distance_km} km` : 'N/A';
-
-      // Cache the successful result indefinitely
-      queryClient.setQueryData(job.queryKey, distance);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed';
-      console.log('errorMessage: ', errorMessage);
-
-      console.error(`Fetch failed for pair ${job.key}:`, error);
-      // Cache the error state
-      queryClient.setQueryData(job.queryKey, 'Error');
+/**
+ * A rate-limited fetch wrapper that chains promises to serialize API calls.
+ * @param url The URL to fetch.
+ * @param options The fetch options.
+ * @returns A promise that resolves with the JSON response.
+ */
+const rateLimitedFetch = (url: string, options: RequestInit) => {
+  // THE FIX: This is a simpler, type-safe way to create a sequential promise queue.
+  
+  // 1. Create the function that will perform the actual fetch.
+  const makeRequest = async () => {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      console.error(`API error for ${url}: ${response.statusText}`);
+      throw new Error(`API error: ${response.statusText}`);
     }
+    return response.json();
+  };
 
-    // Wait before the next request
-    if (fetchQueue.length > 0) {
-      await new Promise((resolve) => setTimeout(resolve, requestDelay));
-    }
-  }
+  // 2. Chain the request to the existing fetchChain.
+  // `resultPromise` will hold the promise for the JSON data.
+  const resultPromise = fetchChain.then(makeRequest);
+  
+  // 3. Update the global fetchChain for the *next* caller.
+  // This new chain waits for the current request to settle (succeed or fail)
+  // and then adds the delay. Since this `.then()` returns nothing,
+  // the type of fetchChain remains `Promise<void>`, resolving the TS error.
+  fetchChain = resultPromise
+  .then(() => new Promise<void>(res => setTimeout(res, requestDelay)))
+  .catch(() => new Promise<void>(res => setTimeout(res, requestDelay)));
 
-  isProcessing = false;
-}
+  // 4. Return the promise for the actual data, without the delay.
+  return resultPromise;
+};
 
-function queueDistanceFetch(
-  queryClient: ReturnType<typeof useQueryClient>,
-  startNode: RingMapNode,
-  endNode: RingMapNode
-) {
-  const key = [startNode.id, endNode.id].sort().join('-');
-  const queryKey = ['ors-distance', key];
-
-  // Do not queue if already in the cache or currently in the queue
-  if (queryClient.getQueryData(queryKey) || fetchQueue.some((job) => job.key === key)) {
-    return;
-  }
-
-  fetchQueue.push({ key, queryKey, startNode, endNode });
-
-  // Trigger the processing function if it's not already running
-  if (!isProcessing) {
-    void processQueue(queryClient);
-  }
-}
 
 // --- The React Hook ---
 
 export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>) {
-  const queryClient = useQueryClient();
 
-  // Memoize the unique pairs to work with
   const uniquePairs = useMemo(() => {
     const map = new Map<string, [RingMapNode, RingMapNode]>();
     pairs.forEach(([startNode, endNode]) => {
+      // Create a consistent key by sorting IDs
       const key = [startNode.id, endNode.id].sort().join('-');
       if (!map.has(key)) {
         map.set(key, [startNode, endNode]);
@@ -100,46 +62,54 @@ export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapN
     return Array.from(map.values());
   }, [pairs]);
 
-  // When the component needs pairs, queue up any that aren't already cached/queued
-  useEffect(() => {
-    uniquePairs.forEach(([startNode, endNode]) => {
-      queueDistanceFetch(queryClient, startNode, endNode);
-    });
-  }, [uniquePairs, queryClient]);
-
-  // `useQueries` is the key to subscribing to all the individual cache entries
+  // `useQueries` subscribes to the results of multiple, independent queries.
   const results = useQueries({
     queries: uniquePairs.map(([startNode, endNode]) => {
       const key = [startNode.id, endNode.id].sort().join('-');
       return {
         queryKey: ['ors-distance', key],
-        // No queryFn needed here; we just want to subscribe to cache changes
-        // that our `processQueue` function will make.
-        staleTime: Infinity, // This data never goes stale
-        // We set initialData so that if a value is not in the cache yet, it defaults to '...'
-        initialData: '...',
+        queryFn: async () => {
+          try {
+            const data = await rateLimitedFetch('/api/ors-distance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ a: startNode, b: endNode }),
+            });
+            return data.distance_km ? `${data.distance_km} km` : 'N/A';
+          } catch (error) {
+            console.error(`Fetch failed for pair ${key}:`, error);
+            throw error;
+          }
+        },
+        staleTime: Infinity,
+        retry: 2,
       };
     }),
   });
 
-  // Re-assemble the results into the dictionary format the component expects
+  // Re-assemble the results into the dictionary format the component expects.
   const distances = useMemo(() => {
     const distDict: Record<string, string> = {};
     results.forEach((result, index) => {
       const [startNode, endNode] = uniquePairs[index];
-      const distance = (result.data as string) ?? '...';
+      let distance: string;
+
+      if (result.isLoading) {
+        distance = '...';
+      } else if (result.isError) {
+        distance = 'Error';
+      } else {
+        distance = result.data as string;
+      }
       distDict[`${startNode.id}-${endNode.id}`] = distance;
       distDict[`${endNode.id}-${startNode.id}`] = distance;
     });
     return distDict;
   }, [results, uniquePairs]);
 
-  // The overall loading state is true if any of the subscribed queries are fetching.
-  // Note: Since we don't have a `queryFn`, `isFetching` won't work as expected.
-  // We can derive loading state by checking for the '...' placeholder.
   const isLoading = useMemo(() => {
-    return Object.values(distances).some((d) => d === '...');
-  }, [distances]);
+    return results.some(r => r.isLoading);
+  }, [results]);
 
   return { distances, isLoading };
 }

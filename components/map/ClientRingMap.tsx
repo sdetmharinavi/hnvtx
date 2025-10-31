@@ -112,8 +112,6 @@ export default function ClientRingMap({
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
-  console.log(nodes);
-
   // Re-implemented the popup offset logic from the old component.
   const popupOffsets = useMemo(() => {
     const groups: Record<string, string[]> = {};
@@ -217,7 +215,7 @@ export default function ClientRingMap({
               onClick={onBack}
               className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
             >
-              ← Back to List
+              ← Back
             </button>
           )}
           <button
