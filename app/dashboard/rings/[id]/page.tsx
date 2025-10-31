@@ -133,16 +133,16 @@ export default function RingMapPage() {
     };
   }, [mappedNodes]);
 
-  const { data: distances = {} } = useORSRouteDistances(allPairs);
+  const { distances = {}, isLoading: isLoadingDistances } = useORSRouteDistances(allPairs);
 
   const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
 
   const handleBack = useCallback(() => {
-    router.push('/dashboard/rings');
+    router.back();
   }, [router]);
 
   const renderContent = () => {
-    const isLoading = isLoadingNodes || isLoadingRingDetails;
+    const isLoading = isLoadingNodes || isLoadingRingDetails || isLoadingDistances;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
     if (mappedNodes.length === 0)
       return (
