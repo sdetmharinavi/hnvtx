@@ -11,7 +11,6 @@ import {
   FiList,
   FiGitBranch,
   FiHelpCircle,
-  FiBookOpen,
   FiCalendar,
   FiArchive,
 } from 'react-icons/fi';
@@ -176,10 +175,25 @@ function NavItems() {
       },
       {
         id: 'systems',
-        label: 'Systems',
+        label: 'Systems & Rings Manager',
         icon: <GoServer className="h-5 w-5" />,
-        href: '/dashboard/systems',
         roles: [UserRole.ADMIN],
+        children: [
+          {
+            id: 'systems',
+            label: 'Systems',
+            href: '/dashboard/systems',
+            icon: <GoServer className="h-5 w-5" />,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            id: 'ring-manager',
+            label: 'Rings Manager',
+            icon: <GoServer className="h-5 w-5" />,
+            href: '/dashboard/ring-manager',
+            roles: [UserRole.ADMIN],
+          },
+        ],
       },
       {
         id: 'diagrams',
