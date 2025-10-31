@@ -63,28 +63,9 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
         options={options}
         value={valueAsString}
         onChange={handleChange}
-        placeholder={placeholder || `All ${label}s`}
+        placeholder={placeholder || `All ${label}`}
         clearable
       />
-      {/* <Select
-        value={(valueAsString as string) ?? ''}
-        onValueChange={(value) => handleChange(value)}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={placeholder ?? 'Select'} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-            >
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select> */}
     </div>
   );
 };
