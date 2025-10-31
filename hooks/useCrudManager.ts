@@ -16,6 +16,7 @@ import {
   TableUpdate,
   TableInsertWithDates,
   Row,
+  PagedQueryResult,
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
@@ -23,6 +24,7 @@ import { useOnlineStatus } from "./useOnlineStatus";
 import { addMutationToQueue } from "./data/useMutationQueue";
 import { getTable } from "@/data/localDb";
 import { DEFAULTS } from "@/constants/constants";
+import { UseQueryResult } from "@tanstack/react-query";
 
 // --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
@@ -325,6 +327,20 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       deleteManager.deleteBulk({ column, value, displayName });
     }, [deleteManager]);
 
+
+  // THE FIX: Re-assemble the query result object to match the `UseQueryResult` type.
+  const queryResult = useMemo((): UseQueryResult<PagedQueryResult<V>, Error> => ({
+    data: { data, count: totalCount },
+    isLoading,
+    isFetching: isFetching ?? false,
+    error: error as Error | null,
+    isError: !!error,
+    isSuccess: !isLoading && !error,
+    refetch: refetch as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>,
+    status: isLoading ? 'pending' : error ? 'error' : 'success',
+  }) as UseQueryResult<PagedQueryResult<V>, Error>, [data, totalCount, isLoading, isFetching, error, refetch]);
+
+
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
@@ -332,6 +348,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },
+    queryResult,
     editModal: { isOpen: isEditModalOpen, record: editingRecord, openAdd: openAddModal, openEdit: openEditModal, close: closeModal },
     viewModal: { isOpen: isViewModalOpen, record: viewingRecord, open: openViewModal, close: closeModal },
     actions: { handleSave, handleDelete, handleToggleStatus },

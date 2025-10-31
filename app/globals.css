@@ -128,3 +128,37 @@ body {
   background-color: #1e40af !important;
   color: #dbeafe !important;
 }
+
+/* Add styles for the permanent map labels */
+.permanent-label {
+  background: transparent;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50; /* A dark slate color for light mode */
+  text-shadow: 
+    1px 1px 0 #ffffff, 
+    -1px -1px 0 #ffffff, 
+    1px -1px 0 #ffffff, 
+    -1px 1px 0 #ffffff; /* White outline for readability */
+}
+
+.dark .permanent-label {
+  color: #ecf0f1; /* A light color for dark mode */
+  text-shadow: 
+    1px 1px 0 #2c3e50, 
+    -1px -1px 0 #2c3e50, 
+    1px -1px 0 #2c3e50, 
+    -1px 1px 0 #2c3e50; /* Dark outline for readability */
+}
+
+/* THE FIX: Adjust text alignment based on tooltip position */
+.leaflet-tooltip-left.permanent-label {
+  text-align: right;
+}
+
+.leaflet-tooltip-right.permanent-label {
+  text-align: left;
+}

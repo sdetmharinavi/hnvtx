@@ -26,19 +26,19 @@ const systemRingFormSchema = systemFormValidationSchema.extend({
 type SystemRingFormValues = z.infer<typeof systemRingFormSchema>;
 
 const createDefaultFormValues = (): SystemRingFormValues => ({
-  system_name: "",
+  system_name: null,
   system_type_id: "",
   node_id: "",
   maan_node_id: null,
   maintenance_terminal_id: null,
-  ip_address: "",
+  ip_address: null,
   commissioned_on: null,
-  remark: "",
-  s_no: "",
+  remark: null,
+  s_no: null,
   status: true,
   ring_id: null,
   order_in_ring: 0,
-  make: "",
+  make: null,
   is_hub: false,
   selected_system_id: null,
 });

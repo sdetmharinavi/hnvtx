@@ -1,7 +1,7 @@
 // path: components/map/ClientRingMap.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip } from 'react-leaflet';
 import L, { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -137,6 +137,27 @@ export default function ClientRingMap({
       }
     });
     return offsets;
+  }, [nodes]);
+
+   // THE FIX: Calculate the optimal direction for each node's label.
+  const nodeLabelDirections = useMemo(() => {
+    const directions = new Map<string, 'left' | 'right'>();
+    if (nodes.length < 2) return directions;
+
+    const validNodes = nodes.filter(n => n.long != null && isFinite(n.long as number));
+    if (validNodes.length === 0) return directions;
+
+    const lngs = validNodes.map(n => n.long as number);
+    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+
+    validNodes.forEach(node => {
+      if (node.id) {
+        const direction = (node.long as number) < centerLng ? 'left' : 'right';
+        directions.set(node.id, direction);
+      }
+    });
+
+    return directions;
   }, [nodes]);
 
   useEffect(() => {
@@ -306,6 +327,9 @@ export default function ClientRingMap({
           .map((node, i) => {
             const isHighlighted = highlightedNodeIds.includes(node.id!);
             const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
+            // THE FIX: Get the dynamically calculated direction and offset.
+            const direction = nodeLabelDirections.get(node.id!) || 'auto';
+            const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
             return (
               <Marker
                 key={node.id! + i}
@@ -328,6 +352,15 @@ export default function ClientRingMap({
                     <p>IP: {displayIp}</p>
                   </div>
                 </Popup>
+                {/* THE FIX: Use the dynamic direction and offset */}
+                <Tooltip
+                  permanent
+                  direction={direction}
+                  offset={offset}
+                  className="permanent-label"
+                >
+                  {node.name}
+                </Tooltip>
               </Marker>
             );
           })}
