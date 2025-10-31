@@ -13,6 +13,7 @@ import {
   FiHelpCircle,
   FiBookOpen,
   FiCalendar,
+  FiArchive,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -70,6 +71,13 @@ function NavItems() {
         icon: <BsPeople className="h-5 w-5" />,
         href: '/dashboard/employees',
         roles: [UserRole.ADMIN],
+      },
+      {
+        id: 'inventory',
+        label: 'Inventory',
+        icon: <FiArchive className="h-5 w-5" />,
+        href: '/dashboard/inventory',
+        roles: [UserRole.ADMIN, UserRole.ASSETADMIN],
       },
       {
         id: 'base-menu',
