@@ -105,6 +105,7 @@ export function SystemRingPath({ system }: Props) {
           status: node.status, 
           remark: node.remark, 
           ip: null, 
+          is_hub: null,
           ring_id: null, 
           ring_name: null, 
           order_in_ring: null, 
