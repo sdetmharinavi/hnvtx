@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTXDatabase, getTable } from '@/data/localDb';
+import { localDb, HNVTMDatabase, getTable } from '@/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -37,7 +37,7 @@ const viewNames = new Set<PublicTableOrViewName>([
 
 export async function syncEntity(
   supabase: SupabaseClient,
-  db: HNVTXDatabase,
+  db: HNVTMDatabase,
   entityName: PublicTableOrViewName
 ) {
   try {

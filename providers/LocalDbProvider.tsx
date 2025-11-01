@@ -1,10 +1,10 @@
 // providers/LocalDbProvider.tsx
 'use client';
 
-import { localDb, HNVTXDatabase } from '@/data/localDb';
+import { localDb, HNVTMDatabase } from '@/data/localDb';
 import { createContext, ReactNode, useContext } from 'react';
 
-const LocalDbContext = createContext<HNVTXDatabase | undefined>(undefined);
+const LocalDbContext = createContext<HNVTMDatabase | undefined>(undefined);
 
 export const LocalDbProvider = ({ children }: { children: ReactNode }) => {
   return (
