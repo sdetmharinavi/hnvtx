@@ -1,4 +1,4 @@
-// hooks/database/excel-queries/excel-helpers.ts
+// path: hooks/database/excel-queries/excel-helpers.ts
 import * as ExcelJS from "exceljs";
 import { Filters, UploadResult } from "@/hooks/database";
 import { TableOrViewName, Row } from "@/hooks/database";
@@ -7,7 +7,7 @@ import { TableOrViewName, Row } from "@/hooks/database";
 export interface Column<T> {
   key: string;
   title: string;
-  dataIndex: keyof T & string;
+  dataIndex: string;
   width?: number | string;
   sortable?: boolean;
   searchable?: boolean;
@@ -81,45 +81,59 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   fgColor: { argb: color },
 });
 
-// THE FIX: Reordered logic to prioritize excelFormat over generic type checks.
+// THE FIX: A completely rewritten, more robust version of the function.
 export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>): unknown => {
-  if (value === null || value === undefined) return "";
+  // 1. Handle all nullish or empty string cases universally at the start.
+  if (value === null || value === undefined || value === '') {
+    return null; // ExcelJS correctly interprets null as an empty cell.
+  }
 
+  // 2. Process based on the specified Excel format.
   switch (column.excelFormat) {
     case "date":
-      return value instanceof Date ? value : new Date(value as string);
+      const date = new Date(value as string | number | Date);
+      // Return null if the date is invalid.
+      return isNaN(date.getTime()) ? null : date;
+
     case "number":
-      return typeof value === "string" ? parseFloat(value) || 0 : value;
+      const num = parseFloat(String(value));
+      // Return null if parsing results in NaN.
+      return isNaN(num) ? null : num;
+
     case "integer":
-      return typeof value === "string" ? parseInt(value, 10) || 0 : value;
+      const int = parseInt(String(value), 10);
+      // Return null if parsing results in NaN.
+      return isNaN(int) ? null : int;
+
     case "currency":
-      return typeof value === "string" ? parseFloat(value.replace(/[^0-9.-]/g, "")) || 0 : value;
+      const currencyNum = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+      return isNaN(currencyNum) ? null : currencyNum;
+
     case "percentage":
-      return typeof value === "number" ? value / 100 : parseFloat(String(value)) / 100 || 0;
-    case "json": {
-      if (typeof value === "string") {
-        try {
-          const parsed = JSON.parse(value);
-          return JSON.stringify(parsed, null, 2); // Prettify for readability
-        } catch {
-          return value;
-        }
+      const percNum = parseFloat(String(value));
+      return isNaN(percNum) ? null : percNum / 100;
+
+    case "json":
+      if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
       }
       return String(value);
-    }
+
     case "text":
       return String(value);
+
+    // 3. Fallback logic for when no excelFormat is specified.
     default:
-      // Fallback logic for when no excelFormat is specified
-      if (typeof value === "number") return value;
-      if (typeof value === "object" && value !== null) {
+      if (typeof value === 'object') {
         if (value instanceof Date) return value;
         if (Array.isArray(value)) return value.join(", ");
         return JSON.stringify(value);
       }
+      // This will correctly handle strings for columns like 'Remark', 'Make', and even 's_no' if no format is specified.
       return String(value);
   }
 };
+
 
 export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Column<T>): void => {
   switch (column.excelFormat) {
