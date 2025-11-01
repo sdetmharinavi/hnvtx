@@ -40,5 +40,5 @@ def clean_file(input_file, output_file=None):
         shutil.move(output_file, input_file)
 
 if __name__ == "__main__":
-    input_file = "/home/au/Desktop/git_projects/newhnvtx/hnvtx/scripts/output.md"
+    input_file = "/home/au/Desktop/git_projects/newhnvtm/hnvtm/scripts/output.md"
     clean_file(input_file)

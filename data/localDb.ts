@@ -46,7 +46,7 @@ export interface MutationTask {
   error?: string;
 }
 
-export class HNVTXDatabase extends Dexie {
+export class HNVTMDatabase extends Dexie {
   lookup_types!: Table<Lookup_typesRow, string>;
   maintenance_areas!: Table<Maintenance_areasRow, string>;
   employee_designations!: Table<Employee_designationsRow, string>;
@@ -75,7 +75,7 @@ export class HNVTXDatabase extends Dexie {
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
-    super('HNVTXDatabase');
+    super('HNVTMDatabase');
     // THE FIX: Incremented version number to apply schema changes.
     this.version(6).stores({
       lookup_types: 'id, category, name',
@@ -108,7 +108,7 @@ export class HNVTXDatabase extends Dexie {
   }
 }
 
-export const localDb = new HNVTXDatabase();
+export const localDb = new HNVTMDatabase();
 
 export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
     const table = localDb.table(tableName);

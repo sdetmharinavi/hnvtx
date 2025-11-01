@@ -77,7 +77,7 @@ self.addEventListener('push', function (event) {
  
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  event.waitUntil(clients.openWindow('https://hnvtx.vercel.app'))
+  event.waitUntil(clients.openWindow('https://hnvtm.vercel.app'))
 });
 
 // This is the magic that makes all of the above work.

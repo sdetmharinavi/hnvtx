@@ -12,8 +12,8 @@ def filter_comments(input_file, output_file):
                 outfile.write(line)
 
 if __name__ == "__main__":
-    input_file = '/home/au/Desktop/git_projects/newhnvtx/hnvtx/scripts/output.md'
-    temp_file = '/home/au/Desktop/git_projects/newhnvtx/hnvtx/scripts/output_filtered.md'
+    input_file = '/home/au/Desktop/git_projects/newhnvtm/hnvtm/scripts/output.md'
+    temp_file = '/home/au/Desktop/git_projects/newhnvtm/hnvtm/scripts/output_filtered.md'
     
     filter_comments(input_file, temp_file)
     
