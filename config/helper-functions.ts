@@ -83,6 +83,8 @@ export function inferExcelFormat(
   columnName: string
 ): "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json" {
   const name = columnName.toLowerCase();
+  // Ensure serial number fields remain as text
+  if (name === 's_no') return "text";
   if (/\bdate\b|_on$|_at$|dob$|doj$/.test(name)) return "date";
   if (name.endsWith("_no") || name.endsWith("_count") || name === 'capacity' || name === 'segment_order' || name === 'path_segment_order') return "integer";
   if (name.includes("amount") || name.includes("price") || name.includes("total") || name.includes("rkm") || name.includes("mbps")) return "number";
