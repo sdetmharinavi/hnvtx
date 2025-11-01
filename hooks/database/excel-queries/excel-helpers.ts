@@ -7,7 +7,7 @@ import { TableOrViewName, Row } from "@/hooks/database";
 export interface Column<T> {
   key: string;
   title: string;
-  dataIndex: string;
+  dataIndex: keyof T & string;
   width?: number | string;
   sortable?: boolean;
   searchable?: boolean;

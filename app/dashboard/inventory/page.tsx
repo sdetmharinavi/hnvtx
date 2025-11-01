@@ -15,9 +15,9 @@ import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
 import { useQuery } from "@tanstack/react-query";
-import { getInventoryTableColumns } from "@/app/dashboard/inventory/InventoryTableColumns";
+import { getInventoryTableColumns } from "@/components/inventory/InventoryTableColumns";
 import { FaQrcode } from "react-icons/fa";
-import { InventoryFormModal } from "@/app/dashboard/inventory/InventoryFormModal";
+import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 
 const useInventoryData = (params: DataQueryHookParams): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
