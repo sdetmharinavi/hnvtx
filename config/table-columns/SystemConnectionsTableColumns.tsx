@@ -25,8 +25,6 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
       'sdh_b_slot',
       'sdh_carrier',
       'sdh_stm_no',
-      'sfp_capacity',
-      'sfp_port',
       'sfp_serial_no',
       'vlan',
       'en_node_name',
@@ -128,12 +126,6 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
         searchable: true,
         width: 150,
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
-      },
-      sfp_type_name: {
-        title: "SFP Type",
-        sortable: true,
-        searchable: true,
-        width: 150,
       },
     },
   });

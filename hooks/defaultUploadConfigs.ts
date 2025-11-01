@@ -1,19 +1,20 @@
-import { TableNames } from "@/config/helper-types";
-import { buildUploadConfig, TABLES } from "@/constants/table-column-keys";
+import { buildUploadConfig, TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
+import { PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
 
 // Thin adapter: build per-table upload config from SSOT
 const defaultUploadConfigs = () => {
+  type T = PublicTableOrViewName;
   const result: Partial<
-    Record<TableNames, ReturnType<typeof buildUploadConfig<TableNames>>>
+    Record<T, ReturnType<typeof buildUploadConfig<T>>>
   > = {};
 
-  (Object.keys(TABLES) as TableNames[]).forEach((tableName) => {
+  (Object.keys(TABLE_COLUMN_KEYS) as T[]).forEach((tableName) => {
     result[tableName] = buildUploadConfig(tableName);
   });
 
   return result as Record<
-    TableNames,
-    ReturnType<typeof buildUploadConfig<TableNames>>
+    T,
+    ReturnType<typeof buildUploadConfig<T>>
   >;
 };
 
