@@ -35,7 +35,7 @@ const useNodesData = (
     const rpcFilters = buildRpcFilters({ 
       ...filters, 
       or: searchQuery 
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)` 
+        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude.ilike.%${searchQuery}%,longitude.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%)` 
         : undefined 
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
