@@ -84,7 +84,7 @@ export function useDashboardOverview(
   supabase: SupabaseClient<Database>,
   options?: UseRpcQueryOptions<'get_dashboard_overview'>
 ) {
-  return useRpcQuery(supabase, 'get_dashboard_overview', {}, options);
+  return useRpcQuery(supabase, 'get_dashboard_overview', undefined, options);
 }
 
 // =================================================================

@@ -1,3 +1,5 @@
+"use client";
+
 // src/hooks/useRouteBasedUploadConfig.ts
 
 import { useEffect, FC, ReactNode, useRef } from "react";
@@ -7,23 +9,27 @@ import {
   UploadConfig,
 } from "@/stores/useUploadConfigStore";
 import { useCurrentTableName } from "./useCurrentTableName";
-import { TableNames } from "@/config/helper-types";
-import { buildUploadConfig } from "@/constants/table-column-keys";
+import { TABLE_COLUMN_KEYS, buildUploadConfig } from "@/constants/table-column-keys";
+import { PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
 
 export interface UseRouteBasedUploadConfigOptions {
-  tableName?: TableNames;
+  tableName?: PublicTableOrViewName;
   autoSetConfig?: boolean;
-  customConfig?: Partial<UploadConfig<TableNames>>;
+  customConfig?: Partial<UploadConfig<PublicTableOrViewName>>;
 }
 
 export const useRouteBasedUploadConfig = (
   options: UseRouteBasedUploadConfigOptions = {}
 ) => {
   const { tableName, autoSetConfig = true, customConfig } = options;
-  const previousTableNameRef = useRef<TableNames | null>(null);
+  const previousTableNameRef = useRef<PublicTableOrViewName | null>(null);
 
   // Get current table name from the new hook
-  const currentTableName = useCurrentTableName(tableName);
+  const currentTableName = useCurrentTableName(tableName as unknown as any);
+  const validTableName: PublicTableOrViewName | null =
+    currentTableName && (currentTableName in (TABLE_COLUMN_KEYS as Record<string, unknown>))
+      ? (currentTableName as unknown as PublicTableOrViewName)
+      : null;
 
   // Get the actions from the store
   const { setUploadConfig, getUploadConfig, clearUploadConfig } =
@@ -32,34 +38,31 @@ export const useRouteBasedUploadConfig = (
   // Proper cleanup and config management
   useEffect(() => {
     // Clear previous config when route changes
-    if (
-      previousTableNameRef.current &&
-      previousTableNameRef.current !== currentTableName
-    ) {
+    if (previousTableNameRef.current && previousTableNameRef.current !== validTableName) {
       clearUploadConfig(previousTableNameRef.current);
     }
 
     // Set new config if applicable
-    if (autoSetConfig && currentTableName) {
-      const generated = buildUploadConfig(currentTableName);
+    if (autoSetConfig && validTableName) {
+      const generated = buildUploadConfig(validTableName);
       const finalConfig = {
         ...generated,
         ...customConfig,
-      } as UploadConfig<TableNames>;
-      setUploadConfig(currentTableName, finalConfig);
+      } as UploadConfig<PublicTableOrViewName>;
+      setUploadConfig(validTableName, finalConfig);
     }
 
     // Update the ref with current table name
-    previousTableNameRef.current = currentTableName;
+    previousTableNameRef.current = validTableName;
 
     // Cleanup function - runs when component unmounts
     return () => {
-      if (currentTableName) {
-        clearUploadConfig(currentTableName);
+      if (validTableName) {
+        clearUploadConfig(validTableName);
       }
     };
   }, [
-    currentTableName,
+    validTableName,
     autoSetConfig,
     customConfig,
     setUploadConfig,
@@ -67,8 +70,8 @@ export const useRouteBasedUploadConfig = (
   ]);
 
   return {
-    currentTableName,
-    config: currentTableName ? getUploadConfig(currentTableName) : undefined,
+    currentTableName: validTableName,
+    config: validTableName ? getUploadConfig(validTableName) : undefined,
   };
 };
 
