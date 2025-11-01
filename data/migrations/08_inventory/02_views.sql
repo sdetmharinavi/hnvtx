@@ -25,6 +25,6 @@ FROM
     public.inventory_items i
 LEFT JOIN public.lookup_types cat ON i.category_id = cat.id
 LEFT JOIN public.lookup_types stat ON i.status_id = stat.id
-LEFT JOIN public.maintenance_areas loc ON i.location_id = loc.id
-LEFT JOIN public.nodes floc ON i.functional_location_id = floc.id;
+LEFT JOIN public.nodes loc ON i.location_id = loc.id
+LEFT JOIN public.maintenance_areas floc ON i.functional_location_id = floc.id;
 

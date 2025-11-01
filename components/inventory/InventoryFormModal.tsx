@@ -1,4 +1,4 @@
-// components/inventory/InventoryFormModal.tsx
+// path: app/dashboard/inventory/InventoryFormModal.tsx
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -24,11 +24,15 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
 
   const { data: categoriesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_CATEGORY' } });
   const { data: statusesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_STATUS' } });
-  const { data: locationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
+  // THE FIX: Fetch from 'v_nodes_complete' for physical locations and 'maintenance_areas' for functional locations.
+  const { data: locationsResult } = useTableQuery(supabase, 'v_nodes_complete', { filters: { status: true } });
+  const { data: functionalLocationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
   
   const categoryOptions = useMemo(() => categoriesResult?.data?.map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
   const statusOptions = useMemo(() => statusesResult?.data?.map(s => ({ value: s.id, label: s.name })) || [], [statusesResult]);
-  const locationOptions = useMemo(() => locationsResult?.data?.map(l => ({ value: l.id, label: l.name })) || [], [locationsResult]);
+  // THE FIX: Correctly map the options for both location types.
+  const locationOptions = useMemo(() => locationsResult?.data?.map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
+  const functionalLocationOptions = useMemo(() => functionalLocationsResult?.data?.map(l => ({ value: l.id, label: l.name })) || [], [functionalLocationsResult]);
 
   const {
     register,
@@ -89,7 +93,8 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
           <FormInput name="name" label="Item Name" register={register} error={errors.name} required placeholder="e.g., Office Chair"/>
           <FormSearchableSelect name="category_id" label="Category" control={control} options={categoryOptions} error={errors.category_id} />
           <FormSearchableSelect name="status_id" label="Status" control={control} options={statusOptions} error={errors.status_id} />
-          <FormSearchableSelect name="location_id" label="Location" control={control} options={locationOptions} error={errors.location_id} />
+          <FormSearchableSelect name="location_id" label="Location (Node)" control={control} options={locationOptions} error={errors.location_id} />
+          <FormSearchableSelect name="functional_location_id" label="Functional Location (Area)" control={control} options={functionalLocationOptions} error={errors.functional_location_id} />
           <FormInput name="quantity" label="Quantity" type="number" register={register} error={errors.quantity} required />
           <FormDateInput name="purchase_date" label="Purchase Date" control={control} error={errors.purchase_date} />
           <FormInput name="vendor" label="Vendor" register={register} error={errors.vendor} />

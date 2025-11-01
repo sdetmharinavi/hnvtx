@@ -1,4 +1,4 @@
-// components/inventory/InventoryTableColumns.tsx
+// path: app/dashboard/inventory/InventoryTableColumns.tsx
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
@@ -6,9 +6,9 @@ import { formatDate } from '@/utils/formatters';
 
 export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[] => [
     {
-        key: 'asset_tag',
-        title: 'Asset Tag',
-        dataIndex: 'asset_tag',
+        key: 'asset_no',
+        title: 'Asset No',
+        dataIndex: 'asset_no',
         render: (val) => <span className="font-mono text-xs">{val as string}</span>
     },
     {
@@ -33,9 +33,14 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         dataIndex: 'status_name',
     },
     {
-        key: 'location_name',
-        title: 'Location',
-        dataIndex: 'location_name',
+        key: 'store_location',
+        title: 'Location (Node)',
+        dataIndex: 'store_location',
+    },
+    {
+        key: 'functional_location',
+        title: 'Functional Location (Area)',
+        dataIndex: 'functional_location',
     },
     {
         key: 'quantity',

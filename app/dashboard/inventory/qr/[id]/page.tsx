@@ -1,4 +1,4 @@
-// app/inventory/qr/[id]/page.tsx
+// path: app/dashboard/inventory/qr/[id]/page.tsx
 "use client";
 
 import { useParams } from "next/navigation";
@@ -39,19 +39,20 @@ export default function QrCodePage() {
   if (!item) return <ErrorDisplay error="Asset not found." />;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border-t-8 border-blue-600">
+    // THE FIX: Simplified wrapper. The `min-h-screen` and layout classes are applied here for screen view.
+    <div className="qr-page-wrapper min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
+      
+      {/* The main content card */}
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 border-t-8 border-blue-600 print-content">
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
           Asset Details
         </h1>
         
         <div className="flex flex-col items-center space-y-8">
-          {/* QR Code */}
           <div className="p-4 border-4 border-gray-200 rounded-lg">
             <QRCodeCanvas value={pageUrl} size={200} bgColor={"#ffffff"} fgColor={"#000000"} level={"H"} />
           </div>
           
-          {/* Details List */}
           <div className="w-full space-y-3">
             <DetailItem icon={<FiTag size={18} />} label="Asset No" value={item.asset_no} />
             <DetailItem icon={<FiBox size={18} />} label="Name" value={item.name} />
@@ -65,7 +66,7 @@ export default function QrCodePage() {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center no-print">
             <button 
                 onClick={() => window.print()}
                 className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"

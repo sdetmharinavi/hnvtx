@@ -474,6 +474,22 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: "created_at",
     updated_at: "updated_at",
   },
+  inventory_items: {
+    id: "id",
+    asset_no: "asset_no",
+    name: "name",
+    description: "description",
+    category_id: "category_id",
+    status_id: "status_id",
+    location_id: "location_id",
+    functional_location_id: "functional_location_id",
+    quantity: "quantity",
+    purchase_date: "purchase_date",
+    vendor: "vendor",
+    cost: "cost",
+    created_at: "created_at",
+    updated_at: "updated_at",
+  },
 
   // ==================== Views ====================
   v_cable_utilization: {
@@ -798,6 +814,26 @@ const TABLE_COLUMN_OBJECTS = {
     system_status: "system_status",
     type: "type",
   },
+  v_inventory_items: {
+    asset_no: "asset_no",
+    category_id: "category_id",
+    category_name: "category_name",
+    cost: "cost",
+    created_at: "created_at",
+    description: "description",
+    functional_location: "functional_location",
+    functional_location_id: "functional_location_id",
+    id: "id",
+    location_id: "location_id",
+    name: "name",
+    purchase_date: "purchase_date",
+    quantity: "quantity",
+    status_id: "status_id",
+    status_name: "status_name",
+    store_location: "store_location",
+    updated_at: "updated_at",
+    vendor: "vendor",
+  },
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
@@ -836,6 +872,8 @@ export const TABLES = {
   cable_segments: "cable_segments",
   fiber_splices: "fiber_splices",
   logical_paths: "logical_paths",
+  diary_notes: "diary_notes",
+  inventory_items: "inventory_items",
 } as const;
 
 export const VIEWS = {
@@ -856,6 +894,7 @@ export const VIEWS = {
   v_cable_segments_at_jc: "v_cable_segments_at_jc",
   v_junction_closures_complete: "v_junction_closures_complete",
   v_ring_nodes: "v_ring_nodes",
+  v_inventory_items: "v_inventory_items",
 } as const;
 
 export const TABLE_NAMES = {
