@@ -7,31 +7,31 @@ import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
+  console.log(data);
   return useDynamicColumnConfig('v_systems_complete', {
     data: data as Row<'v_systems_complete'>[],
     omit: [
-      "id",
-      "node_type_name",
-      "system_type_name",
-      "is_ring_based",
-      "ring_id",
-      "system_type_id",
-      "node_id",
-      "maintenance_terminal_id",
-      "make",
-      "remark",
-      "s_no",
-      "latitude",
-      "longitude",
-      "ring_logical_area_name",
-      "system_category",
-      "system_maintenance_terminal_name",
+      'id',
+      'node_type_name',
+      'system_type_name',
+      'is_ring_based',
+      'ring_id',
+      'system_type_id',
+      'node_id',
+      'maintenance_terminal_id',
+      'make',
+      'remark',
+      'latitude',
+      'longitude',
+      'ring_logical_area_name',
+      'system_category',
+      'system_maintenance_terminal_name',
       // "system_type_code",
-      "updated_at",
-      "created_at",
-      "order_in_ring",
-      "status",
-      "is_hub",
+      'updated_at',
+      'created_at',
+      'order_in_ring',
+      'status',
+      'is_hub',
     ],
     overrides: {
       system_name: {
@@ -47,10 +47,23 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           return (
             <div className="flex flex-col">
               <span className="font-medium text-gray-900 dark:text-white">{stringValue}</span>
-              <TruncateTooltip className="text-xs text-gray-500 dark:text-gray-400 w-2xs" text={"S/N: " + record.s_no} />
+              <TruncateTooltip
+                className="text-xs text-gray-500 dark:text-gray-400 w-2xs"
+                text={'S/N: ' + record.s_no}
+              />
             </div>
           );
         },
+      },
+      s_no: {
+        key: 's_no',
+        title: 'S/N',
+        dataIndex: 's_no',
+        sortable: true,
+        searchable: true,
+        filterable: true,
+        width: 100,
+        excelFormat: 'text', // Ensure it's treated as text in Excel
       },
       system_type_name: {
         key: 'system_type_name',

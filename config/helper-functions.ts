@@ -1,4 +1,5 @@
-// config/helper-functions.ts
+// path: config/helper-functions.ts
+
 // Helper: normalize various Excel/CSV date representations to 'YYYY-MM-DD' or null
 export const toPgDate = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
@@ -82,7 +83,6 @@ export function inferExcelFormat(
   columnName: string
 ): "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json" {
   const name = columnName.toLowerCase();
-  // THE FIX: Use a more specific regex to avoid matching 'date' in 'updated_at'
   if (/\bdate\b|_on$|_at$|dob$|doj$/.test(name)) return "date";
   if (name.endsWith("_no") || name.endsWith("_count") || name === 'capacity' || name === 'segment_order' || name === 'path_segment_order') return "integer";
   if (name.includes("amount") || name.includes("price") || name.includes("total") || name.includes("rkm") || name.includes("mbps")) return "number";
@@ -117,8 +117,10 @@ export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
   const PADDING = 32;
 
   if (!ctx) {
+    if (typeof document === 'undefined') return MIN_WIDTH; // Return a default width in non-browser environments
     const canvas = document.createElement("canvas");
     ctx = canvas.getContext("2d")!;
+    if (!ctx) return MIN_WIDTH;
     ctx.font = "14px Inter, sans-serif";
   }
 

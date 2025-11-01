@@ -1,32 +1,31 @@
 // app/dashboard/systems/page.tsx
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useRef } from "react";
-import { FiDatabase, FiUpload } from "react-icons/fi";
-import { toast } from "sonner";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
-import { ErrorDisplay } from "@/components/common/ui";
-import { ConfirmModal } from "@/components/common/ui/Modal/confirmModal";
-import { createStandardActions } from "@/components/table/action-helpers";
-import { DataTable } from "@/components/table/DataTable";
-import type { TableAction } from "@/components/table/datatable-types";
-import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
-import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
-import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
-import { createClient } from "@/utils/supabase/client";
-import { SystemModal } from "@/components/systems/SystemModal";
-import { SelectFilter } from "@/components/common/filters/FilterInputs";
-import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
-import { SystemFormData } from "@/schemas/system-schemas";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
-import useOrderedColumns from "@/hooks/useOrderedColumns";
-import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
-import { buildUploadConfig } from "@/constants/table-column-keys";
-import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
+import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState, useRef } from 'react';
+import { FiDatabase, FiUpload } from 'react-icons/fi';
+import { toast } from 'sonner';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { DataTable } from '@/components/table/DataTable';
+import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
+import { useRpcMutation, RpcFunctionArgs, buildRpcFilters} from '@/hooks/database';
+import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { Lookup_typesRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { SystemModal } from '@/components/systems/SystemModal';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { SystemFormData } from '@/schemas/system-schemas';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/data/localDb';
+import { DEFAULTS } from '@/constants/constants';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { buildUploadConfig } from '@/constants/table-column-keys';
+import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload';
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -40,8 +39,8 @@ const useSystemsData = (
         ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
         : undefined,
     });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_systems_complete",
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_systems_complete',
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
@@ -60,7 +59,7 @@ const useSystemsData = (
     isFetching,
     error,
     refetch,
-  } = useOfflineQuery(["systems-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
+  } = useOfflineQuery(['systems-data', searchQuery, filters], onlineQueryFn, offlineQueryFn, {
     staleTime: DEFAULTS.CACHE_TIME,
   });
 
@@ -84,7 +83,7 @@ const useSystemsData = (
     }
     if (filters.status) {
       filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) => system.status === (filters.status === "true")
+        (system: V_systems_completeRowSchema) => system.status === (filters.status === 'true')
       );
     }
 
@@ -128,11 +127,11 @@ export default function SystemsPage() {
     editModal,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"systems", V_systems_completeRowSchema>({
-    tableName: "systems",
+  } = useCrudManager<'systems', V_systems_completeRowSchema>({
+    tableName: 'systems',
     dataQueryHook: useSystemsData,
-    searchColumn: "system_name",
-    displayNameField: "system_name",
+    searchColumn: 'system_name',
+    displayNameField: 'system_name',
   });
 
   const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
@@ -141,9 +140,9 @@ export default function SystemsPage() {
 
   const isInitialLoad = isLoading && systems.length === 0;
 
-  const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
-      toast.success(`System ${editModal.record ? "updated" : "created"} successfully.`);
+      toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
       refetch();
       editModal.close();
     },
@@ -157,11 +156,11 @@ export default function SystemsPage() {
   });
 
   const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["system-types-for-filter"],
+    ['system-types-for-filter'],
     async () =>
-      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ??
+      (await createClient().from('lookup_types').select('*').eq('category', 'SYSTEM_TYPES')).data ??
       [],
-    async () => await localDb.lookup_types.where({ category: "SYSTEM_TYPES" }).toArray()
+    async () => await localDb.lookup_types.where({ category: 'SYSTEM_TYPES' }).toArray()
   );
   const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
 
@@ -170,7 +169,7 @@ export default function SystemsPage() {
       if (system.id) {
         router.push(`/dashboard/systems/${system.id}`);
       } else {
-        toast.info("System needs to be created before managing connections.");
+        toast.info('System needs to be created before managing connections.');
       }
     },
     [router]
@@ -194,11 +193,11 @@ export default function SystemsPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const uploadConfig = buildUploadConfig("v_systems_complete");
+      const uploadConfig = buildUploadConfig('v_systems_complete');
       uploadSystems({ file, columns: uploadConfig.columnMapping });
     }
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
@@ -206,25 +205,25 @@ export default function SystemsPage() {
     data: systems,
     onRefresh: () => {
       refetch();
-      toast.success("Systems refreshed.");
+      toast.success('Systems refreshed.');
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: "v_systems_complete", fileName: "systems" },
+    exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
   });
 
   headerActions.splice(1, 0, {
-    label: isUploading ? "Uploading..." : "Upload Systems",
+    label: isUploading ? 'Uploading...' : 'Upload Systems',
     onClick: handleUploadClick,
-    variant: "outline",
+    variant: 'outline',
     leftIcon: <FiUpload />,
     disabled: isUploading || isLoading,
   });
 
   const headerStats = [
-    { value: totalCount, label: "Total Systems" },
-    { value: activeCount, label: "Active", color: "success" as const },
-    { value: inactiveCount, label: "Inactive", color: "danger" as const },
+    { value: totalCount, label: 'Total Systems' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   const handleSave = useCallback(
@@ -232,7 +231,7 @@ export default function SystemsPage() {
       const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
       const isRingBased = selectedSystemType?.is_ring_based;
 
-      const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+      const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
         p_system_type_id: formData.system_type_id!,
@@ -261,15 +260,15 @@ export default function SystemsPage() {
     return (
       <ErrorDisplay
         error={error.message}
-        actions={[{ label: "Retry", onClick: refetch, variant: "primary" }]}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
       />
     );
 
   return (
-    <div className='p-6 space-y-6'>
+    <div className="p-6 space-y-6">
       <PageHeader
-        title='System Management'
-        description='Manage all network systems, including CPAN, MAAN, SDH, DWDM etc.'
+        title="System Management"
+        description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc."
         icon={<FiDatabase />}
         stats={headerStats}
         actions={headerActions}
@@ -278,19 +277,28 @@ export default function SystemsPage() {
       />
 
       <input
-        type='file'
+        type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        className='hidden'
-        accept='.xlsx, .xls, .csv'
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
       />
 
       <DataTable
-        tableName='v_systems_complete'
+        tableName="v_systems_complete"
         data={systems}
         columns={orderedSystems}
         loading={isLoading}
-        actions={tableActions as TableAction<"v_systems_complete">[]}
+        exportable={true}
+        exportOptions={{
+          fileName: 'systems_export',
+          sheetName: 'Systems',
+          includeFilters: true,
+          // Ensure we're using the same columns as the table
+          columns: orderedSystems,
+          fallbackToCsv: true,
+        }}
+        actions={tableActions}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -308,32 +316,33 @@ export default function SystemsPage() {
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={() => {
-              search.setSearchQuery("");
+              search.setSearchQuery('');
               filters.setFilters({});
             }}
             hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
-            searchPlaceholder='Search by system name or type...'>
+            searchPlaceholder="Search by system name or type..."
+          >
             <SelectFilter
-              label='System Type'
-              filterKey='system_type_name'
+              label="System Type"
+              filterKey="system_type_name"
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={(systemTypes || [])
-                .filter((s) => s.name !== "DEFAULT")
+                .filter((s) => s.name !== 'DEFAULT')
                 .map((t) => ({
                   value: t.name,
                   label: t.code || t.name, // Fallback to t.name if code is null
                 }))}
             />
             <SelectFilter
-              label='Status'
-              filterKey='status'
+              label="Status"
+              filterKey="status"
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={[
-                { value: "true", label: "Active" },
-                { value: "false", label: "Inactive" },
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
               ]}
             />
           </SearchAndFilters>
@@ -350,10 +359,10 @@ export default function SystemsPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteModal.message}
         loading={deleteModal.loading}
-        type='danger'
+        type="danger"
       />
     </div>
   );
