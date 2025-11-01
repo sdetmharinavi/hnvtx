@@ -13,7 +13,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       "id",
       "node_type_name",
       "system_type_name",
-      // "is_ring_based",
+      "is_ring_based",
       "ring_id",
       "system_type_id",
       "node_id",
@@ -29,6 +29,9 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       // "system_type_code",
       "updated_at",
       "created_at",
+      "order_in_ring",
+      "status",
+      "is_hub",
     ],
     overrides: {
       system_name: {
