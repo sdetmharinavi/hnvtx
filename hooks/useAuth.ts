@@ -107,7 +107,7 @@ export const useAuth = () => {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          skipBrowserRedirect: true
+          // skipBrowserRedirect: true
         },
       });
       if (error) throw error;
