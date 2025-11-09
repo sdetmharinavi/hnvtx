@@ -120,7 +120,7 @@ export default function SystemConnectionsPage() {
     isLoading: isLoadingConnections,
     exportConfig: {
         tableName: 'v_system_connections_complete',
-        fileName: `${parentSystem?.system_name || 'system'}_connections`,
+        fileName: `${parentSystem?.system_name || 'system'}_connections_${parentSystem?.ip_address}`,
         filters: { system_id: systemId }
     }
   });
