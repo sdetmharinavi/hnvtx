@@ -261,8 +261,8 @@ export default function ClientRingMap({
                 [end.lat as number, end.long as number],
               ]}
               color={theme === 'dark' ? '#3b82f6' : '#2563eb'}
-              weight={4}
-              opacity={0.8}
+              weight={3}
+              opacity={1}
               ref={(el) => {
                 if (el) polylineRefs.current[`solid-${start.id}-${end.id}-${i}`] = el;
               }}
