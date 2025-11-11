@@ -20,12 +20,15 @@ CREATE TABLE IF NOT EXISTS public.systems (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Consolidated Table for Ring-Based System Details (replaces cpan_systems, maan_systems)
+-- 2. Consolidated Table for Ring-Based System Details
+-- THE FIX: Changed the primary key from just system_id to a composite key of (system_id, ring_id).
+-- This correctly models the many-to-many relationship, allowing a system to exist in multiple rings.
 CREATE TABLE IF NOT EXISTS public.ring_based_systems (
-  system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
-  ring_id UUID REFERENCES public.rings (id),
+  system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
+  ring_id UUID NOT NULL REFERENCES public.rings (id) ON DELETE CASCADE,
   order_in_ring NUMERIC,
-  maintenance_area_id UUID REFERENCES public.maintenance_areas (id)
+  maintenance_area_id UUID REFERENCES public.maintenance_areas (id),
+  CONSTRAINT ring_based_systems_pkey PRIMARY KEY (system_id, ring_id)
 );
 
 -- 3. Generic System Connections Table

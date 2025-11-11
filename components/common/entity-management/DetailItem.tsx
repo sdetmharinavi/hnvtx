@@ -4,7 +4,7 @@ import { BaseEntity } from '@/components/common/entity-management/types';
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
   value: T[keyof T] | unknown;
-  type: 'text' | 'status' | 'parent' | 'date' | 'custom';
+  type: 'text' | 'status' | 'parent' | 'date' | 'custom' | 'html';
   entity: T;
   render?: (value: T[keyof T], entity: T) => React.ReactNode;
 }
@@ -19,8 +19,10 @@ export function DetailItem<T extends BaseEntity>({
   if (!value && type !== 'status') return null;
 
   const renderValue = () => {
+    console.log("value", value);
+    console.log("entity", entity);
+
     if (render) {
-      // We know value should be T[keyof T] when render is provided
       return render(value as T[keyof T], entity);
     }
 
@@ -37,15 +39,26 @@ export function DetailItem<T extends BaseEntity>({
             {value ? "Active" : "Inactive"}
           </span>
         );
+
       case 'parent':
         return value && typeof value === 'object' && 'name' in value
           ? String(value.name)
           : 'No parent';
+
       case 'date':
         if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
           return new Date(value).toLocaleDateString();
         }
         return 'N/A';
+
+      case 'html':
+      case 'custom':
+        if (typeof value === 'string') {
+          // 🧩 Render as HTML
+          return <div dangerouslySetInnerHTML={{ __html: value }} />;
+        }
+        return String(value);
+
       case 'text':
       default:
         return String(value);
@@ -55,7 +68,9 @@ export function DetailItem<T extends BaseEntity>({
   return (
     <div className="py-2">
       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{renderValue()}</dd>
+      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+        {renderValue()}
+      </dd>
     </div>
   );
 }
