@@ -16,7 +16,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_remark TEXT DEFAULT NULL,
     p_id UUID DEFAULT NULL,
     p_ring_id UUID DEFAULT NULL,
-    p_order_in_ring INTEGER DEFAULT NULL,
+    p_order_in_ring NUMERIC DEFAULT NULL,
     p_make TEXT DEFAULT NULL
 )
 RETURNS SETOF public.systems
@@ -71,8 +71,8 @@ BEGIN
 END;
 $$;
 
--- UPDATED GRANT to include the new INTEGER parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
+-- UPDATED GRANT to include the new NUMERIC parameter
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, NUMERIC, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,

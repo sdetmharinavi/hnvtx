@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
-import { FiUpload, FiEdit } from 'react-icons/fi';
+import { FiUpload, FiEdit, FiDownload, FiRefreshCw } from 'react-icons/fi';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions, ActionButton } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { createStandardActions } from '@/components/table/action-helpers';
@@ -45,6 +45,7 @@ import { SystemFormData } from '@/schemas/system-schemas';
 import { UseQueryResult } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -149,6 +150,7 @@ export default function RingManagerPage() {
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
   const { mutate: uploadRings, isPending: isUploading } = useRingExcelUpload(supabase);
+  const { mutate: exportRings, isPending: isExporting } = useRPCExcelDownload(supabase);
   const isMutating = isCrudMutating || isInserting || isUpdating;
 
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
@@ -269,26 +271,73 @@ export default function RingManagerPage() {
     }
   };
 
-  const headerActions = useStandardHeaderActions({
-    data: rings, onRefresh: refetch, onAddNew: editModal.openAdd,
-    isLoading: isLoading, exportConfig: { tableName: 'v_rings' }
-  });
-  
-  headerActions.splice(1, 0, {
-    label: isUploading ? 'Uploading...' : 'Upload Rings',
-    onClick: handleUploadClick,
-    variant: 'outline',
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading,
-  });
+  const handleExportClick = () => {
+    exportRings({
+      fileName: `rings-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Rings',
+      rpcConfig: {
+        functionName: 'get_rings_for_export'
+      },
+      columns: [
+        { key: 'id', title: 'id', dataIndex: 'id' },
+        { key: 'name', title: 'name', dataIndex: 'name' },
+        { key: 'description', title: 'description', dataIndex: 'description' },
+        { key: 'ring_type_name', title: 'ring_type_name', dataIndex: 'ring_type_name' },
+        { key: 'maintenance_area_name', title: 'maintenance_area_name', dataIndex: 'maintenance_area_name' },
+        { key: 'status', title: 'status', dataIndex: 'status' },
+        { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
+        // THE FIX: Explicitly mark this column to be formatted as JSON.
+        { key: 'associated_systems', title: 'associated_systems', dataIndex: 'associated_systems', excelFormat: 'json' }
+      ]
+    });
+  };
 
-  headerActions.push({
-    label: 'Add Systems to Ring',
-    onClick: () => setIsSystemsModalOpen(true),
-    variant: 'primary',
-    leftIcon: <FaNetworkWired />,
-    disabled: isLoading,
-  });
+  const headerActions = useMemo(() => {
+    const actions: ActionButton[] = [];
+    
+    actions.push({
+      label: 'Refresh',
+      onClick: () => refetch(),
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+      disabled: isLoading,
+    });
+    
+    actions.push({
+      label: isUploading ? 'Uploading...' : 'Upload Rings',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+    });
+    
+    actions.push({
+      label: isExporting ? 'Exporting...' : 'Export Rings',
+      onClick: handleExportClick,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isLoading,
+    });
+    
+    actions.push({
+      label: 'Add New Ring',
+      onClick: editModal.openAdd,
+      variant: 'primary',
+      leftIcon: <GiLinkedRings />,
+      disabled: isLoading,
+    });
+
+    actions.push({
+      label: 'Add Systems to Ring',
+      onClick: () => setIsSystemsModalOpen(true),
+      variant: 'primary',
+      leftIcon: <FaNetworkWired />,
+      disabled: isLoading,
+    });
+
+    return actions;
+  }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExportClick, editModal.openAdd]);
+
 
   const headerStats = useMemo(() => [
     { value: totalCount, label: 'Total Rings' },
@@ -417,7 +466,6 @@ export default function RingManagerPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
-        // THE FIX: Pass the editing record to the modal
         editingRing={editModal.record as RingsRowSchema | null}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}

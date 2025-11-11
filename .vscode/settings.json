@@ -90,6 +90,8 @@
       "unpositioned",
       "unprovisioned",
       "unspliced",
+      "upserted",
+      "Upserting",
       "uuidv",
       "VARCHAR",
       "vmux",
