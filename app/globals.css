@@ -146,7 +146,7 @@ body {
 }
 
 .dark .permanent-label {
-  color: #ecf0f1; /* A light color for dark mode */
+  color: #dfe2e6; /* A light color for dark mode */
   text-shadow: 
     1px 1px 0 #2c3e50, 
     -1px -1px 0 #2c3e50, 

@@ -58,11 +58,13 @@ BEGIN
     -- Step 2: Handle subtype tables based on the system type's boolean flags.
 
     -- Handle Ring-Based Systems using the new 'is_ring_based' flag
-    IF v_system_type_record.is_ring_based = true THEN
+    IF v_system_type_record.is_ring_based = true AND p_ring_id IS NOT NULL THEN
+        -- THE FIX: The ON CONFLICT target is now the composite primary key (system_id, ring_id).
+        -- This ensures that adding a system to a *new* ring creates a new association, while re-saving
+        -- it for the *same* ring only updates the order.
         INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
         VALUES (v_system_id, p_ring_id, p_order_in_ring)
-        ON CONFLICT (system_id) DO UPDATE SET 
-            ring_id = EXCLUDED.ring_id,
+        ON CONFLICT (system_id, ring_id) DO UPDATE SET 
             order_in_ring = EXCLUDED.order_in_ring;
     END IF;
 

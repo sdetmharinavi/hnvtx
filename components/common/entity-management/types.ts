@@ -38,7 +38,7 @@ export interface EntityConfig<T extends BaseEntity> {
   detailFields: Array<{
     key: keyof T;
     label: string;
-    type: 'text' | 'status' | 'parent' | 'date' | 'custom';
+    type: 'text' | 'status' | 'parent' | 'date' | 'custom' | 'html';
     render?: (value: T[keyof T], entity: T) => React.ReactNode;
   }>;
   filterOptions: Array<{

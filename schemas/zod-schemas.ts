@@ -1469,21 +1469,21 @@ export const ports_managementUpdateSchema = z.object({
 export const ring_based_systemsRowSchema = z.object({
   maintenance_area_id: z.uuid().nullable(),
   order_in_ring: z.number().nullable(),
-  ring_id: z.uuid().nullable(),
+  ring_id: z.uuid(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsInsertSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
   order_in_ring: z.number().nullable().optional(),
-  ring_id: z.uuid().nullable().optional(),
+  ring_id: z.uuid(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsUpdateSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
   order_in_ring: z.number().nullable().optional(),
-  ring_id: z.uuid().nullable().optional(),
+  ring_id: z.uuid().optional(),
   system_id: z.uuid().optional(),
 });
 

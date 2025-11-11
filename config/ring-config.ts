@@ -27,7 +27,7 @@ export const ringConfig: EntityConfig<RingEntity> = {
     { key: 'ring_type_name', label: 'Ring Type', type: 'text' },
     { key: 'maintenance_area_name', label: 'Maintenance Area', type: 'text' },
     { key: 'total_nodes', label: 'Total Systems', type: 'text' },
-    { key: 'description', label: 'Description', type: 'text' },
+    { key: 'description', label: 'Description', type: 'html' },
   ],
   filterOptions: [
     {

@@ -1447,21 +1447,21 @@ export type Ports_managementUpdate = {
 export type Ring_based_systemsRow = {
     maintenance_area_id: string | null;
     order_in_ring: number | null;
-    ring_id: string | null;
+    ring_id: string;
     system_id: string;
 };
 
 export type Ring_based_systemsInsert = {
     maintenance_area_id?: string | null;
     order_in_ring?: number | null;
-    ring_id?: string | null;
+    ring_id: string;
     system_id: string;
 };
 
 export type Ring_based_systemsUpdate = {
     maintenance_area_id?: string | null;
     order_in_ring?: number | null;
-    ring_id?: string | null;
+    ring_id?: string;
     system_id?: string;
 };
 

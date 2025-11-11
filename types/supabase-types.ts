@@ -2295,19 +2295,19 @@ export type Database = {
         Row: {
           maintenance_area_id: string | null
           order_in_ring: number | null
-          ring_id: string | null
+          ring_id: string
           system_id: string
         }
         Insert: {
           maintenance_area_id?: string | null
           order_in_ring?: number | null
-          ring_id?: string | null
+          ring_id: string
           system_id: string
         }
         Update: {
           maintenance_area_id?: string | null
           order_in_ring?: number | null
-          ring_id?: string | null
+          ring_id?: string
           system_id?: string
         }
         Relationships: [
@@ -2349,14 +2349,14 @@ export type Database = {
           {
             foreignKeyName: "ring_based_systems_system_id_fkey"
             columns: ["system_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ring_based_systems_system_id_fkey"
             columns: ["system_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -4067,6 +4067,10 @@ export type Database = {
       }
       deprovision_logical_path: {
         Args: { p_path_id: string }
+        Returns: undefined
+      }
+      disassociate_system_from_ring: {
+        Args: { p_ring_id: string; p_system_id: string }
         Returns: undefined
       }
       execute_sql: { Args: { sql_query: string }; Returns: Json }
