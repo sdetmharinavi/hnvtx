@@ -81,55 +81,39 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   fgColor: { argb: color },
 });
 
-// THE FIX: A completely rewritten, more robust version of the function.
+// THE FIX: The default case now correctly stringifies objects and arrays.
 export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>): unknown => {
-  // 1. Handle all nullish or empty string cases universally at the start.
   if (value === null || value === undefined || value === '') {
-    return null; // ExcelJS correctly interprets null as an empty cell.
+    return null;
   }
 
-  // 2. Process based on the specified Excel format.
   switch (column.excelFormat) {
     case "date":
       const date = new Date(value as string | number | Date);
-      // Return null if the date is invalid.
       return isNaN(date.getTime()) ? null : date;
-
     case "number":
       const num = parseFloat(String(value));
-      // Return null if parsing results in NaN.
       return isNaN(num) ? null : num;
-
     case "integer":
       const int = parseInt(String(value), 10);
-      // Return null if parsing results in NaN.
       return isNaN(int) ? null : int;
-
     case "currency":
       const currencyNum = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
       return isNaN(currencyNum) ? null : currencyNum;
-
     case "percentage":
       const percNum = parseFloat(String(value));
       return isNaN(percNum) ? null : percNum / 100;
-
     case "json":
       if (typeof value === 'object') {
         return JSON.stringify(value, null, 2);
       }
       return String(value);
-
-    case "text":
-      return String(value);
-
-    // 3. Fallback logic for when no excelFormat is specified.
     default:
       if (typeof value === 'object') {
         if (value instanceof Date) return value;
-        if (Array.isArray(value)) return value.join(", ");
+        // This is the key fix: Stringify arrays or objects instead of calling join()
         return JSON.stringify(value);
       }
-      // This will correctly handle strings for columns like 'Remark', 'Make', and even 's_no' if no format is specified.
       return String(value);
   }
 };
@@ -153,6 +137,7 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
       cell.numFmt = "0";
       break;
     case "text":
+    case "json": // Treat JSON as text for formatting
       cell.numFmt = "@";
       break;
   }
@@ -161,7 +146,6 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
   }
 };
 
-// ... (rest of the file remains the same) ...
 export const getDefaultStyles = (): ExcelStyles => ({
   headerFont: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
   headerFill: createFillPattern("FF2563EB"),
