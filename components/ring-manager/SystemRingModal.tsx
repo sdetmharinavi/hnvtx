@@ -70,11 +70,11 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
     columns: "id, system_name, system_type_id, node_id, ip_address, s_no, make",
   });
-  
+
   const systemsOptions = useMemo(() => {
-    const queuedSystemIds = new Set(systemsToAdd.map(s => s.id));
+    const queuedSystemIds = new Set(systemsToAdd.map((s) => s.id));
     return systemsResult.data
-      .filter(s => !queuedSystemIds.has(s.id))
+      .filter((s) => !queuedSystemIds.has(s.id))
       .map((s) => ({ value: s.id, label: s.system_name || s.id }));
   }, [systemsResult, systemsToAdd]);
 
@@ -100,7 +100,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
 
   useEffect(() => {
     if (selectedSystemIdForm && systemsResult.data.length > 0) {
-      const selectedSystem = systemsResult.data.find(s => s.id === selectedSystemIdForm);
+      const selectedSystem = systemsResult.data.find((s) => s.id === selectedSystemIdForm);
       if (selectedSystem) {
         setValue("system_name", selectedSystem.system_name || selectedSystem.id);
         setValue("system_type_id", selectedSystem.system_type_id || "");
@@ -153,10 +153,10 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         maintenance_terminal_id: formData.maintenance_terminal_id,
         maan_node_id: formData.maan_node_id,
       };
-      
-      setSystemsToAdd(prev => [...prev, systemData]);
+
+      setSystemsToAdd((prev) => [...prev, systemData]);
       toast.success(`System queued! (${systemsToAdd.length + 1} total)`);
-      
+
       const currentRingId = formData.ring_id ?? null;
       const nextOrder = (formData.order_in_ring ?? 0) + 1;
       reset({
@@ -212,7 +212,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
   };
 
   const handleRemoveSystem = (index: number) => {
-    setSystemsToAdd(prev => prev.filter((_, i) => i !== index));
+    setSystemsToAdd((prev) => prev.filter((_, i) => i !== index));
     toast.info("System removed from queue.");
   };
 
@@ -224,8 +224,16 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
             {systemsToAdd.length > 0 && `${systemsToAdd.length} system(s) queued`}
           </div>
           <div className='flex gap-2'>
-            <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading || isSaving}>Cancel</Button>
-            <Button type='button' onClick={handleNext} disabled={isLoading || isSaving}>Next</Button>
+            <Button
+              type='button'
+              variant='secondary'
+              onClick={handleClose}
+              disabled={isLoading || isSaving}>
+              Cancel
+            </Button>
+            <Button type='button' onClick={handleNext} disabled={isLoading || isSaving}>
+              Next
+            </Button>
           </div>
         </div>
       );
@@ -236,49 +244,109 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
           {systemsToAdd.length > 0 && `${systemsToAdd.length} system(s) queued`}
         </div>
         <div className='flex gap-2'>
-          <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading || isSaving}>Back</Button>
-          <Button type='button' variant='secondary' onClick={handleSaveAll} disabled={isLoading || isSaving || systemsToAdd.length === 0}>
-            {isSaving ? 'Saving...' : `Save All (${systemsToAdd.length})`}
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => setStep(1)}
+            disabled={isLoading || isSaving}>
+            Back
           </Button>
-          <Button type='submit' disabled={isLoading || isSaving}>Add More</Button>
+          <Button
+            type='button'
+            variant='secondary'
+            onClick={handleSaveAll}
+            disabled={isLoading || isSaving || systemsToAdd.length === 0}>
+            {isSaving ? "Saving..." : `Save All (${systemsToAdd.length})`}
+          </Button>
+          <Button type='submit' disabled={isLoading || isSaving}>
+            Add More
+          </Button>
         </div>
       </div>
     );
   };
-  
+
   const step1Fields = (
-    <motion.div key='step1' initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
+    <motion.div
+      key='step1'
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.3 }}>
       <div className='space-y-4'>
         <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4'>
-          <p className='text-sm text-blue-800'><strong>Step 1:</strong> Select a ring to add systems to.</p>
+          <p className='text-sm text-blue-800'>
+            <strong>Step 1:</strong> Select a ring to add systems to.
+          </p>
         </div>
-        <FormSearchableSelect name='ring_id' label='Ring *' control={control} options={ringOptions} error={errors.ring_id} placeholder="Select a ring..." />
+        <FormSearchableSelect
+          name='ring_id'
+          label='Ring *'
+          control={control}
+          options={ringOptions}
+          error={errors.ring_id}
+          placeholder='Select a ring...'
+        />
       </div>
     </motion.div>
   );
 
   const step2Fields = (
-    <motion.div key='step2' initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+    <motion.div
+      key='step2'
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}>
       <div className='space-y-4'>
         {systemsToAdd.length > 0 && (
           <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
-            <p className='text-sm text-green-800 font-medium mb-2'>✓ {systemsToAdd.length} system(s) queued for saving</p>
+            <p className='text-sm text-green-800 font-medium mb-2'>
+              ✓ {systemsToAdd.length} system(s) queued for saving
+            </p>
             <div className='space-y-2'>
               {systemsToAdd.map((sys, idx) => (
-                <div key={idx} className='flex justify-between items-center bg-white p-2 rounded border border-green-300'>
-                  <span className='text-sm text-gray-700 font-medium'>{idx + 1}. {sys.system_name} (Order: {sys.order_in_ring})</span>
-                  <button type='button' onClick={() => handleRemoveSystem(idx)} className='text-red-600 hover:text-red-800 text-sm'>Remove</button>
+                <div
+                  key={idx}
+                  className='flex justify-between items-center bg-white p-2 rounded border border-green-300'>
+                  <span className='text-sm text-gray-700 font-medium'>
+                    {idx + 1}. {sys.system_name} (Order: {sys.order_in_ring})
+                  </span>
+                  <button
+                    type='button'
+                    onClick={() => handleRemoveSystem(idx)}
+                    className='text-red-600 hover:text-red-800 text-sm'>
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
         <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-          <p className='text-sm text-blue-800'><strong>Adding system to:</strong> {ringOptions.find(r => r.value === selectedRingId)?.label || 'Selected Ring'}</p>
+          <p className='text-sm text-blue-800'>
+            <strong>Adding system to:</strong>{" "}
+            {ringOptions.find((r) => r.value === selectedRingId)?.label || "Selected Ring"}
+          </p>
         </div>
-        <FormSearchableSelect name='selected_system_id' label='System *' control={control} options={systemsOptions} error={errors.selected_system_id} placeholder="Select a system..." />
+        <FormSearchableSelect
+          name='selected_system_id'
+          label='System *'
+          control={control}
+          options={systemsOptions}
+          error={errors.selected_system_id}
+          placeholder='Select a system...'
+        />
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <FormInput name='order_in_ring' label='Order in Ring' type='number' step='1' register={register} error={errors.order_in_ring} placeholder='e.g., 1, 2, 3...' />
+          <FormInput
+            name='order_in_ring'
+            label='Order in Ring'
+            type='number'
+            step='0.1'
+            register={register}
+            error={errors.order_in_ring}
+            placeholder='e.g., 1, 2, 2.1, 3...'
+          />
           <div className='flex items-center gap-4 pt-6'>
             <FormSwitch name='status' label='Active' control={control} />
             <FormSwitch name='is_hub' label='Hub System' control={control} />
@@ -288,14 +356,27 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
     </motion.div>
   );
 
-  const modalTitle = `Add Systems to Ring ${step === 2 && systemsToAdd.length > 0 ? `(${systemsToAdd.length} queued)` : `(Step ${step} of 2)`}`;
+  const modalTitle = `Add Systems to Ring ${
+    step === 2 && systemsToAdd.length > 0
+      ? `(${systemsToAdd.length} queued)`
+      : `(Step ${step} of 2)`
+  }`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} visible={false} className='h-0 w-0 bg-transparent'>
-      <FormCard standalone onSubmit={handleSubmit(onAddSystem, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading || isSaving} title={modalTitle} footerContent={renderFooter()}>
-        <AnimatePresence mode='wait'>
-          {step === 1 ? step1Fields : step2Fields}
-        </AnimatePresence>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={modalTitle}
+      visible={false}
+      className='h-0 w-0 bg-transparent'>
+      <FormCard
+        standalone
+        onSubmit={handleSubmit(onAddSystem, onInvalidSubmit)}
+        onCancel={handleClose}
+        isLoading={isLoading || isSaving}
+        title={modalTitle}
+        footerContent={renderFooter()}>
+        <AnimatePresence mode='wait'>{step === 1 ? step1Fields : step2Fields}</AnimatePresence>
       </FormCard>
     </Modal>
   );

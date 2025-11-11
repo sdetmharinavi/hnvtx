@@ -54,12 +54,20 @@ export function RingModal({
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
   const ringTypeOptions: Option[] = useMemo(
-    () => (ringTypes || []).map((rt) => ({ value: rt.id, label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}` })),
+    () =>
+      (ringTypes || []).map((rt) => ({
+        value: rt.id,
+        label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
+      })),
     [ringTypes]
   );
 
   const maintenanceAreaOptions: Option[] = useMemo(
-    () => (maintenanceAreas || []).map((a) => ({ value: a.id, label: `${a.name}${a.code ? ` (${a.code})` : ""}` })),
+    () =>
+      (maintenanceAreas || []).map((a) => ({
+        value: a.id,
+        label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
+      })),
     [maintenanceAreas]
   );
 
@@ -75,7 +83,11 @@ export function RingModal({
       });
     } else {
       reset({
-        name: "", description: null, status: true, ring_type_id: null, maintenance_terminal_id: null,
+        name: "",
+        description: null,
+        status: true,
+        ring_type_id: null,
+        maintenance_terminal_id: null,
       });
     }
   }, [isOpen, editingRing, reset]);
@@ -95,58 +107,56 @@ export function RingModal({
       onClose={onClose}
       title={isEdit ? "Edit Ring" : "Add Ring"}
       visible={false}
-      className="transparent bg-gray-700 rounded-2xl"
-    >
+      className='transparent bg-gray-700 rounded-2xl'>
       <FormCard
         onSubmit={handleSubmit(onValidSubmit)}
-        heightClass="min-h-calc(90vh - 200px)"
+        heightClass='min-h-calc(90vh - 200px)'
         title={isEdit ? "Edit Ring" : "Add Ring"}
         onCancel={onClose}
         isLoading={isLoading}
-        standalone={true}
-      >
+        standalone={true}>
         <FormInput
-          name="name"
-          label="Name"
+          name='name'
+          label='Name'
           register={register}
           error={errors.name}
           disabled={isLoading}
-          placeholder="Enter ring name"
+          placeholder='Enter ring name'
         />
         <FormSearchableSelect
-          name="ring_type_id"
-          label="Ring Type"
+          name='ring_type_id'
+          label='Ring Type'
           control={control}
           error={errors.ring_type_id}
           disabled={isLoading}
-          placeholder="Select ring type"
+          placeholder='Select ring type'
           options={ringTypeOptions}
         />
 
         <FormSearchableSelect
-          name="maintenance_terminal_id"
-          label="Maintenance Terminal"
+          name='maintenance_terminal_id'
+          label='Maintenance Terminal'
           control={control}
           error={errors.maintenance_terminal_id}
           disabled={isLoading}
-          placeholder="Select maintenance terminal"
+          placeholder='Select maintenance terminal'
           options={maintenanceAreaOptions}
         />
 
         <FormTextarea
-          name="description"
-          label="Description"
+          name='description'
+          label='Description'
           control={control}
           error={errors.description}
           disabled={isLoading}
-          placeholder="Optional description"
+          placeholder='Optional description'
         />
         <FormSwitch
-          name="status"
-          label="Status"
+          name='status'
+          label='Status'
           control={control}
           error={errors.status}
-          className="my-2"
+          className='my-2'
         />
       </FormCard>
     </Modal>

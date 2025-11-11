@@ -1,11 +1,12 @@
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
+import { FiUpload, FiEdit } from 'react-icons/fi';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
@@ -31,6 +32,7 @@ import {
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
+  RingsRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -40,9 +42,9 @@ import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { SystemFormData } from '@/schemas/system-schemas';
-import { FiEdit } from 'react-icons/fi';
 import { UseQueryResult } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
+import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 
 const useRingsData = (
   params: DataQueryHookParams
@@ -125,6 +127,7 @@ export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
@@ -145,6 +148,7 @@ export default function RingManagerPage() {
 
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
+  const { mutate: uploadRings, isPending: isUploading } = useRingExcelUpload(supabase);
   const isMutating = isCrudMutating || isInserting || isUpdating;
 
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
@@ -155,16 +159,14 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
 
-  // THE FIX: Explicitly set a high limit to ensure all systems are fetched.
   const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(supabase, 'v_systems_complete', {
-    limit: 5000, // Fetch up to 5000 systems to ensure the list is complete
+    limit: 5000,
   });
 
   const allSystems = useMemo(() => allSystemsResult?.data || [], [allSystemsResult]);
 
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
-    
     const promises = systemsData.map(systemData => {
         const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
             p_id: systemData.id ?? undefined,
@@ -185,13 +187,12 @@ export default function RingManagerPage() {
         };
         return upsertSystemMutation.mutateAsync(payload);
     });
-
     try {
         await Promise.all(promises);
         toast.success("All system associations saved successfully!");
         void refetch();
     } catch {
-        toast.error("One or more system associations failed to save. Errors are logged in the console.");
+        toast.error("One or more system associations failed to save.");
     }
   };
 
@@ -254,11 +255,33 @@ export default function RingManagerPage() {
     if (record.id) router.push(`/dashboard/rings/${record.id}`);
   };
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadRings({ file });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const headerActions = useStandardHeaderActions({
     data: rings, onRefresh: refetch, onAddNew: editModal.openAdd,
     isLoading: isLoading, exportConfig: { tableName: 'v_rings' }
   });
   
+  headerActions.splice(1, 0, {
+    label: isUploading ? 'Uploading...' : 'Upload Rings',
+    onClick: handleUploadClick,
+    variant: 'outline',
+    leftIcon: <FiUpload />,
+    disabled: isUploading || isLoading,
+  });
+
   headerActions.push({
     label: 'Add Systems to Ring',
     onClick: () => setIsSystemsModalOpen(true),
@@ -350,6 +373,13 @@ export default function RingManagerPage() {
   
   return (
     <div className="p-4 md:p-6 h-full flex flex-col">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls"
+      />
       <PageHeader
         title="Ring Manager"
         description="A modern interface to create, manage, and visualize network rings and their associated systems."
@@ -387,6 +417,8 @@ export default function RingManagerPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
+        // THE FIX: Pass the editing record to the modal
+        editingRing={editModal.record as RingsRowSchema | null}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}
         isLoading={isMutating}

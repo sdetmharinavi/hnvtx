@@ -69,27 +69,27 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
       onClose={onClose}
       title={`Edit System: ${system?.system_name || ""}`}
       visible={false}
-      className="transparent bg-gray-700 rounded-2xl"
-    >
+      className='transparent bg-gray-700 rounded-2xl'>
       <FormCard
         standalone
-        onSubmit={handleSubmit(handleValidSubmit, () => toast.error("Please fix validation errors"))}
+        onSubmit={handleSubmit(handleValidSubmit, () =>
+          toast.error("Please fix validation errors")
+        )}
         onCancel={onClose}
         isLoading={isLoading}
         title={`Edit: ${system?.system_name || "System"}`}
-        submitText="Save Changes"
-      >
-        <div className="space-y-4">
+        submitText='Save Changes'>
+        <div className='space-y-4'>
           <FormInput
-            name="order_in_ring"
-            label="Order in Ring"
-            type="number"
-            step="1"
+            name='order_in_ring'
+            label='Order in Ring'
+            type='number'
+            step='0.1'
             register={register}
             error={errors.order_in_ring}
-            placeholder="e.g., 1, 2, 3..."
+            placeholder='e.g., 1, 2, 2.1, 3...'
           />
-          <FormSwitch name="is_hub" label="Is Hub System" control={control} />
+          <FormSwitch name='is_hub' label='Is Hub System' control={control} />
         </div>
       </FormCard>
     </Modal>
