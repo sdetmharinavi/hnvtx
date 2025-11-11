@@ -111,7 +111,8 @@ export function SystemRingPath({ system }: Props) {
           order_in_ring: null, 
           ring_status: null, 
           system_status: null,
-          system_type: node.node_type_name || ''
+          system_type: node.node_type_name || '',
+          system_type_code: node.node_type_code || '',
       }));
   }, [nodesInAreaResult, pathNodesResult]);
   
