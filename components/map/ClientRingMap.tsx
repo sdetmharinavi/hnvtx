@@ -108,6 +108,8 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
 
+  console.log(nodes);
+
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
@@ -346,8 +348,8 @@ export default function ClientRingMap({
                 >
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
-                    <p>Type: {node.system_type}</p>
-                    <p>IP: {displayIp}</p>
+                    {node.system_type_code && <p>Type: {node.system_type_code}</p>}
+                    {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>
                 {/* THE FIX: Use the dynamic direction and offset */}

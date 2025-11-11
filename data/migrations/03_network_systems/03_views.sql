@@ -127,6 +127,7 @@ SELECT
     rbs.order_in_ring as order_in_ring,
     lt_node.name as type, -- This is the physical node type
     lt_system.name as system_type, -- This is the logical system type for the icon
+    lt_system.code AS system_type_code,
     r.status AS ring_status,
     s.status AS system_status,
     s.ip_address::text as ip,

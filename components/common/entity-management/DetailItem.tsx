@@ -19,8 +19,6 @@ export function DetailItem<T extends BaseEntity>({
   if (!value && type !== 'status') return null;
 
   const renderValue = () => {
-    console.log("value", value);
-    console.log("entity", entity);
 
     if (render) {
       return render(value as T[keyof T], entity);

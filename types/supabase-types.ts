@@ -3496,6 +3496,7 @@ export type Database = {
           ring_status: boolean | null
           system_status: boolean | null
           system_type: string | null
+          system_type_code: string | null
           type: string | null
         }
         Relationships: []

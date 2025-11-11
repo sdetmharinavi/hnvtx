@@ -1917,6 +1917,7 @@ export const v_ring_nodesRowSchema = z.object({
   ring_status: z.boolean().nullable(),
   system_status: z.boolean().nullable(),
   system_type: z.string().nullable(),
+  system_type_code: z.string().nullable(),
   type: z.string().nullable(),
 });
 
