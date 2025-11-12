@@ -78,6 +78,7 @@ export default function RingMapPage() {
         remark: node.remark,
         is_hub: node.is_hub,
         system_type_code: node.system_type_code,
+        system_node_name: node.system_node_name,
       }));
   }, [nodes]);
 

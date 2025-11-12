@@ -1895,6 +1895,7 @@ export type V_ring_nodesRow = {
     ring_id: string | null;
     ring_name: string | null;
     ring_status: boolean | null;
+    system_node_name: string | null;
     system_status: boolean | null;
     system_type: string | null;
     system_type_code: string | null;
