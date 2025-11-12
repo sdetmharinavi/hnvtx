@@ -2,6 +2,29 @@
 -- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
+-- CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
+-- SELECT
+--   s.*,
+--   n.name AS node_name,
+--   lt_node_type.name AS node_type_name,
+--   lt_system.is_ring_based,
+--   n.latitude,
+--   n.longitude,
+--   lt_system.name AS system_type_name,
+--   lt_system.code AS system_type_code,
+--   lt_system.category AS system_category,
+--   ma.name AS system_maintenance_terminal_name,
+--   rbs.ring_id,
+--   rbs.order_in_ring,
+--   ring_area.name AS ring_logical_area_name
+-- FROM public.systems s
+--   JOIN public.nodes n ON s.node_id = n.id
+--   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+--   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
+--   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
+--   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
+--   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
+
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
@@ -14,16 +37,32 @@ SELECT
   lt_system.code AS system_type_code,
   lt_system.category AS system_category,
   ma.name AS system_maintenance_terminal_name,
-  rbs.ring_id,
-  rbs.order_in_ring,
-  ring_area.name AS ring_logical_area_name
+  -- Aggregated ring information
+  r_agg.ring_associations,
+  -- Extract first ring_id and order_in_ring for backward compatibility if needed, though using the array is preferred.
+  (r_agg.ring_associations->0->>'ring_id')::UUID AS ring_id,
+  (r_agg.ring_associations->0->>'order_in_ring')::NUMERIC AS order_in_ring,
+  (r_agg.ring_associations->0->>'ring_logical_area_name')::TEXT AS ring_logical_area_name
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
-  LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
-  LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
+  LEFT JOIN LATERAL (
+     SELECT
+        jsonb_agg(
+            jsonb_build_object(
+                'ring_id', r.id,
+                'ring_name', r.name,
+                'order_in_ring', rbs.order_in_ring,
+                'ring_logical_area_name', ra.name
+            ) ORDER BY rbs.order_in_ring
+        ) AS ring_associations
+     FROM public.ring_based_systems rbs
+     JOIN public.rings r ON rbs.ring_id = r.id
+     LEFT JOIN public.maintenance_areas ra ON rbs.maintenance_area_id = ra.id
+     WHERE rbs.system_id = s.id
+  ) r_agg ON true;
 
 
 -- View for a complete picture of a system connection and its specific details.

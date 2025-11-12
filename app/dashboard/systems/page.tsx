@@ -138,6 +138,9 @@ export default function SystemsPage() {
     ...TABLE_COLUMN_KEYS.v_systems_complete,
   ]);
 
+  console.log("systems", systems);
+  
+
   const isInitialLoad = isLoading && systems.length === 0;
 
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {

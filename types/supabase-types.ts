@@ -3806,6 +3806,7 @@ export type Database = {
           node_type_name: string | null
           order_in_ring: number | null
           remark: string | null
+          ring_associations: Json | null
           ring_id: string | null
           ring_logical_area_name: string | null
           s_no: string | null
@@ -3819,27 +3820,6 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "rings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["ring_id"]
-          },
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_rings"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "systems_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]

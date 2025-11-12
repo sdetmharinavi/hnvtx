@@ -6,8 +6,14 @@ import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
+// THE FIX: Define a type for the new ring_associations JSON structure.
+interface RingAssociation {
+  ring_id: string;
+  ring_name: string;
+  order_in_ring: number;
+}
+
 export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
-  console.log(data);
   return useDynamicColumnConfig('v_systems_complete', {
     data: data as Row<'v_systems_complete'>[],
     omit: [
@@ -15,7 +21,8 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'node_type_name',
       'system_type_name',
       'is_ring_based',
-      'ring_id',
+      'ring_id', // Omit the old single ring_id
+      'order_in_ring', // Omit the old single order_in_ring
       'system_type_id',
       'node_id',
       'maintenance_terminal_id',
@@ -26,61 +33,37 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'ring_logical_area_name',
       'system_category',
       'system_maintenance_terminal_name',
-      // "system_type_code",
       'updated_at',
       'created_at',
-      'order_in_ring',
       'status',
       'is_hub',
     ],
     overrides: {
       system_name: {
-        key: 'system_name',
         title: 'Name',
-        dataIndex: 'system_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 200,
-        render: (value, record) => {
-          const stringValue = value as string; // Type assertion since we know it will be a string
-          return (
-            <div className="flex flex-col">
-              <span className="font-medium text-gray-900 dark:text-white">{stringValue}</span>
-              <TruncateTooltip
-                className="text-xs text-gray-500 dark:text-gray-400 w-2xs"
-                text={'S/N: ' + record.s_no}
-              />
-            </div>
-          );
-        },
+        render: (value, record) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900 dark:text-white">{value as string}</span>
+            <TruncateTooltip
+              className="text-xs text-gray-500 dark:text-gray-400"
+              text={'S/N: ' + record.s_no}
+            />
+          </div>
+        ),
       },
       s_no: {
-        key: 's_no',
         title: 'S/N',
-        dataIndex: 's_no',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 100,
-        excelFormat: 'text', // Ensure it's treated as text in Excel
+        excelFormat: 'text',
       },
-      system_type_name: {
-        key: 'system_type_name',
+      system_type_code: {
         title: 'Type',
-        dataIndex: 'system_type_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
-        width: 150,
+        dataIndex: 'system_type_code',
+        width: 120,
       },
       node_name: {
-        key: 'node_name',
         title: 'Node / Location',
-        dataIndex: 'node_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => (
           <div className="flex items-center gap-1">
@@ -90,12 +73,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         ),
       },
       ip_address: {
-        key: 'ip_address',
         title: 'IP Address',
-        dataIndex: 'ip_address',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 180,
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
@@ -103,44 +81,40 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           </code>
         ),
       },
-      is_ring_based: {
-        key: 'is_ring_based',
-        title: 'Is Ring Based',
-        dataIndex: 'is_ring_based',
-        width: 150,
-      },
-      order_in_ring: {
-        key: 'order_in_ring',
-        title: 'Order In Ring',
-        dataIndex: 'order_in_ring',
-        sortable: true,
-        searchable: true,
-        filterable: true,
-        width: 150,
-      },
-      system_type_code: {
-        key: 'system_type_code',
-        title: 'System Type',
-        dataIndex: 'system_type_code',
-        width: 150,
+      // THE FIX: New column definition to render the aggregated ring associations.
+      ring_associations: {
+        key: 'ring_associations',
+        title: 'Ring(s)',
+        dataIndex: 'ring_associations',
+        width: 200,
+        render: (value) => {
+          const associations = value as RingAssociation[] | null;
+          if (!associations || associations.length === 0) {
+            return <span className="text-gray-400 italic">N/A</span>;
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              {associations.map(assoc => (
+                <div key={assoc.ring_id} className="text-xs">
+                  <span className="font-medium bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                    {assoc.ring_name}
+                  </span>
+                  <span className="text-gray-500 ml-1">(Order: {assoc.order_in_ring})</span>
+                </div>
+              ))}
+            </div>
+          );
+        }
       },
       status: {
         key: 'status',
         title: 'Status',
         dataIndex: 'status',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => <StatusBadge status={value as boolean} />,
       },
       commissioned_on: {
-        key: 'commissioned_on',
         title: 'Commissioned On',
-        dataIndex: 'commissioned_on',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
       },

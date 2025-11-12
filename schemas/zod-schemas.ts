@@ -2013,6 +2013,7 @@ export const v_systems_completeRowSchema = z.object({
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   order_in_ring: z.number().nullable(),
   remark: z.string().nullable(),
+  ring_associations: JsonSchema.nullable(),
   ring_id: z.uuid().nullable(),
   ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   s_no: z.string().nullable(),
