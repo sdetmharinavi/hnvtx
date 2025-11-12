@@ -11,7 +11,9 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       "created_at",
       "updated_at",
       "maintenance_terminal_id",
-      "ring_type_id"
+      "ring_type_id",
+      "ring_type_code",
+      "ring_type_name"
     ],
     overrides: {
       name: {
@@ -22,7 +24,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       description: {
         title: "Description",
         render: (value: unknown) => {
-          return <TruncateTooltip text={(value as string) ?? ""} className='font-semibold' />;
+          return <TruncateTooltip renderAsHtml text={(value as string) ?? ""} className='font-semibold' />;
         },
       },
       total_nodes: {

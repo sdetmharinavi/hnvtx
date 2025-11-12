@@ -4210,17 +4210,30 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_paged_data: {
-        Args: {
-          p_filters?: Json
-          p_limit: number
-          p_offset: number
-          p_order_by?: string
-          p_order_dir?: string
-          p_view_name: string
-        }
-        Returns: Json
-      }
+      get_paged_data:
+        | {
+            Args: {
+              p_filters?: Json
+              p_limit: number
+              p_offset: number
+              p_order_by?: string
+              p_order_dir?: string
+              p_view_name: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_filters?: Json
+              p_limit: number
+              p_offset: number
+              p_order_by?: string
+              p_order_dir?: string
+              p_view_name: string
+              row_limit?: number
+            }
+            Returns: Json
+          }
       get_rings_for_export: {
         Args: { order_by?: string; row_limit?: number }
         Returns: {

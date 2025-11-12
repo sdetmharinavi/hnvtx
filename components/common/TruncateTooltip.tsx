@@ -2,6 +2,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export interface TruncateTooltipProps {
+  /**
+   * Accepts plain text or HTML content as string.
+   */
   text: string;
   className?: string;
   /**
@@ -12,6 +15,11 @@ export interface TruncateTooltipProps {
    * Optional: control max width of tooltip in px. Default 320.
    */
   maxWidth?: number;
+  /**
+   * Whether to render text as HTML.
+   * If true, content will use dangerouslySetInnerHTML.
+   */
+  renderAsHtml?: boolean;
 }
 
 /**
@@ -23,6 +31,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   className,
   id,
   maxWidth = 320,
+  renderAsHtml = false,
 }) => {
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -33,7 +42,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const checkOverflow = () => {
     const el = textRef.current;
     if (!el) return false;
-    // Compare scrollWidth vs clientWidth on the measured element itself
     const overflow = el.scrollWidth > el.clientWidth;
     setIsOverflowing(overflow);
     return overflow;
@@ -57,7 +65,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (checkOverflow()) {
       const el = textRef.current!;
       const rect = el.getBoundingClientRect();
-      // Clamp tooltip within viewport horizontally
       const left = Math.min(Math.max(8, rect.left), window.innerWidth - maxWidth - 8);
       setPos({ top: rect.bottom + 8, left });
       setShowTooltip(true);
@@ -76,17 +83,20 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         onBlur={hide}
         tabIndex={isOverflowing ? 0 : -1}
         aria-describedby={showTooltip && isOverflowing ? tooltipId : undefined}
+        {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
       >
-        {text}
+        {!renderAsHtml ? text : null}
       </span>
+
       {showTooltip && isOverflowing && (
         <div
           id={tooltipId}
           role="tooltip"
           className="fixed px-3 py-2 text-sm text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-300 whitespace-normal break-words pointer-events-none z-[9999]"
           style={{ top: pos.top, left: pos.left, maxWidth }}
+          {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
         >
-          {text}
+          {!renderAsHtml ? text : null}
         </div>
       )}
     </>
@@ -94,3 +104,4 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 };
 
 export default TruncateTooltip;
+
