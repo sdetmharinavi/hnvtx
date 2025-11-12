@@ -3,13 +3,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { FiDatabase, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { DataTable } from '@/components/table/DataTable';
+import { PageHeader } from '@/components/common/page-header';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import { useRpcMutation, RpcFunctionArgs, buildRpcFilters} from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
@@ -26,6 +24,12 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { ActionButton } from '@/components/common/page-header';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { Row, TableOrViewName } from '@/hooks/database';
+import { createStandardActions } from '@/components/table/action-helpers';
+
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -44,6 +48,7 @@ const useSystemsData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
+      p_order_by: 'system_name',
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];
@@ -118,6 +123,7 @@ export default function SystemsPage() {
     activeCount,
     inactiveCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
@@ -133,13 +139,18 @@ export default function SystemsPage() {
     searchColumn: 'system_name',
     displayNameField: 'system_name',
   });
+  
+  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    },
+  });
+  
+  const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
 
   const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
     ...TABLE_COLUMN_KEYS.v_systems_complete,
   ]);
-
-  console.log("systems", systems);
-  
 
   const isInitialLoad = isLoading && systems.length === 0;
 
@@ -150,12 +161,6 @@ export default function SystemsPage() {
       editModal.close();
     },
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
-  });
-
-  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
-    },
   });
 
   const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -188,7 +193,7 @@ export default function SystemsPage() {
       }),
     [editModal.openEdit, handleView, crudActions]
   );
-
+  
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -204,24 +209,56 @@ export default function SystemsPage() {
     }
   };
 
-  const headerActions = useStandardHeaderActions({
-    data: systems,
-    onRefresh: () => {
-      refetch();
-      toast.success('Systems refreshed.');
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: isLoading,
-    exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
-  });
+  const handleExport = () => {
+    // THE FIX: Explicitly cast the columns to the expected generic type to resolve the TypeScript error.
+    const exportColumns = orderedSystems as Column<Row<TableOrViewName>>[];
 
-  headerActions.splice(1, 0, {
-    label: isUploading ? 'Uploading...' : 'Upload Systems',
-    onClick: handleUploadClick,
-    variant: 'outline',
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading,
-  });
+    exportSystems({
+      fileName: `systems-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Systems',
+      columns: exportColumns,
+      rpcConfig: {
+        functionName: 'get_paged_data',
+        parameters: {
+          p_view_name: 'v_systems_complete',
+          p_limit: 50000,
+          p_offset: 0,
+          p_filters: buildRpcFilters(filters.filters),
+        },
+      },
+    });
+  };
+
+  const headerActions = useMemo((): ActionButton[] => [
+    {
+      label: 'Refresh',
+      onClick: () => { refetch(); toast.success('Systems refreshed.'); },
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+      disabled: isLoading,
+    },
+    {
+      label: isUploading ? 'Uploading...' : 'Upload Systems',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+    },
+    {
+      label: isExporting ? 'Exporting...' : 'Export',
+      onClick: handleExport,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isLoading,
+    },
+    {
+      label: 'Add New',
+      onClick: editModal.openAdd,
+      variant: 'primary',
+      leftIcon: <FiDatabase />,
+      disabled: isLoading,
+    },
+  ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd, filters.filters]);
 
   const headerStats = [
     { value: totalCount, label: 'Total Systems' },
@@ -293,14 +330,7 @@ export default function SystemsPage() {
         columns={orderedSystems}
         loading={isLoading}
         exportable={true}
-        exportOptions={{
-          fileName: 'systems_export',
-          sheetName: 'Systems',
-          includeFilters: true,
-          // Ensure we're using the same columns as the table
-          columns: orderedSystems,
-          fallbackToCsv: true,
-        }}
+        onExport={handleExport}
         actions={tableActions}
         pagination={{
           current: pagination.currentPage,
@@ -335,7 +365,7 @@ export default function SystemsPage() {
                 .filter((s) => s.name !== 'DEFAULT')
                 .map((t) => ({
                   value: t.name,
-                  label: t.code || t.name, // Fallback to t.name if code is null
+                  label: t.code || t.name,
                 }))}
             />
             <SelectFilter
