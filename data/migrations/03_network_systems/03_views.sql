@@ -130,6 +130,7 @@ SELECT
     lt_system.code AS system_type_code,
     r.status AS ring_status,
     s.status AS system_status,
+    s.system_name AS system_node_name,
     s.ip_address::text as ip,
     n.remark
 FROM

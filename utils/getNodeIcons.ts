@@ -151,7 +151,7 @@ export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: 
   ) {
     return IconDefault;
   }
-  if (type.includes('bts (running over radiolink)') || type.includes('bts microwave link')) {
+  if (type.includes('bts (running over radiolink)') || type.includes('bts microwave link') || type.includes('BTS (running over radiolink)')) {
     return BTSRLIcon;
   }
   if (type.includes('base transceiver station') || type.includes('baseband unit')) {

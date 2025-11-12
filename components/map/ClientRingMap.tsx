@@ -330,6 +330,8 @@ export default function ClientRingMap({
             // THE FIX: Get the dynamically calculated direction and offset.
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
             const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
+            console.log(node);
+            
             return (
               <Marker
                 key={node.id! + i}
@@ -359,7 +361,7 @@ export default function ClientRingMap({
                   offset={offset}
                   className="permanent-label"
                 >
-                  {node.name}
+                  {node.system_node_name}
                 </Tooltip>
               </Marker>
             );

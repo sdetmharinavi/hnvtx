@@ -1915,6 +1915,7 @@ export const v_ring_nodesRowSchema = z.object({
   ring_id: z.uuid().nullable(),
   ring_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   ring_status: z.boolean().nullable(),
+  system_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_status: z.boolean().nullable(),
   system_type: z.string().nullable(),
   system_type_code: z.string().nullable(),
