@@ -224,7 +224,7 @@ function TableBodyBase<T extends TableOrViewName>({
     <tbody className={`bg-white dark:bg-gray-800 ${rest.striped && !rest.bordered ? "divide-y divide-gray-200 dark:divide-gray-700" : ""}`}>
       {processedData.map((record, rowIndex) => (
         <MemoizedTableRow
-            key={record.id}
+            key={`${record.id} + ${rowIndex}`}
             record={record}
             rowIndex={rowIndex}
             visibleColumns={visibleColumns}

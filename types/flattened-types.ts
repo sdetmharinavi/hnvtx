@@ -1993,6 +1993,7 @@ export type V_systems_completeRow = {
     node_type_name: string | null;
     order_in_ring: number | null;
     remark: string | null;
+    ring_associations: Json | null;
     ring_id: string | null;
     ring_logical_area_name: string | null;
     s_no: string | null;
