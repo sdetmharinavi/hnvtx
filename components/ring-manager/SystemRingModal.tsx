@@ -2,9 +2,10 @@
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { useForm, SubmitErrorHandler } from "react-hook-form";
+import { useForm, SubmitErrorHandler, type SubmitHandler, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Modal } from "@/components/common/ui";
 import {
@@ -19,9 +20,11 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { SystemFormData, systemFormValidationSchema } from "@/schemas/system-schemas";
 
-// A new local schema for this specific form's logic, adding a field for the selected ID
+// A new local schema for this specific form's logic, overriding ring_id to non-null string for UI control,
+// and adding a field for the selected ID
 const systemRingFormSchema = systemFormValidationSchema.extend({
-  selected_system_id: z.string().uuid().optional().nullable(),
+  ring_id: z.uuid().optional(),
+  selected_system_id: z.uuid().optional().nullable(),
 });
 type SystemRingFormValues = z.infer<typeof systemRingFormSchema>;
 
@@ -36,7 +39,7 @@ const createDefaultFormValues = (): SystemRingFormValues => ({
   remark: null,
   s_no: null,
   status: true,
-  ring_id: null,
+  ring_id: "",
   order_in_ring: 0,
   make: null,
   is_hub: false,
@@ -90,7 +93,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
     setValue,
     trigger,
   } = useForm<SystemRingFormValues>({
-    resolver: zodResolver(systemRingFormSchema),
+    resolver: zodResolver(systemRingFormSchema) as Resolver<SystemRingFormValues>,
     defaultValues: createDefaultFormValues(),
     mode: "onChange",
     shouldUnregister: false,
@@ -123,8 +126,8 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
     }, 200);
   }, [onClose, reset]);
 
-  const onAddSystem = useCallback(
-    (formData: SystemRingFormValues) => {
+  const onAddSystem: SubmitHandler<SystemRingFormValues> = useCallback(
+    (formData) => {
       if (!formData.ring_id) {
         toast.error("Please select a ring.");
         setStep(1);
@@ -145,7 +148,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         make: formData.make,
         status: formData.status,
         is_hub: formData.is_hub,
-        ring_id: formData.ring_id,
+        ring_id: formData.ring_id || null,
         order_in_ring: formData.order_in_ring,
         // Carry over other potential fields
         commissioned_on: formData.commissioned_on,
@@ -157,7 +160,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
       setSystemsToAdd((prev) => [...prev, systemData]);
       toast.success(`System queued! (${systemsToAdd.length + 1} total)`);
 
-      const currentRingId = formData.ring_id ?? null;
+      const currentRingId = formData.ring_id || "";
       const nextOrder = (formData.order_in_ring ?? 0) + 1;
       reset({
         ...createDefaultFormValues(),
@@ -165,7 +168,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         order_in_ring: nextOrder,
         selected_system_id: null,
       });
-      setSelectedRingId(currentRingId);
+      setSelectedRingId(formData.ring_id || null);
       setStep(2);
     },
     [reset, systemsToAdd.length]

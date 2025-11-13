@@ -3,9 +3,10 @@
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { useForm, SubmitErrorHandler } from "react-hook-form";
+import { useForm, SubmitErrorHandler, type Resolver, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Modal } from "@/components/common/ui";
 import {
@@ -19,10 +20,15 @@ import {
 } from "@/components/common/form";
 import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { systemFormValidationSchema, SystemFormData } from "@/schemas/system-schemas";
+import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 
-type SystemFormValues = SystemFormData;
+// Local schema override: keep UI control for ring_id as string UUID (optional)
+const systemModalFormSchema = systemFormValidationSchema.extend({
+  ring_id: z.uuid().optional(),
+});
+type SystemFormValues = z.infer<typeof systemModalFormSchema>;
 
 const createDefaultFormValues = (): SystemFormValues => ({
   system_name: "",
@@ -35,7 +41,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   remark: "",
   s_no: "",
   status: true,
-  ring_id: null,
+  ring_id: "",
   order_in_ring: 0,
   make: "",
   is_hub: false,
@@ -105,7 +111,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     setValue,
     trigger,
   } = useForm<SystemFormValues>({
-    resolver: zodResolver(systemFormValidationSchema),
+    resolver: zodResolver(systemModalFormSchema) as Resolver<SystemFormValues>,
     defaultValues: createDefaultFormValues(),
     mode: "onChange",
   });
@@ -149,7 +155,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           remark: rowData.remark || "",
           s_no: rowData.s_no || "",
           status: rowData.status ?? true,
-          ring_id: rowData.ring_id ?? null,
+          ring_id: rowData.ring_id ?? "",
           order_in_ring: rowData.order_in_ring ?? 0,
           make: rowData.make ?? "",
           is_hub: rowData.is_hub ?? false,
@@ -171,10 +177,13 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
   }, [selectedNodeId, nodes, setValue]);
 
-  const onValidSubmit = useCallback(
-    (formData: SystemFormValues) => {
-      console.log(formData);
-      onSubmit(formData);
+  const onValidSubmit: SubmitHandler<SystemFormValues> = useCallback(
+    (formData) => {
+      const payload: SystemFormData = {
+        ...formData,
+        ring_id: formData.ring_id || null,
+      } as unknown as SystemFormData;
+      onSubmit(payload);
     },
     [onSubmit]
   );
