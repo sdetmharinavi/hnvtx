@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   system_id UUID REFERENCES public.systems (id) NOT NULL,
   sn_id UUID REFERENCES public.systems (id),
   en_id UUID REFERENCES public.systems (id),
-  connected_system_id UUID REFERENCES public.systems (id),
+  connected_system_type_id UUID REFERENCES public.lookup_types (id),
   sn_ip INET,
   sn_interface TEXT,
   en_ip INET,

@@ -144,7 +144,7 @@ export default function SystemConnectionsPage() {
       p_status: formData.status ?? true,
       p_sn_id: formData.sn_id ?? undefined,
       p_en_id: formData.en_id ?? undefined,
-      p_connected_system_id: formData.connected_system_id ?? undefined,
+      p_connected_system_type_id: formData.connected_system_type_id ?? undefined,
       p_sn_ip: formData.sn_ip ?? undefined,
       p_sn_interface: formData.sn_interface ?? undefined,
       p_en_ip: formData.en_ip ?? undefined,

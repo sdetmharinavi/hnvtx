@@ -1,0 +1,21 @@
+Chl ID,System,Channel,Port Type,Service,Type,LCID,Update Date,View,Action
+2004076101017,Sonarpur -A4(CAT2) /1,ETH-1-1-17,1000 Base-TX,-,Unbound,-,-,View,Add
+2004076101018,Sonarpur -A4(CAT2) /1,ETH-1-1-18,1000 Base-TX,-,Unbound,-,-,View,Add
+2004076101019,Sonarpur -A4(CAT2) /1,ETH-1-1-19,1000 Base-TX,-,Unbound,-,-,View,Add
+2004076101020,Sonarpur -A4(CAT2) /1,ETH-1-1-20,1000 Base-TX,-,Unbound,-,-,View,Add
+2004076101013,Sonarpur -A4(CAT2) /1,ETH-1-1-13,10G,Sonarpur -A4(CAT2) /1 /ETH-1-1-13 ==Harinavi -B3(CAT2) /1/ETH-1-1-16,MAAN TL,-,-,View,Add
+2004076101014,Sonarpur -A4(CAT2) /1,ETH-1-1-14,10G,Kamalgazi BTS-A3(CAT2) /1 /ETH-1-1-13 ==Sonarpur -A4(CAT2) /1 /ETH-1-1-14,MAAN TL,-,-,View,Add
+2004076101001,Sonarpur -A4(CAT2) /1,ETH-1-1-1,1G,-,Unbound,-,-,View,Add
+2004076101010,Sonarpur -A4(CAT2) /1,ETH-1-1-10,1G,-,Unbound,-,-,View,Add
+2004076101011,Sonarpur -A4(CAT2) /1,ETH-1-1-11,1G,-,Unbound,-,-,View,Add
+2004076101012,Sonarpur -A4(CAT2) /1,ETH-1-1-12,1G,-,Unbound,-,-,View,Add
+2004076101002,Sonarpur -A4(CAT2) /1,ETH-1-1-2,1G,-,Unbound,-,-,View,Add
+2004076101003,Sonarpur -A4(CAT2) /1,ETH-1-1-3,1G,-,Unbound,-,-,View,Add
+2004076101004,Sonarpur -A4(CAT2) /1,ETH-1-1-4,1G,BTS 4G-RAJPUR SARKAR PARA,BTS 4G,-,-,View,Add
+2004076101004,Sonarpur -A4(CAT2) /1,ETH-1-1-4,1G,BTS 4G-BARENDRA PARA,BTS 4G,-,-,View,Add
+2004076101005,Sonarpur -A4(CAT2) /1,ETH-1-1-5,1G,BTS 4G-NOTUN PALLY,BTS 4G,-,-,View,Add
+2004076101005,Sonarpur -A4(CAT2) /1,ETH-1-1-5,1G,BTS 4G-SUBHAS GRAM BANK PLOT,BTS 4G,-,-,View,Add
+2004076101006,Sonarpur -A4(CAT2) /1,ETH-1-1-6,1G,-,Unbound,-,-,View,Add
+2004076101007,Sonarpur -A4(CAT2) /1,ETH-1-1-7,1G,-,Unbound,-,-,View,Add
+2004076101008,Sonarpur -A4(CAT2) /1,ETH-1-1-8,1G,-,Unbound,-,-,View,Add
+2004076101009,Sonarpur -A4(CAT2) /1,ETH-1-1-9,1G,-,Unbound,-,-,View,Add
