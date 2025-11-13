@@ -1,6 +1,6 @@
 <!-- path: constants/ofcFormConfig.ts -->
 ```typescript
-// constants/ofcFormConfig.ts
+// components/ofc/OfcForm/constants/ofcFormConfig.ts
 export const OFC_FORM_CONFIG = {
   CAPACITY_OPTIONS: [
     { value: '2', label: '2' },
@@ -1031,6 +1031,32 @@ export const useAuthStore = create<AuthStore>()(
           });
         },
 
+        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
+        //   if (get().authState !== 'loading') {
+        //     set({ authState: 'loading' });
+        //   }
+
+        //   try {
+        //     const result = await action();
+        //     // The onAuthStateChange listener is the primary driver for state changes.
+        //     // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
+        //     if (get().authState === 'loading') {
+        //       const finalUser = get().user;
+        //       set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
+        //     }
+        //     return result;
+        //   } catch (error) {
+        //     // // On error, let onAuthStateChange handle the state, or fall back.
+        //     // const finalUser = get().user;
+        //     // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
+        //     // throw error;
+        //     // On any error within the action, assume the session might be invalid.
+        //     // Set the state directly to 'unauthenticated'.
+        //     set({ authState: 'unauthenticated', user: null }); // Also clear the user
+        //     throw error;
+        //   }
+        // },
+
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
           const previousAuthState = get().authState;
           if (previousAuthState !== 'loading') {
@@ -1776,6 +1802,235 @@ main();
 
 ```
 
+<!-- path: scripts/push-sql.js -->
+```javascript
+#!/usr/bin/env node
+/**
+ * Push SQL files or folders to PostgreSQL using existing PG environment variables.
+ *
+ * This script can handle:
+ * - Individual .sql files
+ * - Folders containing .sql files (recursively processed)
+ * - Multiple files/folders in one command
+ *
+ * It correctly handles numbered prefixes in folders and files (e.g., '2_folder'
+ * comes before '10_folder') by using a "natural sort" algorithm. It also stops
+ * execution immediately if any SQL script fails.
+ */
+
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// --- 1. MAIN EXECUTION ---
+
+export function runPushSql(targets = process.argv.slice(2)) {
+  if (targets.length === 0) {
+    console.error('❌ Please provide SQL files or folders to process.');
+    console.error('   Examples:');
+    console.error('     node push-all.js migrations/                    # Push entire folder');
+    console.error('     node push-all.js script.sql                    # Push single file');
+    console.error('     node push-all.js file1.sql migrations/ file2.sql  # Push multiple targets');
+    process.exit(1);
+  }
+
+  // Validate all targets exist
+  for (const target of targets) {
+    if (!fs.existsSync(target)) {
+      console.error(`❌ File or folder not found: ${target}`);
+      process.exit(1);
+    }
+  }
+
+  // Check for database connection info from environment variables
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  const pgHost = process.env.PGHOST;
+  const pgUser = process.env.PGUSER;
+  const pgPassword = process.env.PGPASSWORD;
+  const pgDatabase = process.env.PGDATABASE;
+  const pgPort = process.env.PGPORT;
+
+  if (!dbUrl && !pgHost) {
+    console.error('❌ Database connection not configured. Set either:');
+    console.error("   SUPABASE_DB_URL='postgresql://user:pass@host:port/database'");
+    console.error('   OR individual PG variables: PGHOST, PGUSER, PGPASSWORD, etc.');
+    process.exit(1);
+  }
+
+  console.log(`📂 Processing targets: ${targets.join(', ')}`);
+  if (dbUrl) {
+    console.log(`🔗 Using SUPABASE_DB_URL`);
+  } else {
+    console.log(`🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`);
+  }
+
+  // --- 3. MAIN EXECUTION ---
+
+  try {
+    console.log('\n🔍 Processing all targets...');
+
+    let allSqlFiles = [];
+
+    // Process each target and collect all SQL files
+    for (const target of targets) {
+      const stat = fs.statSync(target);
+
+      if (stat.isFile()) {
+        if (target.endsWith('.sql')) {
+          allSqlFiles.push(target);
+          console.log(`📄 Added file: ${target}`);
+        } else {
+          console.warn(`⚠️  Skipping non-SQL file: ${target}`);
+        }
+      } else if (stat.isDirectory()) {
+        const folderFiles = getAllSqlFiles(target);
+        allSqlFiles = allSqlFiles.concat(folderFiles);
+        console.log(`📁 Added ${folderFiles.length} files from folder: ${target}`);
+      }
+    }
+
+    if (allSqlFiles.length === 0) {
+      console.log('🟡 No .sql files found to execute.');
+      process.exit(0);
+    }
+
+    console.log('🔀 Sorting files using natural sort to ensure correct execution order...');
+    allSqlFiles.sort(naturalSort); // Use the custom sort function
+
+    console.log(`\n▶️  Found ${allSqlFiles.length} scripts to execute in the following order:`);
+    allSqlFiles.forEach((file, index) => {
+      // Show relative path for cleaner display
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ${(index + 1).toString().padStart(2, ' ')}. ${displayPath}`);
+    });
+    console.log('---\n');
+
+    // Prepare environment variables for the psql command
+    const psqlEnv = { ...process.env };
+    if (dbUrl) {
+      const url = new URL(dbUrl.trim());
+      psqlEnv.PGHOST = url.hostname;
+      psqlEnv.PGPORT = url.port || '5432';
+      psqlEnv.PGDATABASE = url.pathname.slice(1) || 'postgres';
+      psqlEnv.PGUSER = url.username;
+      psqlEnv.PGPASSWORD = url.password;
+    } else {
+      psqlEnv.PGHOST = pgHost;
+      psqlEnv.PGPORT = pgPort || '5432';
+      psqlEnv.PGDATABASE = pgDatabase || 'postgres';
+      psqlEnv.PGUSER = pgUser;
+      psqlEnv.PGPASSWORD = pgPassword;
+    }
+
+    // Execute each file in the correctly sorted order
+    for (const file of allSqlFiles) {
+      const displayPath = path.relative(process.cwd(), file);
+      console.log(`   ▶ Running: ${displayPath}`);
+      // Use ON_ERROR_STOP=1 to make psql exit immediately if an error occurs.
+      // Use -q to suppress NOTICE messages (quiet mode)
+      const command = `psql -q -v ON_ERROR_STOP=1 -f "${file}"`;
+
+      execSync(command, {
+        stdio: 'inherit', // Show psql output in real-time
+        env: psqlEnv,
+      });
+    }
+
+    console.log('\n✅ All scripts executed successfully.');
+  } catch (err) {
+    console.error(`\n❌ An error occurred during execution.`);
+    console.error(`   The script has been halted. Please check the error message from psql above`);
+    console.error(`   to debug the issue in the failed SQL file.`);
+    process.exit(1);
+  }
+}
+
+// --- 2. HELPER FUNCTIONS ---
+
+/**
+ * Recursively finds all .sql files within a directory and returns them as a flat array.
+ * @param {string} dir - The directory to start searching from.
+ * @returns {string[]} A flat array of full file paths.
+ */
+function getAllSqlFiles(dir) {
+  let filesToReturn = [];
+  const items = fs.readdirSync(dir);
+  for (const item of items) {
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      filesToReturn = filesToReturn.concat(getAllSqlFiles(fullPath));
+    } else if (item.endsWith('.sql')) {
+      filesToReturn.push(fullPath);
+    }
+  }
+  return filesToReturn;
+}
+
+/**
+ * A natural sort comparator for file paths. It splits paths into segments
+ * and compares the leading numbers of each segment numerically. This correctly
+ * sorts '2_file.sql' before '10_file.sql'.
+ * @param {string} a - The first file path.
+ * @param {string} b - The second file path.
+ * @returns {number} - A negative, zero, or positive value for sorting.
+ */
+function naturalSort(a, b) {
+  // Regex to find leading numbers followed by an underscore or period.
+  const re = /^(\d+)[_.]/;
+  const segmentsA = a.split(path.sep);
+  const segmentsB = b.split(path.sep);
+  const len = Math.min(segmentsA.length, segmentsB.length);
+
+  for (let i = 0; i < len; i++) {
+    const segA = segmentsA[i];
+    const segB = segmentsB[i];
+
+    const matchA = segA.match(re);
+    const matchB = segB.match(re);
+
+    if (matchA && matchB) {
+      const numA = parseInt(matchA[1], 10);
+      const numB = parseInt(matchB[1], 10);
+      if (numA !== numB) {
+        return numA - numB; // Compare the extracted numbers directly.
+      }
+    }
+
+    // If numbers are the same or not present, fall back to standard string comparison.
+    const comparison = segA.localeCompare(segB);
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  // If one path is a subdirectory of the other, the shorter path comes first.
+  return segmentsA.length - segmentsB.length;
+}
+
+const __filename = fileURLToPath(import.meta.url);
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  runPushSql();
+}
+
+export default runPushSql;
+
+// # Push multiple folders
+// node push-all.js migrations/ seeds/
+
+// # Push specific folder
+// npm run push:migrations
+// npm run push:seeds
+
+// # Push custom files/folders (pass arguments)
+// npm run push:sql -- file1.sql migrations/ file2.sql
+
+// # Push single file
+// npm run push:sql -- data/init.sql
+```
+
 <!-- path: scripts/generate-zod-schemas.ts -->
 ```typescript
 import * as ts from "typescript";
@@ -2087,6 +2342,21 @@ class TypeScriptToZodConverter {
         output += this.generateTypeSchema(type);
       }
     }
+
+    // // Generate a convenience export object
+    // output += '// ============= CONVENIENCE EXPORTS =============\n\n';
+    // output += 'export const schemas = {\n';
+
+    // for (const type of types) {
+    //   if (type.properties.length > 0) {
+    //     const schemaName = `${type.name
+    //       .charAt(0)
+    //       .toLowerCase()}${type.name.slice(1)}Schema`;
+    //     output += `  ${schemaName},\n`;
+    //   }
+    // }
+
+    // output += '} as const;\n\n';
 
     // Generate type exports
     output += "// ============= TYPE EXPORTS =============\n\n";
@@ -2716,6 +2986,29 @@ $$;
 -- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
+-- CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
+-- SELECT
+--   s.*,
+--   n.name AS node_name,
+--   lt_node_type.name AS node_type_name,
+--   lt_system.is_ring_based,
+--   n.latitude,
+--   n.longitude,
+--   lt_system.name AS system_type_name,
+--   lt_system.code AS system_type_code,
+--   lt_system.category AS system_category,
+--   ma.name AS system_maintenance_terminal_name,
+--   rbs.ring_id,
+--   rbs.order_in_ring,
+--   ring_area.name AS ring_logical_area_name
+-- FROM public.systems s
+--   JOIN public.nodes n ON s.node_id = n.id
+--   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+--   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
+--   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
+--   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
+--   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
+
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
@@ -2728,16 +3021,32 @@ SELECT
   lt_system.code AS system_type_code,
   lt_system.category AS system_category,
   ma.name AS system_maintenance_terminal_name,
-  rbs.ring_id,
-  rbs.order_in_ring,
-  ring_area.name AS ring_logical_area_name
+  -- Aggregated ring information
+  r_agg.ring_associations,
+  -- Extract first ring_id and order_in_ring for backward compatibility if needed, though using the array is preferred.
+  (r_agg.ring_associations->0->>'ring_id')::UUID AS ring_id,
+  (r_agg.ring_associations->0->>'order_in_ring')::NUMERIC AS order_in_ring,
+  (r_agg.ring_associations->0->>'ring_logical_area_name')::TEXT AS ring_logical_area_name
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
-  LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
-  LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
+  LEFT JOIN LATERAL (
+     SELECT
+        jsonb_agg(
+            jsonb_build_object(
+                'ring_id', r.id,
+                'ring_name', r.name,
+                'order_in_ring', rbs.order_in_ring,
+                'ring_logical_area_name', ra.name
+            ) ORDER BY rbs.order_in_ring
+        ) AS ring_associations
+     FROM public.ring_based_systems rbs
+     JOIN public.rings r ON rbs.ring_id = r.id
+     LEFT JOIN public.maintenance_areas ra ON rbs.maintenance_area_id = ra.id
+     WHERE rbs.system_id = s.id
+  ) r_agg ON true;
 
 
 -- View for a complete picture of a system connection and its specific details.
@@ -2841,8 +3150,10 @@ SELECT
     rbs.order_in_ring as order_in_ring,
     lt_node.name as type, -- This is the physical node type
     lt_system.name as system_type, -- This is the logical system type for the icon
+    lt_system.code AS system_type_code,
     r.status AS ring_status,
     s.status AS system_status,
+    s.system_name AS system_node_name,
     s.ip_address::text as ip,
     n.remark
 FROM
@@ -2922,12 +3233,15 @@ CREATE TABLE IF NOT EXISTS public.systems (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Consolidated Table for Ring-Based System Details (replaces cpan_systems, maan_systems)
+-- 2. Consolidated Table for Ring-Based System Details
+-- THE FIX: Changed the primary key from just system_id to a composite key of (system_id, ring_id).
+-- This correctly models the many-to-many relationship, allowing a system to exist in multiple rings.
 CREATE TABLE IF NOT EXISTS public.ring_based_systems (
-  system_id UUID PRIMARY KEY REFERENCES public.systems (id) ON DELETE CASCADE,
-  ring_id UUID REFERENCES public.rings (id),
+  system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
+  ring_id UUID NOT NULL REFERENCES public.rings (id) ON DELETE CASCADE,
   order_in_ring NUMERIC,
-  maintenance_area_id UUID REFERENCES public.maintenance_areas (id)
+  maintenance_area_id UUID REFERENCES public.maintenance_areas (id),
+  CONSTRAINT ring_based_systems_pkey PRIMARY KEY (system_id, ring_id)
 );
 
 -- 3. Generic System Connections Table
@@ -3021,7 +3335,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_remark TEXT DEFAULT NULL,
     p_id UUID DEFAULT NULL,
     p_ring_id UUID DEFAULT NULL,
-    p_order_in_ring INTEGER DEFAULT NULL,
+    p_order_in_ring NUMERIC DEFAULT NULL,
     p_make TEXT DEFAULT NULL
 )
 RETURNS SETOF public.systems
@@ -3063,11 +3377,13 @@ BEGIN
     -- Step 2: Handle subtype tables based on the system type's boolean flags.
 
     -- Handle Ring-Based Systems using the new 'is_ring_based' flag
-    IF v_system_type_record.is_ring_based = true THEN
+    IF v_system_type_record.is_ring_based = true AND p_ring_id IS NOT NULL THEN
+        -- THE FIX: The ON CONFLICT target is now the composite primary key (system_id, ring_id).
+        -- This ensures that adding a system to a *new* ring creates a new association, while re-saving
+        -- it for the *same* ring only updates the order.
         INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
         VALUES (v_system_id, p_ring_id, p_order_in_ring)
-        ON CONFLICT (system_id) DO UPDATE SET 
-            ring_id = EXCLUDED.ring_id,
+        ON CONFLICT (system_id, ring_id) DO UPDATE SET 
             order_in_ring = EXCLUDED.order_in_ring;
     END IF;
 
@@ -3076,8 +3392,8 @@ BEGIN
 END;
 $$;
 
--- UPDATED GRANT to include the new INTEGER parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, INTEGER, TEXT) TO authenticated;
+-- UPDATED GRANT to include the new NUMERIC parameter
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, NUMERIC, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
@@ -3273,6 +3589,31 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID) TO authenticated;
+```
+
+<!-- path: data/migrations/06_utilities/10_disassociate_system.sql -->
+```sql
+-- path: data/migrations/06_utilities/10_disassociate_system.sql
+-- Description: Creates a function to safely disassociate a single system from a ring.
+
+CREATE OR REPLACE FUNCTION public.disassociate_system_from_ring(
+    p_ring_id UUID,
+    p_system_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Delete the specific association from the junction table.
+    DELETE FROM public.ring_based_systems
+    WHERE ring_id = p_ring_id AND system_id = p_system_id;
+END;
+$$;
+
+-- Grant execution permission to authenticated users.
+GRANT EXECUTE ON FUNCTION public.disassociate_system_from_ring(UUID, UUID) TO authenticated;
 ```
 
 <!-- path: data/migrations/06_utilities/01_generic_functions.sql -->
@@ -3658,6 +3999,60 @@ END;
 $$;
 ```
 
+<!-- path: data/migrations/06_utilities/08_get_rings_for_export.sql -->
+```sql
+-- path: data/migrations/06_utilities/08_get_rings_for_export.sql
+-- Description: Creates a function to export rings with a JSON array of associated systems including order and hub status.
+
+CREATE OR REPLACE FUNCTION public.get_rings_for_export(
+    row_limit INTEGER DEFAULT NULL,
+    order_by TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    ring_type_name TEXT,
+    maintenance_area_name TEXT,
+    status BOOLEAN,
+    total_nodes BIGINT,
+    -- THE FIX: Changed from TEXT to JSONB for proper JSON formatting
+    associated_systems JSONB
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+SELECT
+    r.id,
+    r.name,
+    r.description,
+    r.ring_type_name,
+    r.maintenance_area_name,
+    r.status,
+    r.total_nodes,
+    (
+        -- THE FIX: Use JSON_AGG and JSON_BUILD_OBJECT to create the structured JSON array
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'system', s.system_name,
+                'order', rbs.order_in_ring,
+                'is_hub', s.is_hub
+            ) ORDER BY rbs.order_in_ring
+        )
+        FROM public.ring_based_systems rbs
+        JOIN public.systems s ON rbs.system_id = s.id
+        WHERE rbs.ring_id = r.id
+    ) AS associated_systems
+FROM
+    public.v_rings r;
+$$;
+
+-- Grant execution permission on the updated function signature
+GRANT EXECUTE ON FUNCTION public.get_rings_for_export(INTEGER, TEXT) TO authenticated;
+```
+
 <!-- path: data/migrations/06_utilities/03_no_pagination_specialized_function.sql -->
 ```sql
 -- =================================================================
@@ -3851,6 +4246,55 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_dashboard_overview() TO authenticated;
 ```
 
+<!-- path: data/migrations/06_utilities/09_upsert_ring_associations.sql -->
+```sql
+-- path: data/migrations/06_utilities/09_upsert_ring_associations.sql
+-- Description: A powerful function to upsert ring associations from a JSONB payload.
+
+CREATE OR REPLACE FUNCTION public.upsert_ring_associations_from_json(
+    p_ring_id UUID,
+    p_associations JSONB
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    assoc_item JSONB;
+    v_system_id UUID;
+BEGIN
+    -- First, remove all existing associations for this ring
+    DELETE FROM public.ring_based_systems WHERE ring_id = p_ring_id;
+
+    -- Loop through the provided JSON array of associations
+    FOR assoc_item IN SELECT * FROM jsonb_array_elements(p_associations)
+    LOOP
+        -- Find the system_id based on the provided system name
+        SELECT id INTO v_system_id FROM public.systems WHERE system_name = (assoc_item->>'system');
+
+        IF v_system_id IS NOT NULL THEN
+            -- Insert the new association into the junction table
+            INSERT INTO public.ring_based_systems (ring_id, system_id, order_in_ring)
+            VALUES (
+                p_ring_id,
+                v_system_id,
+                (assoc_item->>'order')::NUMERIC
+            );
+
+            -- Update the is_hub status on the systems table itself
+            UPDATE public.systems
+            SET is_hub = (assoc_item->>'is_hub')::BOOLEAN
+            WHERE id = v_system_id;
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- Grant execution permission
+GRANT EXECUTE ON FUNCTION public.upsert_ring_associations_from_json(UUID, JSONB) TO authenticated;
+```
+
 <!-- path: data/migrations/06_utilities/05_search_nodes.sql -->
 ```sql
 -- path: migrations/06_utilities/07_search_nodes.sql
@@ -3892,20 +4336,34 @@ GRANT EXECUTE ON FUNCTION public.search_nodes_for_select(TEXT, INT) TO authentic
 -- using format() with %I for identifiers and %L for literals.
 
 -- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
--- This file now only contains the get_paged_data function which depends on them.
-
+-- THE FIX: Added an optional 'row_limit' parameter for compatibility with hooks
+-- that send this parameter name by default. The function prioritizes p_limit.
 CREATE OR REPLACE FUNCTION public.get_paged_data(
-    p_view_name TEXT, p_limit INT, p_offset INT, p_order_by TEXT DEFAULT 'name',
-    p_order_dir TEXT DEFAULT 'asc', p_filters JSONB DEFAULT '{}'
+    p_view_name TEXT, 
+    p_limit INT, 
+    p_offset INT, 
+    p_order_by TEXT DEFAULT 'name',
+    p_order_dir TEXT DEFAULT 'asc', 
+    p_filters JSONB DEFAULT '{}',
+    row_limit INT DEFAULT NULL -- Added for compatibility
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-    data_query TEXT; count_query TEXT; where_clause TEXT; order_by_column TEXT;
-    result_data JSONB; total_records BIGINT; active_records BIGINT := 0; inactive_records BIGINT := 0;
+    data_query TEXT; 
+    count_query TEXT; 
+    where_clause TEXT; 
+    order_by_column TEXT;
+    result_data JSONB; 
+    total_records BIGINT; 
+    active_records BIGINT := 0; 
+    inactive_records BIGINT := 0;
     status_column_exists BOOLEAN;
+    effective_limit INT;
 BEGIN
+    -- Use p_limit if provided, otherwise fall back to row_limit
+    effective_limit := COALESCE(p_limit, row_limit, 1000);
+
     status_column_exists := public.column_exists('public', p_view_name, 'status');
-    -- Use the updated build_where_clause function
     where_clause := public.build_where_clause(p_filters, p_view_name);
 
     IF public.column_exists('public', p_view_name, p_order_by) THEN
@@ -3922,7 +4380,7 @@ BEGIN
 
     data_query := format(
         'SELECT jsonb_agg(v) FROM (SELECT * FROM public.%I v %s ORDER BY v.%I %s LIMIT %L OFFSET %L) v',
-        p_view_name, where_clause, order_by_column, p_order_dir, p_limit, p_offset
+        p_view_name, where_clause, order_by_column, p_order_dir, effective_limit, p_offset
     );
 
     IF status_column_exists THEN
@@ -3944,7 +4402,9 @@ BEGIN
     );
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB) TO authenticated;
+
+-- THE FIX: Update the GRANT statement to include the new optional parameter.
+GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB, INT) TO authenticated;
 ```
 
 <!-- path: data/migrations/99_finalization/01_cross_module_constraints.sql -->
@@ -6788,6 +7248,7 @@ export const authMfa_factorsRowSchema = z.object({
   friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid(),
   last_challenged_at: z.iso.datetime().nullable(),
+  last_webauthn_challenge_data: JsonSchema.nullable(),
   phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
   secret: z.string().nullable(),
   status: z.string(),
@@ -6803,6 +7264,7 @@ export const authMfa_factorsInsertSchema = z.object({
   friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   id: z.uuid(),
   last_challenged_at: z.iso.datetime().nullable().optional(),
+  last_webauthn_challenge_data: JsonSchema.nullable().optional(),
   phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   secret: z.string().nullable().optional(),
   status: z.string(),
@@ -6818,6 +7280,7 @@ export const authMfa_factorsUpdateSchema = z.object({
   friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   id: z.uuid().optional(),
   last_challenged_at: z.iso.datetime().nullable().optional(),
+  last_webauthn_challenge_data: JsonSchema.nullable().optional(),
   phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
   secret: z.string().nullable().optional(),
   status: z.string().optional(),
@@ -7111,6 +7574,8 @@ export const authSessionsRowSchema = z.object({
   ip: z.any(),
   not_after: z.string().nullable(),
   oauth_client_id: z.uuid().nullable(),
+  refresh_token_counter: z.number().int().min(0).nullable(),
+  refresh_token_hmac_key: z.jwt().nullable(),
   refreshed_at: z.iso.datetime().nullable(),
   tag: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -7126,6 +7591,8 @@ export const authSessionsInsertSchema = z.object({
   ip: z.any().optional(),
   not_after: z.string().nullable().optional(),
   oauth_client_id: z.uuid().nullable().optional(),
+  refresh_token_counter: z.number().int().min(0).nullable().optional(),
+  refresh_token_hmac_key: z.jwt().nullable().optional(),
   refreshed_at: z.iso.datetime().nullable().optional(),
   tag: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -7141,6 +7608,8 @@ export const authSessionsUpdateSchema = z.object({
   ip: z.any().optional(),
   not_after: z.string().nullable().optional(),
   oauth_client_id: z.uuid().nullable().optional(),
+  refresh_token_counter: z.number().int().min(0).nullable().optional(),
+  refresh_token_hmac_key: z.jwt().nullable().optional(),
   refreshed_at: z.iso.datetime().nullable().optional(),
   tag: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -8102,21 +8571,21 @@ export const ports_managementUpdateSchema = z.object({
 export const ring_based_systemsRowSchema = z.object({
   maintenance_area_id: z.uuid().nullable(),
   order_in_ring: z.number().nullable(),
-  ring_id: z.uuid().nullable(),
+  ring_id: z.uuid(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsInsertSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
   order_in_ring: z.number().nullable().optional(),
-  ring_id: z.uuid().nullable().optional(),
+  ring_id: z.uuid(),
   system_id: z.uuid(),
 });
 
 export const ring_based_systemsUpdateSchema = z.object({
   maintenance_area_id: z.uuid().nullable().optional(),
   order_in_ring: z.number().nullable().optional(),
-  ring_id: z.uuid().nullable().optional(),
+  ring_id: z.uuid().optional(),
   system_id: z.uuid().optional(),
 });
 
@@ -8569,8 +9038,10 @@ export const v_ring_nodesRowSchema = z.object({
   ring_id: z.uuid().nullable(),
   ring_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   ring_status: z.boolean().nullable(),
+  system_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_status: z.boolean().nullable(),
   system_type: z.string().nullable(),
+  system_type_code: z.string().nullable(),
   type: z.string().nullable(),
 });
 
@@ -8665,6 +9136,7 @@ export const v_systems_completeRowSchema = z.object({
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   order_in_ring: z.number().nullable(),
   remark: z.string().nullable(),
+  ring_associations: JsonSchema.nullable(),
   ring_id: z.uuid().nullable(),
   ring_logical_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   s_no: z.string().nullable(),
@@ -10272,159 +10744,6 @@ export function useUpsertSystemConnection() {
 
 // THE FIX: The payload type must match the RPC function's arguments exactly, not partially.
 export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection_with_details'>;
-```
-
-<!-- path: hooks/database/queries-type-helpers (copy).ts -->
-```typescript
-// hooks/database/queries-type-helpers.ts
-import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database } from "@/types/supabase-types";
-import { tableNames } from '@/types/flattened-types';
-
-// --- Type for a structured query result with a count ---
-export type PagedQueryResult<T> = {
-  data: T[];
-  count: number;
-};
-
-// --- TYPE HELPERS DERIVED FROM SUPABASE ---
-
-export type PublicTableName = keyof Database["public"]["Tables"];
-export type AuthTableName = keyof Database["auth"]["Tables"];
-export type TableName = PublicTableName | AuthTableName;
-export type PublicTableOrViewName = PublicTableName | ViewName;
-export type ViewName = keyof Database["public"]["Views"];
-export type TableOrViewName = TableName | ViewName;
-
-// Helper to check if a name is a table (and not a view)
-export const isTableName = (name: TableOrViewName): name is TableName => {
-  return (tableNames as readonly string[]).includes(name);
-};
-
-
-// Generic row types for any read operation
-export type Row<T extends TableOrViewName> = T extends keyof Database["public"]["Tables"]
-  ? Database["public"]["Tables"][T]["Row"]
-  : T extends keyof Database["public"]["Views"]
-  ? Database["public"]["Views"][T]["Row"]
-  : T extends keyof Database["auth"]["Tables"]
-  ? Database["auth"]["Tables"][T]["Row"]
-  : never;
-
-export type TableRow<T extends TableName> = T extends keyof Database["public"]["Tables"]
-  ? Database["public"]["Tables"][T]["Row"]
-  : T extends keyof Database["auth"]["Tables"]
-  ? Database["auth"]["Tables"][T]["Row"]
-  : never;
-
-export type TableInsert<T extends TableName> = T extends keyof Database["public"]["Tables"]
-  ? Database["public"]["Tables"][T]["Insert"]
-  : T extends keyof Database["auth"]["Tables"]
-  ? Database["auth"]["Tables"][T]["Insert"]
-  : never;
-
-export type TableUpdate<T extends TableName> = T extends keyof Database["public"]["Tables"]
-  ? Database["public"]["Tables"][T]["Update"]
-  : T extends keyof Database["auth"]["Tables"]
-  ? Database["auth"]["Tables"][T]["Update"]
-  : never;
-
-// These types now correctly infer from the robust types above.
-export type TableInsertWithDates<T extends TableName> = { [K in keyof TableInsert<T>]?: TableInsert<T>[K] | Date | null; };
-export type TableUpdateWithDates<T extends TableName> = { [K in keyof TableUpdate<T>]?: TableUpdate<T>[K] | Date | null; };
-
-// RPC function type helpers (unchanged)
-export type RpcFunctionName = keyof Database["public"]["Functions"];
-export type RpcFunctionArgs<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Args"];
-export type RpcFunctionReturns<T extends RpcFunctionName> = Database["public"]["Functions"][T]["Returns"];
-
-// --- ADVANCED TYPES FOR HOOK OPTIONS (Unchanged) ---
-
-export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.in" | "contains" | "containedBy" | "overlaps" | "sl" | "sr" | "nxl" | "nxr" | "adj" | "is" | "isdistinct" | "fts" | "plfts" | "phfts" | "wfts" | "or";
-export type FilterValue = string | number | boolean | null | string[] | number[] | { operator: FilterOperator; value: unknown };
-export type Filters = {
-  or?: Record<string, string> | string;
-  [key: string]: FilterValue | Record<string, string> | string | undefined;
-};
-export type OrderBy = { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; };
-export interface EnhancedOrderBy { column: string; ascending?: boolean; nullsFirst?: boolean; foreignTable?: string; dataType?: 'text' | 'numeric' | 'date' | 'timestamp' | 'boolean' | 'json'; }
-export type DeduplicationOptions = { columns: string[]; orderBy?: OrderBy[]; };
-export type AggregationOptions = { count?: boolean | string; sum?: string[]; avg?: string[]; min?: string[]; max?: string[]; groupBy?: string[]; };
-export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout?: number; connection?: "read" | "write"; };
-export type RowWithCount<T> = T & { total_count?: number };
-
-// --- HOOK OPTIONS INTERFACES (Unchanged) ---
-export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
-  extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
-  columns?: string;
-  filters?: Filters;
-  orderBy?: OrderBy[];
-  limit?: number;
-  offset?: number;
-  deduplication?: DeduplicationOptions;
-  aggregation?: AggregationOptions;
-  performance?: PerformanceOptions;
-  includeCount?: boolean;
-}
-export type InfiniteQueryPage<T extends TableOrViewName> = { data: Row<T>[]; nextCursor?: number; count?: number; };
-export interface UseTableInfiniteQueryOptions<T extends TableOrViewName, TData = InfiniteData<InfiniteQueryPage<T>>> extends Omit<UseInfiniteQueryOptions<InfiniteQueryPage<T>, Error, TData, readonly unknown[], number | undefined>, "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"> {
-  columns?: string; filters?: Filters; orderBy?: OrderBy[]; pageSize?: number; performance?: PerformanceOptions;
-}
-export interface UseTableRecordOptions<T extends TableOrViewName, TData = Row<T> | null> extends Omit<UseQueryOptions<Row<T> | null, Error, TData>, "queryKey" | "queryFn"> {
-  columns?: string; performance?: PerformanceOptions;
-}
-export interface UseUniqueValuesOptions<T extends TableOrViewName, TData = unknown[]> extends Omit<UseQueryOptions<unknown[], Error, TData>, "queryKey" | "queryFn"> {
-  tableName: T; filters?: Filters; orderBy?: OrderBy[]; limit?: number; performance?: PerformanceOptions;
-}
-export interface UseRpcQueryOptions<T extends RpcFunctionName, TData = RpcFunctionReturns<T>> extends Omit<UseQueryOptions<RpcFunctionReturns<T>, Error, TData>, "queryKey" | "queryFn"> {
-  performance?: PerformanceOptions;
-}
-export interface UseTableMutationOptions<TData = unknown, TVariables = unknown, TContext = unknown> extends Omit<UseMutationOptions<TData, Error, TVariables, TContext>, "mutationFn"> {
-  invalidateQueries?: boolean; optimisticUpdate?: boolean; batchSize?: number;
-}
-export interface OptimisticContext { previousData?: [readonly unknown[], unknown][]; }
-
-// ... (Excel Upload types remain the same) ...
-export interface UploadColumnMapping<T extends TableName> {
-    excelHeader: string;
-    dbKey: keyof TableInsert<T> & string;
-    transform?: (value: unknown) => unknown;
-    required?: boolean;
-}
-export type UploadType = "insert" | "upsert";
-export interface UploadOptions<T extends TableName> {
-    file: File;
-    columns: UploadColumnMapping<T>[];
-    uploadType?: UploadType;
-    conflictColumn?: keyof TableInsert<T> & string;
-}
-export interface UploadResult {
-    successCount: number;
-    errorCount: number;
-    totalRows: number;
-    errors: { rowIndex: number; data: unknown; error: string }[];
-}
-export interface UseExcelUploadOptions<T extends TableName> {
-    onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
-    onError?: (error: Error, variables: UploadOptions<T>) => void;
-    showToasts?: boolean;
-    batchSize?: number;
-}
-export type DashboardOverviewData = {
-  system_status_counts: { [key: string]: number };
-  node_status_counts: { [key: string]: number };
-  path_operational_status: { [key: string]: number };
-  cable_utilization_summary: {
-    average_utilization_percent: number;
-    high_utilization_count: number;
-    total_cables: number;
-  };
-  user_activity_last_30_days: {
-    date: string;
-    count: number;
-  }[];
-  systems_per_maintenance_area: { [key: string]: number };
-};
 ```
 
 <!-- path: hooks/database/basic-mutation-hooks.ts -->
@@ -13530,55 +13849,39 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   fgColor: { argb: color },
 });
 
-// THE FIX: A completely rewritten, more robust version of the function.
+// THE FIX: The default case now correctly stringifies objects and arrays.
 export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>): unknown => {
-  // 1. Handle all nullish or empty string cases universally at the start.
   if (value === null || value === undefined || value === '') {
-    return null; // ExcelJS correctly interprets null as an empty cell.
+    return null;
   }
 
-  // 2. Process based on the specified Excel format.
   switch (column.excelFormat) {
     case "date":
       const date = new Date(value as string | number | Date);
-      // Return null if the date is invalid.
       return isNaN(date.getTime()) ? null : date;
-
     case "number":
       const num = parseFloat(String(value));
-      // Return null if parsing results in NaN.
       return isNaN(num) ? null : num;
-
     case "integer":
       const int = parseInt(String(value), 10);
-      // Return null if parsing results in NaN.
       return isNaN(int) ? null : int;
-
     case "currency":
       const currencyNum = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
       return isNaN(currencyNum) ? null : currencyNum;
-
     case "percentage":
       const percNum = parseFloat(String(value));
       return isNaN(percNum) ? null : percNum / 100;
-
     case "json":
       if (typeof value === 'object') {
         return JSON.stringify(value, null, 2);
       }
       return String(value);
-
-    case "text":
-      return String(value);
-
-    // 3. Fallback logic for when no excelFormat is specified.
     default:
       if (typeof value === 'object') {
         if (value instanceof Date) return value;
-        if (Array.isArray(value)) return value.join(", ");
+        // This is the key fix: Stringify arrays or objects instead of calling join()
         return JSON.stringify(value);
       }
-      // This will correctly handle strings for columns like 'Remark', 'Make', and even 's_no' if no format is specified.
       return String(value);
   }
 };
@@ -13602,6 +13905,7 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
       cell.numFmt = "0";
       break;
     case "text":
+    case "json": // Treat JSON as text for formatting
       cell.numFmt = "@";
       break;
   }
@@ -13610,7 +13914,6 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
   }
 };
 
-// ... (rest of the file remains the same) ...
 export const getDefaultStyles = (): ExcelStyles => ({
   headerFont: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
   headerFill: createFillPattern("FF2563EB"),
@@ -13941,541 +14244,217 @@ export function useSystemExcelUpload(
 }
 ```
 
-<!-- path: hooks/database/excel-queries/excel-download (copy).ts -->
+<!-- path: hooks/database/excel-queries/useRingExcelUpload.ts -->
 ```typescript
+// hooks/database/excel-queries/useRingExcelUpload.ts
+import * as XLSX from 'xlsx';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+import { Database, Json } from '@/types/supabase-types';
+import { RingsInsertSchema } from '@/schemas/zod-schemas';
+import { toPgBoolean } from '@/config/helper-functions';
+import { EnhancedUploadResult, ValidationError } from './excel-helpers';
 
-import { TableOrViewName, isTableName, Row, ViewName, PublicTableName, PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
-import * as ExcelJS from "exceljs";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
-import { useMutation } from "@tanstack/react-query";
-import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelDownloadResult, formatCellValue, getDefaultStyles, RPCConfig, sanitizeFileName, UseExcelDownloadOptions } from "@/hooks/database/excel-queries/excel-helpers";
-import { toast } from "sonner";
-import { applyFilters } from "@/hooks/database/utility-functions";
-
-// Extended types for new functionality
-interface OrderByOption {
-column: string;
-ascending?: boolean;
+interface RingUploadOptions {
+  file: File;
 }
 
-interface EnhancedDownloadOptions<T extends TableOrViewName> extends DownloadOptions<T> {
-orderBy?: OrderByOption[];
-wrapText?: boolean;
-autoFitColumns?: boolean;
-}
-
-interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName> extends UseExcelDownloadOptions<T> {
-defaultOrderBy?: OrderByOption[];
-defaultWrapText?: boolean;
-defaultAutoFitColumns?: boolean;
-}
-
-// Hook for RPC-based downloads with full type safety
-export function useRPCExcelDownload<T extends TableOrViewName>(
-  supabase: SupabaseClient<Database>,
-  options?: EnhancedUseExcelDownloadOptions<T>
-) {
-  const {
-    showToasts = true,
-    batchSize = 50000,
-    defaultOrderBy,
-    defaultWrapText = true,
-    defaultAutoFitColumns = true,
-    ...mutationOptions
-  } = options || {};
-
-  return useMutation<
-    ExcelDownloadResult,
-    Error,
-    EnhancedDownloadOptions<T> & { rpcConfig: RPCConfig }
-  >({
-    mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
+const parseExcelFile = (file: File): Promise<unknown[][]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
       try {
-        const defaultStyles = getDefaultStyles();
-        const mergedOptions = {
-          sheetName: "Data",
-          maxRows: batchSize,
-          customStyles: defaultStyles,
-          orderBy: defaultOrderBy,
-          wrapText: defaultWrapText,
-          autoFitColumns: defaultAutoFitColumns,
-          ...downloadOptions,
-        };
+        if (!event.target?.result) throw new Error('File reading failed.');
+        const buffer = event.target.result as ArrayBuffer;
+        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!worksheet) throw new Error('No worksheet found.');
+        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
+    reader.readAsArrayBuffer(file);
+  });
+};
 
-        const {
-          fileName = `export-${new Date().toISOString().split("T")[0]}.xlsx`,
-          filters,
-          columns,
-          sheetName,
-          maxRows,
-          rpcConfig,
-          orderBy,
-          wrapText,
-          autoFitColumns,
-        } = mergedOptions;
+type Association = {
+  system?: string;
+  order?: number;
+  is_hub?: boolean;
+};
 
-        const styles = { ...defaultStyles, ...mergedOptions.customStyles };
+type RingToUpsert = RingsInsertSchema & { associated_systems_json?: Association[] };
 
-        if (!columns || columns.length === 0)
-          throw new Error("No columns specified for export");
-        if (!rpcConfig)
-          throw new Error("RPC configuration is required for this hook");
+export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
 
-        const exportColumns = columns.filter((col) => !col.excludeFromExport);
-        if (exportColumns.length === 0)
-          throw new Error("All columns are excluded from export");
+  return useMutation<EnhancedUploadResult, Error, RingUploadOptions>({
+    mutationFn: async ({ file }): Promise<EnhancedUploadResult> => {
+      const uploadResult: EnhancedUploadResult = {
+        successCount: 0, errorCount: 0, totalRows: 0, errors: [],
+        processingLogs: [], validationErrors: [], skippedRows: 0,
+      };
 
-        toast.info("Fetching data via RPC...");
+      toast.info('Fetching lookup data for validation...');
+      const [
+        { data: ringTypes, error: ringTypesError },
+        { data: maintenanceAreas, error: maintenanceAreasError },
+        { data: systems, error: systemsError },
+      ] = await Promise.all([
+        supabase.from('lookup_types').select('id, name').eq('category', 'RING_TYPES'),
+        supabase.from('maintenance_areas').select('id, name'),
+        supabase.from('v_systems_complete').select('id, system_name, node_name'), // THE FIX: Fetch from view with node names
+      ]);
 
-        // Prepare RPC parameters
-        const rpcParams = {
-          ...rpcConfig.parameters,
-          ...convertFiltersToRPCParams(filters),
-        };
+      if (ringTypesError) throw new Error(`Failed to fetch ring types: ${ringTypesError.message}`);
+      if (maintenanceAreasError) throw new Error(`Failed to fetch maintenance areas: ${maintenanceAreasError.message}`);
+      if (systemsError) throw new Error(`Failed to fetch systems: ${systemsError.message}`);
 
-        if (maxRows) {
-          rpcParams.row_limit = maxRows;
+      const ringTypeMap = new Map(ringTypes.map(item => [item.name.toLowerCase().trim(), item.id]));
+      const maintenanceAreaMap = new Map(maintenanceAreas.map(item => [item.name.toLowerCase().trim(), item.id]));
+      
+      // THE FIX: Create two maps for flexible system lookup
+      const systemNameMap = new Map(systems.map(item => [item.system_name?.toLowerCase().trim(), item.id]));
+      const nodeNameMap = new Map(systems.map(item => [item.node_name?.toLowerCase().trim(), item.id]));
+      
+      toast.info('Reading and parsing Excel file...');
+      const jsonData = await parseExcelFile(file);
+
+      if (!jsonData || jsonData.length < 2) {
+        toast.warning('No data found in the Excel file.');
+        return uploadResult;
+      }
+
+      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const headerMap = new Map(excelHeaders.map((h, i) => [h.toLowerCase(), i]));
+      const dataRows = jsonData.slice(1);
+      const ringsToUpsert: RingToUpsert[] = [];
+      const allValidationErrors: ValidationError[] = [];
+
+      toast.info(`Found ${dataRows.length} rows. Validating data...`);
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i] as unknown[];
+        const rowValidationErrors: ValidationError[] = [];
+
+        if (row.every(cell => cell === null || String(cell).trim() === '')) {
+            uploadResult.skippedRows++;
+            continue;
         }
 
-        // Add ordering parameters to RPC if supported
-        if (orderBy && orderBy.length > 0) {
-          rpcParams.order_by = orderBy.map(order => 
-            `${order.column}.${order.ascending !== false ? 'asc' : 'desc'}`
-          ).join(',');
-        }
+        const ringTypeNameRaw = row[headerMap.get('ring_type_name') ?? -1];
+        const maintenanceAreaNameRaw = row[headerMap.get('maintenance_area_name') ?? -1];
+        const associatedSystemsRaw = row[headerMap.get('associated_systems') ?? -1];
+        const statusValue = row[headerMap.get('status') ?? -1];
 
-        // Execute RPC call with proper error handling
-        const { data, error } = await supabase.rpc(
-          rpcConfig.functionName as keyof Database["public"]["Functions"],
-          rpcParams
-        );
-
-        if (error) throw new Error(`RPC call failed: ${error.message}`);
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-          throw new Error("No data returned from RPC function");
-        }
-
-        // Ensure data is an array
-        let dataArray = Array.isArray(data) ? data : [data];
+        const ringTypeName = String(ringTypeNameRaw || '').toLowerCase().trim();
+        const maintenanceAreaName = String(maintenanceAreaNameRaw || '').toLowerCase().trim();
         
-        // Apply client-side ordering if RPC doesn't support it
-        if (orderBy && orderBy.length > 0) {
-          dataArray = dataArray.sort((a, b) => {
-            for (const order of orderBy) {
-              // Safe property access with type guards
-              const aVal = (a && typeof a === 'object' && !Array.isArray(a)) 
-                ? (a as Record<string, unknown>)[order.column] 
-                : undefined;
-              const bVal = (b && typeof b === 'object' && !Array.isArray(b)) 
-                ? (b as Record<string, unknown>)[order.column] 
-                : undefined;
-              
-              if (aVal === bVal) continue;
-              
-              let comparison = 0;
-              if (aVal == null && bVal != null) comparison = 1;
-              else if (aVal != null && bVal == null) comparison = -1;
-              else if (aVal != null && bVal != null) {
-                if (aVal < bVal) comparison = -1;
-                else if (aVal > bVal) comparison = 1;
-              }
-              
-              return order.ascending !== false ? comparison : -comparison;
-            }
-            return 0;
-          });
+        const ringTypeId = ringTypeMap.get(ringTypeName);
+        const maintenanceTerminalId = maintenanceAreaMap.get(maintenanceAreaName);
+
+        if (!ringTypeId && ringTypeName) {
+            rowValidationErrors.push({ rowIndex: i, column: 'ring_type_name', value: ringTypeNameRaw, error: `Ring Type "${ringTypeNameRaw}" not found.` });
+        }
+        if (!maintenanceTerminalId && maintenanceAreaName) {
+            rowValidationErrors.push({ rowIndex: i, column: 'maintenance_area_name', value: maintenanceAreaNameRaw, error: `Maintenance Area "${maintenanceAreaNameRaw}" not found.` });
         }
         
-        toast.success(
-          `Fetched ${dataArray.length} records. Generating Excel file...`
-        );
-
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet(sheetName || "Data");
-
-        // Set column properties with enhanced options
-        worksheet.columns = exportColumns.map((col) => ({
-          key: String(col.dataIndex),
-          width: typeof col.width === "number" ? col.width / 8 : 20,
-        }));
-
-        // Add header row with enhanced styling
-        const headerTitles = exportColumns.map((col) => col.title);
-        const headerRow = worksheet.addRow(headerTitles);
-        headerRow.height = 25;
-
-        exportColumns.forEach((col, index) => {
-          const cell = headerRow.getCell(index + 1);
-          if (styles.headerFont) cell.font = styles.headerFont;
-          if (styles.headerFill) cell.fill = styles.headerFill;
-          
-          // Enhanced header alignment with text wrapping
-          cell.alignment = { 
-            horizontal: "center", 
-            vertical: "middle",
-            wrapText: wrapText || false
-          };
-
-          if (styles.borderStyle) {
-            cell.border = {
-              top: styles.borderStyle.top,
-              bottom: styles.borderStyle.bottom,
-              right: styles.borderStyle.right,
-              left: index === 0 ? styles.borderStyle.left : undefined,
-            };
-          }
-        });
-
-        // Add data rows with enhanced styling
-        dataArray.forEach((record, rowIndex: number) => {
-          // Ensure we only process object-like rows
-          if (record === null || typeof record !== "object" || Array.isArray(record)) {
-            return; // skip non-object rows
-          }
-
-          const obj = record as Record<string, unknown>;
-          const rowData: Record<string, unknown> = {};
-          exportColumns.forEach((col) => {
-            const key = String(col.dataIndex);
-            const value = obj[key];
-            rowData[key] = formatCellValue(value, col);
-          });
-          const excelRow = worksheet.addRow(rowData);
-
-          // Enhanced cell styling with wrap text support
-          exportColumns.forEach((col, colIndex) => {
-            const cell = excelRow.getCell(colIndex + 1);
-
-            if (styles.dataFont) cell.font = styles.dataFont;
-
-            if (rowIndex % 2 === 1 && styles.alternateRowFill) {
-              cell.fill = styles.alternateRowFill;
-            }
-
-            // Apply text wrapping and alignment
-            cell.alignment = {
-              ...cell.alignment,
-              wrapText: wrapText || false,
-              vertical: 'top' // Better for wrapped text
-            };
-
-            applyCellFormatting(cell, col);
-
-            if (styles.borderStyle) {
-              const isLastDataRow = rowIndex === dataArray.length - 1;
-              cell.border = {
-                right: styles.borderStyle.right,
-                left: colIndex === 0 ? styles.borderStyle.left : undefined,
-                top: styles.borderStyle.top,
-                bottom: isLastDataRow ? styles.borderStyle.bottom : undefined,
-              };
-            }
-          });
-        });
-
-        // Auto-fit columns if enabled
-        if (autoFitColumns) {
-          exportColumns.forEach((col, index) => {
-            const column = worksheet.getColumn(index + 1);
-            let maxLength = col.title.length;
-            
-            // Calculate max content length for auto-fitting
-            dataArray.forEach((record) => {
-              if (record && typeof record === "object" && !Array.isArray(record)) {
-                const obj = record as Record<string, unknown>;
-                const key = String(col.dataIndex);
-                const value = obj[key];
-                const cellText = String(formatCellValue(value, col) || '');
+        let associatedSystemsJson: Association[] = [];
+        if (associatedSystemsRaw && typeof associatedSystemsRaw === 'string') {
+            try {
+                associatedSystemsJson = JSON.parse(associatedSystemsRaw);
+                if (!Array.isArray(associatedSystemsJson)) throw new Error("JSON is not an array.");
                 
-                // For wrapped text, consider line breaks
-                if (wrapText) {
-                  const lines = cellText.split('\n');
-                  const maxLineLength = Math.max(...lines.map(line => line.length));
-                  maxLength = Math.max(maxLength, maxLineLength);
-                } else {
-                  maxLength = Math.max(maxLength, cellText.length);
+                // Validate each system in the JSON array
+                for (const sys of associatedSystemsJson) {
+                    const sysName = (sys.system)?.toLowerCase().trim();
+                    if (!sysName || (!systemNameMap.has(sysName) && !nodeNameMap.has(sysName))) {
+                        rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: sys.system, error: `System or Node "${sys.system}" not found.` });
+                    }
                 }
-              }
-            });
-            
-            // Set reasonable bounds for column width
-            const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), 50);
-            column.width = calculatedWidth;
-          });
+            } catch (e) {
+                rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
+            }
         }
 
-        // Freeze header row
-        worksheet.views = [{ state: "frozen", ySplit: 1 }];
+        if (rowValidationErrors.length > 0) {
+            allValidationErrors.push(...rowValidationErrors);
+            uploadResult.errorCount++;
+            continue;
+        }
 
-        // Generate and download file
-        const buffer = await workbook.xlsx.writeBuffer();
-        const sanitizedFileName = sanitizeFileName(fileName);
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = sanitizedFileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-
-        toast.success(
-          `Excel file "${sanitizedFileName}" downloaded successfully!`
-        );
-        return {
-          fileName: sanitizedFileName,
-          rowCount: dataArray.length,
-          columnCount: exportColumns.length,
+        const record: RingToUpsert = {
+            id: row[headerMap.get('id') ?? -1] as string || undefined,
+            name: row[headerMap.get('name') ?? -1] as string,
+            description: row[headerMap.get('description') ?? -1] as string || null,
+            total_nodes: Number(row[headerMap.get('total_nodes') ?? -1]) || 0,
+            status: toPgBoolean(statusValue),
+            ring_type_id: ringTypeId,
+            maintenance_terminal_id: maintenanceTerminalId,
+            associated_systems_json: associatedSystemsJson,
         };
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        if (showToasts) {
-          toast.error(`Download failed: ${errorMessage}`);
-        }
-        throw error;
+        
+        ringsToUpsert.push(record);
       }
+      
+      if (ringsToUpsert.length === 0) {
+        if (uploadResult.errorCount > 0) {
+            toast.error(`${uploadResult.errorCount} rows had validation errors.`);
+            console.error("Ring Upload Validation Errors:", allValidationErrors);
+        } else {
+            toast.warning("No valid records to upload.");
+        }
+        return uploadResult;
+      }
+      
+      toast.info(`Upserting ${ringsToUpsert.length} ring records...`);
+      const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
+      const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
+
+      if (upsertError) {
+        toast.error(`Ring Upload Failed: ${upsertError.message}`);
+        throw upsertError;
+      }
+
+      toast.info(`Updating system associations for ${upsertedRings.length} rings...`);
+      for (const ring of upsertedRings) {
+          const originalRecord = ringsToUpsert.find(r => r.id === ring.id || r.name === ring.name);
+          if (originalRecord && originalRecord.associated_systems_json) {
+              const { error: assocError } = await supabase.rpc('upsert_ring_associations_from_json', {
+                  p_ring_id: ring.id,
+                  p_associations: originalRecord.associated_systems_json as unknown as Json,
+              });
+              if (assocError) {
+                  toast.warning(`Failed to update associations for ring "${ring.name}": ${assocError.message}`);
+                  uploadResult.errorCount++;
+              }
+          }
+      }
+      
+      uploadResult.successCount = ringsToUpsert.length - uploadResult.errorCount;
+      uploadResult.totalRows = dataRows.length;
+      return uploadResult;
     },
-    ...mutationOptions,
+    onSuccess: (result) => {
+      if (result.successCount > 0) {
+        toast.success(`Successfully processed ${result.successCount} of ${result.totalRows} ring records.`);
+      }
+      if (result.errorCount > 0) {
+        toast.warning(`${result.errorCount} records had errors.`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
+      queryClient.invalidateQueries({ queryKey: ['systems-data'] });
+    },
+    onError: (error) => {
+        toast.error(`An unexpected error occurred during upload: ${error.message}`);
+    }
   });
 }
-
-// Hook for traditional table/view downloads with enhanced features
-export function useTableExcelDownload<T extends PublicTableOrViewName>(
-  supabase: SupabaseClient<Database>,
-  tableName: T,
-  options?: EnhancedUseExcelDownloadOptions<T>
-) {
-  const {
-    showToasts = true,
-    batchSize = 50000,
-    defaultOrderBy,
-    defaultWrapText = true,
-    defaultAutoFitColumns = true,
-    ...mutationOptions
-  } = options || {};
-
-  return useMutation<
-    ExcelDownloadResult,
-    Error,
-    Omit<EnhancedDownloadOptions<T>, "rpcConfig">
-  >({
-    mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
-      try {
-        const defaultStyles = getDefaultStyles();
-        const mergedOptions = {
-          sheetName: "Data",
-          maxRows: batchSize,
-          customStyles: defaultStyles,
-          orderBy: defaultOrderBy,
-          wrapText: defaultWrapText,
-          autoFitColumns: defaultAutoFitColumns,
-          ...downloadOptions,
-        };
-
-        const {
-          fileName = `${String(tableName)}-${
-            new Date().toISOString().split("T")[0]
-          }.xlsx`,
-          filters,
-          columns,
-          sheetName,
-          maxRows,
-          orderBy,
-          wrapText,
-          autoFitColumns,
-        } = mergedOptions;
-
-        const styles = { ...defaultStyles, ...mergedOptions.customStyles };
-
-        if (!columns || columns.length === 0)
-          throw new Error("No columns specified for export");
-        const exportColumns = columns.filter((col) => !col.excludeFromExport);
-        if (exportColumns.length === 0)
-          throw new Error("All columns are excluded from export");
-
-        toast.info("Fetching data for download...");
-
-        const selectFields = exportColumns
-          .map((col) => col.dataIndex)
-          .join(",");
-        let query = isTableName(tableName)
-          ? supabase.from(tableName as PublicTableName).select(selectFields)
-          : supabase.from(tableName as ViewName).select(selectFields);
-
-        if (filters) query = applyFilters(query, filters);
-        
-        // Apply ordering to the Supabase query
-        if (orderBy && orderBy.length > 0) {
-          orderBy.forEach(order => {
-            query = query.order(order.column, { ascending: order.ascending !== false });
-          });
-        }
-        
-        if (maxRows) query = query.limit(maxRows);
-
-        const { data, error } = await query;
-
-        if (error) throw new Error(`Failed to fetch data: ${error.message}`);
-        if (!data || data.length === 0)
-          throw new Error("No data found for the selected criteria");
-
-        const typedData = data as Row<T>[];
-        toast.success(
-          `Fetched ${typedData.length} records. Generating Excel file...`
-        );
-
-        // Excel generation logic with enhanced features
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet(sheetName || "Data");
-
-        worksheet.columns = exportColumns.map((col) => ({
-          key: String(col.dataIndex),
-          width: typeof col.width === "number" ? col.width / 8 : 20,
-        }));
-
-        const headerTitles = exportColumns.map((col) => col.title);
-        const headerRow = worksheet.addRow(headerTitles);
-        headerRow.height = wrapText ? 30 : 25; // Increase height for wrapped text
-
-        exportColumns.forEach((col, index) => {
-          const cell = headerRow.getCell(index + 1);
-          if (styles.headerFont) cell.font = styles.headerFont;
-          if (styles.headerFill) cell.fill = styles.headerFill;
-          
-          // Enhanced header alignment with text wrapping
-          cell.alignment = { 
-            horizontal: "center", 
-            vertical: "middle",
-            wrapText: wrapText || false
-          };
-
-          if (styles.borderStyle) {
-            cell.border = {
-              top: styles.borderStyle.top,
-              bottom: styles.borderStyle.bottom,
-              right: styles.borderStyle.right,
-              left: index === 0 ? styles.borderStyle.left : undefined,
-            };
-          }
-        });
-
-        // Add data rows with enhanced styling
-        typedData.forEach((record, rowIndex) => {
-          const rowData: Record<string, unknown> = {};
-          exportColumns.forEach((col) => {
-            const key = col.dataIndex as keyof Row<T> & string;
-            rowData[key] = formatCellValue(record[key], col);
-          });
-          const excelRow = worksheet.addRow(rowData);
-          
-          // Set row height for wrapped text
-          if (wrapText) {
-            excelRow.height = 20; // Minimum height, will auto-expand
-          }
-
-          exportColumns.forEach((col, colIndex) => {
-            const cell = excelRow.getCell(colIndex + 1);
-
-            if (styles.dataFont) cell.font = styles.dataFont;
-
-            if (rowIndex % 2 === 1 && styles.alternateRowFill) {
-              cell.fill = styles.alternateRowFill;
-            }
-
-            // Apply text wrapping and alignment
-            cell.alignment = {
-              ...cell.alignment,
-              wrapText: wrapText || false,
-              vertical: 'top' // Better for wrapped text
-            };
-
-            applyCellFormatting(cell, col);
-
-            if (styles.borderStyle) {
-              const isLastDataRow = rowIndex === typedData.length - 1;
-              cell.border = {
-                right: styles.borderStyle.right,
-                left: colIndex === 0 ? styles.borderStyle.left : undefined,
-                top: styles.borderStyle.top,
-                bottom: isLastDataRow ? styles.borderStyle.bottom : undefined,
-              };
-            }
-          });
-        });
-
-        // Auto-fit columns if enabled
-        if (autoFitColumns) {
-          exportColumns.forEach((col, index) => {
-            const column = worksheet.getColumn(index + 1);
-            let maxLength = col.title.length;
-            
-            // Calculate max content length for auto-fitting
-            typedData.forEach((record) => {
-              const key = col.dataIndex as keyof Row<T> & string;
-              const value = record[key];
-              const cellText = String(formatCellValue(value, col) || '');
-              
-              // For wrapped text, consider line breaks
-              if (wrapText) {
-                const lines = cellText.split('\n');
-                const maxLineLength = Math.max(...lines.map(line => line.length));
-                maxLength = Math.max(maxLength, maxLineLength);
-              } else {
-                maxLength = Math.max(maxLength, cellText.length);
-              }
-            });
-            
-            // Set reasonable bounds for column width
-            const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), wrapText ? 30 : 50);
-            column.width = calculatedWidth;
-          });
-        }
-
-        worksheet.views = [{ state: "frozen", ySplit: 1 }];
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const sanitizedFileName = sanitizeFileName(fileName);
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = sanitizedFileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-
-        toast.success(
-          `Excel file "${sanitizedFileName}" downloaded successfully!`
-        );
-        return {
-          fileName: sanitizedFileName,
-          rowCount: typedData.length,
-          columnCount: exportColumns.length,
-        };
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        if (
-          showToasts &&
-          errorMessage !== "No data found for the selected criteria"
-        ) {
-          toast.error(`Download failed: ${errorMessage}`);
-        }
-        throw error;
-      }
-    },
-    ...mutationOptions,
-  });
-}
-
 ```
 
 <!-- path: hooks/database/excel-queries/index.ts -->
@@ -14484,6 +14463,7 @@ export * from "./excel-download";
 export * from "./excel-upload";
 export * from "./useSystemConnectionExcelUpload";
 export * from "./useSystemExcelUpload";
+export * from "./useRingExcelUpload";
 ```
 
 <!-- path: hooks/database/excel-queries/excel-upload.ts -->
@@ -16558,6 +16538,9 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {
+  // [K in keyof Row<T>]?: Partial<
+  //   Omit<Column<Row<T>>, 'key' | 'dataIndex'>
+  // >;
   [K in keyof Row<T>]?: Partial<ColumnConfig<T>>;
 };
 
@@ -16635,6 +16618,13 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         return { ...defaultConfig, ...columnOverride };
       });
   }, [tableName, overrides, omit, columnWidths]);
+
+  // const columnsKeys = columns.map((col) => col.key);
+
+  // useEffect(() => {
+  //   console.log(`columns for ${tableName}`, columnsKeys);
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   return columns;
 }
@@ -20137,7 +20127,7 @@ export const getNodeIcon = (nodeType: string | null | undefined, isHighlighted: 
   ) {
     return IconDefault;
   }
-  if (type.includes('bts (running over radiolink)') || type.includes('bts microwave link')) {
+  if (type.includes('bts (running over radiolink)') || type.includes('bts microwave link') || type.includes('BTS (running over radiolink)')) {
     return BTSRLIcon;
   }
   if (type.includes('base transceiver station') || type.includes('baseband unit')) {
@@ -23192,6 +23182,9 @@ export default function HeroContent({
     e.preventDefault();
     setLoading(true);
     router.push("/dashboard");
+    // setTimeout(() => {
+    //   router.push("/dashboard");
+    // }, 1000); // Simulate loading for 1 second
   };
   return (
     <motion.div
@@ -25119,12 +25112,20 @@ export function RingModal({
   const isEdit = useMemo(() => Boolean(editingRing), [editingRing]);
 
   const ringTypeOptions: Option[] = useMemo(
-    () => (ringTypes || []).map((rt) => ({ value: rt.id, label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}` })),
+    () =>
+      (ringTypes || []).map((rt) => ({
+        value: rt.id,
+        label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
+      })),
     [ringTypes]
   );
 
   const maintenanceAreaOptions: Option[] = useMemo(
-    () => (maintenanceAreas || []).map((a) => ({ value: a.id, label: `${a.name}${a.code ? ` (${a.code})` : ""}` })),
+    () =>
+      (maintenanceAreas || []).map((a) => ({
+        value: a.id,
+        label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
+      })),
     [maintenanceAreas]
   );
 
@@ -25140,7 +25141,11 @@ export function RingModal({
       });
     } else {
       reset({
-        name: "", description: null, status: true, ring_type_id: null, maintenance_terminal_id: null,
+        name: "",
+        description: null,
+        status: true,
+        ring_type_id: null,
+        maintenance_terminal_id: null,
       });
     }
   }, [isOpen, editingRing, reset]);
@@ -25160,63 +25165,62 @@ export function RingModal({
       onClose={onClose}
       title={isEdit ? "Edit Ring" : "Add Ring"}
       visible={false}
-      className="transparent bg-gray-700 rounded-2xl"
-    >
+      className='transparent bg-gray-700 rounded-2xl'>
       <FormCard
         onSubmit={handleSubmit(onValidSubmit)}
-        heightClass="min-h-calc(90vh - 200px)"
+        heightClass='min-h-calc(90vh - 200px)'
         title={isEdit ? "Edit Ring" : "Add Ring"}
         onCancel={onClose}
         isLoading={isLoading}
-        standalone={true}
-      >
+        standalone={true}>
         <FormInput
-          name="name"
-          label="Name"
+          name='name'
+          label='Name'
           register={register}
           error={errors.name}
           disabled={isLoading}
-          placeholder="Enter ring name"
+          placeholder='Enter ring name'
         />
         <FormSearchableSelect
-          name="ring_type_id"
-          label="Ring Type"
+          name='ring_type_id'
+          label='Ring Type'
           control={control}
           error={errors.ring_type_id}
           disabled={isLoading}
-          placeholder="Select ring type"
+          placeholder='Select ring type'
           options={ringTypeOptions}
         />
 
         <FormSearchableSelect
-          name="maintenance_terminal_id"
-          label="Maintenance Terminal"
+          name='maintenance_terminal_id'
+          label='Maintenance Terminal'
           control={control}
           error={errors.maintenance_terminal_id}
           disabled={isLoading}
-          placeholder="Select maintenance terminal"
+          placeholder='Select maintenance terminal'
           options={maintenanceAreaOptions}
         />
 
         <FormTextarea
-          name="description"
-          label="Description"
+          name='description'
+          label='Description'
           control={control}
           error={errors.description}
           disabled={isLoading}
-          placeholder="Optional description"
+          placeholder='Optional description'
         />
         <FormSwitch
-          name="status"
-          label="Status"
+          name='status'
+          label='Status'
           control={control}
           error={errors.status}
-          className="my-2"
+          className='my-2'
         />
       </FormCard>
     </Modal>
   );
 }
+
 ```
 
 <!-- path: components/rings/RingSystemsModal.tsx -->
@@ -25982,6 +25986,10 @@ export default function FileUploader() {
     onError: setError,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
   });
+
+  // const handleUploadSuccess = useCallback(() => {
+  //   queryClient.invalidateQueries({ queryKey: ['files'] });
+  // }, [queryClient]);
 
   const {
     uppyRef,
@@ -29042,6 +29050,8 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
 
+  console.log(nodes);
+
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
@@ -29262,6 +29272,8 @@ export default function ClientRingMap({
             // THE FIX: Get the dynamically calculated direction and offset.
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
             const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
+            console.log(node);
+            
             return (
               <Marker
                 key={node.id! + i}
@@ -29280,8 +29292,8 @@ export default function ClientRingMap({
                 >
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
-                    <p>Type: {node.system_type}</p>
-                    <p>IP: {displayIp}</p>
+                    {node.system_type_code && <p>Type: {node.system_type_code}</p>}
+                    {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>
                 {/* THE FIX: Use the dynamic direction and offset */}
@@ -29291,7 +29303,7 @@ export default function ClientRingMap({
                   offset={offset}
                   className="permanent-label"
                 >
-                  {node.name}
+                  {node.system_node_name}
                 </Tooltip>
               </Marker>
             );
@@ -31903,7 +31915,7 @@ import { BaseEntity } from '@/components/common/entity-management/types';
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
   value: T[keyof T] | unknown;
-  type: 'text' | 'status' | 'parent' | 'date' | 'custom';
+  type: 'text' | 'status' | 'parent' | 'date' | 'custom' | 'html';
   entity: T;
   render?: (value: T[keyof T], entity: T) => React.ReactNode;
 }
@@ -31918,8 +31930,8 @@ export function DetailItem<T extends BaseEntity>({
   if (!value && type !== 'status') return null;
 
   const renderValue = () => {
+
     if (render) {
-      // We know value should be T[keyof T] when render is provided
       return render(value as T[keyof T], entity);
     }
 
@@ -31936,15 +31948,26 @@ export function DetailItem<T extends BaseEntity>({
             {value ? "Active" : "Inactive"}
           </span>
         );
+
       case 'parent':
         return value && typeof value === 'object' && 'name' in value
           ? String(value.name)
           : 'No parent';
+
       case 'date':
         if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
           return new Date(value).toLocaleDateString();
         }
         return 'N/A';
+
+      case 'html':
+      case 'custom':
+        if (typeof value === 'string') {
+          // 🧩 Render as HTML
+          return <div dangerouslySetInnerHTML={{ __html: value }} />;
+        }
+        return String(value);
+
       case 'text':
       default:
         return String(value);
@@ -31954,10 +31977,13 @@ export function DetailItem<T extends BaseEntity>({
   return (
     <div className="py-2">
       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{renderValue()}</dd>
+      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+        {renderValue()}
+      </dd>
     </div>
   );
 }
+
 ```
 
 <!-- path: components/common/entity-management/types.ts -->
@@ -32002,7 +32028,7 @@ export interface EntityConfig<T extends BaseEntity> {
   detailFields: Array<{
     key: keyof T;
     label: string;
-    type: 'text' | 'status' | 'parent' | 'date' | 'custom';
+    type: 'text' | 'status' | 'parent' | 'date' | 'custom' | 'html';
     render?: (value: T[keyof T], entity: T) => React.ReactNode;
   }>;
   filterOptions: Array<{
@@ -33304,6 +33330,24 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
     },
     [allowIPv4, allowIPv6, isValidIPv4, isValidIPv6]
   );
+
+  // const formatIPv6 = (ip: string): string => {
+  //   // Basic IPv6 formatting - expand compressed notation for display
+  //   if (!ip.includes('::')) return ip;
+
+  //   const parts = ip.split('::');
+  //   const leftParts = parts[0] ? parts[0].split(':') : [];
+  //   const rightParts = parts[1] ? parts[1].split(':') : [];
+  //   const missingParts = 8 - leftParts.length - rightParts.length;
+
+  //   const expanded = [
+  //     ...leftParts,
+  //     ...Array(missingParts).fill('0000'),
+  //     ...rightParts,
+  //   ];
+
+  //   return expanded.map((part) => part.padStart(4, '0')).join(':');
+  // };
 
   // Update validation state whenever the prop value changes from the outside (e.g., from react-hook-form)
   useEffect(() => {
@@ -36496,6 +36540,40 @@ export const Switch: React.FC<SwitchProps> = ({
   );
 };
 
+// // Basic usage
+// <Switch checked={isActive} onChange={setIsActive} />
+
+// // With label on left
+// <Switch 
+//   label="Dark Mode" 
+//   labelPosition="left" 
+//   checked={darkMode} 
+//   onChange={setDarkMode} 
+// />
+
+// // With color and status text
+// <Switch
+//   color="success"
+//   showStatusText
+//   checked={isEnabled}
+//   onChange={setIsEnabled}
+// />
+
+// // With icons and custom size
+// <Switch
+//   size="lg"
+//   showIcons
+//   checked={notifications}
+//   onChange={setNotifications}
+// />
+
+// // Disabled switch
+// <Switch
+//   disabled
+//   label="Read-only"
+//   checked={false}
+// />
+
 ```
 
 <!-- path: components/common/ui/phoneInput/PhoneInputWithCountry.tsx -->
@@ -36978,6 +37056,122 @@ export { ScrollArea, ScrollBar }
 
 <!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
+// "use client";
+
+// import { useThemeStore, Theme } from "@/stores/themeStore";
+// import { useState, useRef, useEffect } from "react";
+// import { FiChevronDown, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
+
+// export default function ThemeToggle() {
+//   const { theme, setTheme, hydrated } = useThemeStore();
+//   const [isOpen, setIsOpen] = useState(false);
+//   const dropdownRef = useRef<HTMLDivElement>(null);
+//   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+//   const options = [
+//     { value: "light" as Theme, icon: <FiSun size={16} />, label: "Light" },
+//     { value: "dark" as Theme, icon: <FiMoon size={16} />, label: "Dark" },
+//     { value: "system" as Theme, icon: <FiMonitor size={16} />, label: "System" },
+//   ];
+
+//   const currentOption = options.find((opt) => opt.value === theme);
+
+//   useEffect(() => {
+//     return () => {
+//       if (timeoutRef.current) {
+//         clearTimeout(timeoutRef.current);
+//       }
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       if (
+//         dropdownRef.current &&
+//         !dropdownRef.current.contains(event.target as Node)
+//       ) {
+//         setIsOpen(false);
+//       }
+//     };
+
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
+
+//   const handleMouseEnter = () => {
+//     if (timeoutRef.current) {
+//       clearTimeout(timeoutRef.current);
+//     }
+//     setIsOpen(true);
+//   };
+
+//   const handleMouseLeave = () => {
+//     timeoutRef.current = setTimeout(() => {
+//       setIsOpen(false);
+//     }, 300);
+//   };
+
+//   const handleOptionClick = (value: Theme) => {
+//     setTheme(value);
+//     setIsOpen(false);
+//     if (timeoutRef.current) {
+//       clearTimeout(timeoutRef.current);
+//     }
+//   };
+
+//   // Show loading state until hydrated
+//   if (!hydrated) {
+//     return (
+//       <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+//     );
+//   }
+
+//   return (
+//     <div
+//       ref={dropdownRef}
+//       className="relative"
+//       onMouseEnter={handleMouseEnter}
+//       onMouseLeave={handleMouseLeave}
+//     >
+//       <button
+//         onClick={() => setIsOpen(!isOpen)}
+//         className="flex items-center gap-2 rounded-lg bg-gray-200 px-3 py-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+//         aria-expanded={isOpen}
+//       >
+//         {currentOption?.icon}
+//         <span className="text-sm">{currentOption?.label}</span>
+//         <FiChevronDown
+//           size={16}
+//           className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+//         />
+//       </button>
+
+//       {isOpen && (
+//         <div
+//           className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+//           onMouseEnter={handleMouseEnter}
+//           onMouseLeave={handleMouseLeave}
+//         >
+//           {options.map((opt) => (
+//             <button
+//               key={opt.value}
+//               onClick={() => handleOptionClick(opt.value)}
+//               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 dark:text-white ${
+//                 theme === opt.value
+//                   ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+//                   : "hover:bg-gray-100 dark:hover:bg-gray-700"
+//               }`}
+//             >
+//               {opt.icon}
+//               <span>{opt.label}</span>
+//             </button>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
 
 "use client";
 
@@ -39394,6 +39588,9 @@ export function SearchAndFilters({
 import React, { useEffect, useRef, useState } from "react";
 
 export interface TruncateTooltipProps {
+  /**
+   * Accepts plain text or HTML content as string.
+   */
   text: string;
   className?: string;
   /**
@@ -39404,6 +39601,11 @@ export interface TruncateTooltipProps {
    * Optional: control max width of tooltip in px. Default 320.
    */
   maxWidth?: number;
+  /**
+   * Whether to render text as HTML.
+   * If true, content will use dangerouslySetInnerHTML.
+   */
+  renderAsHtml?: boolean;
 }
 
 /**
@@ -39415,6 +39617,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   className,
   id,
   maxWidth = 320,
+  renderAsHtml = false,
 }) => {
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -39425,7 +39628,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const checkOverflow = () => {
     const el = textRef.current;
     if (!el) return false;
-    // Compare scrollWidth vs clientWidth on the measured element itself
     const overflow = el.scrollWidth > el.clientWidth;
     setIsOverflowing(overflow);
     return overflow;
@@ -39449,7 +39651,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (checkOverflow()) {
       const el = textRef.current!;
       const rect = el.getBoundingClientRect();
-      // Clamp tooltip within viewport horizontally
       const left = Math.min(Math.max(8, rect.left), window.innerWidth - maxWidth - 8);
       setPos({ top: rect.bottom + 8, left });
       setShowTooltip(true);
@@ -39468,17 +39669,20 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         onBlur={hide}
         tabIndex={isOverflowing ? 0 : -1}
         aria-describedby={showTooltip && isOverflowing ? tooltipId : undefined}
+        {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
       >
-        {text}
+        {!renderAsHtml ? text : null}
       </span>
+
       {showTooltip && isOverflowing && (
         <div
           id={tooltipId}
           role="tooltip"
           className="fixed px-3 py-2 text-sm text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-300 whitespace-normal break-words pointer-events-none z-[9999]"
           style={{ top: pos.top, left: pos.left, maxWidth }}
+          {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
         >
-          {text}
+          {!renderAsHtml ? text : null}
         </div>
       )}
     </>
@@ -39486,6 +39690,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 };
 
 export default TruncateTooltip;
+
 
 ```
 
@@ -41596,7 +41801,7 @@ function TableBodyBase<T extends TableOrViewName>({
     <tbody className={`bg-white dark:bg-gray-800 ${rest.striped && !rest.bordered ? "divide-y divide-gray-200 dark:divide-gray-700" : ""}`}>
       {processedData.map((record, rowIndex) => (
         <MemoizedTableRow
-            key={record.id}
+            key={`${record.id} + ${rowIndex}`}
             record={record}
             rowIndex={rowIndex}
             visibleColumns={visibleColumns}
@@ -43687,7 +43892,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           <FormInput name='sn_interface' label='Start Node Interface' register={register} error={errors.sn_interface} />
           <FormSearchableSelect name='en_id' label='End Node System' control={control} options={systemOptions} error={errors.en_id} />
           <FormInput name='en_interface' label='End Node Interface' register={register} error={errors.en_interface} />
-          <FormSearchableSelect name='connected_system_id' label='Connected To System' control={control} options={systemOptions} error={errors.connected_system_id} />
+          <FormSearchableSelect name='connected_system_id' label='Connected To:' control={control} options={systemOptions} error={errors.connected_system_id} />
         </div>
       </div>
     </motion.div>
@@ -43879,7 +44084,8 @@ export function SystemRingPath({ system }: Props) {
           order_in_ring: null, 
           ring_status: null, 
           system_status: null,
-          system_type: node.node_type_name || ''
+          system_type: node.node_type_name || '',
+          system_type_code: node.node_type_code || '',
       }));
   }, [nodesInAreaResult, pathNodesResult]);
   
@@ -46799,11 +47005,11 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
     columns: "id, system_name, system_type_id, node_id, ip_address, s_no, make",
   });
-  
+
   const systemsOptions = useMemo(() => {
-    const queuedSystemIds = new Set(systemsToAdd.map(s => s.id));
+    const queuedSystemIds = new Set(systemsToAdd.map((s) => s.id));
     return systemsResult.data
-      .filter(s => !queuedSystemIds.has(s.id))
+      .filter((s) => !queuedSystemIds.has(s.id))
       .map((s) => ({ value: s.id, label: s.system_name || s.id }));
   }, [systemsResult, systemsToAdd]);
 
@@ -46829,7 +47035,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
 
   useEffect(() => {
     if (selectedSystemIdForm && systemsResult.data.length > 0) {
-      const selectedSystem = systemsResult.data.find(s => s.id === selectedSystemIdForm);
+      const selectedSystem = systemsResult.data.find((s) => s.id === selectedSystemIdForm);
       if (selectedSystem) {
         setValue("system_name", selectedSystem.system_name || selectedSystem.id);
         setValue("system_type_id", selectedSystem.system_type_id || "");
@@ -46882,10 +47088,10 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         maintenance_terminal_id: formData.maintenance_terminal_id,
         maan_node_id: formData.maan_node_id,
       };
-      
-      setSystemsToAdd(prev => [...prev, systemData]);
+
+      setSystemsToAdd((prev) => [...prev, systemData]);
       toast.success(`System queued! (${systemsToAdd.length + 1} total)`);
-      
+
       const currentRingId = formData.ring_id ?? null;
       const nextOrder = (formData.order_in_ring ?? 0) + 1;
       reset({
@@ -46941,7 +47147,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
   };
 
   const handleRemoveSystem = (index: number) => {
-    setSystemsToAdd(prev => prev.filter((_, i) => i !== index));
+    setSystemsToAdd((prev) => prev.filter((_, i) => i !== index));
     toast.info("System removed from queue.");
   };
 
@@ -46953,8 +47159,16 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
             {systemsToAdd.length > 0 && `${systemsToAdd.length} system(s) queued`}
           </div>
           <div className='flex gap-2'>
-            <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading || isSaving}>Cancel</Button>
-            <Button type='button' onClick={handleNext} disabled={isLoading || isSaving}>Next</Button>
+            <Button
+              type='button'
+              variant='secondary'
+              onClick={handleClose}
+              disabled={isLoading || isSaving}>
+              Cancel
+            </Button>
+            <Button type='button' onClick={handleNext} disabled={isLoading || isSaving}>
+              Next
+            </Button>
           </div>
         </div>
       );
@@ -46965,49 +47179,109 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
           {systemsToAdd.length > 0 && `${systemsToAdd.length} system(s) queued`}
         </div>
         <div className='flex gap-2'>
-          <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading || isSaving}>Back</Button>
-          <Button type='button' variant='secondary' onClick={handleSaveAll} disabled={isLoading || isSaving || systemsToAdd.length === 0}>
-            {isSaving ? 'Saving...' : `Save All (${systemsToAdd.length})`}
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => setStep(1)}
+            disabled={isLoading || isSaving}>
+            Back
           </Button>
-          <Button type='submit' disabled={isLoading || isSaving}>Add More</Button>
+          <Button
+            type='button'
+            variant='secondary'
+            onClick={handleSaveAll}
+            disabled={isLoading || isSaving || systemsToAdd.length === 0}>
+            {isSaving ? "Saving..." : `Save All (${systemsToAdd.length})`}
+          </Button>
+          <Button type='submit' disabled={isLoading || isSaving}>
+            Add More
+          </Button>
         </div>
       </div>
     );
   };
-  
+
   const step1Fields = (
-    <motion.div key='step1' initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
+    <motion.div
+      key='step1'
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.3 }}>
       <div className='space-y-4'>
         <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4'>
-          <p className='text-sm text-blue-800'><strong>Step 1:</strong> Select a ring to add systems to.</p>
+          <p className='text-sm text-blue-800'>
+            <strong>Step 1:</strong> Select a ring to add systems to.
+          </p>
         </div>
-        <FormSearchableSelect name='ring_id' label='Ring *' control={control} options={ringOptions} error={errors.ring_id} placeholder="Select a ring..." />
+        <FormSearchableSelect
+          name='ring_id'
+          label='Ring *'
+          control={control}
+          options={ringOptions}
+          error={errors.ring_id}
+          placeholder='Select a ring...'
+        />
       </div>
     </motion.div>
   );
 
   const step2Fields = (
-    <motion.div key='step2' initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+    <motion.div
+      key='step2'
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}>
       <div className='space-y-4'>
         {systemsToAdd.length > 0 && (
           <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
-            <p className='text-sm text-green-800 font-medium mb-2'>✓ {systemsToAdd.length} system(s) queued for saving</p>
+            <p className='text-sm text-green-800 font-medium mb-2'>
+              ✓ {systemsToAdd.length} system(s) queued for saving
+            </p>
             <div className='space-y-2'>
               {systemsToAdd.map((sys, idx) => (
-                <div key={idx} className='flex justify-between items-center bg-white p-2 rounded border border-green-300'>
-                  <span className='text-sm text-gray-700 font-medium'>{idx + 1}. {sys.system_name} (Order: {sys.order_in_ring})</span>
-                  <button type='button' onClick={() => handleRemoveSystem(idx)} className='text-red-600 hover:text-red-800 text-sm'>Remove</button>
+                <div
+                  key={idx}
+                  className='flex justify-between items-center bg-white p-2 rounded border border-green-300'>
+                  <span className='text-sm text-gray-700 font-medium'>
+                    {idx + 1}. {sys.system_name} (Order: {sys.order_in_ring})
+                  </span>
+                  <button
+                    type='button'
+                    onClick={() => handleRemoveSystem(idx)}
+                    className='text-red-600 hover:text-red-800 text-sm'>
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
         <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-          <p className='text-sm text-blue-800'><strong>Adding system to:</strong> {ringOptions.find(r => r.value === selectedRingId)?.label || 'Selected Ring'}</p>
+          <p className='text-sm text-blue-800'>
+            <strong>Adding system to:</strong>{" "}
+            {ringOptions.find((r) => r.value === selectedRingId)?.label || "Selected Ring"}
+          </p>
         </div>
-        <FormSearchableSelect name='selected_system_id' label='System *' control={control} options={systemsOptions} error={errors.selected_system_id} placeholder="Select a system..." />
+        <FormSearchableSelect
+          name='selected_system_id'
+          label='System *'
+          control={control}
+          options={systemsOptions}
+          error={errors.selected_system_id}
+          placeholder='Select a system...'
+        />
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <FormInput name='order_in_ring' label='Order in Ring' type='number' step='1' register={register} error={errors.order_in_ring} placeholder='e.g., 1, 2, 3...' />
+          <FormInput
+            name='order_in_ring'
+            label='Order in Ring'
+            type='number'
+            step='0.1'
+            register={register}
+            error={errors.order_in_ring}
+            placeholder='e.g., 1, 2, 2.1, 3...'
+          />
           <div className='flex items-center gap-4 pt-6'>
             <FormSwitch name='status' label='Active' control={control} />
             <FormSwitch name='is_hub' label='Hub System' control={control} />
@@ -47017,18 +47291,32 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
     </motion.div>
   );
 
-  const modalTitle = `Add Systems to Ring ${step === 2 && systemsToAdd.length > 0 ? `(${systemsToAdd.length} queued)` : `(Step ${step} of 2)`}`;
+  const modalTitle = `Add Systems to Ring ${
+    step === 2 && systemsToAdd.length > 0
+      ? `(${systemsToAdd.length} queued)`
+      : `(Step ${step} of 2)`
+  }`;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} visible={false} className='h-0 w-0 bg-transparent'>
-      <FormCard standalone onSubmit={handleSubmit(onAddSystem, onInvalidSubmit)} onCancel={handleClose} isLoading={isLoading || isSaving} title={modalTitle} footerContent={renderFooter()}>
-        <AnimatePresence mode='wait'>
-          {step === 1 ? step1Fields : step2Fields}
-        </AnimatePresence>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={modalTitle}
+      visible={false}
+      className='h-0 w-0 bg-transparent'>
+      <FormCard
+        standalone
+        onSubmit={handleSubmit(onAddSystem, onInvalidSubmit)}
+        onCancel={handleClose}
+        isLoading={isLoading || isSaving}
+        title={modalTitle}
+        footerContent={renderFooter()}>
+        <AnimatePresence mode='wait'>{step === 1 ? step1Fields : step2Fields}</AnimatePresence>
       </FormCard>
     </Modal>
   );
 };
+
 ```
 
 <!-- path: components/ring-manager/EditSystemInRingModal.tsx -->
@@ -47104,32 +47392,33 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
       onClose={onClose}
       title={`Edit System: ${system?.system_name || ""}`}
       visible={false}
-      className="transparent bg-gray-700 rounded-2xl"
-    >
+      className='transparent bg-gray-700 rounded-2xl'>
       <FormCard
         standalone
-        onSubmit={handleSubmit(handleValidSubmit, () => toast.error("Please fix validation errors"))}
+        onSubmit={handleSubmit(handleValidSubmit, () =>
+          toast.error("Please fix validation errors")
+        )}
         onCancel={onClose}
         isLoading={isLoading}
         title={`Edit: ${system?.system_name || "System"}`}
-        submitText="Save Changes"
-      >
-        <div className="space-y-4">
+        submitText='Save Changes'>
+        <div className='space-y-4'>
           <FormInput
-            name="order_in_ring"
-            label="Order in Ring"
-            type="number"
-            step="1"
+            name='order_in_ring'
+            label='Order in Ring'
+            type='number'
+            step='0.1'
             register={register}
             error={errors.order_in_ring}
-            placeholder="e.g., 1, 2, 3..."
+            placeholder='e.g., 1, 2, 2.1, 3...'
           />
-          <FormSwitch name="is_hub" label="Is Hub System" control={control} />
+          <FormSwitch name='is_hub' label='Is Hub System' control={control} />
         </div>
       </FormCard>
     </Modal>
   );
 };
+
 ```
 
 <!-- path: types/error-types.ts -->
@@ -47382,6 +47671,7 @@ export type Database = {
           friendly_name: string | null
           id: string
           last_challenged_at: string | null
+          last_webauthn_challenge_data: Json | null
           phone: string | null
           secret: string | null
           status: Database["auth"]["Enums"]["factor_status"]
@@ -47396,6 +47686,7 @@ export type Database = {
           friendly_name?: string | null
           id: string
           last_challenged_at?: string | null
+          last_webauthn_challenge_data?: Json | null
           phone?: string | null
           secret?: string | null
           status: Database["auth"]["Enums"]["factor_status"]
@@ -47410,6 +47701,7 @@ export type Database = {
           friendly_name?: string | null
           id?: string
           last_challenged_at?: string | null
+          last_webauthn_challenge_data?: Json | null
           phone?: string | null
           secret?: string | null
           status?: Database["auth"]["Enums"]["factor_status"]
@@ -47788,6 +48080,8 @@ export type Database = {
           ip: unknown
           not_after: string | null
           oauth_client_id: string | null
+          refresh_token_counter: number | null
+          refresh_token_hmac_key: string | null
           refreshed_at: string | null
           tag: string | null
           updated_at: string | null
@@ -47802,6 +48096,8 @@ export type Database = {
           ip?: unknown
           not_after?: string | null
           oauth_client_id?: string | null
+          refresh_token_counter?: number | null
+          refresh_token_hmac_key?: string | null
           refreshed_at?: string | null
           tag?: string | null
           updated_at?: string | null
@@ -47816,6 +48112,8 @@ export type Database = {
           ip?: unknown
           not_after?: string | null
           oauth_client_id?: string | null
+          refresh_token_counter?: number | null
+          refresh_token_hmac_key?: string | null
           refreshed_at?: string | null
           tag?: string | null
           updated_at?: string | null
@@ -49555,19 +49853,19 @@ export type Database = {
         Row: {
           maintenance_area_id: string | null
           order_in_ring: number | null
-          ring_id: string | null
+          ring_id: string
           system_id: string
         }
         Insert: {
           maintenance_area_id?: string | null
           order_in_ring?: number | null
-          ring_id?: string | null
+          ring_id: string
           system_id: string
         }
         Update: {
           maintenance_area_id?: string | null
           order_in_ring?: number | null
-          ring_id?: string | null
+          ring_id?: string
           system_id?: string
         }
         Relationships: [
@@ -49609,14 +49907,14 @@ export type Database = {
           {
             foreignKeyName: "ring_based_systems_system_id_fkey"
             columns: ["system_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ring_based_systems_system_id_fkey"
             columns: ["system_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -50841,8 +51139,10 @@ export type Database = {
           ring_id: string | null
           ring_name: string | null
           ring_status: boolean | null
+          system_node_name: string | null
           system_status: boolean | null
           system_type: string | null
+          system_type_code: string | null
           type: string | null
         }
         Relationships: []
@@ -51151,6 +51451,7 @@ export type Database = {
           node_type_name: string | null
           order_in_ring: number | null
           remark: string | null
+          ring_associations: Json | null
           ring_id: string | null
           ring_logical_area_name: string | null
           s_no: string | null
@@ -51164,27 +51465,6 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "rings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["ring_id"]
-          },
-          {
-            foreignKeyName: "ring_based_systems_ring_id_fkey"
-            columns: ["ring_id"]
-            isOneToOne: false
-            referencedRelation: "v_rings"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "systems_maintenance_terminal_id_fkey"
             columns: ["maintenance_terminal_id"]
@@ -51416,6 +51696,10 @@ export type Database = {
         Args: { p_path_id: string }
         Returns: undefined
       }
+      disassociate_system_from_ring: {
+        Args: { p_ring_id: string; p_system_id: string }
+        Returns: undefined
+      }
       execute_sql: { Args: { sql_query: string }; Returns: Json }
       find_cable_between_nodes: {
         Args: { p_node1_id: string; p_node2_id: string }
@@ -51579,8 +51863,22 @@ export type Database = {
           p_order_by?: string
           p_order_dir?: string
           p_view_name: string
+          row_limit?: number
         }
         Returns: Json
+      }
+      get_rings_for_export: {
+        Args: { order_by?: string; row_limit?: number }
+        Returns: {
+          associated_systems: Json
+          description: string
+          id: string
+          maintenance_area_name: string
+          name: string
+          ring_type_name: string
+          status: boolean
+          total_nodes: number
+        }[]
       }
       get_route_topology_for_export: {
         Args: { p_route_id: string }
@@ -51688,6 +51986,10 @@ export type Database = {
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
+        Returns: undefined
+      }
+      upsert_ring_associations_from_json: {
+        Args: { p_associations: Json; p_ring_id: string }
         Returns: undefined
       }
       upsert_route_topology_from_excel: {
@@ -52163,6 +52465,7 @@ export type AuthMfa_factorsRow = {
     friendly_name: string | null;
     id: string;
     last_challenged_at: string | null;
+    last_webauthn_challenge_data: Json | null;
     phone: string | null;
     secret: string | null;
     status: Database["auth"]["Enums"]["factor_status"];
@@ -52178,6 +52481,7 @@ export type AuthMfa_factorsInsert = {
     friendly_name?: string | null;
     id: string;
     last_challenged_at?: string | null;
+    last_webauthn_challenge_data?: Json | null;
     phone?: string | null;
     secret?: string | null;
     status: Database["auth"]["Enums"]["factor_status"];
@@ -52193,6 +52497,7 @@ export type AuthMfa_factorsUpdate = {
     friendly_name?: string | null;
     id?: string;
     last_challenged_at?: string | null;
+    last_webauthn_challenge_data?: Json | null;
     phone?: string | null;
     secret?: string | null;
     status?: Database["auth"]["Enums"]["factor_status"];
@@ -52486,6 +52791,8 @@ export type AuthSessionsRow = {
     ip: unknown;
     not_after: string | null;
     oauth_client_id: string | null;
+    refresh_token_counter: number | null;
+    refresh_token_hmac_key: string | null;
     refreshed_at: string | null;
     tag: string | null;
     updated_at: string | null;
@@ -52501,6 +52808,8 @@ export type AuthSessionsInsert = {
     ip?: unknown;
     not_after?: string | null;
     oauth_client_id?: string | null;
+    refresh_token_counter?: number | null;
+    refresh_token_hmac_key?: string | null;
     refreshed_at?: string | null;
     tag?: string | null;
     updated_at?: string | null;
@@ -52516,6 +52825,8 @@ export type AuthSessionsUpdate = {
     ip?: unknown;
     not_after?: string | null;
     oauth_client_id?: string | null;
+    refresh_token_counter?: number | null;
+    refresh_token_hmac_key?: string | null;
     refreshed_at?: string | null;
     tag?: string | null;
     updated_at?: string | null;
@@ -53459,21 +53770,21 @@ export type Ports_managementUpdate = {
 export type Ring_based_systemsRow = {
     maintenance_area_id: string | null;
     order_in_ring: number | null;
-    ring_id: string | null;
+    ring_id: string;
     system_id: string;
 };
 
 export type Ring_based_systemsInsert = {
     maintenance_area_id?: string | null;
     order_in_ring?: number | null;
-    ring_id?: string | null;
+    ring_id: string;
     system_id: string;
 };
 
 export type Ring_based_systemsUpdate = {
     maintenance_area_id?: string | null;
     order_in_ring?: number | null;
-    ring_id?: string | null;
+    ring_id?: string;
     system_id?: string;
 };
 
@@ -53928,8 +54239,10 @@ export type V_ring_nodesRow = {
     ring_id: string | null;
     ring_name: string | null;
     ring_status: boolean | null;
+    system_node_name: string | null;
     system_status: boolean | null;
     system_type: string | null;
+    system_type_code: string | null;
     type: string | null;
 };
 
@@ -54024,6 +54337,7 @@ export type V_systems_completeRow = {
     node_type_name: string | null;
     order_in_ring: number | null;
     remark: string | null;
+    ring_associations: Json | null;
     ring_id: string | null;
     ring_logical_area_name: string | null;
     s_no: string | null;
@@ -54932,8 +55246,11 @@ export default PrivacyPage;
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+  // THE FIX: Set a longer timeout and use an AbortController for robust handling.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+
   try {
-    // Add a check for an empty body to prevent JSON parsing errors.
     const body = await req.text();
     if (!body) {
       return NextResponse.json({ error: "Request body is empty" }, { status: 400 });
@@ -54959,8 +55276,13 @@ export async function POST(req: NextRequest) {
           [b.long, b.lat],
         ],
       }),
+      // THE FIX: Attach the abort signal to the fetch request.
+      signal: controller.signal,
     });
     
+    // Clear the timeout timer once the fetch is complete
+    clearTimeout(timeoutId);
+
     if (!res.ok) {
       const errorData = await res.json();
       console.error("ORS API Error:", errorData);
@@ -54972,6 +55294,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ distance_km: meters ? (meters / 1000).toFixed(1) : null });
 
   } catch (error) {
+    clearTimeout(timeoutId); // Ensure timeout is cleared on any error
+    
+    // THE FIX: Provide more specific error messages based on the error type.
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error("ORS API request timed out after 20 seconds.");
+      return NextResponse.json({ error: "The routing service took too long to respond. Please try again later." }, { status: 504 }); // 504 Gateway Timeout
+    }
+
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     console.error("ORS internal API error:", error);
     return NextResponse.json({ error: `Failed to fetch distance: ${errorMessage}` }, { status: 500 });
@@ -56551,6 +56881,8 @@ export default function RingMapPage() {
         ip: node.ip,
         remark: node.remark,
         is_hub: node.is_hub,
+        system_type_code: node.system_type_code,
+        system_node_name: node.system_node_name,
       }));
   }, [nodes]);
 
@@ -59347,13 +59679,11 @@ export default function SystemConnectionsPage() {
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { FiDatabase, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal/confirmModal';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { DataTable } from '@/components/table/DataTable';
+import { PageHeader } from '@/components/common/page-header';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import { useRpcMutation, RpcFunctionArgs, buildRpcFilters} from '@/hooks/database';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
@@ -59370,6 +59700,12 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { ActionButton } from '@/components/common/page-header';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { Row, TableOrViewName } from '@/hooks/database';
+import { createStandardActions } from '@/components/table/action-helpers';
+
 
 const useSystemsData = (
   params: DataQueryHookParams
@@ -59388,6 +59724,7 @@ const useSystemsData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
+      p_order_by: 'system_name',
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];
@@ -59462,6 +59799,7 @@ export default function SystemsPage() {
     activeCount,
     inactiveCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
@@ -59477,6 +59815,14 @@ export default function SystemsPage() {
     searchColumn: 'system_name',
     displayNameField: 'system_name',
   });
+  
+  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    },
+  });
+  
+  const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
 
   const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
     ...TABLE_COLUMN_KEYS.v_systems_complete,
@@ -59491,12 +59837,6 @@ export default function SystemsPage() {
       editModal.close();
     },
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
-  });
-
-  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
-    },
   });
 
   const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -59529,7 +59869,7 @@ export default function SystemsPage() {
       }),
     [editModal.openEdit, handleView, crudActions]
   );
-
+  
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -59545,24 +59885,56 @@ export default function SystemsPage() {
     }
   };
 
-  const headerActions = useStandardHeaderActions({
-    data: systems,
-    onRefresh: () => {
-      refetch();
-      toast.success('Systems refreshed.');
-    },
-    onAddNew: editModal.openAdd,
-    isLoading: isLoading,
-    exportConfig: { tableName: 'v_systems_complete', fileName: 'systems' },
-  });
+  const handleExport = () => {
+    // THE FIX: Explicitly cast the columns to the expected generic type to resolve the TypeScript error.
+    const exportColumns = orderedSystems as Column<Row<TableOrViewName>>[];
 
-  headerActions.splice(1, 0, {
-    label: isUploading ? 'Uploading...' : 'Upload Systems',
-    onClick: handleUploadClick,
-    variant: 'outline',
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading,
-  });
+    exportSystems({
+      fileName: `systems-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Systems',
+      columns: exportColumns,
+      rpcConfig: {
+        functionName: 'get_paged_data',
+        parameters: {
+          p_view_name: 'v_systems_complete',
+          p_limit: 50000,
+          p_offset: 0,
+          p_filters: buildRpcFilters(filters.filters),
+        },
+      },
+    });
+  };
+
+  const headerActions = useMemo((): ActionButton[] => [
+    {
+      label: 'Refresh',
+      onClick: () => { refetch(); toast.success('Systems refreshed.'); },
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+      disabled: isLoading,
+    },
+    {
+      label: isUploading ? 'Uploading...' : 'Upload Systems',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+    },
+    {
+      label: isExporting ? 'Exporting...' : 'Export',
+      onClick: handleExport,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isLoading,
+    },
+    {
+      label: 'Add New',
+      onClick: editModal.openAdd,
+      variant: 'primary',
+      leftIcon: <FiDatabase />,
+      disabled: isLoading,
+    },
+  ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd, filters.filters]);
 
   const headerStats = [
     { value: totalCount, label: 'Total Systems' },
@@ -59634,14 +60006,7 @@ export default function SystemsPage() {
         columns={orderedSystems}
         loading={isLoading}
         exportable={true}
-        exportOptions={{
-          fileName: 'systems_export',
-          sheetName: 'Systems',
-          includeFilters: true,
-          // Ensure we're using the same columns as the table
-          columns: orderedSystems,
-          fallbackToCsv: true,
-        }}
+        onExport={handleExport}
         actions={tableActions}
         pagination={{
           current: pagination.currentPage,
@@ -59676,7 +60041,7 @@ export default function SystemsPage() {
                 .filter((s) => s.name !== 'DEFAULT')
                 .map((t) => ({
                   value: t.name,
-                  label: t.code || t.name, // Fallback to t.name if code is null
+                  label: t.code || t.name,
                 }))}
             />
             <SelectFilter
@@ -59711,7 +60076,6 @@ export default function SystemsPage() {
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/nodes/page.tsx -->
@@ -60489,16 +60853,16 @@ export default function DiaryPage() {
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
+import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { PageHeader, ActionButton } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
-import { createStandardActions } from '@/components/table/action-helpers';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
 import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
@@ -60519,6 +60883,7 @@ import {
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
+  RingsRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -60528,13 +60893,19 @@ import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { SystemFormData } from '@/schemas/system-schemas';
-import { FiEdit } from 'react-icons/fi';
 import { UseQueryResult } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
+import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 
-const useRingsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_ringsRowSchema> => {
+interface SystemToDisassociate {
+  ringId: string;
+  systemId: string;
+  systemName: string;
+  ringName: string;
+}
+
+const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
@@ -60565,12 +60936,9 @@ const useRingsData = (
     isFetching,
     error,
     refetch,
-  } = useOfflineQuery(
-    ['rings-manager-data', searchQuery, filters],
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: DEFAULTS.CACHE_TIME }
-  );
+  } = useOfflineQuery(['rings-manager-data', searchQuery, filters], onlineQueryFn, offlineQueryFn, {
+    staleTime: DEFAULTS.CACHE_TIME,
+  });
 
   const processedData = useMemo(() => {
     let filtered = allRings;
@@ -60584,19 +60952,21 @@ const useRingsData = (
           ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
       );
     }
-    Object.keys(filters).forEach(key => {
-        if (filters[key]) {
-            filtered = filtered.filter(item => item[key as keyof V_ringsRowSchema] === filters[key]);
-        }
+    Object.keys(filters).forEach((key) => {
+      if (filters[key]) {
+        filtered = filtered.filter((item) => item[key as keyof V_ringsRowSchema] === filters[key]);
+      }
     });
 
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
+    filtered.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
+    );
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((r) => r.status === true).length;
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
-    
+
     return {
       data: filtered.slice(start, end),
       totalCount,
@@ -60608,22 +60978,35 @@ const useRingsData = (
   return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
 };
 
-
 export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin } = useUser();
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
   const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
-  
+  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(
+    null
+  );
+
   const {
     data: rings,
-    totalCount, activeCount, inactiveCount,
-    isLoading, isMutating: isCrudMutating, isFetching, error, refetch,
-    queryResult, search, filters,
-    editModal, deleteModal, viewModal,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isMutating: isCrudMutating,
+    isFetching,
+    error,
+    refetch,
+    queryResult,
+    search,
+    filters,
+    editModal,
+    deleteModal,
+    viewModal,
     actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',
@@ -60633,9 +61016,11 @@ export default function RingManagerPage() {
 
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
+  const { mutate: uploadRings, isPending: isUploading } = useRingExcelUpload(supabase);
+  const { mutate: exportRings, isPending: isExporting } = useRPCExcelDownload(supabase);
   const isMutating = isCrudMutating || isInserting || isUpdating;
 
-  const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
       void refetchSystems();
@@ -60643,50 +61028,65 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
 
-  // THE FIX: Explicitly set a high limit to ensure all systems are fetched.
-  const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(supabase, 'v_systems_complete', {
-    limit: 5000, // Fetch up to 5000 systems to ensure the list is complete
+  const disassociateSystemMutation = useRpcMutation(supabase, 'disassociate_system_from_ring', {
+    onSuccess: () => {
+      toast.success('System disassociated from ring.');
+      void refetch();
+      void refetchSystems();
+      setSystemToDisassociate(null);
+    },
+    onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
+
+  const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(
+    supabase,
+    'v_systems_complete',
+    {
+      limit: 5000,
+    }
+  );
 
   const allSystems = useMemo(() => allSystemsResult?.data || [], [allSystemsResult]);
 
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
-    
-    const promises = systemsData.map(systemData => {
-        const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
-            p_id: systemData.id ?? undefined,
-            p_system_name: systemData.system_name!,
-            p_system_type_id: systemData.system_type_id!,
-            p_node_id: systemData.node_id!,
-            p_status: systemData.status ?? true,
-            p_is_hub: systemData.is_hub ?? false,
-            p_ring_id: systemData.ring_id ?? undefined,
-            p_order_in_ring: systemData.order_in_ring != null ? Number(systemData.order_in_ring) : undefined,
-            p_ip_address: (systemData.ip_address as string) || undefined,
-            p_s_no: systemData.s_no ?? undefined,
-            p_make: systemData.make ?? undefined,
-            p_maan_node_id: systemData.maan_node_id ?? undefined,
-            p_maintenance_terminal_id: systemData.maintenance_terminal_id ?? undefined,
-            p_commissioned_on: systemData.commissioned_on ?? undefined,
-            p_remark: systemData.remark ?? undefined,
-        };
-        return upsertSystemMutation.mutateAsync(payload);
+    const promises = systemsData.map((systemData) => {
+      const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+        p_id: systemData.id ?? undefined,
+        p_system_name: systemData.system_name!,
+        p_system_type_id: systemData.system_type_id!,
+        p_node_id: systemData.node_id!,
+        p_status: systemData.status ?? true,
+        p_is_hub: systemData.is_hub ?? false,
+        p_ring_id: systemData.ring_id ?? undefined,
+        p_order_in_ring:
+          systemData.order_in_ring != null ? Number(systemData.order_in_ring) : undefined,
+        p_ip_address: (systemData.ip_address as string) || undefined,
+        p_s_no: systemData.s_no ?? undefined,
+        p_make: systemData.make ?? undefined,
+        p_maan_node_id: systemData.maan_node_id ?? undefined,
+        p_maintenance_terminal_id: systemData.maintenance_terminal_id ?? undefined,
+        p_commissioned_on: systemData.commissioned_on ?? undefined,
+        p_remark: systemData.remark ?? undefined,
+      };
+      return upsertSystemMutation.mutateAsync(payload);
     });
-
     try {
-        await Promise.all(promises);
-        toast.success("All system associations saved successfully!");
-        void refetch();
+      await Promise.all(promises);
+      toast.success('All system associations saved successfully!');
+      void refetch();
     } catch {
-        toast.error("One or more system associations failed to save. Errors are logged in the console.");
+      toast.error('One or more system associations failed to save.');
     }
   };
 
-  const handleUpdateSystemInRing = (formData: { order_in_ring: number | null; is_hub: boolean | null; }) => {
+  const handleUpdateSystemInRing = (formData: {
+    order_in_ring: number | null;
+    is_hub: boolean | null;
+  }) => {
     if (!systemToEdit) return;
 
-    const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+    const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
       p_id: systemToEdit.id!,
       p_system_name: systemToEdit.system_name!,
       p_system_type_id: systemToEdit.system_type_id!,
@@ -60694,7 +61094,10 @@ export default function RingManagerPage() {
       p_status: systemToEdit.status!,
       p_is_hub: formData.is_hub ?? systemToEdit.is_hub ?? false,
       p_ring_id: systemToEdit.ring_id ?? undefined,
-      p_order_in_ring: formData.order_in_ring != null ? Number(formData.order_in_ring) : (systemToEdit.order_in_ring ?? undefined),
+      p_order_in_ring:
+        formData.order_in_ring != null
+          ? Number(formData.order_in_ring)
+          : systemToEdit.order_in_ring ?? undefined,
       p_ip_address: (systemToEdit.ip_address as string) || undefined,
       p_s_no: systemToEdit.s_no ?? undefined,
       p_make: systemToEdit.make ?? undefined,
@@ -60709,18 +61112,20 @@ export default function RingManagerPage() {
         setIsEditSystemModalOpen(false);
         setSystemToEdit(null);
         void refetchSystems();
-      }
+      },
     });
   };
 
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ring-types-for-modal'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'RING_TYPES' }).toArray()
   );
   const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
     ['maintenance-areas-for-modal'],
-    async () => (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () =>
+      (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
     async () => await localDb.maintenance_areas.where({ status: true }).toArray()
   );
 
@@ -60738,90 +61143,201 @@ export default function RingManagerPage() {
     }
   };
 
-  const handleViewDetails = (record: V_ringsRowSchema) => {
-    if (record.id) router.push(`/dashboard/rings/${record.id}`);
+  const handleViewDetails = useCallback(
+    (record: V_ringsRowSchema) => {
+      if (record.id) router.push(`/dashboard/rings/${record.id}`);
+    },
+    [router]
+  );
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadRings({ file });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  const headerActions = useStandardHeaderActions({
-    data: rings, onRefresh: refetch, onAddNew: editModal.openAdd,
-    isLoading: isLoading, exportConfig: { tableName: 'v_rings' }
-  });
-  
-  headerActions.push({
-    label: 'Add Systems to Ring',
-    onClick: () => setIsSystemsModalOpen(true),
-    variant: 'primary',
-    leftIcon: <FaNetworkWired />,
-    disabled: isLoading,
-  });
+  const handleExportClick = useCallback(() => {
+    exportRings({
+      fileName: `rings-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Rings',
+      rpcConfig: {
+        functionName: 'get_rings_for_export',
+      },
+      columns: [
+        { key: 'id', title: 'id', dataIndex: 'id' },
+        { key: 'name', title: 'name', dataIndex: 'name' },
+        { key: 'description', title: 'description', dataIndex: 'description' },
+        { key: 'ring_type_name', title: 'ring_type_name', dataIndex: 'ring_type_name' },
+        {
+          key: 'maintenance_area_name',
+          title: 'maintenance_area_name',
+          dataIndex: 'maintenance_area_name',
+        },
+        { key: 'status', title: 'status', dataIndex: 'status' },
+        { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
+        // THE FIX: Explicitly mark this column to be formatted as JSON.
+        {
+          key: 'associated_systems',
+          title: 'associated_systems',
+          dataIndex: 'associated_systems',
+          excelFormat: 'json',
+        },
+      ],
+    });
+  }, [exportRings]);
 
-  const headerStats = useMemo(() => [
-    { value: totalCount, label: 'Total Rings' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ], [totalCount, activeCount, inactiveCount]);
+  const headerActions = useMemo(() => {
+    const actions: ActionButton[] = [];
 
-  const ringEntities: RingEntity[] = useMemo(() =>
-    (rings || [])
-      .filter((r): r is V_ringsRowSchema & { id: string; name: string } => !!r.id && !!r.name)
-      .map(r => ({ ...r, id: r.id, name: r.name })),
-  [rings]);
-  
-  const entityActions = useMemo(() => createStandardActions<V_ringsRowSchema>({
-    onEdit: editModal.openEdit,
-    onView: handleViewDetails,
-    onDelete: crudActions.handleDelete,
-    canDelete: () => isSuperAdmin === true,
-  }), [editModal.openEdit, handleViewDetails, crudActions.handleDelete, isSuperAdmin]);
+    actions.push({
+      label: 'Refresh',
+      onClick: () => refetch(),
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+      disabled: isLoading,
+    });
 
+    actions.push({
+      label: isUploading ? 'Uploading...' : 'Upload Rings',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+    });
+
+    actions.push({
+      label: isExporting ? 'Exporting...' : 'Export Rings',
+      onClick: handleExportClick,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isLoading,
+    });
+
+    actions.push({
+      label: 'Add New Ring',
+      onClick: editModal.openAdd,
+      variant: 'primary',
+      leftIcon: <GiLinkedRings />,
+      disabled: isLoading,
+    });
+
+    actions.push({
+      label: 'Add Systems to Ring',
+      onClick: () => setIsSystemsModalOpen(true),
+      variant: 'primary',
+      leftIcon: <FaNetworkWired />,
+      disabled: isLoading,
+    });
+
+    return actions;
+  }, [
+    isLoading,
+    isUploading,
+    isExporting,
+    refetch,
+    handleUploadClick,
+    handleExportClick,
+    editModal.openAdd,
+  ]);
+
+  const headerStats = useMemo(
+    () => [
+      { value: totalCount, label: 'Total Rings' },
+      { value: activeCount, label: 'Active', color: 'success' as const },
+      { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+    ],
+    [totalCount, activeCount, inactiveCount]
+  );
 
   const dynamicFilterConfig: EntityConfig<RingEntity> = {
-  ...ringConfig,
-  filterOptions: ringConfig.filterOptions.map(opt => {
-    if (opt.key === 'ring_type_id') {
-      return { ...opt, options: (ringTypesData || []).map(t => ({ value: t.id, label: t.name })) };
-    }
-    if (opt.key === 'maintenance_terminal_id') {
-      return { ...opt, options: (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })) };
-    }
-    return opt;
-  }),
-  detailFields: [
-    ...ringConfig.detailFields,
-    {
-      key: 'id',
-      label: 'Associated Systems',
-      type: 'custom' as const,
-      render: (_value: unknown, entity: RingEntity) => {
-        const associatedSystems = allSystems.filter(s => s.ring_id === entity.id)
-          .sort((a,b) => (a.order_in_ring ?? 999) - (b.order_in_ring ?? 999));
-        
-        if (associatedSystems.length === 0) {
-          return <div className="text-sm text-gray-500 italic">No systems associated with this ring.</div>;
-        }
-        
-        return (
-          <div className="space-y-2">
-            {associatedSystems.map(system => (
-              <div key={system.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
-                <div>
-                  <p className="font-medium text-sm">{system.system_name}</p>
-                  <p className="text-xs text-gray-500">Order: {system.order_in_ring ?? 'N/A'}</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => {
-                  setSystemToEdit(system);
-                  setIsEditSystemModalOpen(true);
-                }}>
-                  <FiEdit className="w-4 h-4" />
-                </Button>
+    ...ringConfig,
+    filterOptions: ringConfig.filterOptions.map((opt) => {
+      if (opt.key === 'ring_type_id') {
+        return {
+          ...opt,
+          options: (ringTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+        };
+      }
+      if (opt.key === 'maintenance_terminal_id') {
+        return {
+          ...opt,
+          options: (maintenanceAreasData || []).map((m) => ({ value: m.id, label: m.name })),
+        };
+      }
+      return opt;
+    }),
+    detailFields: [
+      ...ringConfig.detailFields,
+      {
+        key: 'id',
+        label: 'Associated Systems',
+        type: 'custom' as const,
+        render: (_value: unknown, entity: RingEntity) => {
+          const associatedSystems = allSystems
+            .filter((s) => s.ring_id === entity.id)
+            .sort((a, b) => (a.order_in_ring ?? 999) - (b.order_in_ring ?? 999));
+
+          if (associatedSystems.length === 0) {
+            return (
+              <div className="text-sm text-gray-500 italic">
+                No systems associated with this ring.
               </div>
-            ))}
-          </div>
-        );
+            );
+          }
+
+          return (
+            <div className="space-y-2">
+              {associatedSystems.map((system) => (
+                <div
+                  key={system.id}
+                  className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{system.system_name}</p>
+                    <p className="text-xs text-gray-500">Order: {system.order_in_ring ?? 'N/A'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setSystemToEdit(system);
+                      setIsEditSystemModalOpen(true);
+                    }}
+                  >
+                    <FiEdit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() =>
+                      setSystemToDisassociate({
+                        ringId: entity.id,
+                        systemId: system.id!,
+                        ringName: entity.name,
+                        systemName: system.system_name || 'this system',
+                      })
+                    }
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        },
       },
-    },
-  ],
-};
+    ],
+  };
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
@@ -60829,15 +61345,32 @@ export default function RingManagerPage() {
     Object.keys(src).forEach((k) => {
       const v: unknown = src[k as keyof typeof src];
       if (v === undefined || v === null) return;
-      out[k] = typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
+      out[k] =
+        typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
     });
     return out;
   }, [filters.filters]);
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
-  
+  const handleConfirmDisassociation = useCallback(() => {
+    if (!systemToDisassociate) return;
+    disassociateSystemMutation.mutate({
+      p_ring_id: systemToDisassociate.ringId,
+      p_system_id: systemToDisassociate.systemId,
+    });
+  }, [systemToDisassociate, disassociateSystemMutation]);
+
+  if (error)
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+
   return (
     <div className="p-4 md:p-6 h-full flex flex-col">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls"
+      />
       <PageHeader
         title="Ring Manager"
         description="A modern interface to create, manage, and visualize network rings and their associated systems."
@@ -60852,13 +61385,25 @@ export default function RingManagerPage() {
           config={dynamicFilterConfig}
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
           toggleStatusMutation={{ mutate: crudActions.handleToggleStatus, isPending: isMutating }}
-          onEdit={(e) => { const orig = rings.find(r => r.id === e.id); if (orig) editModal.openEdit(orig); }}
-          onDelete={crudActions.handleDelete}
+          onEdit={(e) => {
+            const orig = rings.find((r) => r.id === e.id);
+            if (orig) editModal.openEdit(orig);
+          }}
+          onDelete={
+            isSuperAdmin
+              ? crudActions.handleDelete
+              : () => {
+                  console.log('Not allowed to delete');
+                }
+          }
           onCreateNew={editModal.openAdd}
           selectedEntityId={viewModal.record?.id ?? null}
           onSelect={(id) => {
-            if (!id) { viewModal.close(); return; }
-            const rec = rings.find(r => r.id === id);
+            if (!id) {
+              viewModal.close();
+              return;
+            }
+            const rec = rings.find((r) => r.id === id);
             if (rec) viewModal.open(rec);
           }}
           onViewDetails={() => handleViewDetails(viewModal.record!)}
@@ -60870,11 +61415,12 @@ export default function RingManagerPage() {
           isFetching={isFetching}
         />
       </div>
-      
+
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
+        editingRing={editModal.record as RingsRowSchema | null}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}
         isLoading={isMutating}
@@ -60904,9 +61450,20 @@ export default function RingManagerPage() {
         loading={deleteModal.loading}
         type="danger"
       />
+
+       <ConfirmModal
+        isOpen={!!systemToDisassociate}
+        onConfirm={handleConfirmDisassociation}
+        onCancel={() => setSystemToDisassociate(null)}
+        title="Confirm Disassociation"
+        message={`Are you sure you want to remove the system "${systemToDisassociate?.systemName}" from the ring "${systemToDisassociate?.ringName}"?`}
+        loading={disassociateSystemMutation.isPending}
+        type="danger"
+      />
     </div>
   );
 }
+
 ```
 
 <!-- path: app/layout.tsx -->
@@ -62056,7 +62613,7 @@ body {
 }
 
 .dark .permanent-label {
-  color: #ecf0f1; /* A light color for dark mode */
+  color: #dfe2e6; /* A light color for dark mode */
   text-shadow: 
     1px 1px 0 #2c3e50, 
     -1px -1px 0 #2c3e50, 
@@ -62165,6 +62722,7 @@ export const config = {
     "push:audit": "dotenv -e .env node scripts/push-sql.js data/migrations/05_auditing/",
     "push:util": "dotenv -e .env node scripts/push-sql.js data/migrations/06_utilities/",
     "push:diary": "dotenv -e .env node scripts/push-sql.js data/migrations/07_diary/",
+    "push:inventory": "dotenv -e .env node scripts/push-sql.js data/migrations/08_inventory/",
     "push:final": "dotenv -e .env node scripts/push-sql.js data/migrations/99_finalization/",
     "push:sql": "dotenv -e .env node scripts/push-sql.js"
   },
@@ -62755,6 +63313,10 @@ export type ColumnMeta = {
   excelFormat?: ExcelFormat;
   transform?: ColumnTransform;
 };
+
+// export type TableMetaMap = {
+//   [K in PublicTableName]?: Partial<Record<keyof Tables<K> & string, ColumnMeta>>;
+// };
 // THE FIX: Allow TableMetaMap to accept view names as keys.
 export type TableMetaMap = {
   [K in keyof (Database['public']['Tables'] & Database['public']['Views'])]?: Partial<Record<keyof Row<K> & string, ColumnMeta>>;
@@ -63073,7 +63635,9 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       "created_at",
       "updated_at",
       "maintenance_terminal_id",
-      "ring_type_id"
+      "ring_type_id",
+      "ring_type_code",
+      "ring_type_name"
     ],
     overrides: {
       name: {
@@ -63084,7 +63648,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       description: {
         title: "Description",
         render: (value: unknown) => {
-          return <TruncateTooltip text={(value as string) ?? ""} className='font-semibold' />;
+          return <TruncateTooltip renderAsHtml text={(value as string) ?? ""} className='font-semibold' />;
         },
       },
       total_nodes: {
@@ -63128,8 +63692,14 @@ import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
+// THE FIX: Define a type for the new ring_associations JSON structure.
+interface RingAssociation {
+  ring_id: string;
+  ring_name: string;
+  order_in_ring: number;
+}
+
 export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
-  console.log(data);
   return useDynamicColumnConfig('v_systems_complete', {
     data: data as Row<'v_systems_complete'>[],
     omit: [
@@ -63137,7 +63707,8 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'node_type_name',
       'system_type_name',
       'is_ring_based',
-      'ring_id',
+      'ring_id', // Omit the old single ring_id
+      'order_in_ring', // Omit the old single order_in_ring
       'system_type_id',
       'node_id',
       'maintenance_terminal_id',
@@ -63148,61 +63719,37 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'ring_logical_area_name',
       'system_category',
       'system_maintenance_terminal_name',
-      // "system_type_code",
       'updated_at',
       'created_at',
-      'order_in_ring',
       'status',
       'is_hub',
     ],
     overrides: {
       system_name: {
-        key: 'system_name',
         title: 'Name',
-        dataIndex: 'system_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 200,
-        render: (value, record) => {
-          const stringValue = value as string; // Type assertion since we know it will be a string
-          return (
-            <div className="flex flex-col">
-              <span className="font-medium text-gray-900 dark:text-white">{stringValue}</span>
-              <TruncateTooltip
-                className="text-xs text-gray-500 dark:text-gray-400 w-2xs"
-                text={'S/N: ' + record.s_no}
-              />
-            </div>
-          );
-        },
+        render: (value, record) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900 dark:text-white">{value as string}</span>
+            <TruncateTooltip
+              className="text-xs text-gray-500 dark:text-gray-400"
+              text={'S/N: ' + record.s_no}
+            />
+          </div>
+        ),
       },
       s_no: {
-        key: 's_no',
         title: 'S/N',
-        dataIndex: 's_no',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 100,
-        excelFormat: 'text', // Ensure it's treated as text in Excel
+        excelFormat: 'text',
       },
-      system_type_name: {
-        key: 'system_type_name',
+      system_type_code: {
         title: 'Type',
-        dataIndex: 'system_type_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
-        width: 150,
+        dataIndex: 'system_type_code',
+        width: 120,
       },
       node_name: {
-        key: 'node_name',
         title: 'Node / Location',
-        dataIndex: 'node_name',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => (
           <div className="flex items-center gap-1">
@@ -63212,12 +63759,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         ),
       },
       ip_address: {
-        key: 'ip_address',
         title: 'IP Address',
-        dataIndex: 'ip_address',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 180,
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
@@ -63225,51 +63767,48 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           </code>
         ),
       },
-      is_ring_based: {
-        key: 'is_ring_based',
-        title: 'Is Ring Based',
-        dataIndex: 'is_ring_based',
-        width: 150,
-      },
-      order_in_ring: {
-        key: 'order_in_ring',
-        title: 'Order In Ring',
-        dataIndex: 'order_in_ring',
-        sortable: true,
-        searchable: true,
-        filterable: true,
-        width: 150,
-      },
-      system_type_code: {
-        key: 'system_type_code',
-        title: 'System Type',
-        dataIndex: 'system_type_code',
-        width: 150,
+      // THE FIX: New column definition to render the aggregated ring associations.
+      ring_associations: {
+        key: 'ring_associations',
+        title: 'Ring(s)',
+        dataIndex: 'ring_associations',
+        width: 200,
+        // This line ensures the complex object is properly stringified for the Excel export.
+        excelFormat: 'json',
+        render: (value) => {
+          const associations = value as RingAssociation[] | null;
+          if (!associations || associations.length === 0) {
+            return <span className="text-gray-400 italic">N/A</span>;
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              {associations.map(assoc => (
+                <div key={assoc.ring_id} className="text-xs">
+                  <span className="font-medium bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                    {assoc.ring_name}
+                  </span>
+                  <span className="text-gray-500 ml-1">(Order: {assoc.order_in_ring})</span>
+                </div>
+              ))}
+            </div>
+          );
+        }
       },
       status: {
         key: 'status',
         title: 'Status',
         dataIndex: 'status',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => <StatusBadge status={value as boolean} />,
       },
       commissioned_on: {
-        key: 'commissioned_on',
         title: 'Commissioned On',
-        dataIndex: 'commissioned_on',
-        sortable: true,
-        searchable: true,
-        filterable: true,
         width: 150,
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
       },
     },
   });
 };
-
 ```
 
 <!-- path: config/table-columns/LogicalPathsTableColumns.tsx -->
@@ -63549,7 +64088,7 @@ export const ringConfig: EntityConfig<RingEntity> = {
     { key: 'ring_type_name', label: 'Ring Type', type: 'text' },
     { key: 'maintenance_area_name', label: 'Maintenance Area', type: 'text' },
     { key: 'total_nodes', label: 'Total Systems', type: 'text' },
-    { key: 'description', label: 'Description', type: 'text' },
+    { key: 'description', label: 'Description', type: 'html' },
   ],
   filterOptions: [
     {

@@ -156,7 +156,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           <FormInput name='sn_interface' label='Start Node Interface' register={register} error={errors.sn_interface} />
           <FormSearchableSelect name='en_id' label='End Node System' control={control} options={systemOptions} error={errors.en_id} />
           <FormInput name='en_interface' label='End Node Interface' register={register} error={errors.en_interface} />
-          <FormSearchableSelect name='connected_system_id' label='Connected To System' control={control} options={systemOptions} error={errors.connected_system_id} />
+          <FormSearchableSelect name='connected_system_id' label='Connected To:' control={control} options={systemOptions} error={errors.connected_system_id} />
         </div>
       </div>
     </motion.div>

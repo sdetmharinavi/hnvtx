@@ -973,6 +973,57 @@ export type FoldersUpdate = {
     user_id?: string;
 };
 
+export type Inventory_itemsRow = {
+    asset_no: string | null;
+    category_id: string | null;
+    cost: number | null;
+    created_at: string | null;
+    description: string | null;
+    functional_location_id: string | null;
+    id: string;
+    location_id: string | null;
+    name: string;
+    purchase_date: string | null;
+    quantity: number;
+    status_id: string | null;
+    updated_at: string | null;
+    vendor: string | null;
+};
+
+export type Inventory_itemsInsert = {
+    asset_no?: string | null;
+    category_id?: string | null;
+    cost?: number | null;
+    created_at?: string | null;
+    description?: string | null;
+    functional_location_id?: string | null;
+    id?: string;
+    location_id?: string | null;
+    name: string;
+    purchase_date?: string | null;
+    quantity?: number;
+    status_id?: string | null;
+    updated_at?: string | null;
+    vendor?: string | null;
+};
+
+export type Inventory_itemsUpdate = {
+    asset_no?: string | null;
+    category_id?: string | null;
+    cost?: number | null;
+    created_at?: string | null;
+    description?: string | null;
+    functional_location_id?: string | null;
+    id?: string;
+    location_id?: string | null;
+    name?: string;
+    purchase_date?: string | null;
+    quantity?: number;
+    status_id?: string | null;
+    updated_at?: string | null;
+    vendor?: string | null;
+};
+
 export type Junction_closuresRow = {
     created_at: string | null;
     id: string;
@@ -1754,6 +1805,27 @@ export type V_end_to_end_pathsRow = {
     total_loss_db: number | null;
 };
 
+export type V_inventory_itemsRow = {
+    asset_no: string | null;
+    category_id: string | null;
+    category_name: string | null;
+    cost: number | null;
+    created_at: string | null;
+    description: string | null;
+    functional_location: string | null;
+    functional_location_id: string | null;
+    id: string | null;
+    location_id: string | null;
+    name: string | null;
+    purchase_date: string | null;
+    quantity: number | null;
+    status_id: string | null;
+    status_name: string | null;
+    store_location: string | null;
+    updated_at: string | null;
+    vendor: string | null;
+};
+
 export type V_junction_closures_completeRow = {
     id: string | null;
     latitude: number | null;
@@ -2086,6 +2158,7 @@ export const tableNames = [
   "fiber_splices",
   "files",
   "folders",
+  "inventory_items",
   "junction_closures",
   "logical_fiber_paths",
   "logical_path_segments",
@@ -2110,6 +2183,7 @@ export const viewNames = [
   "v_employee_designations",
   "v_employees",
   "v_end_to_end_paths",
+  "v_inventory_items",
   "v_junction_closures_complete",
   "v_lookup_types",
   "v_maintenance_areas",
