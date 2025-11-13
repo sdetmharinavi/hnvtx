@@ -89,7 +89,7 @@ export class HNVTMDatabase extends Dexie {
       cable_segments: 'id, original_cable_id, start_node_id, end_node_id',
       junction_closures: 'id, node_id, ofc_cable_id',
       fiber_splices: 'id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
-      system_connections: 'id, system_id, sn_id, en_id, connected_system_id',
+      system_connections: 'id, system_id, sn_id, en_id, connected_system_type_id',
       user_profiles: 'id, first_name, last_name, role',
       // THE FIX: Added a compound index on user_id and note_date for efficient lookups.
       diary_notes: 'id, &[user_id+note_date], note_date',

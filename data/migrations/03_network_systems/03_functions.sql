@@ -78,7 +78,7 @@ GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BO
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
-    p_en_id UUID DEFAULT NULL, p_connected_system_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
+    p_en_id UUID DEFAULT NULL, p_connected_system_type_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
     p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
     p_bandwidth_mbps INT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL, p_port TEXT DEFAULT NULL, p_port_type_id UUID DEFAULT NULL,
@@ -98,14 +98,14 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
     INSERT INTO public.system_connections (
-        id, system_id, media_type_id, status, sn_id, en_id, connected_system_id, sn_ip, sn_interface,
+        id, system_id, media_type_id, status, sn_id, en_id, connected_system_type_id, sn_ip, sn_interface,
         en_ip, en_interface, bandwidth_mbps, vlan, commissioned_on, remark, updated_at
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id, p_connected_system_id,
+        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id, p_connected_system_type_id,
         p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth_mbps, p_vlan, p_commissioned_on, p_remark, NOW()
     ) ON CONFLICT (id) DO UPDATE SET
         media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, connected_system_id = EXCLUDED.connected_system_id, sn_ip = EXCLUDED.sn_ip,
+        en_id = EXCLUDED.en_id, connected_system_type_id = EXCLUDED.connected_system_type_id, sn_ip = EXCLUDED.sn_ip,
         sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
         bandwidth_mbps = EXCLUDED.bandwidth_mbps, vlan = EXCLUDED.vlan, commissioned_on = EXCLUDED.commissioned_on,
         remark = EXCLUDED.remark, updated_at = NOW()

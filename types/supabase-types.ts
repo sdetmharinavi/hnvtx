@@ -2591,7 +2591,7 @@ export type Database = {
         Row: {
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_id: string | null
+          connected_system_type_id: string | null
           created_at: string | null
           en_id: string | null
           en_interface: string | null
@@ -2610,7 +2610,7 @@ export type Database = {
         Insert: {
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
-          connected_system_id?: string | null
+          connected_system_type_id?: string | null
           created_at?: string | null
           en_id?: string | null
           en_interface?: string | null
@@ -2629,7 +2629,7 @@ export type Database = {
         Update: {
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
-          connected_system_id?: string | null
+          connected_system_type_id?: string | null
           created_at?: string | null
           en_id?: string | null
           en_interface?: string | null
@@ -2647,15 +2647,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
+            foreignKeyName: "system_connections_connected_system_type_id_fkey"
+            columns: ["connected_system_type_id"]
             isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
+            foreignKeyName: "system_connections_connected_system_type_id_fkey"
+            columns: ["connected_system_type_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
@@ -3755,7 +3755,7 @@ export type Database = {
           bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_id: string | null
+          connected_system_type_id: string | null
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
@@ -3810,15 +3810,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
+            foreignKeyName: "system_connections_connected_system_type_id_fkey"
+            columns: ["connected_system_type_id"]
             isOneToOne: false
             referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
+            foreignKeyName: "system_connections_connected_system_type_id_fkey"
+            columns: ["connected_system_type_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
@@ -4568,7 +4568,7 @@ export type Database = {
           p_bandwidth_mbps?: number
           p_carrier?: string
           p_commissioned_on?: string
-          p_connected_system_id?: string
+          p_connected_system_type_id?: string
           p_customer_name?: string
           p_en_id?: string
           p_en_interface?: string
@@ -4593,7 +4593,7 @@ export type Database = {
         Returns: {
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_id: string | null
+          connected_system_type_id: string | null
           created_at: string | null
           en_id: string | null
           en_interface: string | null

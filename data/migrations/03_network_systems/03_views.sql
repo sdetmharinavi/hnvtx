@@ -72,7 +72,7 @@ SELECT
   -- THE FIX: Add the foreign key ID fields required for editing.
   sc.sn_id,
   sc.en_id,
-  sc.connected_system_id,
+  sc.connected_system_type_id,
   sc.media_type_id,
   pm.port_type_id,
   -- Existing human-readable name fields
@@ -94,7 +94,7 @@ FROM public.system_connections sc
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
   LEFT JOIN public.nodes nb ON s_en.node_id = nb.id
-  LEFT JOIN public.systems cs ON sc.connected_system_id = cs.id
+  LEFT JOIN public.systems cs ON sc.connected_system_type_id = cs.id
   LEFT JOIN public.lookup_types lt_cs_type ON cs.system_type_id = lt_cs_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.ports_management pm ON sc.id = pm.system_connection_id

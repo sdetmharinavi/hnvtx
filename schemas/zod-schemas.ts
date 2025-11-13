@@ -1607,7 +1607,7 @@ export const sdh_connectionsUpdateSchema = z.object({
 export const system_connectionsRowSchema = z.object({
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
-  connected_system_id: z.uuid().nullable(),
+  connected_system_type_id: z.uuid().nullable(),
   created_at: z.iso.datetime().nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
@@ -1627,7 +1627,7 @@ export const system_connectionsRowSchema = z.object({
 export const system_connectionsInsertSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_system_id: z.uuid().nullable().optional(),
+  connected_system_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
@@ -1647,7 +1647,7 @@ export const system_connectionsInsertSchema = z.object({
 export const system_connectionsUpdateSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_system_id: z.uuid().nullable().optional(),
+  connected_system_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
@@ -2013,7 +2013,7 @@ export const v_system_connections_completeRowSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
-  connected_system_id: z.uuid().nullable(),
+  connected_system_type_id: z.uuid().nullable(),
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
