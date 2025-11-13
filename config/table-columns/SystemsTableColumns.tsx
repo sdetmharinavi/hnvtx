@@ -87,6 +87,8 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         title: 'Ring(s)',
         dataIndex: 'ring_associations',
         width: 200,
+        // This line ensures the complex object is properly stringified for the Excel export.
+        excelFormat: 'json',
         render: (value) => {
           const associations = value as RingAssociation[] | null;
           if (!associations || associations.length === 0) {

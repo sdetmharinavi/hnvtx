@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all all data fetching(Read operations) should prioritize local indexDB data, it seems its still sccressesing from supabase. It should fetch from there on refresh or sync button click or create/delete/update.
+Let's begin! First of all seems excel export functionality for system page is not working so we need to fix that. Also all data fetching(Read operations) should prioritize local indexDB data, it seems its still accessing from supabase. It should fetch from there on refresh or sync button click or create/delete/update. 

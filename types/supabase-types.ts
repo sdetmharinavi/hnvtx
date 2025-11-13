@@ -1314,6 +1314,121 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          asset_no: string | null
+          category_id: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          functional_location_id: string | null
+          id: string
+          location_id: string | null
+          name: string
+          purchase_date: string | null
+          quantity: number
+          status_id: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          asset_no?: string | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          functional_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          name: string
+          purchase_date?: string | null
+          quantity?: number
+          status_id?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          asset_no?: string | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          functional_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          purchase_date?: string | null
+          quantity?: number
+          status_id?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junction_closures: {
         Row: {
           created_at: string | null
@@ -2966,6 +3081,93 @@ export type Database = {
           },
         ]
       }
+      v_inventory_items: {
+        Row: {
+          asset_no: string | null
+          category_id: string | null
+          category_name: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          functional_location: string | null
+          functional_location_id: string | null
+          id: string | null
+          location_id: string | null
+          name: string | null
+          purchase_date: string | null
+          quantity: number | null
+          status_id: string | null
+          status_name: string | null
+          store_location: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_junction_closures_complete: {
         Row: {
           id: string | null
@@ -4210,30 +4412,18 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_paged_data:
-        | {
-            Args: {
-              p_filters?: Json
-              p_limit: number
-              p_offset: number
-              p_order_by?: string
-              p_order_dir?: string
-              p_view_name: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_filters?: Json
-              p_limit: number
-              p_offset: number
-              p_order_by?: string
-              p_order_dir?: string
-              p_view_name: string
-              row_limit?: number
-            }
-            Returns: Json
-          }
+      get_paged_data: {
+        Args: {
+          p_filters?: Json
+          p_limit: number
+          p_offset: number
+          p_order_by?: string
+          p_order_dir?: string
+          p_view_name: string
+          row_limit?: number
+        }
+        Returns: Json
+      }
       get_rings_for_export: {
         Args: { order_by?: string; row_limit?: number }
         Returns: {

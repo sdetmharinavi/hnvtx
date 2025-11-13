@@ -27,6 +27,7 @@
     "push:audit": "dotenv -e .env node scripts/push-sql.js data/migrations/05_auditing/",
     "push:util": "dotenv -e .env node scripts/push-sql.js data/migrations/06_utilities/",
     "push:diary": "dotenv -e .env node scripts/push-sql.js data/migrations/07_diary/",
+    "push:inventory": "dotenv -e .env node scripts/push-sql.js data/migrations/08_inventory/",
     "push:final": "dotenv -e .env node scripts/push-sql.js data/migrations/99_finalization/",
     "push:sql": "dotenv -e .env node scripts/push-sql.js"
   },
