@@ -662,6 +662,7 @@ const TABLE_COLUMN_OBJECTS = {
     ring_logical_area_name: "ring_logical_area_name",
     system_maintenance_terminal_name: "system_maintenance_terminal_name",
     system_type_name: "system_type_name",
+    ring_associations: "ring_associations",
     updated_at: "updated_at",
     created_at: "created_at",
     id: "id",
@@ -799,6 +800,8 @@ const TABLE_COLUMN_OBJECTS = {
     position_km: "position_km",
   },
   v_ring_nodes: {
+    system_node_name: "system_node_name",
+    system_type_code: "system_type_code",
     id: "id",
     ip: "ip",
     is_hub: "is_hub",

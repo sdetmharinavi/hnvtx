@@ -4,7 +4,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useTableQuery, useTableInsert, useRpcQuery} from "@/hooks/database";
-import { Button, PageSpinner, SearchableSelect } from "@/components/common/ui";
+import { Button, PageSpinner } from "@/components/common/ui";
 import { FiCheckCircle, FiXCircle, FiAlertTriangle } from "react-icons/fi";
 import { useSystemPath } from "@/hooks/database/path-queries";
 import { useDeletePathSegment, useReorderPathSegments } from "@/hooks/database/path-mutations";
@@ -15,7 +15,7 @@ import { FiberProvisioning } from "./FiberProvisioning";
 import ClientRingMap from "@/components/map/ClientRingMap";
 import { toast } from "sonner";
 import { SystemsRowSchema, NodesRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
-import { Option } from "../common/ui/select/SearchableSelect";
+import { SearchableSelect, Option } from "@/components/common/ui/select/SearchableSelect";
 import { MapNode } from "@/components/map/types/node";
 import { Edit, Eye } from "lucide-react";
 
@@ -113,6 +113,7 @@ export function SystemRingPath({ system }: Props) {
           system_status: null,
           system_type: node.node_type_name || '',
           system_type_code: node.node_type_code || '',
+          system_node_name: node.name || '',
       }));
   }, [nodesInAreaResult, pathNodesResult]);
   

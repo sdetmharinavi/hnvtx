@@ -103,8 +103,6 @@ const {
       rpcConfig.functionName as keyof Database['public']['Functions'],
       rpcParams
     );
-
-    console.log(data);
     
 
     if (error) throw new Error(`RPC call failed: ${error.message}`);
