@@ -84,6 +84,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [portTypes]
   );
 
+  const systemTypesOptions = useMemo(
+    () => systemTypes.data.map((t) => ({ value: t.id, label: t.code || t.id })),
+    [systemTypes]
+  );
+
   const {
     control,
     handleSubmit,
@@ -233,7 +238,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
             name='connected_system_type_id'
             label='Connected To:'
             control={control}
-            options={systemOptions}
+            options={systemTypesOptions}
             error={errors.connected_system_type_id}
           />
         </div>
