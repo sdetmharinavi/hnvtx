@@ -57,14 +57,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const { data: systems = { data: [] } } = useTableQuery(supabase, "systems", {
     columns: "id, system_name",
+    filters: { system_name: { operator: "neq", value: "DEFAULT" } },
   });
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
-    filters: { category: "MEDIA_TYPES" },
+    filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
   const { data: portTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
-    filters: { category: "PORT_TYPES" },
+    filters: { category: "PORT_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
   const { data: systemTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, code",
@@ -236,7 +237,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           />
           <FormSearchableSelect
             name='connected_system_type_id'
-            label='Connected To:'
+            label='Type:'
             control={control}
             options={systemTypesOptions}
             error={errors.connected_system_type_id}
