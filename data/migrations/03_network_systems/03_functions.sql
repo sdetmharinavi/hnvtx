@@ -15,8 +15,8 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_s_no TEXT DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
     p_id UUID DEFAULT NULL,
-    p_ring_id UUID DEFAULT NULL,
-    p_order_in_ring NUMERIC DEFAULT NULL,
+    -- THE FIX: These parameters now accept arrays from the Excel upload logic.
+    p_ring_associations JSONB DEFAULT NULL,
     p_make TEXT DEFAULT NULL
 )
 RETURNS SETOF public.systems
@@ -26,17 +26,18 @@ SET search_path = public
 AS $$
 DECLARE
     v_system_id UUID;
-    v_system_type_record public.lookup_types; -- Use a record to hold the full lookup type row
+    v_system_type_record public.lookup_types;
+    ring_assoc_record RECORD;
 BEGIN
-    -- Get the entire lookup_type record to check its properties
+    -- Get the system type properties
     SELECT * INTO v_system_type_record FROM public.lookup_types WHERE id = p_system_type_id;
 
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
-        id, system_name, system_type_id,maan_node_id, node_id, ip_address,
+        id, system_name, system_type_id, maan_node_id, node_id, ip_address,
         maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id,p_maan_node_id, p_node_id, p_ip_address,
+        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_maan_node_id, p_node_id, p_ip_address,
         p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -55,17 +56,20 @@ BEGIN
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
-    -- Step 2: Handle subtype tables based on the system type's boolean flags.
+    -- Step 2: Handle ring associations if the system is ring-based and associations are provided.
+    IF v_system_type_record.is_ring_based = true AND p_ring_associations IS NOT NULL AND jsonb_array_length(p_ring_associations) > 0 THEN
+        -- First, clear out all old associations for this system to handle removals.
+        DELETE FROM public.ring_based_systems WHERE system_id = v_system_id;
 
-    -- Handle Ring-Based Systems using the new 'is_ring_based' flag
-    IF v_system_type_record.is_ring_based = true AND p_ring_id IS NOT NULL THEN
-        -- THE FIX: The ON CONFLICT target is now the composite primary key (system_id, ring_id).
-        -- This ensures that adding a system to a *new* ring creates a new association, while re-saving
-        -- it for the *same* ring only updates the order.
-        INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
-        VALUES (v_system_id, p_ring_id, p_order_in_ring)
-        ON CONFLICT (system_id, ring_id) DO UPDATE SET 
-            order_in_ring = EXCLUDED.order_in_ring;
+        -- Loop through the provided JSON array and insert the new associations.
+        FOR ring_assoc_record IN SELECT * FROM jsonb_to_recordset(p_ring_associations) AS x(ring_id UUID, order_in_ring NUMERIC)
+        LOOP
+            INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
+            VALUES (v_system_id, ring_assoc_record.ring_id, ring_assoc_record.order_in_ring)
+            -- This conflict clause gracefully handles any re-insertions, though the DELETE above makes it less critical.
+            ON CONFLICT (system_id, ring_id) DO UPDATE SET
+                order_in_ring = EXCLUDED.order_in_ring;
+        END LOOP;
     END IF;
 
     -- Return the main system record
@@ -73,8 +77,8 @@ BEGIN
 END;
 $$;
 
--- UPDATED GRANT to include the new NUMERIC parameter
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, UUID, NUMERIC, TEXT) TO authenticated;
+-- Grant execute on the modified function signature
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
