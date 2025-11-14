@@ -51,6 +51,12 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "user_id,note_date",
     isUploadEnabled: true,
   },
+  // --- THE FIX: Add ports_management as an uploadable table ---
+  ports_management: {
+    uploadType: "upsert",
+    conflictColumn: "system_id,port", // Assuming a system can't have duplicate port numbers
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -85,10 +91,10 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     en_dom: { transform: toPgDate, excelFormat: "date" },
     sn_dom: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
-    updated_fiber_no_sn: { excelFormat: 'integer' },
-    updated_fiber_no_en: { excelFormat: 'integer' },
-    updated_sn_id: { excelFormat: 'text' },
-    updated_en_id: { excelFormat: 'text' },
+    updated_fiber_no_sn: { excelFormat: "integer" },
+    updated_fiber_no_en: { excelFormat: "integer" },
+    updated_sn_id: { excelFormat: "text" },
+    updated_en_id: { excelFormat: "text" },
   },
   nodes: { status: { transform: toPgBoolean } },
   systems: {
@@ -97,11 +103,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   },
   // THE FIX: Add the new entry for the view to satisfy the type checker.
   v_system_connections_complete: {
-    commissioned_on: { transform: toPgDate, excelFormat: 'date' },
+    commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
   },
   diary_notes: {
-    note_date: { transform: toPgDate, excelFormat: 'date' }
+    note_date: { transform: toPgDate, excelFormat: "date" },
   },
 };
 
@@ -124,10 +130,14 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
   type ColumnKey = keyof RowType & string;
   const tableColumnKeys = TABLE_COLUMN_KEYS as Record<string, readonly string[]>;
   const keys = (tableColumnKeys[tableName] || []) as readonly ColumnKey[];
-  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Partial<Record<ColumnKey, ColumnMeta>>;
-  
-  const tableMeta = isTableName(tableName) ? UPLOAD_TABLE_META[tableName as PublicTableName] : undefined;
-  
+  const meta = (TABLE_COLUMN_META[tableName as keyof typeof TABLE_COLUMN_META] || {}) as Partial<
+    Record<ColumnKey, ColumnMeta>
+  >;
+
+  const tableMeta = isTableName(tableName)
+    ? UPLOAD_TABLE_META[tableName as PublicTableName]
+    : undefined;
+
   const uploadType = tableMeta?.uploadType ?? "upsert";
   const conflictColumn = tableMeta?.conflictColumn;
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
@@ -323,7 +333,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_id: "system_id",
     sn_id: "sn_id",
     en_id: "en_id",
-    connected_system_type_id: "connected_system_type_id",
+    connected_system_id: "connected_system_id",
     media_type_id: "media_type_id",
     sn_interface: "sn_interface",
     en_interface: "en_interface",
@@ -336,15 +346,21 @@ const TABLE_COLUMN_OBJECTS = {
     remark: "remark",
     created_at: "created_at",
     updated_at: "updated_at",
+    // New fields
+    connected_system_working_interface: "connected_system_working_interface",
+    connected_system_protection_interface: "connected_system_protection_interface",
+    connected_link_type_id: "connected_link_type_id",
+    working_fiber_in: "working_fiber_in",
+    working_fiber_out: "working_fiber_out",
+    protection_fiber_in: "protection_fiber_in",
+    protection_fiber_out: "protection_fiber_out",
+    customer_name: "customer_name",
+    bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
   },
   ports_management: {
-    bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
-    customer_name: "customer_name",
-    fiber_in: "fiber_in",
-    fiber_out: "fiber_out",
+    system_id: "system_id",
     port: "port",
     port_type_id: "port_type_id",
-    system_connection_id: "system_connection_id",
     port_capacity: "port_capacity",
     sfp_serial_no: "sfp_serial_no",
   },
@@ -608,19 +624,15 @@ const TABLE_COLUMN_OBJECTS = {
     bandwidth_mbps: "bandwidth_mbps",
     customer_name: "customer_name",
     status: "status",
-    connected_system_type_id: "connected_system_type_id",
+    connected_system_id: "connected_system_id",
     sn_id: "sn_id",
     en_id: "en_id",
-    port_type_id: "port_type_id",
-    bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
     commissioned_on: "commissioned_on",
     connected_system_name: "connected_system_name",
     connected_system_type_name: "connected_system_type_name",
     created_at: "created_at",
     en_interface: "en_interface",
     en_ip: "en_ip",
-    fiber_in: "fiber_in",
-    fiber_out: "fiber_out",
     remark: "remark",
     sdh_a_customer: "sdh_a_customer",
     sdh_a_slot: "sdh_a_slot",
@@ -628,14 +640,21 @@ const TABLE_COLUMN_OBJECTS = {
     sdh_b_slot: "sdh_b_slot",
     sdh_carrier: "sdh_carrier",
     sdh_stm_no: "sdh_stm_no",
-    port_capacity: "port_capacity",
-    port: "port",
-    sfp_serial_no: "sfp_serial_no",
-    port_type_name: "port_type_name",
     sn_interface: "sn_interface",
     sn_ip: "sn_ip",
     updated_at: "updated_at",
     vlan: "vlan",
+    fiber_in: "fiber_in",
+    fiber_out: "fiber_out",
+    // New fields
+    working_fiber_in: "working_fiber_in",
+    working_fiber_out: "working_fiber_out",
+    protection_fiber_in: "protection_fiber_in",
+    protection_fiber_out: "protection_fiber_out",
+    bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
+    connected_system_working_interface: "connected_system_working_interface",
+    connected_system_protection_interface: "connected_system_protection_interface",
+    connected_link_type_name: "connected_link_type_name",
   },
   v_systems_complete: {
     system_name: "system_name",
@@ -840,14 +859,13 @@ const TABLE_COLUMN_OBJECTS = {
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
-export const TABLE_COLUMN_KEYS = (Object.keys(TABLE_COLUMN_OBJECTS) as Array<keyof typeof TABLE_COLUMN_OBJECTS>).reduce(
-  (acc, tableName) => {
-    const value = TABLE_COLUMN_OBJECTS[tableName];
-    acc[tableName] = Object.keys(value) as (keyof Row<typeof tableName>)[];
-    return acc;
-  },
-  {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] }
-);
+export const TABLE_COLUMN_KEYS = (
+  Object.keys(TABLE_COLUMN_OBJECTS) as Array<keyof typeof TABLE_COLUMN_OBJECTS>
+).reduce((acc, tableName) => {
+  const value = TABLE_COLUMN_OBJECTS[tableName];
+  acc[tableName] = Object.keys(value) as (keyof Row<typeof tableName>)[];
+  return acc;
+}, {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] });
 
 export const TABLES = {
   user_profiles: "user_profiles",

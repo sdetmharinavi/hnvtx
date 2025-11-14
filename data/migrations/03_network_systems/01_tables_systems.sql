@@ -31,38 +31,43 @@ CREATE TABLE IF NOT EXISTS public.ring_based_systems (
   CONSTRAINT ring_based_systems_pkey PRIMARY KEY (system_id, ring_id)
 );
 
--- 3. Generic System Connections Table
+-- 3. Consolidated Table for SFP-Based Connection Details (replaces cpan_connections, maan_connections)
+CREATE TABLE IF NOT EXISTS public.ports_management (
+  system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
+  port TEXT,
+  port_type_id UUID REFERENCES public.lookup_types (id),
+  port_capacity TEXT,
+  sfp_serial_no TEXT
+);
+
+-- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_id UUID REFERENCES public.systems (id) NOT NULL,
   sn_id UUID REFERENCES public.systems (id),
-  en_id UUID REFERENCES public.systems (id),
-  connected_system_type_id UUID REFERENCES public.lookup_types (id),
   sn_ip INET,
   sn_interface TEXT,
+  en_id UUID REFERENCES public.systems (id),
   en_ip INET,
   en_interface TEXT,
+  connected_system_id UUID REFERENCES public.systems (id),
+  connected_system_working_interface TEXT,
+  connected_system_protection_interface TEXT,
+  connected_link_type_id UUID REFERENCES public.lookup_types (id),
   media_type_id UUID REFERENCES public.lookup_types (id),
   bandwidth_mbps INTEGER,
   vlan TEXT,
+  working_fiber_in INTEGER,
+  working_fiber_out INTEGER,
+  protection_fiber_in INTEGER,
+  protection_fiber_out INTEGER,
+  customer_name TEXT,
+  bandwidth_allocated_mbps INTEGER,
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 4. Consolidated Table for SFP-Based Connection Details (replaces cpan_connections, maan_connections)
-CREATE TABLE IF NOT EXISTS public.ports_management (
-  system_connection_id UUID PRIMARY KEY REFERENCES public.system_connections (id) ON DELETE CASCADE,
-  port TEXT,
-  port_type_id UUID REFERENCES public.lookup_types (id),
-  port_capacity TEXT,
-  sfp_serial_no TEXT,
-  fiber_in INTEGER,
-  fiber_out INTEGER,
-  customer_name TEXT,
-  bandwidth_allocated_mbps INTEGER
 );
 
 -- 5. Dedicated Table for SDH Connection Specific Details

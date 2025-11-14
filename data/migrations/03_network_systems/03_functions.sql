@@ -82,12 +82,19 @@ GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BO
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
-    p_en_id UUID DEFAULT NULL, p_connected_system_type_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
+    p_en_id UUID DEFAULT NULL, p_connected_system_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
     p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
     p_bandwidth_mbps INT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, p_commissioned_on DATE DEFAULT NULL,
-    p_remark TEXT DEFAULT NULL, p_port TEXT DEFAULT NULL, p_port_type_id UUID DEFAULT NULL,
-    p_port_capacity TEXT DEFAULT NULL, p_sfp_serial_no TEXT DEFAULT NULL, p_fiber_in INT DEFAULT NULL,
-    p_fiber_out INT DEFAULT NULL, p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated_mbps INT DEFAULT NULL,
+    p_remark TEXT DEFAULT NULL,
+    -- New fields that were moved from ports_management
+    p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated_mbps INT DEFAULT NULL,
+    p_working_fiber_in INT DEFAULT NULL, p_working_fiber_out INT DEFAULT NULL,
+    p_protection_fiber_in INT DEFAULT NULL, p_protection_fiber_out INT DEFAULT NULL,
+    -- New connectivity fields
+    p_connected_system_working_interface TEXT DEFAULT NULL,
+    p_connected_system_protection_interface TEXT DEFAULT NULL,
+    p_connected_link_type_id UUID DEFAULT NULL,
+    -- SDH fields (remain the same)
     p_stm_no TEXT DEFAULT NULL, p_carrier TEXT DEFAULT NULL, p_a_slot TEXT DEFAULT NULL,
     p_a_customer TEXT DEFAULT NULL, p_b_slot TEXT DEFAULT NULL, p_b_customer TEXT DEFAULT NULL
 )
@@ -98,37 +105,40 @@ DECLARE
     v_connection_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
+    -- Check parent system type
     SELECT lt.* INTO v_system_type_record FROM public.systems s JOIN public.lookup_types lt ON s.system_type_id = lt.id WHERE s.id = p_system_id;
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
+    -- Upsert the main system_connections record with all the new fields
     INSERT INTO public.system_connections (
-        id, system_id, media_type_id, status, sn_id, en_id, connected_system_type_id, sn_ip, sn_interface,
-        en_ip, en_interface, bandwidth_mbps, vlan, commissioned_on, remark, updated_at
+        id, system_id, media_type_id, status, sn_id, en_id, connected_system_id, sn_ip, sn_interface,
+        en_ip, en_interface, bandwidth_mbps, vlan, commissioned_on, remark, customer_name, bandwidth_allocated_mbps,
+        working_fiber_in, working_fiber_out, protection_fiber_in, protection_fiber_out,
+        connected_system_working_interface, connected_system_protection_interface, connected_link_type_id,
+        updated_at
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id, p_connected_system_type_id,
-        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth_mbps, p_vlan, p_commissioned_on, p_remark, NOW()
+        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id, p_connected_system_id,
+        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth_mbps, p_vlan, p_commissioned_on, p_remark, p_customer_name,
+        p_bandwidth_allocated_mbps, p_working_fiber_in, p_working_fiber_out, p_protection_fiber_in, p_protection_fiber_out,
+        p_connected_system_working_interface, p_connected_system_protection_interface, p_connected_link_type_id,
+        NOW()
     ) ON CONFLICT (id) DO UPDATE SET
         media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, connected_system_type_id = EXCLUDED.connected_system_type_id, sn_ip = EXCLUDED.sn_ip,
+        en_id = EXCLUDED.en_id, connected_system_id = EXCLUDED.connected_system_id, sn_ip = EXCLUDED.sn_ip,
         sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
         bandwidth_mbps = EXCLUDED.bandwidth_mbps, vlan = EXCLUDED.vlan, commissioned_on = EXCLUDED.commissioned_on,
-        remark = EXCLUDED.remark, updated_at = NOW()
+        remark = EXCLUDED.remark, customer_name = EXCLUDED.customer_name, bandwidth_allocated_mbps = EXCLUDED.bandwidth_allocated_mbps,
+        working_fiber_in = EXCLUDED.working_fiber_in, working_fiber_out = EXCLUDED.working_fiber_out,
+        protection_fiber_in = EXCLUDED.protection_fiber_in, protection_fiber_out = EXCLUDED.protection_fiber_out,
+        connected_system_working_interface = EXCLUDED.connected_system_working_interface,
+        connected_system_protection_interface = EXCLUDED.connected_system_protection_interface,
+        connected_link_type_id = EXCLUDED.connected_link_type_id,
+        updated_at = NOW()
     RETURNING id INTO v_connection_id;
 
-    IF v_system_type_record.is_ring_based = true THEN
-        INSERT INTO public.ports_management (
-            system_connection_id, port, port_type_id, port_capacity, sfp_serial_no, fiber_in,
-            fiber_out, customer_name, bandwidth_allocated_mbps
-        ) VALUES (
-            v_connection_id, p_port, p_port_type_id, p_port_capacity, p_sfp_serial_no, p_fiber_in,
-            p_fiber_out, p_customer_name, p_bandwidth_allocated_mbps
-        ) ON CONFLICT (system_connection_id) DO UPDATE SET
-            port = EXCLUDED.port, port_type_id = EXCLUDED.port_type_id, port_capacity = EXCLUDED.port_capacity,
-            sfp_serial_no = EXCLUDED.sfp_serial_no, fiber_in = EXCLUDED.fiber_in, fiber_out = EXCLUDED.fiber_out,
-            customer_name = EXCLUDED.customer_name, bandwidth_allocated_mbps = EXCLUDED.bandwidth_allocated_mbps;
-    END IF;
+    -- REMOVED: Logic for ports_management has been removed from this function.
 
-    -- THE FIX: Check for 'Synchronous' OR 'SDH' to correctly identify all SDH variants.
+    -- SDH logic remains, but it's conditional.
     IF v_system_type_record.name = 'Plesiochronous Digital Hierarchy' OR v_system_type_record.name = 'Synchronous Digital Hierarchy' OR v_system_type_record.name = 'Next Generation SDH' THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
@@ -142,8 +152,8 @@ BEGIN
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, UUID, INET, TEXT, INET, TEXT, INT, TEXT, DATE, TEXT, TEXT, UUID, TEXT, TEXT, INT, INT, TEXT, INT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+-- Grant for the updated function signature
+GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, UUID, INET, TEXT, INET, TEXT, INT, TEXT, DATE, TEXT, TEXT, INT, INT, INT, INT, INT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring
 CREATE OR REPLACE FUNCTION public.update_ring_system_associations(

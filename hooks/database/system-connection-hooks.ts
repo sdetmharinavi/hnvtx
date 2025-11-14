@@ -15,9 +15,9 @@ export function useUpsertSystemConnection() {
     onError: (err) => {
       toast.error(`Failed to save connection: ${err.message}`);
     },
-    invalidateQueries: false,
+    invalidateQueries: true, // Invalidate queries on success
   });
 }
 
-// THE FIX: The payload type must match the RPC function's arguments exactly, not partially.
+// --- THE FIX: The form data type now reflects the new, larger function signature. ---
 export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection_with_details'>;
