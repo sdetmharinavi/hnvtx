@@ -45,6 +45,7 @@ import { UseQueryResult } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { formatDate } from '@/utils/formatters';
 
 interface SystemToDisassociate {
   ringId: string;
@@ -314,7 +315,9 @@ export default function RingManagerPage() {
 
   const handleExportClick = useCallback(() => {
     exportRings({
-      fileName: `rings-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      fileName: `${formatDate(new Date(), {
+                format: 'dd-mm-yyyy',
+              })}-rings-export.xlsx`,
       sheetName: 'Rings',
       rpcConfig: {
         functionName: 'get_rings_for_export',

@@ -21,7 +21,7 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { buildColumnConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
@@ -29,6 +29,7 @@ import { ActionButton } from '@/components/common/page-header';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
 import { createStandardActions } from '@/components/table/action-helpers';
+import { formatDate } from '@/utils/formatters';
 
 
 const useSystemsData = (
@@ -148,6 +149,7 @@ export default function SystemsPage() {
   
   const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
 
+  const allExportColumns = useMemo(() => buildColumnConfig('v_systems_complete'), []);
   const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
     ...TABLE_COLUMN_KEYS.v_systems_complete,
   ]);
@@ -209,14 +211,13 @@ export default function SystemsPage() {
     }
   };
 
-  const handleExport = () => {
-    // THE FIX: Explicitly cast the columns to the expected generic type to resolve the TypeScript error.
-    const exportColumns = orderedSystems as Column<Row<TableOrViewName>>[];
-
+  const handleExport = useCallback(() => {
     exportSystems({
-      fileName: `systems-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+      fileName: `${formatDate(new Date(), {
+          format: 'dd-mm-yyyy',
+        })}-systems-export.xlsx`,
       sheetName: 'Systems',
-      columns: exportColumns,
+      columns: allExportColumns as Column<Row<TableOrViewName>>[],
       rpcConfig: {
         functionName: 'get_paged_data',
         parameters: {
@@ -227,7 +228,7 @@ export default function SystemsPage() {
         },
       },
     });
-  };
+  }, [exportSystems, allExportColumns, filters.filters]);
 
   const headerActions = useMemo((): ActionButton[] => [
     {
@@ -245,7 +246,7 @@ export default function SystemsPage() {
       disabled: isUploading || isLoading,
     },
     {
-      label: isExporting ? 'Exporting...' : 'Export',
+      label: isExporting ? 'Exporting...' : 'Export All Data',
       onClick: handleExport,
       variant: 'outline',
       leftIcon: <FiDownload />,
@@ -258,7 +259,7 @@ export default function SystemsPage() {
       leftIcon: <FiDatabase />,
       disabled: isLoading,
     },
-  ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd, filters.filters]);
+  ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
   const headerStats = [
     { value: totalCount, label: 'Total Systems' },
@@ -271,6 +272,7 @@ export default function SystemsPage() {
       const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
       const isRingBased = selectedSystemType?.is_ring_based;
 
+      // --- THIS IS THE FIX ---
       const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
@@ -285,12 +287,12 @@ export default function SystemsPage() {
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
-        p_ring_id: isRingBased && formData.ring_id ? formData.ring_id : undefined,
-        p_order_in_ring:
-          isRingBased && formData.order_in_ring != null
-            ? Number(formData.order_in_ring)
-            : undefined,
+        p_ring_associations: isRingBased && formData.ring_id
+            ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
+            : null,
       };
+      // --- END FIX ---
+      
       upsertSystemMutation.mutate(payload);
     },
     [editModal.record, upsertSystemMutation, systemTypes]
@@ -329,8 +331,7 @@ export default function SystemsPage() {
         data={systems}
         columns={orderedSystems}
         loading={isLoading}
-        exportable={true}
-        onExport={handleExport}
+        isFetching={isFetching || isMutating}
         actions={tableActions}
         pagination={{
           current: pagination.currentPage,

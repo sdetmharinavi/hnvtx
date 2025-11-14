@@ -2650,14 +2650,14 @@ export type Database = {
             foreignKeyName: "system_connections_connected_system_type_id_fkey"
             columns: ["connected_system_type_id"]
             isOneToOne: false
-            referencedRelation: "systems"
+            referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "system_connections_connected_system_type_id_fkey"
             columns: ["connected_system_type_id"]
             isOneToOne: false
-            referencedRelation: "v_systems_complete"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -3755,8 +3755,8 @@ export type Database = {
           bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_type_id: string | null
           connected_system_name: string | null
+          connected_system_type_id: string | null
           connected_system_type_name: string | null
           created_at: string | null
           customer_name: string | null
@@ -3813,14 +3813,14 @@ export type Database = {
             foreignKeyName: "system_connections_connected_system_type_id_fkey"
             columns: ["connected_system_type_id"]
             isOneToOne: false
-            referencedRelation: "systems"
+            referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "system_connections_connected_system_type_id_fkey"
             columns: ["connected_system_type_id"]
             isOneToOne: false
-            referencedRelation: "v_systems_complete"
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
           {
@@ -4626,9 +4626,8 @@ export type Database = {
           p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
-          p_order_in_ring?: number
           p_remark?: string
-          p_ring_id?: string
+          p_ring_associations?: Json
           p_s_no?: string
           p_status: boolean
           p_system_name: string
