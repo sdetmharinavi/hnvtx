@@ -1993,8 +1993,8 @@ export type V_system_connections_completeRow = {
     bandwidth_allocated_mbps: number | null;
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
-    connected_system_type_id: string | null;
     connected_system_name: string | null;
+    connected_system_type_id: string | null;
     connected_system_type_name: string | null;
     created_at: string | null;
     customer_name: string | null;
