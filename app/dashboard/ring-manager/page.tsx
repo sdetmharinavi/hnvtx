@@ -207,9 +207,18 @@ export default function RingManagerPage() {
         p_node_id: systemData.node_id!,
         p_status: systemData.status ?? true,
         p_is_hub: systemData.is_hub ?? false,
-        p_ring_id: systemData.ring_id ?? undefined,
-        p_order_in_ring:
-          systemData.order_in_ring != null ? Number(systemData.order_in_ring) : undefined,
+        p_ring_associations:
+          systemData.ring_id
+            ? [
+                {
+                  ring_id: systemData.ring_id,
+                  order_in_ring:
+                    systemData.order_in_ring != null
+                      ? Number(systemData.order_in_ring)
+                      : null,
+                },
+              ]
+            : null,
         p_ip_address: (systemData.ip_address as string) || undefined,
         p_s_no: systemData.s_no ?? undefined,
         p_make: systemData.make ?? undefined,
@@ -242,11 +251,18 @@ export default function RingManagerPage() {
       p_node_id: systemToEdit.node_id!,
       p_status: systemToEdit.status!,
       p_is_hub: formData.is_hub ?? systemToEdit.is_hub ?? false,
-      p_ring_id: systemToEdit.ring_id ?? undefined,
-      p_order_in_ring:
-        formData.order_in_ring != null
-          ? Number(formData.order_in_ring)
-          : systemToEdit.order_in_ring ?? undefined,
+      p_ring_associations:
+        systemToEdit.ring_id
+          ? [
+              {
+                ring_id: systemToEdit.ring_id,
+                order_in_ring:
+                  formData.order_in_ring != null
+                    ? Number(formData.order_in_ring)
+                    : systemToEdit.order_in_ring ?? null,
+              },
+            ]
+          : null,
       p_ip_address: (systemToEdit.ip_address as string) || undefined,
       p_s_no: systemToEdit.s_no ?? undefined,
       p_make: systemToEdit.make ?? undefined,

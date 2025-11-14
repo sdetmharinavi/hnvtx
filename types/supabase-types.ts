@@ -2343,37 +2343,25 @@ export type Database = {
       }
       ports_management: {
         Row: {
-          bandwidth_allocated_mbps: number | null
-          customer_name: string | null
-          fiber_in: number | null
-          fiber_out: number | null
           port: string | null
           port_capacity: string | null
           port_type_id: string | null
           sfp_serial_no: string | null
-          system_connection_id: string
+          system_id: string
         }
         Insert: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
           sfp_serial_no?: string | null
-          system_connection_id: string
+          system_id: string
         }
         Update: {
-          bandwidth_allocated_mbps?: number | null
-          customer_name?: string | null
-          fiber_in?: number | null
-          fiber_out?: number | null
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
           sfp_serial_no?: string | null
-          system_connection_id?: string
+          system_id?: string
         }
         Relationships: [
           {
@@ -2391,17 +2379,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ports_management_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "system_connections"
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ports_management_system_connection_id_fkey"
-            columns: ["system_connection_id"]
-            isOneToOne: true
-            referencedRelation: "v_system_connections_complete"
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -2589,15 +2577,22 @@ export type Database = {
       }
       system_connections: {
         Row: {
+          bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_type_id: string | null
+          connected_link_type_id: string | null
+          connected_system_id: string | null
+          connected_system_protection_interface: string | null
+          connected_system_working_interface: string | null
           created_at: string | null
+          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
           media_type_id: string | null
+          protection_fiber_in: number | null
+          protection_fiber_out: number | null
           remark: string | null
           sn_id: string | null
           sn_interface: string | null
@@ -2606,17 +2601,26 @@ export type Database = {
           system_id: string
           updated_at: string | null
           vlan: string | null
+          working_fiber_in: number | null
+          working_fiber_out: number | null
         }
         Insert: {
+          bandwidth_allocated_mbps?: number | null
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
-          connected_system_type_id?: string | null
+          connected_link_type_id?: string | null
+          connected_system_id?: string | null
+          connected_system_protection_interface?: string | null
+          connected_system_working_interface?: string | null
           created_at?: string | null
+          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
           media_type_id?: string | null
+          protection_fiber_in?: number | null
+          protection_fiber_out?: number | null
           remark?: string | null
           sn_id?: string | null
           sn_interface?: string | null
@@ -2625,17 +2629,26 @@ export type Database = {
           system_id: string
           updated_at?: string | null
           vlan?: string | null
+          working_fiber_in?: number | null
+          working_fiber_out?: number | null
         }
         Update: {
+          bandwidth_allocated_mbps?: number | null
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
-          connected_system_type_id?: string | null
+          connected_link_type_id?: string | null
+          connected_system_id?: string | null
+          connected_system_protection_interface?: string | null
+          connected_system_working_interface?: string | null
           created_at?: string | null
+          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
           media_type_id?: string | null
+          protection_fiber_in?: number | null
+          protection_fiber_out?: number | null
           remark?: string | null
           sn_id?: string | null
           sn_interface?: string | null
@@ -2644,20 +2657,36 @@ export type Database = {
           system_id?: string
           updated_at?: string | null
           vlan?: string | null
+          working_fiber_in?: number | null
+          working_fiber_out?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "system_connections_connected_system_type_id_fkey"
-            columns: ["connected_system_type_id"]
+            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_system_type_id_fkey"
-            columns: ["connected_system_type_id"]
+            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
@@ -3755,9 +3784,12 @@ export type Database = {
           bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
+          connected_link_type_name: string | null
+          connected_system_id: string | null
           connected_system_name: string | null
-          connected_system_type_id: string | null
+          connected_system_protection_interface: string | null
           connected_system_type_name: string | null
+          connected_system_working_interface: string | null
           created_at: string | null
           customer_name: string | null
           en_id: string | null
@@ -3770,10 +3802,8 @@ export type Database = {
           id: string | null
           media_type_id: string | null
           media_type_name: string | null
-          port: string | null
-          port_capacity: string | null
-          port_type_id: string | null
-          port_type_name: string | null
+          protection_fiber_in: number | null
+          protection_fiber_out: number | null
           remark: string | null
           sdh_a_customer: string | null
           sdh_a_slot: string | null
@@ -3781,7 +3811,6 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
-          sfp_serial_no: string | null
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -3793,34 +3822,22 @@ export type Database = {
           system_type_name: string | null
           updated_at: string | null
           vlan: string | null
+          working_fiber_in: number | null
+          working_fiber_out: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "ports_management_port_type_id_fkey"
-            columns: ["port_type_id"]
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
             isOneToOne: false
-            referencedRelation: "lookup_types"
+            referencedRelation: "systems"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ports_management_port_type_id_fkey"
-            columns: ["port_type_id"]
+            foreignKeyName: "system_connections_connected_system_id_fkey"
+            columns: ["connected_system_id"]
             isOneToOne: false
-            referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_system_type_id_fkey"
-            columns: ["connected_system_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_system_type_id_fkey"
-            columns: ["connected_system_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types"
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
@@ -4568,20 +4585,19 @@ export type Database = {
           p_bandwidth_mbps?: number
           p_carrier?: string
           p_commissioned_on?: string
-          p_connected_system_type_id?: string
+          p_connected_link_type_id?: string
+          p_connected_system_id?: string
+          p_connected_system_protection_interface?: string
+          p_connected_system_working_interface?: string
           p_customer_name?: string
           p_en_id?: string
           p_en_interface?: string
           p_en_ip?: unknown
-          p_fiber_in?: number
-          p_fiber_out?: number
           p_id?: string
           p_media_type_id: string
-          p_port?: string
-          p_port_capacity?: string
-          p_port_type_id?: string
+          p_protection_fiber_in?: number
+          p_protection_fiber_out?: number
           p_remark?: string
-          p_sfp_serial_no?: string
           p_sn_id?: string
           p_sn_interface?: string
           p_sn_ip?: unknown
@@ -4589,17 +4605,26 @@ export type Database = {
           p_stm_no?: string
           p_system_id: string
           p_vlan?: string
+          p_working_fiber_in?: number
+          p_working_fiber_out?: number
         }
         Returns: {
+          bandwidth_allocated_mbps: number | null
           bandwidth_mbps: number | null
           commissioned_on: string | null
-          connected_system_type_id: string | null
+          connected_link_type_id: string | null
+          connected_system_id: string | null
+          connected_system_protection_interface: string | null
+          connected_system_working_interface: string | null
           created_at: string | null
+          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
           media_type_id: string | null
+          protection_fiber_in: number | null
+          protection_fiber_out: number | null
           remark: string | null
           sn_id: string | null
           sn_interface: string | null
@@ -4608,6 +4633,8 @@ export type Database = {
           system_id: string
           updated_at: string | null
           vlan: string | null
+          working_fiber_in: number | null
+          working_fiber_out: number | null
         }[]
         SetofOptions: {
           from: "*"

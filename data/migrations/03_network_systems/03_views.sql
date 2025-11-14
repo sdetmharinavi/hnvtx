@@ -2,29 +2,6 @@
 -- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
--- CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
--- SELECT
---   s.*,
---   n.name AS node_name,
---   lt_node_type.name AS node_type_name,
---   lt_system.is_ring_based,
---   n.latitude,
---   n.longitude,
---   lt_system.name AS system_type_name,
---   lt_system.code AS system_type_code,
---   lt_system.category AS system_category,
---   ma.name AS system_maintenance_terminal_name,
---   rbs.ring_id,
---   rbs.order_in_ring,
---   ring_area.name AS ring_logical_area_name
--- FROM public.systems s
---   JOIN public.nodes n ON s.node_id = n.id
---   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
---   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
---   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
---   LEFT JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
---   LEFT JOIN public.maintenance_areas ring_area ON rbs.maintenance_area_id = ring_area.id;
-
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
   s.*,
@@ -69,21 +46,27 @@ FROM public.systems s
 CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT
   sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
-  -- THE FIX: Add the foreign key ID fields required for editing.
   sc.sn_id,
   sc.en_id,
-  sc.connected_system_type_id,
+  sc.connected_system_id,
   sc.media_type_id,
-  pm.port_type_id,
-  -- Existing human-readable name fields
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
   lt_media.name AS media_type_name, sc.bandwidth_mbps, cs.system_name AS connected_system_name,
   lt_cs_type.name AS connected_system_type_name, sc.vlan, sc.commissioned_on,
   sc.remark, sc.status, sc.created_at, sc.updated_at,
-  -- SFP-based details
-  pm.port, lt_port_type.name as port_type_name, pm.port_capacity,
-  pm.sfp_serial_no, pm.fiber_in, pm.fiber_out, pm.customer_name, pm.bandwidth_allocated_mbps,
+  -- New fields from system_connections table
+  sc.customer_name,
+  sc.bandwidth_allocated_mbps,
+  sc.working_fiber_in as fiber_in, -- Alias for backward compatibility if needed
+  sc.working_fiber_out as fiber_out, -- Alias for backward compatibility if needed
+  sc.working_fiber_in,
+  sc.working_fiber_out,
+  sc.protection_fiber_in,
+  sc.protection_fiber_out,
+  sc.connected_system_working_interface,
+  sc.connected_system_protection_interface,
+  lt_link_type.name as connected_link_type_name,
   -- SDH details
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
@@ -94,11 +77,10 @@ FROM public.system_connections sc
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
   LEFT JOIN public.nodes nb ON s_en.node_id = nb.id
-  LEFT JOIN public.systems cs ON sc.connected_system_type_id = cs.id
+  LEFT JOIN public.systems cs ON sc.connected_system_id = cs.id
   LEFT JOIN public.lookup_types lt_cs_type ON cs.system_type_id = lt_cs_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
-  LEFT JOIN public.ports_management pm ON sc.id = pm.system_connection_id
-  LEFT JOIN public.lookup_types lt_port_type ON pm.port_type_id = lt_port_type.id
+  LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
 
 

@@ -1482,39 +1482,27 @@ export const ofc_connectionsUpdateSchema = z.object({
 });
 
 export const ports_managementRowSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  fiber_in: z.number().nullable(),
-  fiber_out: z.number().nullable(),
   port: z.string().nullable(),
   port_capacity: z.string().nullable(),
   port_type_id: z.uuid().nullable(),
   sfp_serial_no: z.string().nullable(),
-  system_connection_id: z.uuid(),
+  system_id: z.uuid(),
 });
 
 export const ports_managementInsertSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  fiber_in: z.number().nullable().optional(),
-  fiber_out: z.number().nullable().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
-  system_connection_id: z.uuid(),
+  system_id: z.uuid(),
 });
 
 export const ports_managementUpdateSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  fiber_in: z.number().nullable().optional(),
-  fiber_out: z.number().nullable().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
-  system_connection_id: z.uuid().optional(),
+  system_id: z.uuid().optional(),
 });
 
 export const ring_based_systemsRowSchema = z.object({
@@ -1605,15 +1593,22 @@ export const sdh_connectionsUpdateSchema = z.object({
 });
 
 export const system_connectionsRowSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
-  connected_system_type_id: z.uuid().nullable(),
+  connected_link_type_id: z.uuid().nullable(),
+  connected_system_id: z.uuid().nullable(),
+  connected_system_protection_interface: z.string().nullable(),
+  connected_system_working_interface: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
   id: z.uuid(),
   media_type_id: z.uuid().nullable(),
+  protection_fiber_in: z.number().nullable(),
+  protection_fiber_out: z.number().nullable(),
   remark: z.string().nullable(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
@@ -1622,18 +1617,27 @@ export const system_connectionsRowSchema = z.object({
   system_id: z.uuid(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
+  working_fiber_in: z.number().nullable(),
+  working_fiber_out: z.number().nullable(),
 });
 
 export const system_connectionsInsertSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable().optional(),
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_system_type_id: z.uuid().nullable().optional(),
+  connected_link_type_id: z.uuid().nullable().optional(),
+  connected_system_id: z.uuid().nullable().optional(),
+  connected_system_protection_interface: z.string().nullable().optional(),
+  connected_system_working_interface: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
   media_type_id: z.uuid().nullable().optional(),
+  protection_fiber_in: z.number().nullable().optional(),
+  protection_fiber_out: z.number().nullable().optional(),
   remark: z.string().nullable().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
@@ -1642,18 +1646,27 @@ export const system_connectionsInsertSchema = z.object({
   system_id: z.uuid(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
+  working_fiber_in: z.number().nullable().optional(),
+  working_fiber_out: z.number().nullable().optional(),
 });
 
 export const system_connectionsUpdateSchema = z.object({
+  bandwidth_allocated_mbps: z.number().nullable().optional(),
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_system_type_id: z.uuid().nullable().optional(),
+  connected_link_type_id: z.uuid().nullable().optional(),
+  connected_system_id: z.uuid().nullable().optional(),
+  connected_system_protection_interface: z.string().nullable().optional(),
+  connected_system_working_interface: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
+  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
   media_type_id: z.uuid().nullable().optional(),
+  protection_fiber_in: z.number().nullable().optional(),
+  protection_fiber_out: z.number().nullable().optional(),
   remark: z.string().nullable().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
@@ -1662,6 +1675,8 @@ export const system_connectionsUpdateSchema = z.object({
   system_id: z.uuid().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
+  working_fiber_in: z.number().nullable().optional(),
+  working_fiber_out: z.number().nullable().optional(),
 });
 
 export const systemsRowSchema = z.object({
@@ -2013,9 +2028,12 @@ export const v_system_connections_completeRowSchema = z.object({
   bandwidth_allocated_mbps: z.number().nullable(),
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
+  connected_link_type_name: z.url().nullable(),
+  connected_system_id: z.uuid().nullable(),
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  connected_system_type_id: z.uuid().nullable(),
+  connected_system_protection_interface: z.string().nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  connected_system_working_interface: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
@@ -2028,10 +2046,8 @@ export const v_system_connections_completeRowSchema = z.object({
   id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  port: z.string().nullable(),
-  port_capacity: z.string().nullable(),
-  port_type_id: z.uuid().nullable(),
-  port_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  protection_fiber_in: z.number().nullable(),
+  protection_fiber_out: z.number().nullable(),
   remark: z.string().nullable(),
   sdh_a_customer: z.string().nullable(),
   sdh_a_slot: z.string().nullable(),
@@ -2039,7 +2055,6 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_b_slot: z.string().nullable(),
   sdh_carrier: z.string().nullable(),
   sdh_stm_no: z.string().nullable(),
-  sfp_serial_no: z.string().nullable(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -2051,6 +2066,8 @@ export const v_system_connections_completeRowSchema = z.object({
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
+  working_fiber_in: z.number().nullable(),
+  working_fiber_out: z.number().nullable(),
 });
 
 export const v_system_ring_paths_detailedRowSchema = z.object({
