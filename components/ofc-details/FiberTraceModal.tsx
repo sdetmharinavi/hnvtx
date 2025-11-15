@@ -110,7 +110,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       isOpen={isOpen}
       onClose={onClose}
       title={`End-to-End Trace for Fiber #${fiberNo} on ${startingCableName}`}
-      size="xl"
+      size="full"
     >
       <div className="overflow-y-auto py-4 max-h-[70vh]">
         {renderContent()}

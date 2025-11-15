@@ -83,6 +83,20 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
 
+-- --- View for ports_management ---
+CREATE OR REPLACE VIEW public.v_ports_management_complete WITH (security_invoker = true) AS
+SELECT
+  pm.id,
+  pm.system_id,
+  s.system_name,
+  pm.port,
+  pm.port_type_id,
+  lt.name as port_type_name,
+  pm.port_capacity,
+  pm.sfp_serial_no
+FROM public.ports_management pm
+JOIN public.systems s ON pm.system_id = s.id
+LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id
 
 -- View for OFC Connections, now including system details from this module.
 CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS

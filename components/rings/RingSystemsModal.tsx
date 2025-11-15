@@ -145,7 +145,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Systems in Ring: ${ring?.name}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Systems in Ring: ${ring?.name}`} size="full">
       {isLoading ? <PageSpinner text="Loading systems..." /> :
        isError ? <ErrorDisplay error={error.message} /> :
        (

@@ -1460,6 +1460,7 @@ export type Ofc_connectionsUpdate = {
 };
 
 export type Ports_managementRow = {
+    id: string;
     port: string | null;
     port_capacity: string | null;
     port_type_id: string | null;
@@ -1468,6 +1469,7 @@ export type Ports_managementRow = {
 };
 
 export type Ports_managementInsert = {
+    id?: string;
     port?: string | null;
     port_capacity?: string | null;
     port_type_id?: string | null;
@@ -1476,6 +1478,7 @@ export type Ports_managementInsert = {
 };
 
 export type Ports_managementUpdate = {
+    id?: string;
     port?: string | null;
     port_capacity?: string | null;
     port_type_id?: string | null;
@@ -1970,6 +1973,17 @@ export type V_ofc_connections_completeRow = {
     updated_sn_name: string | null;
 };
 
+export type V_ports_management_completeRow = {
+    id: string | null;
+    port: string | null;
+    port_capacity: string | null;
+    port_type_id: string | null;
+    port_type_name: string | null;
+    sfp_serial_no: string | null;
+    system_id: string | null;
+    system_name: string | null;
+};
+
 export type V_ring_nodesRow = {
     id: string | null;
     ip: string | null;
@@ -2207,6 +2221,7 @@ export const viewNames = [
   "v_nodes_complete",
   "v_ofc_cables_complete",
   "v_ofc_connections_complete",
+  "v_ports_management_complete",
   "v_ring_nodes",
   "v_rings",
   "v_system_connections_complete",

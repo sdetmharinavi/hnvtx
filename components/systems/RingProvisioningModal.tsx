@@ -230,7 +230,7 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
   if (!logicalPath) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Provision Path: ${logicalPath.name}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Provision Path: ${logicalPath.name}`} size="full">
       <div className="p-6">
         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-600/50">
           <p className="font-semibold text-gray-800 dark:text-gray-200">

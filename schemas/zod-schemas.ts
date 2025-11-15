@@ -1482,6 +1482,7 @@ export const ofc_connectionsUpdateSchema = z.object({
 });
 
 export const ports_managementRowSchema = z.object({
+  id: z.uuid(),
   port: z.string().nullable(),
   port_capacity: z.string().nullable(),
   port_type_id: z.uuid().nullable(),
@@ -1490,6 +1491,7 @@ export const ports_managementRowSchema = z.object({
 });
 
 export const ports_managementInsertSchema = z.object({
+  id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
@@ -1498,6 +1500,7 @@ export const ports_managementInsertSchema = z.object({
 });
 
 export const ports_managementUpdateSchema = z.object({
+  id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_capacity: z.string().nullable().optional(),
   port_type_id: z.uuid().nullable().optional(),
@@ -1990,6 +1993,17 @@ export const v_ofc_connections_completeRowSchema = z.object({
   updated_sn_name: z.string().nullable(),
 });
 
+export const v_ports_management_completeRowSchema = z.object({
+  id: z.uuid().nullable(),
+  port: z.string().nullable(),
+  port_capacity: z.string().nullable(),
+  port_type_id: z.uuid().nullable(),
+  port_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  sfp_serial_no: z.string().nullable(),
+  system_id: z.uuid().nullable(),
+  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+});
+
 export const v_ring_nodesRowSchema = z.object({
   id: z.uuid().nullable(),
   ip: z.ipv4().nullable(),
@@ -2289,6 +2303,7 @@ export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRow
 export type V_nodes_completeRowSchema = z.infer<typeof v_nodes_completeRowSchema>;
 export type V_ofc_cables_completeRowSchema = z.infer<typeof v_ofc_cables_completeRowSchema>;
 export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connections_completeRowSchema>;
+export type V_ports_management_completeRowSchema = z.infer<typeof v_ports_management_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
 export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;

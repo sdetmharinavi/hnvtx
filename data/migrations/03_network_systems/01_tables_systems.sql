@@ -33,11 +33,13 @@ CREATE TABLE IF NOT EXISTS public.ring_based_systems (
 
 -- 3. Consolidated Table for SFP-Based Connection Details (replaces cpan_connections, maan_connections)
 CREATE TABLE IF NOT EXISTS public.ports_management (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
   port TEXT,
   port_type_id UUID REFERENCES public.lookup_types (id),
   port_capacity TEXT,
-  sfp_serial_no TEXT
+  sfp_serial_no TEXT,
+  CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 
 -- 4. Generic System Connections Table
