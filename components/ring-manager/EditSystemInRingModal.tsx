@@ -5,7 +5,7 @@ import { FC, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Modal } from "@/components/common/ui";
+import { Modal } from "@/components/common/ui";
 import { FormCard, FormInput, FormSwitch } from "@/components/common/form";
 import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { toast } from "sonner";

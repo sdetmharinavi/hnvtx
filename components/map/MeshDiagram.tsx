@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { RingMapNode } from './types/node';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import L from 'leaflet'; // We use L.Point for geometry calculations
+import Image from 'next/image';
 
 interface MeshDiagramProps {
   nodes: RingMapNode[];
@@ -12,7 +13,7 @@ interface MeshDiagramProps {
   ringName: string;
 }
 
-const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName }) => {
+const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName: _ringName }) => { // eslint-disable-line @typescript-eslint/no-unused-vars
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -29,7 +30,7 @@ const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName 
     return () => resizeObserver.disconnect();
   }, []);
 
-  const { hubs, spokesByHub, nodePositions } = useMemo(() => {
+  const { nodePositions } = useMemo(() => {
     const hubs = nodes.filter(n => n.is_hub);
     const spokes = nodes.filter(n => !n.is_hub);
     const spokesByHub = new Map<string, RingMapNode[]>();
@@ -82,7 +83,7 @@ const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName 
         nodePositions.set(spoke.id!, new L.Point(x, y));
     });
 
-    return { hubs, spokesByHub, nodePositions };
+    return { nodePositions };
   }, [nodes, connections, dimensions]);
 
   return (
@@ -132,7 +133,7 @@ const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName 
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <img src={icon.options.iconUrl} alt={node.name!} className="w-10 h-10" />
+            <Image src={icon.options.iconUrl ?? '/hnv.png'} alt={node.name!} width={40} height={40} unoptimized className="w-10 h-10" />
             <div className="absolute top-12 p-2 bg-white dark:bg-gray-800 rounded-md shadow-lg text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
               {node.name}
               {node.is_hub && <span className="ml-2 text-blue-500">(Hub)</span>}

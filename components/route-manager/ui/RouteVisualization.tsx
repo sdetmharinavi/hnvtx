@@ -72,7 +72,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
               {allPoints.map((point, index) => {
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
                 const isFirst = index === 0;
-                const isLast = index === allPoints.length - 1;
+                // const isLast = index === allPoints.length - 1;
                 
                 return (
                   <motion.div 
