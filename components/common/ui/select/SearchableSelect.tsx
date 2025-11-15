@@ -2,7 +2,7 @@
 "use client";
 
 import { Label } from "@/components/common/ui/label/Label";
-import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useLayoutEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiX, FiSearch } from "react-icons/fi";
 import { ButtonSpinner } from "../LoadingSpinner";
@@ -56,6 +56,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const listboxId = useId();
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -182,7 +183,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           {isLoading && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><ButtonSpinner size="sm" /></div>}
         </div>
       </div>
-      <div className="overflow-y-auto" style={{ maxHeight: `${maxHeight}px` }} role="listbox">
+      <div className="overflow-y-auto" style={{ maxHeight: `${maxHeight}px` }} role="listbox" id={listboxId}>
         {filteredOptions.length === 0 && !isLoading ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">{noOptionsMessage}</div>
         ) : (
@@ -204,7 +205,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div ref={triggerRef} className={`relative ${className}`}>
       {label && <Label>{label}</Label>}
-      <div className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`} onClick={toggleDropdown} onKeyDown={handleKeyDown} tabIndex={disabled ? -1 : 0} role="combobox" aria-expanded={isOpen}>
+      <div className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`} onClick={toggleDropdown} onKeyDown={handleKeyDown} tabIndex={disabled ? -1 : 0} role="combobox" aria-expanded={isOpen} aria-haspopup="listbox" aria-controls={listboxId}>
         <div className="flex items-center justify-between">
           <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>{selectedLabel || placeholder}</span>
           <div className="flex items-center gap-1">

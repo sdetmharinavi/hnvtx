@@ -6,7 +6,7 @@ const Privacy = () => {
       <div className='container mx-auto px-4 py-8'>
         <h1 className='text-4xl font-bold text-center text-gray-800 dark:text-white mb-8'>Privacy Policy</h1>
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-md p-8'>
-          <p className='mb-4 text-gray-700 dark:text-gray-300'>Your privacy is important to us. It is Harinavi Transmission Maintenance's policy to respect your privacy regarding any information we may collect from you across our website.</p>
+          <p className='mb-4 text-gray-700 dark:text-gray-300'>Your privacy is important to us. It is Harinavi Transmission Maintenance&apos;s policy to respect your privacy regarding any information we may collect from you across our website.</p>
           <p className='mb-4 text-gray-700 dark:text-gray-300'>
             We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent. We also let you know why we&apos;re collecting it and how it will be used.
           </p>

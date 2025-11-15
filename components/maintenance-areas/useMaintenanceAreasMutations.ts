@@ -34,7 +34,8 @@ export function useMaintenanceAreasMutations(
     editingArea?: { id: string } | null
   ) => {
     if (editingArea?.id) {
-      const { id, ...updateData } = data;
+      const { id: _omitId, ...updateData } = data;
+      void _omitId;
       
       updateAreaMutation.mutate({ 
         id: editingArea.id, 

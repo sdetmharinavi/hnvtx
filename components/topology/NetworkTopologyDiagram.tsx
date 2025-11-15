@@ -5,11 +5,8 @@ import React, { useMemo } from 'react';
 import { v_nodes_completeRowSchema, v_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 
-const NodeSchema = v_nodes_completeRowSchema;
-const CableSchema = v_ofc_cables_completeRowSchema;
-
-type Node = z.infer<typeof NodeSchema>;
-type Connection = z.infer<typeof CableSchema>;
+type Node = z.infer<typeof v_nodes_completeRowSchema>;
+type Connection = z.infer<typeof v_ofc_cables_completeRowSchema>;
 
 interface NetworkTopologyDiagramProps {
   nodes: Node[];
@@ -19,7 +16,7 @@ interface NetworkTopologyDiagramProps {
 export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({ nodes, connections }) => {
 
   const { nodePositions, width, height } = useMemo(() => {
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    // const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const positions = new Map<string, { x: number; y: number }>();
     const gridCellSize = 200;
     const occupiedCells = new Set<string>();

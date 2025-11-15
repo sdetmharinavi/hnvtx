@@ -28,8 +28,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<"name" | "date" | "type">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
@@ -60,31 +58,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
   }, [selectedFolder, folderSearchTerm, filteredFolders]);
 
 
-  // Sort and filter files based on user preferences
-  const processedFiles = useMemo(() => {
-    return (files as FileType[])
-      .filter((file) => {
-        const matchesSearch = file.file_name.toLowerCase().includes(fileSearchTerm.toLowerCase());
-        const matchesType = fileTypeFilter === "all" || file.file_type?.includes(fileTypeFilter);
-        return matchesSearch && matchesType;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-        
-        if (sortBy === "name") {
-          comparison = a.file_name.localeCompare(b.file_name);
-        } else if (sortBy === "type") {
-          comparison = (a.file_type || "").localeCompare(b.file_type || "");
-        } else {
-          // Sort by date
-          const dateA = new Date(a.uploaded_at || 0).getTime();
-          const dateB = new Date(b.uploaded_at || 0).getTime();
-          comparison = dateA - dateB;
-        }
-        
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
+  // (removed unused processedFiles)
 
   const handleView = (file: FileType) => {
     if (file.file_type === "application/pdf") {
@@ -147,11 +121,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     });
   };
 
-  // Helper function to truncate folder names with ellipsis
-  const truncateFolderName = (name: string, maxLength: number = 20) => {
-    if (name.length <= maxLength) return name;
-    return name.substring(0, maxLength) + "...";
-  };
+  // (removed unused truncateFolderName)
 
   // Clear search functions
   const clearFolderSearch = useCallback(() => {
@@ -171,29 +141,13 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         return matchesSearch && matchesType;
       })
       .sort((a, b) => {
-        let aValue: string | Date;
-        let bValue: string | Date;
-        
-        switch (sortBy) {
-          case "name":
-            aValue = a.file_name.toLowerCase();
-            bValue = b.file_name.toLowerCase();
-            break;
-          case "type":
-            aValue = a.file_type || '';
-            bValue = b.file_type || '';
-            break;
-          case "date":
-          default:
-            aValue = new Date(a.uploaded_at || 0);
-            bValue = new Date(b.uploaded_at || 0);
-            break;
-        }
-        
-        const comparison = aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-        return sortOrder === "asc" ? comparison : -comparison;
+        // Default: sort by date desc
+        const aDate = new Date(a.uploaded_at || 0).getTime();
+        const bDate = new Date(b.uploaded_at || 0).getTime();
+        const comparison = aDate - bDate;
+        return -comparison;
       });
-  }, [files, fileSearchTerm, fileTypeFilter, sortBy, sortOrder]);
+  }, [files, fileSearchTerm, fileTypeFilter]);
 
   const getFileTypeOptions = () => {
     const types = [...new Set((files as FileType[]).map(file => file.file_type.split("/")[0]))];

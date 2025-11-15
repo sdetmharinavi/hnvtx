@@ -31,6 +31,7 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
   isUploading,
   handleStartUpload,
 }) => {
+  void uppyRef;
   return (
     <div className="space-y-4">
       <div

@@ -17,8 +17,7 @@ import {
   contentVariants,
 } from '@/components/navigation/sidebar-components/sidebar-types';
 import NavItems from './sidebar-components/NavItems';
-import { FiHelpCircle, FiMenu, FiX } from 'react-icons/fi';
-import { UserRole } from '@/types/user-roles';
+import { FiMenu, FiX } from 'react-icons/fi';
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: SidebarProps) => {
   const pathname = usePathname();

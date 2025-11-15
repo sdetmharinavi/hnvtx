@@ -56,7 +56,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", { 
     columns: "id, system_name, ip_address, system_type:system_type_id(code)" 
   });
-  const systems = (systemsResult.data as SystemWithCode[]) || [];
+  const systems = useMemo(() => (systemsResult.data as SystemWithCode[]) || [], [systemsResult.data]);
 
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES" } });
   const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES" } });

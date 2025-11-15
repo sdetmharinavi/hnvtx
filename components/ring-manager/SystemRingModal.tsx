@@ -11,7 +11,6 @@ import { Button, Modal } from "@/components/common/ui";
 import {
   FormCard,
   FormInput,
-  FormIPAddressInput,
   FormSearchableSelect,
   FormSwitch,
 } from "@/components/common/form";
@@ -186,6 +185,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
       handleClose();
     } catch (error) {
       toast.error("Failed to save systems. Please try again.");
+      console.log(error);
     } finally {
       setIsSaving(false);
     }

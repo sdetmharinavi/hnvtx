@@ -157,7 +157,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
         // jcData is returned as an array from the database function
         const dataArray = Array.isArray(jcData) ? jcData : [jcData];
         if (dataArray && dataArray.length > 0) {
-          const newJc = dataArray[0];
+          // const newJc = dataArray[0];
         } else {
           console.error('No JC data returned from database function');
         }

@@ -4,7 +4,7 @@
 
 import React, { useRef } from "react";
 import { Dashboard } from "@uppy/react";
-import { Camera, CameraOff, Camera as CameraIcon, SwitchCamera } from "lucide-react";
+import { Camera as CameraIcon, SwitchCamera } from "lucide-react";
 import Uppy from "@uppy/core";
 
 interface AdvancedUploadProps {
@@ -23,6 +23,7 @@ const AdvancedUpload: React.FC<AdvancedUploadProps> = ({
   toggleCamera,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  void toggleCameraActive;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && uppyRef.current) {

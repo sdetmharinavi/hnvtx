@@ -15,7 +15,6 @@ import {
   FormInput,
   FormIPAddressInput,
   FormSearchableSelect,
-  FormSwitch,
   FormTextarea,
 } from "@/components/common/form";
 import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
@@ -82,10 +81,10 @@ export const SystemModal: FC<SystemModalProps> = ({
     { columns: "id, name" }
   );
   const maintenanceTerminals = maintenanceTerminalsResult.data;
-  const { data: ringsResult = { data: [] } } = useTableQuery(supabase, "rings", {
-    columns: "id, name",
-  });
-  const rings = ringsResult.data;
+  // const { data: ringsResult = { data: [] } } = useTableQuery(supabase, "rings", {
+  //   columns: "id, name",
+  // });
+  // const rings = ringsResult.data;
 
   const systemTypeOptions = useMemo(
     () =>
@@ -99,7 +98,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     () => maintenanceTerminals.map((mt) => ({ value: mt.id, label: mt.name })),
     [maintenanceTerminals]
   );
-  const ringOptions = useMemo(() => rings.map((r) => ({ value: r.id, label: r.name })), [rings]);
+  // const ringOptions = useMemo(() => rings.map((r) => ({ value: r.id, label: r.name })), [rings]);
 
   const {
     register,

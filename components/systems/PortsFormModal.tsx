@@ -4,7 +4,7 @@
 import { FC, useCallback, useEffect, useMemo } from "react";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ports_managementInsertSchema, Ports_managementInsertSchema, V_ports_management_completeRowSchema } from "@/schemas/zod-schemas";
+import { ports_managementInsertSchema, V_ports_management_completeRowSchema } from "@/schemas/zod-schemas";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal } from "@/components/common/ui";

@@ -1,11 +1,11 @@
 // path: components/systems/RingProvisioningModal.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, FC } from 'react';
-import { Modal, Button, SearchableSelect, PageSpinner } from '@/components/common/ui';
+import { useState, useEffect, useMemo, FC } from 'react';
+import { Modal, Button, SearchableSelect } from '@/components/common/ui';
 import { useAvailableCables, useAvailableFibers, useAssignSystemToFibers } from '@/hooks/database/ring-provisioning-hooks';
-import { Logical_pathsRowSchema, Ofc_cablesRowSchema } from '@/schemas/zod-schemas';
-import { ArrowRight, Check, ChevronsRight, GitBranch, X } from 'lucide-react';
+import { Logical_pathsRowSchema } from '@/schemas/zod-schemas';
+import { Check, ChevronsRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -224,6 +224,8 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
       onClose();
     } catch (error) {
       // Error is handled by the mutation's onError
+      console.log(error);
+      
     }
   };
 

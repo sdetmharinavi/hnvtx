@@ -76,5 +76,7 @@ export function projectDefaultSplices(
   equipment: Equipment[],
 ): FiberSplice[] {
     // Placeholder for future implementation
+    console.log(route, segments, equipment);
+    
     return [];
 }
