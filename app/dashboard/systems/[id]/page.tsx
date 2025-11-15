@@ -1,14 +1,14 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useMemo, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
-import { DataTable, TableAction } from '@/components/table';
+import { DataTable } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
@@ -28,7 +28,6 @@ export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
-  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
@@ -132,6 +131,7 @@ export default function SystemConnectionsPage() {
     [deleteManager]
   );
 
+  // --- THIS IS THE FIX: Add the `exportConfig` property ---
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
@@ -142,7 +142,8 @@ export default function SystemConnectionsPage() {
         filters: { system_id: systemId }
     }
   });
-  
+  // --- END FIX ---
+
   headerActions.splice(1, 0, {
     label: isUploading ? 'Uploading...' : 'Upload Connections',
     onClick: handleUploadClick,
@@ -153,14 +154,14 @@ export default function SystemConnectionsPage() {
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
-
+  
   type FiberFields = {
     working_fiber_in_id?: string | null;
     working_fiber_out_id?: string | null;
     protection_fiber_in_id?: string | null;
     protection_fiber_out_id?: string | null;
   };
-  
+
   const handleSave = (formData: SystemConnectionFormValues) => {
     const withFiber = formData as SystemConnectionFormValues & Partial<FiberFields>;
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
@@ -213,6 +214,15 @@ export default function SystemConnectionsPage() {
         actions={headerActions}
         stats={[{ label: 'Total Connections', value: totalCount }]}
       />
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
+
       <DataTable
         tableName="v_system_connections_complete"
         data={connections}
@@ -232,6 +242,7 @@ export default function SystemConnectionsPage() {
         searchable
         onSearchChange={setSearchQuery}
       />
+
       {isEditModalOpen && (
         <SystemConnectionFormModal
           isOpen={isEditModalOpen}
@@ -242,6 +253,7 @@ export default function SystemConnectionsPage() {
           isLoading={upsertMutation.isPending}
         />
       )}
+
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
