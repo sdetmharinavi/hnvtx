@@ -29,7 +29,6 @@ import { AiFillMerge } from "react-icons/ai";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { localDb } from "@/data/localDb";
 import { DEFAULTS } from "@/constants/constants";
-import { formatDate } from "@/utils/formatters";
 
 const useOfcData = (
   params: DataQueryHookParams

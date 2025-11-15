@@ -27,7 +27,7 @@ const Terms = () => {
 
           <h2 className='text-2xl font-bold text-gray-800 dark:text-white mt-6 mb-4'>No Warranties</h2>
           <p className='mb-4 text-gray-700 dark:text-gray-300'>
-            This Website is provided "as is," with all faults, and Harinavi Transmission Maintenance expresses no representations or warranties, of any kind related to this Website or the materials contained on this Website.
+            This Website is provided &quot;as is,&quot; with all faults, and Harinavi Transmission Maintenance expresses no representations or warranties, of any kind related to this Website or the materials contained on this Website.
           </p>
 
           <h2 className='text-2xl font-bold text-gray-800 dark:text-white mt-6 mb-4'>Limitation of Liability</h2>

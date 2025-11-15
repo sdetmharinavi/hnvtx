@@ -1,3 +1,4 @@
+// path: next.config.ts
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
@@ -19,12 +20,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-// THE FIX: Use withSerwistInit and remove all invalid top-level options.
 const withSerwist = withSerwistInit({
-  swSrc: "public/sw-base.js",
+  // --- THIS IS THE FIX: Point to the new TypeScript file in the `app` directory ---
+  swSrc: "app/sw.ts",
   swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
-  // 'runtimeCaching' is NOT a valid property here and has been removed.
 });
 
 export default withSerwist(nextConfig);

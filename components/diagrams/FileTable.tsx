@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Eye, Download, Trash2, Search, Filter, Grid, List, X } from "lucide-react";
+import { Eye, Download, Trash2, Search, Grid, List, X } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
 import "../../app/customuppy.css"; // Custom styles for Uppy
 import Image from "next/image";

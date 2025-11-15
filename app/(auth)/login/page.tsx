@@ -14,7 +14,7 @@ import { PageSpinner } from '@/components/common/ui';
 
 // This schema remains private to this file.
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
   password: passwordSchema,
 });
 

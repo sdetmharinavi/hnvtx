@@ -25,7 +25,6 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
       'sdh_b_slot',
       'sdh_carrier',
       'sdh_stm_no',
-      'sfp_serial_no',
       'vlan',
       'en_node_name',
       'sn_node_name',

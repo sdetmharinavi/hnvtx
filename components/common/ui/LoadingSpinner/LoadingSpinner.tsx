@@ -137,7 +137,7 @@ export const LoadingCard: React.FC<{
 export const BlurLoader: React.FC<{
   className?: string;
 }> = ({ className }) => (
-  <div className='absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm'>
+  <div className={cn('absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm', className)}>
     <div className='flex items-center space-x-2 text-gray-500'>
       <div className='h-5 w-5 animate-spin rounded-full border-b-2 border-blue-500'></div>
       <span>Refreshing data...</span>

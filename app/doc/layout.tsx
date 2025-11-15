@@ -5,7 +5,6 @@ import { Protected } from '@/components/auth/Protected';
 import DocSidebar from '@/components/doc/DocSidebar';
 import { workflowSections } from '@/components/doc/data/workflowData';
 import { allowedRoles } from '@/constants/constants';
-import { QueryProvider } from '@/providers/QueryProvider';
 import { UserProvider } from '@/providers/UserProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';

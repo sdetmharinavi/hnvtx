@@ -3,8 +3,8 @@
 
 import { useMemo, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { PageHeader} from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner, Modal } from '@/components/common/ui';
+import { PageHeader } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
@@ -20,57 +20,68 @@ import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-k
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
 
-// --- THIS IS THE FIX: The data hook is updated to perform client-side natural sorting ---
-const usePortsData = (systemId: string | null) => (params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> => {
-  const { currentPage, pageLimit, searchQuery, filters } = params;
-  
-  // 1. Fetch ALL ports for the system in a single request.
-  const { data, isLoading, isFetching, error, refetch } = usePagedData<V_ports_management_completeRowSchema>(
-    createClient(),
-    'v_ports_management_complete',
-    {
-      filters: { ...filters, system_id: systemId || '' },
-      limit: 5000, // Fetch up to 5000 ports, effectively all for most systems
-      offset: 0,
-      // We remove the server-side orderBy, as we will sort on the client.
-    },
-    { enabled: !!systemId }
-  );
+// --- FIX: Expose a factory that returns a properly named custom hook ---
+const createPortsDataHook = (systemId: string | null) => {
+  function usePortsDataInner(
+    params: DataQueryHookParams
+  ): DataQueryHookReturn<V_ports_management_completeRowSchema> {
+    const { currentPage, pageLimit, searchQuery, filters } = params;
 
-  // 2. Perform client-side filtering, sorting, and pagination.
-  const processedData = useMemo(() => {
-    const allPorts = data?.data ?? [];
-    let filtered = allPorts;
-
-    // Client-side search
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.port?.toLowerCase().includes(lowerQuery) ||
-        p.port_type_name?.toLowerCase().includes(lowerQuery) ||
-        p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
+    const { data, isLoading, isFetching, error, refetch } =
+      usePagedData<V_ports_management_completeRowSchema>(
+        createClient(),
+        'v_ports_management_complete',
+        {
+          filters: { ...filters, system_id: systemId || '' },
+          limit: 5000,
+          offset: 0,
+        },
+        { enabled: !!systemId }
       );
-    }
-    
-    // Client-side Natural Sorting
-    filtered.sort((a, b) => {
-        return (a.port || '').localeCompare(b.port || '', undefined, { numeric: true, sensitivity: 'base' });
-    });
 
-    const totalCount = filtered.length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    const processedData = useMemo(() => {
+      const allPorts = data?.data ?? [];
+      let filtered = allPorts;
+
+      if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter((p) =>
+          p.port?.toLowerCase().includes(lowerQuery) ||
+          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
+          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
+        );
+      }
+
+      filtered.sort((a, b) =>
+        (a.port || '').localeCompare(b.port || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        })
+      );
+
+      const totalCount = filtered.length;
+      const start = (currentPage - 1) * pageLimit;
+      const end = start + pageLimit;
+      const paginatedData = filtered.slice(start, end);
+
+      return {
+        data: paginatedData,
+        totalCount,
+        activeCount: totalCount,
+        inactiveCount: 0,
+      };
+    }, [data, searchQuery, currentPage, pageLimit]);
 
     return {
-      data: paginatedData,
-      totalCount,
-      activeCount: totalCount,
-      inactiveCount: 0,
+      ...processedData,
+      isLoading,
+      isFetching,
+      error: error as Error | null,
+      refetch,
     };
-  }, [data, searchQuery, currentPage, pageLimit]);
+  }
 
-  return { ...processedData, isLoading, isFetching, error: error as Error | null, refetch };
+  return usePortsDataInner;
 };
 // --- END FIX ---
 
@@ -90,7 +101,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     pagination, search, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
-    dataQueryHook: usePortsData(systemId),
+    dataQueryHook: createPortsDataHook(systemId),
     displayNameField: 'port',
   });
 
@@ -111,9 +122,9 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     }), [editModal.openEdit, crudActions.handleDelete]
   );
   
-  const handleUploadClick = () => {
+  const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -167,7 +178,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Ports for: ${system?.system_name}`} size="full">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Ports for: ${system?.system_name}`} size="xl">
       <div className="space-y-4">
         {error && <ErrorDisplay error={error.message} />}
 
@@ -207,7 +218,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           }}
           searchable
           onSearchChange={search.setSearchQuery}
-          sortable={false} // Disable header-click sorting since we are enforcing a natural sort
+          sortable={false}
         />
 
         {editModal.isOpen && (
