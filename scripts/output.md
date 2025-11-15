@@ -22707,7 +22707,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       isOpen={isOpen}
       onClose={onClose}
       title={`End-to-End Trace for Fiber #${fiberNo} on ${startingCableName}`}
-      size="xl"
+      size="full"
     >
       <div className="overflow-y-auto py-4 max-h-[70vh]">
         {renderContent()}
@@ -25372,7 +25372,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Systems in Ring: ${ring?.name}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Systems in Ring: ${ring?.name}`} size="full">
       {isLoading ? <PageSpinner text="Loading systems..." /> :
        isError ? <ErrorDisplay error={error.message} /> :
        (
@@ -43950,7 +43950,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const modalTitle = isEditMode ? "Edit Connection" : `New Connection ${needsStep2 ? `(Step ${step} of 2)` : ''}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="full" className="w-0 h-0 transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone footerContent={renderFooter()}>
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4'>
           <AnimatePresence mode="wait">
@@ -45074,7 +45074,7 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
   if (!logicalPath) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Provision Path: ${logicalPath.name}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Provision Path: ${logicalPath.name}`} size="full">
       <div className="p-6">
         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-600/50">
           <p className="font-semibold text-gray-800 dark:text-gray-200">

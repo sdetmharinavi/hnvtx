@@ -116,7 +116,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const modalTitle = isEditMode ? "Edit Connection" : "New Connection";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="full" className="w-0 h-0 transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4 space-y-6'>
           {/* --- THE FIX: Form is updated with all new fields --- */}
@@ -146,7 +146,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
             </div>
           </section>
 
-          <section>
+          {/* <section>
             <h3 className='text-lg font-medium border-b pt-4 pb-2 mb-4'>Fiber Details</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
                 <FormInput name='working_fiber_in' label='Working Fiber IN' type='number' register={register} error={errors.working_fiber_in} />
@@ -154,7 +154,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
                 <FormInput name='protection_fiber_in' label='Protection Fiber IN' type='number' register={register} error={errors.protection_fiber_in} />
                 <FormInput name='protection_fiber_out' label='Protection Fiber OUT' type='number' register={register} error={errors.protection_fiber_out} />
             </div>
-          </section>
+          </section> */}
           
           <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
             <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />

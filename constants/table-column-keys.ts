@@ -46,15 +46,14 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  ports_management: {
+    uploadType: "upsert",
+    conflictColumn: "system_id,port",
+    isUploadEnabled: true,
+  },
   diary_notes: {
     uploadType: "upsert",
     conflictColumn: "user_id,note_date",
-    isUploadEnabled: true,
-  },
-  // --- THE FIX: Add ports_management as an uploadable table ---
-  ports_management: {
-    uploadType: "upsert",
-    conflictColumn: "system_id,port", // Assuming a system can't have duplicate port numbers
     isUploadEnabled: true,
   },
 };
@@ -358,6 +357,7 @@ const TABLE_COLUMN_OBJECTS = {
     bandwidth_allocated_mbps: "bandwidth_allocated_mbps",
   },
   ports_management: {
+    id: "id", // Added primary key
     system_id: "system_id",
     port: "port",
     port_type_id: "port_type_id",
@@ -855,6 +855,16 @@ const TABLE_COLUMN_OBJECTS = {
     store_location: "store_location",
     updated_at: "updated_at",
     vendor: "vendor",
+  },
+  v_ports_management_complete: {
+    id: "id",
+    system_id: "system_id",
+    system_name: "system_name",
+    port: "port",
+    port_type_id: "port_type_id",
+    port_type_name: "port_type_name",
+    port_capacity: "port_capacity",
+    sfp_serial_no: "sfp_serial_no",
   },
 } satisfies ValidatedColumnKeys;
 

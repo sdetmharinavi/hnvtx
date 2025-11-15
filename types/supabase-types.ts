@@ -2343,6 +2343,7 @@ export type Database = {
       }
       ports_management: {
         Row: {
+          id: string
           port: string | null
           port_capacity: string | null
           port_type_id: string | null
@@ -2350,6 +2351,7 @@ export type Database = {
           system_id: string
         }
         Insert: {
+          id?: string
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
@@ -2357,6 +2359,7 @@ export type Database = {
           system_id: string
         }
         Update: {
+          id?: string
           port?: string | null
           port_capacity?: string | null
           port_type_id?: string | null
@@ -3708,6 +3711,48 @@ export type Database = {
             columns: ["updated_sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_ports_management_complete: {
+        Row: {
+          id: string | null
+          port: string | null
+          port_capacity: string | null
+          port_type_id: string | null
+          port_type_name: string | null
+          sfp_serial_no: string | null
+          system_id: string | null
+          system_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_port_type_id_fkey"
+            columns: ["port_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
         ]
