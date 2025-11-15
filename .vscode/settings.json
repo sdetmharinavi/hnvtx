@@ -62,6 +62,7 @@
       "plpgsql",
       "postgrest",
       "psql",
+      "Qrcode",
       "radiolink",
       "reauthentication",
       "recordset",

@@ -8,8 +8,7 @@ import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { UserProvider, useUser } from "@/providers/UserProvider";
-import { Json } from "@/types/supabase-types";
+import { useUser } from "@/providers/UserProvider";
 
 const useUserProfileCheck = (userId?: string) => {
   const supabase = createClient();

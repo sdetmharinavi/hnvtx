@@ -1,13 +1,13 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useMemo, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase, FiUpload } from 'react-icons/fi';
+import { FiDatabase } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
@@ -27,7 +27,6 @@ export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
-  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
@@ -65,7 +64,7 @@ export default function SystemConnectionsPage() {
     onSuccess: () => refetch(),
   });
 
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
+  const { mutate: uploadConnections } = useSystemConnectionExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
     }
@@ -84,10 +83,6 @@ export default function SystemConnectionsPage() {
   const closeModal = () => {
     setEditingRecord(null);
     setIsEditModalOpen(false);
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

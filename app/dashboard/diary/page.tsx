@@ -1,7 +1,7 @@
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -10,13 +10,10 @@ import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DiaryEntryCard } from "@/components/diary/DiaryEntryCard";
 import { DiaryFormModal } from "@/components/diary/DiaryFormModal";
 import { DiaryCalendar } from "@/components/diary/DiaryCalendar";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import { Diary_notesRowSchema } from "@/schemas/zod-schemas";
 import { useAuthStore } from "@/stores/authStore";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
 import { createClient } from "@/utils/supabase/client";
-import { DEFAULTS } from "@/constants/constants";
 import { useRpcQuery } from "@/hooks/database";
 import { useUser } from "@/providers/UserProvider";
 import { useDiaryExcelUpload } from "@/hooks/database/excel-queries/useDiaryExcelUpload";

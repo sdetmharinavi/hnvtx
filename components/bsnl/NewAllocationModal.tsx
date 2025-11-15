@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { X, GitBranch, Plus, Trash2 } from 'lucide-react';
-import { BsnlNode, BsnlCable, BsnlSystem, FiberRoutePath, FiberAllocation } from '@/components/bsnl/types';
+import { BsnlNode, BsnlCable, BsnlSystem, FiberRoutePath } from '@/components/bsnl/types';
 
 // The mock data is now only used as a fallback and is correctly typed.
 export const mockData = {
@@ -155,7 +155,7 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
 
   const selectedSystem = useMemo(() => systems.find(s => s.id === selectedSystemId), [systems, selectedSystemId]);
 
-  const allAllocatedFibers = useMemo(() => new Set<string>(), [cables, paths]);
+  const allAllocatedFibers = useMemo(() => new Set<string>(), []);
 
   const resetState = () => {
     setStep(1); setSelectedSystemId(''); setTopology('p2p-unprotected'); setPaths({ working: [], protection: [], taps: {} }); setError(null);

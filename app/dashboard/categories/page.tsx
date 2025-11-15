@@ -98,6 +98,7 @@ export default function CategoriesPage() {
       toast.success('Data refreshed successfully');
     } catch (error) {
       toast.error('Failed to refresh data.');
+      console.log(error);
     }
   }, [refetchCategories, refetchGroupedLookupsByCategory]);
 

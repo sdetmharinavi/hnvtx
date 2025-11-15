@@ -9,6 +9,7 @@ import {
   sdh_connectionsInsertSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
+  SystemsRowSchema,
 } from "@/schemas/zod-schemas";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
@@ -24,11 +25,16 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-// --- THE FIX: Create a unified form schema that includes all new fields. ---
 const formSchema = system_connectionsInsertSchema
   .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
+
+// --- THIS IS THE FIX: Define a local type that includes the missing property ---
+type EditingConnectionType = V_system_connections_completeRowSchema & {
+  connected_link_type_id?: string | null;
+};
+// --- END FIX ---
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
@@ -39,15 +45,33 @@ interface SystemConnectionFormModalProps {
   isLoading: boolean;
 }
 
+type SystemWithCode = SystemsRowSchema & {
+  system_type: { code: string | null } | null;
+};
+
 export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ isOpen, onClose, parentSystem, editingConnection, onSubmit, isLoading }) => {
   const supabase = createClient();
   const isEditMode = !!editingConnection;
 
-  const { data: systems = { data: [] } } = useTableQuery(supabase, "systems", { columns: "id, system_name" });
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", { 
+    columns: "id, system_name, ip_address, system_type:system_type_id(code)" 
+  });
+  const systems = (systemsResult.data as SystemWithCode[]) || [];
+
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES" } });
   const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES" } });
 
-  const systemOptions = useMemo(() => systems.data.map((s) => ({ value: s.id, label: s.system_name || s.id })), [systems]);
+  const systemOptions = useMemo(() => 
+    systems.map((s) => {
+      const typeCode = s.system_type?.code;
+      const ip = s.ip_address ? `(${s.ip_address})` : '';
+      const type = typeCode ? `[${typeCode}]` : '';
+      const label = `${s.system_name || s.id} ${type} ${ip}`.trim();
+      return { value: s.id, label };
+    }), 
+    [systems]
+  );
+
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
   const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes]);
   
@@ -64,37 +88,38 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && editingConnection) {
+        // --- THIS IS THE FIX: Cast to our new, more accurate type ---
+        const conn = editingConnection as EditingConnectionType;
         reset({
-          // Reset all fields including the new ones
-          system_id: editingConnection.system_id ?? "",
-          media_type_id: editingConnection.media_type_id ?? "",
-          status: editingConnection.status ?? true,
-          sn_id: editingConnection.sn_id ?? null,
-          en_id: editingConnection.en_id ?? null,
-          connected_system_id: editingConnection.connected_system_id ?? null,
-          sn_ip: editingConnection.sn_ip ?? null,
-          sn_interface: editingConnection.sn_interface ?? null,
-          en_ip: editingConnection.en_ip ?? null,
-          en_interface: editingConnection.en_interface ?? null,
-          bandwidth_mbps: editingConnection.bandwidth_mbps ?? null,
-          vlan: editingConnection.vlan ?? null,
-          commissioned_on: editingConnection.commissioned_on ?? null,
-          remark: editingConnection.remark ?? null,
-          customer_name: editingConnection.customer_name ?? null,
-          bandwidth_allocated_mbps: editingConnection.bandwidth_allocated_mbps ?? null,
-          working_fiber_in: editingConnection.working_fiber_in ?? null,
-          working_fiber_out: editingConnection.working_fiber_out ?? null,
-          protection_fiber_in: editingConnection.protection_fiber_in ?? null,
-          protection_fiber_out: editingConnection.protection_fiber_out ?? null,
-          connected_system_working_interface: editingConnection.connected_system_working_interface ?? null,
-          connected_system_protection_interface: editingConnection.connected_system_protection_interface ?? null,
-          connected_link_type_id: (editingConnection as any).connected_link_type_id ?? null, // Cast because it's not in the base schema
-          stm_no: editingConnection.sdh_stm_no ?? null,
-          carrier: editingConnection.sdh_carrier ?? null,
-          a_slot: editingConnection.sdh_a_slot ?? null,
-          a_customer: editingConnection.sdh_a_customer ?? null,
-          b_slot: editingConnection.sdh_b_slot ?? null,
-          b_customer: editingConnection.sdh_b_customer ?? null,
+          system_id: conn.system_id ?? "",
+          media_type_id: conn.media_type_id ?? "",
+          status: conn.status ?? true,
+          sn_id: conn.sn_id ?? null,
+          en_id: conn.en_id ?? null,
+          connected_system_id: conn.connected_system_id ?? null,
+          sn_ip: conn.sn_ip ?? null,
+          sn_interface: conn.sn_interface ?? null,
+          en_ip: conn.en_ip ?? null,
+          en_interface: conn.en_interface ?? null,
+          bandwidth_mbps: conn.bandwidth_mbps ?? null,
+          vlan: conn.vlan ?? null,
+          commissioned_on: conn.commissioned_on ?? null,
+          remark: conn.remark ?? null,
+          customer_name: conn.customer_name ?? null,
+          bandwidth_allocated_mbps: conn.bandwidth_allocated_mbps ?? null,
+          working_fiber_in: conn.working_fiber_in ?? null,
+          working_fiber_out: conn.working_fiber_out ?? null,
+          protection_fiber_in: conn.protection_fiber_in ?? null,
+          protection_fiber_out: conn.protection_fiber_out ?? null,
+          connected_system_working_interface: conn.connected_system_working_interface ?? null,
+          connected_system_protection_interface: conn.connected_system_protection_interface ?? null,
+          connected_link_type_id: conn.connected_link_type_id ?? null,
+          stm_no: conn.sdh_stm_no ?? null,
+          carrier: conn.sdh_carrier ?? null,
+          a_slot: conn.sdh_a_slot ?? null,
+          a_customer: conn.sdh_a_customer ?? null,
+          b_slot: conn.sdh_b_slot ?? null,
+          b_customer: conn.sdh_b_customer ?? null,
         });
       } else {
         reset({ system_id: parentSystem.id!, status: true, media_type_id: "" });
@@ -109,17 +134,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
     [onSubmit]
   );
   
-  const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = (errors) => {
+  const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = () => {
     toast.error("Please fix the validation errors.");
   };
   
   const modalTitle = isEditMode ? "Edit Connection" : "New Connection";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="full" className="w-0 h-0 transparent">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4 space-y-6'>
-          {/* --- THE FIX: Form is updated with all new fields --- */}
           <section>
             <h3 className='text-lg font-medium border-b pb-2 mb-4'>General</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>

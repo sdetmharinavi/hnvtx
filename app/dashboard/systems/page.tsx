@@ -7,7 +7,7 @@ import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from "react-i
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
 import { ErrorDisplay, ConfirmModal } from "@/components/common/ui";
-import { DataTable, TableAction } from "@/components/table";
+import { DataTable } from "@/components/table";
 import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
 import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
@@ -214,9 +214,9 @@ export default function SystemsPage() {
     return actions;
   }, [editModal.openEdit, handleView, crudActions, handleManagePorts]);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

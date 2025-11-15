@@ -1,5 +1,12 @@
+// path: middleware.ts
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+
+// --- THIS IS THE FIX ---
+// This line explicitly tells Next.js to run this middleware in the full Node.js environment,
+// which is required by the Supabase SSR library and resolves the build error.
+export const runtime = 'nodejs';
+// --- END FIX ---
 
 export async function middleware(request: NextRequest) {
   // update user's auth session

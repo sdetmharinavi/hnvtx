@@ -2,10 +2,8 @@
 "use client";
 
 import useIsMobile from "@/hooks/useIsMobile";
-import { UserRole } from "@/types/user-roles";
 import { useState, useEffect } from "react";
 import { Protected } from "@/components/auth/Protected";
-import { QueryProvider } from "@/providers/QueryProvider";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
 import { allowedRoles } from "@/constants/constants";

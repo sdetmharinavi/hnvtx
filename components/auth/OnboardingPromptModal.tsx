@@ -2,7 +2,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FiUserCheck, FiArrowRight, FiX } from "react-icons/fi";
+import { FiUserCheck, FiArrowRight } from "react-icons/fi";
 import { Button } from "@/components/common/ui";
 
 interface OnboardingPromptModalProps {
@@ -65,7 +65,7 @@ export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
           onClick={onDismissPermanently}
           className="w-full text-center text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mt-4"
         >
-          Don't show this again
+          Don&apos;t show this again
         </button>
       </motion.div>
     </div>

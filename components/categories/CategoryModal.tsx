@@ -2,13 +2,12 @@
 "use client";
 
 import { GroupedLookupsByCategory } from "@/components/categories/categories-types";
-import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
 import { Lookup_typesInsertSchema, lookup_typesInsertSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { snakeToTitleCase } from "@/utils/formatters";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { generateCodeFromName } from "@/config/helper-functions";
@@ -104,8 +103,8 @@ export function CategoryModal({
   );
 
   const modalTitle = isEditMode ? "Edit Category" : "Create New Category";
-  const submitButtonText = isEditMode ? (isLoading ? "Updating..." : "Update") : (isLoading ? "Creating..." : "Create");
-  const canSubmit = Boolean(watch("category")?.trim() && !isLoading);
+  // const submitButtonText = isEditMode ? (isLoading ? "Updating..." : "Update") : (isLoading ? "Creating..." : "Create");
+  // const canSubmit = Boolean(watch("category")?.trim() && !isLoading);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} visible={false} className="transparent w-0 h-0">
@@ -130,7 +129,7 @@ export function CategoryModal({
           <ul className={`space-y-1 text-xs ${isEditMode ? "text-yellow-800 dark:text-yellow-200/80" : "text-blue-800 dark:text-blue-200/80"}`}>
             <li>• Category name will be converted to uppercase with underscores.</li>
             {isEditMode && <li>• This will update the category for ALL associated lookup types.</li>}
-            {!isEditMode && <li>• A default 'DEFAULT' lookup type will be created.</li>}
+            {!isEditMode && <li>• A default &apos;DEFAULT&apos; lookup type will be created.</li>}
           </ul>
         </div>
       </FormCard>

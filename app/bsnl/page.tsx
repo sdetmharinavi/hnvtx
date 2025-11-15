@@ -83,6 +83,7 @@ export default function ScalableFiberNetworkDashboard() {
     data: AllocationSaveData
   ) => {
     toast.info('Allocation feature is a work in progress.');
+    console.log(data);
   };
   const clearFilters = useCallback(() => {
     setFilters({
