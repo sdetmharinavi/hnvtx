@@ -7,11 +7,10 @@ import { Modal, Button, PageSpinner, SearchableSelect } from "@/components/commo
 import { FormCard } from "@/components/common/form";
 import { useTableQuery, useRpcMutation } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { V_system_connections_completeRowSchema, V_ofc_cables_completeRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
+import { V_system_connections_completeRowSchema, V_ofc_cables_completeRowSchema, V_nodes_completeRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { toast } from "sonner";
 import { GitBranch, Plus, Trash2 } from "lucide-react";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
-import { Option } from "../common/ui/select/SearchableSelect";
 
 // --- TYPE DEFINITIONS ---
 interface PathStep {
@@ -24,14 +23,13 @@ interface FiberAllocationForm {
   protection_path_in: PathStep[];
   protection_path_out: PathStep[];
 }
-type ConnectionWithNodeIds = V_system_connections_completeRowSchema & {
-  sn_node_id?: string | null;
-  en_node_id?: string | null;
-};
+
+// --- THIS IS THE FIX: The props interface is updated ---
 interface FiberAllocationModalProps {
   isOpen: boolean;
   onClose: () => void;
   connection: V_system_connections_completeRowSchema | null;
+  parentSystem: V_systems_completeRowSchema | null; // Added parentSystem
   onSave: () => void;
 }
 
@@ -57,8 +55,7 @@ function calculateStringSimilarity(str1: string, str2: string): number {
     return (2.0 * intersection.size) / (bigrams1.size + bigrams2.size);
 }
 
-
-// --- REFACTORED SUB-COMPONENTS ---
+// (PathSegmentRow component remains the same)
 const PathSegmentRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
@@ -122,8 +119,7 @@ const PathBuilder: FC<{
       });
       return currentNode;
     }, [fields, startNode, cables, nodes]);
-
-    // --- THIS IS THE DEFINITIVE FIX ---
+    
     const availableCables = useMemo(() => {
         if (!lastNode?.name) return [];
         const normalizedNodeName = normalizeName(lastNode.name);
@@ -136,10 +132,9 @@ const PathBuilder: FC<{
                 return { ...cable, score };
             })
             .filter(cable => cable.score >= SIMILARITY_THRESHOLD)
-            .sort((a, b) => b.score - a.score) // Show best matches first
+            .sort((a, b) => b.score - a.score)
             .map(c => ({ value: c.id!, label: c.route_name! }));
     }, [cables, lastNode]);
-    // --- END FIX ---
 
     const { data: availableFibers, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
         columns: 'id, fiber_no_sn',
@@ -217,12 +212,9 @@ const PathBuilder: FC<{
     );
 };
 
-export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, onSave }) => {
+export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem, onSave }) => {
     const { control, handleSubmit, watch, reset } = useForm<FiberAllocationForm>({
-        defaultValues: {
-            working_path_in: [], working_path_out: [],
-            protection_path_in: [], protection_path_out: [],
-        }
+        defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
 
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
@@ -233,12 +225,16 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
     });
 
+    // --- THIS IS THE DEFINITIVE FIX ---
+    // The startNode is now derived from the parentSystem, not the individual connection.
     const startNode = useMemo(() => {
-        if (!connection || !allNodesResult?.data) return null;
-        const connWithNodeId = connection as ConnectionWithNodeIds;
-        const node = allNodesResult.data.find(n => n.id === connWithNodeId.sn_node_id);
+        if (!parentSystem || !allNodesResult?.data) {
+            return null;
+        }
+        const node = allNodesResult.data.find(n => n.id === parentSystem.node_id);
         return node ? { id: node.id!, name: node.name! } : null;
-    }, [connection, allNodesResult]);
+    }, [parentSystem, allNodesResult]);
+    // --- END FIX ---
 
     useEffect(() => {
         reset({ working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] });

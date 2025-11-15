@@ -132,7 +132,6 @@ export default function SystemConnectionsPage() {
     [deleteManager]
   );
 
-  // --- THIS IS THE FIX: Add the `exportConfig` property ---
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
@@ -143,8 +142,7 @@ export default function SystemConnectionsPage() {
         filters: { system_id: systemId }
     }
   });
-  // --- END FIX ---
-
+  
   headerActions.splice(1, 0, {
     label: isUploading ? 'Uploading...' : 'Upload Connections',
     onClick: handleUploadClick,
@@ -155,14 +153,14 @@ export default function SystemConnectionsPage() {
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
-  
+
   type FiberFields = {
     working_fiber_in_id?: string | null;
     working_fiber_out_id?: string | null;
     protection_fiber_in_id?: string | null;
     protection_fiber_out_id?: string | null;
   };
-
+  
   const handleSave = (formData: SystemConnectionFormValues) => {
     const withFiber = formData as SystemConnectionFormValues & Partial<FiberFields>;
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
@@ -215,15 +213,6 @@ export default function SystemConnectionsPage() {
         actions={headerActions}
         stats={[{ label: 'Total Connections', value: totalCount }]}
       />
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-
       <DataTable
         tableName="v_system_connections_complete"
         data={connections}
@@ -243,7 +232,6 @@ export default function SystemConnectionsPage() {
         searchable
         onSearchChange={setSearchQuery}
       />
-
       {isEditModalOpen && (
         <SystemConnectionFormModal
           isOpen={isEditModalOpen}
@@ -254,7 +242,6 @@ export default function SystemConnectionsPage() {
           isLoading={upsertMutation.isPending}
         />
       )}
-
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
@@ -270,6 +257,7 @@ export default function SystemConnectionsPage() {
         onClose={() => setIsAllocationModalOpen(false)}
         connection={connectionToAllocate}
         onSave={refetch}
+        parentSystem={parentSystem}
       />
     </div>
   );
