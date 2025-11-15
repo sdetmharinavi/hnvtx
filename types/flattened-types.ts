@@ -973,57 +973,6 @@ export type FoldersUpdate = {
     user_id?: string;
 };
 
-export type Inventory_itemsRow = {
-    asset_no: string | null;
-    category_id: string | null;
-    cost: number | null;
-    created_at: string | null;
-    description: string | null;
-    functional_location_id: string | null;
-    id: string;
-    location_id: string | null;
-    name: string;
-    purchase_date: string | null;
-    quantity: number;
-    status_id: string | null;
-    updated_at: string | null;
-    vendor: string | null;
-};
-
-export type Inventory_itemsInsert = {
-    asset_no?: string | null;
-    category_id?: string | null;
-    cost?: number | null;
-    created_at?: string | null;
-    description?: string | null;
-    functional_location_id?: string | null;
-    id?: string;
-    location_id?: string | null;
-    name: string;
-    purchase_date?: string | null;
-    quantity?: number;
-    status_id?: string | null;
-    updated_at?: string | null;
-    vendor?: string | null;
-};
-
-export type Inventory_itemsUpdate = {
-    asset_no?: string | null;
-    category_id?: string | null;
-    cost?: number | null;
-    created_at?: string | null;
-    description?: string | null;
-    functional_location_id?: string | null;
-    id?: string;
-    location_id?: string | null;
-    name?: string;
-    purchase_date?: string | null;
-    quantity?: number;
-    status_id?: string | null;
-    updated_at?: string | null;
-    vendor?: string | null;
-};
-
 export type Junction_closuresRow = {
     created_at: string | null;
     id: string;
@@ -1588,8 +1537,8 @@ export type System_connectionsRow = {
     en_ip: unknown;
     id: string;
     media_type_id: string | null;
-    protection_fiber_in: number | null;
-    protection_fiber_out: number | null;
+    protection_fiber_in_id: string | null;
+    protection_fiber_out_id: string | null;
     remark: string | null;
     sn_id: string | null;
     sn_interface: string | null;
@@ -1598,8 +1547,8 @@ export type System_connectionsRow = {
     system_id: string;
     updated_at: string | null;
     vlan: string | null;
-    working_fiber_in: number | null;
-    working_fiber_out: number | null;
+    working_fiber_in_id: string | null;
+    working_fiber_out_id: string | null;
 };
 
 export type System_connectionsInsert = {
@@ -1617,8 +1566,8 @@ export type System_connectionsInsert = {
     en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
-    protection_fiber_in?: number | null;
-    protection_fiber_out?: number | null;
+    protection_fiber_in_id?: string | null;
+    protection_fiber_out_id?: string | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
@@ -1627,8 +1576,8 @@ export type System_connectionsInsert = {
     system_id: string;
     updated_at?: string | null;
     vlan?: string | null;
-    working_fiber_in?: number | null;
-    working_fiber_out?: number | null;
+    working_fiber_in_id?: string | null;
+    working_fiber_out_id?: string | null;
 };
 
 export type System_connectionsUpdate = {
@@ -1646,8 +1595,8 @@ export type System_connectionsUpdate = {
     en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
-    protection_fiber_in?: number | null;
-    protection_fiber_out?: number | null;
+    protection_fiber_in_id?: string | null;
+    protection_fiber_out_id?: string | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
@@ -1656,8 +1605,8 @@ export type System_connectionsUpdate = {
     system_id?: string;
     updated_at?: string | null;
     vlan?: string | null;
-    working_fiber_in?: number | null;
-    working_fiber_out?: number | null;
+    working_fiber_in_id?: string | null;
+    working_fiber_out_id?: string | null;
 };
 
 export type SystemsRow = {
@@ -1821,27 +1770,6 @@ export type V_end_to_end_pathsRow = {
     source_system_id: string | null;
     total_distance_km: number | null;
     total_loss_db: number | null;
-};
-
-export type V_inventory_itemsRow = {
-    asset_no: string | null;
-    category_id: string | null;
-    category_name: string | null;
-    cost: number | null;
-    created_at: string | null;
-    description: string | null;
-    functional_location: string | null;
-    functional_location_id: string | null;
-    id: string | null;
-    location_id: string | null;
-    name: string | null;
-    purchase_date: string | null;
-    quantity: number | null;
-    status_id: string | null;
-    status_name: string | null;
-    store_location: string | null;
-    updated_at: string | null;
-    vendor: string | null;
 };
 
 export type V_junction_closures_completeRow = {
@@ -2034,6 +1962,7 @@ export type V_system_connections_completeRow = {
     en_interface: string | null;
     en_ip: unknown;
     en_name: string | null;
+    en_node_id: string | null;
     en_node_name: string | null;
     fiber_in: number | null;
     fiber_out: number | null;
@@ -2041,7 +1970,9 @@ export type V_system_connections_completeRow = {
     media_type_id: string | null;
     media_type_name: string | null;
     protection_fiber_in: number | null;
+    protection_fiber_in_id: string | null;
     protection_fiber_out: number | null;
+    protection_fiber_out_id: string | null;
     remark: string | null;
     sdh_a_customer: string | null;
     sdh_a_slot: string | null;
@@ -2053,6 +1984,7 @@ export type V_system_connections_completeRow = {
     sn_interface: string | null;
     sn_ip: unknown;
     sn_name: string | null;
+    sn_node_id: string | null;
     sn_node_name: string | null;
     status: boolean | null;
     system_id: string | null;
@@ -2061,7 +1993,9 @@ export type V_system_connections_completeRow = {
     updated_at: string | null;
     vlan: string | null;
     working_fiber_in: number | null;
+    working_fiber_in_id: string | null;
     working_fiber_out: number | null;
+    working_fiber_out_id: string | null;
 };
 
 export type V_system_ring_paths_detailedRow = {
@@ -2189,7 +2123,6 @@ export const tableNames = [
   "fiber_splices",
   "files",
   "folders",
-  "inventory_items",
   "junction_closures",
   "logical_fiber_paths",
   "logical_path_segments",
@@ -2214,7 +2147,6 @@ export const viewNames = [
   "v_employee_designations",
   "v_employees",
   "v_end_to_end_paths",
-  "v_inventory_items",
   "v_junction_closures_complete",
   "v_lookup_types",
   "v_maintenance_areas",

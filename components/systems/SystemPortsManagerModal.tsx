@@ -3,7 +3,7 @@
 
 import { useMemo, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { PageHeader } from '@/components/common/page-header';
+import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
@@ -146,32 +146,36 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     });
   }, [exportPorts, system?.system_name, systemId]);
 
-  const headerActions = useMemo(() => [
+  const headerActions = useMemo((): ActionButton[] => [
     {
       label: 'Refresh',
       onClick: () => { refetch(); toast.success('Ports refreshed!'); },
       variant: 'outline' as const,
-      isLoading,
+      loading: isLoading,
     },
     {
-      label: isUploading ? 'Uploading...' : 'Upload',
+      label: 'Upload',
+      loadingText: 'Uploading...',
       onClick: handleUploadClick,
       variant: 'outline' as const,
       leftIcon: <FiUpload />,
-      disabled: isUploading || isLoading,
+      loading: isUploading,
+      disabled: isLoading,
     },
     {
-      label: isExporting ? 'Exporting...' : 'Export',
+      label: 'Export',
+      loadingText: 'Exporting...',
       onClick: handleExport,
       variant: 'outline' as const,
       leftIcon: <FiDownload />,
-      disabled: isExporting || isLoading,
+      loading: isExporting,
+      disabled: isLoading,
     },
     {
       label: 'Add New Port',
       onClick: editModal.openAdd,
       variant: 'primary' as const,
-      isLoading,
+      disabled: isLoading,
     },
   ], [refetch, editModal.openAdd, isLoading, isUploading, isExporting, handleUploadClick, handleExport]);
 

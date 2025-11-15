@@ -13,14 +13,13 @@ RETURNS TABLE (
     maintenance_area_name TEXT,
     status BOOLEAN,
     total_nodes BIGINT,
-    -- THE FIX: Changed from TEXT to JSONB for proper JSON formatting
     associated_systems JSONB
 )
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $func$
 SELECT
     r.id,
     r.name,
@@ -30,21 +29,34 @@ SELECT
     r.status,
     r.total_nodes,
     (
-        -- THE FIX: Use JSON_AGG and JSON_BUILD_OBJECT to create the structured JSON array
         SELECT jsonb_agg(
             jsonb_build_object(
                 'system', s.system_name,
                 'order', rbs.order_in_ring,
                 'is_hub', s.is_hub
-            ) ORDER BY rbs.order_in_ring
+            )
+            ORDER BY rbs.order_in_ring
         )
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         WHERE rbs.ring_id = r.id
     ) AS associated_systems
 FROM
-    public.v_rings r;
-$$;
+    public.v_rings r
+-- Apply row limit if provided
+ORDER BY
+    CASE 
+        WHEN order_by IS NULL THEN r.name
+        ELSE
+            CASE order_by
+                WHEN 'name' THEN r.name
+                WHEN 'total_nodes' THEN r.total_nodes::text
+                WHEN 'ring_type_name' THEN r.ring_type_name
+                WHEN 'maintenance_area_name' THEN r.maintenance_area_name
+                ELSE r.name
+            END
+    END
+LIMIT COALESCE(row_limit, NULL);
+$func$;
 
--- Grant execution permission on the updated function signature
 GRANT EXECUTE ON FUNCTION public.get_rings_for_export(INTEGER, TEXT) TO authenticated;

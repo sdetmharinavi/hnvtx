@@ -1,13 +1,13 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase } from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
 import { DataTable, TableAction } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
@@ -22,11 +22,13 @@ import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { DEFAULTS } from '@/constants/constants';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
+import { FiberAllocationModal } from '@/components/systems/FiberAllocationModal';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
+  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
@@ -34,6 +36,8 @@ export default function SystemConnectionsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
     supabase,
@@ -64,7 +68,7 @@ export default function SystemConnectionsPage() {
     onSuccess: () => refetch(),
   });
 
-  const { mutate: uploadConnections } = useSystemConnectionExcelUpload(supabase, {
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
     }
@@ -85,6 +89,10 @@ export default function SystemConnectionsPage() {
     setIsEditModalOpen(false);
   };
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
@@ -101,27 +109,62 @@ export default function SystemConnectionsPage() {
     }
   };
 
+  const handleOpenAllocationModal = (record: V_system_connections_completeRowSchema) => {
+    setConnectionToAllocate(record);
+    setIsAllocationModalOpen(true);
+  };
+
   const tableActions = useMemo(
-    () => createStandardActions<V_system_connections_completeRowSchema>({
+    () => {
+      const actions = createStandardActions<V_system_connections_completeRowSchema>({
         onEdit: openEditModal,
         onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
-      }) as TableAction<'v_system_connections_complete'>[],
+      });
+      actions.unshift({
+        key: 'allocate-fiber',
+        label: 'Allocate Fiber',
+        icon: <FiGitBranch />,
+        onClick: handleOpenAllocationModal,
+        variant: 'secondary'
+      });
+      return actions;
+    },
     [deleteManager]
   );
 
-  // This hook call is now simplified as it doesn't need export logic
+  // --- THIS IS THE FIX: Add the `exportConfig` property ---
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
     isLoading: isLoadingConnections,
+    exportConfig: {
+        tableName: 'v_system_connections_complete',
+        fileName: `${parentSystem?.system_name || 'system'}_connections`,
+        filters: { system_id: systemId }
+    }
+  });
+  // --- END FIX ---
+
+  headerActions.splice(1, 0, {
+    label: isUploading ? 'Uploading...' : 'Upload Connections',
+    onClick: handleUploadClick,
+    variant: 'outline',
+    leftIcon: <FiUpload />,
+    disabled: isUploading || isLoadingConnections,
   });
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
+  
+  type FiberFields = {
+    working_fiber_in_id?: string | null;
+    working_fiber_out_id?: string | null;
+    protection_fiber_in_id?: string | null;
+    protection_fiber_out_id?: string | null;
+  };
 
-  // --- THIS IS THE FIX ---
-  // The handleSave function now constructs the full payload for the updated RPC.
   const handleSave = (formData: SystemConnectionFormValues) => {
+    const withFiber = formData as SystemConnectionFormValues & Partial<FiberFields>;
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
       p_id: editingRecord?.id ?? undefined,
       p_system_id: parentSystem.id!,
@@ -140,10 +183,10 @@ export default function SystemConnectionsPage() {
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
       p_bandwidth_allocated_mbps: formData.bandwidth_allocated_mbps || undefined,
-      p_working_fiber_in: formData.working_fiber_in || undefined,
-      p_working_fiber_out: formData.working_fiber_out || undefined,
-      p_protection_fiber_in: formData.protection_fiber_in || undefined,
-      p_protection_fiber_out: formData.protection_fiber_out || undefined,
+      p_working_fiber_in_id: withFiber.working_fiber_in_id || undefined,
+      p_working_fiber_out_id: withFiber.working_fiber_out_id || undefined,
+      p_protection_fiber_in_id: withFiber.protection_fiber_in_id || undefined,
+      p_protection_fiber_out_id: withFiber.protection_fiber_out_id || undefined,
       p_connected_system_working_interface: formData.connected_system_working_interface || undefined,
       p_connected_system_protection_interface: formData.connected_system_protection_interface || undefined,
       p_connected_link_type_id: formData.connected_link_type_id || undefined,
@@ -162,7 +205,6 @@ export default function SystemConnectionsPage() {
       }
     });
   };
-  // --- END FIX ---
 
   return (
     <div className="p-6 space-y-6">
@@ -221,6 +263,13 @@ export default function SystemConnectionsPage() {
         message={deleteManager.confirmationMessage}
         loading={deleteManager.isPending}
         type="danger"
+      />
+      
+      <FiberAllocationModal
+        isOpen={isAllocationModalOpen}
+        onClose={() => setIsAllocationModalOpen(false)}
+        connection={connectionToAllocate}
+        onSave={refetch}
       />
     </div>
   );

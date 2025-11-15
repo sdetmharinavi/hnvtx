@@ -25,16 +25,19 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-const formSchema = system_connectionsInsertSchema
-  .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
+// --- THE FIX: Remove the fiber fields from the base form schema ---
+const formSchema = system_connectionsInsertSchema.omit({
+    working_fiber_in_id: true,
+    working_fiber_out_id: true,
+    protection_fiber_in_id: true,
+    protection_fiber_out_id: true,
+}).extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-// --- THIS IS THE FIX: Define a local type that includes the missing property ---
 type EditingConnectionType = V_system_connections_completeRowSchema & {
   connected_link_type_id?: string | null;
 };
-// --- END FIX ---
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
@@ -56,7 +59,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", { 
     columns: "id, system_name, ip_address, system_type:system_type_id(code)" 
   });
-  const systems = useMemo(() => (systemsResult.data as SystemWithCode[]) || [], [systemsResult.data]);
+  const systems = useMemo(() => (systemsResult.data as SystemWithCode[]) ?? [], [systemsResult.data]);
 
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES" } });
   const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES" } });
@@ -88,7 +91,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && editingConnection) {
-        // --- THIS IS THE FIX: Cast to our new, more accurate type ---
         const conn = editingConnection as EditingConnectionType;
         reset({
           system_id: conn.system_id ?? "",
@@ -107,10 +109,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           remark: conn.remark ?? null,
           customer_name: conn.customer_name ?? null,
           bandwidth_allocated_mbps: conn.bandwidth_allocated_mbps ?? null,
-          working_fiber_in: conn.working_fiber_in ?? null,
-          working_fiber_out: conn.working_fiber_out ?? null,
-          protection_fiber_in: conn.protection_fiber_in ?? null,
-          protection_fiber_out: conn.protection_fiber_out ?? null,
           connected_system_working_interface: conn.connected_system_working_interface ?? null,
           connected_system_protection_interface: conn.connected_system_protection_interface ?? null,
           connected_link_type_id: conn.connected_link_type_id ?? null,
@@ -170,15 +168,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
             </div>
           </section>
 
-          {/* <section>
-            <h3 className='text-lg font-medium border-b pt-4 pb-2 mb-4'>Fiber Details</h3>
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-                <FormInput name='working_fiber_in' label='Working Fiber IN' type='number' register={register} error={errors.working_fiber_in} />
-                <FormInput name='working_fiber_out' label='Working Fiber OUT' type='number' register={register} error={errors.working_fiber_out} />
-                <FormInput name='protection_fiber_in' label='Protection Fiber IN' type='number' register={register} error={errors.protection_fiber_in} />
-                <FormInput name='protection_fiber_out' label='Protection Fiber OUT' type='number' register={register} error={errors.protection_fiber_out} />
-            </div>
-          </section> */}
+          {/* --- THE FIX: Fiber details section has been removed from this form --- */}
           
           <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
             <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />

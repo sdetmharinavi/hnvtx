@@ -1,4 +1,4 @@
-// hooks/database/excel-queries/useSystemExcelUpload.ts
+// path: hooks/database/excel-queries/useSystemExcelUpload.ts
 import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -17,7 +17,6 @@ import {
   ValidationError,
 } from './excel-helpers';
 
-// Options specific to this upload hook.
 export interface SystemUploadOptions {
   file: File;
   columns: UploadColumnMapping<'v_systems_complete'>[];
@@ -36,10 +35,7 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
         const worksheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[worksheetName];
         if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
-          header: 1,
-          defval: null,
-        });
+        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
         resolve(data);
       } catch (error) {
         reject(error);
@@ -50,11 +46,6 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
   });
 };
 
-/**
- * A specialized React hook for uploading Systems from an Excel file to Supabase.
- * This hook calls the `upsert_system_with_details` RPC for each row, ensuring
- * that data for `systems` and `ring_based_systems` is handled atomically.
- */
 export function useSystemExcelUpload(
   supabase: SupabaseClient<Database>,
   options?: UseExcelUploadOptions<'v_systems_complete'>
@@ -86,9 +77,7 @@ export function useSystemExcelUpload(
         return uploadResult;
       }
 
-      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) =>
-        String(h || '').trim()
-      );
+      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
       const headerMap: Record<string, number> = {};
       excelHeaders.forEach((header, index) => {
         headerMap[header.toLowerCase()] = index;
@@ -158,31 +147,56 @@ export function useSystemExcelUpload(
         }
 
         let ringAssociationsJson: Json | null = null;
-        if (processedData.ring_associations && typeof processedData.ring_associations === 'string') {
-            try {
-                ringAssociationsJson = JSON.parse(processedData.ring_associations);
-            } catch (e) {
-                const jsonError = { rowIndex: i, column: 'ring_associations', value: processedData.ring_associations, error: 'Invalid JSON format.' };
-                allValidationErrors.push(jsonError);
-                uploadResult.errorCount++;
-                uploadResult.errors.push({ rowIndex: excelRowNumber, data: originalData, error: 'Invalid JSON in ring_associations.' });
-                processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, [jsonError], true, 'JSON parsing failed.'));
-                continue;
-            }
+        if (
+          processedData.ring_associations &&
+          typeof processedData.ring_associations === 'string'
+        ) {
+          try {
+            ringAssociationsJson = JSON.parse(processedData.ring_associations);
+          } catch (e) {
+            console.log(e);
+            const jsonError = {
+              rowIndex: i,
+              column: 'ring_associations',
+              value: processedData.ring_associations,
+              error: 'Invalid JSON format.',
+            };
+            allValidationErrors.push(jsonError);
+            uploadResult.errorCount++;
+            uploadResult.errors.push({
+              rowIndex: excelRowNumber,
+              data: originalData,
+              error: 'Invalid JSON in ring_associations.',
+            });
+            processingLogs.push(
+              logRowProcessing(
+                i,
+                excelRowNumber,
+                originalData,
+                processedData,
+                [jsonError],
+                true,
+                'JSON parsing failed.'
+              )
+            );
+            continue;
+          }
         }
 
-        // --- THIS IS THE FIX ---
-        // Convert `null` values to `undefined` to match the expected RPC argument types.
+        // --- THIS IS THE DEFINITIVE FIX ---
+        // Ensure required string fields are not null by providing a fallback.
+        // Convert nulls for optional fields to undefined to match the RPC type.
         const rpcPayload: RpcPayload = {
           p_id: (processedData.id as string) || undefined,
-          p_system_name: processedData.system_name as string,
-          p_system_type_id: processedData.system_type_id as string,
-          p_node_id: processedData.node_id as string,
-          p_status: processedData.status as boolean,
-          p_is_hub: processedData.is_hub as boolean,
+          p_system_name: (processedData.system_name as string) ?? 'Unnamed System', // Fallback for required field
+          p_system_type_id: (processedData.system_type_id as string) ?? '', // Fallback for required field
+          p_node_id: (processedData.node_id as string) ?? '', // Fallback for required field
+          p_status: (processedData.status as boolean) ?? true,
+          p_is_hub: (processedData.is_hub as boolean) ?? false,
           p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
           p_ip_address: (processedData.ip_address as string | null) || undefined,
-          p_maintenance_terminal_id: (processedData.maintenance_terminal_id as string | null) || undefined,
+          p_maintenance_terminal_id:
+            (processedData.maintenance_terminal_id as string | null) || undefined,
           p_commissioned_on: (processedData.commissioned_on as string | null) || undefined,
           p_s_no: (processedData.s_no as string | null) || undefined,
           p_remark: (processedData.remark as string | null) || undefined,
@@ -190,6 +204,42 @@ export function useSystemExcelUpload(
           p_ring_associations: ringAssociationsJson,
         };
         // --- END FIX ---
+
+        // Final check for required UUIDs after processing
+        if (!rpcPayload.p_system_type_id || !rpcPayload.p_node_id) {
+          const missingFields = [
+            !rpcPayload.p_system_type_id && 'System Type ID',
+            !rpcPayload.p_node_id && 'Node ID',
+          ]
+            .filter(Boolean)
+            .join(', ');
+
+          const validationError = {
+            rowIndex: i,
+            column: 'system_type_id/node_id',
+            value: null,
+            error: `Missing required fields: ${missingFields}.`,
+          };
+          allValidationErrors.push(validationError);
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: excelRowNumber,
+            data: originalData,
+            error: validationError.error,
+          });
+          processingLogs.push(
+            logRowProcessing(
+              i,
+              excelRowNumber,
+              originalData,
+              processedData,
+              [validationError],
+              true,
+              'Missing required IDs.'
+            )
+          );
+          continue;
+        }
 
         recordsToProcess.push(rpcPayload);
         processingLogs.push(
@@ -200,17 +250,18 @@ export function useSystemExcelUpload(
       uploadResult.totalRows = recordsToProcess.length;
       if (recordsToProcess.length === 0) {
         if (allValidationErrors.length > 0) {
-          toast.error(`${allValidationErrors.length} rows had validation errors. See console for details.`);
-          console.error("System Upload Validation Errors:", allValidationErrors);
+          toast.error(
+            `${allValidationErrors.length} rows had validation errors. See console for details.`
+          );
+          console.error('System Upload Validation Errors:', allValidationErrors);
         } else {
           toast.warning('No valid records to upload.');
         }
         return uploadResult;
       }
-      
+
       toast.info(`Uploading ${recordsToProcess.length} valid system records...`);
 
-      // Process records one by one to isolate errors
       for (const record of recordsToProcess) {
         try {
           const { error } = await supabase.rpc('upsert_system_with_details', record);
@@ -221,7 +272,7 @@ export function useSystemExcelUpload(
         } catch (error) {
           uploadResult.errorCount++;
           uploadResult.errors.push({
-            rowIndex: -1, 
+            rowIndex: -1,
             data: record,
             error: error instanceof Error ? error.message : 'Unknown RPC error',
           });
@@ -233,7 +284,7 @@ export function useSystemExcelUpload(
           toast.warning(
             `${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed. Check console for details.`
           );
-          console.error("System Upload Errors:", uploadResult.errors);
+          console.error('System Upload Errors:', uploadResult.errors);
         } else {
           toast.success(
             `Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} systems.`
@@ -244,10 +295,12 @@ export function useSystemExcelUpload(
       return uploadResult;
     },
     onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['table', 'systems'] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'v_systems_complete'] });
-      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_systems_complete'] });
-      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+      if (result.successCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ['table', 'systems'] });
+        queryClient.invalidateQueries({ queryKey: ['table', 'v_systems_complete'] });
+        queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_systems_complete'] });
+        queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+      }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
     },
     onError: (error, variables) => {

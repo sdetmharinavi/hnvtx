@@ -90,6 +90,12 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
   }, [data, dateColumns]);
 
   const columns = useMemo(() => {
+    // --- THIS IS THE FIX: The conditional check is now INSIDE the hook ---
+    if (!tableName) {
+      return []; // Gracefully handle the case where tableName is not provided.
+    }
+    // --- END FIX ---
+
     const keysToUse = TABLE_COLUMN_KEYS[
       tableName as keyof typeof TABLE_COLUMN_KEYS
     ] as unknown as (keyof Row<T> & string)[] | undefined;
