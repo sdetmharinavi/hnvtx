@@ -48,6 +48,8 @@ SELECT
   sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
   sc.sn_id,
   sc.en_id,
+  na.id AS sn_node_id, -- Added start node ID
+  nb.id AS en_node_id, -- Added end node ID
   sc.connected_system_id,
   sc.media_type_id,
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
@@ -55,19 +57,21 @@ SELECT
   lt_media.name AS media_type_name, sc.bandwidth_mbps, cs.system_name AS connected_system_name,
   lt_cs_type.name AS connected_system_type_name, sc.vlan, sc.commissioned_on,
   sc.remark, sc.status, sc.created_at, sc.updated_at,
-  -- New fields from system_connections table
   sc.customer_name,
   sc.bandwidth_allocated_mbps,
-  sc.working_fiber_in as fiber_in, -- Alias for backward compatibility if needed
-  sc.working_fiber_out as fiber_out, -- Alias for backward compatibility if needed
-  sc.working_fiber_in,
-  sc.working_fiber_out,
-  sc.protection_fiber_in,
-  sc.protection_fiber_out,
+  wfi.fiber_no_sn as fiber_in,
+  wfo.fiber_no_sn as fiber_out,
+  sc.working_fiber_in_id,
+  wfi.fiber_no_sn as working_fiber_in,
+  sc.working_fiber_out_id,
+  wfo.fiber_no_sn as working_fiber_out,
+  sc.protection_fiber_in_id,
+  pfi.fiber_no_sn as protection_fiber_in,
+  sc.protection_fiber_out_id,
+  pfo.fiber_no_sn as protection_fiber_out,
   sc.connected_system_working_interface,
   sc.connected_system_protection_interface,
   lt_link_type.name as connected_link_type_name,
-  -- SDH details
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
 FROM public.system_connections sc
@@ -81,7 +85,11 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_cs_type ON cs.system_type_id = lt_cs_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
-  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
+  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id
+  LEFT JOIN public.ofc_connections wfi ON sc.working_fiber_in_id = wfi.id
+  LEFT JOIN public.ofc_connections wfo ON sc.working_fiber_out_id = wfo.id
+  LEFT JOIN public.ofc_connections pfi ON sc.protection_fiber_in_id = pfi.id
+  LEFT JOIN public.ofc_connections pfo ON sc.protection_fiber_out_id = pfo.id;
 
 -- --- View for ports_management ---
 CREATE OR REPLACE VIEW public.v_ports_management_complete WITH (security_invoker = true) AS
@@ -96,7 +104,7 @@ SELECT
   pm.sfp_serial_no
 FROM public.ports_management pm
 JOIN public.systems s ON pm.system_id = s.id
-LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id
+LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id;
 
 -- View for OFC Connections, now including system details from this module.
 CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS
