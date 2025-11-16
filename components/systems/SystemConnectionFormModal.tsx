@@ -61,8 +61,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
   });
   const systems = useMemo(() => (systemsResult.data as SystemWithCode[]) ?? [], [systemsResult.data]);
 
-  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES" } });
-  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES" } });
+  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES", name: { operator: 'neq', value: 'DEFAULT' } } });
+  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES", name: { operator: 'neq', value: 'DEFAULT' } } });
 
   const systemOptions = useMemo(() => 
     systems.map((s) => {
@@ -94,11 +94,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
         const conn = editingConnection as EditingConnectionType;
         reset({
           system_id: conn.system_id ?? "",
+          system_working_interface: conn.system_working_interface ?? null,
+          system_protection_interface: conn.system_protection_interface ?? null,
           media_type_id: conn.media_type_id ?? "",
           status: conn.status ?? true,
           sn_id: conn.sn_id ?? null,
           en_id: conn.en_id ?? null,
-          connected_system_id: conn.connected_system_id ?? null,
           sn_ip: conn.sn_ip ?? null,
           sn_interface: conn.sn_interface ?? null,
           en_ip: conn.en_ip ?? null,
@@ -109,8 +110,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           remark: conn.remark ?? null,
           customer_name: conn.customer_name ?? null,
           bandwidth_allocated_mbps: conn.bandwidth_allocated_mbps ?? null,
-          connected_system_working_interface: conn.connected_system_working_interface ?? null,
-          connected_system_protection_interface: conn.connected_system_protection_interface ?? null,
           connected_link_type_id: conn.connected_link_type_id ?? null,
           stm_no: conn.sdh_stm_no ?? null,
           carrier: conn.sdh_carrier ?? null,
@@ -140,11 +139,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
-      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
+      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone widthClass="w-full" heightClass="h-full" >
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4 space-y-6'>
           <section>
             <h3 className='text-lg font-medium border-b pb-2 mb-4'>General</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+              <FormInput name='system_working_interface' label='Working Interface' register={register} error={errors.system_working_interface} />
+              <FormInput name='system_protection_interface' label='Protection Interface' register={register} error={errors.system_protection_interface} />
               <FormSearchableSelect name='media_type_id' label='Media Type' control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
               <FormInput name='bandwidth_mbps' label='Bandwidth (Mbps)' register={register} type='number' error={errors.bandwidth_mbps} />
               <FormInput name='vlan' label='VLAN' register={register} error={errors.vlan} />
@@ -161,10 +162,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
               <FormInput name='sn_interface' label='Start Node Interface' register={register} error={errors.sn_interface} />
               <FormSearchableSelect name='en_id' label='End Node System' control={control} options={systemOptions} error={errors.en_id} />
               <FormInput name='en_interface' label='End Node Interface' register={register} error={errors.en_interface} />
-              <FormSearchableSelect name='connected_system_id' label='Connected To System' control={control} options={systemOptions} error={errors.connected_system_id} />
               <FormSearchableSelect name='connected_link_type_id' label='Connected Link Type' control={control} options={linkTypeOptions} error={errors.connected_link_type_id} />
-              <FormInput name='connected_system_working_interface' label='Connected Sys (Working Int.)' register={register} error={errors.connected_system_working_interface} />
-              <FormInput name='connected_system_protection_interface' label='Connected Sys (Prot. Int.)' register={register} error={errors.connected_system_protection_interface} />
             </div>
           </section>
 

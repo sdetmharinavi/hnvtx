@@ -1314,6 +1314,135 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          asset_no: string | null
+          category_id: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          functional_location_id: string | null
+          id: string
+          location_id: string | null
+          name: string
+          purchase_date: string | null
+          quantity: number
+          status_id: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          asset_no?: string | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          functional_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          name: string
+          purchase_date?: string | null
+          quantity?: number
+          status_id?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          asset_no?: string | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          functional_location_id?: string | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          purchase_date?: string | null
+          quantity?: number
+          status_id?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junction_closures: {
         Row: {
           created_at: string | null
@@ -2567,9 +2696,6 @@ export type Database = {
           bandwidth_mbps: number | null
           commissioned_on: string | null
           connected_link_type_id: string | null
-          connected_system_id: string | null
-          connected_system_protection_interface: string | null
-          connected_system_working_interface: string | null
           created_at: string | null
           customer_name: string | null
           en_id: string | null
@@ -2585,6 +2711,8 @@ export type Database = {
           sn_ip: unknown
           status: boolean | null
           system_id: string
+          system_protection_interface: string | null
+          system_working_interface: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in_id: string | null
@@ -2595,9 +2723,6 @@ export type Database = {
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
           connected_link_type_id?: string | null
-          connected_system_id?: string | null
-          connected_system_protection_interface?: string | null
-          connected_system_working_interface?: string | null
           created_at?: string | null
           customer_name?: string | null
           en_id?: string | null
@@ -2613,6 +2738,8 @@ export type Database = {
           sn_ip?: unknown
           status?: boolean | null
           system_id: string
+          system_protection_interface?: string | null
+          system_working_interface?: string | null
           updated_at?: string | null
           vlan?: string | null
           working_fiber_in_id?: string | null
@@ -2623,9 +2750,6 @@ export type Database = {
           bandwidth_mbps?: number | null
           commissioned_on?: string | null
           connected_link_type_id?: string | null
-          connected_system_id?: string | null
-          connected_system_protection_interface?: string | null
-          connected_system_working_interface?: string | null
           created_at?: string | null
           customer_name?: string | null
           en_id?: string | null
@@ -2641,6 +2765,8 @@ export type Database = {
           sn_ip?: unknown
           status?: boolean | null
           system_id?: string
+          system_protection_interface?: string | null
+          system_working_interface?: string | null
           updated_at?: string | null
           vlan?: string | null
           working_fiber_in_id?: string | null
@@ -2659,20 +2785,6 @@ export type Database = {
             columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
@@ -3176,6 +3288,107 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_inventory_items: {
+        Row: {
+          asset_no: string | null
+          category_id: string | null
+          category_name: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          functional_location: string | null
+          functional_location_id: string | null
+          id: string | null
+          location_id: string | null
+          name: string | null
+          purchase_date: string | null
+          quantity: number | null
+          status_id: string | null
+          status_name: string | null
+          store_location: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_functional_location_id_fkey"
+            columns: ["functional_location_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
           },
         ]
@@ -3908,11 +4121,8 @@ export type Database = {
           bandwidth_mbps: number | null
           commissioned_on: string | null
           connected_link_type_name: string | null
-          connected_system_id: string | null
           connected_system_name: string | null
-          connected_system_protection_interface: string | null
           connected_system_type_name: string | null
-          connected_system_working_interface: string | null
           created_at: string | null
           customer_name: string | null
           en_id: string | null
@@ -3946,7 +4156,9 @@ export type Database = {
           status: boolean | null
           system_id: string | null
           system_name: string | null
+          system_protection_interface: string | null
           system_type_name: string | null
+          system_working_interface: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in: number | null
@@ -3955,20 +4167,6 @@ export type Database = {
           working_fiber_out_id: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_system_id_fkey"
-            columns: ["connected_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "system_connections_en_id_fkey"
             columns: ["en_id"]
@@ -4811,9 +5009,6 @@ export type Database = {
           p_carrier?: string
           p_commissioned_on?: string
           p_connected_link_type_id?: string
-          p_connected_system_id?: string
-          p_connected_system_protection_interface?: string
-          p_connected_system_working_interface?: string
           p_customer_name?: string
           p_en_id?: string
           p_en_interface?: string
@@ -4829,6 +5024,8 @@ export type Database = {
           p_status: boolean
           p_stm_no?: string
           p_system_id: string
+          p_system_protection_interface?: string
+          p_system_working_interface?: string
           p_vlan?: string
           p_working_fiber_in_id?: string
           p_working_fiber_out_id?: string
@@ -4838,9 +5035,6 @@ export type Database = {
           bandwidth_mbps: number | null
           commissioned_on: string | null
           connected_link_type_id: string | null
-          connected_system_id: string | null
-          connected_system_protection_interface: string | null
-          connected_system_working_interface: string | null
           created_at: string | null
           customer_name: string | null
           en_id: string | null
@@ -4856,6 +5050,8 @@ export type Database = {
           sn_ip: unknown
           status: boolean | null
           system_id: string
+          system_protection_interface: string | null
+          system_working_interface: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in_id: string | null

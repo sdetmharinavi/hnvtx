@@ -973,6 +973,57 @@ export type FoldersUpdate = {
     user_id?: string;
 };
 
+export type Inventory_itemsRow = {
+    asset_no: string | null;
+    category_id: string | null;
+    cost: number | null;
+    created_at: string | null;
+    description: string | null;
+    functional_location_id: string | null;
+    id: string;
+    location_id: string | null;
+    name: string;
+    purchase_date: string | null;
+    quantity: number;
+    status_id: string | null;
+    updated_at: string | null;
+    vendor: string | null;
+};
+
+export type Inventory_itemsInsert = {
+    asset_no?: string | null;
+    category_id?: string | null;
+    cost?: number | null;
+    created_at?: string | null;
+    description?: string | null;
+    functional_location_id?: string | null;
+    id?: string;
+    location_id?: string | null;
+    name: string;
+    purchase_date?: string | null;
+    quantity?: number;
+    status_id?: string | null;
+    updated_at?: string | null;
+    vendor?: string | null;
+};
+
+export type Inventory_itemsUpdate = {
+    asset_no?: string | null;
+    category_id?: string | null;
+    cost?: number | null;
+    created_at?: string | null;
+    description?: string | null;
+    functional_location_id?: string | null;
+    id?: string;
+    location_id?: string | null;
+    name?: string;
+    purchase_date?: string | null;
+    quantity?: number;
+    status_id?: string | null;
+    updated_at?: string | null;
+    vendor?: string | null;
+};
+
 export type Junction_closuresRow = {
     created_at: string | null;
     id: string;
@@ -1527,9 +1578,6 @@ export type System_connectionsRow = {
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
     connected_link_type_id: string | null;
-    connected_system_id: string | null;
-    connected_system_protection_interface: string | null;
-    connected_system_working_interface: string | null;
     created_at: string | null;
     customer_name: string | null;
     en_id: string | null;
@@ -1545,6 +1593,8 @@ export type System_connectionsRow = {
     sn_ip: unknown;
     status: boolean | null;
     system_id: string;
+    system_protection_interface: string | null;
+    system_working_interface: string | null;
     updated_at: string | null;
     vlan: string | null;
     working_fiber_in_id: string | null;
@@ -1556,9 +1606,6 @@ export type System_connectionsInsert = {
     bandwidth_mbps?: number | null;
     commissioned_on?: string | null;
     connected_link_type_id?: string | null;
-    connected_system_id?: string | null;
-    connected_system_protection_interface?: string | null;
-    connected_system_working_interface?: string | null;
     created_at?: string | null;
     customer_name?: string | null;
     en_id?: string | null;
@@ -1574,6 +1621,8 @@ export type System_connectionsInsert = {
     sn_ip?: unknown;
     status?: boolean | null;
     system_id: string;
+    system_protection_interface?: string | null;
+    system_working_interface?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
     working_fiber_in_id?: string | null;
@@ -1585,9 +1634,6 @@ export type System_connectionsUpdate = {
     bandwidth_mbps?: number | null;
     commissioned_on?: string | null;
     connected_link_type_id?: string | null;
-    connected_system_id?: string | null;
-    connected_system_protection_interface?: string | null;
-    connected_system_working_interface?: string | null;
     created_at?: string | null;
     customer_name?: string | null;
     en_id?: string | null;
@@ -1603,6 +1649,8 @@ export type System_connectionsUpdate = {
     sn_ip?: unknown;
     status?: boolean | null;
     system_id?: string;
+    system_protection_interface?: string | null;
+    system_working_interface?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
     working_fiber_in_id?: string | null;
@@ -1770,6 +1818,27 @@ export type V_end_to_end_pathsRow = {
     source_system_id: string | null;
     total_distance_km: number | null;
     total_loss_db: number | null;
+};
+
+export type V_inventory_itemsRow = {
+    asset_no: string | null;
+    category_id: string | null;
+    category_name: string | null;
+    cost: number | null;
+    created_at: string | null;
+    description: string | null;
+    functional_location: string | null;
+    functional_location_id: string | null;
+    id: string | null;
+    location_id: string | null;
+    name: string | null;
+    purchase_date: string | null;
+    quantity: number | null;
+    status_id: string | null;
+    status_name: string | null;
+    store_location: string | null;
+    updated_at: string | null;
+    vendor: string | null;
 };
 
 export type V_junction_closures_completeRow = {
@@ -1951,11 +2020,8 @@ export type V_system_connections_completeRow = {
     bandwidth_mbps: number | null;
     commissioned_on: string | null;
     connected_link_type_name: string | null;
-    connected_system_id: string | null;
     connected_system_name: string | null;
-    connected_system_protection_interface: string | null;
     connected_system_type_name: string | null;
-    connected_system_working_interface: string | null;
     created_at: string | null;
     customer_name: string | null;
     en_id: string | null;
@@ -1989,7 +2055,9 @@ export type V_system_connections_completeRow = {
     status: boolean | null;
     system_id: string | null;
     system_name: string | null;
+    system_protection_interface: string | null;
     system_type_name: string | null;
+    system_working_interface: string | null;
     updated_at: string | null;
     vlan: string | null;
     working_fiber_in: number | null;
@@ -2123,6 +2191,7 @@ export const tableNames = [
   "fiber_splices",
   "files",
   "folders",
+  "inventory_items",
   "junction_closures",
   "logical_fiber_paths",
   "logical_path_segments",
@@ -2147,6 +2216,7 @@ export const viewNames = [
   "v_employee_designations",
   "v_employees",
   "v_end_to_end_paths",
+  "v_inventory_items",
   "v_junction_closures_complete",
   "v_lookup_types",
   "v_maintenance_areas",
