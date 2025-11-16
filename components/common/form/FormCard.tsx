@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/utils/classNames";
 
 interface FormCardProps {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   isLoading?: boolean;
   onCancel: () => void;

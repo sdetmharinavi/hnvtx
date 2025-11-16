@@ -1,16 +1,17 @@
 // path: components/systems/FiberAllocationModal.tsx
 "use client";
 
-import { FC, useMemo, useState, useEffect } from "react";
+import { FC, useMemo, useState, useEffect, useCallback } from "react";
 import { useForm, Controller, useFieldArray, Control, UseFormWatch } from "react-hook-form";
 import { Modal, Button, PageSpinner, SearchableSelect } from "@/components/common/ui";
 import { FormCard } from "@/components/common/form";
-import { useTableQuery, useRpcMutation } from "@/hooks/database";
+import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { V_system_connections_completeRowSchema, V_ofc_cables_completeRowSchema, V_nodes_completeRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { toast } from "sonner";
-import { GitBranch, Plus, Trash2 } from "lucide-react";
+import { GitBranch, Plus, Trash2, ChevronsRight } from "lucide-react";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
+import { useProvisionServicePath } from "@/hooks/database/system-connection-hooks"; // CORRECT IMPORT
 
 // --- TYPE DEFINITIONS ---
 interface PathStep {
@@ -24,38 +25,15 @@ interface FiberAllocationForm {
   protection_path_out: PathStep[];
 }
 
-// --- THIS IS THE FIX: The props interface is updated ---
 interface FiberAllocationModalProps {
   isOpen: boolean;
   onClose: () => void;
   connection: V_system_connections_completeRowSchema | null;
-  parentSystem: V_systems_completeRowSchema | null; // Added parentSystem
+  parentSystem: V_systems_completeRowSchema | null;
   onSave: () => void;
 }
 
-// --- HELPER FUNCTIONS FOR FUZZY SEARCH ---
-const normalizeName = (name: string | null | undefined): string => {
-    if (!name) return '';
-    return name.toLowerCase().replace(/[\s-._/]/g, '');
-};
-
-function getBigrams(str: string): Set<string> {
-    const bigrams = new Set<string>();
-    for (let i = 0; i < str.length - 1; i++) {
-        bigrams.add(str.substring(i, i + 2));
-    }
-    return bigrams;
-}
-
-function calculateStringSimilarity(str1: string, str2: string): number {
-    if (!str1 || !str2) return 0;
-    const bigrams1 = getBigrams(str1);
-    const bigrams2 = getBigrams(str2);
-    const intersection = new Set([...bigrams1].filter(x => bigrams2.has(x)));
-    return (2.0 * intersection.size) / (bigrams1.size + bigrams2.size);
-}
-
-// (PathSegmentRow component remains the same)
+// --- SUB-COMPONENT FOR A SINGLE SEGMENT ROW (Simplex version) ---
 const PathSegmentRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
@@ -63,7 +41,9 @@ const PathSegmentRow: FC<{
   watch: UseFormWatch<FiberAllocationForm>;
   segmentInfo: { startNodeName: string; endNodeName: string; cableName: string; };
   onRemove: () => void;
-}> = ({ index, pathType, control, watch, segmentInfo, onRemove }) => {
+  allAllocatedFiberIds: Set<string>;
+  currentFiberId: string | null;
+}> = ({ index, pathType, control, watch, segmentInfo, onRemove, allAllocatedFiberIds, currentFiberId }) => {
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
 
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
@@ -71,30 +51,37 @@ const PathSegmentRow: FC<{
       filters: { ofc_id: cableIdForThisRow || '', system_id: { operator: 'is', value: null } },
       enabled: !!cableIdForThisRow,
   });
-  const fiberOptions = useMemo(() => (availableFibersResult?.data || []).map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` })), [availableFibersResult]);
+
+  const fiberOptions = useMemo(() => 
+    (availableFibersResult?.data || [])
+      .filter(f => !allAllocatedFiberIds.has(f.id) || f.id === currentFiberId)
+      .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` })), 
+    [availableFibersResult, allAllocatedFiberIds, currentFiberId]
+  );
 
   return (
-    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-2 rounded">
-      <span className="font-mono text-xs p-1 bg-gray-200 dark:bg-gray-600 rounded">{index + 1}</span>
-      <div className="flex-1 text-sm">
+    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 p-2 rounded-lg border dark:border-gray-600">
+      <span className="font-mono text-xs p-1.5 bg-gray-200 dark:bg-gray-600 rounded-md">{index + 1}</span>
+      <div className="flex-1 text-sm min-w-0">
         <TruncateTooltip text={segmentInfo.cableName} className="font-medium" />
-        <p className="text-xs text-gray-500 dark:text-gray-400">{`${segmentInfo.startNodeName} → ${segmentInfo.endNodeName}`}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`${segmentInfo.startNodeName} → ${segmentInfo.endNodeName}`}</p>
       </div>
-      <div className="w-32 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <Controller name={`${pathType}.${index}.fiber_id`} control={control} render={({ field }) => (
           <SearchableSelect
             options={fiberOptions}
             {...field}
-            placeholder={isLoadingFibers ? "Loading..." : "Select Fiber"}
+            placeholder={isLoadingFibers ? "..." : "Select Fiber"}
             disabled={!cableIdForThisRow || isLoadingFibers}
           />
         )} />
       </div>
-      <Button variant="danger" size="xs" onClick={onRemove}><Trash2 size={12} /></Button>
+      <Button variant="danger" size="sm" onClick={onRemove} aria-label="Remove segment"><Trash2 size={14} /></Button>
     </div>
   );
 };
 
+// --- SUB-COMPONENT FOR BUILDING A PATH (Simplex version) ---
 const PathBuilder: FC<{
     pathType: keyof FiberAllocationForm;
     control: Control<FiberAllocationForm>;
@@ -102,56 +89,39 @@ const PathBuilder: FC<{
     nodes: V_nodes_completeRowSchema[];
     cables: V_ofc_cables_completeRowSchema[];
     startNode: { id: string, name: string } | null;
-}> = ({ pathType, control, watch, nodes, cables, startNode }) => {
-    
+    allAllocatedFiberIds: Set<string>;
+}> = ({ pathType, control, watch, nodes, cables, startNode, allAllocatedFiberIds }) => {
     const { fields, append, remove } = useFieldArray({ control, name: pathType });
     const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
-    const [selectedFiberId, setSelectedFiberId] = useState<string | null>(null);
 
     const lastNode = useMemo(() => {
-      let currentNode = startNode;
-      fields.forEach(field => {
-        if (!currentNode) return;
-        const cable = cables.find(c => c.id === (field as PathStep).cable_id);
-        if (!cable) return;
-        const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
-        currentNode = nodes.find(n => n.id === nextNodeId) ? { id: nextNodeId!, name: nodes.find(n => n.id === nextNodeId)!.name! } : null;
-      });
-      return currentNode;
+        let currentNode = startNode;
+        fields.forEach(field => {
+            if (!currentNode) return;
+            const cable = cables.find(c => c.id === (field as PathStep).cable_id);
+            if (!cable) return;
+            const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
+            const nextNode = nodes.find(n => n.id === nextNodeId);
+            currentNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
+        });
+        return currentNode;
     }, [fields, startNode, cables, nodes]);
-    
-    const availableCables = useMemo(() => {
-        if (!lastNode?.name) return [];
-        const normalizedNodeName = normalizeName(lastNode.name);
-        const SIMILARITY_THRESHOLD = 0.6;
 
+    const availableCables = useMemo(() => {
+        if (!lastNode?.id) return [];
         return cables
-            .map(cable => {
-                const normalizedRouteName = normalizeName(cable.route_name);
-                const score = calculateStringSimilarity(normalizedNodeName, normalizedRouteName);
-                return { ...cable, score };
-            })
-            .filter(cable => cable.score >= SIMILARITY_THRESHOLD)
-            .sort((a, b) => b.score - a.score)
+            .filter(c => c.sn_id === lastNode.id || c.en_id === lastNode.id)
             .map(c => ({ value: c.id!, label: c.route_name! }));
     }, [cables, lastNode]);
 
-    const { data: availableFibers, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
-        columns: 'id, fiber_no_sn',
-        filters: { ofc_id: selectedCableId || '', system_id: { operator: 'is', value: null } },
-        enabled: !!selectedCableId,
-    });
-    const fiberOptions = useMemo(() => (availableFibers?.data || []).map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` })), [availableFibers]);
-    
-    const handleAddSegment = () => {
-        if (!selectedCableId || !selectedFiberId) {
-            toast.error("Please select both a cable and a fiber.");
+    const handleAddSegment = useCallback(() => {
+        if (!selectedCableId) {
+            toast.error("Please select a cable to add a segment.");
             return;
         }
-        append({ cable_id: selectedCableId, fiber_id: selectedFiberId });
+        append({ cable_id: selectedCableId, fiber_id: null });
         setSelectedCableId(null);
-        setSelectedFiberId(null);
-    };
+    }, [append, selectedCableId]);
 
     return (
         <div className="space-y-3">
@@ -161,7 +131,8 @@ const PathBuilder: FC<{
                     const prevCable = cables.find(c => c.id === (fields[i] as PathStep).cable_id);
                     if (prevCable && currentStartNode) {
                         const nextNodeId = prevCable.sn_id === currentStartNode.id ? prevCable.en_id : prevCable.sn_id;
-                        currentStartNode = nodes.find(n => n.id === nextNodeId) ? { id: nextNodeId!, name: nodes.find(n => n.id === nextNodeId)!.name! } : null;
+                        const nextNode = nodes.find(n => n.id === nextNodeId);
+                        currentStartNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
                     }
                 }
                 const cable = cables.find(c => c.id === (field as PathStep).cable_id);
@@ -181,60 +152,67 @@ const PathBuilder: FC<{
                           cableName: cable?.route_name || '...',
                         }}
                         onRemove={() => remove(index)}
+                        allAllocatedFiberIds={allAllocatedFiberIds}
+                        currentFiberId={(field as PathStep).fiber_id}
                     />
                 );
             })}
             
-            <div className="space-y-2 pt-2 border-t dark:border-gray-600">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Next Segment from: {lastNode?.name || startNode?.name}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <SearchableSelect
-                        options={availableCables}
-                        value={selectedCableId}
-                        onChange={setSelectedCableId}
-                        placeholder="Search for next cable..."
-                        clearable
-                    />
-                    <SearchableSelect
-                        options={fiberOptions}
-                        value={selectedFiberId}
-                        onChange={setSelectedFiberId}
-                        placeholder={isLoadingFibers ? "Loading..." : "Select fiber..."}
-                        disabled={!selectedCableId}
-                        clearable
-                    />
+            <div className="space-y-2 pt-3 mt-3 border-t dark:border-gray-600">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Segment from: {lastNode?.name || startNode?.name}</p>
+                <div className="flex items-center gap-2">
+                    <div className="flex-grow">
+                      <SearchableSelect
+                          options={availableCables}
+                          value={selectedCableId}
+                          onChange={setSelectedCableId}
+                          placeholder="Search for next cable..."
+                          clearable
+                      />
+                    </div>
+                    <Button variant="outline" size="md" onClick={handleAddSegment} disabled={!selectedCableId} className="flex-shrink-0">
+                        <Plus size={16} />
+                    </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleAddSegment} disabled={!selectedCableId || !selectedFiberId} className="w-full">
-                    <Plus size={16} className="mr-2" />Add Segment
-                </Button>
             </div>
         </div>
     );
 };
 
+// --- MAIN MODAL COMPONENT ---
 export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem, onSave }) => {
     const { control, handleSubmit, watch, reset } = useForm<FiberAllocationForm>({
         defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
 
+    const allPaths = watch();
+    const allAllocatedFiberIds = useMemo(() => {
+      const ids = new Set<string>();
+      Object.values(allPaths).forEach(pathArray => {
+        pathArray.forEach(step => {
+          if (step.fiber_id) ids.add(step.fiber_id);
+        });
+      });
+      return ids;
+    }, [allPaths]);
+
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
     const { data: allNodesResult, isLoading: isLoadingNodes } = useTableQuery(createClient(), 'v_nodes_complete');
     
-    const provisionMutation = useRpcMutation(createClient(), 'provision_fibers_to_connection', {
-        onSuccess: () => { toast.success("Fibers successfully provisioned."); onSave(); onClose(); },
-        onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
-    });
+    // THE FIX: Use the correct mutation hook
+    const provisionMutation = useProvisionServicePath();
 
-    // --- THIS IS THE DEFINITIVE FIX ---
-    // The startNode is now derived from the parentSystem, not the individual connection.
     const startNode = useMemo(() => {
-        if (!parentSystem || !allNodesResult?.data) {
-            return null;
-        }
+        if (!parentSystem || !allNodesResult?.data) return null;
         const node = allNodesResult.data.find(n => n.id === parentSystem.node_id);
         return node ? { id: node.id!, name: node.name! } : null;
     }, [parentSystem, allNodesResult]);
-    // --- END FIX ---
+    
+    const endNode = useMemo(() => {
+        if (!connection || !allNodesResult?.data) return null;
+        const node = allNodesResult.data.find(n => n.id === connection.en_node_id);
+        return node ? { id: node.id!, name: node.name! } : null;
+    }, [connection, allNodesResult]);
 
     useEffect(() => {
         reset({ working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] });
@@ -242,54 +220,68 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
 
     const onValidSubmit = (data: FiberAllocationForm) => {
         if (!connection?.id) return;
-        if (data.working_path_in.length === 0 || data.working_path_out.length === 0 || data.working_path_in.some(s => !s.fiber_id) || data.working_path_out.some(s => !s.fiber_id)) {
-            toast.error("Working Path In/Out must be defined and have fibers selected.");
+        
+        const workingPathInIsDefined = data.working_path_in.length > 0 && data.working_path_in.every(s => s.fiber_id);
+        const workingPathOutIsDefined = data.working_path_out.length > 0 && data.working_path_out.every(s => s.fiber_id);
+
+        if (!workingPathInIsDefined || !workingPathOutIsDefined) {
+            toast.error("Both Working Path In (Tx) and Out (Rx) must be fully defined with fibers selected for each segment.");
             return;
         }
-        const workingIds = [...data.working_path_in.map(s => s.fiber_id!), ...data.working_path_out.map(s => s.fiber_id!)];
-        const protectionIds = [...data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!), ...data.protection_path_out.filter(s => s.fiber_id).map(s => s.fiber_id!)];
+        
+        // THE FIX: Construct the correct payload for the new RPC function
         provisionMutation.mutate({
             p_system_connection_id: connection.id,
-            p_working_fiber_ids: workingIds,
-            p_protection_fiber_ids: protectionIds.length > 0 ? protectionIds : undefined,
+            p_path_name: connection.customer_name || `Path for ${connection.system_name}`,
+            p_working_tx_fiber_ids: data.working_path_in.map(s => s.fiber_id!), 
+            p_working_rx_fiber_ids: data.working_path_out.map(s => s.fiber_id!),
+            p_protection_tx_fiber_ids: data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!),
+            p_protection_rx_fiber_ids: data.protection_path_out.filter(s => s.fiber_id).map(s => s.fiber_id!),
         });
     };
     
     if (!connection) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.system_name}`} className="w-0 h-0 bg-transparent">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.customer_name || connection.system_name}`} size="full" visible={false} className="h-0 w-0 bg-transparent">
             <FormCard
-                title={`Path: ${startNode?.name} ↔ ${connection.en_name}`}
                 onSubmit={handleSubmit(onValidSubmit)}
                 onCancel={onClose}
                 isLoading={provisionMutation.isPending}
+                title={
+                  <div className="flex items-center gap-2">
+                    <span>Path:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{startNode?.name || '...'}</span>
+                    <ChevronsRight className="h-5 w-5 text-gray-400" />
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{endNode?.name || '...'}</span>
+                  </div>
+                }
                 standalone
-                widthClass="w-full"
-                heightClass="h-full"
+                widthClass="w-full max-w-7xl"
+                heightClass="h-full max-h-[95vh]"
             >
-                {isLoadingCables || isLoadingNodes ? <PageSpinner text="Loading..." /> : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-4 p-4 border rounded-lg">
+                {(isLoadingCables || isLoadingNodes) ? <PageSpinner text="Loading network data..." /> : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
+                        <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                             <h3 className="font-semibold text-lg flex items-center gap-2"><GitBranch className="text-blue-500" /> Working Path</h3>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Inbound (Tx)</label>
-                                <PathBuilder pathType="working_path_in" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} />
+                                <PathBuilder pathType="working_path_in" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} allAllocatedFiberIds={allAllocatedFiberIds} />
                             </div>
-                            <div className="space-y-1">
+                             <div className="space-y-1 pt-4 border-t dark:border-gray-600">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Outbound (Rx)</label>
-                                <PathBuilder pathType="working_path_out" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} />
+                                <PathBuilder pathType="working_path_out" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} allAllocatedFiberIds={allAllocatedFiberIds} />
                             </div>
                         </div>
-                        <div className="space-y-4 p-4 border rounded-lg">
-                            <h3 className="font-semibold text-lg flex items-center gap-2"><GitBranch className="text-gray-400" /> Protection Path <span className="text-xs">(Optional)</span></h3>
+                        <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            <h3 className="font-semibold text-lg flex items-center gap-2"><GitBranch className="text-gray-400" /> Protection Path <span className="text-xs font-normal text-gray-500">(Optional)</span></h3>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Inbound (Tx)</label>
-                                <PathBuilder pathType="protection_path_in" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} />
+                                <PathBuilder pathType="protection_path_in" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} allAllocatedFiberIds={allAllocatedFiberIds} />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 pt-4 border-t dark:border-gray-600">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Outbound (Rx)</label>
-                                <PathBuilder pathType="protection_path_out" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} />
+                                <PathBuilder pathType="protection_path_out" control={control} watch={watch} startNode={startNode} nodes={allNodesResult!.data} cables={allCablesResult!.data} allAllocatedFiberIds={allAllocatedFiberIds} />
                             </div>
                         </div>
                     </div>

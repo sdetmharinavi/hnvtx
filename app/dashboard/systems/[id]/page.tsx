@@ -1,28 +1,31 @@
 // path: app/dashboard/systems/[id]/page.tsx
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
+import { usePagedData, RpcFunctionArgs, Row } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
-import { DataTable } from '@/components/table';
+import { FiDatabase, FiUpload, FiGitBranch, FiZapOff, FiEye } from 'react-icons/fi';
+import { DataTable, TableAction } from '@/components/table';
 import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
+  V_ofc_connections_completeRowSchema
 } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
-import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
+import { useUpsertSystemConnection, useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { DEFAULTS } from '@/constants/constants';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { FiberAllocationModal } from '@/components/systems/FiberAllocationModal';
+import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
+import { useOfcRoutesForSelection } from '@/hooks/database/route-manager-hooks';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -38,17 +41,15 @@ export default function SystemConnectionsPage() {
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
 
-  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(
-    supabase,
-    'v_systems_complete',
-    { filters: { id: systemId } }
-  );
+  const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
+  const [connectionToDeprovision, setConnectionToDeprovision] = useState<V_system_connections_completeRowSchema | null>(null);
+  const [tracingFiberInfo, setTracingFiberInfo] = useState<{ startSegmentId: string; fiberNo: number; record: V_ofc_connections_completeRowSchema } | null>(null);
+
+  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];
 
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
-    supabase,
-    'v_system_connections_complete',
-    {
+    supabase, 'v_system_connections_complete', {
       filters: {
         system_id: systemId,
         ...(searchQuery ? { or: `(customer_name.ilike.%${searchQuery}%,connected_system_name.ilike.%${searchQuery}%)` } : {}),
@@ -57,113 +58,118 @@ export default function SystemConnectionsPage() {
       offset: (currentPage - 1) * pageLimit,
     }
   );
+  
+  const { data: allCablesData } = useOfcRoutesForSelection();
 
   const connections = connectionsData?.data || [];
   const totalCount = connectionsData?.total_count || 0;
 
   const upsertMutation = useUpsertSystemConnection();
-  const deleteManager = useDeleteManager({
-    tableName: 'system_connections',
-    onSuccess: () => refetch(),
-  });
-
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
-    }
-  });
+  const deprovisionMutation = useDeprovisionServicePath();
+  const deleteManager = useDeleteManager({ tableName: 'system_connections', onSuccess: refetch });
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { onSuccess: (result) => { if (result.successCount > 0) refetch(); } });
 
   const columns = SystemConnectionsTableColumns(connections);
 
-  const openEditModal = (record: V_system_connections_completeRowSchema) => {
-    setEditingRecord(record);
-    setIsEditModalOpen(true);
-  };
-  const openAddModal = () => {
-    setEditingRecord(null);
-    setIsEditModalOpen(true);
-  };
-  const closeModal = () => {
-    setEditingRecord(null);
-    setIsEditModalOpen(false);
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
+  const openEditModal = (record: V_system_connections_completeRowSchema) => { setEditingRecord(record); setIsEditModalOpen(true); };
+  const openAddModal = () => { setEditingRecord(null); setIsEditModalOpen(true); };
+  const closeModal = () => { setEditingRecord(null); setIsEditModalOpen(false); };
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
       const uploadConfig = buildUploadConfig('v_system_connections_complete');
-      
-      uploadConnections({
-        file,
-        columns: uploadConfig.columnMapping,
-        parentSystemId: parentSystem.id,
-      });
+      uploadConnections({ file, columns: uploadConfig.columnMapping, parentSystemId: parentSystem.id });
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const handleOpenAllocationModal = (record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); };
+  
+  const handleDeprovisionClick = (record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); };
+
+  const handleConfirmDeprovision = () => {
+    if (!connectionToDeprovision?.id) return;
+    deprovisionMutation.mutate(connectionToDeprovision.id, {
+      onSuccess: () => {
+        setDeprovisionModalOpen(false);
+        setConnectionToDeprovision(null);
+        refetch();
+      }
+    });
+  };
+  
+  const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
+    const startingFiberId = record.working_fiber_in_id;
+    if (!startingFiberId) {
+      toast.error("No starting fiber is assigned to this connection to begin a trace.");
+      return;
     }
-  };
 
-  const handleOpenAllocationModal = (record: V_system_connections_completeRowSchema) => {
-    setConnectionToAllocate(record);
-    setIsAllocationModalOpen(true);
-  };
+    const { data: fiberConnection, error: fiberError } = await supabase
+      .from('v_ofc_connections_complete')
+      .select('*')
+      .eq('id', startingFiberId)
+      .maybeSingle();
 
-  const tableActions = useMemo(
-    () => {
-      const actions = createStandardActions<V_system_connections_completeRowSchema>({
-        onEdit: openEditModal,
-        onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
-      });
-      actions.unshift({
-        key: 'allocate-fiber',
-        label: 'Allocate Fiber',
-        icon: <FiGitBranch />,
-        onClick: handleOpenAllocationModal,
-        variant: 'secondary'
-      });
-      return actions;
-    },
-    [deleteManager]
-  );
+    if (fiberError || !fiberConnection) {
+      toast.error("Could not find details for the starting fiber. The path data might be inconsistent.");
+      return;
+    }
 
-  // --- THIS IS THE FIX: Add the `exportConfig` property ---
+    const { data: firstSegment, error: segmentError } = await supabase
+        .from('cable_segments')
+        .select('id')
+        .eq('original_cable_id', fiberConnection.ofc_id)
+        .order('segment_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (segmentError || !firstSegment) {
+      toast.error("Could not find the starting cable segment for this path. The route may not be properly segmented yet.");
+      return;
+    }
+    
+    setTracingFiberInfo({
+      startSegmentId: firstSegment.id,
+      fiberNo: fiberConnection.fiber_no_sn!,
+      record: fiberConnection
+    });
+  }, [supabase]);
+
+  const tableActions = useMemo((): TableAction<V_system_connections_completeRowSchema>[] => {
+    const standard = createStandardActions<V_system_connections_completeRowSchema>({
+      onEdit: openEditModal,
+      onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
+    });
+    
+    const isProvisioned = (record: V_system_connections_completeRowSchema) => !!record.working_fiber_in_id;
+    
+    return [
+      { key: 'view-path', label: 'View/Trace Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
+      { key: 'deprovision', label: 'Deprovision', icon: <FiZapOff />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
+      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
+      ...standard,
+    ];
+  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal]);
+
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
     isLoading: isLoadingConnections,
-    exportConfig: {
-        tableName: 'v_system_connections_complete',
-        fileName: `${parentSystem?.system_name || 'system'}_connections`,
-        filters: { system_id: systemId }
-    }
+    exportConfig: { tableName: 'v_system_connections_complete', fileName: `${parentSystem?.system_name || 'system'}_connections`, filters: { system_id: systemId } }
   });
-  // --- END FIX ---
 
   headerActions.splice(1, 0, {
-    label: isUploading ? 'Uploading...' : 'Upload Connections',
-    onClick: handleUploadClick,
-    variant: 'outline',
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoadingConnections,
+    label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
+    variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
   });
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
   
-  type FiberFields = {
-    working_fiber_in_id?: string | null;
-    working_fiber_out_id?: string | null;
-    protection_fiber_in_id?: string | null;
-    protection_fiber_out_id?: string | null;
-  };
-
   const handleSave = (formData: SystemConnectionFormValues) => {
-    const withFiber = formData as SystemConnectionFormValues & Partial<FiberFields>;
     const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
       p_id: editingRecord?.id ?? undefined,
       p_system_id: parentSystem.id!,
@@ -181,10 +187,6 @@ export default function SystemConnectionsPage() {
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
       p_bandwidth_allocated_mbps: formData.bandwidth_allocated_mbps || undefined,
-      p_working_fiber_in_id: withFiber.working_fiber_in_id || undefined,
-      p_working_fiber_out_id: withFiber.working_fiber_out_id || undefined,
-      p_protection_fiber_in_id: withFiber.protection_fiber_in_id || undefined,
-      p_protection_fiber_out_id: withFiber.protection_fiber_out_id || undefined,
       p_system_working_interface: formData.system_working_interface || undefined,
       p_system_protection_interface: formData.system_protection_interface || undefined,
       p_connected_link_type_id: formData.connected_link_type_id || undefined,
@@ -195,13 +197,7 @@ export default function SystemConnectionsPage() {
       p_b_slot: formData.b_slot || undefined,
       p_b_customer: formData.b_customer || undefined,
     };
-
-    upsertMutation.mutate(payload, {
-      onSuccess: () => {
-        refetch();
-        closeModal();
-      }
-    });
+    upsertMutation.mutate(payload, { onSuccess: () => { refetch(); closeModal(); } });
   };
 
   return (
@@ -214,13 +210,7 @@ export default function SystemConnectionsPage() {
         stats={[{ label: 'Total Connections', value: totalCount }]}
       />
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
 
       <DataTable
         tableName="v_system_connections_complete"
@@ -229,47 +219,40 @@ export default function SystemConnectionsPage() {
         loading={isLoadingConnections}
         actions={tableActions}
         pagination={{
-          current: currentPage,
-          pageSize: pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, limit) => {
-            setCurrentPage(page);
-            setPageLimit(limit);
-          },
+          current: currentPage, pageSize: pageLimit, total: totalCount, showSizeChanger: true,
+          onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
         }}
         searchable
         onSearchChange={setSearchQuery}
       />
 
-      {isEditModalOpen && (
-        <SystemConnectionFormModal
-          isOpen={isEditModalOpen}
-          onClose={closeModal}
-          parentSystem={parentSystem}
-          editingConnection={editingRecord}
-          onSubmit={handleSave}
-          isLoading={upsertMutation.isPending}
-        />
-      )}
+      {isEditModalOpen && <SystemConnectionFormModal isOpen={isEditModalOpen} onClose={closeModal} parentSystem={parentSystem} editingConnection={editingRecord} onSubmit={handleSave} isLoading={upsertMutation.isPending} />}
+      
+      <ConfirmModal isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel} title="Confirm Delete" message={deleteManager.confirmationMessage} loading={deleteManager.isPending} type="danger" />
+      
+      {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={refetch} parentSystem={parentSystem} />}
 
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
-        title="Confirm Delete"
-        message={deleteManager.confirmationMessage}
-        loading={deleteManager.isPending}
+        isOpen={isDeprovisionModalOpen}
+        onConfirm={handleConfirmDeprovision}
+        onCancel={() => setDeprovisionModalOpen(false)}
+        title="Confirm Deprovisioning"
+        message={`Are you sure you want to deprovision this connection? This action will remove the logical path and release all associated fibers.`}
+        loading={deprovisionMutation.isPending}
         type="danger"
       />
-      
-      <FiberAllocationModal
-        isOpen={isAllocationModalOpen}
-        onClose={() => setIsAllocationModalOpen(false)}
-        connection={connectionToAllocate}
-        onSave={refetch}
-        parentSystem={parentSystem}
-      />
+
+      {tracingFiberInfo && (
+        <FiberTraceModal
+          isOpen={!!tracingFiberInfo}
+          onClose={() => setTracingFiberInfo(null)}
+          startSegmentId={tracingFiberInfo.startSegmentId}
+          fiberNo={tracingFiberInfo.fiberNo}
+          allCables={allCablesData}
+          record={tracingFiberInfo.record}
+          refetch={refetch}
+        />
+      )}
     </div>
   );
 }
