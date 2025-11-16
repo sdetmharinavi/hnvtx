@@ -258,14 +258,15 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     if (!connection) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.system_name}`} size="xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.system_name}`} className="w-0 h-0 bg-transparent">
             <FormCard
-                title={`Path: ${connection.sn_name} ↔ ${connection.en_name}`}
+                title={`Path: ${startNode?.name} ↔ ${connection.en_name}`}
                 onSubmit={handleSubmit(onValidSubmit)}
                 onCancel={onClose}
                 isLoading={provisionMutation.isPending}
-                standalone={false}
-                widthClass="max-w-4xl"
+                standalone
+                widthClass="w-full"
+                heightClass="h-full"
             >
                 {isLoadingCables || isLoadingNodes ? <PageSpinner text="Loading..." /> : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

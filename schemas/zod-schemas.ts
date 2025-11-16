@@ -995,6 +995,57 @@ export const foldersUpdateSchema = z.object({
   user_id: z.uuid().optional(),
 });
 
+export const inventory_itemsRowSchema = z.object({
+  asset_no: z.string().nullable(),
+  category_id: z.uuid().nullable(),
+  cost: z.number().min(0).nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  functional_location_id: z.uuid().nullable(),
+  id: z.uuid(),
+  location_id: z.uuid().nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  purchase_date: z.iso.datetime().nullable(),
+  quantity: z.number().int().min(0),
+  status_id: z.uuid().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vendor: z.string().nullable(),
+});
+
+export const inventory_itemsInsertSchema = z.object({
+  asset_no: z.string().nullable().optional(),
+  category_id: z.uuid().nullable().optional(),
+  cost: z.number().min(0).nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  functional_location_id: z.uuid().nullable().optional(),
+  id: z.uuid().optional(),
+  location_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  purchase_date: z.iso.datetime().nullable().optional(),
+  quantity: z.number().int().min(0).optional(),
+  status_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vendor: z.string().nullable().optional(),
+});
+
+export const inventory_itemsUpdateSchema = z.object({
+  asset_no: z.string().nullable().optional(),
+  category_id: z.uuid().nullable().optional(),
+  cost: z.number().min(0).nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  functional_location_id: z.uuid().nullable().optional(),
+  id: z.uuid().optional(),
+  location_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  purchase_date: z.iso.datetime().nullable().optional(),
+  quantity: z.number().int().min(0).optional(),
+  status_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vendor: z.string().nullable().optional(),
+});
+
 export const junction_closuresRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -1549,9 +1600,6 @@ export const system_connectionsRowSchema = z.object({
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
   connected_link_type_id: z.uuid().nullable(),
-  connected_system_id: z.uuid().nullable(),
-  connected_system_protection_interface: z.string().nullable(),
-  connected_system_working_interface: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
@@ -1567,6 +1615,8 @@ export const system_connectionsRowSchema = z.object({
   sn_ip: z.any(),
   status: z.boolean().nullable(),
   system_id: z.uuid(),
+  system_protection_interface: z.string().nullable(),
+  system_working_interface: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   working_fiber_in_id: z.uuid().nullable(),
@@ -1578,9 +1628,6 @@ export const system_connectionsInsertSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   connected_link_type_id: z.uuid().nullable().optional(),
-  connected_system_id: z.uuid().nullable().optional(),
-  connected_system_protection_interface: z.string().nullable().optional(),
-  connected_system_working_interface: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
@@ -1596,6 +1643,8 @@ export const system_connectionsInsertSchema = z.object({
   sn_ip: z.any().optional(),
   status: z.boolean().nullable().optional(),
   system_id: z.uuid(),
+  system_protection_interface: z.string().nullable().optional(),
+  system_working_interface: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
   working_fiber_in_id: z.uuid().nullable().optional(),
@@ -1607,9 +1656,6 @@ export const system_connectionsUpdateSchema = z.object({
   bandwidth_mbps: z.number().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   connected_link_type_id: z.uuid().nullable().optional(),
-  connected_system_id: z.uuid().nullable().optional(),
-  connected_system_protection_interface: z.string().nullable().optional(),
-  connected_system_working_interface: z.string().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
@@ -1625,6 +1671,8 @@ export const system_connectionsUpdateSchema = z.object({
   sn_ip: z.any().optional(),
   status: z.boolean().nullable().optional(),
   system_id: z.uuid().optional(),
+  system_protection_interface: z.string().nullable().optional(),
+  system_working_interface: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
   working_fiber_in_id: z.uuid().nullable().optional(),
@@ -1790,6 +1838,27 @@ export const v_end_to_end_pathsRowSchema = z.object({
   source_system_id: z.uuid().nullable(),
   total_distance_km: z.number().nullable(),
   total_loss_db: z.number().nullable(),
+});
+
+export const v_inventory_itemsRowSchema = z.object({
+  asset_no: z.string().nullable(),
+  category_id: z.uuid().nullable(),
+  category_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  cost: z.number().min(0).nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  functional_location: z.string().nullable(),
+  functional_location_id: z.uuid().nullable(),
+  id: z.uuid().nullable(),
+  location_id: z.uuid().nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  purchase_date: z.iso.datetime().nullable(),
+  quantity: z.number().int().min(0).nullable(),
+  status_id: z.uuid().nullable(),
+  status_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  store_location: z.string().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vendor: z.string().nullable(),
 });
 
 export const v_junction_closures_completeRowSchema = z.object({
@@ -1971,11 +2040,8 @@ export const v_system_connections_completeRowSchema = z.object({
   bandwidth_mbps: z.number().nullable(),
   commissioned_on: z.iso.date().nullable(),
   connected_link_type_name: z.url().nullable(),
-  connected_system_id: z.uuid().nullable(),
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  connected_system_protection_interface: z.string().nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  connected_system_working_interface: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
@@ -2009,7 +2075,9 @@ export const v_system_connections_completeRowSchema = z.object({
   status: z.boolean().nullable(),
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_protection_interface: z.string().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  system_working_interface: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   working_fiber_in: z.number().nullable(),
@@ -2174,6 +2242,9 @@ export type FilesUpdateSchema = z.infer<typeof filesUpdateSchema>;
 export type FoldersRowSchema = z.infer<typeof foldersRowSchema>;
 export type FoldersInsertSchema = z.infer<typeof foldersInsertSchema>;
 export type FoldersUpdateSchema = z.infer<typeof foldersUpdateSchema>;
+export type Inventory_itemsRowSchema = z.infer<typeof inventory_itemsRowSchema>;
+export type Inventory_itemsInsertSchema = z.infer<typeof inventory_itemsInsertSchema>;
+export type Inventory_itemsUpdateSchema = z.infer<typeof inventory_itemsUpdateSchema>;
 export type Junction_closuresRowSchema = z.infer<typeof junction_closuresRowSchema>;
 export type Junction_closuresInsertSchema = z.infer<typeof junction_closuresInsertSchema>;
 export type Junction_closuresUpdateSchema = z.infer<typeof junction_closuresUpdateSchema>;
@@ -2227,6 +2298,7 @@ export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRow
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
 export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
+export type V_inventory_itemsRowSchema = z.infer<typeof v_inventory_itemsRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;
 export type V_lookup_typesRowSchema = z.infer<typeof v_lookup_typesRowSchema>;
 export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRowSchema>;

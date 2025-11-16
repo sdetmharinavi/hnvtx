@@ -50,12 +50,11 @@ SELECT
   sc.en_id,
   na.id AS sn_node_id, -- Added start node ID
   nb.id AS en_node_id, -- Added end node ID
-  sc.connected_system_id,
   sc.media_type_id,
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
-  lt_media.name AS media_type_name, sc.bandwidth_mbps, cs.system_name AS connected_system_name,
-  lt_cs_type.name AS connected_system_type_name, sc.vlan, sc.commissioned_on,
+  lt_media.name AS media_type_name, sc.bandwidth_mbps, COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
+  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, sc.vlan, sc.commissioned_on,
   sc.remark, sc.status, sc.created_at, sc.updated_at,
   sc.customer_name,
   sc.bandwidth_allocated_mbps,
@@ -69,8 +68,8 @@ SELECT
   pfi.fiber_no_sn as protection_fiber_in,
   sc.protection_fiber_out_id,
   pfo.fiber_no_sn as protection_fiber_out,
-  sc.connected_system_working_interface,
-  sc.connected_system_protection_interface,
+  sc.system_working_interface,
+  sc.system_protection_interface,
   lt_link_type.name as connected_link_type_name,
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
@@ -81,8 +80,8 @@ FROM public.system_connections sc
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
   LEFT JOIN public.nodes nb ON s_en.node_id = nb.id
-  LEFT JOIN public.systems cs ON sc.connected_system_id = cs.id
-  LEFT JOIN public.lookup_types lt_cs_type ON cs.system_type_id = lt_cs_type.id
+  LEFT JOIN public.lookup_types lt_sn_type ON s_sn.system_type_id = lt_sn_type.id
+  LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id
