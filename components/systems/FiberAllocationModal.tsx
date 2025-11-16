@@ -180,7 +180,7 @@ const PathBuilder: FC<{
 };
 
 // --- MAIN MODAL COMPONENT ---
-export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem, onSave }) => {
+export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem }) => {
     const { control, handleSubmit, watch, reset } = useForm<FiberAllocationForm>({
         defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
@@ -188,8 +188,8 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     const allPaths = watch();
     const allAllocatedFiberIds = useMemo(() => {
       const ids = new Set<string>();
-      Object.values(allPaths).forEach(pathArray => {
-        pathArray.forEach(step => {
+      Object.values(allPaths).forEach((pathArray: PathStep[]) => {
+        pathArray.forEach((step: PathStep) => {
           if (step.fiber_id) ids.add(step.fiber_id);
         });
       });

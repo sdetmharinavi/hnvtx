@@ -4,7 +4,7 @@
 import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { usePagedData, RpcFunctionArgs, Row } from '@/hooks/database';
+import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { FiDatabase, FiUpload, FiGitBranch, FiZapOff, FiEye } from 'react-icons/fi';
@@ -71,23 +71,23 @@ export default function SystemConnectionsPage() {
 
   const columns = SystemConnectionsTableColumns(connections);
 
-  const openEditModal = (record: V_system_connections_completeRowSchema) => { setEditingRecord(record); setIsEditModalOpen(true); };
-  const openAddModal = () => { setEditingRecord(null); setIsEditModalOpen(true); };
-  const closeModal = () => { setEditingRecord(null); setIsEditModalOpen(false); };
-  const handleUploadClick = () => fileInputRef.current?.click();
+  const openEditModal = useCallback((record: V_system_connections_completeRowSchema) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
+  const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
+  const closeModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(false); }, []);
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
       const uploadConfig = buildUploadConfig('v_system_connections_complete');
       uploadConnections({ file, columns: uploadConfig.columnMapping, parentSystemId: parentSystem.id });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, [uploadConnections, parentSystem]);
   
-  const handleOpenAllocationModal = (record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); };
+  const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
   
-  const handleDeprovisionClick = (record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); };
+  const handleDeprovisionClick = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); }, []);
 
   const handleConfirmDeprovision = () => {
     if (!connectionToDeprovision?.id) return;
@@ -138,7 +138,7 @@ export default function SystemConnectionsPage() {
     });
   }, [supabase]);
 
-  const tableActions = useMemo((): TableAction<V_system_connections_completeRowSchema>[] => {
+  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
       onEdit: openEditModal,
       onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
