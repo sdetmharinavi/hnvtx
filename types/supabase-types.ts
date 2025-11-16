@@ -4685,6 +4685,10 @@ export type Database = {
         Args: { p_path_id: string }
         Returns: undefined
       }
+      deprovision_service_path: {
+        Args: { p_system_connection_id: string }
+        Returns: undefined
+      }
       disassociate_system_from_ring: {
         Args: { p_ring_id: string; p_system_id: string }
         Returns: undefined
@@ -4932,14 +4936,6 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
-      provision_fibers_to_connection: {
-        Args: {
-          p_protection_fiber_ids?: string[]
-          p_system_connection_id: string
-          p_working_fiber_ids: string[]
-        }
-        Returns: undefined
-      }
       provision_logical_path: {
         Args: {
           p_path_name: string
@@ -4952,6 +4948,17 @@ export type Database = {
           protection_path_id: string
           working_path_id: string
         }[]
+      }
+      provision_service_path: {
+        Args: {
+          p_path_name: string
+          p_protection_rx_fiber_ids?: string[]
+          p_protection_tx_fiber_ids?: string[]
+          p_system_connection_id: string
+          p_working_rx_fiber_ids: string[]
+          p_working_tx_fiber_ids: string[]
+        }
+        Returns: string
       }
       recalculate_segments_for_cable: {
         Args: { p_cable_id: string }
