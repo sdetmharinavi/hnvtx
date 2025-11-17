@@ -2085,7 +2085,7 @@ export type V_systems_completeRow = {
     commissioned_on: string | null;
     created_at: string | null;
     id: string | null;
-    ip_address: unknown;
+    ip_address: string | null;
     is_hub: boolean | null;
     is_ring_based: boolean | null;
     latitude: number | null;

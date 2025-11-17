@@ -70,6 +70,14 @@ export function useSystemConnectionExcelUpload(
     mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
       const { file, columns, parentSystemId } = uploadOptions;
 
+      // THE FIX: Create a helper to robustly convert empty values to undefined for optional RPC args.
+      const toUndefined = (val: unknown): string | undefined => {
+        if (val === null || val === undefined || String(val).trim() === '') {
+          return undefined;
+        }
+        return String(val);
+      };
+
       const processingLogs: ReturnType<typeof logRowProcessing>[] = [];
       const allValidationErrors: ValidationError[] = [];
       const uploadResult: EnhancedUploadResult = {
@@ -95,6 +103,11 @@ export function useSystemConnectionExcelUpload(
       excelHeaders.forEach((header, index) => {
         headerMap[header.toLowerCase()] = index;
       });
+      
+      // THE FIX: Programmatically enforce that media_type_id is required.
+      const reinforcedColumns = columns.map(c => 
+        c.dbKey === 'media_type_id' ? { ...c, required: true } : c
+      );
 
       const dataRows = jsonData.slice(1);
       const recordsToProcess: RpcPayload[] = [];
@@ -116,16 +129,15 @@ export function useSystemConnectionExcelUpload(
 
         const rowValidationErrors: ValidationError[] = [];
         const processedData: Record<string, unknown> = {};
-
-        for (const mapping of columns) {
+        
+        // Use the reinforced columns with the required flag
+        for (const mapping of reinforcedColumns) {
           const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
           const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
 
-          // Apply transformation if it exists
           let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
           if (typeof finalValue === 'string') finalValue = finalValue.trim();
 
-          // Validate the final value
           const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
           if (validationError) {
             rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
@@ -145,20 +157,39 @@ export function useSystemConnectionExcelUpload(
           continue;
         }
 
-        // Map processed data to RPC payload format (p_ prefix)
+        // THE FIX: Use the `toUndefined` helper for all optional UUIDs and text fields.
         const rpcPayload: RpcPayload = {
+          p_id: toUndefined(processedData.id),
           p_system_id: parentSystemId,
-          p_media_type_id: processedData.media_type_id as string,
-          p_status: processedData.status as boolean,
+          p_media_type_id: processedData.media_type_id as string, // This is now guaranteed by validation
+          p_status: (processedData.status as boolean) ?? true,
+          p_sn_id: toUndefined(processedData.sn_id),
+          p_en_id: toUndefined(processedData.en_id),
+          p_sn_ip: processedData.sn_ip || undefined,
+          p_sn_interface: toUndefined(processedData.sn_interface),
+          p_en_ip: processedData.en_ip || undefined,
+          p_en_interface: toUndefined(processedData.en_interface),
+          p_bandwidth_mbps: (processedData.bandwidth_mbps as number) || undefined,
+          p_vlan: toUndefined(processedData.vlan),
+          p_commissioned_on: toUndefined(processedData.commissioned_on),
+          p_remark: toUndefined(processedData.remark),
+          p_customer_name: toUndefined(processedData.customer_name),
+          p_bandwidth_allocated_mbps: (processedData.bandwidth_allocated_mbps as number) || undefined,
+          p_working_fiber_in_id: toUndefined(processedData.working_fiber_in_id),
+          p_working_fiber_out_id: toUndefined(processedData.working_fiber_out_id),
+          p_protection_fiber_in_id: toUndefined(processedData.protection_fiber_in_id),
+          p_protection_fiber_out_id: toUndefined(processedData.protection_fiber_out_id),
+          p_system_working_interface: toUndefined(processedData.system_working_interface),
+          p_system_protection_interface: toUndefined(processedData.system_protection_interface),
+          p_connected_link_type_id: toUndefined(processedData.connected_link_type_id),
+          p_stm_no: toUndefined(processedData.sdh_stm_no),
+          p_carrier: toUndefined(processedData.sdh_carrier),
+          p_a_slot: toUndefined(processedData.sdh_a_slot),
+          p_a_customer: toUndefined(processedData.sdh_a_customer),
+          p_b_slot: toUndefined(processedData.sdh_b_slot),
+          p_b_customer: toUndefined(processedData.sdh_b_customer),
         };
-
-        for (const key in processedData) {
-          if (Object.prototype.hasOwnProperty.call(processedData, key)) {
-            const rpcKey = `p_${key}` as keyof RpcPayload;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (rpcPayload as any)[rpcKey] = processedData[key];
-          }
-        }
+        // --- END FIX ---
         
         recordsToProcess.push(rpcPayload);
         processingLogs.push(logRowProcessing(i, excelRowNumber, originalData, processedData, [], false));
