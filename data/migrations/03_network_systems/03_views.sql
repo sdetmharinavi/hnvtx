@@ -4,7 +4,23 @@
 -- View for a complete picture of a system and its specific details.
 CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
 SELECT
-  s.*,
+  s.id,
+  s.system_type_id,
+  s.maan_node_id,
+  s.node_id,
+  s.system_name,
+  s.is_hub,
+  -- THE FIX: Cast the ip_address from INET to TEXT directly in the view definition.
+  -- This makes it directly searchable with text operators like ILIKE.
+  s.ip_address::text,
+  s.maintenance_terminal_id,
+  s.commissioned_on,
+  s.s_no,
+  s.make,
+  s.remark,
+  s.status,
+  s.created_at,
+  s.updated_at,
   n.name AS node_name,
   lt_node_type.name AS node_type_name,
   lt_system.is_ring_based,

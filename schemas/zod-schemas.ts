@@ -2105,7 +2105,7 @@ export const v_systems_completeRowSchema = z.object({
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
-  ip_address: z.any(),
+  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).nullable(),
   is_hub: z.boolean().nullable(),
   is_ring_based: z.boolean().nullable(),
   latitude: z.number().nullable(),

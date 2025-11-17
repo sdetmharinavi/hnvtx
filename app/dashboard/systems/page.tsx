@@ -38,12 +38,8 @@ const useSystemsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchQuery
-        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
-        : undefined,
-    });
+    // This hook now correctly receives the multi-column `or` filter from useCrudManager
+    const rpcFilters = buildRpcFilters({ ...filters });
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_systems_complete",
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -71,6 +67,7 @@ const useSystemsData = (
 
   const processedData = useMemo(() => {
     let filtered = allSystems;
+    // Client-side filtering is now primarily for the offline fallback
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -137,7 +134,8 @@ export default function SystemsPage() {
   } = useCrudManager<"systems", V_systems_completeRowSchema>({
     tableName: "systems",
     dataQueryHook: useSystemsData,
-    searchColumn: "system_name",
+    // THE FIX: Provide all searchable columns to the generic hook.
+    searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: "system_name",
   });
 
