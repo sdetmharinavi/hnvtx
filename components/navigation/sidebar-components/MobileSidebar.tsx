@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FiX } from "react-icons/fi";
+import { FiLayout, FiTool, FiX } from "react-icons/fi";
 import { NavItem } from "./NavItem";
 import { QuickActions } from "./QuickActions";
 import { mobileOverlayVariants, mobileSidebarVariants } from "./sidebar-types";
 import { NavItem as NavItemType } from "./sidebar-types";
+import { useViewSettings } from "@/contexts/ViewSettingsContext";
 
 interface MobileSidebarProps {
   isCollapsed: boolean;
@@ -29,6 +30,9 @@ export const MobileSidebar = ({
   const handleBackdropClick = () => {
     setIsCollapsed(true);
   };
+  
+  // THE FIX: Added useViewSettings hook to get state and setters
+  const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
   if (isCollapsed) return null;
 
@@ -81,6 +85,33 @@ export const MobileSidebar = ({
             isCollapsed={false}
             pathname={pathname}
           />
+        </div>
+
+        {/* THE FIX: Added View Toggles section for mobile */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
+          <button
+            onClick={() => setShowHeader(!showHeader)}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              showHeader 
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+            }`}
+          >
+            <FiLayout className="h-4 w-4 flex-shrink-0" />
+            <span>{showHeader ? 'Hide' : 'Show'} Header</span>
+          </button>
+          
+          <button
+            onClick={() => setShowToolbar(!showToolbar)}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              showToolbar 
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+            }`}
+          >
+            <FiTool className="h-4 w-4 flex-shrink-0" />
+            <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>
+          </button>
         </div>
       </motion.aside>
     </>
