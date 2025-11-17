@@ -4,7 +4,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { StaleWhileRevalidate, CacheFirst } from "@serwist/strategies";
+import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from "@serwist/strategies"; // --- IMPORT NetworkFirst ---
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -15,7 +15,23 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-// --- THIS IS THE FIX: Define custom caching rules in a declarative array ---
+// --- THIS IS THE FIX: A NEW CACHING RULE FOR NAVIGATION ---
+const navigationCache: RuntimeCaching = {
+  // Match any request that is a navigation to a new page.
+  matcher: ({ request }) => request.mode === 'navigate',
+  // Use a NetworkFirst strategy.
+  handler: new NetworkFirst({
+    cacheName: 'pages-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50, // Cache up to 50 pages.
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  }),
+};
+// --- END FIX ---
+
 const customCache: RuntimeCaching[] = [
   {
     matcher: /^https?:\/\/.*\/(api|rest|rpc)\/.*/i,
@@ -42,18 +58,17 @@ const customCache: RuntimeCaching[] = [
     }),
   },
 ];
-// --- END FIX ---
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  // --- THIS IS THE FIX: Combine default Next.js rules with our custom rules ---
-  runtimeCaching: [...defaultCache, ...customCache],
+  // --- THIS IS THE FIX: Add the new navigation rule to the runtimeCaching array ---
+  // It's important to place it BEFORE defaultCache so it takes precedence for navigation requests.
+  runtimeCaching: [navigationCache, ...defaultCache, ...customCache],
 });
 
-// --- Custom Event Listeners (This part remains correct) ---
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
