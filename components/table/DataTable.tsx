@@ -413,7 +413,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   return (
     <div 
       className={cn(
-        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-250px)] relative", 
+        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-100px)] relative", 
         bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md", 
         className
       )}

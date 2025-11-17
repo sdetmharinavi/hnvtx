@@ -17,7 +17,8 @@ import {
   contentVariants,
 } from '@/components/navigation/sidebar-components/sidebar-types';
 import NavItems from './sidebar-components/NavItems';
-import { FiMenu, FiX } from 'react-icons/fi';
+import { FiMenu, FiX, FiLayout, FiTool } from 'react-icons/fi';
+import { useViewSettings } from '@/contexts/ViewSettingsContext';
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: SidebarProps) => {
   const pathname = usePathname();
@@ -64,6 +65,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       />
     );
   }
+
+  const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
   return (
     <motion.aside
@@ -118,9 +121,36 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
       </div>
 
-      {/* Render the Help item in a separate, persistent section at the bottom. */}
+      {/* View Toggles */}
+      <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
+        <button
+          onClick={() => setShowHeader(!showHeader)}
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            showHeader 
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+              : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          <FiLayout className="h-4 w-4 flex-shrink-0" />
+          {!isCollapsed && <span>{showHeader ? 'Hide' : 'Show'} Header</span>}
+        </button>
+        
+        <button
+          onClick={() => setShowToolbar(!showToolbar)}
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            showToolbar 
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+              : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          <FiTool className="h-4 w-4 flex-shrink-0" />
+          {!isCollapsed && <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>}
+        </button>
+      </div>
+
+      {/* Help section */}
       {helpNavItem && (
-        <div className="py-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="border-t border-gray-200 dark:border-gray-700">
           <NavItem
             item={helpNavItem}
             isCollapsed={isCollapsed}

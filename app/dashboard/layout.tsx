@@ -8,6 +8,7 @@ import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfi
 import 'leaflet/dist/leaflet.css';
 import { allowedRoles } from "@/constants/constants";
 import { UserProvider } from "@/providers/UserProvider";
+import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
@@ -42,33 +43,35 @@ export default function DashboardLayout({
     <UserProvider>
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
-          {/* THE FIX: This div contains all the UI chrome and will be hidden during print */}
-          <div className="no-print">
-            <Sidebar 
-              isCollapsed={isCollapsed} 
-              setIsCollapsed={setIsCollapsed}
-              showMenuFeatures={true}
-            />
-            <div
+          <ViewSettingsProvider>
+            {/* This div contains all the UI chrome and will be hidden during print */}
+            <div className="no-print">
+              <Sidebar 
+                isCollapsed={isCollapsed} 
+                setIsCollapsed={setIsCollapsed}
+                showMenuFeatures={true}
+              />
+              <div
+                className="transition-all duration-300"
+                style={{
+                  marginLeft: isCollapsed ? '4rem' : '16rem',
+                  transition: 'margin-left 0.3s ease-in-out',
+                }}
+              >
+                <DashboardHeader onMenuClick={() => setIsCollapsed(!isCollapsed)} />
+              </div>
+            </div>
+
+            {/* Main Content Area - This will be visible on screen and potentially in print */}
+            <main
               className="transition-all duration-300"
               style={{
                 marginLeft: isMobile ? 0 : `${sidebarWidth}px`
               }}
             >
-              <DashboardHeader onMenuClick={() => setIsCollapsed(false)} />
-            </div>
-          </div>
-
-          {/* Main Content Area - This will be visible on screen and potentially in print */}
-          <main
-            className="transition-all duration-300"
-            style={{
-              marginLeft: isMobile ? 0 : `${sidebarWidth}px`
-            }}
-          >
-            {children}
-          </main>
-            
+              {children}
+            </main>
+          </ViewSettingsProvider>
         </RouteBasedUploadConfigProvider>
       </Protected>
     </UserProvider>
