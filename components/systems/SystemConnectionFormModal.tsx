@@ -25,12 +25,12 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-// --- THE FIX: Remove the fiber fields from the base form schema ---
+// THE FIX: The form schema now correctly omits the new array-based fiber ID columns.
 const formSchema = system_connectionsInsertSchema.omit({
-    working_fiber_in_id: true,
-    working_fiber_out_id: true,
-    protection_fiber_in_id: true,
-    protection_fiber_out_id: true,
+    working_fiber_in_ids: true,
+    working_fiber_out_ids: true,
+    protection_fiber_in_ids: true,
+    protection_fiber_out_ids: true,
 }).extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
@@ -165,8 +165,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
               <FormSearchableSelect name='connected_link_type_id' label='Connected Link Type' control={control} options={linkTypeOptions} error={errors.connected_link_type_id} />
             </div>
           </section>
-
-          {/* --- THE FIX: Fiber details section has been removed from this form --- */}
           
           <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
             <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />

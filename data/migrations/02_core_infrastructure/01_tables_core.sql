@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS public.ofc_connections (
   route_loss_db DECIMAL(10, 3),
   logical_path_id UUID, -- NOTE: FK constraint to logical_fiber_paths is added in 99_finalization
   fiber_role TEXT CHECK (fiber_role IN ('working', 'protection')),
+  path_direction TEXT CHECK (path_direction IN ('tx', 'rx')),
   path_segment_order INTEGER DEFAULT 1,
   source_port TEXT,
   destination_port TEXT,

@@ -45,3 +45,13 @@ ADD CONSTRAINT fk_lfp_destination_system
 FOREIGN KEY (destination_system_id)
 REFERENCES public.systems(id)
 ON DELETE SET NULL;
+
+-- NEW: Add the foreign key from logical_fiber_paths (Module 04) back to system_connections (Module 03).
+-- This allows easy lookup of all paths related to a single service.
+ALTER TABLE public.logical_fiber_paths
+ADD CONSTRAINT fk_lfp_system_connection
+FOREIGN KEY (system_connection_id)
+REFERENCES public.system_connections(id)
+ON DELETE SET NULL;
+
+-- REMOVED: Redundant index creation, handled in `01_tables_advanced_ofc.sql`

@@ -1066,6 +1066,7 @@ export type Logical_fiber_pathsRow = {
     service_type: string | null;
     source_port: string | null;
     source_system_id: string | null;
+    system_connection_id: string | null;
     total_distance_km: number | null;
     total_loss_db: number | null;
     updated_at: string | null;
@@ -1088,6 +1089,7 @@ export type Logical_fiber_pathsInsert = {
     service_type?: string | null;
     source_port?: string | null;
     source_system_id?: string | null;
+    system_connection_id?: string | null;
     total_distance_km?: number | null;
     total_loss_db?: number | null;
     updated_at?: string | null;
@@ -1110,6 +1112,7 @@ export type Logical_fiber_pathsUpdate = {
     service_type?: string | null;
     source_port?: string | null;
     source_system_id?: string | null;
+    system_connection_id?: string | null;
     total_distance_km?: number | null;
     total_loss_db?: number | null;
     updated_at?: string | null;
@@ -1384,6 +1387,7 @@ export type Ofc_connectionsRow = {
     ofc_id: string;
     otdr_distance_en_km: number | null;
     otdr_distance_sn_km: number | null;
+    path_direction: string | null;
     path_segment_order: number | null;
     remark: string | null;
     route_loss_db: number | null;
@@ -1414,6 +1418,7 @@ export type Ofc_connectionsInsert = {
     ofc_id: string;
     otdr_distance_en_km?: number | null;
     otdr_distance_sn_km?: number | null;
+    path_direction?: string | null;
     path_segment_order?: number | null;
     remark?: string | null;
     route_loss_db?: number | null;
@@ -1444,6 +1449,7 @@ export type Ofc_connectionsUpdate = {
     ofc_id?: string;
     otdr_distance_en_km?: number | null;
     otdr_distance_sn_km?: number | null;
+    path_direction?: string | null;
     path_segment_order?: number | null;
     remark?: string | null;
     route_loss_db?: number | null;
@@ -1585,8 +1591,8 @@ export type System_connectionsRow = {
     en_ip: unknown;
     id: string;
     media_type_id: string | null;
-    protection_fiber_in_id: string | null;
-    protection_fiber_out_id: string | null;
+    protection_fiber_in_ids: string[] | null;
+    protection_fiber_out_ids: string[] | null;
     remark: string | null;
     sn_id: string | null;
     sn_interface: string | null;
@@ -1597,8 +1603,8 @@ export type System_connectionsRow = {
     system_working_interface: string | null;
     updated_at: string | null;
     vlan: string | null;
-    working_fiber_in_id: string | null;
-    working_fiber_out_id: string | null;
+    working_fiber_in_ids: string[] | null;
+    working_fiber_out_ids: string[] | null;
 };
 
 export type System_connectionsInsert = {
@@ -1613,8 +1619,8 @@ export type System_connectionsInsert = {
     en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
-    protection_fiber_in_id?: string | null;
-    protection_fiber_out_id?: string | null;
+    protection_fiber_in_ids?: string[] | null;
+    protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
@@ -1625,8 +1631,8 @@ export type System_connectionsInsert = {
     system_working_interface?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
-    working_fiber_in_id?: string | null;
-    working_fiber_out_id?: string | null;
+    working_fiber_in_ids?: string[] | null;
+    working_fiber_out_ids?: string[] | null;
 };
 
 export type System_connectionsUpdate = {
@@ -1641,8 +1647,8 @@ export type System_connectionsUpdate = {
     en_ip?: unknown;
     id?: string;
     media_type_id?: string | null;
-    protection_fiber_in_id?: string | null;
-    protection_fiber_out_id?: string | null;
+    protection_fiber_in_ids?: string[] | null;
+    protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
@@ -1653,8 +1659,8 @@ export type System_connectionsUpdate = {
     system_working_interface?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
-    working_fiber_in_id?: string | null;
-    working_fiber_out_id?: string | null;
+    working_fiber_in_ids?: string[] | null;
+    working_fiber_out_ids?: string[] | null;
 };
 
 export type SystemsRow = {
@@ -1950,6 +1956,7 @@ export type V_ofc_connections_completeRow = {
     ofc_type_name: string | null;
     otdr_distance_en_km: number | null;
     otdr_distance_sn_km: number | null;
+    path_direction: string | null;
     path_segment_order: number | null;
     remark: string | null;
     route_loss_db: number | null;
@@ -2030,15 +2037,11 @@ export type V_system_connections_completeRow = {
     en_name: string | null;
     en_node_id: string | null;
     en_node_name: string | null;
-    fiber_in: number | null;
-    fiber_out: number | null;
     id: string | null;
     media_type_id: string | null;
     media_type_name: string | null;
-    protection_fiber_in: number | null;
-    protection_fiber_in_id: string | null;
-    protection_fiber_out: number | null;
-    protection_fiber_out_id: string | null;
+    protection_fiber_in_ids: string[] | null;
+    protection_fiber_out_ids: string[] | null;
     remark: string | null;
     sdh_a_customer: string | null;
     sdh_a_slot: string | null;
@@ -2060,10 +2063,8 @@ export type V_system_connections_completeRow = {
     system_working_interface: string | null;
     updated_at: string | null;
     vlan: string | null;
-    working_fiber_in: number | null;
-    working_fiber_in_id: string | null;
-    working_fiber_out: number | null;
-    working_fiber_out_id: string | null;
+    working_fiber_in_ids: string[] | null;
+    working_fiber_out_ids: string[] | null;
 };
 
 export type V_system_ring_paths_detailedRow = {
