@@ -79,9 +79,11 @@ export default function DashboardHeader({
       <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            {/* Mobile menu button */}
-            <MenuButton onClick={onMenuClick} />
-            <h1 className="hidden text-2xl font-bold text-gray-900 md:block dark:text-white">
+            {/* Mobile menu button - always visible on mobile */}
+            <div className="md:hidden">
+              <MenuButton onClick={onMenuClick} />
+            </div>
+            <h1 className="ml-2 text-2xl font-bold text-gray-900 dark:text-white md:ml-0">
               {title}
             </h1>
           </div>

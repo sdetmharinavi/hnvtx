@@ -14,6 +14,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  font-size: 10px;
+}
+
 
 /* Smooth transitions for interactive elements */
 button,
