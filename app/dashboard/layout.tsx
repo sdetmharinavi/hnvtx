@@ -59,7 +59,7 @@ export default function DashboardLayout({
                   transition: 'margin-left 0.3s ease-in-out',
                 }}
               >
-                <DashboardHeader onMenuClick={() => setIsCollapsed(!isCollapsed)} />
+                <DashboardHeader title="" onMenuClick={() => setIsCollapsed(!isCollapsed)} />
               </div>
             </div>
 

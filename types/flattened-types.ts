@@ -1574,8 +1574,8 @@ export type Sdh_connectionsUpdate = {
 };
 
 export type System_connectionsRow = {
-    bandwidth_allocated_mbps: number | null;
-    bandwidth_mbps: number | null;
+    bandwidth: string | null;
+    bandwidth_allocated: string | null;
     commissioned_on: string | null;
     connected_link_type_id: string | null;
     created_at: string | null;
@@ -1602,8 +1602,8 @@ export type System_connectionsRow = {
 };
 
 export type System_connectionsInsert = {
-    bandwidth_allocated_mbps?: number | null;
-    bandwidth_mbps?: number | null;
+    bandwidth?: string | null;
+    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
     connected_link_type_id?: string | null;
     created_at?: string | null;
@@ -1630,8 +1630,8 @@ export type System_connectionsInsert = {
 };
 
 export type System_connectionsUpdate = {
-    bandwidth_allocated_mbps?: number | null;
-    bandwidth_mbps?: number | null;
+    bandwidth?: string | null;
+    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
     connected_link_type_id?: string | null;
     created_at?: string | null;
@@ -2016,8 +2016,8 @@ export type V_ringsRow = {
 };
 
 export type V_system_connections_completeRow = {
-    bandwidth_allocated_mbps: number | null;
-    bandwidth_mbps: number | null;
+    bandwidth: string | null;
+    bandwidth_allocated: string | null;
     commissioned_on: string | null;
     connected_link_type_name: string | null;
     connected_system_name: string | null;

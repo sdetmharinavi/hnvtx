@@ -2692,8 +2692,8 @@ export type Database = {
       }
       system_connections: {
         Row: {
-          bandwidth_allocated_mbps: number | null
-          bandwidth_mbps: number | null
+          bandwidth: string | null
+          bandwidth_allocated: string | null
           commissioned_on: string | null
           connected_link_type_id: string | null
           created_at: string | null
@@ -2719,8 +2719,8 @@ export type Database = {
           working_fiber_out_id: string | null
         }
         Insert: {
-          bandwidth_allocated_mbps?: number | null
-          bandwidth_mbps?: number | null
+          bandwidth?: string | null
+          bandwidth_allocated?: string | null
           commissioned_on?: string | null
           connected_link_type_id?: string | null
           created_at?: string | null
@@ -2746,8 +2746,8 @@ export type Database = {
           working_fiber_out_id?: string | null
         }
         Update: {
-          bandwidth_allocated_mbps?: number | null
-          bandwidth_mbps?: number | null
+          bandwidth?: string | null
+          bandwidth_allocated?: string | null
           commissioned_on?: string | null
           connected_link_type_id?: string | null
           created_at?: string | null
@@ -4117,8 +4117,8 @@ export type Database = {
       }
       v_system_connections_complete: {
         Row: {
-          bandwidth_allocated_mbps: number | null
-          bandwidth_mbps: number | null
+          bandwidth: string | null
+          bandwidth_allocated: string | null
           commissioned_on: string | null
           connected_link_type_name: string | null
           connected_system_name: string | null
@@ -4681,6 +4681,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      deprovision_fibers_from_connection: {
+        Args: { p_system_connection_id: string }
+        Returns: undefined
+      }
       deprovision_logical_path: {
         Args: { p_path_id: string }
         Returns: undefined
@@ -4936,6 +4940,14 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
+      provision_fibers_to_connection: {
+        Args: {
+          p_protection_fiber_ids?: string[]
+          p_system_connection_id: string
+          p_working_fiber_ids: string[]
+        }
+        Returns: undefined
+      }
       provision_logical_path: {
         Args: {
           p_path_name: string
@@ -5011,8 +5023,8 @@ export type Database = {
           p_a_slot?: string
           p_b_customer?: string
           p_b_slot?: string
-          p_bandwidth_allocated_mbps?: number
-          p_bandwidth_mbps?: number
+          p_bandwidth?: string
+          p_bandwidth_allocated?: string
           p_carrier?: string
           p_commissioned_on?: string
           p_connected_link_type_id?: string
@@ -5038,8 +5050,8 @@ export type Database = {
           p_working_fiber_out_id?: string
         }
         Returns: {
-          bandwidth_allocated_mbps: number | null
-          bandwidth_mbps: number | null
+          bandwidth: string | null
+          bandwidth_allocated: string | null
           commissioned_on: string | null
           connected_link_type_id: string | null
           created_at: string | null

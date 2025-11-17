@@ -104,12 +104,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
           sn_interface: conn.sn_interface ?? null,
           en_ip: conn.en_ip ?? null,
           en_interface: conn.en_interface ?? null,
-          bandwidth_mbps: conn.bandwidth_mbps ?? null,
+          bandwidth: conn.bandwidth ?? null,
           vlan: conn.vlan ?? null,
           commissioned_on: conn.commissioned_on ?? null,
           remark: conn.remark ?? null,
           customer_name: conn.customer_name ?? null,
-          bandwidth_allocated_mbps: conn.bandwidth_allocated_mbps ?? null,
+          bandwidth_allocated: conn.bandwidth_allocated ?? null,
           connected_link_type_id: conn.connected_link_type_id ?? null,
           stm_no: conn.sdh_stm_no ?? null,
           carrier: conn.sdh_carrier ?? null,
@@ -147,11 +147,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
               <FormInput name='system_working_interface' label='Working Interface' register={register} error={errors.system_working_interface} />
               <FormInput name='system_protection_interface' label='Protection Interface' register={register} error={errors.system_protection_interface} />
               <FormSearchableSelect name='media_type_id' label='Media Type' control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
-              <FormInput name='bandwidth_mbps' label='Bandwidth (Mbps)' register={register} type='number' error={errors.bandwidth_mbps} />
+              <FormInput name='bandwidth' label='Bandwidth (Mbps)' register={register} type='number' error={errors.bandwidth} />
               <FormInput name='vlan' label='VLAN' register={register} error={errors.vlan} />
               <FormDateInput name='commissioned_on' label='Commissioned On' control={control} error={errors.commissioned_on} />
               <FormInput name='customer_name' label='Customer Name' register={register} error={errors.customer_name} />
-              <FormInput name='bandwidth_allocated_mbps' label='Allocated (Mbps)' type='number' register={register} error={errors.bandwidth_allocated_mbps} />
+              <FormInput name='bandwidth_allocated' label='Allocated (Mbps)' type='number' register={register} error={errors.bandwidth_allocated} />
             </div>
           </section>
 

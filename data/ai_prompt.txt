@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all we will fix mobile responsiveness issues in the project, One thing I observed that toggle button for header and toolbar is not visible in mobile view, that needs to be fixed.  Also all data fetching(Read operations) should prioritize local indexDB data, it seems its still accessing from supabase. It should fetch from there on refresh or sync button click or create/delete/update. 
+Let's begin! First of all we will fix Allocate fiber to system connection section, on submitting, getting success message but form remains open. Also on clicking eye icon on system/id page, getting message "Could not find the starting cable segment for this path. The route may not be properly segmented yet.".  Also all data fetching(Read operations) should prioritize local indexDB data, it seems its still accessing from supabase. It should fetch from there on refresh or sync button click or create/delete/update. 

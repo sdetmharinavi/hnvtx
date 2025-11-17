@@ -1,31 +1,28 @@
 // path: app/dashboard/systems/[id]/page.tsx
-'use client';
+"use client";
 
 import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { usePagedData, RpcFunctionArgs } from '@/hooks/database';
-import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { FiDatabase, FiUpload, FiGitBranch, FiZapOff, FiEye } from 'react-icons/fi';
-import { DataTable, TableAction } from '@/components/table';
-import {
-  V_system_connections_completeRowSchema,
-  V_systems_completeRowSchema,
-  V_ofc_connections_completeRowSchema
-} from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
-import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
-import { useUpsertSystemConnection, useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
-import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
+import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs } from '@/hooks/database';
+import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
-import { buildUploadConfig } from '@/constants/table-column-keys';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
+import { createStandardActions } from '@/components/table/action-helpers';
 import { FiberAllocationModal } from '@/components/systems/FiberAllocationModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { useOfcRoutesForSelection } from '@/hooks/database/route-manager-hooks';
+import { ZapOff, Eye } from 'lucide-react';
+import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
+import { toPgBoolean, toPgDate } from '@/config/helper-functions';
+import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
+import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -52,7 +49,7 @@ export default function SystemConnectionsPage() {
     supabase, 'v_system_connections_complete', {
       filters: {
         system_id: systemId,
-        ...(searchQuery ? { or: `(customer_name.ilike.%${searchQuery}%,connected_system_name.ilike.%${searchQuery}%)` } : {}),
+        ...(searchQuery ? { or: { customer_name: searchQuery, connected_system_name: searchQuery } } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
@@ -64,7 +61,7 @@ export default function SystemConnectionsPage() {
   const connections = connectionsData?.data || [];
   const totalCount = connectionsData?.total_count || 0;
 
-  const upsertMutation = useUpsertSystemConnection();
+  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { onSuccess: () => { refetch(); closeModal(); } });
   const deprovisionMutation = useDeprovisionServicePath();
   const deleteManager = useDeleteManager({ tableName: 'system_connections', onSuccess: refetch });
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { onSuccess: (result) => { if (result.successCount > 0) refetch(); } });
@@ -79,8 +76,39 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-      const uploadConfig = buildUploadConfig('v_system_connections_complete');
-      uploadConnections({ file, columns: uploadConfig.columnMapping, parentSystemId: parentSystem.id });
+      // THE FIX: Define an explicit, hardcoded column mapping that matches the Excel file and the RPC function's writable parameters.
+      const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+        { excelHeader: 'Id', dbKey: 'id' },
+        { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
+        { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
+        { excelHeader: 'Sn Id', dbKey: 'sn_id' },
+        { excelHeader: 'En Id', dbKey: 'en_id' },
+        { excelHeader: 'Sn Ip', dbKey: 'sn_ip' },
+        { excelHeader: 'Sn Interface', dbKey: 'sn_interface' },
+        { excelHeader: 'En Ip', dbKey: 'en_ip' },
+        { excelHeader: 'En Interface', dbKey: 'en_interface' },
+        { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
+        { excelHeader: 'Vlan', dbKey: 'vlan' },
+        { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
+        { excelHeader: 'Remark', dbKey: 'remark' },
+        { excelHeader: 'Customer Name', dbKey: 'customer_name' },
+        { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
+        { excelHeader: 'Working Fiber In Id', dbKey: 'working_fiber_in_id' },
+        { excelHeader: 'Working Fiber Out Id', dbKey: 'working_fiber_out_id' },
+        { excelHeader: 'Protection Fiber In Id', dbKey: 'protection_fiber_in_id' },
+        { excelHeader: 'Protection Fiber Out Id', dbKey: 'protection_fiber_out_id' },
+        { excelHeader: 'System Working Interface', dbKey: 'system_working_interface' },
+        { excelHeader: 'System Protection Interface', dbKey: 'system_protection_interface' },
+        { excelHeader: 'Connected Link Type', dbKey: 'connected_link_type_name' },
+        { excelHeader: 'Sdh Stm No', dbKey: 'sdh_stm_no' },
+        { excelHeader: 'Sdh Carrier', dbKey: 'sdh_carrier' },
+        { excelHeader: 'Sdh A Slot', dbKey: 'sdh_a_slot' },
+        { excelHeader: 'Sdh A Customer', dbKey: 'sdh_a_customer' },
+        { excelHeader: 'Sdh B Slot', dbKey: 'sdh_b_slot' },
+        { excelHeader: 'Sdh B Customer', dbKey: 'sdh_b_customer' },
+      ];
+
+      uploadConnections({ file, columns: columnMapping, parentSystemId: parentSystem.id });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [uploadConnections, parentSystem]);
@@ -147,8 +175,8 @@ export default function SystemConnectionsPage() {
     const isProvisioned = (record: V_system_connections_completeRowSchema) => !!record.working_fiber_in_id;
     
     return [
-      { key: 'view-path', label: 'View/Trace Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
-      { key: 'deprovision', label: 'Deprovision', icon: <FiZapOff />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
+      { key: 'view-path', label: 'View/Trace Path', icon: <Eye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
+      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
       ...standard,
     ];
@@ -181,12 +209,12 @@ export default function SystemConnectionsPage() {
       p_sn_interface: formData.sn_interface || undefined,
       p_en_ip: formData.en_ip || undefined,
       p_en_interface: formData.en_interface || undefined,
-      p_bandwidth_mbps: formData.bandwidth_mbps || undefined,
+      p_bandwidth: formData.bandwidth || undefined,
       p_vlan: formData.vlan || undefined,
       p_commissioned_on: formData.commissioned_on || undefined,
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
-      p_bandwidth_allocated_mbps: formData.bandwidth_allocated_mbps || undefined,
+      p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
       p_system_working_interface: formData.system_working_interface || undefined,
       p_system_protection_interface: formData.system_protection_interface || undefined,
       p_connected_link_type_id: formData.connected_link_type_id || undefined,
