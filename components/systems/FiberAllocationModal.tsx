@@ -11,7 +11,7 @@ import { V_system_connections_completeRowSchema, V_ofc_cables_completeRowSchema,
 import { toast } from "sonner";
 import { GitBranch, Plus, Trash2, ChevronsRight } from "lucide-react";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
-import { useProvisionServicePath } from "@/hooks/database/system-connection-hooks"; // CORRECT IMPORT
+import { useProvisionServicePath } from "@/hooks/database/system-connection-hooks";
 
 // --- TYPE DEFINITIONS ---
 interface PathStep {
@@ -180,7 +180,7 @@ const PathBuilder: FC<{
 };
 
 // --- MAIN MODAL COMPONENT ---
-export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem }) => {
+export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, onClose, connection, parentSystem, onSave }) => {
     const { control, handleSubmit, watch, reset } = useForm<FiberAllocationForm>({
         defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
@@ -199,7 +199,6 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
     const { data: allNodesResult, isLoading: isLoadingNodes } = useTableQuery(createClient(), 'v_nodes_complete');
     
-    // THE FIX: Use the correct mutation hook
     const provisionMutation = useProvisionServicePath();
 
     const startNode = useMemo(() => {
@@ -229,7 +228,6 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
             return;
         }
         
-        // THE FIX: Construct the correct payload for the new RPC function
         provisionMutation.mutate({
             p_system_connection_id: connection.id,
             p_path_name: connection.customer_name || `Path for ${connection.system_name}`,
@@ -237,6 +235,11 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
             p_working_rx_fiber_ids: data.working_path_out.map(s => s.fiber_id!),
             p_protection_tx_fiber_ids: data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!),
             p_protection_rx_fiber_ids: data.protection_path_out.filter(s => s.fiber_id).map(s => s.fiber_id!),
+        }, {
+            onSuccess: () => {
+                onSave();
+                onClose();
+            }
         });
     };
     

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.logical_fiber_paths (
   source_system_id UUID,
   destination_system_id UUID,
   operational_status_id UUID REFERENCES public.lookup_types(id) ON DELETE SET NULL,
+  system_connection_id UUID, -- REMOVED foreign key constraint to fix dependency order
   source_port TEXT,
   destination_port TEXT,
   total_distance_km DECIMAL(10, 3),

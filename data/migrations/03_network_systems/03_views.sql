@@ -64,8 +64,8 @@ SELECT
   sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
   sc.sn_id,
   sc.en_id,
-  na.id AS sn_node_id, -- Added start node ID
-  nb.id AS en_node_id, -- Added end node ID
+  na.id AS sn_node_id,
+  nb.id AS en_node_id,
   sc.media_type_id,
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
@@ -74,16 +74,11 @@ SELECT
   sc.remark, sc.status, sc.created_at, sc.updated_at,
   sc.customer_name,
   sc.bandwidth_allocated,
-  wfi.fiber_no_sn as fiber_in,
-  wfo.fiber_no_sn as fiber_out,
-  sc.working_fiber_in_id,
-  wfi.fiber_no_sn as working_fiber_in,
-  sc.working_fiber_out_id,
-  wfo.fiber_no_sn as working_fiber_out,
-  sc.protection_fiber_in_id,
-  pfi.fiber_no_sn as protection_fiber_in,
-  sc.protection_fiber_out_id,
-  pfo.fiber_no_sn as protection_fiber_out,
+  -- UPDATED: Select the new array columns directly
+  sc.working_fiber_in_ids,
+  sc.working_fiber_out_ids,
+  sc.protection_fiber_in_ids,
+  sc.protection_fiber_out_ids,
   sc.system_working_interface,
   sc.system_protection_interface,
   lt_link_type.name as connected_link_type_name,
@@ -100,11 +95,8 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
-  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id
-  LEFT JOIN public.ofc_connections wfi ON sc.working_fiber_in_id = wfi.id
-  LEFT JOIN public.ofc_connections wfo ON sc.working_fiber_out_id = wfo.id
-  LEFT JOIN public.ofc_connections pfi ON sc.protection_fiber_in_id = pfi.id
-  LEFT JOIN public.ofc_connections pfo ON sc.protection_fiber_out_id = pfo.id;
+  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
+
 
 -- --- View for ports_management ---
 CREATE OR REPLACE VIEW public.v_ports_management_complete WITH (security_invoker = true) AS
@@ -143,6 +135,7 @@ SELECT
   oc.logical_path_id::uuid,
   oc.fiber_role::text,
   oc.path_segment_order::integer,
+  oc.path_direction::text, -- NEW
   oc.source_port::text,
   oc.destination_port::text,
   oc.connection_category::text,

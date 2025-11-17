@@ -4,7 +4,12 @@ import { useRpcMutation } from "@/hooks/database/rpc-queries";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { RpcFunctionArgs } from "./queries-type-helpers";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+
+const pathDisplaySchema = z.record(z.string(), z.string()).nullable();
+export type PathDisplayData = z.infer<typeof pathDisplaySchema>;
+
 
 export function useUpsertSystemConnection() {
   const supabase = createClient();
@@ -29,11 +34,13 @@ export function useProvisionServicePath() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Service path provisioned successfully!");
-      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_system_connections_complete'] });
+      // Invalidate all queries related to connections and paths to refresh UI state
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_system_connections_complete', { filters: { system_id: variables.p_system_connection_id } }] });
       queryClient.invalidateQueries({ queryKey: ['table', 'ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['table', 'logical_fiber_paths'] });
+      queryClient.invalidateQueries({ queryKey: ['service-path-display', variables.p_system_connection_id] });
     },
     onError: (err: Error) => {
       toast.error(`Provisioning failed: ${err.message}`);
@@ -51,16 +58,40 @@ export function useDeprovisionServicePath() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, connectionId) => {
       toast.success("Service path deprovisioned successfully.");
       queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_system_connections_complete'] });
       queryClient.invalidateQueries({ queryKey: ['table', 'ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['table', 'logical_fiber_paths'] });
+      queryClient.invalidateQueries({ queryKey: ['service-path-display', connectionId] });
     },
     onError: (err: Error) => {
       toast.error(`Deprovisioning failed: ${err.message}`);
     },
   });
 }
+
+export function useServicePathDisplay(systemConnectionId: string | null) {
+  const supabase = createClient();
+  return useQuery({
+    queryKey: ['service-path-display', systemConnectionId],
+    queryFn: async () => {
+      if (!systemConnectionId) return null;
+      const { data, error } = await supabase.rpc('get_service_path_display', {
+        p_system_connection_id: systemConnectionId
+      });
+      if (error) throw error;
+      
+      const parsed = pathDisplaySchema.safeParse(data);
+      if (!parsed.success) {
+        console.error("Zod validation error for path display:", parsed.error);
+        return null;
+      }
+      return parsed.data;
+    },
+    enabled: !!systemConnectionId,
+  });
+}
+
 
 export type SystemConnectionFormData = RpcFunctionArgs<'upsert_system_connection_with_details'>;

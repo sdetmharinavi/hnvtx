@@ -58,11 +58,11 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   media_type_id UUID REFERENCES public.lookup_types (id),
   bandwidth TEXT,
   vlan TEXT,
-  -- These are now foreign keys to the specific fiber connection record
-  working_fiber_in_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
-  working_fiber_out_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
-  protection_fiber_in_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
-  protection_fiber_out_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
+  -- UPDATED: These now store arrays of fiber IDs
+  working_fiber_in_ids UUID[],
+  working_fiber_out_ids UUID[],
+  protection_fiber_in_ids UUID[],
+  protection_fiber_out_ids UUID[],
   customer_name TEXT,
   bandwidth_allocated TEXT,
   commissioned_on DATE,

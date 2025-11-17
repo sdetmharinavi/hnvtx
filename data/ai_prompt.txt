@@ -130,3 +130,31 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 Let's begin! First of all we will fix Allocate fiber to system connection section, on submitting, getting success message but form remains open. Also on clicking eye icon on system/id page, getting message "Could not find the starting cable segment for this path. The route may not be properly segmented yet.".  Also all data fetching(Read operations) should prioritize local indexDB data, it seems its still accessing from supabase. It should fetch from there on refresh or sync button click or create/delete/update. 
+
+
+Our requirement:
+user submit the allocation form.Suppose submitted payload
+{
+    "p_system_connection_id": "076f6d1b-92ae-4776-9030-5c52adbd8289",
+    "p_path_name": "Path for HARINAVI B2",
+    "p_working_tx_fiber_ids": [
+        "21bccf3b-abd2-40c2-9fb4-d28e3b6f348a",
+        "eebf5b34-95ce-4c39-9f0d-69a1e182b3af"
+    ],
+    "p_working_rx_fiber_ids": [
+        "4038d777-ff53-4499-abc7-260b470a2403"
+    ],
+    "p_protection_tx_fiber_ids": [
+        "3ff4f806-78b4-46b0-8134-2d3b139bcf3d"
+    ],
+    "p_protection_rx_fiber_ids": [
+        "65fb715a-51aa-4910-bf37-50b6b2b5deb7"
+    ]
+}
+
+then in system_connections we will save working_fiber_in_id=["21bccf3b-abd2-40c2-9fb4-d28e3b6f348a",
+        "eebf5b34-95ce-4c39-9f0d-69a1e182b3af"] and working_fiber_out_id=["4038d777-ff53-4499-abc7-260b470a2403"] and protection_fiber_in_id=["3ff4f806-78b4-46b0-8134-2d3b139bcf3d"] and protection_fiber_out_id=["65fb715a-51aa-4910-bf37-50b6b2b5deb7"]
+
+and in logical_fiber_paths we will save path_name="Path for HARINAVI B2(working)" or path_name="Path for HARINAVI B2(protection)" as applicable, working_path_id and path_role as applicable and system_connection_id="076f6d1b-92ae-4776-9030-5c52adbd8289" , we can also add ports determining the ports of the system connection and any other required fields.
+
+for showing path on system connection page, we will use the path_name and path_role fiber buildups for example Working path(Tx): Cable 1 name, fiber number + Cable 2 name, fiber number, Working path(Rx): Cable 1 name, fiber number + Cable 2 name, fiber number, Protection path(Tx): Cable 1 name, fiber number + Cable 2 name, fiber number, Protection path(Rx): Cable 1 name, fiber number, Protection path(Tx): Cable 1 name, fiber number, Protection path(Rx): Cable 1 name, fiber number. in this way as applicable we will show. Hope you got what I want.

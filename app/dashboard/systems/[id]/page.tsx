@@ -49,7 +49,7 @@ export default function SystemConnectionsPage() {
     supabase, 'v_system_connections_complete', {
       filters: {
         system_id: systemId,
-        ...(searchQuery ? { or: { customer_name: searchQuery, connected_system_name: searchQuery } } : {}),
+        ...(searchQuery ? { or: `(customer_name.ilike.%${searchQuery}%,connected_system_name.ilike.%${searchQuery}%)` } : {}),
       },
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
@@ -76,7 +76,6 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-      // THE FIX: Define an explicit, hardcoded column mapping that matches the Excel file and the RPC function's writable parameters.
       const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
@@ -93,10 +92,10 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'customer_name' },
         { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
-        { excelHeader: 'Working Fiber In Id', dbKey: 'working_fiber_in_id' },
-        { excelHeader: 'Working Fiber Out Id', dbKey: 'working_fiber_out_id' },
-        { excelHeader: 'Protection Fiber In Id', dbKey: 'protection_fiber_in_id' },
-        { excelHeader: 'Protection Fiber Out Id', dbKey: 'protection_fiber_out_id' },
+        { excelHeader: 'Working Fiber In Id', dbKey: 'working_fiber_in_ids' },
+        { excelHeader: 'Working Fiber Out Id', dbKey: 'working_fiber_out_ids' },
+        { excelHeader: 'Protection Fiber In Id', dbKey: 'protection_fiber_in_ids' },
+        { excelHeader: 'Protection Fiber Out Id', dbKey: 'protection_fiber_out_ids' },
         { excelHeader: 'System Working Interface', dbKey: 'system_working_interface' },
         { excelHeader: 'System Protection Interface', dbKey: 'system_protection_interface' },
         { excelHeader: 'Connected Link Type', dbKey: 'connected_link_type_name' },
@@ -128,10 +127,15 @@ export default function SystemConnectionsPage() {
     });
   };
   
+  const handleAllocationSave = useCallback(() => {
+    refetch();
+    setIsAllocationModalOpen(false);
+  }, [refetch]);
+  
   const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
-    const startingFiberId = record.working_fiber_in_id;
+    const startingFiberId = record.working_fiber_in_ids?.[0]; // Use the first fiber in the Tx path
     if (!startingFiberId) {
-      toast.error("No starting fiber is assigned to this connection to begin a trace.");
+      toast.error("No working Tx path is assigned to this connection to begin a trace.");
       return;
     }
 
@@ -139,28 +143,44 @@ export default function SystemConnectionsPage() {
       .from('v_ofc_connections_complete')
       .select('*')
       .eq('id', startingFiberId)
-      .maybeSingle();
+      .single();
 
     if (fiberError || !fiberConnection) {
       toast.error("Could not find details for the starting fiber. The path data might be inconsistent.");
       return;
     }
 
-    const { data: firstSegment, error: segmentError } = await supabase
-        .from('cable_segments')
-        .select('id')
-        .eq('original_cable_id', fiberConnection.ofc_id)
-        .order('segment_order', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+    const originalCableId = fiberConnection.ofc_id;
+    if (!originalCableId) {
+      toast.error("Could not determine the physical cable for this fiber connection.");
+      return;
+    }
 
-    if (segmentError || !firstSegment) {
-      toast.error("Could not find the starting cable segment for this path. The route may not be properly segmented yet.");
+    const serviceStartNodeId = record.sn_node_id;
+    if (!serviceStartNodeId) {
+      toast.error("Could not determine the service's starting node.");
+      return;
+    }
+
+    const { data: startSegment, error: segmentError } = await supabase
+      .from('cable_segments')
+      .select('id')
+      .eq('original_cable_id', originalCableId)
+      .eq('start_node_id', serviceStartNodeId)
+      .maybeSingle();
+
+    if (segmentError) {
+      toast.error(`Error finding start segment: ${segmentError.message}`);
+      return;
+    }
+
+    if (!startSegment) {
+      toast.error("Could not find the starting cable segment for this path. The route may not be properly segmented or the service path is incorrectly configured.");
       return;
     }
     
     setTracingFiberInfo({
-      startSegmentId: firstSegment.id,
+      startSegmentId: startSegment.id,
       fiberNo: fiberConnection.fiber_no_sn!,
       record: fiberConnection
     });
@@ -172,7 +192,8 @@ export default function SystemConnectionsPage() {
       onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
     });
     
-    const isProvisioned = (record: V_system_connections_completeRowSchema) => !!record.working_fiber_in_id;
+    const isProvisioned = (record: V_system_connections_completeRowSchema) => 
+      Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
       { key: 'view-path', label: 'View/Trace Path', icon: <Eye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
@@ -258,7 +279,7 @@ export default function SystemConnectionsPage() {
       
       <ConfirmModal isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel} title="Confirm Delete" message={deleteManager.confirmationMessage} loading={deleteManager.isPending} type="danger" />
       
-      {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={refetch} parentSystem={parentSystem} />}
+      {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={handleAllocationSave} parentSystem={parentSystem} />}
 
       <ConfirmModal
         isOpen={isDeprovisionModalOpen}
