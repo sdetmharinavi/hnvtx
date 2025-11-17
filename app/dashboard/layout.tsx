@@ -54,7 +54,7 @@ export default function DashboardLayout({
               <div
                 className="transition-all duration-300"
                 style={{
-                  marginLeft: isCollapsed ? '4rem' : '16rem',
+                  marginLeft: isCollapsed ? (isMobile ? '' : '4rem') : '16rem',
                   transition: 'margin-left 0.3s ease-in-out',
                 }}
               >
