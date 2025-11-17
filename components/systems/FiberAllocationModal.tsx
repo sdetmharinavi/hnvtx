@@ -33,17 +33,17 @@ interface FiberAllocationModalProps {
   onSave: () => void;
 }
 
-// --- SUB-COMPONENT FOR A SINGLE SEGMENT ROW (Simplex version) ---
-const PathSegmentRow: FC<{
+// --- SUB-COMPONENT FOR A SINGLE CASCADE ROW (Simplex version) ---
+const PathCascadeRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
   control: Control<FiberAllocationForm>;
   watch: UseFormWatch<FiberAllocationForm>;
-  segmentInfo: { startNodeName: string; endNodeName: string; cableName: string; };
+  cascadeInfo: { startNodeName: string; endNodeName: string; cableName: string; };
   onRemove: () => void;
   allAllocatedFiberIds: Set<string>;
   currentFiberId: string | null;
-}> = ({ index, pathType, control, watch, segmentInfo, onRemove, allAllocatedFiberIds, currentFiberId }) => {
+}> = ({ index, pathType, control, watch, cascadeInfo, onRemove, allAllocatedFiberIds, currentFiberId }) => {
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
 
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
@@ -63,8 +63,8 @@ const PathSegmentRow: FC<{
     <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700/50 p-2 rounded-lg border dark:border-gray-600">
       <span className="font-mono text-xs p-1.5 bg-gray-200 dark:bg-gray-600 rounded-md">{index + 1}</span>
       <div className="flex-1 text-sm min-w-0">
-        <TruncateTooltip text={segmentInfo.cableName} className="font-medium" />
-        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`${segmentInfo.startNodeName} → ${segmentInfo.endNodeName}`}</p>
+        <TruncateTooltip text={cascadeInfo.cableName} className="font-medium" />
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`${cascadeInfo.startNodeName} → ${cascadeInfo.endNodeName}`}</p>
       </div>
       <div className="w-48 flex-shrink-0">
         <Controller name={`${pathType}.${index}.fiber_id`} control={control} render={({ field }) => (
@@ -76,7 +76,7 @@ const PathSegmentRow: FC<{
           />
         )} />
       </div>
-      <Button variant="danger" size="sm" onClick={onRemove} aria-label="Remove segment"><Trash2 size={14} /></Button>
+      <Button variant="danger" size="sm" onClick={onRemove} aria-label="Remove cascade"><Trash2 size={14} /></Button>
     </div>
   );
 };
@@ -114,9 +114,9 @@ const PathBuilder: FC<{
             .map(c => ({ value: c.id!, label: c.route_name! }));
     }, [cables, lastNode]);
 
-    const handleAddSegment = useCallback(() => {
+    const handleAddCascade = useCallback(() => {
         if (!selectedCableId) {
-            toast.error("Please select a cable to add a segment.");
+            toast.error("Please select a cable to add a cascade.");
             return;
         }
         append({ cable_id: selectedCableId, fiber_id: null });
@@ -140,13 +140,13 @@ const PathBuilder: FC<{
                 const endNode = nodes.find(n => n.id === endNodeId);
 
                 return (
-                    <PathSegmentRow
+                    <PathCascadeRow
                         key={field.id}
                         index={index}
                         pathType={pathType}
                         control={control}
                         watch={watch}
-                        segmentInfo={{
+                        cascadeInfo={{
                           startNodeName: currentStartNode?.name || '...',
                           endNodeName: endNode?.name || '...',
                           cableName: cable?.route_name || '...',
@@ -159,7 +159,7 @@ const PathBuilder: FC<{
             })}
             
             <div className="space-y-2 pt-3 mt-3 border-t dark:border-gray-600">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Segment from: {lastNode?.name || startNode?.name}</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Cascade from: {lastNode?.name || startNode?.name}</p>
                 <div className="flex items-center gap-2">
                     <div className="flex-grow">
                       <SearchableSelect
@@ -170,7 +170,7 @@ const PathBuilder: FC<{
                           clearable
                       />
                     </div>
-                    <Button variant="outline" size="md" onClick={handleAddSegment} disabled={!selectedCableId} className="flex-shrink-0">
+                    <Button variant="outline" size="md" onClick={handleAddCascade} disabled={!selectedCableId} className="flex-shrink-0">
                         <Plus size={16} />
                     </Button>
                 </div>
@@ -225,7 +225,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         const workingPathOutIsDefined = data.working_path_out.length > 0 && data.working_path_out.every(s => s.fiber_id);
 
         if (!workingPathInIsDefined || !workingPathOutIsDefined) {
-            toast.error("Both Working Path In (Tx) and Out (Rx) must be fully defined with fibers selected for each segment.");
+            toast.error("Both Working Path In (Tx) and Out (Rx) must be fully defined with fibers selected for each cascade.");
             return;
         }
         
