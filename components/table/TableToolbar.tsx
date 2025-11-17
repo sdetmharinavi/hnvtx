@@ -1,14 +1,13 @@
 "use client";
 
 // @/components/table/TableToolbar.tsx
-import React, { useState } from "react";
+import React from "react";
 import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { Row } from "@/hooks/database";
 import { TableColumnSelector } from "./TableColumnSelector";
 import { TableOrViewName } from "@/hooks/database";
-import { Button } from "@/components/common/ui";
 import { useViewSettings } from "@/contexts/ViewSettingsContext";
 
 interface TableToolbarProps<T extends TableOrViewName>

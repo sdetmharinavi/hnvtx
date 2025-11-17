@@ -30,6 +30,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
   const allNavItems = NavItems();
   const helpNavItem = allNavItems.find(item => item.id === 'help');
   const mainNavItems = allNavItems.filter(item => item.id !== 'help');
+  const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
 
   // Close mobile sidebar on route changes
@@ -66,7 +67,6 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
     );
   }
 
-  const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
   return (
     <motion.aside
