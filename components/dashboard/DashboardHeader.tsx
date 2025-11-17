@@ -97,7 +97,7 @@ export default function DashboardHeader({
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <MenuButton onClick={onMenuClick} />
-            <h1 className="ml-2 text-xl font-bold text-gray-900 dark:text-white md:ml-0 md:text-2xl">
+            <h1 className="ml-2 md:ml-6 text-xl font-bold text-gray-900 dark:text-white md:text-2xl">
               {title}
             </h1>
           </div>

@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   en_interface TEXT,
   connected_link_type_id UUID REFERENCES public.lookup_types (id),
   media_type_id UUID REFERENCES public.lookup_types (id),
-  bandwidth_mbps INTEGER,
+  bandwidth TEXT,
   vlan TEXT,
   -- These are now foreign keys to the specific fiber connection record
   working_fiber_in_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   protection_fiber_in_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
   protection_fiber_out_id UUID REFERENCES public.ofc_connections(id) ON DELETE SET NULL,
   customer_name TEXT,
-  bandwidth_allocated_mbps INTEGER,
+  bandwidth_allocated TEXT,
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,

@@ -1596,8 +1596,8 @@ export const sdh_connectionsUpdateSchema = z.object({
 });
 
 export const system_connectionsRowSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable(),
-  bandwidth_mbps: z.number().nullable(),
+  bandwidth: z.string().nullable(),
+  bandwidth_allocated: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
   connected_link_type_id: z.uuid().nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -1624,8 +1624,8 @@ export const system_connectionsRowSchema = z.object({
 });
 
 export const system_connectionsInsertSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  bandwidth_mbps: z.number().nullable().optional(),
+  bandwidth: z.string().nullable().optional(),
+  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
@@ -1652,8 +1652,8 @@ export const system_connectionsInsertSchema = z.object({
 });
 
 export const system_connectionsUpdateSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable().optional(),
-  bandwidth_mbps: z.number().nullable().optional(),
+  bandwidth: z.string().nullable().optional(),
+  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
@@ -2036,8 +2036,8 @@ export const v_ringsRowSchema = z.object({
 });
 
 export const v_system_connections_completeRowSchema = z.object({
-  bandwidth_allocated_mbps: z.number().nullable(),
-  bandwidth_mbps: z.number().nullable(),
+  bandwidth: z.string().nullable(),
+  bandwidth_allocated: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
   connected_link_type_name: z.url().nullable(),
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),

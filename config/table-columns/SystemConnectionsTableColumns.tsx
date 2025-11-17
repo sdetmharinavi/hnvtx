@@ -60,7 +60,7 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
         searchable: true,
         width: 150,
       },
-      bandwidth_mbps: {
+      bandwidth: {
         title: "Bandwidth (Mbps)",
         sortable: true,
         searchable: true,
@@ -71,7 +71,7 @@ export const SystemConnectionsTableColumns = (data: Row<'v_system_connections_co
           </span>
         ),
       },
-      bandwidth_allocated_mbps: {
+      bandwidth_allocated: {
         title: "Allocated (Mbps)",
         sortable: true,
         searchable: true,
