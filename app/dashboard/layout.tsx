@@ -53,8 +53,9 @@ export default function DashboardLayout({
               />
               <div
                 className="transition-all duration-300"
+                // THE FIX: Conditionally set marginLeft to 0 on mobile when the sidebar is collapsed.
                 style={{
-                  marginLeft: isCollapsed ? (isMobile ? '' : '4rem') : '16rem',
+                  marginLeft: isCollapsed ? (isMobile ? '0' : '4rem') : '16rem',
                   transition: 'margin-left 0.3s ease-in-out',
                 }}
               >
