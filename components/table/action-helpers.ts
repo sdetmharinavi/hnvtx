@@ -1,15 +1,15 @@
 import React from "react";
 import {
-  FiEdit2,
-  FiTrash2,
-  FiToggleLeft,
-  FiToggleRight,
-  FiEye,
-} from "react-icons/fi";
+  Edit2,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  Eye,
+} from "lucide-react";
 import { RecordWithId } from "@/hooks/useCrudManager";
 
 type ActionableRecord = RecordWithId & {
-  status?: boolean | string | null; // Allow both boolean and string status
+  status?: boolean | string | null;
 };
 
 // Define a flexible TableAction type that can work with any record type
@@ -22,38 +22,28 @@ export interface TableAction<T = unknown> {
   variant?: 'primary' | 'secondary' | 'danger' | 'success';
   disabled?: boolean | ((record: T) => boolean);
   hidden?: boolean | ((record: T) => boolean);
-  // Additional properties that might be used by the DataTable
   [key: string]: unknown;
 }
 
-// Defines the shape of the handlers that a page component will provide.
-// The helper is now generic over `V`, which represents the data type in the table row (e.g., UserProfileData)
 interface StandardActionHandlers<V extends ActionableRecord> {
   onView?: (record: V) => void;
   onEdit?: (record: V) => void;
   onToggleStatus?: (record: V) => void;
   onDelete?: (record: V) => void;
-
   canEdit?: (record: V) => boolean;
   canDelete?: (record: V) => boolean;
 }
-/**
- * Creates a standardized array of TableAction objects for CRUD operations.
- * This ensures all tables have consistent icons, labels, variants, and behaviors.
- * @param handlers - An object containing the onClick handlers and optional logic for the actions.
- * @returns An array of TableAction<T> objects.
- */
+
 export function createStandardActions<V extends ActionableRecord>({
   onView,
   onEdit,
   onToggleStatus,
   onDelete,
-  canEdit = () => true, // By default, all actions are enabled
+  canEdit = () => true,
   canDelete = () => true,
 }: StandardActionHandlers<V>): TableAction<V>[] {
   const actions: TableAction<V>[] = [];
 
-  // Narrower type guard: only treat records with a boolean `status` as toggle-able
   const hasBooleanStatus = (record: V): record is V & { status: boolean } =>
     typeof (record as unknown as V)?.status === "boolean";
 
@@ -63,9 +53,8 @@ export function createStandardActions<V extends ActionableRecord>({
       key: "toggleStatus",
       label: "Toggle Status",
       getIcon: (record: V) => 
-        React.createElement(record.status ? FiToggleRight : FiToggleLeft, { 
+        React.createElement(record.status ? ToggleRight : ToggleLeft, { 
           className: `w-4 h-4 ${record.status ? 'text-green-500' : 'text-gray-400'}`,
-          size: 20
         }),
       variant: 'secondary',
       onClick: (record) => onToggleStatus(record),
@@ -78,7 +67,7 @@ export function createStandardActions<V extends ActionableRecord>({
     actions.push({
       key: "view",
       label: "View Details",
-      icon: React.createElement(FiEye),
+      icon: React.createElement(Eye, { className: "w-4 h-4" }),
       onClick: (record) => onView(record),
       variant: "secondary",
     });
@@ -89,7 +78,7 @@ export function createStandardActions<V extends ActionableRecord>({
     actions.push({
       key: "edit",
       label: "Edit",
-      icon: React.createElement(FiEdit2),
+      icon: React.createElement(Edit2, { className: "w-4 h-4" }),
       onClick: (record) => onEdit(record),
       variant: "primary",
       disabled: (record) => !canEdit(record),
@@ -101,7 +90,7 @@ export function createStandardActions<V extends ActionableRecord>({
     actions.push({
       key: "delete",
       label: "Delete",
-      icon: React.createElement(FiTrash2),
+      icon: React.createElement(Trash2, { className: "w-4 h-4" }),
       onClick: (record) => onDelete(record),
       variant: "danger",
       disabled: (record) => !canDelete(record),
