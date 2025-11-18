@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
 import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from "react-icons/fi";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader, ActionButton } from "@/components/common/page-header";
 import { ErrorDisplay, ConfirmModal } from "@/components/common/ui";
 import { DataTable } from "@/components/table";
 import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
-import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
+import { useRpcMutation, RpcFunctionArgs, buildRpcFilters, Row, TableOrViewName } from "@/hooks/database";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { createClient } from "@/utils/supabase/client";
 import { SystemModal } from "@/components/systems/SystemModal";
@@ -18,96 +18,17 @@ import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SystemFormData } from "@/schemas/system-schemas";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
+import { localDb } from "@/hooks/data/localDb";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
 import { buildColumnConfig, TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { buildUploadConfig } from "@/constants/table-column-keys";
 import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
 import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
-import { ActionButton } from "@/components/common/page-header";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { Row, TableOrViewName } from "@/hooks/database";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { formatDate } from "@/utils/formatters";
 import { SystemPortsManagerModal } from "@/components/systems/SystemPortsManagerModal";
-
-const useSystemsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_systems_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    // This hook now correctly receives the multi-column `or` filter from useCrudManager
-    const rpcFilters = buildRpcFilters({ ...filters });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_systems_complete",
-      p_limit: DEFAULTS.PAGE_SIZE,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: "system_name",
-    });
-    if (error) throw error;
-    return (data as { data: V_systems_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    return await localDb.v_systems_complete.toArray();
-  };
-
-  const {
-    data: allSystems = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(["systems-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allSystems;
-    // Client-side filtering is now primarily for the offline fallback
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_name?.toLowerCase().includes(lowerQuery) ||
-          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-          system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_type_name === filters.system_type_name
-      );
-    }
-    if (filters.status) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) => system.status === (filters.status === "true")
-      );
-    }
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter(
-      (s: V_systems_completeRowSchema) => s.status === true
-    ).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+import { useSystemsData } from "@/hooks/data/useSystemsData";
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -134,7 +55,6 @@ export default function SystemsPage() {
   } = useCrudManager<"systems", V_systems_completeRowSchema>({
     tableName: "systems",
     dataQueryHook: useSystemsData,
-    // THE FIX: Provide all searchable columns to the generic hook.
     searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: "system_name",
   });
@@ -200,7 +120,6 @@ export default function SystemsPage() {
       onToggleStatus: crudActions.handleToggleStatus,
     });
 
-    // Add the new "Manage Ports" action button
     actions.unshift({
       key: "manage-ports",
       label: "Manage Ports",
@@ -230,8 +149,8 @@ export default function SystemsPage() {
   const handleExport = useCallback(() => {
     exportSystems({
       fileName: `${formatDate(new Date(), {
-        format: "dd-mm-yyyy",
-      })}-systems-export.xlsx`,
+                format: "dd-mm-yyyy",
+              })}-systems-export.xlsx`,
       sheetName: "Systems",
       columns: allExportColumns as Column<Row<TableOrViewName>>[],
       rpcConfig: {
@@ -302,7 +221,6 @@ export default function SystemsPage() {
       const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
       const isRingBased = selectedSystemType?.is_ring_based;
 
-      // --- THIS IS THE FIX ---
       const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
@@ -322,7 +240,6 @@ export default function SystemsPage() {
             ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
             : null,
       };
-      // --- END FIX ---
 
       upsertSystemMutation.mutate(payload);
     },

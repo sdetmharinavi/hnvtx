@@ -12,7 +12,6 @@ import {
   Row,
   useTableInsert,
   useTableUpdate,
-  useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
@@ -21,48 +20,34 @@ import {
   Employee_designationsUpdateSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { UseQueryResult } from '@tanstack/react-query';
+import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
-  
-  const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const serverFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.status) f.status = filters.status === 'true';
-    if (searchTerm) {
-      f.or = `(name.ilike.%${searchTerm}%)`;
-    }
-    return f;
-  }, [filters, searchTerm]);
+  const {
+    data: allDesignations,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isMutating, isFetching,
+    error, refetch,
+    search, filters,
+  } = useCrudManager<'employee_designations', DesignationWithRelations>({
+    tableName: 'employee_designations',
+    dataQueryHook: useDesignationsData,
+    displayNameField: 'name',
+    searchColumn: 'name',
+  });
 
-  const designationsQuery = useTableWithRelations<
-    'employee_designations',
-    PagedQueryResult<DesignationWithRelations>
-  >(
-    supabase,
-    'employee_designations',
-    ['parent_designation:parent_id(id, name)'],
-    {
-      filters: serverFilters,
-      orderBy: [{ column: 'name', ascending: true }],
-      placeholderData: (prev) => prev,
-    }
-  );
-
-  const { refetch, error, data, isLoading, isFetching } = designationsQuery;
-
-  const allDesignations = useMemo(() => data?.data || [], [data]);
-  const totalCount = data?.count || 0;
-
+  // const selectedEntity = useMemo(() => allDesignations.find(d => d.id === selectedDesignationId) || null, [allDesignations, selectedDesignationId]);
   const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const onMutationSuccess = () => {
@@ -73,16 +58,12 @@ export default function DesignationManagerPage() {
 
   const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  
+  // Explicitly type the mutation hook
   const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
-    mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
+    mutate: (variables: { id: string; status: boolean; nameField?: keyof DesignationWithRelations }) => void;
     isPending: boolean;
   };
-
-  const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
-    return toggleStatusMutation.mutate({ ...variables, nameField: 'status' });
-  };
-
-  const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDeleteManager({
     tableName: 'employee_designations',
@@ -119,19 +100,25 @@ export default function DesignationManagerPage() {
     data: allDesignations as Row<'employee_designations'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: handleOpenCreateForm,
-    isLoading: designationsQuery.isLoading,
+    isLoading: isLoading,
     exportConfig: { tableName: 'employee_designations' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Designations' },
-    { value: allDesignations.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
-    { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
+  
+  const designationsQuery: UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error> = {
+    data: { data: allDesignations, count: totalCount },
+    isLoading, isFetching, error, isError: !!error, refetch,
+  } as UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error>;
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -147,18 +134,18 @@ export default function DesignationManagerPage() {
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
-        isFetching={isFetching}
-        toggleStatusMutation={{ mutate: toggleStatus, isPending }}
+        isFetching={isFetching || isMutating}
+        toggleStatusMutation={toggleStatusMutation}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedDesignationId}
         onSelect={setSelectedDesignationId}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={setFilters}
-        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
+        searchTerm={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        filters={filters.filters as Record<string, string>}
+        onFilterChange={(f) => filters.setFilters(f as Filters)}
+        onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
       />
 
       {isFormOpen && (

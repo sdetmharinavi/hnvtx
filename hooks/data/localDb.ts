@@ -1,4 +1,4 @@
-// data/localDb.ts
+// hooks/data/localDb.ts
 import Dexie, { Table } from 'dexie';
 import {
   Lookup_typesRowSchema as Lookup_typesRow,
@@ -13,7 +13,7 @@ import {
   Junction_closuresRowSchema as Junction_closuresRow,
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
-  User_profilesRowSchema as User_profilesRow,
+  User_profilesRowSchema as BaseUserProfilesRow, // THE FIX: Import the base schema with an alias
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
   V_systems_completeRowSchema,
@@ -23,8 +23,31 @@ import {
   V_cable_utilizationRowSchema,
   V_ring_nodesRowSchema,
   Diary_notesRowSchema,
+  V_employee_designationsRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
+
+// --- THE DEFINITIVE FIX ---
+// Create a new, specific type for the user_profiles table as it is stored in Dexie.
+// This overrides the generic `Json` type for `address` and `preferences`
+// with the actual object shapes, resolving the complex Dexie type error permanently.
+export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
+  address: {
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+    country?: string | null;
+  } | null;
+  preferences: {
+    language?: string | null;
+    theme?: string | null;
+    needsOnboarding?: boolean | null;
+    showOnboardingPrompt?: boolean | null;
+  } | null;
+};
+// --- END FIX ---
+
 
 export interface SyncStatus {
   tableName: string;
@@ -59,7 +82,8 @@ export class HNVTMDatabase extends Dexie {
   junction_closures!: Table<Junction_closuresRow, string>;
   fiber_splices!: Table<Fiber_splicesRow, string>;
   system_connections!: Table<System_connectionsRow, string>;
-  user_profiles!: Table<User_profilesRow, string>;
+  // THE FIX: Use our new, specific `StoredUserProfiles` type for the Dexie Table definition.
+  user_profiles!: Table<StoredUserProfiles, string>;
   diary_notes!: Table<Diary_notesRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
@@ -70,37 +94,38 @@ export class HNVTMDatabase extends Dexie {
   v_maintenance_areas!: Table<V_maintenance_areasRowSchema, string>;
   v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
   v_ring_nodes!: Table<V_ring_nodesRowSchema, string>;
+  v_employee_designations!: Table<V_employee_designationsRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    // THE FIX: Incremented version number to apply schema changes.
-    this.version(6).stores({
-      lookup_types: 'id, category, name',
-      maintenance_areas: 'id, name, parent_id, area_type_id',
-      employee_designations: 'id, name, parent_id',
-      employees: 'id, employee_name, employee_pers_no, employee_designation_id, maintenance_terminal_id',
-      nodes: 'id, name, node_type_id, maintenance_terminal_id',
-      rings: 'id, name, ring_type_id, maintenance_terminal_id',
-      ofc_cables: 'id, route_name, sn_id, en_id, ofc_type_id',
-      systems: 'id, system_name, node_id, system_type_id',
-      cable_segments: 'id, original_cable_id, start_node_id, end_node_id',
-      junction_closures: 'id, node_id, ofc_cable_id',
-      fiber_splices: 'id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
-      system_connections: 'id, system_id, sn_id, en_id, connected_link_type_id',
-      user_profiles: 'id, first_name, last_name, role',
-      // THE FIX: Added a compound index on user_id and note_date for efficient lookups.
-      diary_notes: 'id, &[user_id+note_date], note_date',
-      v_nodes_complete: 'id, name, node_type_id',
-      v_ofc_cables_complete: 'id, route_name, sn_id, en_id',
-      v_systems_complete: 'id, system_name, node_id, system_type_id',
-      v_rings: 'id, name, ring_type_id',
-      v_employees: 'id, employee_name, employee_designation_id',
-      v_maintenance_areas: 'id, name, area_type_id',
+    // Version remains 10 as we are only changing TypeScript types, not the underlying schema structure.
+    this.version(10).stores({
+      lookup_types: '&id, category, name',
+      maintenance_areas: '&id, name, parent_id, area_type_id',
+      employee_designations: '&id, name, parent_id',
+      employees: '&id, employee_name, employee_pers_no, employee_designation_id, maintenance_terminal_id',
+      nodes: '&id, name, node_type_id, maintenance_terminal_id',
+      rings: '&id, name, ring_type_id, maintenance_terminal_id',
+      ofc_cables: '&id, route_name, sn_id, en_id, ofc_type_id',
+      systems: '&id, system_name, node_id, system_type_id',
+      cable_segments: '&id, original_cable_id, start_node_id, end_node_id',
+      junction_closures: '&id, node_id, ofc_cable_id',
+      fiber_splices: '&id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
+      system_connections: '&id, system_id, sn_id, en_id, connected_link_type_id',
+      user_profiles: '&id, first_name, last_name, role',
+      diary_notes: '&id, &[user_id+note_date], note_date',
+      v_nodes_complete: '&id, name, node_type_id',
+      v_ofc_cables_complete: '&id, route_name, sn_id, en_id',
+      v_systems_complete: '&id, system_name, node_id, system_type_id',
+      v_rings: '&id, name, ring_type_id',
+      v_employees: '&id, employee_name, employee_designation_id',
+      v_maintenance_areas: '&id, name, area_type_id',
       v_cable_utilization: 'cable_id',
-      v_ring_nodes: 'id, ring_id, name',
+      v_ring_nodes: '&id, ring_id, name',
+      v_employee_designations: '&id, name, parent_id',
       
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status, tableName',

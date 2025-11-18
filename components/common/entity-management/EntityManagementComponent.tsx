@@ -10,7 +10,6 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import { useDebounce } from "use-debounce";
 import { PageSpinner } from "@/components/common/ui";
-import { BlurLoader } from "@/components/common/ui/LoadingSpinner";
 
 type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity; };
 
@@ -36,7 +35,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
   config, entitiesQuery, toggleStatusMutation, onEdit, onDelete,
   onCreateNew, selectedEntityId, onSelect, onViewDetails,
   searchTerm, onSearchChange, filters, onFilterChange, onClearFilters,
-  isFetching
 }: EntityManagementComponentProps<T>) {
   const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
   const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
@@ -63,7 +61,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
     
     const rootEntities: EntityWithChildren<T>[] = [];
 
-    // THE FIX: Type guards to safely access parent properties without using 'any'
     const isParentEntity = (value: unknown): value is { id: string } => {
       return value != null && typeof value === 'object' && 'id' in value && typeof (value as { id: unknown }).id === 'string';
     };
@@ -78,7 +75,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
       let parentId: string | null = null;
       
-      // Attempt to get parent ID from the loaded relation object (e.g., parent_area)
       if (config.parentField) {
         const parentRelation = entity[config.parentField];
         if (isParentEntity(parentRelation)) {
@@ -86,7 +82,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
         }
       }
       
-      // If the relation object didn't provide an ID, fall back to the direct parent_id foreign key
       if (!parentId && hasParentId(entity) && entity.parent_id) {
         parentId = entity.parent_id;
       }
@@ -122,7 +117,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
-      {isFetching && !isInitialLoading && <BlurLoader />}
+      {/* THE FIX: The BlurLoader component has been removed entirely from here. */}
       
       <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">

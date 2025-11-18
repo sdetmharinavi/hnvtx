@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTMDatabase, getTable } from '@/data/localDb';
+import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
@@ -18,8 +18,10 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ring_nodes',
   'lookup_types',
   'employee_designations',
-  'user_profiles',
+  'user_profiles', // We sync the base table
   'diary_notes',
+  'v_employee_designations',
+  // THE FIX: 'v_user_profiles_extended' is removed from the sync list
 ];
 
 const viewNames = new Set<PublicTableOrViewName>([
@@ -31,6 +33,8 @@ const viewNames = new Set<PublicTableOrViewName>([
     'v_maintenance_areas',
     'v_cable_utilization',
     'v_ring_nodes',
+    'v_employee_designations',
+    // 'v_user_profiles_extended' is removed
 ]);
 
 export async function syncEntity(
@@ -66,7 +70,11 @@ export async function syncEntity(
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);
-    await table.bulkPut(validData);
+
+    await db.transaction('rw', table, async () => {
+      await table.clear();
+      await table.bulkPut(validData);
+    });
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
@@ -87,9 +95,7 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
 
-  // THE FIX: The toast logic is now self-contained within the query function using toast.promise.
-  // The useEffect that caused the loop has been removed.
-  const { isLoading, isError, error, refetch } = useQuery({
+  const { isLoading, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: () => 
       toast.promise(
@@ -123,7 +129,6 @@ export function useDataSync() {
     isSyncing: isLoading, 
     syncError: error, 
     syncStatus, 
-    // THE FIX: Renamed for clarity. This function triggers the sync.
     sync: refetch 
   };
 }

@@ -19,11 +19,11 @@ export function useOfflineQuery<TData>(
   queryKey: QueryKey,
   onlineQueryFn: () => Promise<TData>,
   offlineQueryFn: () => Promise<TData>,
-  options?: Omit<UseQueryOptions<TData>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<TData, Error>, 'queryKey' | 'queryFn'>
 ) {
   const isOnline = useOnlineStatus();
 
-  return useQuery<TData>({
+  return useQuery<TData, Error>({
     queryKey,
     queryFn: async () => {
       if (isOnline) {

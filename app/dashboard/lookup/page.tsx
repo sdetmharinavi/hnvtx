@@ -1,13 +1,9 @@
 // path: app/dashboard/lookup/page.tsx
 'use client';
 
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { Card } from '@/components/common/ui/card';
-import { useLookupTypes } from '@/components/lookup/lookup-hooks';
 import { LookupModal } from '@/components/lookup/LookupModal';
 import {
   ErrorState,
@@ -17,155 +13,146 @@ import {
 } from '@/components/lookup/LookupTypesEmptyStates';
 import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
-import { Filters } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useSorting } from '@/hooks/useSorting';
-import { useMemo } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { Lookup_typesRowSchema, Lookup_typesInsertSchema } from '@/schemas/zod-schemas';
+import { useLookupTypesData } from '@/hooks/data/useLookupTypesData';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { useLookupActions } from '@/components/lookup/lookup-hooks';
 
 export default function LookupTypesPage() {
+  const { handlers: { handleCategoryChange }, selectedCategory } = useLookupActions();
+
+  const {
+    data: lookupTypes, totalCount, activeCount, inactiveCount,
+    isLoading: isLoadingLookups, error, refetch,
+    search, filters, editModal,
+    actions: crudActions,
+  } = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
+    tableName: 'lookup_types',
+    dataQueryHook: useLookupTypesData,
+    displayNameField: 'name',
+  });
+  
+  // THE FIX: The online query now selects '*' to match the expected return type.
+  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useOfflineQuery<Lookup_typesRowSchema[]>(
+      ['unique-categories'],
+      async () => {
+          const { data, error: dbError } = await createClient().from('lookup_types').select('*').neq('name', 'DEFAULT');
+          if(dbError) throw dbError;
+          const unique = Array.from(new Map(data.map(item => [item.category, item])).values());
+          return unique;
+      },
+      async () => {
+          const allLookups = await localDb.lookup_types.filter(l => l.name !== 'DEFAULT').toArray();
+          const unique = Array.from(new Map(allLookups.map(item => [item.category, item])).values());
+          return unique;
+      }
+  );
+  const categories = useMemo(() => categoriesData || [], [categoriesData]);
+
+  useState(() => {
+    filters.setFilters({ category: selectedCategory });
+  });
+
   const deleteManager = useDeleteManager({
     tableName: 'lookup_types',
-    onSuccess: () => {
-      handleRefresh();
-    },
+    onSuccess: refetch,
   });
 
-  const {
-    state: {
-      selectedCategory,
-      isLookupModalOpen,
-      searchTerm,
-      editingLookup,
-      categories,
-      lookupTypes,
-      isLoading,
-      hasCategories,
-      hasSelectedCategory,
-      categoriesError,
-      lookupError,
-    },
-    handlers: {
-      setSearchTerm,
-      handleCategoryChange,
-      handleRefresh,
-      handleAddNew,
-      handleEdit,
-      handleDelete,
-      handleToggleStatus,
-      handleModalClose,
-      handleLookupCreated,
-      handleLookupUpdated,
-    },
-  } = useLookupTypes({ deleteHandler: deleteManager.deleteSingle });
-
-  const {
-    sortedData: sortedLookupTypes,
-    handleSort,
-    getSortDirection,
-  } = useSorting({
+  const { sortedData: sortedLookupTypes, handleSort, getSortDirection } = useSorting({
     data: lookupTypes,
-    defaultSortKey: 'category',
-    defaultDirection: 'asc',
+    defaultSortKey: 'sort_order',
   });
+  
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+    toast.success('Data refreshed successfully');
+  }, [refetch]);
 
-  const filteredAndSortedLookupTypes = useMemo(() => {
-    if (!searchTerm.trim()) return sortedLookupTypes;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return sortedLookupTypes.filter(
-      (lookup) =>
-        lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
-        lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
-        lookup.description?.toLowerCase().includes(lowerSearchTerm)
-    );
-  }, [sortedLookupTypes, searchTerm]);
-
-  const serverFilters = useMemo((): Filters => {
-    const f: Filters = { name: { operator: 'neq', value: 'DEFAULT' } };
-    return f;
-  }, []);
+  const hasCategories = categories.length > 0;
+  const hasSelectedCategory = !!selectedCategory;
+  const isLoading = isLoadingLookups || isLoadingCategories;
 
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
-    onRefresh: async () => {
-      await handleRefresh();
-      toast.success('Refreshed successfully!');
-    },
-    onAddNew: handleAddNew,
+    onRefresh: handleRefresh,
+    onAddNew: hasSelectedCategory ? editModal.openAdd : () => toast.error('Please select a category first.'),
     isLoading: isLoading,
-    exportConfig: { tableName: 'lookup_types', filters: serverFilters },
+    exportConfig: { tableName: 'lookup_types', filters: { category: selectedCategory } },
   });
 
-  const activeLookups = lookupTypes.filter((lookup) => lookup.status);
-  const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
   const headerStats = [
-    { value: lookupTypes.length, label: 'Total Lookup Types' },
-    { value: activeLookups.length, label: 'Active', color: 'success' as const },
-    { value: inactiveLookups.length, label: 'Inactive', color: 'danger' as const },
+    { value: totalCount, label: 'Total Types in Category' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (lookupError) {
-    return (
-      <ErrorDisplay
-        error={lookupError.message}
-        actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]}
-      />
-    );
+  // THE FIX: Create an adapter function for the onToggleStatus prop.
+  const handleToggleStatusAdapter = (id: string, currentStatus: boolean) => {
+    const record = lookupTypes.find(lt => lt.id === id);
+    if (record) {
+      crudActions.handleToggleStatus({ ...record, status: currentStatus });
+    }
+  };
+
+  if (categoriesError) {
+    return <ErrorDisplay error={categoriesError.message} actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]} />;
   }
 
   return (
     <div className="space-y-6 p-6">
       <PageHeader
         title="Lookup Types"
-        description="Manage lookup types"
+        description="Manage lookup types for various categories."
         icon={<FiList />}
-        stats={headerStats}
+        stats={hasSelectedCategory ? headerStats : []}
         actions={headerActions}
         isLoading={isLoading}
       />
 
-      {!hasCategories && !isLoading && (
-        <NoCategoriesState error={categoriesError as Error} isLoading={isLoading} />
-      )}
-
-      {hasCategories && (
+      {!hasCategories && !isLoading ? (
+        <NoCategoriesState
+          error={categoriesError ?? undefined}
+          isLoading={isLoading}
+        />
+      ) : (
         <LookupTypesFilters
           categories={categories}
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
+          searchTerm={search.searchQuery}
+          onSearchTermChange={search.setSearchQuery}
           hasSelectedCategory={hasSelectedCategory}
         />
       )}
+      
+      {/* THE FIX: Pass `error.message` to the ErrorState component. */}
+      {error && hasSelectedCategory && <ErrorState error={error} onRetry={handleRefresh} />}
+      {isLoading && hasSelectedCategory && <LoadingState selectedCategory={selectedCategory} />}
 
-      {lookupError && hasSelectedCategory && (
-        <ErrorState error={lookupError} onRetry={handleRefresh} />
-      )}
-
-      {isLoading && hasSelectedCategory && (
-        <LoadingState selectedCategory={selectedCategory} />
-      )}
-
-      {hasSelectedCategory && !isLoading && !lookupError && (
+      {hasSelectedCategory && !isLoading && !error && (
         <Card className="overflow-hidden">
           <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredAndSortedLookupTypes.length} of {lookupTypes.length} lookup types for category:{' '}
+              Showing {lookupTypes.length} of {totalCount} lookup types for category:{' '}
               <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
-              {searchTerm && (
-                <span className="ml-2">(filtered by: <em>&quot;{searchTerm}&quot;</em>)</span>
-              )}
             </p>
           </div>
           <LookupTypesTable
-            lookups={filteredAndSortedLookupTypes}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onToggleStatus={handleToggleStatus}
+            lookups={sortedLookupTypes}
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            // THE FIX: Pass the new adapter function to the table.
+            onToggleStatus={handleToggleStatusAdapter}
             selectedCategory={selectedCategory}
-            searchTerm={searchTerm}
+            searchTerm={search.searchQuery}
             onSort={handleSort}
             getSortDirection={getSortDirection}
           />
@@ -175,11 +162,11 @@ export default function LookupTypesPage() {
       {!hasSelectedCategory && !isLoading && hasCategories && <SelectCategoryPrompt />}
 
       <LookupModal
-        isOpen={isLookupModalOpen}
-        onClose={handleModalClose}
-        onLookupCreated={handleLookupCreated}
-        onLookupUpdated={handleLookupUpdated}
-        editingLookup={editingLookup}
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        onLookupCreated={(data) => crudActions.handleSave(data)}
+        onLookupUpdated={(data) => crudActions.handleSave(data as Lookup_typesInsertSchema)}
+        editingLookup={editModal.record}
         category={selectedCategory}
         categories={categories}
       />

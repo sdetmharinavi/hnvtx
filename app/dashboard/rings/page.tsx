@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { FaNetworkWired } from "react-icons/fa";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
 import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
-import { localDb } from "@/data/localDb";
+import { localDb } from "@/hooks/data/localDb";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { useRingsData } from "@/hooks/data/useRingsData";
 

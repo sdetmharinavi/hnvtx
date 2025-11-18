@@ -35,7 +35,7 @@ import {
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database/utility-functions';
 import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';

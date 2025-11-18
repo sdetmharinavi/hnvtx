@@ -10,6 +10,7 @@ interface LookupTypesTableProps {
   lookups: Lookup_typesRowSchema[];
   onEdit: (lookup: Lookup_typesRowSchema) => void;
   onDelete: (lookup: Lookup_typesRowSchema) => void;
+  // THE FIX: The prop signature is now correct.
   onToggleStatus: (id: string, currentStatus: boolean) => void;
   selectedCategory: string;
   searchTerm: string;
@@ -92,12 +93,10 @@ export function LookupTypesTable({
   getSortDirection
 }: LookupTypesTableProps) {
 
-  // initial sort according to Sort Order
   const sortedLookups = useMemo(() => {
     return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
   }, [lookups]);
 
-  // Filter lookups based on search term (if not already filtered externally)
   const filteredLookups = useMemo(() => {
     if (!searchTerm.trim()) return lookups;
     
@@ -220,7 +219,6 @@ export function LookupTypesTable({
         </div>
       )}
 
-      {/* Optional: Show sorting/filtering info */}
       {(searchTerm || (getSortDirection && Object.values(['name', 'code', 'description', 'status']).some(key => getSortDirection(key)))) && (
         <div className="px-6 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
           {searchTerm && (

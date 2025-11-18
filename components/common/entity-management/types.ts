@@ -1,9 +1,11 @@
 // components/common/entity-management/types.ts
 import { UseQueryResult } from '@tanstack/react-query';
-import { PagedQueryResult } from '@/hooks/database'; // IMPORT THE NEW TYPE
+import { PagedQueryResult } from '@/hooks/database';
 
 export interface BaseEntity {
-  id: string;
+  // THE FIX: The `id` property is now correctly typed as potentially being null,
+  // which aligns with the schemas generated from database views (e.g., v_employee_designations).
+  id: string | null;
   name: string;
   status: boolean | null;
   created_at?: string | null;
@@ -15,12 +17,10 @@ export interface HierarchicalEntity extends BaseEntity {
   parent?: HierarchicalEntity | null;
 }
 
-// Utility type for entities with computed children
 export type EntityWithChildren<T extends BaseEntity> = T & {
   children: EntityWithChildren<T>[];
 };
 
-// Type guard functions
 export function isHierarchicalEntity<T extends BaseEntity>(
   entity: T
 ): entity is T & HierarchicalEntity {
@@ -60,8 +60,6 @@ export interface UseEntityManagementProps<T extends BaseEntity> {
   onSelect: (id: string | null) => void;
 }
 
-
-// Updated component interfaces
 export interface EntityTreeItemProps<T extends BaseEntity> {
     entity: EntityWithChildren<T>;
     config: EntityConfig<T>;
@@ -72,4 +70,4 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
     onToggleExpand: (id: string) => void;
     onToggleStatus: (e: React.MouseEvent, entity: T) => void;
     isLoading: boolean;
-  }
+}
