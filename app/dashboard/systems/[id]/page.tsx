@@ -8,21 +8,21 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs } from '@/hooks/database';
-import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_system_connections_completeRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { FiberAllocationModal } from '@/components/systems/FiberAllocationModal';
-import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { useOfcRoutesForSelection } from '@/hooks/database/route-manager-hooks';
+import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import { ZapOff, Eye } from 'lucide-react';
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
-import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/systems/SystemConnectionFormModal';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
+import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -37,10 +37,15 @@ export default function SystemConnectionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
-
+  
   const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
   const [connectionToDeprovision, setConnectionToDeprovision] = useState<V_system_connections_completeRowSchema | null>(null);
-  const [tracingFiberInfo, setTracingFiberInfo] = useState<{ startSegmentId: string; fiberNo: number; record: V_ofc_connections_completeRowSchema } | null>(null);
+  
+  // State for the new trace modal
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
+  const tracePath = useTracePath(supabase);
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];
@@ -55,8 +60,6 @@ export default function SystemConnectionsPage() {
       offset: (currentPage - 1) * pageLimit,
     }
   );
-  
-  const { data: allCablesData } = useOfcRoutesForSelection();
 
   const connections = connectionsData?.data || [];
   const totalCount = connectionsData?.total_count || 0;
@@ -92,10 +95,10 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'customer_name' },
         { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
-        { excelHeader: 'Working Fiber In Id', dbKey: 'working_fiber_in_ids' },
-        { excelHeader: 'Working Fiber Out Id', dbKey: 'working_fiber_out_ids' },
-        { excelHeader: 'Protection Fiber In Id', dbKey: 'protection_fiber_in_ids' },
-        { excelHeader: 'Protection Fiber Out Id', dbKey: 'protection_fiber_out_ids' },
+        { excelHeader: 'Working Fiber In Ids', dbKey: 'working_fiber_in_ids' },
+        { excelHeader: 'Working Fiber Out Ids', dbKey: 'working_fiber_out_ids' },
+        { excelHeader: 'Protection Fiber In Ids', dbKey: 'protection_fiber_in_ids' },
+        { excelHeader: 'Protection Fiber Out Ids', dbKey: 'protection_fiber_out_ids' },
         { excelHeader: 'System Working Interface', dbKey: 'system_working_interface' },
         { excelHeader: 'System Protection Interface', dbKey: 'system_protection_interface' },
         { excelHeader: 'Connected Link Type', dbKey: 'connected_link_type_name' },
@@ -133,58 +136,19 @@ export default function SystemConnectionsPage() {
   }, [refetch]);
   
   const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
-    const startingFiberId = record.working_fiber_in_ids?.[0]; // Use the first fiber in the Tx path
-    if (!startingFiberId) {
-      toast.error("No working Tx path is assigned to this connection to begin a trace.");
-      return;
+    setIsTracing(true);
+    setIsTraceModalOpen(true);
+    setTraceModalData(null);
+    try {
+      const traceData = await tracePath(record);
+      setTraceModalData(traceData);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to trace path");
+      setIsTraceModalOpen(false); // Close modal on error
+    } finally {
+      setIsTracing(false);
     }
-
-    const { data: fiberConnection, error: fiberError } = await supabase
-      .from('v_ofc_connections_complete')
-      .select('*')
-      .eq('id', startingFiberId)
-      .single();
-
-    if (fiberError || !fiberConnection) {
-      toast.error("Could not find details for the starting fiber. The path data might be inconsistent.");
-      return;
-    }
-
-    const originalCableId = fiberConnection.ofc_id;
-    if (!originalCableId) {
-      toast.error("Could not determine the physical cable for this fiber connection.");
-      return;
-    }
-
-    const serviceStartNodeId = record.sn_node_id;
-    if (!serviceStartNodeId) {
-      toast.error("Could not determine the service's starting node.");
-      return;
-    }
-
-    const { data: startSegment, error: segmentError } = await supabase
-      .from('cable_segments')
-      .select('id')
-      .eq('original_cable_id', originalCableId)
-      .eq('start_node_id', serviceStartNodeId)
-      .maybeSingle();
-
-    if (segmentError) {
-      toast.error(`Error finding start segment: ${segmentError.message}`);
-      return;
-    }
-
-    if (!startSegment) {
-      toast.error("Could not find the starting cable segment for this path. The route may not be properly segmented or the service path is incorrectly configured.");
-      return;
-    }
-    
-    setTracingFiberInfo({
-      startSegmentId: startSegment.id,
-      fiberNo: fiberConnection.fiber_no_sn!,
-      record: fiberConnection
-    });
-  }, [supabase]);
+  }, [tracePath]);
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
@@ -196,9 +160,9 @@ export default function SystemConnectionsPage() {
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
-      { key: 'view-path', label: 'View/Trace Path', icon: <Eye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
-      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
-      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
+      { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
+      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
+      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
       ...standard,
     ];
   }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal]);
@@ -266,6 +230,7 @@ export default function SystemConnectionsPage() {
         data={connections}
         columns={columns}
         loading={isLoadingConnections}
+        isFetching={isLoadingConnections}
         actions={tableActions}
         pagination={{
           current: currentPage, pageSize: pageLimit, total: totalCount, showSizeChanger: true,
@@ -291,17 +256,12 @@ export default function SystemConnectionsPage() {
         type="danger"
       />
 
-      {tracingFiberInfo && (
-        <FiberTraceModal
-          isOpen={!!tracingFiberInfo}
-          onClose={() => setTracingFiberInfo(null)}
-          startSegmentId={tracingFiberInfo.startSegmentId}
-          fiberNo={tracingFiberInfo.fiberNo}
-          allCables={allCablesData}
-          record={tracingFiberInfo.record}
-          refetch={refetch}
-        />
-      )}
+      <SystemFiberTraceModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        traceData={traceModalData}
+        isLoading={isTracing}
+      />
     </div>
   );
 }
