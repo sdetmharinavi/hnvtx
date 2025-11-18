@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { LatLngBounds } from 'leaflet';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 
 interface BsnlDashboardData {

@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { localDb, MutationTask } from '@/data/localDb';
+import { localDb, MutationTask } from '@/hooks/data/localDb';
 import { createClient } from '@/utils/supabase/client';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 

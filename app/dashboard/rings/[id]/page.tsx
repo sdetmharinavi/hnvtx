@@ -5,7 +5,7 @@ import { useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiMap } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';

@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
 import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
+import { localDb } from "@/hooks/data/localDb";
 import { useEmployeesData } from "@/hooks/data/useEmployeesData";
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);

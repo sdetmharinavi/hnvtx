@@ -20,7 +20,6 @@ import {
   RPCConfig,
 } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
-import { BlurLoader } from '@/components/common/ui/LoadingSpinner';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
@@ -104,7 +103,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   tableName,
   columns,
   loading = false,
-  isFetching = false,
   pagination,
   actions = [],
   searchable = true,
@@ -173,7 +171,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
   }, [filterable]);
 
-  // (Excel download hooks remain the same)
   const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
     showToasts: true,
   });
@@ -323,7 +320,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   }, []);
 
   const handleExport = useCallback(async () => {
-    // 1) If a custom export handler is provided by the parent, use it
     if (onExport) {
       await onExport(
         processedData as Row<T>[],
@@ -332,7 +328,6 @@ export function DataTable<T extends PublicTableOrViewName>({
       return;
     }
 
-    // 2) Build export options: prefer explicit options, else use current visible columns and filters
     const columnsToExport = (exportOptions?.columns ??
       visibleColumnsData) as Column<Row<T>>[];
     const mergedFilters = exportOptions?.includeFilters
@@ -349,7 +344,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     };
 
     try {
-      // 3) Use RPC-based download if rpcConfig is provided; otherwise, table/view download
       if (exportOptions?.rpcConfig) {
         const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
           ...baseOptions,
@@ -360,7 +354,6 @@ export function DataTable<T extends PublicTableOrViewName>({
         await tableExcelDownload.mutateAsync(baseOptions);
       }
     } catch (err) {
-      // 4) Optional CSV fallback using currently processed rows
       if (exportOptions?.fallbackToCsv) {
         try {
           const headers = columnsToExport.map((c) => c.title).join(',');
@@ -390,7 +383,6 @@ export function DataTable<T extends PublicTableOrViewName>({
           document.body.removeChild(link);
           URL.revokeObjectURL(link.href);
         } catch {
-          // If CSV fallback also fails, rethrow original error
           throw err;
         }
       } else {
@@ -418,7 +410,6 @@ export function DataTable<T extends PublicTableOrViewName>({
         className
       )}
     >
-      {/* Section 1: Toolbar and Filters (Non-scrolling) */}
       <div className="flex-shrink-0">
       <TableToolbar
         title={title}
@@ -465,11 +456,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       />
       </div>
 
-      {/* Section 2: Scrollable Table Area */}
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
-      {isFetching && !loading && (
-          <BlurLoader className='h-full w-full' />
-        )}
         <table className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
             <TableHeader
               columns={columns}
@@ -517,7 +504,6 @@ export function DataTable<T extends PublicTableOrViewName>({
           </table>
       </div>
 
-      {/* Section 3: Pagination (Non-scrolling) */}
       <div className="flex-shrink-0">
         <TablePagination pagination={pagination} bordered={bordered} />
       </div>

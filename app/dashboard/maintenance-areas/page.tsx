@@ -2,58 +2,53 @@
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
-import { Filters, PagedQueryResult, Row, useTableQuery, useTableWithRelations } from '@/hooks/database';
+import { Filters, PagedQueryResult, Row } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
+import { Maintenance_areasInsertSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
 import { FiMapPin } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { UseQueryResult } from '@tanstack/react-query';
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
 
-  const serverFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.status) f.status = filters.status === 'true';
-    if (filters.areaType) f.area_type_id = filters.areaType;
-    if (searchTerm) {
-      f.or = `(name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%)`;
-    }
-    return f;
-  }, [filters, searchTerm]);
-
-  const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
-    supabase, 'maintenance_areas',
-    [ 'area_type:area_type_id(id, name)', 'parent_area:parent_id(id, name, code)', 'child_areas:maintenance_areas!parent_id(id, name, code, status)' ],
-    { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }], placeholderData: (prev) => prev }
-  );
-
-  const { refetch, error, data, isLoading, isFetching } = areasQuery;
-  const allAreas = useMemo(() => data?.data || [], [data]);
-  const totalCount = data?.count || 0;
-  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
-
-  const isInitialLoad = isLoading && allAreas.length === 0;
-  
-  const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
-    filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
-    orderBy: [{ column: 'name', ascending: true }],
+  const {
+    data: allAreas,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isMutating, isFetching, error, refetch,
+    search, filters,
+  } = useCrudManager<'maintenance_areas', MaintenanceAreaWithRelations>({
+    tableName: 'maintenance_areas',
+    dataQueryHook: useMaintenanceAreasData,
+    displayNameField: 'name',
+    searchColumn: ['name', 'code', 'contact_person', 'email'],
   });
-  const areaTypes = useMemo(() => areaTypesResult?.data || [], [areaTypesResult]);
+
+  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
+  const isInitialLoad = isLoading && allAreas.length === 0;
+
+  const { data: areaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['maintenance-area-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MAINTENANCE_AREA_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'MAINTENANCE_AREA_TYPES' }).toArray()
+  );
+  const areaTypes = useMemo(() => areaTypesData || [], [areaTypesData]);
 
   const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } = useMaintenanceAreasMutations(supabase, () => {
     refetch(); setFormOpen(false); setEditingArea(null);
@@ -75,19 +70,25 @@ export default function MaintenanceAreasPage() {
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: handleOpenCreateForm, isLoading: areasQuery.isLoading,
+    onAddNew: handleOpenCreateForm, isLoading: isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
   
   const headerStats = [
     { value: totalCount, label: 'Total Areas' },
-    { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
-    { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
+  
+  // This is a workaround to satisfy the type expected by EntityManagementComponent
+  const areasQuery: UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error> = {
+    data: { data: allAreas, count: totalCount },
+    isLoading, isFetching, error, isError: !!error, refetch,
+  } as UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error>;
   
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
@@ -105,7 +106,7 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
-        isFetching={isFetching}
+        isFetching={isFetching || isMutating}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}
@@ -113,11 +114,11 @@ export default function MaintenanceAreasPage() {
         selectedEntityId={selectedAreaId}
         onSelect={setSelectedAreaId}
         onViewDetails={() => setIsDetailsModalOpen(true)}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={setFilters}
-        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
+        searchTerm={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        filters={filters.filters as Record<string, string>}
+        onFilterChange={(f) => filters.setFilters(f as Filters)}
+        onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
       />
 
       {isFormOpen && (

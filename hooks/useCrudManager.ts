@@ -22,11 +22,10 @@ import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { addMutationToQueue } from "./data/useMutationQueue";
-import { getTable } from "@/data/localDb";
+import { getTable } from "@/hooks/data/localDb";
 import { DEFAULTS } from "@/constants/constants";
 import { UseQueryResult } from "@tanstack/react-query";
 
-// --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
   id: string | number | null;
   system_id?: string | number | null;
@@ -58,7 +57,10 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
-type BaseRecord = { id: string | null; [key: string]: unknown };
+// THE FIX: The `id` is now strictly a string, as we filter out nulls before use.
+// The index signature remains `any` for flexibility with Zod types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BaseRecord = { id: string | number | null; [key: string]: any };
 
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
@@ -68,7 +70,6 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
 
-// --- THE HOOK ---
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
@@ -79,7 +80,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const supabase = createClient();
   const isOnline = useOnlineStatus();
 
-  // --- STATE MANAGEMENT ---
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, _setCurrentPage] = useState(1);
@@ -91,7 +91,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
-  // THE FIX: Wrap all state setters in useCallback to stabilize their references.
   const setCurrentPage = useCallback((page: number) => _setCurrentPage(page), []);
   const setPageLimit = useCallback((limit: number) => _setPageLimit(limit), []);
   const setSearchQuery = useCallback((query: string) => _setSearchQuery(query), []);
@@ -124,7 +123,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- ONLINE MUTATIONS ---
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
     onSuccess: () => { refetch(); closeModal(); toast.success("Record created successfully."); },
     onError: (error) => toast.error(`Failed to create record: ${error.message}`),
@@ -144,13 +142,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
   const isMutating = isInserting || isUpdating || deleteManager.isPending || bulkUpdate.isPending;
 
-  // --- MODAL HANDLERS ---
   const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
   const openEditModal = useCallback((record: V) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
   const openViewModal = useCallback((record: V) => { setViewingRecord(record); setIsViewModalOpen(true); }, []);
   const closeModal = useCallback(() => { setIsEditModalOpen(false); setEditingRecord(null); setIsViewModalOpen(false); setViewingRecord(null); }, []);
 
-  // --- OFFLINE & ONLINE SAVE HANDLER ---
   const handleSave = useCallback(async (formData: TableInsertWithDates<T>) => {
     const processedData = processDataForSave ? processDataForSave(formData) : (formData as TableInsert<T>);
 
@@ -160,7 +156,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       } else {
         insertItem(processedData as TableInsert<T>);
       }
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
@@ -182,7 +178,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: newRecord,
           });
         }
-        refetch(); // Refetch from local data source
+        refetch(); 
         closeModal();
       } catch (err) {
         toast.error(`Offline operation failed: ${(err as Error).message}`);
@@ -212,7 +208,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
     if (isOnline) {
       deleteManager.deleteSingle({ id: idToDelete, name: displayName });
-    } else { // OFFLINE LOGIC
+    } else { 
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
           const table = getTable(tableName);
@@ -237,7 +233,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     
     if (isOnline) {
       toggleStatus({ id: idToUpdate, status: newStatus });
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -254,7 +250,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     }
   }, [isOnline, tableName, toggleStatus, refetch]);
   
-  // THE FIX: Wrap row selection handlers in useCallback
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
     setSelectedRowIds(validIds);
@@ -270,7 +265,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         id: String(record.id), name: getDisplayName(record as RecordWithId),
       }));
       deleteManager.deleteMultiple(selectedRecords);
-    } else { // OFFLINE LOGIC
+    } else { 
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
           const table = getTable(tableName);
@@ -303,7 +298,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         },
         onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -327,8 +322,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       deleteManager.deleteBulk({ column, value, displayName });
     }, [deleteManager]);
 
-
-  // THE FIX: Re-assemble the query result object to match the `UseQueryResult` type.
   const queryResult = useMemo((): UseQueryResult<PagedQueryResult<V>, Error> => ({
     data: { data, count: totalCount },
     isLoading,
@@ -344,7 +337,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
-    isLoading, isFetching, error, isMutating, refetch,
+    isLoading, isFetching, error, isMutating, 
+    refetch,
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },

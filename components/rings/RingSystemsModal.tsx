@@ -9,7 +9,7 @@ import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { syncEntity } from '@/hooks/data/useDataSync'; // THE FIX: Import syncEntity
-import { localDb } from '@/data/localDb'; // THE FIX: Import localDb
+import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
 
 interface SystemOption {
   id: string;

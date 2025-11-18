@@ -1,9 +1,6 @@
 'use client';
 
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
@@ -13,16 +10,8 @@ import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
-import {
-  useAdminGetAllUsersExtended,
-  useAdminUserOperations,
-  UserCreateInput,
-} from '@/hooks/useAdminUsers';
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from '@/hooks/useCrudManager';
+import { useAdminUserOperations, UserCreateInput } from '@/hooks/useAdminUsers';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -31,39 +20,10 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
 import { useUser } from '@/providers/UserProvider';
+import { useUsersData } from '@/hooks/data/useUsersData';
 
-// This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
-// 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
-const useUsersData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
-  const { currentPage, pageLimit, searchQuery, filters } = params;
-
-  const { data, isLoading, error, refetch } = useAdminGetAllUsersExtended({
-    search_query: searchQuery || undefined,
-    filter_role: (filters.role as string) || undefined,
-    filter_status: (filters.status as string) || undefined,
-    page_offset: (currentPage - 1) * pageLimit,
-    page_limit: pageLimit,
-  });
-
-
-  return {
-    data: (data?.data || []) as V_user_profiles_extendedRowSchema[],
-    totalCount: data?.counts?.total || 0,
-    activeCount: data?.counts?.active || 0,
-    inactiveCount: data?.counts?.inactive || 0,
-    isLoading,
-    error: (error as Error) || null,
-    refetch: () => {
-      void refetch();
-    },
-  };
-};
 const AdminUsersPage = () => {
-  // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
-  // Get permissions from the context.
   const { isSuperAdmin } = useUser();
   const {
     createUser,
@@ -73,10 +33,11 @@ const AdminUsersPage = () => {
     isLoading: isOperationLoading,
   } = useAdminUserOperations();
 
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: users,
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     isMutating,
     error,
@@ -153,7 +114,6 @@ const AdminUsersPage = () => {
     [selectedRowIds, bulkUpdateStatus, handleClearSelection]
   );
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions<'user_profiles'>({
     data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
@@ -167,16 +127,8 @@ const AdminUsersPage = () => {
 
   const headerStats = [
     { value: totalCount, label: 'Total Users' },
-    {
-      value: users.filter((r) => r.status).length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: users.filter((r) => !r.status).length,
-      label: 'Inactive',
-      color: 'danger' as const,
-    },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error) {
@@ -201,7 +153,7 @@ const AdminUsersPage = () => {
         description="Manage network users and their related information."
         icon={<FiUsers />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
+        actions={headerActions}
         isLoading={isLoading}
       />
       <BulkActions
@@ -219,7 +171,6 @@ const AdminUsersPage = () => {
           ...user,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
-          id: user.id || '',
           address: user.address as Json | null
         }))}
         columns={columns}
@@ -227,9 +178,8 @@ const AdminUsersPage = () => {
         actions={tableActions}
         selectable
         onRowSelect={(rows) => {
-          // Filter out any rows where id is null
           const validRows = rows.filter(
-            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
+            (row): row is V_user_profiles_extendedRowSchema & { id: string } => typeof row.id === 'string' && row.id.length > 0
           );
           bulkActions.handleRowSelect(validRows);
         }}
@@ -257,7 +207,7 @@ const AdminUsersPage = () => {
             onStatusFilterChange={(value) =>
               filters.setFilters((prev) => ({ ...prev, status: value }))
             }
-            emailVerificationFilter={''} // This filter is not implemented in the hook yet
+            emailVerificationFilter={''}
             onEmailVerificationFilterChange={() => {}}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}

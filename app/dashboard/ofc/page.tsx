@@ -10,8 +10,6 @@ import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { DataTable } from "@/components/table/DataTable";
 import { OfcTableColumns } from "@/config/table-columns/OfcTableColumns";
-import { buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
 import {
   Ofc_cablesRowSchema,
   V_ofc_cables_completeRowSchema,
@@ -27,87 +25,10 @@ import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { useUser } from "@/providers/UserProvider";
 import { AiFillMerge } from "react-icons/ai";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
-
-const useOfcData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchQuery
-        ? `(route_name.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%,transnet_id.ilike.%${searchQuery}%,sn_name.ilike.%${searchQuery}%,en_name.ilike.%${searchQuery}%,ofc_owner_name.ilike.%${searchQuery}%)`
-        : undefined,
-    });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_ofc_cables_complete",
-      p_limit: DEFAULTS.PAGE_SIZE,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: "route_name",
-    });
-    if (error) throw error;
-    return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    return await localDb.v_ofc_cables_complete.toArray();
-  };
-
-  const {
-    data: allCables = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(["ofc-cables-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allCables;
-    // Client-side filtering for offline mode
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (cable: V_ofc_cables_completeRowSchema) =>
-          cable.route_name?.toLowerCase().includes(lowerQuery) ||
-          cable.asset_no?.toLowerCase().includes(lowerQuery) ||
-          cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
-          cable.sn_name?.toLowerCase().includes(lowerQuery) ||
-          cable.en_name?.toLowerCase().includes(lowerQuery) ||
-          cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.ofc_type_id)
-      filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
-    if (filters.status) filtered = filtered.filter((c) => c.status === (filters.status === "true"));
-    if (filters.ofc_owner_id)
-      filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
-    if (filters.maintenance_terminal_id)
-      filtered = filtered.filter(
-        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
-      );
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((c) => c.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allCables, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+import { localDb } from '@/hooks/data/localDb';
+import { useCrudManager } from "@/hooks/useCrudManager";
+import { useOfcData } from "@/hooks/data/useOfcData";
+import { TableAction } from "@/components/table";
 
 const OfcPage = () => {
   const router = useRouter();
@@ -164,7 +85,6 @@ const OfcPage = () => {
   const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
   const ofcOwners = useMemo(() => ofcOwnersData || [], [ofcOwnersData]);
 
-  // Define BSNL filter for export configuration
   const OFC_OWNERS_BSNL = useMemo(() => {
     const bsnlOwner = ofcOwners.find(owner =>
       owner.name?.toLowerCase().includes('bsnl') ||
@@ -173,7 +93,6 @@ const OfcPage = () => {
     return bsnlOwner ? { ofc_owner_id: bsnlOwner.id } : undefined;
   }, [ofcOwners]);
 
-  // Define BBNL filter for export configuration
   const OFC_OWNERS_BBNL = useMemo(() => {
     const bbnlOwner = ofcOwners.find(owner =>
       owner.name?.toLowerCase().includes('bbnl') ||
@@ -192,7 +111,7 @@ const OfcPage = () => {
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
-      }),
+      }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions, isSuperAdmin]
   );
   const headerActions = useStandardHeaderActions({

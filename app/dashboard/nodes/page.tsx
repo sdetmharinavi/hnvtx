@@ -10,8 +10,8 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { Filters, buildRpcFilters } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { Filters } from '@/hooks/database';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -19,72 +19,12 @@ import { useMemo } from 'react';
 import { FiCpu } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
+import { useNodesData } from '@/hooks/data/useNodesData';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string; } | null;
   node_type?: { id: string; name: string; } | null;
-};
-
-const useNodesData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_nodes_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({ 
-      ...filters, 
-      or: searchQuery 
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude.ilike.%${searchQuery}%,longitude.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%)` 
-        : undefined 
-    });
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_nodes_complete',
-      p_limit: 1000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-    });
-    if (error) throw error;
-    return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
-    return await localDb.v_nodes_complete.toArray();
-  };
-
-  const { data: allNodes = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
-    ['nodes-data', searchQuery, filters],
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
-  );
-
-  const processedData = useMemo(() => {
-    let filtered = allNodes;
-    // Client-side filtering is now primarily for the offline fallback
-    if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((node: V_nodes_completeRowSchema) =>
-            node.name?.toLowerCase().includes(lowerQuery) ||
-            node.node_type_name?.toLowerCase().includes(lowerQuery) ||
-            node.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-        );
-    }
-    if (filters.node_type_id) {
-        filtered = filtered.filter((node: V_nodes_completeRowSchema) => node.node_type_id === filters.node_type_id);
-    }
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((n) => n.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return { data: paginatedData, totalCount, activeCount, inactiveCount: totalCount - activeCount };
-  }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
 };
 
 const NodesPage = () => {
