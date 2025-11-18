@@ -1,7 +1,7 @@
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -10,70 +10,98 @@ import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DiaryEntryCard } from "@/components/diary/DiaryEntryCard";
 import { DiaryFormModal } from "@/components/diary/DiaryFormModal";
 import { DiaryCalendar } from "@/components/diary/DiaryCalendar";
-import { useCrudManager } from "@/hooks/useCrudManager";
-import { Diary_notesRowSchema } from "@/schemas/zod-schemas";
+import { Diary_notesRowSchema, Diary_notesInsertSchema } from "@/schemas/zod-schemas";
 import { useAuthStore } from "@/stores/authStore";
-import { createClient } from "@/utils/supabase/client";
-import { useRpcQuery } from "@/hooks/database";
 import { useUser } from "@/providers/UserProvider";
 import { useDiaryExcelUpload } from "@/hooks/database/excel-queries/useDiaryExcelUpload";
 import { buildUploadConfig } from "@/constants/table-column-keys";
+import { createClient } from "@/utils/supabase/client";
+import { useDeleteManager } from "@/hooks/useDeleteManager";
+import { useTableInsert, useTableUpdate } from "@/hooks/database";
+import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
+import { localDb } from "@/hooks/data/localDb";
 
 const useDiaryEntries = (currentDate: Date) => {
-  const supabase = createClient();
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-    .toISOString()
-    .split("T")[0];
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split("T")[0];
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split("T")[0];
 
-  return useRpcQuery(
-    supabase,
-    "get_diary_notes_for_range",
-    { start_date: startOfMonth, end_date: endOfMonth },
-    {
-      staleTime: 5 * 60 * 1000,
-    }
-  );
+  const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
+    const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
+      start_date: startOfMonth,
+      end_date: endOfMonth,
+    });
+    if (error) throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((entry: any) => ({
+      id: entry.id,
+      user_id: entry.user_id,
+      note_date: entry.note_date,
+      content: entry.content,
+      tags: entry.tags,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+    }));
+  }, [startOfMonth, endOfMonth]);
+
+  const localQueryFn = useCallback(() => {
+    return localDb.diary_notes
+      .where('note_date')
+      .between(startOfMonth, endOfMonth)
+      .toArray();
+  }, [startOfMonth, endOfMonth]);
+
+  return useLocalFirstQuery<'diary_notes'>({
+    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.diary_notes,
+  });
 };
 
 export default function DiaryPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
+
   const { user } = useAuthStore();
   const { role: currentUserRole } = useUser();
   const supabase = createClient();
 
-  // ToDo : add search functionality
+  const { data: notesForMonth = [], isLoading, isFetching, error, refetch } = useDiaryEntries(currentDate);
 
-  const { data: notesForMonth = [], isLoading, error, refetch } = useDiaryEntries(currentDate);
+  console.log(notesForMonth);
 
-  const {
-    editModal,
-    deleteModal,
-    actions: crudActions,
-    isMutating,
-  } = useCrudManager<"diary_notes", Diary_notesRowSchema>({
-    tableName: "diary_notes",
-    dataQueryHook: () => ({
-      data: [],
-      totalCount: 0,
-      activeCount: 0,
-      inactiveCount: 0,
-      isLoading: false,
-      error: null,
-      refetch: () => {},
-    }),
-    displayNameField: "note_date",
+  const { mutate: insertNote, isPending: isInserting } = useTableInsert(supabase, 'diary_notes', {
+    onSuccess: () => { toast.success('Note created successfully!'); refetch(); setIsFormOpen(false); },
+    onError: (err) => toast.error(`Failed to create note: ${err.message}`),
   });
 
-  const { mutate: uploadDiaryNotes, isPending: isUploading } = useDiaryExcelUpload(supabase);
+  const { mutate: updateNote, isPending: isUpdating } = useTableUpdate(supabase, 'diary_notes', {
+    onSuccess: () => { toast.success('Note updated successfully!'); refetch(); setIsFormOpen(false); },
+    onError: (err) => toast.error(`Failed to update note: ${err.message}`),
+  });
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const deleteManager = useDeleteManager({ tableName: 'diary_notes', onSuccess: refetch });
+
+  const isMutating = isInserting || isUpdating || deleteManager.isPending;
+
+  const openAddModal = () => { setEditingNote(null); setIsFormOpen(true); };
+  const openEditModal = (note: Diary_notesRowSchema) => { setEditingNote(note); setIsFormOpen(true); };
+  const closeFormModal = () => { setIsFormOpen(false); setEditingNote(null); };
+
+  const handleSaveNote = (data: Diary_notesInsertSchema) => {
+    if (editingNote) {
+      updateNote({ id: editingNote.id, data });
+    } else {
+      insertNote(data);
+    }
   };
+  
+  const { mutate: uploadDiaryNotes, isPending: isUploading } = useDiaryExcelUpload();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -86,19 +114,33 @@ export default function DiaryPage() {
         currentUserRole,
       });
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const highlightedDates = useMemo(() => {
-    return (notesForMonth || []).map((note) => new Date(note.note_date!));
+    return (notesForMonth || []).map((note) => {
+      const d = new Date(note.note_date!);
+      return new Date(d.valueOf() + d.getTimezoneOffset() * 60 * 1000);
+    });
   }, [notesForMonth]);
 
+  // --- THE DEFINITIVE FIX ---
+  // Compare the year, month, and day parts of the dates numerically to avoid timezone issues.
   const notesForSelectedDay = useMemo(() => {
-    const selectedDayString = selectedDate.toISOString().split("T")[0];
-    return (notesForMonth || []).filter((note) => note.note_date === selectedDayString);
+    if (!notesForMonth) return [];
+    return notesForMonth.filter((note) => {
+      // Create a date object from the note's date string, compensating for UTC interpretation.
+      const noteDate = new Date(note.note_date!);
+      const noteDateUTC = new Date(noteDate.valueOf() + noteDate.getTimezoneOffset() * 60 * 1000);
+      
+      return (
+        noteDateUTC.getFullYear() === selectedDate.getFullYear() &&
+        noteDateUTC.getMonth() === selectedDate.getMonth() &&
+        noteDateUTC.getDate() === selectedDate.getDate()
+      );
+    });
   }, [notesForMonth, selectedDate]);
+  // --- END FIX ---
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
@@ -112,19 +154,12 @@ export default function DiaryPage() {
 
   const headerActions = useStandardHeaderActions({
     data: notesForMonth,
-    onRefresh: async () => {
-      await refetch();
-      toast.success("Notes refreshed!");
-    },
-    onAddNew: editModal.openAdd,
+    onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
+    onAddNew: openAddModal,
     isLoading,
-    exportConfig: {
-      tableName: "diary_notes",
-      fileName: "my_diary_notes",
-    },
+    exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
   });
 
-  // Inject the upload button
   headerActions.splice(1, 0, {
     label: isUploading ? "Uploading..." : "Upload Notes",
     onClick: handleUploadClick,
@@ -167,11 +202,11 @@ export default function DiaryPage() {
             stats={[{ value: notesForMonth.length, label: "Entries This Month" }]}
             actions={headerActions}
             isLoading={isLoading}
+            isFetching={isFetching}
           />
         </div>
 
         <div className='grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8'>
-          {/* Calendar Section */}
           <div className='xl:col-span-4'>
             <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-xl'>
               <div className='p-4 sm:p-6'>
@@ -184,10 +219,8 @@ export default function DiaryPage() {
             </div>
           </div>
 
-          {/* Entries Section */}
           <div className='xl:col-span-8'>
             <div className='space-y-4 sm:space-y-6'>
-              {/* Selected Date Header */}
               <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg'>
@@ -208,7 +241,6 @@ export default function DiaryPage() {
                 </div>
               </div>
 
-              {/* Loading State */}
               {isLoading && notesForMonth.length === 0 ? (
                 <div className='space-y-4'>
                   {[...Array(3)].map((_, i) => (
@@ -220,7 +252,6 @@ export default function DiaryPage() {
                   ))}
                 </div>
               ) : notesForSelectedDay.length === 0 ? (
-                /* Empty State */
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 sm:py-16 px-4'>
                     <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
@@ -233,7 +264,7 @@ export default function DiaryPage() {
                       Start documenting your day by creating a new diary entry.
                     </p>
                     <button
-                      onClick={editModal.openAdd}
+                      onClick={openAddModal}
                       className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
                       <FiBookOpen className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
                       Create Entry
@@ -241,7 +272,6 @@ export default function DiaryPage() {
                   </div>
                 </div>
               ) : (
-                /* Entries List */
                 <div className='space-y-4'>
                   {notesForSelectedDay.map((note, index) => (
                     <div
@@ -250,8 +280,8 @@ export default function DiaryPage() {
                       style={{ animationDelay: `${index * 50}ms` }}>
                       <DiaryEntryCard
                         entry={note}
-                        onEdit={editModal.openEdit}
-                        onDelete={crudActions.handleDelete}
+                        onEdit={openEditModal}
+                        onDelete={(item) => deleteManager.deleteSingle(item)}
                       />
                     </div>
                   ))}
@@ -263,21 +293,21 @@ export default function DiaryPage() {
       </div>
 
       <DiaryFormModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        editingNote={editModal.record}
-        onSubmit={crudActions.handleSave}
+        isOpen={isFormOpen}
+        onClose={closeFormModal}
+        editingNote={editingNote}
+        onSubmit={handleSaveNote}
         isLoading={isMutating}
         selectedDate={selectedDate}
       />
 
       <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
         title='Confirm Deletion'
-        message={deleteModal.message}
-        loading={deleteModal.loading}
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
         type='danger'
       />
     </div>

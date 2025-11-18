@@ -5,57 +5,18 @@ import { useMemo } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
-import { useCrudManager, DataQueryHookParams, DataQueryHookReturn } from "@/hooks/useCrudManager";
-import { createClient } from "@/utils/supabase/client";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import { FiArchive} from "react-icons/fi";
 import { toast } from "sonner";
-import { buildRpcFilters, PagedDataResult, Row } from "@/hooks/database";
+import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
-import { useQuery } from "@tanstack/react-query";
 import { getInventoryTableColumns } from "@/components/inventory/InventoryTableColumns";
 import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
-
-const useInventoryData = (params: DataQueryHookParams): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['inventory-data', currentPage, pageLimit, filters, searchQuery],
-    queryFn: async () => {
-      const rpcFilters = buildRpcFilters({
-        ...filters,
-        or: searchQuery ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,asset_tag.ilike.%${searchQuery}%)` : undefined,
-      });
-
-      const { data: rpcData, error: rpcError } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_inventory_items',
-        p_limit: pageLimit,
-        p_offset: (currentPage - 1) * pageLimit,
-        p_filters: rpcFilters,
-        p_order_by: 'created_at',
-        p_order_dir: 'desc',
-      });
-
-      if (rpcError) throw rpcError;
-      return rpcData as PagedDataResult<V_inventory_itemsRowSchema>;
-    },
-  });
-
-  return {
-    data: data?.data ?? [],
-    totalCount: data?.total_count ?? 0,
-    activeCount: data?.active_count ?? 0, // Note: status is not on this table, so these are placeholders
-    inactiveCount: data?.inactive_count ?? 0,
-    isLoading,
-    isFetching,
-    error: (error as Error) ?? null,
-    refetch: () => { void refetch(); },
-  };
-};
-
+import { useInventoryData } from "@/hooks/data/useInventoryData";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -67,6 +28,7 @@ export default function InventoryPage() {
     tableName: 'inventory_items',
     dataQueryHook: useInventoryData,
     displayNameField: 'name',
+    searchColumn: ['name', 'description', 'asset_no'],
   });
 
   const columns = getInventoryTableColumns();
@@ -79,7 +41,6 @@ export default function InventoryPage() {
       onDelete: canPerformActions ? crudActions.handleDelete : undefined,
     });
     
-    // Add QR Code action
     standardActions.unshift({
       key: 'qr-code',
       label: 'View QR Code',
@@ -91,7 +52,9 @@ export default function InventoryPage() {
     return standardActions;
   }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
 
-  const headerActions = useStandardHeaderActions({
+  const headerActions = useStandardHeaderActions<'v_inventory_items'>({
+    // THE FIX: The `data` prop is now correctly cast to the view's row type,
+    // and the exportConfig also correctly references the view name.
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
     onAddNew: canPerformActions ? editModal.openAdd : undefined,
