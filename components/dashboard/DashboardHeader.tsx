@@ -12,7 +12,6 @@ import { Cloud, CloudOff, AlertTriangle, RefreshCw } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useDataSync } from "@/hooks/data/useDataSync";
 import { useCallback, useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +21,7 @@ interface DashboardHeaderProps {
   title?: string;
 }
 
-// New Sync Status Indicator Component
+// Sync Status Indicator Component remains unchanged
 const SyncStatusIndicator = () => {
   const { pendingCount, failedCount } = useMutationQueue();
   const isOnline = useOnlineStatus();
@@ -68,18 +67,17 @@ export default function DashboardHeader({
   title = "Dashboard",
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
-  const { isSyncing, refetchSync } = useDataSync();
+  // THE FIX: Renamed 'refetchSync' to 'sync' for clarity.
+  const { isSyncing, sync } = useDataSync();
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // THE FIX: The handler is now simpler. It just calls the sync function.
+  // The toast notifications are handled inside the useDataSync hook.
   const handleRefresh = useCallback(() => {
-    toast.promise(refetchSync(), {
-      loading: 'Starting manual data sync with the server...',
-      success: 'Local data successfully synced!',
-      error: (err: Error) => `Sync failed: ${err.message}`,
-    });
-  }, [refetchSync]);
+    sync();
+  }, [sync]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -113,7 +111,6 @@ export default function DashboardHeader({
               <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* THE FIX: Conditional rendering for mobile vs desktop */}
             {isMobile ? (
               <div ref={menuRef}>
                 <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="block">
@@ -150,7 +147,6 @@ export default function DashboardHeader({
                 </AnimatePresence>
               </div>
             ) : (
-              // Desktop View
               <>
                 <div className="group">
                   <Link
