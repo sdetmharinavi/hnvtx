@@ -7,6 +7,8 @@ interface FiberConnection {
   id: string;
   ofc_route_name: string | null;
   fiber_no_sn: number | null;
+  updated_fiber_no_sn: number | null;
+  updated_fiber_no_en: number | null;
 }
 
 export interface TraceRoutes {
@@ -37,24 +39,27 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
 
           const { data, error } = await supabase
             .from("v_ofc_connections_complete")
-            .select("id, ofc_route_name, fiber_no_sn")
+            .select("id, ofc_route_name, fiber_no_sn, updated_fiber_no_sn, updated_fiber_no_en")
             .in("id", validIds);
 
           if (error) throw error;
-          
+
           // Order the results based on the original ID array order
-          const dataMap = new Map(data.map(item => [item.id, item]));
-          return validIds.map(id => dataMap.get(id)).filter(Boolean) as FiberConnection[];
+          const dataMap = new Map(data.map((item) => [item.id, item]));
+          return validIds.map((id) => dataMap.get(id)).filter(Boolean) as FiberConnection[];
         };
 
         // Helper function to format route string
         const formatRoute = (fibers: FiberConnection[]): string => {
           if (fibers.length === 0) return "No route configured";
-          
+
           return fibers
-            .map(
-              (f) =>
-                `${f.ofc_route_name || 'Unknown Route'} (F${f.fiber_no_sn})`
+            .map((f) =>
+              f.updated_fiber_no_sn && f.updated_fiber_no_en
+                ? `${f.ofc_route_name || "Unknown Route"} (F${f.updated_fiber_no_sn}/${
+                    f.updated_fiber_no_en
+                  })`
+                : `${f.ofc_route_name || "Unknown Route"} (F${f.fiber_no_sn})`
             )
             .join(" → ");
         };

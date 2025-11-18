@@ -141,6 +141,7 @@ export default function SystemConnectionsPage() {
     setTraceModalData(null);
     try {
       const traceData = await tracePath(record);
+      
       setTraceModalData(traceData);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to trace path");
