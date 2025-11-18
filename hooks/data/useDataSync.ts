@@ -7,7 +7,14 @@ import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+// THE FIX: This is the single, correct list of all tables AND views we want to cache locally.
+// All of these will be fetched via the get_paged_data RPC to bypass RLS.
 const entitiesToSync: PublicTableOrViewName[] = [
+  'lookup_types',
+  'employee_designations',
+  'user_profiles',
+  'diary_notes',
+  'inventory_items',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -16,26 +23,10 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_maintenance_areas',
   'v_cable_utilization',
   'v_ring_nodes',
-  'lookup_types',
-  'employee_designations',
-  'user_profiles', // We sync the base table
-  'diary_notes',
   'v_employee_designations',
-  // THE FIX: 'v_user_profiles_extended' is removed from the sync list
+  'v_inventory_items',
+  'v_user_profiles_extended',
 ];
-
-const viewNames = new Set<PublicTableOrViewName>([
-    'v_nodes_complete',
-    'v_ofc_cables_complete',
-    'v_systems_complete',
-    'v_rings',
-    'v_employees',
-    'v_maintenance_areas',
-    'v_cable_utilization',
-    'v_ring_nodes',
-    'v_employee_designations',
-    // 'v_user_profiles_extended' is removed
-]);
 
 export async function syncEntity(
   supabase: SupabaseClient,
@@ -45,28 +36,22 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
+    // --- THE DEFINITIVE FIX ---
+    // ALWAYS use the `get_paged_data` RPC. This is the only secure and reliable way to bypass RLS
+    // for a full data sync for both tables and views.
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+      p_view_name: entityName,
+      p_limit: 50000,
+      p_offset: 0,
+      p_filters: {}, 
+    });
+
+    if (rpcError) throw rpcError;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let data: any[] | null = null;
-
-    if (viewNames.has(entityName)) {
-      const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
-        p_view_name: entityName,
-        p_limit: 50000,
-        p_offset: 0,
-      });
-      if (rpcError) throw rpcError;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data = (rpcResponse as { data: any[] })?.data || [];
-    } else {
-      const { data: tableData, error: tableError } = await supabase.from(entityName).select('*');
-      if (tableError) throw tableError;
-      data = tableData;
-    }
+    const data = (rpcResponse as { data: any[] })?.data || [];
     
-    if (!data) {
-        throw new Error("No data returned from the server.");
-    }
-
+    // The previous `validData` filter is crucial.
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);

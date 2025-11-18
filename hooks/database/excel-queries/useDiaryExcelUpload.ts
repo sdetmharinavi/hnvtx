@@ -1,13 +1,12 @@
 // hooks/database/excel-queries/useDiaryExcelUpload.ts
 import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
-import { EnhancedUploadResult, logRowProcessing, validateValue, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, validateValue, ValidationError } from './excel-helpers';
 import { Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
+import { createClient } from '@/utils/supabase/client'; // THE FIX: Import createClient
 
 export interface DiaryUploadOptions {
   file: File;
@@ -39,10 +38,10 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
 };
 
 export function useDiaryExcelUpload(
-  supabase: SupabaseClient<Database>,
-  options?: UseExcelUploadOptions<'diary_notes'>
+  // THE FIX: supabase client is no longer passed as an argument
 ) {
-  const { showToasts = true, ...mutationOptions } = options || {};
+  const supabase = createClient(); // THE FIX: Get the client instance here
+  const { showToasts = true, ...mutationOptions } = {} as UseExcelUploadOptions<'diary_notes'>;
   const queryClient = useQueryClient();
 
   return useMutation<EnhancedUploadResult, Error, DiaryUploadOptions>({
@@ -91,7 +90,6 @@ export function useDiaryExcelUpload(
         const processedData: Record<string, unknown> = {};
 
         for (const mapping of columns) {
-            // Skip user_id processing for now, we'll handle it specially
             if (mapping.dbKey === 'user_id') continue;
 
             const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
@@ -106,7 +104,6 @@ export function useDiaryExcelUpload(
             processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
         
-        // THE FIX: Implement the new flexible logic for user_id
         if (isAdmin) {
             if (hasUserIdColumn) {
                 const userIdFromCell = row[headerMap['user_id']];
@@ -116,11 +113,9 @@ export function useDiaryExcelUpload(
                     processedData.user_id = userIdFromCell;
                 }
             } else {
-                // If admin uploads without a user_id column, assume it's for themselves.
                 processedData.user_id = currentUserId;
             }
         } else {
-            // For non-admins, always force their own user ID for security.
             processedData.user_id = currentUserId;
         }
 

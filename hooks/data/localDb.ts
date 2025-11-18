@@ -13,7 +13,8 @@ import {
   Junction_closuresRowSchema as Junction_closuresRow,
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
-  User_profilesRowSchema as BaseUserProfilesRow, // THE FIX: Import the base schema with an alias
+  User_profilesRowSchema as BaseUserProfilesRow,
+  Inventory_itemsRowSchema,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
   V_systems_completeRowSchema,
@@ -24,30 +25,20 @@ import {
   V_ring_nodesRowSchema,
   Diary_notesRowSchema,
   V_employee_designationsRowSchema,
+  V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
+  V_inventory_itemsRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 
-// --- THE DEFINITIVE FIX ---
-// Create a new, specific type for the user_profiles table as it is stored in Dexie.
-// This overrides the generic `Json` type for `address` and `preferences`
-// with the actual object shapes, resolving the complex Dexie type error permanently.
 export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
-  address: {
-    street?: string | null;
-    city?: string | null;
-    state?: string | null;
-    zip_code?: string | null;
-    country?: string | null;
-  } | null;
-  preferences: {
-    language?: string | null;
-    theme?: string | null;
-    needsOnboarding?: boolean | null;
-    showOnboardingPrompt?: boolean | null;
-  } | null;
+  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
 };
-// --- END FIX ---
 
+export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences'> & {
+  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+};
 
 export interface SyncStatus {
   tableName: string;
@@ -82,9 +73,9 @@ export class HNVTMDatabase extends Dexie {
   junction_closures!: Table<Junction_closuresRow, string>;
   fiber_splices!: Table<Fiber_splicesRow, string>;
   system_connections!: Table<System_connectionsRow, string>;
-  // THE FIX: Use our new, specific `StoredUserProfiles` type for the Dexie Table definition.
   user_profiles!: Table<StoredUserProfiles, string>;
   diary_notes!: Table<Diary_notesRowSchema, string>;
+  inventory_items!: Table<Inventory_itemsRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -95,40 +86,47 @@ export class HNVTMDatabase extends Dexie {
   v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
   v_ring_nodes!: Table<V_ring_nodesRowSchema, string>;
   v_employee_designations!: Table<V_employee_designationsRowSchema, string>;
+  v_inventory_items!: Table<V_inventory_itemsRowSchema, string>;
+  v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    // Version remains 10 as we are only changing TypeScript types, not the underlying schema structure.
-    this.version(10).stores({
+    // THE FIX: Incremented version to 13 and added the missing `note_date` index.
+    this.version(13).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
-      employees: '&id, employee_name, employee_pers_no, employee_designation_id, maintenance_terminal_id',
-      nodes: '&id, name, node_type_id, maintenance_terminal_id',
-      rings: '&id, name, ring_type_id, maintenance_terminal_id',
-      ofc_cables: '&id, route_name, sn_id, en_id, ofc_type_id',
-      systems: '&id, system_name, node_id, system_type_id',
-      cable_segments: '&id, original_cable_id, start_node_id, end_node_id',
-      junction_closures: '&id, node_id, ofc_cable_id',
-      fiber_splices: '&id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
-      system_connections: '&id, system_id, sn_id, en_id, connected_link_type_id',
+      employees: '&id, employee_name, employee_pers_no',
+      nodes: '&id, name, node_type_id',
+      rings: '&id, name, ring_type_id',
+      ofc_cables: '&id, route_name, sn_id, en_id',
+      systems: '&id, system_name, node_id',
+      cable_segments: '&id, original_cable_id',
+      junction_closures: '&id, node_id',
+      fiber_splices: '&id, jc_id',
+      system_connections: '&id, system_id',
       user_profiles: '&id, first_name, last_name, role',
+      // THE FIX: Added `note_date` as a separate index for querying.
       diary_notes: '&id, &[user_id+note_date], note_date',
-      v_nodes_complete: '&id, name, node_type_id',
-      v_ofc_cables_complete: '&id, route_name, sn_id, en_id',
-      v_systems_complete: '&id, system_name, node_id, system_type_id',
-      v_rings: '&id, name, ring_type_id',
-      v_employees: '&id, employee_name, employee_designation_id',
-      v_maintenance_areas: '&id, name, area_type_id',
+      inventory_items: '&id, asset_no, name',
+      
+      v_nodes_complete: '&id, name',
+      v_ofc_cables_complete: '&id, route_name',
+      v_systems_complete: '&id, system_name',
+      v_rings: '&id, name',
+      v_employees: '&id, employee_name',
+      v_maintenance_areas: '&id, name',
       v_cable_utilization: 'cable_id',
-      v_ring_nodes: '&id, ring_id, name',
-      v_employee_designations: '&id, name, parent_id',
+      v_ring_nodes: '&id, ring_id',
+      v_employee_designations: '&id, name',
+      v_inventory_items: '&id, asset_no, name',
+      v_user_profiles_extended: '&id, email, full_name, role, status',
       
       sync_status: 'tableName',
-      mutation_queue: '++id, timestamp, status, tableName',
+      mutation_queue: '++id, timestamp, status',
     });
   }
 }
@@ -138,7 +136,7 @@ export const localDb = new HNVTMDatabase();
 export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
     const table = localDb.table(tableName);
     if (!table) {
-        throw new Error(`Invalid table or view name "${tableName}" provided to getTable.`);
+        throw new Error(`Table ${tableName} does not exist`);
     }
     return table as Table<Row<T>, string>;
 }

@@ -6,8 +6,9 @@
 -- using format() with %I for identifiers and %L for literals.
 
 -- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
--- THE FIX: Added an optional 'row_limit' parameter for compatibility with hooks
--- that send this parameter name by default. The function prioritizes p_limit.
+
+-- THE DEFINITIVE FIX: The count query now explicitly casts the status column to text before comparison.
+-- This resolves the "operator does not exist: text = boolean" error.
 CREATE OR REPLACE FUNCTION public.get_paged_data(
     p_view_name TEXT, 
     p_limit INT, 
@@ -15,7 +16,7 @@ CREATE OR REPLACE FUNCTION public.get_paged_data(
     p_order_by TEXT DEFAULT 'name',
     p_order_dir TEXT DEFAULT 'asc', 
     p_filters JSONB DEFAULT '{}',
-    row_limit INT DEFAULT NULL -- Added for compatibility
+    row_limit INT DEFAULT NULL
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -30,7 +31,6 @@ DECLARE
     status_column_exists BOOLEAN;
     effective_limit INT;
 BEGIN
-    -- Use p_limit if provided, otherwise fall back to row_limit
     effective_limit := COALESCE(p_limit, row_limit, 1000);
 
     status_column_exists := public.column_exists('public', p_view_name, 'status');
@@ -54,8 +54,10 @@ BEGIN
     );
 
     IF status_column_exists THEN
+        -- THE FIX: Cast the status column to text before comparing with 'true' or 'false'.
+        -- This works for both actual boolean columns and text columns containing 'true'/'false'.
         count_query := format(
-            'SELECT count(*), count(*) FILTER (WHERE v.status = true), count(*) FILTER (WHERE v.status = false)
+            'SELECT count(*), count(*) FILTER (WHERE v.status::text = ''true''), count(*) FILTER (WHERE v.status::text = ''false'')
              FROM public.%I v %s', p_view_name, where_clause
         );
         EXECUTE count_query INTO total_records, active_records, inactive_records;
@@ -73,5 +75,4 @@ BEGIN
 END;
 $$;
 
--- THE FIX: Update the GRANT statement to include the new optional parameter.
 GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB, INT) TO authenticated;
