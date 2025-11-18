@@ -134,13 +134,15 @@ export const LoadingCard: React.FC<{
   </div>
 );
 
+// THE FIX: Changed from `items-center` to `items-start` and added `pt-10` to position
+// the loader near the top, making it less obtrusive.
 export const BlurLoader: React.FC<{
   className?: string;
 }> = ({ className }) => (
-  <div className={cn('absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm', className)}>
-    <div className='flex items-center space-x-2 text-gray-500'>
+  <div className={cn('absolute inset-0 bg-white/50 dark:bg-gray-900/50 z-20 flex items-start justify-center pt-10 backdrop-blur-sm pointer-events-none', className)}>
+    <div className='flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-md border dark:border-gray-700'>
       <div className='h-5 w-5 animate-spin rounded-full border-b-2 border-blue-500'></div>
-      <span>Refreshing data...</span>
+      <span className="text-gray-600 dark:text-gray-300">Syncing latest data...</span>
     </div>
   </div>
 );

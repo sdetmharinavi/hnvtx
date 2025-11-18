@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { localDb, HNVTMDatabase, getTable } from '@/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
-import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 const entitiesToSync: PublicTableOrViewName[] = [
@@ -23,7 +22,6 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'diary_notes',
 ];
 
-// A set of our view names for a fast lookup
 const viewNames = new Set<PublicTableOrViewName>([
     'v_nodes_complete',
     'v_ofc_cables_complete',
@@ -46,9 +44,7 @@ export async function syncEntity(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any[] | null = null;
 
-    // THE DEFINITIVE FIX: Use the correct data fetching strategy based on entity type.
     if (viewNames.has(entityName)) {
-      // For VIEWS, use the RPC to bypass RLS issues.
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
         p_view_name: entityName,
         p_limit: 50000,
@@ -58,7 +54,6 @@ export async function syncEntity(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data = (rpcResponse as { data: any[] })?.data || [];
     } else {
-      // For TABLES, use a direct select.
       const { data: tableData, error: tableError } = await supabase.from(entityName).select('*');
       if (tableError) throw tableError;
       data = tableData;
@@ -76,7 +71,6 @@ export async function syncEntity(
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
   } catch (err) {
-    // IMPROVED ERROR LOGGING
     const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
     console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage, JSON.stringify(err, null, 2));
     await db.sync_status.put({
@@ -93,38 +87,43 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
 
+  // THE FIX: The toast logic is now self-contained within the query function using toast.promise.
+  // The useEffect that caused the loop has been removed.
   const { isLoading, isError, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
-    queryFn: async () => {
-      const results = await Promise.allSettled(
-        entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
-      );
-      
-      const failedEntities = results
-        .map((result, index) => ({ result, name: entitiesToSync[index] }))
-        .filter(item => item.result.status === 'rejected');
-
-      if (failedEntities.length > 0) {
-        // Construct a more detailed error message
-        const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
-        throw new Error(`Failed to sync the following entities: ${errorDetails}`);
-      }
-      return { lastSynced: new Date().toISOString() };
-    },
+    queryFn: () => 
+      toast.promise(
+        async () => {
+          const results = await Promise.allSettled(
+            entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
+          );
+          
+          const failedEntities = results
+            .map((result, index) => ({ result, name: entitiesToSync[index] }))
+            .filter(item => item.result.status === 'rejected');
+    
+          if (failedEntities.length > 0) {
+            const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
+            throw new Error(`Failed to sync the following entities: ${errorDetails}`);
+          }
+          return { lastSynced: new Date().toISOString() };
+        },
+        {
+          loading: 'Syncing data with server...',
+          success: 'Local data is up to date.',
+          error: (err: Error) => `Data sync failed: ${err.message}`,
+        }
+      ),
     staleTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
 
-  useEffect(() => {
-    if (isLoading && !syncStatus?.some(s => s.status === 'syncing')) {
-      toast.info("Starting data sync with server...", { id: 'sync-status' });
-    } else if (!isLoading && !isError) {
-      toast.success("Local data is up to date.", { id: 'sync-status' });
-    } else if (isError) {
-      toast.error(`Data sync failed: ${error.message}`, { id: 'sync-status', duration: 10000 });
-    }
-  }, [isLoading, isError, error, syncStatus]);
-
-  return { isSyncing: isLoading, syncError: error, syncStatus, refetchSync: refetch };
+  return { 
+    isSyncing: isLoading, 
+    syncError: error, 
+    syncStatus, 
+    // THE FIX: Renamed for clarity. This function triggers the sync.
+    sync: refetch 
+  };
 }
