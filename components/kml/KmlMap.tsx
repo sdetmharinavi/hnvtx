@@ -24,6 +24,16 @@ interface KmlMapProps {
   kmlUrl: string | null;
 }
 
+// Helper to generate random bright colors
+const getRandomColor = () => {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
+
 // Component to auto-zoom to the KML bounds and handle resize
 const MapController = ({ 
   data, 
@@ -124,17 +134,52 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     fetchAndParseKml();
   }, [kmlUrl]);
 
-  // Style for GeoJSON features
+  // Style for GeoJSON features & Event Handling
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onEachFeature = (feature: any, layer: L.Layer) => {
     if (feature.properties) {
       const { name, description } = feature.properties;
-      let popupContent = `<div class="font-sans p-1">`;
-      if (name) popupContent += `<h3 class="font-bold text-sm mb-1">${name}</h3>`;
-      if (description) popupContent += `<div class="text-xs text-gray-600">${description}</div>`;
-      popupContent += `</div>`;
       
-      layer.bindPopup(popupContent);
+      if (name || description) {
+        let popupContent = `<div class="font-sans p-1">`;
+        if (name) popupContent += `<h3 class="font-bold text-sm mb-1">${name}</h3>`;
+        if (description) popupContent += `<div class="text-xs text-gray-600 max-h-32 overflow-y-auto">${description}</div>`;
+        popupContent += `</div>`;
+        
+        layer.bindPopup(popupContent, {
+          autoClose: false,    
+          closeOnClick: false, 
+          closeButton: true    
+        });
+
+        // Event Listeners for Highlighting
+        layer.on({
+          // When popup opens (user clicked the line)
+          popupopen: (e) => {
+             const l = e.target;
+             // Check if it's a polyline/polygon (has setStyle method)
+             if (l.setStyle) {
+               const randomColor = getRandomColor();
+               l.setStyle({
+                 color: randomColor,
+                 weight: 7, // Make it thicker
+                 opacity: 1
+               });
+             }
+          },
+          // When popup closes (user clicked X)
+          popupclose: (e) => {
+            const l = e.target;
+            if (l.setStyle) {
+              l.setStyle({
+                color: "#3b82f6", // Revert to default blue
+                weight: 4, // Revert to default thickness
+                opacity: 0.8
+              });
+            }
+          }
+        });
+      }
     }
   };
 
@@ -165,6 +210,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         zoom={10}
         style={{ height: '100%', width: '100%' }}
         className="z-0 bg-gray-100 dark:bg-gray-800"
+        closePopupOnClick={false} // Disable map click closing popups
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -178,7 +224,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
               data={geoJsonData} 
               onEachFeature={onEachFeature}
               style={() => ({
-                color: "#3b82f6", // Blue color for lines
+                color: "#3b82f6", // Default Blue color
                 weight: 4,
                 opacity: 0.8
               })}
