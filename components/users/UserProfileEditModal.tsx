@@ -12,17 +12,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput, FormDateInput } from '../common/form/FormControls';
 import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
-import { user_profilesUpdateSchema, V_user_profiles_extendedRowSchema, v_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { user_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 import { useUser } from '@/providers/UserProvider';
-import { Json } from '@/types/supabase-types';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/common/ui/select/Select';
 
 // THE FIX: Define a form schema that is perfectly compatible with the incoming `v_user_profiles_extendedRowSchema` prop.
 // We do this by taking the base update schema and overriding the nested objects to match the view's structure (without `undefined`).
@@ -55,11 +47,40 @@ interface UserProfileEditProps {
   isOpen: boolean;
 }
 
-const toObject = (val: unknown): Record<string, unknown> => {
-  if (val && typeof val === 'object' && !Array.isArray(val)) {
-    return val as Record<string, unknown>;
-  }
-  return {};
+// Normalize the view row (nullable fields) into form data (optional fields)
+const normalizeUserToForm = (user: V_user_profiles_extendedRowSchema): UserProfileFormData => {
+  return {
+    // scalars: convert null -> undefined where the update schema expects optional
+    avatar_url: user.avatar_url ?? undefined,
+    first_name: user.first_name ?? undefined,
+    last_name: user.last_name ?? undefined,
+    phone_number: user.phone_number ?? undefined,
+    date_of_birth: user.date_of_birth ?? undefined,
+    designation: user.designation ?? undefined,
+    role: user.role ?? undefined,
+    status: user.status ?? "inactive",
+    // created_at: user.created_at ?? undefined,
+    // updated_at: user.updated_at ?? undefined,
+
+    // nested objects: keep null as null, otherwise coerce to the expected shape
+    address: user.address
+      ? {
+          street: user.address.street ?? null,
+          city: user.address.city ?? null,
+          state: user.address.state ?? null,
+          zip_code: user.address.zip_code ?? null,
+          country: user.address.country ?? null,
+        }
+      : null,
+    preferences: user.preferences
+      ? {
+          language: user.preferences.language ?? null,
+          theme: user.preferences.theme ?? null,
+          needsOnboarding: user.preferences.needsOnboarding ?? null,
+          showOnboardingPrompt: user.preferences.showOnboardingPrompt ?? null,
+        }
+      : null,
+  } as UserProfileFormData;
 };
 
 const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
@@ -82,13 +103,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
-      reset({
-        // Spread the user data, which now matches the form schema's top-level fields
-        ...user,
-        // Ensure nested objects are correctly handled, even if they are null
-        address: toObject(user.address),
-        preferences: toObject(user.preferences),
-      });
+      reset(normalizeUserToForm(user));
     } else {
       reset(); // Reset to default form values if no user is provided
     }
@@ -122,6 +137,9 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
       }
     }
 
+    console.log(updateParams);
+    
+
     try {
       await updateProfile.mutateAsync(updateParams as AdminUpdateUserProfile);
       onSave?.();
@@ -131,9 +149,44 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     }
   };
 
+ const onInvalidSubmit = () => {
+    // Get all error messages from the form
+    const errorMessages: string[] = [];
+    
+    // Iterate through all errors and collect messages
+    Object.entries(errors).forEach(([field, error]) => {
+      if (error?.message) {
+        errorMessages.push(`${field}: ${error.message}`);
+      }
+      
+      // Handle nested errors (address, preferences)
+      if (typeof error === 'object' && error !== null && !error.message) {
+        Object.entries(error).forEach(([nestedField, nestedError]) => {
+          if (nestedError && typeof nestedError === 'object' && 'message' in nestedError) {
+            errorMessages.push(`${field}.${nestedField}: ${nestedError.message}`);
+          }
+        });
+      }
+    });
+    
+    // Display error messages
+    if (errorMessages.length > 0) {
+      toast.error('Validation failed', {
+        description: errorMessages.join('\n'),
+        duration: 5000,
+      });
+      
+      // Also log to console for debugging
+      console.error('Form validation errors:', errors);
+    } else {
+      toast.error('Form validation failed. Please check your inputs.');
+      console.error('Form validation errors:', errors);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="full" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
-      <FormCard onSubmit={handleSubmit(onValidSubmit)} isLoading={isSubmitting} title="Edit User Profile" onCancel={onClose} submitText="Update" disableSubmit={!isDirty}>
+      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} isLoading={isSubmitting} title="Edit User Profile" onCancel={onClose} submitText="Update" disableSubmit={!isDirty}>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-4">
             <Image src={avatarUrl || '/default-avatar.png'} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover bg-gray-200" />
