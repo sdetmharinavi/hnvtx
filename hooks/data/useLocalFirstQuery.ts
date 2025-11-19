@@ -6,8 +6,6 @@ import { useEffect } from 'react';
 import { PublicTableOrViewName, Row } from '@/hooks/database';
 import { Table, PromiseExtended } from 'dexie';
 
-// THE FIX: Added a second generic parameter `TLocal` to represent the Dexie-specific type.
-// `TRow` now defaults to `Row<T>`, but `TLocal` defaults to `TRow`, allowing for overrides.
 interface UseLocalFirstQueryOptions<
   T extends PublicTableOrViewName,
   TRow = Row<T>,
@@ -16,7 +14,8 @@ interface UseLocalFirstQueryOptions<
   queryKey: QueryKey;
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => PromiseExtended<TLocal[]>;
-  dexieTable: Table<TLocal, string>; // This now uses TLocal
+  localQueryDeps?: unknown[]; // THE FIX: Added an optional dependency array for the local query.
+  dexieTable: Table<TLocal, string>;
   enabled?: boolean;
   staleTime?: number;
 }
@@ -29,6 +28,7 @@ export function useLocalFirstQuery<
   queryKey,
   onlineQueryFn,
   localQueryFn,
+  localQueryDeps = [], // THE FIX: Destructure the new prop with a default value.
   dexieTable,
   // enabled = true,
   staleTime = 5 * 60 * 1000,
@@ -36,8 +36,8 @@ export function useLocalFirstQuery<
   // const isOnline = useOnlineStatus();
   // const queryClient = useQueryClient();
 
-  // This `useLiveQuery` will now correctly return `TLocal[] | undefined`
-  const localData = useLiveQuery(localQueryFn, [], undefined);
+  // THE FIX: Pass the dependencies to useLiveQuery so it re-subscribes when they change.
+  const localData = useLiveQuery(localQueryFn, localQueryDeps, undefined);
 
   const {
     data: networkData,

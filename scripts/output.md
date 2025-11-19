@@ -1295,25 +1295,26 @@ export function QueryProvider({ children }: { children: ReactNode }) {
 import { createContext, useContext, ReactNode } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
 import { UserRole } from '@/types/user-roles';
-// THE FIX: PageSpinner is no longer needed here.
-// import { PageSpinner } from '@/components/common/ui';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { UseQueryResult } from '@tanstack/react-query';
 
 interface UserContextType {
+  profile: V_user_profiles_extendedRowSchema | null;
   role: UserRole | null;
   isSuperAdmin: boolean | null;
   isLoading: boolean;
   canAccess: (allowedRoles?: string[]) => boolean;
+  refetch: () => Promise<UseQueryResult>;
+  error: Error | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const { role, isSuperAdmin, isLoading, canAccess } = useUserPermissionsExtended();
+  const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } = useUserPermissionsExtended();
 
-  // THE FIX: The provider should ONLY provide context. It should not render a loading state itself.
-  // The consumer of the context will decide what to do while isLoading is true.
   return (
-    <UserContext.Provider value={{ role: role as UserRole | null, isSuperAdmin, isLoading, canAccess }}>
+    <UserContext.Provider value={{ profile, role: role as UserRole | null, isSuperAdmin, isLoading, canAccess, refetch: refetch as () => Promise<UseQueryResult>, error }}>
       {children}
     </UserContext.Provider>
   );
@@ -1370,7 +1371,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 // providers/LocalDbProvider.tsx
 'use client';
 
-import { localDb, HNVTMDatabase } from '@/data/localDb';
+import { localDb, HNVTMDatabase } from '@/hooks/data/localDb';
 import { createContext, ReactNode, useContext } from 'react';
 
 const LocalDbContext = createContext<HNVTMDatabase | undefined>(undefined);
@@ -2434,4731 +2435,6 @@ async function main() {
 }
 
 main();
-
-```
-
-<!-- path: data/localDb.ts -->
-```typescript
-// data/localDb.ts
-import Dexie, { Table } from 'dexie';
-import {
-  Lookup_typesRowSchema as Lookup_typesRow,
-  Maintenance_areasRowSchema as Maintenance_areasRow,
-  Employee_designationsRowSchema as Employee_designationsRow,
-  EmployeesRowSchema as EmployeesRow,
-  NodesRowSchema as NodesRow,
-  RingsRowSchema as RingsRow,
-  Ofc_cablesRowSchema as Ofc_cablesRow,
-  SystemsRowSchema as SystemsRow,
-  Cable_segmentsRowSchema as Cable_segmentsRow,
-  Junction_closuresRowSchema as Junction_closuresRow,
-  Fiber_splicesRowSchema as Fiber_splicesRow,
-  System_connectionsRowSchema as System_connectionsRow,
-  User_profilesRowSchema as User_profilesRow,
-  V_nodes_completeRowSchema,
-  V_ofc_cables_completeRowSchema,
-  V_systems_completeRowSchema,
-  V_ringsRowSchema,
-  V_employeesRowSchema,
-  V_maintenance_areasRowSchema,
-  V_cable_utilizationRowSchema,
-  V_ring_nodesRowSchema,
-  Diary_notesRowSchema,
-} from '@/schemas/zod-schemas';
-import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
-
-export interface SyncStatus {
-  tableName: string;
-  lastSynced: string | null;
-  status: 'pending' | 'syncing' | 'success' | 'error';
-  error?: string;
-}
-
-export interface MutationTask {
-  id?: number;
-  tableName: PublicTableName;
-  type: 'insert' | 'update' | 'delete';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any;
-  timestamp: string;
-  status: 'pending' | 'processing' | 'success' | 'failed';
-  attempts: number;
-  lastAttempt?: string;
-  error?: string;
-}
-
-export class HNVTMDatabase extends Dexie {
-  lookup_types!: Table<Lookup_typesRow, string>;
-  maintenance_areas!: Table<Maintenance_areasRow, string>;
-  employee_designations!: Table<Employee_designationsRow, string>;
-  employees!: Table<EmployeesRow, string>;
-  nodes!: Table<NodesRow, string>;
-  rings!: Table<RingsRow, string>;
-  ofc_cables!: Table<Ofc_cablesRow, string>;
-  systems!: Table<SystemsRow, string>;
-  cable_segments!: Table<Cable_segmentsRow, string>;
-  junction_closures!: Table<Junction_closuresRow, string>;
-  fiber_splices!: Table<Fiber_splicesRow, string>;
-  system_connections!: Table<System_connectionsRow, string>;
-  user_profiles!: Table<User_profilesRow, string>;
-  diary_notes!: Table<Diary_notesRowSchema, string>;
-
-  v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
-  v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
-  v_systems_complete!: Table<V_systems_completeRowSchema, string>;
-  v_rings!: Table<V_ringsRowSchema, string>;
-  v_employees!: Table<V_employeesRowSchema, string>;
-  v_maintenance_areas!: Table<V_maintenance_areasRowSchema, string>;
-  v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
-  v_ring_nodes!: Table<V_ring_nodesRowSchema, string>;
-
-  sync_status!: Table<SyncStatus, string>;
-  mutation_queue!: Table<MutationTask, number>;
-
-  constructor() {
-    super('HNVTMDatabase');
-    // THE FIX: Incremented version number to apply schema changes.
-    this.version(6).stores({
-      lookup_types: 'id, category, name',
-      maintenance_areas: 'id, name, parent_id, area_type_id',
-      employee_designations: 'id, name, parent_id',
-      employees: 'id, employee_name, employee_pers_no, employee_designation_id, maintenance_terminal_id',
-      nodes: 'id, name, node_type_id, maintenance_terminal_id',
-      rings: 'id, name, ring_type_id, maintenance_terminal_id',
-      ofc_cables: 'id, route_name, sn_id, en_id, ofc_type_id',
-      systems: 'id, system_name, node_id, system_type_id',
-      cable_segments: 'id, original_cable_id, start_node_id, end_node_id',
-      junction_closures: 'id, node_id, ofc_cable_id',
-      fiber_splices: 'id, jc_id, incoming_segment_id, outgoing_segment_id, logical_path_id',
-      system_connections: 'id, system_id, sn_id, en_id, connected_link_type_id',
-      user_profiles: 'id, first_name, last_name, role',
-      // THE FIX: Added a compound index on user_id and note_date for efficient lookups.
-      diary_notes: 'id, &[user_id+note_date], note_date',
-      v_nodes_complete: 'id, name, node_type_id',
-      v_ofc_cables_complete: 'id, route_name, sn_id, en_id',
-      v_systems_complete: 'id, system_name, node_id, system_type_id',
-      v_rings: 'id, name, ring_type_id',
-      v_employees: 'id, employee_name, employee_designation_id',
-      v_maintenance_areas: 'id, name, area_type_id',
-      v_cable_utilization: 'cable_id',
-      v_ring_nodes: 'id, ring_id, name',
-      
-      sync_status: 'tableName',
-      mutation_queue: '++id, timestamp, status, tableName',
-    });
-  }
-}
-
-export const localDb = new HNVTMDatabase();
-
-export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
-    const table = localDb.table(tableName);
-    if (!table) {
-        throw new Error(`Invalid table or view name "${tableName}" provided to getTable.`);
-    }
-    return table as Table<Row<T>, string>;
-}
-```
-
-<!-- path: data/migrations/05_auditing/03_triggers_attach_all.sql -->
-```sql
--- Path: migrations/05_auditing/03_triggers_attach_all.sql
--- Description: Dynamically attaches the log_data_changes trigger to all relevant tables.
--- This script is idempotent and can be re-run safely.
-
-DO $$
-DECLARE
-    table_rec RECORD;
-    trigger_name TEXT;
-BEGIN
-    -- Loop through all user tables in the 'public' schema
-    FOR table_rec IN
-        SELECT t.table_name
-        FROM information_schema.tables t
-        WHERE t.table_schema = 'public'
-          AND t.table_type = 'BASE TABLE'
-          -- Exclude the log table itself to prevent infinite loops
-          AND t.table_name <> 'user_activity_logs'
-          -- Only attach to tables that have an 'id' column, which is our standard for auditable records
-          AND EXISTS (
-              SELECT 1
-              FROM information_schema.columns c
-              WHERE c.table_schema = t.table_schema
-                AND c.table_name = t.table_name
-                AND c.column_name = 'id'
-          )
-    LOOP
-        trigger_name := table_rec.table_name || '_log_trigger';
-
-        -- Drop the trigger if it already exists to ensure it's up-to-date
-        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;', trigger_name, table_rec.table_name);
-
-        -- Create the new trigger
-        EXECUTE format('CREATE TRIGGER %I ' ||
-                       'AFTER INSERT OR UPDATE OR DELETE ON public.%I ' ||
-                       'FOR EACH ROW EXECUTE FUNCTION public.log_data_changes();',
-                       trigger_name,
-                       table_rec.table_name);
-
-        RAISE NOTICE 'Created/Refreshed audit trigger on table: public.%', table_rec.table_name;
-    END LOOP;
-END;
-$$;
-```
-
-<!-- path: data/migrations/05_auditing/01_table_user_activity_logs.sql -->
-```sql
--- Path: migrations/05_auditing/01_table_user_activity_logs.sql
--- Description: Defines the table for storing all user activity and data change logs.
-
-CREATE TABLE IF NOT EXISTS public.user_activity_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    user_role TEXT,
-    action_type TEXT NOT NULL,
-    table_name TEXT,
-    record_id TEXT,
-    old_data JSONB,
-    new_data JSONB,
-    details TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- Add indexes for better query performance on the logs table
-CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user_id ON public.user_activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_activity_logs_action_type ON public.user_activity_logs(action_type);
-CREATE INDEX IF NOT EXISTS idx_user_activity_logs_table_name ON public.user_activity_logs(table_name);
-```
-
-<!-- path: data/migrations/05_auditing/02_functions.sql -->
-```sql
--- Path: migrations/05_auditing/02_functions.sql
--- Description: Core functions for the auditing system.
-
--- Function 1: log_user_activity()
--- This is the generic logging function that inserts a record into the audit table.
--- It can be called directly for custom actions or by the trigger function for data changes.
-CREATE OR REPLACE FUNCTION public.log_user_activity(
-    p_action_type TEXT,
-    p_table_name TEXT DEFAULT NULL,
-    p_record_id TEXT DEFAULT NULL,
-    p_old_data JSONB DEFAULT NULL,
-    p_new_data JSONB DEFAULT NULL,
-    p_details TEXT DEFAULT NULL
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-    INSERT INTO public.user_activity_logs (
-        user_id,
-        user_role,
-        action_type,
-        table_name,
-        record_id,
-        old_data,
-        new_data,
-        details
-    )
-    VALUES (
-        auth.uid(),
-        public.get_my_role(),
-        p_action_type,
-        p_table_name,
-        p_record_id,
-        p_old_data,
-        p_new_data,
-        p_details
-    );
-END;
-$$;
-
-
--- Function 2: log_data_changes()
--- This is the TRIGGER function that will be attached to tables.
--- It captures INSERT, UPDATE, DELETE events and calls log_user_activity() with the correct data.
-CREATE OR REPLACE FUNCTION public.log_data_changes()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-    v_record_id TEXT;
-BEGIN
-    IF (TG_OP = 'INSERT') THEN
-        v_record_id := NEW.id::TEXT;
-        PERFORM public.log_user_activity(
-            'INSERT',
-            TG_TABLE_NAME,
-            v_record_id,
-            NULL,
-            row_to_json(NEW)::jsonb
-        );
-        RETURN NEW;
-    ELSIF (TG_OP = 'UPDATE') THEN
-        v_record_id := NEW.id::TEXT;
-        PERFORM public.log_user_activity(
-            'UPDATE',
-            TG_TABLE_NAME,
-            v_record_id,
-            row_to_json(OLD)::jsonb,
-            row_to_json(NEW)::jsonb
-        );
-        RETURN NEW;
-    ELSIF (TG_OP = 'DELETE') THEN
-        v_record_id := OLD.id::TEXT;
-        PERFORM public.log_user_activity(
-            'DELETE',
-            TG_TABLE_NAME,
-            v_record_id,
-            row_to_json(OLD)::jsonb,
-            NULL
-        );
-        RETURN OLD;
-    END IF;
-    -- This line is unreachable in an AFTER trigger but is good practice.
-    RETURN NULL;
-END;
-$$;
-```
-
-<!-- path: data/migrations/05_auditing/04_rls_and_grants.sql -->
-```sql
--- Path: migrations/05_auditing/04_rls_and_grants.sql
--- Description: Secures the user_activity_logs table, allowing access only to admins.
-
--- Enable Row Level Security on the log table
-ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
-
--- Grant table-level permissions to the 'admin' role
-GRANT ALL ON public.user_activity_logs TO admin;
-
--- Drop existing policies for idempotency
-DROP POLICY IF EXISTS "Allow full access to admins" ON public.user_activity_logs;
-
--- Create a single policy granting full access (SELECT, INSERT, UPDATE, DELETE)
--- only to users who are super_admins or have the 'admin' role.
-CREATE POLICY "Allow full access to admins"
-ON public.user_activity_logs
-FOR ALL
-TO admin
-USING (is_super_admin() OR get_my_role() = 'admin')
-WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-```
-
-<!-- path: data/migrations/03_network_systems/07_rls_and_grants_logical_paths.sql -->
-```sql
--- path: data/migrations/03_network_systems/07_rls_and_grants_logical_paths.sql
--- Description: Defines all RLS policies and Grants for the new logical_paths table.
-
--- =================================================================
--- Section 1: Enable RLS and Grant Table-Level Permissions
--- =================================================================
-
--- Enable Row Level Security on the new table
-ALTER TABLE public.logical_paths ENABLE ROW LEVEL SECURITY;
-
--- Grant broad permissions to specific roles. RLS policies will handle the fine-grained access.
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO admin;
-GRANT SELECT ON public.logical_paths TO viewer;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO cpan_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO maan_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO sdh_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO asset_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.logical_paths TO mng_admin;
-
--- =================================================================
--- Section 2: RLS Policies for logical_paths
--- =================================================================
-
--- Drop existing policies for idempotency
-DROP POLICY IF EXISTS "Allow admin full access" ON public.logical_paths;
-DROP POLICY IF EXISTS "Allow viewers read-only access" ON public.logical_paths;
-DROP POLICY IF EXISTS "Allow system admins full access" ON public.logical_paths;
-
-
--- Policy 1: Admins and Super-Admins have unrestricted access.
-CREATE POLICY "Allow admin full access"
-ON public.logical_paths
-FOR ALL
-TO admin
-USING (is_super_admin() OR get_my_role() = 'admin')
-WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-
-
--- Policy 2: Viewers can see all logical paths.
-CREATE POLICY "Allow viewers read-only access"
-ON public.logical_paths
-FOR SELECT
-TO viewer
-USING (true);
-
-
--- Policy 3: System-specific admins (cpan_admin, maan_admin, etc.) can manage all paths.
--- Since paths can span different system types, it's simplest to allow all system admins
--- full control over path definitions. The security of individual systems is handled by other policies.
-CREATE POLICY "Allow system admins full access"
-ON public.logical_paths
-FOR ALL
-TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
-USING (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'))
-WITH CHECK (get_my_role() IN ('cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'));
-```
-
-<!-- path: data/migrations/03_network_systems/06_rls_and_grants.sql -->
-```sql
--- path: data/migrations/03_network_systems/06_rls_and_grants.sql
--- Description: Defines all RLS policies and Grants for the Network Systems module.
-
--- =================================================================
--- PART 1: GRANTS AND RLS SETUP FOR SYSTEM-SPECIFIC TABLES
--- =================================================================
-DO $$
-DECLARE
-  tbl TEXT;
-BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
-  FOREACH tbl IN ARRAY ARRAY[
-    'systems', 'system_connections', 'ports_management',
-    'ring_based_systems',
-    'sdh_connections', 'logical_paths'
-  ]
-  LOOP
-    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-    
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
-    EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
-    EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
-  END LOOP;
-END;
-$$;
-
-
--- =================================================================
--- PART 2: RLS POLICIES FOR SYSTEM SUB-TABLES
--- =================================================================
-DO $$
-DECLARE
-  tbl TEXT;
-BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
-  FOREACH tbl IN ARRAY ARRAY[
-    'ports_management', 'ring_based_systems',
-    'sdh_connections'
-  ]
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "Allow admin full access" ON public.%I;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.%I;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "Allow system admins full access" ON public.%I;', tbl);
-
-    EXECUTE format('CREATE POLICY "Allow admin full access" ON public.%I FOR ALL TO admin USING (is_super_admin() OR get_my_role() = ''admin'') WITH CHECK (is_super_admin() OR get_my_role() = ''admin'');', tbl);
-    EXECUTE format('CREATE POLICY "Allow authenticated read-access" ON public.%I FOR SELECT TO authenticated USING (true);', tbl);
-    EXECUTE format('CREATE POLICY "Allow system admins full access" ON public.%I FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin USING (get_my_role() IN (''cpan_admin'', ''maan_admin'', ''sdh_admin'', ''asset_admin'', ''mng_admin'')) WITH CHECK (get_my_role() IN (''cpan_admin'', ''maan_admin'', ''sdh_admin'', ''asset_admin'', ''mng_admin''));', tbl);
-  END LOOP;
-END;
-$$;
-
-
--- =================================================================
--- PART 3: RLS POLICIES FOR GENERIC TABLES (systems, system_connections)
--- =================================================================
--- (This part remains unchanged)
-DO $$
-BEGIN
-  -- Policies for 'systems' table
-  DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.systems;
-  DROP POLICY IF EXISTS "Allow admin full access" ON public.systems;
-  DROP POLICY IF EXISTS "Allow full access based on system type" ON public.systems;
-
-  CREATE POLICY "Allow authenticated read-access" ON public.systems FOR SELECT TO authenticated USING (true);
-  CREATE POLICY "Allow admin full access" ON public.systems FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-
-  CREATE POLICY "Allow full access based on system type" ON public.systems
-  FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
-  USING (
-    systems.system_type_id IN (
-      SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM_TYPES' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-      )
-    )
-  ) WITH CHECK (
-    systems.system_type_id IN (
-      SELECT lt.id FROM public.lookup_types lt
-      WHERE lt.category = 'SYSTEM_TYPES' AND (
-        (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-        (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-        (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-        (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-      )
-    )
-  );
-
-  -- Policies for 'system_connections' table
-  DROP POLICY IF EXISTS "Allow authenticated read-access" ON public.system_connections;
-  DROP POLICY IF EXISTS "Allow admin full access" ON public.system_connections;
-  DROP POLICY IF EXISTS "Allow full access based on parent system type" ON public.system_connections;
-
-  CREATE POLICY "Allow authenticated read-access" ON public.system_connections FOR SELECT TO authenticated USING (true);
-  CREATE POLICY "Allow admin full access" ON public.system_connections FOR ALL TO admin USING (is_super_admin() OR get_my_role() = 'admin') WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-
-  CREATE POLICY "Allow full access based on parent system type" ON public.system_connections
-  FOR ALL TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id 
-      AND lt.category = 'SYSTEM_TYPES' AND (
-          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-      )
-    )
-  ) WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.systems s
-      JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id 
-      AND lt.category = 'SYSTEM_TYPES' AND (
-          (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
-          (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
-          (public.get_my_role() = 'sdh_admin' AND lt.name = 'SDH') OR
-          (public.get_my_role() = 'mng_admin' AND lt.name = 'MNGPAN')
-      )
-    )
-  );
-END;
-$$;
-
--- =================================================================
--- PART 5: GRANTS FOR VIEWS
--- =================================================================
-DO $$
-BEGIN
-  GRANT SELECT ON 
-    public.v_systems_complete,
-    public.v_system_connections_complete,
-    public.v_ring_nodes,
-    public.v_rings,
-    public.v_ofc_connections_complete,
-    -- --- THE FIX: Grant permissions on the new view ---
-    public.v_ports_management_complete
-  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
-
-  RAISE NOTICE 'Applied SELECT grants on network system views.';
-END;
-$$;
-```
-
-<!-- path: data/migrations/03_network_systems/05_functions_provisioning.sql -->
-```sql
--- path: data/migrations/03_network_systems/05_functions_provisioning.sql
--- Description: Contains functions for provisioning fibers to system connections.
-
--- --- THIS IS THE NEW, MORE POWERFUL FUNCTION ---
--- It accepts arrays of fiber IDs for transactional updates.
-CREATE OR REPLACE FUNCTION public.provision_fibers_to_connection(
-    p_system_connection_id UUID,
-    p_working_fiber_ids UUID[],
-    p_protection_fiber_ids UUID[] DEFAULT ARRAY[]::UUID[]
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_system_id UUID;
-    v_sn_interface TEXT;
-    v_en_interface TEXT;
-BEGIN
-    -- Get the parent system_id and interface names from the system_connection
-    SELECT system_id, sn_interface, en_interface 
-    INTO v_system_id, v_sn_interface, v_en_interface
-    FROM public.system_connections 
-    WHERE id = p_system_connection_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id;
-    END IF;
-
-    -- Step 1: Update the system_connections table with the FIRST and LAST fiber IDs in each path.
-    UPDATE public.system_connections
-    SET
-        working_fiber_in_id = p_working_fiber_ids[1],
-        working_fiber_out_id = p_working_fiber_ids[array_upper(p_working_fiber_ids, 1)],
-        protection_fiber_in_id = p_protection_fiber_ids[1],
-        protection_fiber_out_id = p_protection_fiber_ids[array_upper(p_protection_fiber_ids, 1)],
-        updated_at = NOW()
-    WHERE id = p_system_connection_id;
-
-    -- Step 2: Atomically update ALL working fibers in the ofc_connections table.
-    -- The `source_port` is the interface on the Start Node (sn) of the connection.
-    -- The `destination_port` is the interface on the End Node (en) of the connection.
-    UPDATE public.ofc_connections
-    SET 
-        system_id = v_system_id,
-        source_port = v_sn_interface,
-        destination_port = v_en_interface,
-        fiber_role = 'working'
-    WHERE id = ANY(p_working_fiber_ids);
-
-    -- Step 3: Atomically update ALL protection fibers, if they exist.
-    IF array_length(p_protection_fiber_ids, 1) > 0 THEN
-        UPDATE public.ofc_connections
-        SET 
-            system_id = v_system_id,
-            source_port = v_sn_interface, -- Assuming same interfaces for protection path
-            destination_port = v_en_interface,
-            fiber_role = 'protection'
-        WHERE id = ANY(p_protection_fiber_ids);
-    END IF;
-
-END;
-$$;
-
--- Grant execute on the new function signature. Note the array types `UUID[]`.
-GRANT EXECUTE ON FUNCTION public.provision_fibers_to_connection(UUID, UUID[], UUID[]) TO authenticated;
-
-
--- (The old function can be removed or left, but we will no longer use it)
-DROP FUNCTION IF EXISTS public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID);
-```
-
-<!-- path: data/migrations/03_network_systems/03_views.sql -->
-```sql
--- path: data/migrations/03_network_systems/02_views.sql
--- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
-
--- View for a complete picture of a system and its specific details.
-CREATE OR REPLACE VIEW public.v_systems_complete WITH (security_invoker = true) AS
-SELECT
-  s.id,
-  s.system_type_id,
-  s.maan_node_id,
-  s.node_id,
-  s.system_name,
-  s.is_hub,
-  -- THE FIX: Cast the ip_address from INET to TEXT directly in the view definition.
-  -- This makes it directly searchable with text operators like ILIKE.
-  s.ip_address::text,
-  s.maintenance_terminal_id,
-  s.commissioned_on,
-  s.s_no,
-  s.make,
-  s.remark,
-  s.status,
-  s.created_at,
-  s.updated_at,
-  n.name AS node_name,
-  lt_node_type.name AS node_type_name,
-  lt_system.is_ring_based,
-  n.latitude,
-  n.longitude,
-  lt_system.name AS system_type_name,
-  lt_system.code AS system_type_code,
-  lt_system.category AS system_category,
-  ma.name AS system_maintenance_terminal_name,
-  -- Aggregated ring information
-  r_agg.ring_associations,
-  -- Extract first ring_id and order_in_ring for backward compatibility if needed, though using the array is preferred.
-  (r_agg.ring_associations->0->>'ring_id')::UUID AS ring_id,
-  (r_agg.ring_associations->0->>'order_in_ring')::NUMERIC AS order_in_ring,
-  (r_agg.ring_associations->0->>'ring_logical_area_name')::TEXT AS ring_logical_area_name
-FROM public.systems s
-  JOIN public.nodes n ON s.node_id = n.id
-  JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
-  LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
-  LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
-  LEFT JOIN LATERAL (
-     SELECT
-        jsonb_agg(
-            jsonb_build_object(
-                'ring_id', r.id,
-                'ring_name', r.name,
-                'order_in_ring', rbs.order_in_ring,
-                'ring_logical_area_name', ra.name
-            ) ORDER BY rbs.order_in_ring
-        ) AS ring_associations
-     FROM public.ring_based_systems rbs
-     JOIN public.rings r ON rbs.ring_id = r.id
-     LEFT JOIN public.maintenance_areas ra ON rbs.maintenance_area_id = ra.id
-     WHERE rbs.system_id = s.id
-  ) r_agg ON true;
-
-
--- View for a complete picture of a system connection and its specific details.
-CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
-SELECT
-  sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
-  sc.sn_id,
-  sc.en_id,
-  na.id AS sn_node_id,
-  nb.id AS en_node_id,
-  sc.media_type_id,
-  s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
-  s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
-  lt_media.name AS media_type_name, sc.bandwidth, COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
-  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, sc.vlan, sc.commissioned_on,
-  sc.remark, sc.status, sc.created_at, sc.updated_at,
-  sc.customer_name,
-  sc.bandwidth_allocated,
-  -- UPDATED: Select the new array columns directly
-  sc.working_fiber_in_ids,
-  sc.working_fiber_out_ids,
-  sc.protection_fiber_in_ids,
-  sc.protection_fiber_out_ids,
-  sc.system_working_interface,
-  sc.system_protection_interface,
-  lt_link_type.name as connected_link_type_name,
-  scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
-FROM public.system_connections sc
-  JOIN public.systems s ON sc.system_id = s.id
-  JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
-  LEFT JOIN public.systems s_sn ON sc.sn_id = s_sn.id
-  LEFT JOIN public.nodes na ON s_sn.node_id = na.id
-  LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
-  LEFT JOIN public.nodes nb ON s_en.node_id = nb.id
-  LEFT JOIN public.lookup_types lt_sn_type ON s_sn.system_type_id = lt_sn_type.id
-  LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
-  LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
-  LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
-  LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
-
-
--- --- View for ports_management ---
-CREATE OR REPLACE VIEW public.v_ports_management_complete WITH (security_invoker = true) AS
-SELECT
-  pm.id,
-  pm.system_id,
-  s.system_name,
-  pm.port,
-  pm.port_type_id,
-  lt.name as port_type_name,
-  pm.port_capacity,
-  pm.sfp_serial_no
-FROM public.ports_management pm
-JOIN public.systems s ON pm.system_id = s.id
-LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id;
-
--- View for OFC Connections, now including system details from this module.
-CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS
-SELECT
-  oc.id::uuid,
-  oc.ofc_id::uuid,
-  oc.fiber_no_sn::integer,
-  oc.fiber_no_en::integer,
-  oc.updated_fiber_no_sn::integer,
-  oc.updated_fiber_no_en::integer,
-  oc.updated_sn_id::uuid,
-  oc.updated_en_id::uuid,
-  oc.otdr_distance_sn_km::numeric(10,3),
-  oc.sn_dom::date,
-  oc.sn_power_dbm::numeric(10,3),
-  oc.system_id::uuid,
-  oc.otdr_distance_en_km::numeric(10,3),
-  oc.en_dom::date,
-  oc.en_power_dbm::numeric(10,3),
-  oc.route_loss_db::numeric(10,3),
-  oc.logical_path_id::uuid,
-  oc.fiber_role::text,
-  oc.path_segment_order::integer,
-  oc.path_direction::text, -- NEW
-  oc.source_port::text,
-  oc.destination_port::text,
-  oc.connection_category::text,
-  oc.connection_type::text,
-  oc.remark::text,
-  oc.status::boolean,
-  oc.created_at::timestamptz,
-  oc.updated_at::timestamptz,
-  ofc.route_name AS ofc_route_name,
-  ma.name AS maintenance_area_name,
-  ofc.sn_id::uuid,
-  ofc.en_id::uuid,
-  ofc_type.name AS ofc_type_name,
-  na.name AS sn_name,
-  s.system_name AS system_name,
-  nb.name AS en_name,
-  updated_na.name AS updated_sn_name,
-  updated_nb.name AS updated_en_name
-FROM public.ofc_connections oc
-  JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
-  JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
-  LEFT JOIN public.nodes na ON ofc.sn_id = na.id
-  LEFT JOIN public.nodes nb ON ofc.en_id = nb.id
-  LEFT JOIN public.systems s ON oc.system_id = s.id
-  LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
-  LEFT JOIN public.nodes updated_na ON oc.updated_sn_id = updated_na.id
-  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id;
-
-
--- View for Ring Map Node Data
-CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
-SELECT
-    n.id,
-    r.id as ring_id,
-    r.name as ring_name,
-    n.name,
-    n.latitude as lat,
-    n.longitude as long,
-    s.is_hub,
-    rbs.order_in_ring as order_in_ring,
-    lt_node.name as type, -- This is the physical node type
-    lt_system.name as system_type, -- This is the logical system type for the icon
-    lt_system.code AS system_type_code,
-    r.status AS ring_status,
-    s.status AS system_status,
-    s.system_name AS system_node_name,
-    s.ip_address::text as ip,
-    n.remark
-FROM
-    public.rings r
-JOIN
-    public.ring_based_systems rbs ON r.id = rbs.ring_id
-JOIN
-    public.systems s ON rbs.system_id = s.id
-JOIN
-    public.nodes n ON s.node_id = n.id
-LEFT JOIN
-    public.lookup_types lt_node ON n.node_type_id = lt_node.id
-LEFT JOIN -- Added this join
-    public.lookup_types lt_system ON s.system_type_id = lt_system.id;
-
--- View for rings with joined data
-CREATE OR REPLACE VIEW public.v_rings WITH (security_invoker = true) AS
-SELECT
-  r.id,
-  r.name,
-  r.description,
-  r.ring_type_id,
-  r.maintenance_terminal_id,
-  r.status,
-  r.created_at,
-  r.updated_at,
-  (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
-  lt_ring.name AS ring_type_name,
-  lt_ring.code AS ring_type_code,
-  ma.name AS maintenance_area_name
-FROM public.rings r
-LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
-LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
-```
-
-<!-- path: data/migrations/03_network_systems/02_logical_paths.sql -->
-```sql
-
-CREATE TABLE IF NOT EXISTS public.logical_paths (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    ring_id UUID REFERENCES public.rings(id) ON DELETE CASCADE,
-    start_node_id UUID REFERENCES public.nodes(id) ON DELETE SET NULL,
-    end_node_id UUID REFERENCES public.nodes(id) ON DELETE SET NULL,
-    status TEXT DEFAULT 'unprovisioned', -- e.g., unprovisioned, partially, provisioned
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT uq_ring_path UNIQUE (ring_id, start_node_id, end_node_id)
-);
-
--- Add indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_logical_paths_ring_id ON public.logical_paths(ring_id);
-CREATE INDEX IF NOT EXISTS idx_logical_paths_status ON public.logical_paths(status);
-```
-
-<!-- path: data/migrations/03_network_systems/01_tables_systems.sql -->
-```sql
--- Path: migrations/03_network_systems/01_tables_systems.sql
--- Description: Defines tables for generic and specific network systems.
-
--- 1. Generic Systems Table (e.g., CPAN, MAAN, SDH etc.)
-CREATE TABLE IF NOT EXISTS public.systems (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
-  maan_node_id TEXT, 
-  node_id UUID REFERENCES public.nodes (id) NOT NULL,
-  system_name TEXT,
-  is_hub BOOLEAN DEFAULT false,
-  ip_address INET,
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  commissioned_on DATE,
-  s_no TEXT,
-  make TEXT,
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Consolidated Table for Ring-Based System Details
--- THE FIX: Changed the primary key from just system_id to a composite key of (system_id, ring_id).
--- This correctly models the many-to-many relationship, allowing a system to exist in multiple rings.
-CREATE TABLE IF NOT EXISTS public.ring_based_systems (
-  system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
-  ring_id UUID NOT NULL REFERENCES public.rings (id) ON DELETE CASCADE,
-  order_in_ring NUMERIC,
-  maintenance_area_id UUID REFERENCES public.maintenance_areas (id),
-  CONSTRAINT ring_based_systems_pkey PRIMARY KEY (system_id, ring_id)
-);
-
--- 3. Consolidated Table for SFP-Based Connection Details (replaces cpan_connections, maan_connections)
-CREATE TABLE IF NOT EXISTS public.ports_management (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
-  port TEXT,
-  port_type_id UUID REFERENCES public.lookup_types (id),
-  port_capacity TEXT,
-  sfp_serial_no TEXT,
-  CONSTRAINT uq_system_port UNIQUE (system_id, port)
-);
-
--- 4. Generic System Connections Table
-CREATE TABLE IF NOT EXISTS public.system_connections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  system_id UUID REFERENCES public.systems (id) NOT NULL,
-  system_working_interface TEXT,
-  system_protection_interface TEXT,
-  sn_id UUID REFERENCES public.systems (id),
-  sn_ip INET,
-  sn_interface TEXT,
-  en_id UUID REFERENCES public.systems (id),
-  en_ip INET,
-  en_interface TEXT,
-  connected_link_type_id UUID REFERENCES public.lookup_types (id),
-  media_type_id UUID REFERENCES public.lookup_types (id),
-  bandwidth TEXT,
-  vlan TEXT,
-  -- UPDATED: These now store arrays of fiber IDs
-  working_fiber_in_ids UUID[],
-  working_fiber_out_ids UUID[],
-  protection_fiber_in_ids UUID[],
-  protection_fiber_out_ids UUID[],
-  customer_name TEXT,
-  bandwidth_allocated TEXT,
-  commissioned_on DATE,
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 5. Dedicated Table for SDH Connection Specific Details
-CREATE TABLE IF NOT EXISTS public.sdh_connections (
-  system_connection_id UUID PRIMARY KEY REFERENCES public.system_connections (id) ON DELETE CASCADE,
-  stm_no TEXT,
-  carrier TEXT,
-  a_slot TEXT,
-  a_customer TEXT,
-  b_slot TEXT,
-  b_customer TEXT
-);
-```
-
-<!-- path: data/migrations/03_network_systems/04_indexes.sql -->
-```sql
--- Path: migrations/03_network_systems/03_indexes.sql
--- Description: Creates B-tree and GIN (FTS) indexes for the Network Systems module.
-
--- =================================================================
--- Section 1: Standard B-Tree Indexes
--- =================================================================
-
--- Indexes for the generic systems table
-CREATE INDEX IF NOT EXISTS idx_systems_node_id ON public.systems (node_id);
-
--- Indexes for the new consolidated tables
-CREATE INDEX IF NOT EXISTS idx_ring_based_systems_ring_area ON public.ring_based_systems (ring_id, maintenance_area_id);
-
--- Indexes for other system-specific tables
-CREATE INDEX IF NOT EXISTS idx_systems_make ON public.systems (make);
-
--- =================================================================
--- Section 2: Full-Text Search (FTS) GIN Indexes
--- =================================================================
-
-CREATE INDEX IF NOT EXISTS idx_systems_remark_fts ON public.systems USING gin(to_tsvector('english', remark));
-```
-
-<!-- path: data/migrations/03_network_systems/03_functions.sql -->
-```sql
--- Path: data/migrations/03_network_systems/03_functions.sql
--- Description: Contains functions for the Network Systems module.
-
--- The function logic is now restructured to handle all system subtypes correctly.
-CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
-    p_system_name TEXT,
-    p_system_type_id UUID,
-    p_node_id UUID,
-    p_status BOOLEAN,
-    p_is_hub BOOLEAN,
-    p_maan_node_id TEXT DEFAULT NULL,
-    p_ip_address INET DEFAULT NULL,
-    p_maintenance_terminal_id UUID DEFAULT NULL,
-    p_commissioned_on DATE DEFAULT NULL,
-    p_s_no TEXT DEFAULT NULL,
-    p_remark TEXT DEFAULT NULL,
-    p_id UUID DEFAULT NULL,
-    -- THE FIX: These parameters now accept arrays from the Excel upload logic.
-    p_ring_associations JSONB DEFAULT NULL,
-    p_make TEXT DEFAULT NULL
-)
-RETURNS SETOF public.systems
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_system_id UUID;
-    v_system_type_record public.lookup_types;
-    ring_assoc_record RECORD;
-BEGIN
-    -- Get the system type properties
-    SELECT * INTO v_system_type_record FROM public.lookup_types WHERE id = p_system_type_id;
-
-    -- Step 1: Upsert the main system record
-    INSERT INTO public.systems (
-        id, system_name, system_type_id, maan_node_id, node_id, ip_address,
-        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub
-    ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_maan_node_id, p_node_id, p_ip_address,
-        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        system_name = EXCLUDED.system_name,
-        system_type_id = EXCLUDED.system_type_id,
-        maan_node_id = EXCLUDED.maan_node_id,
-        node_id = EXCLUDED.node_id,
-        ip_address = EXCLUDED.ip_address,
-        maintenance_terminal_id = EXCLUDED.maintenance_terminal_id,
-        commissioned_on = EXCLUDED.commissioned_on,
-        s_no = EXCLUDED.s_no,
-        remark = EXCLUDED.remark,
-        status = EXCLUDED.status,
-        make = EXCLUDED.make,
-        is_hub = EXCLUDED.is_hub,
-        updated_at = NOW()
-    RETURNING id INTO v_system_id;
-
-    -- Step 2: Handle ring associations if the system is ring-based and associations are provided.
-    IF v_system_type_record.is_ring_based = true AND p_ring_associations IS NOT NULL AND jsonb_array_length(p_ring_associations) > 0 THEN
-        -- First, clear out all old associations for this system to handle removals.
-        DELETE FROM public.ring_based_systems WHERE system_id = v_system_id;
-
-        -- Loop through the provided JSON array and insert the new associations.
-        FOR ring_assoc_record IN SELECT * FROM jsonb_to_recordset(p_ring_associations) AS x(ring_id UUID, order_in_ring NUMERIC)
-        LOOP
-            INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
-            VALUES (v_system_id, ring_assoc_record.ring_id, ring_assoc_record.order_in_ring)
-            -- This conflict clause gracefully handles any re-insertions, though the DELETE above makes it less critical.
-            ON CONFLICT (system_id, ring_id) DO UPDATE SET
-                order_in_ring = EXCLUDED.order_in_ring;
-        END LOOP;
-    END IF;
-
-    -- Return the main system record
-    RETURN QUERY SELECT * FROM public.systems WHERE id = v_system_id;
-END;
-$$;
-
--- Grant execute on the modified function signature
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
-    p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
-    p_en_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
-    p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
-    p_bandwidth TEXT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, p_commissioned_on DATE DEFAULT NULL,
-    p_remark TEXT DEFAULT NULL,
-    p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated TEXT DEFAULT NULL,
-    p_working_fiber_in_ids UUID[] DEFAULT NULL, p_working_fiber_out_ids UUID[] DEFAULT NULL,
-    p_protection_fiber_in_ids UUID[] DEFAULT NULL, p_protection_fiber_out_ids UUID[] DEFAULT NULL,
-    p_system_working_interface TEXT DEFAULT NULL,
-    p_system_protection_interface TEXT DEFAULT NULL,
-    p_connected_link_type_id UUID DEFAULT NULL,
-    p_stm_no TEXT DEFAULT NULL, p_carrier TEXT DEFAULT NULL, p_a_slot TEXT DEFAULT NULL,
-    p_a_customer TEXT DEFAULT NULL, p_b_slot TEXT DEFAULT NULL, p_b_customer TEXT DEFAULT NULL
-)
-RETURNS SETOF public.system_connections
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    v_connection_id UUID;
-    v_system_type_record public.lookup_types;
-BEGIN
-    SELECT lt.* INTO v_system_type_record FROM public.systems s JOIN public.lookup_types lt ON s.system_type_id = lt.id WHERE s.id = p_system_id;
-    IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
-
-    INSERT INTO public.system_connections (
-        id, system_id, media_type_id, status, sn_id, en_id, sn_ip, sn_interface,
-        en_ip, en_interface, bandwidth, vlan, commissioned_on, remark, customer_name, bandwidth_allocated,
-        working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
-        system_working_interface, system_protection_interface, connected_link_type_id,
-        updated_at
-    ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id,
-        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth, p_vlan, p_commissioned_on, p_remark, p_customer_name,
-        p_bandwidth_allocated, p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
-        p_system_working_interface, p_system_protection_interface, p_connected_link_type_id,
-        NOW()
-    ) ON CONFLICT (id) DO UPDATE SET
-        media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, sn_ip = EXCLUDED.sn_ip,
-        sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
-        bandwidth = EXCLUDED.bandwidth, vlan = EXCLUDED.vlan, commissioned_on = EXCLUDED.commissioned_on,
-        remark = EXCLUDED.remark, customer_name = EXCLUDED.customer_name, bandwidth_allocated = EXCLUDED.bandwidth_allocated,
-        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
-        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
-        system_working_interface = EXCLUDED.system_working_interface,
-        system_protection_interface = EXCLUDED.system_protection_interface,
-        connected_link_type_id = EXCLUDED.connected_link_type_id,
-        updated_at = NOW()
-    RETURNING id INTO v_connection_id;
-    
-    IF v_system_type_record.name = 'Plesiochronous Digital Hierarchy' OR v_system_type_record.name = 'Synchronous Digital Hierarchy' OR v_system_type_record.name = 'Next Generation SDH' THEN
-        INSERT INTO public.sdh_connections (
-            system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
-        ) VALUES (
-            v_connection_id, p_stm_no, p_carrier, p_a_slot, p_a_customer, p_b_slot, p_b_customer
-        ) ON CONFLICT (system_connection_id) DO UPDATE SET
-            stm_no = EXCLUDED.stm_no, carrier = EXCLUDED.carrier, a_slot = EXCLUDED.a_slot,
-            a_customer = EXCLUDED.a_customer, b_slot = EXCLUDED.b_slot, b_customer = EXCLUDED.b_customer;
-    END IF;
-    
-    RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, INET, TEXT, INET, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, UUID[], UUID[], UUID[], UUID[], TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
--- NEW FUNCTION: To manage system associations for a ring
-CREATE OR REPLACE FUNCTION public.update_ring_system_associations(
-    p_ring_id UUID,
-    p_system_ids UUID[]
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER -- Use definer to ensure permissions are handled correctly within the function
-AS $$
-BEGIN
-    -- First, delete all existing associations for this ring that are NOT in the provided list.
-    DELETE FROM public.ring_based_systems rbs
-    WHERE rbs.ring_id = p_ring_id
-      AND NOT (rbs.system_id = ANY(p_system_ids));
-
-    -- Second, insert all the new associations.
-    -- The ON CONFLICT clause gracefully handles any systems that are already associated,
-    -- preventing errors and ensuring the state is consistent.
-    INSERT INTO public.ring_based_systems (ring_id, system_id)
-    SELECT p_ring_id, unnest(p_system_ids)
-    ON CONFLICT (system_id) DO UPDATE
-    SET ring_id = EXCLUDED.ring_id;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) TO authenticated;
-
--- NEW FUNCTION: To generate logical connection paths for a given ring
-CREATE OR REPLACE FUNCTION public.generate_ring_connection_paths(p_ring_id UUID)
-RETURNS SETOF public.logical_paths
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    ring_info RECORD;
-    node_rec RECORD;
-    prev_node_rec RECORD;
-    first_node_rec RECORD;
-BEGIN
-    SELECT * INTO ring_info FROM public.rings WHERE id = p_ring_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Ring not found';
-    END IF;
-
-    -- Loop through nodes in the ring and create paths
-    prev_node_rec := NULL;
-    first_node_rec := NULL;
-
-    FOR node_rec IN
-        SELECT n.id, n.name
-        FROM public.nodes n
-        JOIN public.systems s ON n.id = s.node_id
-        JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
-        WHERE rbs.ring_id = p_ring_id
-        -- Order by the specified ring order, not alphabetically
-        ORDER BY rbs.order_in_ring 
-    LOOP
-        IF first_node_rec IS NULL THEN
-            first_node_rec := node_rec;
-        END IF;
-
-        IF prev_node_rec IS NOT NULL THEN
-            INSERT INTO public.logical_paths (name, ring_id, start_node_id, end_node_id)
-            VALUES (ring_info.name || ':' || prev_node_rec.name || '-' || node_rec.name, p_ring_id, prev_node_rec.id, node_rec.id)
-            ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
-        END IF;
-        prev_node_rec := node_rec;
-    END LOOP;
-
-    -- Create final path to close the ring
-    IF prev_node_rec IS NOT NULL AND first_node_rec IS NOT NULL AND prev_node_rec.id <> first_node_rec.id THEN
-        INSERT INTO public.logical_paths (name, ring_id, start_node_id, end_node_id)
-        VALUES (ring_info.name || ':' || prev_node_rec.name || '-' || first_node_rec.name, p_ring_id, prev_node_rec.id, first_node_rec.id)
-        ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
-    END IF;
-
-    RETURN QUERY SELECT * FROM public.logical_paths WHERE ring_id = p_ring_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.generate_ring_connection_paths(UUID) TO authenticated;
-
--- NEW FUNCTION: Get available cables connected to a specific node
-CREATE OR REPLACE FUNCTION public.get_available_cables_for_node(p_node_id UUID)
-RETURNS SETOF public.ofc_cables
-LANGUAGE sql STABLE
-AS $$
-  SELECT *
-  FROM public.ofc_cables
-  WHERE sn_id = p_node_id OR en_id = p_node_id;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_available_cables_for_node(UUID) TO authenticated;
-
--- NEW FUNCTION: Get available fibers on a specific cable
-CREATE OR REPLACE FUNCTION public.get_available_fibers_for_cable(p_cable_id UUID)
-RETURNS TABLE(fiber_no integer)
-LANGUAGE sql STABLE
-AS $$
-  SELECT fiber_no_sn::integer as fiber_no
-  FROM public.ofc_connections
-  WHERE ofc_id = p_cable_id
-    AND system_id IS NULL
-    AND status = true
-  ORDER BY fiber_no_sn;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_available_fibers_for_cable(UUID) TO authenticated;
-
--- NEW FUNCTION: Assign a system to a pair of fibers on a cable
-CREATE OR REPLACE FUNCTION public.assign_system_to_fibers(
-    p_system_id UUID,
-    p_cable_id UUID,
-    p_fiber_tx INT,
-    p_fiber_rx INT,
-    p_logical_path_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Assign system to the fibers
-    UPDATE public.ofc_connections
-    SET system_id = p_system_id
-    WHERE ofc_id = p_cable_id AND (fiber_no_sn = p_fiber_tx OR fiber_no_sn = p_fiber_rx);
-
-    -- Mark the logical path as provisioned
-    UPDATE public.logical_paths
-    SET status = 'provisioned', updated_at = NOW()
-    WHERE id = p_logical_path_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/12_service_path_provisioning.sql -->
-```sql
--- path: data/migrations/06_utilities/12_service_path_provisioning.sql
--- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths. (Corrected FK Logic)
-
-
-
--- FUNCTION 1: REWRITTEN - Provision a new service path
-DROP FUNCTION IF EXISTS public.provision_service_path(uuid,text,uuid[],uuid[],uuid[],uuid[]);
-CREATE OR REPLACE FUNCTION public.provision_service_path(
-    p_system_connection_id UUID,
-    p_path_name TEXT,
-    p_working_tx_fiber_ids UUID[],
-    p_working_rx_fiber_ids UUID[],
-    p_protection_tx_fiber_ids UUID[] DEFAULT ARRAY[]::UUID[],
-    p_protection_rx_fiber_ids UUID[] DEFAULT ARRAY[]::UUID[]
-)
-RETURNS UUID -- Returns the ID of the new working logical_fiber_path
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_system_id UUID;
-    v_active_status_id UUID;
-    v_working_path_id UUID;
-    v_protection_path_id UUID;
-    v_all_fiber_ids UUID[];
-BEGIN
-    -- Validation and Setup
-    SELECT system_id INTO v_system_id FROM public.system_connections WHERE id = p_system_connection_id;
-    IF NOT FOUND THEN RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id; END IF;
-
-    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN RAISE EXCEPTION 'Operational status "active" not found in lookup_types.'; END IF;
-    
-    v_all_fiber_ids := p_working_tx_fiber_ids || p_working_rx_fiber_ids || p_protection_tx_fiber_ids || p_protection_rx_fiber_ids;
-
-    IF EXISTS (SELECT 1 FROM public.ofc_connections WHERE id = ANY(v_all_fiber_ids) AND logical_path_id IS NOT NULL) THEN
-        RAISE EXCEPTION 'One or more selected fibers are already part of another logical path.';
-    END IF;
-
-    -- Create "working" logical_fiber_path record, linking it to the system connection
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
-    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) RETURNING id INTO v_working_path_id;
-
-    -- Update working fibers with the correct logical_path_id, role, and direction
-    UPDATE public.ofc_connections 
-    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx'
-    WHERE id = ANY(p_working_tx_fiber_ids);
-    
-    UPDATE public.ofc_connections 
-    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx'
-    WHERE id = ANY(p_working_rx_fiber_ids);
-
-    -- Store the full arrays of fiber IDs in the system_connections table
-    UPDATE public.system_connections 
-    SET working_fiber_in_ids = p_working_tx_fiber_ids, working_fiber_out_ids = p_working_rx_fiber_ids 
-    WHERE id = p_system_connection_id;
-
-    -- Handle protection path if provided
-    IF array_length(p_protection_tx_fiber_ids, 1) > 0 THEN
-        INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id, system_connection_id)
-        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) RETURNING id INTO v_protection_path_id;
-        
-        UPDATE public.ofc_connections 
-        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx'
-        WHERE id = ANY(p_protection_tx_fiber_ids);
-
-        UPDATE public.ofc_connections 
-        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx'
-        WHERE id = ANY(p_protection_rx_fiber_ids);
-
-        UPDATE public.system_connections 
-        SET protection_fiber_in_ids = p_protection_tx_fiber_ids, protection_fiber_out_ids = p_protection_rx_fiber_ids 
-        WHERE id = p_system_connection_id;
-    END IF;
-
-    RETURN v_working_path_id;
-END;
-$$;
-
-
--- FUNCTION 2: REWRITTEN - Deprovision an existing service path
-DROP FUNCTION IF EXISTS public.deprovision_service_path(uuid);
-CREATE OR REPLACE FUNCTION public.deprovision_service_path(
-    p_system_connection_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_path_ids UUID[];
-BEGIN
-    -- Find all logical paths associated with this system connection
-    SELECT array_agg(id) INTO v_path_ids
-    FROM public.logical_fiber_paths
-    WHERE system_connection_id = p_system_connection_id;
-
-    IF v_path_ids IS NULL OR array_length(v_path_ids, 1) = 0 THEN
-        RAISE NOTICE 'No logical paths found for system connection % to deprovision.', p_system_connection_id;
-        -- Still clear the system_connections table just in case of inconsistent data
-        UPDATE public.system_connections
-        SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-        WHERE id = p_system_connection_id;
-        RETURN;
-    END IF;
-
-    -- Clear references on all associated fibers by querying for the logical path IDs
-    UPDATE public.ofc_connections
-    SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_segment_order = NULL, path_direction = NULL
-    WHERE logical_path_id = ANY(v_path_ids);
-
-    -- Clear references on the system_connection itself
-    UPDATE public.system_connections
-    SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-    WHERE id = p_system_connection_id;
-
-    -- Delete the logical path records
-    DELETE FROM public.logical_fiber_paths WHERE id = ANY(v_path_ids);
-END;
-$$;
-
-
--- FUNCTION 3: NEW - Get structured path details for display
-CREATE OR REPLACE FUNCTION public.get_service_path_display(p_system_connection_id UUID)
-RETURNS JSONB
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-WITH path_fibers AS (
-  SELECT
-    lfp.id,
-    lfp.path_role,
-    oc.path_direction,
-    oc.id as fiber_id,
-    oc.path_segment_order,
-    cable.route_name,
-    oc.fiber_no_sn
-  FROM public.logical_fiber_paths lfp
-  JOIN public.ofc_connections oc ON lfp.id = oc.logical_path_id
-  JOIN public.ofc_cables cable ON oc.ofc_id = cable.id
-  WHERE lfp.system_connection_id = p_system_connection_id
-),
-aggregated_paths AS (
-  SELECT
-    path_role,
-    path_direction,
-    string_agg(
-      route_name || '(F' || fiber_no_sn || ')',
-      ' → ' ORDER BY path_segment_order
-    ) AS path_string
-  FROM path_fibers
-  GROUP BY path_role, path_direction
-)
-SELECT jsonb_object_agg(
-  path_role || '_' || path_direction,
-  path_string
-)
-FROM aggregated_paths;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.provision_service_path(UUID, TEXT, UUID[], UUID[], UUID[], UUID[]) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.deprovision_service_path(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_service_path_display(UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/10_disassociate_system.sql -->
-```sql
--- path: data/migrations/06_utilities/10_disassociate_system.sql
--- Description: Creates a function to safely disassociate a single system from a ring.
-
-CREATE OR REPLACE FUNCTION public.disassociate_system_from_ring(
-    p_ring_id UUID,
-    p_system_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    -- Delete the specific association from the junction table.
-    DELETE FROM public.ring_based_systems
-    WHERE ring_id = p_ring_id AND system_id = p_system_id;
-END;
-$$;
-
--- Grant execution permission to authenticated users.
-GRANT EXECUTE ON FUNCTION public.disassociate_system_from_ring(UUID, UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/01_generic_functions.sql -->
-```sql
--- path: data/migrations/06_utilities/01_generic_functions.sql
--- Description: A collection of generic, reusable utility functions.
-
--- =================================================================
--- Section 1: Helper Functions (Dependencies)
--- =================================================================
-
--- Helper function to check if a column exists in a given table/view
-CREATE OR REPLACE FUNCTION public.column_exists(p_schema_name TEXT, p_table_name TEXT, p_column_name TEXT)
-RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$
-BEGIN
-    RETURN EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = p_schema_name
-          AND table_name = p_table_name
-          AND column_name = p_column_name
-    );
-END;
-$$;
-
--- ** Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
-CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
-RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
-DECLARE
-  where_clause TEXT := '';
-  filter_key TEXT;
-  filter_value JSONB;
-  alias_prefix TEXT;
-  or_conditions TEXT;
-  or_key TEXT;
-  or_value TEXT;
-BEGIN
-    alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
-
-    IF p_filters IS NULL OR jsonb_typeof(p_filters) != 'object' THEN
-        RETURN '';
-    END IF;
-
-    FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
-        IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
-
-        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
-            or_conditions := '';
-            FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
-                IF or_conditions != '' THEN
-                    or_conditions := or_conditions || ' OR ';
-                END IF;
-                or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
-            END LOOP;
-            IF or_conditions != '' THEN
-                where_clause := where_clause || ' AND (' || or_conditions || ')';
-            END IF;
-            
-        ELSIF public.column_exists('public', p_view_name, filter_key) THEN
-            -- THE FIX: Handle complex operator objects, including the 'in' operator.
-            IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
-                -- Special handling for the 'in' operator with an array value
-                IF filter_value->>'operator' = 'in' AND jsonb_typeof(filter_value->'value') = 'array' THEN
-                    where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
-                ELSE
-                    -- Handle other simple operators like gt, lt, etc.
-                    where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
-                END IF;
-            ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                -- Handle top-level array for IN clauses, e.g., { "status": ["active", "pending"] }
-                where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
-            ELSE
-                -- Handle simple equality for strings, numbers, booleans
-                where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, trim(both '"' from filter_value::text));
-            END IF;
-        END IF;
-    END LOOP;
-
-    IF where_clause != '' THEN
-        RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
-    END IF;
-
-    RETURN '';
-END;
-$$;
-
-
--- =================================================================
--- Section 2: Generic Query & Data Operation Functions
--- =================================================================
-
--- Function: execute_sql
--- Executes a dynamic SQL query within a secure, read-only context.
-DROP FUNCTION IF EXISTS public.execute_sql(TEXT);
-CREATE OR REPLACE FUNCTION public.execute_sql(sql_query TEXT)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  cleaned_query TEXT;
-  result_json JSON;
-BEGIN
-  cleaned_query := lower(regexp_replace(sql_query, '^\s+', ''));
-  
-  IF cleaned_query !~ '^(select|with|call)\s' THEN
-    RAISE EXCEPTION 'Only read-only statements (SELECT, WITH, CALL) are allowed.';
-  END IF;
-
-  EXECUTE 'SELECT json_agg(t) FROM (' || sql_query || ') t' INTO result_json;
-  RETURN json_build_object('result', COALESCE(result_json, '[]'::json));
-EXCEPTION WHEN OTHERS THEN
-  RETURN json_build_object('error', SQLERRM);
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.execute_sql(TEXT) TO authenticated;
-
-
--- Function: aggregate_query
--- Performs dynamic aggregations (COUNT, SUM, AVG, etc.) on a table.
-CREATE OR REPLACE FUNCTION public.aggregate_query(
-    table_name TEXT,
-    aggregation_options JSONB,
-    filters JSONB DEFAULT '{}'::jsonb,
-    order_by JSONB DEFAULT '[]'::jsonb
-)
-RETURNS TABLE(result JSONB)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  query_text TEXT;
-  select_clause TEXT := '';
-  where_clause TEXT := '';
-  group_clause TEXT := '';
-  order_clause TEXT := '';
-  agg_parts TEXT[] := ARRAY[]::TEXT[];
-BEGIN
-  IF (aggregation_options->>'count')::boolean THEN agg_parts := array_append(agg_parts, 'COUNT(*) as count');
-  ELSIF aggregation_options->'count' IS NOT NULL THEN agg_parts := array_append(agg_parts, format('COUNT(%I) as count', aggregation_options->>'count')); END IF;
-  IF aggregation_options->'sum' IS NOT NULL THEN SELECT array_cat(agg_parts, array_agg(format('SUM(%I) as sum_%s', value, value))) INTO agg_parts FROM jsonb_array_elements_text(aggregation_options->'sum') AS value; END IF;
-  IF aggregation_options->'avg' IS NOT NULL THEN SELECT array_cat(agg_parts, array_agg(format('AVG(%I) as avg_%s', value, value))) INTO agg_parts FROM jsonb_array_elements_text(aggregation_options->'avg') AS value; END IF;
-  IF aggregation_options->'min' IS NOT NULL THEN SELECT array_cat(agg_parts, array_agg(format('MIN(%I) as min_%s', value, value))) INTO agg_parts FROM jsonb_array_elements_text(aggregation_options->'min') AS value; END IF;
-  IF aggregation_options->'max' IS NOT NULL THEN SELECT array_cat(agg_parts, array_agg(format('MAX(%I) as max_%s', value, value))) INTO agg_parts FROM jsonb_array_elements_text(aggregation_options->'max') AS value; END IF;
-
-  IF aggregation_options->'groupBy' IS NOT NULL THEN
-    SELECT string_agg(format('%I', value), ', ') INTO group_clause FROM jsonb_array_elements_text(aggregation_options->'groupBy') AS value;
-    SELECT string_agg(format('%I', value), ', ') INTO select_clause FROM jsonb_array_elements_text(aggregation_options->'groupBy') AS value;
-    group_clause := 'GROUP BY ' || group_clause;
-  END IF;
-
-  IF select_clause != '' AND array_length(agg_parts, 1) > 0 THEN select_clause := select_clause || ', ' || array_to_string(agg_parts, ', ');
-  ELSIF array_length(agg_parts, 1) > 0 THEN select_clause := array_to_string(agg_parts, ', ');
-  ELSE select_clause := '*'; END IF;
-
-  where_clause := public.build_where_clause(filters, '');
-  
-  IF where_clause != '' THEN
-    where_clause := 'WHERE ' || substr(where_clause, 6);
-  END IF;
-
-  IF jsonb_typeof(order_by) = 'array' AND jsonb_array_length(order_by) > 0 THEN
-    SELECT string_agg(format('%I %s', item->>'column', CASE WHEN (item->>'ascending')::boolean THEN 'ASC' ELSE 'DESC' END), ', ') INTO order_clause FROM jsonb_array_elements(order_by) AS item;
-    IF order_clause IS NOT NULL THEN order_clause := 'ORDER BY ' || order_clause; END IF;
-  END IF;
-
-  query_text := format('SELECT %s FROM %I %s %s %s', select_clause, table_name, where_clause, group_clause, order_clause);
-  RETURN QUERY EXECUTE format('SELECT row_to_json(t)::jsonb FROM (%s) t', query_text);
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.aggregate_query(TEXT, JSONB, JSONB, JSONB) TO authenticated;
-
--- ... (rest of the functions from the original file) ...
-
--- Function: get_unique_values
-CREATE OR REPLACE FUNCTION public.get_unique_values(p_table_name TEXT, p_column_name TEXT, p_filters JSONB DEFAULT '{}'::jsonb, p_order_by JSONB DEFAULT '[]'::jsonb, p_limit_count INTEGER DEFAULT NULL)
-RETURNS TABLE(value JSONB) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE
-  query_text TEXT; where_clause TEXT := ''; order_clause TEXT := ''; limit_clause TEXT := '';
-BEGIN
-    IF jsonb_typeof(p_filters) = 'object' AND p_filters != '{}'::jsonb THEN
-        SELECT string_agg(format('%I = %L', key, p_filters->>key), ' AND ') INTO where_clause FROM jsonb_object_keys(p_filters) key;
-        IF where_clause IS NOT NULL THEN where_clause := 'WHERE ' || where_clause; END IF;
-    END IF;
-    IF jsonb_typeof(p_order_by) = 'array' AND jsonb_array_length(p_order_by) > 0 THEN
-        SELECT string_agg(format('%I %s', item->>'column', CASE WHEN (item->>'ascending')::boolean THEN 'ASC' ELSE 'DESC' END), ', ') INTO order_clause FROM jsonb_array_elements(p_order_by) AS item;
-        IF order_clause IS NOT NULL THEN order_clause := 'ORDER BY ' || order_clause; END IF;
-    END IF;
-    IF p_limit_count IS NOT NULL THEN limit_clause := format('LIMIT %s', p_limit_count); END IF;
-    query_text := format('SELECT DISTINCT %I as value FROM %I %s %s %s', p_column_name, p_table_name, where_clause, order_clause, limit_clause);
-    RETURN QUERY EXECUTE format('SELECT to_jsonb(t.value) FROM (%s) t', query_text);
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_unique_values(TEXT, TEXT, JSONB, JSONB, INTEGER) TO authenticated;
-
--- Function: bulk_update
-CREATE OR REPLACE FUNCTION public.bulk_update(p_table_name TEXT, p_updates JSONB)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  update_item JSONB; set_clause TEXT; query_text TEXT; updated_count INTEGER := 0; current_updated_count INTEGER;
-BEGIN
-  FOR update_item IN SELECT * FROM jsonb_array_elements(p_updates) LOOP
-    SELECT string_agg(format('%I = %L', key, value), ', ') INTO set_clause FROM jsonb_each_text(update_item->'data');
-    IF set_clause IS NOT NULL THEN
-      query_text := format('UPDATE public.%I SET %s, updated_at = NOW() WHERE id = %L', p_table_name, set_clause, update_item->>'id');
-      EXECUTE query_text;
-      GET DIAGNOSTICS current_updated_count = ROW_COUNT;
-      updated_count := updated_count + current_updated_count;
-    END IF;
-  END LOOP;
-  RETURN jsonb_build_object('updated_count', updated_count);
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.bulk_update(TEXT, JSONB) TO authenticated;
-
--- Lookup and Enumeration Functions
-CREATE OR REPLACE FUNCTION public.get_lookup_type_id(p_category TEXT, p_name TEXT)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_type_id UUID;
-BEGIN
-  SELECT id INTO v_type_id FROM public.lookup_types WHERE category = p_category AND name = p_name AND status = true;
-  IF v_type_id IS NULL THEN RAISE EXCEPTION 'Lookup type not found for category=% and name=%', p_category, p_name; END IF;
-  RETURN v_type_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_lookup_type_id(TEXT, TEXT) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.add_lookup_type(p_category TEXT, p_name TEXT, p_code TEXT DEFAULT NULL, p_description TEXT DEFAULT NULL, p_sort_order INTEGER DEFAULT 0)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_type_id UUID;
-BEGIN
-  INSERT INTO public.lookup_types (category, name, code, description, sort_order) VALUES (p_category, p_name, p_code, p_description, p_sort_order) RETURNING id INTO v_type_id;
-  RETURN v_type_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.add_lookup_type(TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.get_lookup_types_by_category(p_category TEXT)
-RETURNS TABLE (id UUID, name TEXT, code TEXT, description TEXT, sort_order INTEGER) LANGUAGE sql STABLE SECURITY INVOKER AS $$
-  SELECT lt.id, lt.name, lt.code, lt.description, lt.sort_order FROM public.lookup_types lt WHERE lt.category = p_category AND lt.status = true ORDER BY lt.sort_order, lt.name;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_lookup_types_by_category(TEXT) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.get_entity_counts(p_entity_name TEXT, p_filters JSONB DEFAULT '{}')
-RETURNS TABLE (total_count BIGINT, active_count BIGINT, inactive_count BIGINT) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-    sql_query TEXT; sql_where TEXT := 'WHERE 1=1'; filter_key TEXT; filter_value JSONB;
-BEGIN
-    IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' AND p_filters != '{}'::jsonb THEN
-        FOR filter_key, filter_value IN SELECT * FROM jsonb_each(p_filters) LOOP
-            sql_where := sql_where || format(' AND %I = %L', filter_key, trim(both '"' from filter_value::text));
-        END LOOP;
-    END IF;
-    sql_query := format('SELECT count(*), count(*) FILTER (WHERE status = true), count(*) FILTER (WHERE status = false) FROM %I %s', p_entity_name, sql_where);
-    RETURN QUERY EXECUTE sql_query;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/06_bsnl_dashboard_data.sql -->
-```sql
--- path: data/migrations/06_utilities/06_bsnl_dashboard_data.sql
--- Description: Creates a centralized RPC function to fetch filtered data for the BSNL dashboard.
-
-CREATE OR REPLACE FUNCTION public.get_bsnl_dashboard_data(
-    p_query TEXT DEFAULT NULL,
-    p_status BOOLEAN DEFAULT NULL,
-    p_system_types TEXT[] DEFAULT NULL,
-    p_cable_types TEXT[] DEFAULT NULL,
-    p_regions TEXT[] DEFAULT NULL,
-    p_node_types TEXT[] DEFAULT NULL,
-    p_min_lat NUMERIC DEFAULT NULL,
-    p_max_lat NUMERIC DEFAULT NULL,
-    p_min_lng NUMERIC DEFAULT NULL,
-    p_max_lng NUMERIC DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-DECLARE
-    v_jwt_role TEXT := auth.jwt() ->> 'role';
-    v_allowed_roles TEXT[] := ARRAY['admin', 'viewer', 'cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin'];
-    v_nodes JSONB;
-    v_ofc_cables JSONB;
-    v_systems JSONB;
-    v_visible_node_ids UUID[];
-    search_query TEXT := '%' || p_query || '%';
-BEGIN
-    IF NOT (v_jwt_role = ANY(v_allowed_roles)) THEN
-        RAISE EXCEPTION 'Permission denied: Your role does not have access to this resource.';
-    END IF;
-
-    WITH visible_nodes AS (
-        SELECT id
-        FROM public.v_nodes_complete n
-        WHERE
-            (p_query IS NULL OR (n.name ILIKE search_query OR n.remark ILIKE search_query OR n.maintenance_area_name ILIKE search_query)) AND
-            (p_status IS NULL OR n.status = p_status) AND
-            (p_regions IS NULL OR n.maintenance_area_name = ANY(p_regions)) AND
-            (p_node_types IS NULL OR n.node_type_name = ANY(p_node_types)) AND
-            (p_min_lat IS NULL OR (n.latitude >= p_min_lat AND n.latitude <= p_max_lat AND n.longitude >= p_min_lng AND n.longitude <= p_max_lng))
-    )
-    SELECT array_agg(id) INTO v_visible_node_ids FROM visible_nodes;
-
-    SELECT COALESCE(jsonb_agg(n), '[]'::jsonb)
-    INTO v_nodes
-    FROM public.v_nodes_complete n
-    WHERE n.id = ANY(v_visible_node_ids);
-
-    SELECT COALESCE(jsonb_agg(c), '[]'::jsonb)
-    INTO v_ofc_cables
-    FROM public.v_ofc_cables_complete c
-    WHERE
-        (c.sn_id = ANY(v_visible_node_ids) OR c.en_id = ANY(v_visible_node_ids)) AND
-        (p_status IS NULL OR c.status = p_status) AND
-        (p_cable_types IS NULL OR c.ofc_type_name = ANY(p_cable_types));
-
-    SELECT COALESCE(jsonb_agg(s), '[]'::jsonb)
-    INTO v_systems
-    FROM public.v_systems_complete s
-    WHERE
-        s.node_id = ANY(v_visible_node_ids) AND
-        (p_status IS NULL OR s.status = p_status) AND
-        (p_system_types IS NULL OR s.system_type_name = ANY(p_system_types));
-
-    RETURN jsonb_build_object(
-        'nodes', v_nodes,
-        'ofcCables', v_ofc_cables,
-        'systems', v_systems
-    );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_bsnl_dashboard_data(TEXT, BOOLEAN, TEXT[], TEXT[], TEXT[], TEXT[], NUMERIC, NUMERIC, NUMERIC, NUMERIC) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/07_attach_updated_at_triggers.sql -->
-```sql
--- path: data/migrations/06_utilities/07_attach_updated_at_triggers.sql
--- Description: Dynamically attaches the 'update_updated_at_column' trigger to all tables that have an 'updated_at' column.
-
-DO $$
-DECLARE
-    table_rec RECORD;
-    trigger_name TEXT;
-BEGIN
-    -- Loop through all tables in the 'public' schema
-    FOR table_rec IN
-        SELECT t.table_name
-        FROM information_schema.tables t
-        WHERE t.table_schema = 'public'
-          AND t.table_type = 'BASE TABLE'
-          -- **Key Condition: Only act on tables that actually have an 'updated_at' column.**
-          AND EXISTS (
-              SELECT 1
-              FROM information_schema.columns c
-              WHERE c.table_schema = t.table_schema
-                AND c.table_name = t.table_name
-                AND c.column_name = 'updated_at'
-          )
-    LOOP
-        -- Create a standardized trigger name
-        trigger_name := 'trigger_' || table_rec.table_name || '_updated_at';
-
-        -- Drop the trigger if it already exists to ensure it's up-to-date
-        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;', trigger_name, table_rec.table_name);
-
-        -- Create the new trigger
-        EXECUTE format('CREATE TRIGGER %I ' ||
-                       'BEFORE UPDATE ON public.%I ' ||
-                       'FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();',
-                       trigger_name,
-                       table_rec.table_name);
-
-        RAISE NOTICE 'Attached/Refreshed updated_at trigger on table: public.%', table_rec.table_name;
-    END LOOP;
-END;
-$$;
-```
-
-<!-- path: data/migrations/06_utilities/08_get_rings_for_export.sql -->
-```sql
--- path: data/migrations/06_utilities/08_get_rings_for_export.sql
--- Description: Creates a function to export rings with a JSON array of associated systems including order and hub status.
-
-CREATE OR REPLACE FUNCTION public.get_rings_for_export(
-    row_limit INTEGER DEFAULT NULL,
-    order_by TEXT DEFAULT NULL
-)
-RETURNS TABLE (
-    id UUID,
-    name TEXT,
-    description TEXT,
-    ring_type_name TEXT,
-    maintenance_area_name TEXT,
-    status BOOLEAN,
-    total_nodes BIGINT,
-    associated_systems JSONB
-)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $func$
-SELECT
-    r.id,
-    r.name,
-    r.description,
-    r.ring_type_name,
-    r.maintenance_area_name,
-    r.status,
-    r.total_nodes,
-    (
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'system', s.system_name,
-                'order', rbs.order_in_ring,
-                'is_hub', s.is_hub
-            )
-            ORDER BY rbs.order_in_ring
-        )
-        FROM public.ring_based_systems rbs
-        JOIN public.systems s ON rbs.system_id = s.id
-        WHERE rbs.ring_id = r.id
-    ) AS associated_systems
-FROM
-    public.v_rings r
--- Apply row limit if provided
-ORDER BY
-    CASE 
-        WHEN order_by IS NULL THEN r.name
-        ELSE
-            CASE order_by
-                WHEN 'name' THEN r.name
-                WHEN 'total_nodes' THEN r.total_nodes::text
-                WHEN 'ring_type_name' THEN r.ring_type_name
-                WHEN 'maintenance_area_name' THEN r.maintenance_area_name
-                ELSE r.name
-            END
-    END
-LIMIT COALESCE(row_limit, NULL);
-$func$;
-
-GRANT EXECUTE ON FUNCTION public.get_rings_for_export(INTEGER, TEXT) TO authenticated;
-
-```
-
-<!-- path: data/migrations/06_utilities/03_no_pagination_specialized_function.sql -->
-```sql
--- =================================================================
--- Section 3: Specialized Utility Functions (No Pagination)
--- =================================================================
-
-CREATE OR REPLACE FUNCTION public.get_system_path_details(p_path_id UUID)
-RETURNS SETOF public.v_system_ring_paths_detailed LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM public.logical_fiber_paths lfp WHERE lfp.id = p_path_id AND EXISTS (SELECT 1 FROM public.systems s WHERE s.id = lfp.source_system_id)) THEN
-        RETURN;
-    END IF;
-    RETURN QUERY SELECT * FROM public.v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC;
-END; $$;
-GRANT EXECUTE ON FUNCTION public.get_system_path_details(UUID) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.get_continuous_available_fibers(p_path_id UUID)
-RETURNS TABLE(fiber_no INT) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE path_cable_count INT;
-BEGIN
-    SELECT COUNT(DISTINCT seg.ofc_cable_id) INTO path_cable_count FROM public.logical_path_segments seg WHERE seg.logical_path_id = p_path_id AND seg.ofc_cable_id IS NOT NULL;
-    IF COALESCE(path_cable_count, 0) = 0 THEN RETURN; END IF;
-    RETURN QUERY SELECT conn.fiber_no_sn::INT FROM public.ofc_connections conn JOIN public.logical_path_segments seg ON conn.ofc_id = seg.ofc_cable_id
-    WHERE seg.logical_path_id = p_path_id AND conn.logical_path_id IS NULL AND conn.status = TRUE
-    GROUP BY conn.fiber_no_sn HAVING COUNT(conn.ofc_id) = path_cable_count;
-END; $$;
-GRANT EXECUTE ON FUNCTION public.get_continuous_available_fibers(UUID) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.find_cable_between_nodes(
-    p_node1_id UUID,
-    p_node2_id UUID
-)
-RETURNS TABLE (id UUID, route_name TEXT)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT oc.id, oc.route_name
-  FROM public.ofc_cables oc
-  WHERE
-    (oc.sn_id = p_node1_id AND oc.en_id = p_node2_id) OR
-    (oc.sn_id = p_node2_id AND oc.en_id = p_node1_id)
-  LIMIT 1;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.find_cable_between_nodes(UUID, UUID) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.validate_ring_path(p_path_id UUID)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_segment_count INT;
-    v_first_segment RECORD;
-    v_last_segment RECORD;
-    v_is_continuous BOOLEAN;
-    v_is_closed_loop BOOLEAN;
-BEGIN
-    -- Count segments in the path
-    SELECT COUNT(*) INTO v_segment_count FROM logical_path_segments WHERE logical_path_id = p_path_id;
-
-    IF v_segment_count = 0 THEN
-        RETURN jsonb_build_object('status', 'empty', 'message', 'Path has no segments.');
-    END IF;
-
-    -- Get first and last segments using the detailed view
-    SELECT * INTO v_first_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC LIMIT 1;
-    SELECT * INTO v_last_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order DESC LIMIT 1;
-
-    -- Check for continuity (every segment's start node matches the previous segment's end node)
-    SELECT NOT EXISTS (
-        SELECT 1
-        FROM v_system_ring_paths_detailed s1
-        LEFT JOIN v_system_ring_paths_detailed s2 ON s1.logical_path_id = s2.logical_path_id AND s2.path_order = s1.path_order + 1
-        WHERE s1.logical_path_id = p_path_id AND s2.id IS NOT NULL AND s1.end_node_id <> s2.start_node_id
-    ) INTO v_is_continuous;
-
-    IF NOT v_is_continuous THEN
-        RETURN jsonb_build_object('status', 'broken', 'message', 'Path is not continuous. A segment connection is mismatched.');
-    END IF;
-
-    -- Check if the path forms a closed loop
-    v_is_closed_loop := v_first_segment.start_node_id = v_last_segment.end_node_id;
-
-    IF v_is_closed_loop THEN
-        RETURN jsonb_build_object('status', 'valid_ring', 'message', 'Path forms a valid closed-loop ring.');
-    ELSE
-        RETURN jsonb_build_object('status', 'open_path', 'message', 'Path is a valid point-to-point route but not a closed ring.');
-    END IF;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.validate_ring_path(UUID) TO authenticated;
-
-
-CREATE OR REPLACE FUNCTION public.deprovision_logical_path(p_path_id UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_working_path_id UUID;
-    v_protection_path_id UUID;
-BEGIN
-    -- Find the working path ID, regardless if the input is a working or protection path ID
-    SELECT
-        CASE
-            WHEN path_role = 'working' THEN id
-            ELSE working_path_id
-        END
-    INTO v_working_path_id
-    FROM public.logical_fiber_paths
-    WHERE id = p_path_id OR working_path_id = p_path_id
-    LIMIT 1;
-
-    -- If a valid working path was found, find its associated protection path
-    IF v_working_path_id IS NOT NULL THEN
-        SELECT id INTO v_protection_path_id
-        FROM public.logical_fiber_paths
-        WHERE working_path_id = v_working_path_id;
-    END IF;
-
-    -- Clear the logical_path_id and fiber_role from all associated connections
-    UPDATE public.ofc_connections
-    SET
-        logical_path_id = NULL,
-        fiber_role = NULL
-    WHERE logical_path_id = v_working_path_id OR logical_path_id = v_protection_path_id;
-
-    -- Delete the logical_fiber_paths records themselves (cascading delete will handle protection path)
-    DELETE FROM public.logical_fiber_paths WHERE id = v_working_path_id;
-    
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/11_deprovision_fibers.sql -->
-```sql
--- path: data/migrations/06_utilities/11_deprovision_fibers.sql
--- Description: Creates a function to safely deprovision all fibers from a system connection.
-
-CREATE OR REPLACE FUNCTION public.deprovision_fibers_from_connection(
-    p_system_connection_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    -- Step 1: Nullify the fiber role and system_id for all associated connections
-    UPDATE public.ofc_connections
-    SET
-        system_id = NULL,
-        fiber_role = NULL,
-        source_port = NULL,
-        destination_port = NULL
-    WHERE id IN (
-        SELECT working_fiber_in_id FROM public.system_connections WHERE id = p_system_connection_id
-        UNION ALL
-        SELECT working_fiber_out_id FROM public.system_connections WHERE id = p_system_connection_id
-        UNION ALL
-        SELECT protection_fiber_in_id FROM public.system_connections WHERE id = p_system_connection_id
-        UNION ALL
-        SELECT protection_fiber_out_id FROM public.system_connections WHERE id = p_system_connection_id
-    );
-
-    -- Step 2: Clear the path references on the system_connections table itself
-    UPDATE public.system_connections
-    SET
-        working_fiber_in_id = NULL,
-        working_fiber_out_id = NULL,
-        protection_fiber_in_id = NULL,
-        protection_fiber_out_id = NULL,
-        updated_at = NOW()
-    WHERE id = p_system_connection_id;
-
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.deprovision_fibers_from_connection(UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/04_dashboard_functions.sql -->
-```sql
--- path: migrations/06_utilities/04_dashboard_functions.sql
--- Description: Contains functions for dashboard aggregations.
-
-CREATE OR REPLACE FUNCTION public.get_dashboard_overview()
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER -- THE FIX: Run as the owner to bypass RLS issues on general stats.
-AS $$
-DECLARE
-    v_jwt_role TEXT := auth.jwt() ->> 'role';
-    v_is_super_admin BOOLEAN := public.is_super_admin();
-    result jsonb;
-    v_user_activity jsonb;
-BEGIN
-    -- SECURITY CHECK: Only query sensitive logs if the user is an admin.
-    IF (v_jwt_role = 'admin' OR v_is_super_admin) AND EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'user_activity_logs'
-    ) THEN
-        SELECT jsonb_agg(jsonb_build_object('date', day::date, 'count', COALESCE(activity_count, 0)) ORDER BY day)
-        INTO v_user_activity
-        FROM generate_series(CURRENT_DATE - interval '29 days', CURRENT_DATE, '1 day') as s(day)
-        LEFT JOIN (
-            SELECT created_at::date as activity_date, COUNT(*) as activity_count
-            FROM public.user_activity_logs
-            WHERE created_at >= CURRENT_DATE - interval '29 days'
-            GROUP BY activity_date
-        ) as activity ON s.day = activity.activity_date;
-    ELSE
-        -- For non-admins, return an empty array for activity.
-        v_user_activity := '[]'::jsonb;
-    END IF;
-
-    -- The rest of the queries run as the definer, providing a global overview.
-    SELECT jsonb_build_object(
-        'system_status_counts', (SELECT jsonb_object_agg(CASE WHEN status THEN 'Active' ELSE 'Inactive' END, count) FROM (SELECT status, COUNT(*) as count FROM public.systems GROUP BY status) as s),
-        'node_status_counts', (SELECT jsonb_object_agg(CASE WHEN status THEN 'Active' ELSE 'Inactive' END, count) FROM (SELECT status, COUNT(*) as count FROM public.nodes GROUP BY status) as n),
-        'path_operational_status', (SELECT jsonb_object_agg(lt.name, p.count) FROM (SELECT operational_status_id, COUNT(*) as count FROM public.logical_fiber_paths WHERE operational_status_id IS NOT NULL GROUP BY operational_status_id) as p JOIN lookup_types lt ON p.operational_status_id = lt.id),
-        'cable_utilization_summary', (SELECT jsonb_build_object('average_utilization_percent', ROUND(AVG(utilization_percent)::numeric, 2), 'high_utilization_count', COUNT(*) FILTER (WHERE utilization_percent > 80), 'total_cables', COUNT(*)) FROM public.v_cable_utilization),
-        'user_activity_last_30_days', v_user_activity,
-        'systems_per_maintenance_area', (SELECT jsonb_object_agg(ma.name, s.system_count) FROM (SELECT maintenance_terminal_id, COUNT(id) as system_count FROM public.systems WHERE maintenance_terminal_id IS NOT NULL GROUP BY maintenance_terminal_id) as s JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id)
-    ) INTO result;
-
-    RETURN result;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_dashboard_overview() TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/09_upsert_ring_associations.sql -->
-```sql
--- path: data/migrations/06_utilities/09_upsert_ring_associations.sql
--- Description: A powerful function to upsert ring associations from a JSONB payload.
-
-CREATE OR REPLACE FUNCTION public.upsert_ring_associations_from_json(
-    p_ring_id UUID,
-    p_associations JSONB
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    assoc_item JSONB;
-    v_system_id UUID;
-BEGIN
-    -- First, remove all existing associations for this ring
-    DELETE FROM public.ring_based_systems WHERE ring_id = p_ring_id;
-
-    -- Loop through the provided JSON array of associations
-    FOR assoc_item IN SELECT * FROM jsonb_array_elements(p_associations)
-    LOOP
-        -- Find the system_id based on the provided system name
-        SELECT id INTO v_system_id FROM public.systems WHERE system_name = (assoc_item->>'system');
-
-        IF v_system_id IS NOT NULL THEN
-            -- Insert the new association into the junction table
-            INSERT INTO public.ring_based_systems (ring_id, system_id, order_in_ring)
-            VALUES (
-                p_ring_id,
-                v_system_id,
-                (assoc_item->>'order')::NUMERIC
-            );
-
-            -- Update the is_hub status on the systems table itself
-            UPDATE public.systems
-            SET is_hub = (assoc_item->>'is_hub')::BOOLEAN
-            WHERE id = v_system_id;
-        END IF;
-    END LOOP;
-END;
-$$;
-
--- Grant execution permission
-GRANT EXECUTE ON FUNCTION public.upsert_ring_associations_from_json(UUID, JSONB) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/05_search_nodes.sql -->
-```sql
--- path: migrations/06_utilities/07_search_nodes.sql
--- Description: Creates a function to search nodes for dropdowns with pagination and filtering.
-
-CREATE OR REPLACE FUNCTION public.search_nodes_for_select(
-    p_search_term TEXT DEFAULT '',
-    p_limit INT DEFAULT 20
-)
-RETURNS TABLE (id UUID, name TEXT)
-LANGUAGE plpgsql
-SECURITY INVOKER
-STABLE
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT n.id, n.name
-    FROM public.v_nodes_complete n
-    WHERE n.status = true
-      AND (
-        p_search_term = '' OR
-        n.name ILIKE ('%' || p_search_term || '%')
-      )
-    ORDER BY n.name
-    LIMIT p_limit;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.search_nodes_for_select(TEXT, INT) TO authenticated;
-```
-
-<!-- path: data/migrations/06_utilities/02_paged_functions.sql -->
-```sql
--- path: data/migrations/06_utilities/02_paged_functions.sql
--- =================================================================
--- Generic Pagination Functions
--- =================================================================
--- These functions build dynamic SQL. They are constructed to be secure
--- using format() with %I for identifiers and %L for literals.
-
--- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
--- THE FIX: Added an optional 'row_limit' parameter for compatibility with hooks
--- that send this parameter name by default. The function prioritizes p_limit.
-CREATE OR REPLACE FUNCTION public.get_paged_data(
-    p_view_name TEXT, 
-    p_limit INT, 
-    p_offset INT, 
-    p_order_by TEXT DEFAULT 'name',
-    p_order_dir TEXT DEFAULT 'asc', 
-    p_filters JSONB DEFAULT '{}',
-    row_limit INT DEFAULT NULL -- Added for compatibility
-)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-    data_query TEXT; 
-    count_query TEXT; 
-    where_clause TEXT; 
-    order_by_column TEXT;
-    result_data JSONB; 
-    total_records BIGINT; 
-    active_records BIGINT := 0; 
-    inactive_records BIGINT := 0;
-    status_column_exists BOOLEAN;
-    effective_limit INT;
-BEGIN
-    -- Use p_limit if provided, otherwise fall back to row_limit
-    effective_limit := COALESCE(p_limit, row_limit, 1000);
-
-    status_column_exists := public.column_exists('public', p_view_name, 'status');
-    where_clause := public.build_where_clause(p_filters, p_view_name);
-
-    IF public.column_exists('public', p_view_name, p_order_by) THEN
-        order_by_column := p_order_by;
-    ELSE
-        IF public.column_exists('public', p_view_name, 'id') THEN
-            order_by_column := 'id';
-        ELSE
-            SELECT column_name INTO order_by_column FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = p_view_name
-            ORDER BY ordinal_position LIMIT 1;
-        END IF;
-    END IF;
-
-    data_query := format(
-        'SELECT jsonb_agg(v) FROM (SELECT * FROM public.%I v %s ORDER BY v.%I %s LIMIT %L OFFSET %L) v',
-        p_view_name, where_clause, order_by_column, p_order_dir, effective_limit, p_offset
-    );
-
-    IF status_column_exists THEN
-        count_query := format(
-            'SELECT count(*), count(*) FILTER (WHERE v.status = true), count(*) FILTER (WHERE v.status = false)
-             FROM public.%I v %s', p_view_name, where_clause
-        );
-        EXECUTE count_query INTO total_records, active_records, inactive_records;
-    ELSE
-        count_query := format('SELECT count(*) FROM public.%I v %s', p_view_name, where_clause);
-        EXECUTE count_query INTO total_records;
-    END IF;
-
-    EXECUTE data_query INTO result_data;
-
-    RETURN jsonb_build_object(
-        'data', COALESCE(result_data, '[]'::jsonb), 'total_count', COALESCE(total_records, 0),
-        'active_count', COALESCE(active_records, 0), 'inactive_count', COALESCE(inactive_records, 0)
-    );
-END;
-$$;
-
--- THE FIX: Update the GRANT statement to include the new optional parameter.
-GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB, INT) TO authenticated;
-```
-
-<!-- path: data/migrations/99_finalization/01_cross_module_constraints.sql -->
-```sql
--- Path: migrations/99_finalization/01_cross_module_constraints.sql
--- Description: Adds all cross-module foreign key constraints after all tables have been created.
--- This script is essential for maintaining referential integrity between different domains.
-
--- =================================================================
--- Constraint Set 1: Linking Core Infrastructure to Network Systems
--- =================================================================
-
--- Add the foreign key from ofc_connections (Module 02) to systems (Module 03).
--- This links a physical fiber connection to the network equipment it terminates on.
-ALTER TABLE public.ofc_connections
-ADD CONSTRAINT fk_ofc_connections_system
-FOREIGN KEY (system_id)
-REFERENCES public.systems(id)
-ON DELETE SET NULL;
-
-
--- =================================================================
--- Constraint Set 2: Linking Core Infrastructure to Advanced OFC
--- =================================================================
-
--- Add the foreign key from ofc_connections (Module 02) to logical_fiber_paths (Module 04).
--- This assigns a physical fiber to a logical end-to-end path.
-ALTER TABLE public.ofc_connections
-ADD CONSTRAINT fk_ofc_connections_logical_path
-FOREIGN KEY (logical_path_id)
-REFERENCES public.logical_fiber_paths(id)
-ON DELETE SET NULL;
-
-
--- =================================================================
--- Constraint Set 3: Linking Network Systems to Advanced OFC
--- =================================================================
-
--- Add foreign keys from logical_fiber_paths (Module 04) to systems (Module 03).
--- This defines the start and end systems for a logical path.
-ALTER TABLE public.logical_fiber_paths
-ADD CONSTRAINT fk_lfp_source_system
-FOREIGN KEY (source_system_id)
-REFERENCES public.systems(id)
-ON DELETE SET NULL;
-
-ALTER TABLE public.logical_fiber_paths
-ADD CONSTRAINT fk_lfp_destination_system
-FOREIGN KEY (destination_system_id)
-REFERENCES public.systems(id)
-ON DELETE SET NULL;
-
--- NEW: Add the foreign key from logical_fiber_paths (Module 04) back to system_connections (Module 03).
--- This allows easy lookup of all paths related to a single service.
-ALTER TABLE public.logical_fiber_paths
-ADD CONSTRAINT fk_lfp_system_connection
-FOREIGN KEY (system_connection_id)
-REFERENCES public.system_connections(id)
-ON DELETE SET NULL;
-
--- REMOVED: Redundant index creation, handled in `01_tables_advanced_ofc.sql`
-```
-
-<!-- path: data/migrations/00_setup/01_roles.sql -->
-```sql
--- Path: migrations/00_setup/01_roles.sql
--- Description: Creates all custom database roles. Must be run first.
-
--- Create roles only if they don't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin') THEN
-        CREATE ROLE admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cpan_admin') THEN
-        CREATE ROLE cpan_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'maan_admin') THEN
-        CREATE ROLE maan_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'sdh_admin') THEN
-        CREATE ROLE sdh_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'asset_admin') THEN
-        CREATE ROLE asset_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'mng_admin') THEN
-        CREATE ROLE mng_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'asset_admin') THEN
-        CREATE ROLE asset_admin NOINHERIT;
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'viewer') THEN
-        CREATE ROLE viewer NOINHERIT;
-    END IF;
-END
-$$;
-
--- Safely grant membership to the 'authenticated' role for all custom roles.
--- This allows any logged-in user to assume one of these roles via JWT claims.
-DO $$
-DECLARE
-    r TEXT;
-BEGIN
-    FOR r IN
-        SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin', 'asset_admin', 'viewer'])
-    LOOP
-        IF NOT EXISTS (
-            SELECT 1
-            FROM pg_auth_members m
-            JOIN pg_roles r1 ON r1.oid = m.roleid
-            JOIN pg_roles r2 ON r2.oid = m.member
-            WHERE r1.rolname = r
-              AND r2.rolname = 'authenticated'
-        ) THEN
-            EXECUTE format('GRANT %I TO authenticated', r);
-        END IF;
-    END LOOP;
-END
-$$;
-```
-
-<!-- path: data/migrations/00_setup/02_function_stubs.sql -->
-```sql
--- Path: migrations/00_setup/02_function_stubs.sql
--- Description: Creates dummy "stub" versions of functions that may be optionally defined later.
--- This prevents dependency errors if certain modules (like Auditing) are not deployed.
-
--- Stub for the user activity logging function.
--- The real version is in the 05_auditing module.
-CREATE OR REPLACE FUNCTION public.log_user_activity(
-    p_action_type TEXT,
-    p_table_name TEXT DEFAULT NULL,
-    p_record_id TEXT DEFAULT NULL,
-    p_old_data JSONB DEFAULT NULL,
-    p_new_data JSONB DEFAULT NULL,
-    p_details TEXT DEFAULT NULL
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- This is a stub function. It does nothing.
-    -- If the 05_auditing module is deployed, it will replace this function
-    -- with the real implementation.
-    RETURN;
-END;
-$$;
-```
-
-<!-- path: data/migrations/01_user_management/02_views.sql -->
-```sql
--- Path: migrations/01_user_management/02_views.sql
--- Description: Defines views for the User Management module.
-
--- Extended view combining auth.users and public.user_profiles
-CREATE OR REPLACE VIEW v_user_profiles_extended WITH (security_invoker = true) AS
-SELECT
-    u.id,
-    u.email::text AS email,
-    u.last_sign_in_at,
-    u.created_at,
-    u.is_super_admin,
-    (u.email_confirmed_at IS NOT NULL) AS is_email_verified,
-    p.first_name::text AS first_name,
-    p.last_name::text AS last_name,
-    p.avatar_url::text AS avatar_url,
-    p.phone_number::text AS phone_number,
-    p.date_of_birth,
-    p.address,
-    p.preferences,
-    p.role::text AS role,
-    p.designation::text AS designation,
-    p.updated_at,
-    p.status::text AS status,
-    u.email_confirmed_at,
-    u.phone_confirmed_at,
-    (u.phone_confirmed_at IS NOT NULL) AS is_phone_verified,
-    u.updated_at AS auth_updated_at,
-    u.raw_user_meta_data,
-    u.raw_app_meta_data,
-    CONCAT(p.first_name::text, ' ', p.last_name::text) AS full_name,
-    CASE
-        WHEN p.status::text = 'active' AND u.email_confirmed_at IS NOT NULL THEN 'active_verified'
-        WHEN p.status::text = 'active' AND u.email_confirmed_at IS NULL THEN 'active_unverified'
-        WHEN p.status::text = 'inactive' THEN 'inactive'
-        WHEN p.status::text = 'suspended' THEN 'suspended'
-        ELSE 'unknown'
-    END::text AS computed_status,
-    EXTRACT(DAYS FROM (NOW() - u.created_at))::INTEGER AS account_age_days,
-    CASE
-        WHEN u.last_sign_in_at > NOW() - INTERVAL '1 day' THEN 'today'
-        WHEN u.last_sign_in_at > NOW() - INTERVAL '7 days' THEN 'this_week'
-        WHEN u.last_sign_in_at > NOW() - INTERVAL '30 days' THEN 'this_month'
-        WHEN u.last_sign_in_at > NOW() - INTERVAL '90 days' THEN 'last_3_months'
-        ELSE 'older'
-    END::text AS last_activity_period
-FROM auth.users u
-JOIN public.user_profiles p ON u.id = p.id;
-```
-
-<!-- path: data/migrations/01_user_management/06_rls_and_grants.sql -->
-```sql
--- Path: migrations/01_user_management/06_rls_and_grants.sql
--- Description: All RLS policies and Grants for the User Management module.
-
--- =================================================================
--- Section 1: Grants
--- =================================================================
-
--- Grants for utility functions
-GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_my_user_details() TO authenticated;
-
--- Grants for admin functions
-GRANT EXECUTE ON FUNCTION public.admin_get_all_users_extended(text, text, text, text, timestamptz, timestamptz, integer, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_get_user_by_id(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_update_user_profile(uuid, text, text, text, text, date, jsonb, jsonb, text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_bulk_update_status(uuid[], text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_bulk_update_role(uuid[], text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_bulk_delete_users(uuid[]) TO authenticated;
-
--- Grant Table Permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin;
-GRANT SELECT ON public.user_profiles TO viewer;
-
-
--- =================================================================
--- Section 2: RLS Policies for user_profiles
--- =================================================================
-
--- Enable RLS on the table
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies for idempotency
-DROP POLICY IF EXISTS "Super admins have full access to user_profiles" ON public.user_profiles;
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.user_profiles;
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
-DROP POLICY IF EXISTS "Users can delete their own profile" ON public.user_profiles;
-
--- Allow super admins full access to all rows
-CREATE POLICY "Super admins have full access to user_profiles"
-ON public.user_profiles
-FOR ALL
-USING (public.is_super_admin())
-WITH CHECK (public.is_super_admin());
-
--- Allow users to read their own profile
-CREATE POLICY "Users can view their own profile"
-ON public.user_profiles
-FOR SELECT
-USING ((select auth.uid()) = id);
-
--- Allow users to update their own profile
-CREATE POLICY "Users can update their own profile"
-ON public.user_profiles
-FOR UPDATE
-USING ((select auth.uid()) = id)
-WITH CHECK ((select auth.uid()) = id);
-
--- Allow users to insert their own profile
-CREATE POLICY "Users can insert their own profile"
-ON public.user_profiles
-FOR INSERT
-WITH CHECK ((select auth.uid()) = id);
-
--- Allow users to delete their own profile
-CREATE POLICY "Users can delete their own profile"
-ON public.user_profiles
-FOR DELETE
-USING ((select auth.uid()) = id);
-```
-
-<!-- path: data/migrations/01_user_management/05_triggers.sql -->
-```sql
--- Path: migrations/01_user_management/05_triggers.sql
--- Description: Attaches triggers for the User Management module.
-
--- CREATE TRIGGER for new auth users to create a public profile
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created') THEN
-        CREATE TRIGGER on_auth_user_created
-        AFTER INSERT ON auth.users
-        FOR EACH ROW EXECUTE FUNCTION public.create_public_profile_for_new_user();
-    END IF;
-END $$;
-
--- CREATE TRIGGER for role sync to auth.users on profile UPDATE
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'sync_user_role_trigger') THEN
-        CREATE TRIGGER sync_user_role_trigger
-        AFTER UPDATE ON public.user_profiles
-        FOR EACH ROW
-        WHEN (NEW.role IS DISTINCT FROM OLD.role)
-        EXECUTE FUNCTION sync_user_role_to_auth();
-    END IF;
-END $$;
-
--- CREATE TRIGGER for role sync to auth.users on profile INSERT
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'sync_user_role_insert_trigger') THEN
-        CREATE TRIGGER sync_user_role_insert_trigger
-        AFTER INSERT ON public.user_profiles
-        FOR EACH ROW EXECUTE FUNCTION sync_user_role_to_auth();
-    END IF;
-END $$;
-```
-
-<!-- path: data/migrations/01_user_management/04_indexes.sql -->
-```sql
--- Path: migrations/01_user_management/04_indexes.sql
--- Description: Indexes for user_profiles to improve performance.
-
--- Index for filtering users by their role
-CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON public.user_profiles (role);
-
--- Index for filtering users by their status (e.g., active, inactive)
-CREATE INDEX IF NOT EXISTS idx_user_profiles_status ON public.user_profiles (status);
-
--- Composite index for efficient searching and sorting by user's full name
-CREATE INDEX IF NOT EXISTS idx_user_profiles_last_name_first_name ON public.user_profiles (last_name, first_name);
-
--- Index on the creation timestamp to speed up date range filters
-CREATE INDEX IF NOT EXISTS idx_user_profiles_created_at ON public.user_profiles (created_at);
-```
-
-<!-- path: data/migrations/01_user_management/01_tables_user_profiles.sql -->
-```sql
--- Path: migrations/01_user_management/01_tables_user_profiles.sql
--- Description: Defines the user_profiles table, which extends auth.users.
-
-CREATE TABLE IF NOT EXISTS public.user_profiles (
-  id UUID NOT NULL PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-  first_name TEXT NOT NULL CHECK (first_name <> ''),
-  last_name TEXT NOT NULL CHECK (last_name <> ''),
-  avatar_url TEXT,
-  phone_number TEXT CHECK (
-    phone_number IS NULL
-    OR phone_number ~ '^\+?[1-9]\d{1,14}$'
-  ),
-  date_of_birth DATE CHECK (
-    date_of_birth IS NULL
-    OR (
-      date_of_birth > '1900-01-01'
-      AND date_of_birth < CURRENT_DATE
-    )
-  ),
-  role TEXT DEFAULT 'viewer' CHECK (
-    role IN (
-      'admin',
-      'viewer',
-      'cpan_admin',
-      'maan_admin',
-      'sdh_admin',
-      'asset_admin',
-      'mng_admin'
-    )
-  ),
-  designation TEXT,
-  address JSONB DEFAULT '{}'::jsonb,
-  preferences JSONB DEFAULT '{}'::jsonb,
-  status TEXT DEFAULT 'inactive' CHECK (status IN ('active', 'inactive', 'suspended')),
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-<!-- path: data/migrations/01_user_management/03_functions.sql -->
-```sql
--- Path: migrations/01_user_management/03_functions.sql
--- Description: All functions for the User Management module.
-
--- =================================================================
--- Section 1: Utility Functions
--- =================================================================
-
--- SUPER ADMIN CHECK FUNCTION
-CREATE OR REPLACE FUNCTION public.is_super_admin()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = ''
-STABLE
-AS $$
-SELECT EXISTS (
-    SELECT 1
-    FROM auth.users
-    WHERE id = auth.uid()
-      AND is_super_admin = true
-  );
-$$;
-
--- GET MY ROLE FUNCTION
-CREATE OR REPLACE FUNCTION public.get_my_role()
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-SELECT role
-FROM auth.users
-WHERE id = auth.uid();
-$$;
-
--- USER DETAILS FUNCTION
-CREATE OR REPLACE FUNCTION public.get_my_user_details()
-RETURNS TABLE (
-    id uuid,
-    email text,
-    last_sign_in_at timestamptz,
-    created_at timestamptz,
-    is_super_admin boolean,
-    is_email_verified boolean,
-    first_name text,
-    last_name text,
-    avatar_url text,
-    phone_number text,
-    date_of_birth date,
-    address jsonb,
-    preferences jsonb,
-    role text,
-    designation text,
-    updated_at timestamptz
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-SELECT
-    u.id,
-    u.email,
-    u.last_sign_in_at,
-    u.created_at,
-    u.is_super_admin,
-    (u.email_confirmed_at IS NOT NULL) AS is_email_verified,
-    p.first_name,
-    p.last_name,
-    p.avatar_url,
-    p.phone_number,
-    p.date_of_birth,
-    p.address,
-    p.preferences,
-    p.role,
-    p.designation,
-    p.updated_at
-FROM auth.users AS u
-LEFT JOIN public.user_profiles AS p ON u.id = p.id
-WHERE u.id = auth.uid();
-$$;
-
-
--- =================================================================
--- Section 2: Admin RPC Functions
--- =================================================================
-
--- Enhanced admin function that returns a structured JSONB object
-CREATE OR REPLACE FUNCTION public.admin_get_all_users_extended(
-    search_query TEXT DEFAULT NULL,
-    filter_role TEXT DEFAULT NULL,
-    filter_status TEXT DEFAULT NULL,
-    filter_activity TEXT DEFAULT NULL,
-    date_from TIMESTAMPTZ DEFAULT NULL,
-    date_to TIMESTAMPTZ DEFAULT NULL,
-    page_offset INTEGER DEFAULT 0,
-    page_limit INTEGER DEFAULT 50
-) 
--- CORRECTED: Returns a single JSONB object
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-DECLARE
-    v_total_records bigint;
-    v_active_count bigint;
-    v_inactive_count bigint;
-    v_user_data JSONB;
-BEGIN
-    -- Check if user is super admin
-    IF NOT public.is_super_admin() THEN
-        RAISE EXCEPTION 'Access denied. Super admin privileges required.';
-    END IF;
-
-    -- Calculate all three counts in a single, efficient query
-    SELECT
-        COUNT(*),
-        COUNT(*) FILTER (WHERE v.status = 'active'),
-        COUNT(*) FILTER (WHERE v.status = 'inactive')
-    INTO
-        v_total_records,
-        v_active_count,
-        v_inactive_count
-    FROM v_user_profiles_extended v
-    WHERE
-        (search_query IS NULL OR v.full_name ILIKE '%' || search_query || '%' OR v.email ILIKE '%' || search_query || '%')
-    AND (filter_role IS NULL OR filter_role = 'all' OR v.role = filter_role)
-    AND (filter_status IS NULL OR filter_status = 'all' OR v.status = filter_status)
-    AND (filter_activity IS NULL OR filter_activity = 'all' OR v.last_activity_period = filter_activity)
-    AND (date_from IS NULL OR v.created_at >= date_from)
-    AND (date_to IS NULL OR v.created_at <= date_to);
-
-    -- Fetch the paginated user data into a JSONB array
-    SELECT jsonb_agg(t)
-    INTO v_user_data
-    FROM (
-        SELECT
-            v.id, v.email, v.last_sign_in_at, v.created_at, v.is_super_admin, v.is_email_verified,
-            v.first_name, v.last_name, v.avatar_url, v.phone_number, v.date_of_birth, v.address,
-            v.preferences, v.role, v.designation, v.updated_at, v.status, v.full_name,
-            v.computed_status, v.account_age_days, v.last_activity_period
-        FROM public.v_user_profiles_extended v
-        WHERE
-            (search_query IS NULL OR v.full_name ILIKE '%' || search_query || '%' OR v.email ILIKE '%' || search_query || '%')
-        AND (filter_role IS NULL OR filter_role = 'all' OR v.role = filter_role)
-        AND (filter_status IS NULL OR filter_status = 'all' OR v.status = filter_status)
-        AND (filter_activity IS NULL OR filter_activity = 'all' OR v.last_activity_period = filter_activity)
-        AND (date_from IS NULL OR v.created_at >= date_from)
-        AND (date_to IS NULL OR v.created_at <= date_to)
-        ORDER BY v.created_at DESC
-        OFFSET page_offset
-        LIMIT page_limit
-    ) t;
-
-    -- CORRECTED: Combine data and counts into a single JSONB object
-    RETURN jsonb_build_object(
-        'data', COALESCE(v_user_data, '[]'::jsonb),
-        'counts', jsonb_build_object(
-            'total', COALESCE(v_total_records, 0),
-            'active', COALESCE(v_active_count, 0),
-            'inactive', COALESCE(v_inactive_count, 0)
-        )
-    );
-END;
-$$;
-
-
--- Function to get a single user by ID (admin only)
-CREATE OR REPLACE FUNCTION public.admin_get_user_by_id ( user_id uuid )
-RETURNS TABLE (
-    id uuid, email text, first_name text, last_name text, avatar_url text, phone_number text, date_of_birth date, address jsonb,
-    preferences jsonb, role text, designation text, status text, is_email_verified boolean, last_sign_in_at timestamptz,
-    created_at timestamptz, updated_at timestamptz
-) LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT (public.is_super_admin() OR auth.uid() = user_id) THEN
-        RAISE EXCEPTION 'Access denied. Insufficient privileges.';
-    END IF;
-    RETURN QUERY
-    SELECT p.id, CAST(u.email AS text) as email, p.first_name, p.last_name, p.avatar_url, p.phone_number, p.date_of_birth, p.address,
-           p.preferences, p.role, p.designation, p.status, (u.email_confirmed_at IS NOT NULL) as is_email_verified, u.last_sign_in_at,
-           p.created_at, p.updated_at
-    FROM public.user_profiles p
-    LEFT JOIN auth.users u ON p.id = u.id
-    WHERE p.id = user_id;
-END;
-$$;
-
--- Function to update user profile (admin only)
-CREATE OR REPLACE FUNCTION public.admin_update_user_profile (
-    user_id uuid, update_first_name text DEFAULT NULL, update_last_name text DEFAULT NULL, update_avatar_url text DEFAULT NULL,
-    update_phone_number text DEFAULT NULL, update_date_of_birth date DEFAULT NULL, update_address jsonb DEFAULT NULL,
-    update_preferences jsonb DEFAULT NULL, update_role text DEFAULT NULL, update_designation text DEFAULT NULL, update_status text DEFAULT NULL
-) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT (public.is_super_admin() OR auth.uid() = user_id) THEN
-        RAISE EXCEPTION 'Access denied. Insufficient privileges.';
-    END IF;
-    UPDATE public.user_profiles
-    SET first_name = COALESCE(update_first_name, first_name),
-        last_name = COALESCE(update_last_name, last_name),
-        avatar_url = CASE WHEN update_avatar_url = '' THEN NULL ELSE COALESCE(update_avatar_url, avatar_url) END,
-        phone_number = CASE WHEN update_phone_number = '' THEN NULL ELSE COALESCE(update_phone_number, phone_number) END,
-        date_of_birth = COALESCE(update_date_of_birth, date_of_birth),
-        address = COALESCE(update_address, address),
-        preferences = COALESCE(update_preferences, preferences),
-        role = COALESCE(update_role, role),
-        designation = COALESCE(update_designation, designation),
-        status = COALESCE(update_status, status),
-        updated_at = NOW()
-    WHERE id = user_id;
-    RETURN FOUND;
-END;
-$$;
-
--- Function to bulk update user status (admin only)
-CREATE OR REPLACE FUNCTION public.admin_bulk_update_status ( user_ids uuid[], new_status text )
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Access denied. Super admin privileges required.'; END IF;
-    IF new_status NOT IN ('active', 'inactive', 'suspended') THEN RAISE EXCEPTION 'Invalid status. Must be active, inactive, or suspended.'; END IF;
-    UPDATE public.user_profiles SET status = new_status, updated_at = NOW() WHERE id = ANY(user_ids);
-    PERFORM public.log_user_activity('BULK_UPDATE_STATUS', 'user_profiles', NULL, jsonb_build_object('user_ids', user_ids), jsonb_build_object('new_status', new_status), 'Bulk status update performed by admin');
-    RETURN FOUND;
-END;
-$$;
-
--- Function to bulk update user role (admin only)
-CREATE OR REPLACE FUNCTION public.admin_bulk_update_role ( user_ids uuid[], new_role text )
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Access denied. Super admin privileges required.'; END IF;
-    IF new_role NOT IN ('admin', 'viewer', 'cpan_admin', 'maan_admin', 'sdh_admin', 'asset_admin', 'mng_admin') THEN RAISE EXCEPTION 'Invalid role.'; END IF;
-    UPDATE public.user_profiles SET role = new_role, updated_at = NOW() WHERE id = ANY(user_ids);
-    PERFORM public.log_user_activity('BULK_UPDATE_ROLE', 'user_profiles', NULL, jsonb_build_object('user_ids', user_ids), jsonb_build_object('new_role', new_role), 'Bulk role update performed by admin');
-    RETURN FOUND;
-END;
-$$;
-
--- Function to bulk delete users (admin only)
-CREATE OR REPLACE FUNCTION public.admin_bulk_delete_users ( user_ids uuid[] )
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Access denied. Super admin privileges required.'; END IF;
-    PERFORM public.log_user_activity('BULK_DELETE', 'user_profiles', NULL, jsonb_build_object('user_ids', user_ids), NULL, 'Bulk user deletion performed by admin');
-    DELETE FROM public.user_profiles WHERE id = ANY(user_ids);
-    RETURN FOUND;
-END;
-$$;
-
-
--- =================================================================
--- Section 3: Trigger Functions
--- =================================================================
-
--- TRIGGER FUNCTION for updating timestamps
-CREATE OR REPLACE FUNCTION public.update_user_profile_timestamp()
-RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$;
-
--- Function that will sync the role to auth.users
-CREATE OR REPLACE FUNCTION public.sync_user_role_to_auth()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF (TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND NEW.role IS DISTINCT FROM OLD.role)) AND NEW.role IS NOT NULL THEN
-        UPDATE auth.users SET role = NEW.role WHERE id = NEW.id;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
--- USER CREATION FUNCTION (UPDATED)
-CREATE OR REPLACE FUNCTION public.create_public_profile_for_new_user()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = NEW.id) THEN
-        INSERT INTO public.user_profiles (id, first_name, last_name, avatar_url, phone_number, date_of_birth, address, preferences, status)
-        VALUES (
-            NEW.id,
-            COALESCE(NEW.raw_user_meta_data->>'first_name', NEW.raw_user_meta_data->>'name', (SELECT initcap(word) FROM regexp_split_to_table(split_part(NEW.email, '@', 1), '[^a-zA-Z]+') AS word WHERE word ~ '^[a-zA-Z]+' LIMIT 1), 'Placeholder'),
-            COALESCE(NEW.raw_user_meta_data->>'last_name', SPLIT_PART(NEW.raw_user_meta_data->>'name', ' ', 2), 'User'),
-            NEW.raw_user_meta_data->>'avatar_url',
-            NEW.raw_user_meta_data->>'phone_number',
-            CASE WHEN NEW.raw_user_meta_data->>'date_of_birth' ~ '^\d{4}-\d{2}-\d{2}$' THEN (NEW.raw_user_meta_data->>'date_of_birth')::date ELSE NULL END,
-            COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
-            -- ** Add the needsOnboarding flag to preferences**
-            COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
-            'active'
-        );
-    END IF;
-    RETURN NEW;
-END;
-$$;
-```
-
-<!-- path: data/migrations/08_inventory/02_views.sql -->
-```sql
--- path: data/migrations/08_inventory/02_views.sql
--- Description: Creates a denormalized view for inventory items.
-
-CREATE OR REPLACE VIEW public.v_inventory_items WITH (security_invoker = true) AS
-SELECT
-    i.id,
-    i.asset_no,
-    i.name,
-    i.description,
-    i.category_id,
-    cat.name as category_name,
-    i.status_id,
-    stat.name as status_name,
-    i.location_id,
-    i.functional_location_id,
-    loc.name  as store_location,
-    floc.name as functional_location,
-    i.quantity,
-    i.purchase_date,
-    i.vendor,
-    i.cost,
-    i.created_at,
-    i.updated_at
-FROM
-    public.inventory_items i
-LEFT JOIN public.lookup_types cat ON i.category_id = cat.id
-LEFT JOIN public.lookup_types stat ON i.status_id = stat.id
-LEFT JOIN public.nodes loc ON i.location_id = loc.id
-LEFT JOIN public.maintenance_areas floc ON i.functional_location_id = floc.id;
-
-
-```
-
-<!-- path: data/migrations/08_inventory/01_tables.sql -->
-```sql
--- path: data/migrations/08_inventory/01_tables.sql
--- Description: Creates the table for the inventory management module.
-
-CREATE TABLE IF NOT EXISTS public.inventory_items (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_no TEXT UNIQUE,
-    name TEXT NOT NULL,
-    description TEXT,
-    category_id UUID REFERENCES public.lookup_types(id) ON DELETE SET NULL,
-    status_id UUID REFERENCES public.lookup_types(id) ON DELETE SET NULL,
-    location_id UUID REFERENCES public.nodes(id) ON DELETE SET NULL,
-    functional_location_id UUID REFERENCES public.maintenance_areas(id) ON DELETE SET NULL,
-    quantity INT NOT NULL DEFAULT 1,
-    purchase_date DATE,
-    vendor TEXT,
-    cost NUMERIC(10, 2),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-<!-- path: data/migrations/08_inventory/03_rls.sql -->
-```sql
--- path: data/migrations/08_inventory/03_rls.sql
--- Description: Applies Row-Level Security for the inventory module.
-
--- 1. Enable RLS
-ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
-
--- 2. Grant Permissions
--- Admins and asset_admins can do everything.
-GRANT ALL ON public.inventory_items TO admin;
-GRANT ALL ON public.inventory_items TO asset_admin;
--- Other authenticated users can only view.
-GRANT SELECT ON public.inventory_items TO authenticated;
-GRANT SELECT ON public.v_inventory_items TO authenticated, admin, asset_admin, viewer;
-
-
--- 3. Create Policies
-DROP POLICY IF EXISTS "Admin and Asset Admin full access on inventory" ON public.inventory_items;
-CREATE POLICY "Admin and Asset Admin full access on inventory"
-ON public.inventory_items
-FOR ALL
-USING (is_super_admin() OR get_my_role() IN ('admin', 'asset_admin'))
-WITH CHECK (is_super_admin() OR get_my_role() IN ('admin', 'asset_admin'));
-
-DROP POLICY IF EXISTS "Authenticated users can view inventory" ON public.inventory_items;
-CREATE POLICY "Authenticated users can view inventory"
-ON public.inventory_items
-FOR SELECT
-USING (auth.role() = 'authenticated');
-```
-
-<!-- path: data/migrations/07_diary/03_diary_functions.sql -->
-```sql
--- path: data/migrations/07_diary/03_diary_functions.sql
--- Description: Creates a function to get diary notes for a specific date range, respecting user roles.
-
-CREATE OR REPLACE FUNCTION public.get_diary_notes_for_range(
-    start_date DATE,
-    end_date DATE
-)
-RETURNS TABLE (
-    id UUID,
-    user_id UUID,
-    full_name TEXT,
-    note_date DATE,
-    content TEXT,
-    tags TEXT[],
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    -- Check if the current user is a super_admin or has the 'admin' role.
-    IF (is_super_admin() OR get_my_role() = 'admin') THEN
-        -- Admins can see all notes in the date range and the user's full name.
-        RETURN QUERY
-        SELECT 
-            d.id,
-            d.user_id,
-            p.full_name,
-            d.note_date,
-            d.content,
-            d.tags,
-            d.created_at,
-            d.updated_at
-        FROM public.diary_notes d
-        LEFT JOIN public.v_user_profiles_extended p ON d.user_id = p.id
-        WHERE d.note_date BETWEEN start_date AND end_date
-        ORDER BY d.note_date DESC, p.full_name;
-    ELSE
-        -- Regular users can only see their own notes.
-        RETURN QUERY
-        SELECT 
-            d.id,
-            d.user_id,
-            p.full_name,
-            d.note_date,
-            d.content,
-            d.tags,
-            d.created_at,
-            d.updated_at
-        FROM public.diary_notes d
-        LEFT JOIN public.v_user_profiles_extended p ON d.user_id = p.id
-        WHERE d.user_id = auth.uid()
-          AND d.note_date BETWEEN start_date AND end_date
-        ORDER BY d.note_date DESC;
-    END IF;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_diary_notes_for_range(DATE, DATE) TO authenticated;
-```
-
-<!-- path: data/migrations/07_diary/01_table_diary_notes.sql -->
-```sql
--- path: data/migrations/07_diary/01_table_diary_notes.sql
--- Description: Creates the table for the daily diary/notes module.
-
-CREATE TABLE IF NOT EXISTS public.diary_notes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-    note_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    content TEXT,
-    tags TEXT[],
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_note_per_user_per_day UNIQUE (user_id, note_date)
-);
-
-COMMENT ON TABLE public.diary_notes IS 'Stores daily notes or journal entries for users.';
-COMMENT ON COLUMN public.diary_notes.note_date IS 'The specific date the note is for.';
-COMMENT ON COLUMN public.diary_notes.tags IS 'Optional tags for categorizing notes.';
-```
-
-<!-- path: data/migrations/07_diary/02_rls_diary_notes.sql -->
-```sql
--- path: data/migrations/07_diary/02_rls_diary_notes.sql
--- Description: Applies Row-Level Security to the diary_notes table.
-
--- 1. Enable RLS
-ALTER TABLE public.diary_notes ENABLE ROW LEVEL SECURITY;
-
--- 2. Grant Permissions
-GRANT ALL ON public.diary_notes TO authenticated;
-GRANT ALL ON public.diary_notes TO admin;
-GRANT SELECT ON public.diary_notes TO viewer;
-
--- 3. Create Policies
-DROP POLICY IF EXISTS "Users can manage their own diary notes" ON public.diary_notes;
-
--- Policy: Allow users full control (SELECT, INSERT, UPDATE, DELETE) over their own diary notes.
-CREATE POLICY "Users can manage their own diary notes"
-ON public.diary_notes
-FOR ALL
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
-
--- Admin can read all diary notes
-CREATE POLICY "Admin can read all diary notes"
-ON public.diary_notes
-FOR ALL
-USING (is_super_admin() OR get_my_role() = 'admin')
-WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-```
-
-<!-- path: data/migrations/02_core_infrastructure/03_views.sql -->
-```sql
--- path: data/migrations/02_core_infrastructure/03_views.sql
--- Description: Defines denormalized views for the Core Infrastructure module. [PERFORMANCE OPTIMIZED]
-
--- View for lookup_types
-CREATE OR REPLACE VIEW public.v_lookup_types WITH (security_invoker = true) AS
-SELECT
-  lt.*
-FROM public.lookup_types lt;
-
--- View for maintenance_areas with joined data
-CREATE OR REPLACE VIEW public.v_maintenance_areas WITH (security_invoker = true) AS
-SELECT
-  ma.*,
-  lt_ma.name AS maintenance_area_type_name,
-  lt_ma.code AS maintenance_area_type_code
-FROM public.maintenance_areas ma
-LEFT JOIN public.lookup_types lt_ma ON ma.area_type_id = lt_ma.id;
-
--- View for employee_designations
-CREATE OR REPLACE VIEW public.v_employee_designations WITH (security_invoker = true) AS
-SELECT
-  ed.*
-FROM public.employee_designations ed;
-
--- View for employees with joined data
-CREATE OR REPLACE VIEW public.v_employees WITH (security_invoker = true) AS
-SELECT
-  e.*,
-  ed.name AS employee_designation_name,
-  ma.name AS maintenance_area_name
-FROM public.employees e
-LEFT JOIN public.employee_designations ed ON e.employee_designation_id = ed.id
-LEFT JOIN public.maintenance_areas ma ON e.maintenance_terminal_id = ma.id;
-
--- View for nodes with joined data
-CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_invoker = true) AS
-SELECT
-  n.*,
-  lt_node.name AS node_type_name,
-  lt_node.code AS node_type_code,
-  ma.name AS maintenance_area_name
-FROM public.nodes n
-LEFT JOIN public.lookup_types lt_node ON n.node_type_id = lt_node.id
-LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id;
-
--- View for ofc_cables with joined data
-CREATE OR REPLACE VIEW public.v_ofc_cables_complete WITH (security_invoker = true) AS
-SELECT
-  ofc.*,
-  sn.name AS sn_name,
-  en.name AS en_name,
-  lt_sn_type.name as sn_node_type_name,
-  lt_en_type.name as en_node_type_name,
-  lt_ofc.name AS ofc_type_name,
-  lt_ofc.code AS ofc_type_code,
-  lt_ofc_owner.name AS ofc_owner_name,
-  lt_ofc_owner.code AS ofc_owner_code,
-  ma.name AS maintenance_area_name,
-  ma.code AS maintenance_area_code
-FROM public.ofc_cables ofc
-LEFT JOIN public.nodes sn ON ofc.sn_id = sn.id
-LEFT JOIN public.nodes en ON ofc.en_id = en.id
-LEFT JOIN public.lookup_types lt_ofc ON ofc.ofc_type_id = lt_ofc.id
-LEFT JOIN public.lookup_types lt_ofc_owner ON ofc.ofc_owner_id = lt_ofc_owner.id
-LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
-LEFT JOIN public.lookup_types lt_sn_type ON sn.node_type_id = lt_sn_type.id
-LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id;
-
-
-```
-
-<!-- path: data/migrations/02_core_infrastructure/02_functions.sql -->
-```sql
--- Path: migrations/02_core_infrastructure/02_functions.sql
--- Description: Contains helper and trigger functions for core tables.
-
--- Generic function to update the 'updated_at' column on any table.
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_catalog
-AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
--- Trigger function to update sn_dom (start node date of measurement) if OTDR distance changes significantly.
-CREATE OR REPLACE FUNCTION public.update_sn_dom_on_otdr_change()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_catalog
-AS $$
-BEGIN
-  IF NEW.otdr_distance_sn_km IS DISTINCT FROM OLD.otdr_distance_sn_km THEN
-    IF NEW.sn_dom IS NULL OR abs(coalesce(NEW.otdr_distance_sn_km, 0) - coalesce(OLD.otdr_distance_sn_km, 0)) > 0.05 THEN
-      NEW.sn_dom := CURRENT_DATE;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
--- Trigger function to update en_dom (end node date of measurement) if OTDR distance changes significantly.
-CREATE OR REPLACE FUNCTION public.update_en_dom_on_otdr_change()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_catalog
-AS $$
-BEGIN
-  IF NEW.otdr_distance_en_km IS DISTINCT FROM OLD.otdr_distance_en_km THEN
-    IF NEW.en_dom IS NULL OR abs(coalesce(NEW.otdr_distance_en_km, 0) - coalesce(OLD.otdr_distance_en_km, 0)) > 0.05 THEN
-      NEW.en_dom := CURRENT_DATE;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-```
-
-<!-- path: data/migrations/02_core_infrastructure/05_rls_and_grants.sql -->
-```sql
--- path: data/migrations/02_core_infrastructure/05_rls_and_grants.sql
--- Description: Applies RLS policies and grants to core tables and views created in this module.
-
--- =================================================================
--- PART 1: GRANTS AND RLS FOR CORE TABLES
--- =================================================================
-
-DO $$
-DECLARE
-  tbl TEXT;
-BEGIN
-  FOREACH tbl IN ARRAY ARRAY[
-    'lookup_types', 'maintenance_areas', 'rings',
-    'employee_designations', 'employees', 'nodes',
-    'ofc_cables', 'ofc_connections',
-    'folders', 'files'
-  ]
-  LOOP
-    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-    
-    -- Grant permissions to specific roles
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
-    EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
-    EXECUTE format('GRANT SELECT ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
-    
-    -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
-    EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
-
-    -- Admin Policy (Full Access)
-    EXECUTE format('DROP POLICY IF EXISTS "policy_admin_all_%s" ON public.%I;', tbl, tbl);
-    EXECUTE format($p$
-      CREATE POLICY "policy_admin_all_%s" ON public.%I
-      FOR ALL TO admin
-      USING (is_super_admin() OR public.get_my_role() = 'admin')
-      WITH CHECK (is_super_admin() OR public.get_my_role() = 'admin');
-    $p$, tbl, tbl);
-
-    -- Authenticated User SELECT Policy (RLS on views will handle fine-grained access)
-    EXECUTE format('DROP POLICY IF EXISTS "policy_authenticated_select_%s" ON public.%I;', tbl, tbl);
-    EXECUTE format($p$
-      CREATE POLICY "policy_authenticated_select_%s" ON public.%I
-      FOR SELECT TO authenticated
-      USING (true);
-    $p$, tbl, tbl);
-
-    RAISE NOTICE 'Applied baseline RLS policies to %', tbl;
-  END LOOP;
-END;
-$$;
-
-
--- =================================================================
--- PART 2: GRANTS FOR CORE VIEWS (Created in this module)
--- =================================================================
-DO $$
-BEGIN
-  -- Grant SELECT on all views created in this module to all relevant roles.
-  GRANT SELECT ON 
-    public.v_lookup_types,
-    public.v_maintenance_areas,
-    public.v_employee_designations,
-    public.v_employees,
-    public.v_nodes_complete,
-    public.v_ofc_cables_complete
-  TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
-
-  RAISE NOTICE 'Applied SELECT grants on core infrastructure views.';
-END;
-$$;
-```
-
-<!-- path: data/migrations/02_core_infrastructure/04_indexes.sql -->
-```sql
--- Path: migrations/02_core_infrastructure/04_indexes.sql
--- Description: Creates all B-tree and GIN (FTS) indexes for the Core module.
-
--- =================================================================
--- Section 1: Standard B-Tree Indexes
--- =================================================================
-
--- Indexes for lookup_types
-CREATE INDEX IF NOT EXISTS idx_lookup_types_category ON public.lookup_types (category);
-CREATE INDEX IF NOT EXISTS idx_lookup_types_name ON public.lookup_types (name);
-
--- Indexes for maintenance_areas
-CREATE INDEX IF NOT EXISTS idx_maintenance_areas_parent_id ON public.maintenance_areas (parent_id);
-
--- Indexes for employee_designations
-CREATE INDEX IF NOT EXISTS idx_employee_designations_parent_id ON public.employee_designations (parent_id);
-
--- Indexes for employees
-CREATE INDEX IF NOT EXISTS idx_employees_employee_designation_id ON public.employees (employee_designation_id);
-CREATE INDEX IF NOT EXISTS idx_employees_maintenance_terminal_id ON public.employees (maintenance_terminal_id);
-
--- Indexes for nodes
-CREATE INDEX IF NOT EXISTS idx_nodes_type_id ON public.nodes (node_type_id);
-CREATE INDEX IF NOT EXISTS idx_nodes_maintenance_area ON public.nodes (maintenance_terminal_id);
-CREATE INDEX IF NOT EXISTS idx_nodes_coordinates ON public.nodes (latitude, longitude);
-CREATE INDEX IF NOT EXISTS idx_nodes_status ON public.nodes (status);
-
--- Indexes for ofc_connections
-CREATE INDEX IF NOT EXISTS idx_ofc_connections_ofc_id ON public.ofc_connections (ofc_id);
-CREATE INDEX IF NOT EXISTS idx_ofc_connections_system_id ON public.ofc_connections (system_id);
-CREATE INDEX IF NOT EXISTS idx_ofc_connections_logical_path_id ON public.ofc_connections (logical_path_id);
-
--- Indexes for files/folders
-CREATE INDEX IF NOT EXISTS idx_folders_user_id ON public.folders USING btree (user_id);
-CREATE INDEX IF NOT EXISTS idx_files_user_id ON public.files USING btree (user_id);
-CREATE INDEX IF NOT EXISTS idx_files_folder_id ON public.files USING btree (folder_id);
-
--- =================================================================
--- Section 2: Full-Text Search (FTS) GIN Indexes
--- =================================================================
-
-CREATE INDEX IF NOT EXISTS idx_employees_remark_fts ON public.employees USING gin(to_tsvector('english', remark));
-CREATE INDEX IF NOT EXISTS idx_nodes_remark_fts ON public.nodes USING gin(to_tsvector('english', remark));
-CREATE INDEX IF NOT EXISTS idx_ofc_cables_remark_fts ON public.ofc_cables USING gin(to_tsvector('english', remark));
-CREATE INDEX IF NOT EXISTS idx_ofc_connections_remark_fts ON public.ofc_connections USING gin(to_tsvector('english', remark));
-```
-
-<!-- path: data/migrations/02_core_infrastructure/01_tables_core.sql -->
-```sql
--- Path: migrations/02_core_infrastructure/01_tables_core.sql
--- Description: Defines all core infrastructure and master data tables.
-
--- Centralized Lookup Types Table
-CREATE TABLE IF NOT EXISTS public.lookup_types (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  category TEXT NOT NULL,
-  name TEXT NOT NULL,
-  code TEXT,
-  description TEXT,
-  sort_order INTEGER DEFAULT 0,
-  is_system_default BOOLEAN DEFAULT false,
-  is_ring_based BOOLEAN DEFAULT true,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT uq_lookup_types_category_name UNIQUE (category, name),
-  CONSTRAINT uq_lookup_types_category_code UNIQUE (category, code)
-);
-
--- Maintenance Areas/Terminals Master Table
-CREATE TABLE IF NOT EXISTS public.maintenance_areas (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  code TEXT UNIQUE,
-  area_type_id UUID REFERENCES public.lookup_types (id),
-  parent_id UUID REFERENCES public.maintenance_areas (id),
-  contact_person TEXT,
-  contact_number TEXT,
-  email TEXT,
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
-  address TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Employee Designation Table
-CREATE TABLE IF NOT EXISTS public.employee_designations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE,
-  parent_id UUID REFERENCES public.employee_designations(id) ON DELETE SET NULL,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Employee Master Table
-CREATE TABLE IF NOT EXISTS public.employees (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_name TEXT NOT NULL,
-  employee_pers_no TEXT UNIQUE,
-  employee_contact TEXT,
-  employee_email TEXT,
-  employee_dob DATE,
-  employee_doj DATE,
-  employee_designation_id UUID REFERENCES public.employee_designations (id),
-  employee_addr TEXT,
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Unified Node List (Physical Locations/Sites)
-CREATE TABLE IF NOT EXISTS public.nodes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  node_type_id UUID REFERENCES public.lookup_types (id),
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Ring Master Table
-CREATE TABLE IF NOT EXISTS public.rings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  ring_type_id UUID REFERENCES public.lookup_types (id),
-  description TEXT,
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  total_nodes INTEGER DEFAULT 0,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Unified OFC (Optical Fiber Cable) Table
-CREATE TABLE IF NOT EXISTS public.ofc_cables (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  route_name TEXT NOT NULL,
-  sn_id UUID REFERENCES public.nodes (id) NOT NULL,
-  en_id UUID REFERENCES public.nodes (id) NOT NULL,
-  ofc_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
-  capacity INTEGER NOT NULL,
-  ofc_owner_id UUID REFERENCES public.lookup_types (id) NOT NULL,
-  current_rkm DECIMAL(10, 3),
-  transnet_id TEXT,
-  transnet_rkm DECIMAL(10, 3),
-  asset_no TEXT,
-  maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
-  commissioned_on DATE,
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- OFC Connection Details (Fiber connections between nodes)
-CREATE TABLE IF NOT EXISTS public.ofc_connections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- **Added ON DELETE CASCADE to this line.**
-  ofc_id UUID REFERENCES public.ofc_cables (id) ON DELETE CASCADE NOT NULL,
-  fiber_no_sn INTEGER NOT NULL,
-  fiber_no_en INTEGER NOT NULL,
-  updated_fiber_no_sn INTEGER,
-  updated_fiber_no_en INTEGER,
-  updated_sn_id UUID REFERENCES public.nodes (id),
-  updated_en_id UUID REFERENCES public.nodes (id),
-  otdr_distance_sn_km DECIMAL(10, 3),
-  sn_dom DATE,
-  sn_power_dbm DECIMAL(10, 3),
-  system_id UUID, -- NOTE: FK constraint to systems table is added in 99_finalization
-  otdr_distance_en_km DECIMAL(10, 3),
-  en_dom DATE,
-  en_power_dbm DECIMAL(10, 3),
-  route_loss_db DECIMAL(10, 3),
-  logical_path_id UUID, -- NOTE: FK constraint to logical_fiber_paths is added in 99_finalization
-  fiber_role TEXT CHECK (fiber_role IN ('working', 'protection')),
-  path_direction TEXT CHECK (path_direction IN ('tx', 'rx')),
-  path_segment_order INTEGER DEFAULT 1,
-  source_port TEXT,
-  destination_port TEXT,
-  connection_category TEXT NOT NULL DEFAULT 'SPLICE_TYPES',
-  connection_type TEXT NOT NULL DEFAULT 'straight',
-  CONSTRAINT fk_connection_type FOREIGN KEY (connection_category, connection_type)
-    REFERENCES public.lookup_types(category, name),
-  remark TEXT,
-  status BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Folders table for file management
-CREATE TABLE IF NOT EXISTS public.folders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users (id),
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Files table for file management
-CREATE TABLE IF NOT EXISTS public.files (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users (id),
-  folder_id UUID REFERENCES public.folders (id),
-  file_name TEXT NOT NULL,
-  file_type TEXT NOT NULL,
-  file_size TEXT NOT NULL,
-  file_route TEXT NOT NULL,
-  file_url TEXT NOT NULL,
-  uploaded_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-<!-- path: data/migrations/02_core_infrastructure/06_triggers_ofc_connections.sql -->
-```sql
--- Path: data/migrations/02_core_infrastructure/06_triggers_ofc_connections.sql
--- Description: Creates a trigger to automatically populate ofc_connections when a new ofc_cable is inserted.
-
--- 1. Define the trigger function
-CREATE OR REPLACE FUNCTION public.create_initial_connections_for_cable()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER -- Use definer to ensure it can write to ofc_connections
-SET search_path = public
-AS $$
-DECLARE
-    i INT;
-BEGIN
-    -- Loop from 1 to the capacity of the newly inserted cable
-    FOR i IN 1..NEW.capacity LOOP
-        -- Insert a new record into ofc_connections for each fiber
-        INSERT INTO public.ofc_connections (
-            ofc_id,
-            fiber_no_sn,
-            fiber_no_en,
-            -- Populate with initial logical path info
-            updated_fiber_no_sn,
-            updated_fiber_no_en,
-            updated_sn_id,
-            updated_en_id,
-            fiber_role
-        )
-        VALUES (
-            NEW.id,      -- Cable ID
-            i,           -- Start fiber number
-            i,           -- End fiber number
-            -- Initial logical path matches the physical path
-            i,           -- updated_fiber_no_sn
-            i,           -- updated_fiber_no_en
-            NEW.sn_id,   -- updated_sn_id
-            NEW.en_id,    -- updated_en_id
-            'working'    -- fiber_role
-        );
-    END LOOP;
-    RETURN NEW;
-END;
-$$;
-
--- 2. Create and attach the trigger to the ofc_cables table
-DROP TRIGGER IF EXISTS on_ofc_cable_created ON public.ofc_cables; -- for idempotency
-CREATE TRIGGER on_ofc_cable_created
-AFTER INSERT ON public.ofc_cables
-FOR EACH ROW
-EXECUTE FUNCTION public.create_initial_connections_for_cable();
-
-COMMENT ON TRIGGER on_ofc_cable_created ON public.ofc_cables IS 'Automatically creates individual fiber records in ofc_connections upon the creation of a new ofc_cable.';
-```
-
-<!-- path: data/migrations/04_advanced_ofc/08_upsert_route_topology.sql -->
-```sql
--- path: data/migrations/04_advanced_ofc/08_upsert_route_topology.sql
--- Description: Creates a robust, transactional function to upsert an entire route topology from a JSON payload.
-
-CREATE OR REPLACE FUNCTION public.upsert_route_topology_from_excel(
-  p_route_id UUID,
-  p_junction_closures JSONB,
-  p_cable_segments JSONB,
-  p_fiber_splices JSONB
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_jc_id UUID;
-  v_seg_id UUID;
-  v_splice_id UUID;
-  all_jc_ids UUID[];
-  all_segment_ids UUID[];
-  all_splice_ids UUID[];
-  duplicate_order INT;
-BEGIN
-  -- Use a transaction to ensure all or nothing is applied
-  BEGIN
-    -- 1. Load incoming IDs into arrays for validation and cleanup
-    SELECT array_agg(id) INTO all_jc_ids FROM jsonb_to_recordset(p_junction_closures) AS x(id UUID);
-    SELECT array_agg(id) INTO all_segment_ids FROM jsonb_to_recordset(p_cable_segments) AS x(id UUID);
-    SELECT array_agg(id) INTO all_splice_ids FROM jsonb_to_recordset(p_fiber_splices) AS x(id UUID);
-
-    -- 2. Pre-validation Checks
-    -- THE FIX: Check for duplicate segment_order within the payload itself.
-    SELECT segment_order INTO duplicate_order
-    FROM jsonb_to_recordset(p_cable_segments) AS x(segment_order INT)
-    GROUP BY segment_order
-    HAVING COUNT(*) > 1
-    LIMIT 1;
-    IF FOUND THEN
-      RAISE EXCEPTION 'Import failed: The "Cable Segments" sheet contains a duplicate segment_order: %. Each segment must have a unique order number.', duplicate_order;
-    END IF;
-
-    -- Check if all splices reference valid segments within the payload
-    SELECT id INTO v_splice_id FROM jsonb_to_recordset(p_fiber_splices) AS x(id UUID, incoming_segment_id UUID)
-    WHERE incoming_segment_id IS NOT NULL AND NOT (incoming_segment_id = ANY(all_segment_ids));
-    IF FOUND THEN
-      RAISE EXCEPTION 'Import failed: A fiber splice references an incoming_segment_id that does not exist in the "Cable Segments" sheet. Invalid Segment ID referenced by Splice ID: %', v_splice_id;
-    END IF;
-
-    -- Check if all splices reference valid JCs within the payload
-    SELECT id INTO v_splice_id FROM jsonb_to_recordset(p_fiber_splices) AS x(id UUID, jc_id UUID)
-    WHERE jc_id IS NOT NULL AND NOT (jc_id = ANY(all_jc_ids));
-    IF FOUND THEN
-      RAISE EXCEPTION 'Import failed: A fiber splice references a jc_id that does not exist in the "Junction Closures" sheet. Invalid JC ID referenced by Splice ID: %', v_splice_id;
-    END IF;
-
-    -- 3. Perform Deletions: Remove items associated with the route that are NOT in the new payload
-    DELETE FROM public.fiber_splices WHERE public.fiber_splices.jc_id IN (SELECT id FROM public.junction_closures WHERE ofc_cable_id = p_route_id) AND NOT (public.fiber_splices.id = ANY(all_splice_ids));
-    DELETE FROM public.cable_segments WHERE public.cable_segments.original_cable_id = p_route_id AND NOT (public.cable_segments.id = ANY(all_segment_ids));
-    DELETE FROM public.junction_closures WHERE public.junction_closures.ofc_cable_id = p_route_id AND NOT (public.junction_closures.id = ANY(all_jc_ids));
-
-    -- 4. Upsert Junction Closures
-    INSERT INTO public.junction_closures (id, ofc_cable_id, node_id, position_km)
-    SELECT id, p_route_id, node_id, position_km FROM jsonb_to_recordset(p_junction_closures) AS x(id UUID, node_id UUID, position_km NUMERIC)
-    ON CONFLICT (id) DO UPDATE SET
-      ofc_cable_id = EXCLUDED.ofc_cable_id,
-      node_id = EXCLUDED.node_id,
-      position_km = EXCLUDED.position_km;
-
-    -- 5. Upsert Cable Segments
-    INSERT INTO public.cable_segments (id, original_cable_id, segment_order, start_node_id, end_node_id, start_node_type, end_node_type, distance_km, fiber_count)
-    SELECT id, p_route_id, segment_order, start_node_id, end_node_id, start_node_type, end_node_type, distance_km, fiber_count FROM jsonb_to_recordset(p_cable_segments) AS x(id UUID, segment_order INT, start_node_id UUID, end_node_id UUID, start_node_type TEXT, end_node_type TEXT, distance_km NUMERIC, fiber_count INT)
-    ON CONFLICT (original_cable_id, segment_order) DO UPDATE SET
-      id = EXCLUDED.id, -- Also update the ID to handle the case of duplicate segment_order with different IDs
-      start_node_id = EXCLUDED.start_node_id,
-      end_node_id = EXCLUDED.end_node_id,
-      start_node_type = EXCLUDED.start_node_type,
-      end_node_type = EXCLUDED.end_node_type,
-      distance_km = EXCLUDED.distance_km,
-      fiber_count = EXCLUDED.fiber_count,
-      updated_at = NOW();
-
-    -- 6. Upsert Fiber Splices
-    INSERT INTO public.fiber_splices (id, jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
-    SELECT id, jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db FROM jsonb_to_recordset(p_fiber_splices) AS x(id UUID, jc_id UUID, incoming_segment_id UUID, incoming_fiber_no INT, outgoing_segment_id UUID, outgoing_fiber_no INT, splice_type_id UUID, loss_db NUMERIC)
-    ON CONFLICT (id) DO UPDATE SET
-      jc_id = EXCLUDED.jc_id,
-      incoming_segment_id = EXCLUDED.incoming_segment_id,
-      incoming_fiber_no = EXCLUDED.incoming_fiber_no,
-      outgoing_segment_id = EXCLUDED.outgoing_segment_id,
-      outgoing_fiber_no = EXCLUDED.outgoing_fiber_no,
-      splice_type_id = EXCLUDED.splice_type_id,
-      loss_db = EXCLUDED.loss_db,
-      updated_at = NOW();
-
-  EXCEPTION
-    WHEN OTHERS THEN
-      RAISE;
-  END;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.upsert_route_topology_from_excel(UUID, JSONB, JSONB, JSONB) TO authenticated;
-```
-
-<!-- path: data/migrations/04_advanced_ofc/02_views.sql -->
-```sql
--- Path: migrations/04_advanced_ofc/02_views.sql
--- Description: Defines views for analyzing OFC paths and utilization. [UPDATED]
-
--- View showing complete information for a junction closure.
-CREATE OR REPLACE VIEW public.v_junction_closures_complete WITH (security_invoker = true) AS
-SELECT
-  jc.id,
-  jc.node_id,
-  jc.ofc_cable_id,
-  jc.position_km,
-  n.name,
-  n.latitude,
-  n.longitude
-FROM public.junction_closures jc
-JOIN public.nodes n ON jc.node_id = n.id;
-
--- NEW VIEW: This view helps find which cable segments are connected to a specific JC node.
-CREATE OR REPLACE VIEW public.v_cable_segments_at_jc WITH (security_invoker = true) AS
-SELECT
-  cs.id,
-  cs.original_cable_id,
-  cs.segment_order,
-  cs.fiber_count,
-  cs.start_node_id,
-  cs.end_node_id,
-  jcs.node_id as jc_node_id
-FROM public.cable_segments cs
-JOIN public.junction_closures jcs ON (cs.start_node_type = 'jc' AND cs.start_node_id = jcs.node_id)
-                                  OR (cs.end_node_type = 'jc' AND cs.end_node_id = jcs.node_id);
-
-
--- View showing end-to-end logical path summaries.
-CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_invoker = true) AS
-SELECT
-  lfp.id AS path_id,
-  lfp.path_name,
-  lfp.source_system_id,
-  lfp.destination_system_id,
-  lfp.total_distance_km,
-  lfp.total_loss_db,
-  lt_status.name AS operational_status,
-  COUNT(lps.id) AS segment_count,
-  STRING_AGG(DISTINCT oc.route_name, ' -> ' ORDER BY oc.route_name) AS route_names
-FROM public.logical_fiber_paths lfp
-LEFT JOIN public.lookup_types lt_status ON lfp.operational_status_id = lt_status.id
-LEFT JOIN public.logical_path_segments lps ON lfp.id = lps.logical_path_id
-LEFT JOIN public.ofc_cables oc ON lps.ofc_cable_id = oc.id
-GROUP BY
-  lfp.id,
-  lt_status.name;
-
-
--- View showing detailed segments for a given logical path.
-CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_invoker = true) AS
-SELECT
-  srp.id,
-  srp.logical_path_id,
-  lp.path_name,
-  lp.source_system_id,
-  srp.ofc_cable_id,
-  srp.path_order,
-  oc.route_name,
-  oc.sn_id AS start_node_id,
-  sn.name AS start_node_name,
-  oc.en_id AS end_node_id,
-  en.name AS end_node_name,
-  srp.created_at
-FROM public.logical_path_segments srp
-JOIN public.logical_fiber_paths lp ON srp.logical_path_id = lp.id
-JOIN public.ofc_cables oc ON srp.ofc_cable_id = oc.id
-LEFT JOIN public.nodes sn ON oc.sn_id = sn.id
-LEFT JOIN public.nodes en ON oc.en_id = en.id
-ORDER BY
-  srp.logical_path_id,
-  srp.path_order;
-
-
--- View for calculating fiber utilization per cable.
-CREATE OR REPLACE VIEW public.v_cable_utilization WITH (security_invoker = true) AS
-SELECT
-  oc.id AS cable_id,
-  oc.route_name,
-  oc.capacity,
-  -- [THE FIX] A fiber is used if it's assigned to ANY logical path. Role doesn't matter.
-  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL) AS used_fibers,
-  -- This logic remains correct.
-  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NULL) AS available_fibers,
-  -- [THE FIX] The percentage now correctly reflects all used fibers.
-  ROUND(
-    (COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL)::DECIMAL / NULLIF(oc.capacity, 0)) * 100, 2
-  ) AS utilization_percent
-FROM public.ofc_cables oc
-LEFT JOIN public.ofc_connections conn ON oc.id = conn.ofc_id
-GROUP BY
-  oc.id, oc.route_name, oc.capacity;
-```
-
-<!-- path: data/migrations/04_advanced_ofc/07_get_route_topology.sql -->
-```sql
--- path: data/migrations/04_advanced_ofc/07_get_route_topology.sql
--- Description: Creates a function to export the entire topology of a given OFC route.
-
-CREATE OR REPLACE FUNCTION public.get_route_topology_for_export(p_route_id UUID)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    v_junction_closures JSONB;
-    v_cable_segments JSONB;
-    v_fiber_splices JSONB;
-BEGIN
-    -- 1. Get all junction closures for the route
-    -- THE FIX: Changed alias from 'jc_id' to 'id' to match the table schema.
-    SELECT COALESCE(jsonb_agg(
-      jsonb_build_object(
-        'id', jc.id,
-        'node_id', jc.node_id,
-        'node_name', n.name,
-        'position_km', jc.position_km
-      )
-    ), '[]'::jsonb)
-    INTO v_junction_closures
-    FROM public.junction_closures jc
-    JOIN public.nodes n ON jc.node_id = n.id
-    WHERE jc.ofc_cable_id = p_route_id;
-
-    -- 2. Get all cable segments for the route (This was already correct)
-    SELECT COALESCE(jsonb_agg(cs), '[]'::jsonb)
-    INTO v_cable_segments
-    FROM public.cable_segments cs
-    WHERE cs.original_cable_id = p_route_id;
-
-    -- 3. Get all fiber splices within the JCs of this route (This was already correct)
-    SELECT COALESCE(jsonb_agg(fs), '[]'::jsonb)
-    INTO v_fiber_splices
-    FROM public.fiber_splices fs
-    WHERE fs.jc_id IN (SELECT id FROM public.junction_closures WHERE ofc_cable_id = p_route_id);
-
-    -- 4. Combine into a single JSON object
-    RETURN jsonb_build_object(
-        'junction_closures', v_junction_closures,
-        'cable_segments', v_cable_segments,
-        'fiber_splices', v_fiber_splices
-    );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_route_topology_for_export(UUID) TO authenticated;
-```
-
-<!-- path: data/migrations/04_advanced_ofc/06_rls_and_grants.sql -->
-```sql
--- Path: migrations/04_advanced_ofc/06_rls_and_grants.sql
--- Description: RLS policies and Grants for the Advanced OFC (Route Manager) module.
-
--- =================================================================
--- Step 1: Grant Table-Level Permissions to Roles
--- =================================================================
-GRANT ALL ON public.junction_closures TO admin;
-GRANT ALL ON public.cable_segments TO admin;
-GRANT ALL ON public.fiber_splices TO admin;
-GRANT ALL ON public.logical_fiber_paths TO admin;
-GRANT ALL ON public.logical_path_segments TO admin; -- Added missing table grant
-
-GRANT SELECT ON public.junction_closures TO viewer;
-GRANT SELECT ON public.cable_segments TO viewer;
-GRANT SELECT ON public.fiber_splices TO viewer;
-GRANT SELECT ON public.logical_fiber_paths TO viewer;
-GRANT SELECT ON public.logical_path_segments TO viewer; -- Added missing table grant
-
--- Grant select on dependent tables from other modules for views to work
-GRANT SELECT ON public.ofc_cables TO viewer, authenticated;
-GRANT SELECT ON public.nodes TO viewer;
-GRANT SELECT ON public.junction_closures TO authenticated;
-GRANT SELECT ON public.cable_segments TO authenticated;
-
--- =================================================================
--- Step 2: Apply RLS Policies to Tables
--- =================================================================
-DO $$
-DECLARE
-  tbl TEXT;
-BEGIN
-  -- CORRECTED: Uncommented logical_path_segments
-  FOREACH tbl IN ARRAY ARRAY[
-    'junction_closures', 'cable_segments', 'fiber_splices',
-    'logical_fiber_paths', 'logical_path_segments'
-  ]
-  LOOP
-    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "policy_admin_all_%s" ON public.%I;', tbl, tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "policy_viewer_select_%s" ON public.%I;', tbl, tbl);
-
-    -- Admin Policy
-    EXECUTE format($p$
-      CREATE POLICY "policy_admin_all_%s" ON public.%I FOR ALL TO admin
-      USING (is_super_admin() OR get_my_role() = 'admin')
-      WITH CHECK (is_super_admin() OR get_my_role() = 'admin');
-    $p$, tbl, tbl);
-
-    -- Viewer Policy
-    EXECUTE format($p$
-      CREATE POLICY "policy_viewer_select_%s" ON public.%I FOR SELECT TO viewer
-      USING (get_my_role() = 'viewer' OR is_super_admin() OR get_my_role() = 'admin');
-    $p$, tbl, tbl);
-  END LOOP;
-END;
-$$;
-
-DROP POLICY IF EXISTS policy_authenticated_select_cable_segments ON public.cable_segments;
-CREATE POLICY policy_authenticated_select_cable_segments ON public.cable_segments
-FOR SELECT TO authenticated USING (true);
-
-DROP POLICY IF EXISTS policy_authenticated_select_junction_closures ON public.junction_closures;
-CREATE POLICY policy_authenticated_select_junction_closures ON public.junction_closures
-FOR SELECT TO authenticated USING (true);
-
--- =================================================================
--- Step 3: View-Level Grants [CORRECTED]
--- =================================================================
-DO $$
-BEGIN
-  -- CORRECTED: Added grants for specific admin roles to all relevant views in this module.
-  GRANT SELECT ON public.v_junction_closures_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  
-  RAISE NOTICE 'Applied SELECT grants on advanced OFC views for ALL relevant roles.';
-END;
-$$;
-```
-
-<!-- path: data/migrations/04_advanced_ofc/03_indexes.sql -->
-```sql
--- Path: migrations/04_advanced_ofc/03_indexes.sql
--- Description: Creates indexes for the Advanced OFC module tables.
-
-CREATE INDEX IF NOT EXISTS idx_logical_fiber_paths_source_system_id ON public.logical_fiber_paths (source_system_id);
-CREATE INDEX IF NOT EXISTS idx_logical_path_segments_path_id ON public.logical_path_segments(logical_path_id);
-```
-
-<!-- path: data/migrations/04_advanced_ofc/01_tables_advanced_ofc.sql -->
-```sql
--- Path: migrations/04_advanced_ofc/01_tables_advanced_ofc.sql
--- Description: Defines tables for advanced OFC path and splice management. [CORRECTED FOR SEGMENTS]
-
-CREATE TABLE IF NOT EXISTS public.junction_closures (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  node_id UUID NOT NULL REFERENCES public.nodes(id) ON DELETE CASCADE,
-  ofc_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
-  position_km NUMERIC(10,3),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.cable_segments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  original_cable_id UUID NOT NULL REFERENCES public.ofc_cables(id) ON DELETE CASCADE,
-  segment_order INTEGER NOT NULL,
-  start_node_id UUID NOT NULL,
-  end_node_id UUID NOT NULL,
-  start_node_type TEXT NOT NULL CHECK (start_node_type IN ('node', 'jc')),
-  end_node_type TEXT NOT NULL CHECK (end_node_type IN ('node', 'jc')),
-  distance_km DECIMAL(10,3) NOT NULL,
-  fiber_count INTEGER NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (original_cable_id, segment_order)
-);
-
-CREATE TABLE IF NOT EXISTS public.logical_fiber_paths (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  path_name TEXT,
-  working_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
-  path_role TEXT NOT NULL DEFAULT 'working' CHECK (path_role IN ('working', 'protection')),
-  path_type_id UUID REFERENCES public.lookup_types(id) ON DELETE SET NULL,
-  source_system_id UUID,
-  destination_system_id UUID,
-  operational_status_id UUID REFERENCES public.lookup_types(id) ON DELETE SET NULL,
-  system_connection_id UUID, -- REMOVED foreign key constraint to fix dependency order
-  source_port TEXT,
-  destination_port TEXT,
-  total_distance_km DECIMAL(10, 3),
-  total_loss_db DECIMAL(10, 3),
-  service_type TEXT,
-  bandwidth_gbps INTEGER,
-  wavelength_nm INTEGER,
-  commissioned_date DATE,
-  remark TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Tracks individual fiber connections (splices) between cable segments within a junction closure.
-CREATE TABLE IF NOT EXISTS public.fiber_splices (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    jc_id UUID NOT NULL REFERENCES public.junction_closures(id) ON DELETE CASCADE,
-    incoming_segment_id UUID NOT NULL REFERENCES public.cable_segments(id) ON DELETE CASCADE,
-    incoming_fiber_no INT NOT NULL,
-    outgoing_segment_id UUID REFERENCES public.cable_segments(id) ON DELETE CASCADE,
-    outgoing_fiber_no INT,
-    splice_type_id UUID NOT NULL REFERENCES public.lookup_types(id),
-    logical_path_id UUID REFERENCES public.logical_fiber_paths(id) ON DELETE SET NULL,
-    loss_db NUMERIC(5, 2),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    CONSTRAINT unique_incoming_fiber_in_jc UNIQUE (jc_id, incoming_segment_id, incoming_fiber_no),
-    CONSTRAINT unique_outgoing_fiber_in_jc UNIQUE (jc_id, outgoing_segment_id, outgoing_fiber_no)
-);
-
-CREATE TABLE IF NOT EXISTS public.logical_path_segments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  logical_path_id UUID NOT NULL REFERENCES public.logical_fiber_paths(id) ON DELETE CASCADE,
-  ofc_cable_id UUID REFERENCES public.ofc_cables(id),
-  path_order INT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (logical_path_id, path_order)
-);
-
-```
-
-<!-- path: data/migrations/04_advanced_ofc/05_triggers.sql -->
-```sql
--- Ensure a clean state by dropping any old triggers that might exist.
-DROP TRIGGER IF EXISTS on_junction_closure_change ON public.junction_closures;
-
-
--- Trigger 1: Cable Segmentation (This one is correct and remains)
-CREATE TRIGGER on_junction_closure_change
-AFTER INSERT OR DELETE ON public.junction_closures
-FOR EACH ROW
-EXECUTE FUNCTION public.manage_cable_segments();
-
-COMMENT ON TRIGGER on_junction_closure_change ON public.junction_closures
-IS 'When a JC is added or removed, this trigger calls a function to recalculate the virtual segments of the affected OFC cable.';
-```
-
-<!-- path: data/migrations/04_advanced_ofc/04_functions.sql -->
-```sql
--- path: data/migrations/04_advanced_ofc/04_functions.sql
--- Description: All functions for cable segmentation, splicing, and fiber path management. [CONSOLIDATED & CORRECTED]
-
--- =================================================================
--- Section 1: Junction Closure and Segmentation Management
--- =================================================================
-
--- This function is called by the frontend to add a new JC.
-CREATE OR REPLACE FUNCTION public.add_junction_closure(
-  p_ofc_cable_id UUID,
-  p_position_km NUMERIC(10,3),
-  p_node_id UUID
-)
-RETURNS TABLE (
-  id UUID,
-  node_id UUID,
-  ofc_cable_id UUID,
-  position_km NUMERIC(10,3),
-  created_at TIMESTAMPTZ
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_jc_id UUID;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM public.nodes WHERE nodes.id = p_node_id) THEN
-    RAISE EXCEPTION 'Node with ID % does not exist', p_node_id;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.ofc_cables WHERE ofc_cables.id = p_ofc_cable_id) THEN
-    RAISE EXCEPTION 'Cable with ID % does not exist', p_ofc_cable_id;
-  END IF;
-
-  INSERT INTO public.junction_closures (node_id, ofc_cable_id, position_km)
-  VALUES (p_node_id, p_ofc_cable_id, p_position_km)
-  RETURNING junction_closures.id INTO v_jc_id;
-
-  RETURN QUERY
-  SELECT jc.id, jc.node_id, jc.ofc_cable_id, jc.position_km, jc.created_at
-  FROM public.junction_closures jc
-  WHERE jc.id = v_jc_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.add_junction_closure(UUID, NUMERIC, UUID) TO authenticated;
-
--- This function is called by a trigger to non-destructively recalculate segments.
-CREATE OR REPLACE FUNCTION public.recalculate_segments_for_cable(p_cable_id UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_cable RECORD;
-BEGIN
-  SELECT * INTO v_cable FROM public.ofc_cables WHERE id = p_cable_id;
-  IF NOT FOUND THEN
-    RAISE WARNING 'Cable not found for segmentation: %', p_cable_id;
-    RETURN;
-  END IF;
-
-  DELETE FROM public.cable_segments WHERE original_cable_id = p_cable_id;
-
-  CREATE TEMP TABLE route_points AS
-  SELECT v_cable.sn_id AS point_id, 'node' AS point_type, 0.0 AS position_km
-  UNION ALL
-  SELECT jc.node_id, 'jc', jc.position_km
-  FROM public.junction_closures jc
-  WHERE jc.ofc_cable_id = p_cable_id
-  UNION ALL
-  SELECT v_cable.en_id, 'node', v_cable.current_rkm;
-
-  INSERT INTO public.cable_segments (
-    original_cable_id, segment_order,
-    start_node_id, start_node_type,
-    end_node_id, end_node_type,
-    distance_km, fiber_count
-  )
-  SELECT
-    p_cable_id,
-    ROW_NUMBER() OVER (ORDER BY p_start.position_km),
-    p_start.point_id, p_start.point_type,
-    p_end.point_id, p_end.point_type,
-    p_end.position_km - p_start.position_km,
-    v_cable.capacity
-  FROM route_points p_start
-  JOIN LATERAL (
-    SELECT * FROM route_points p2
-    WHERE p2.position_km > p_start.position_km
-    ORDER BY p2.position_km ASC
-    LIMIT 1
-  ) p_end ON true;
-
-  DROP TABLE route_points;
-END;
-$$;
-
--- This is the trigger function that orchestrates segmentation.
-CREATE OR REPLACE FUNCTION public.manage_cable_segments()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF (TG_OP = 'INSERT') THEN
-    PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
-    RETURN NEW;
-  ELSIF (TG_OP = 'DELETE') THEN
-    PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
-    RETURN OLD;
-  END IF;
-  RETURN NULL;
-END;
-$$;
-
--- Description: Get a list of all cable segments present at a specific Junction Closure.
-CREATE OR REPLACE FUNCTION public.get_segments_at_jc(p_jc_id UUID)
-RETURNS TABLE (id UUID, original_cable_name TEXT, segment_order INT, fiber_count INT)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT
-        cs.id,
-        oc.route_name,
-        cs.segment_order,
-        cs.fiber_count
-    FROM public.v_cable_segments_at_jc v_cs
-    JOIN public.cable_segments cs ON v_cs.id = cs.id
-    JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-    WHERE v_cs.jc_node_id = (SELECT node_id FROM public.junction_closures WHERE id = p_jc_id);
-$$;
-GRANT EXECUTE ON FUNCTION public.get_segments_at_jc(UUID) TO authenticated;
-
--- =================================================================
--- Section 2: Logical Fiber Path Tracing and Splicing Management
--- =================================================================
-
--- NEW, SIMPLE UPDATE FUNCTION: Takes pre-calculated data from the client and applies it.
-CREATE OR REPLACE FUNCTION public.apply_logical_path_update(
-    p_id UUID,
-    p_start_node_id UUID,
-    p_end_node_id UUID,
-    p_start_fiber_no INT,
-    p_end_fiber_no INT
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    UPDATE public.ofc_connections
-    SET
-        updated_sn_id       = p_start_node_id,
-        updated_fiber_no_sn = p_start_fiber_no,
-        updated_en_id       = p_end_node_id,
-        updated_fiber_no_en = p_end_fiber_no,
-        updated_at          = NOW()
-    WHERE id = p_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.apply_logical_path_update(UUID, UUID, UUID, INT, INT) TO authenticated;
-
--- ** Final, correct, robust bi-directional trace function.**
-CREATE OR REPLACE FUNCTION public.trace_fiber_path(p_start_segment_id UUID, p_start_fiber_no INT)
-RETURNS TABLE (
-    step_order BIGINT,
-    element_type TEXT,
-    element_id UUID,
-    element_name TEXT,
-    details TEXT,
-    fiber_in INT,
-    fiber_out INT,
-    distance_km NUMERIC,
-    loss_db NUMERIC,
-    original_cable_id UUID,
-    start_node_id UUID,
-    end_node_id UUID
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    -- Create temp table for the path
-    CREATE TEMP TABLE IF NOT EXISTS temp_path_trace (
-        step BIGINT,
-        current_segment_id UUID,
-        current_fiber_no INT,
-        previous_splice_id UUID,
-        visited_segments UUID[]
-    ) ON COMMIT DROP;
-    
-    -- Trace forward
-    INSERT INTO temp_path_trace
-    WITH RECURSIVE forward_trace AS (
-        SELECT
-            0::bigint as step,
-            p_start_segment_id as current_segment_id,
-            p_start_fiber_no as current_fiber_no,
-            NULL::uuid as previous_splice_id,
-            ARRAY[p_start_segment_id] as visited_segments
-        
-        UNION ALL
-        
-        SELECT
-            p.step + 1,
-            s.outgoing_segment_id,
-            s.outgoing_fiber_no,
-            s.id,
-            p.visited_segments || s.outgoing_segment_id
-        FROM forward_trace p
-        JOIN public.fiber_splices s 
-            ON p.current_segment_id = s.incoming_segment_id 
-            AND p.current_fiber_no = s.incoming_fiber_no
-        WHERE s.outgoing_segment_id IS NOT NULL
-          AND NOT (s.outgoing_segment_id = ANY(p.visited_segments))
-          AND p.step < 100
-    )
-    SELECT * FROM forward_trace;
-    
-    -- Trace backward
-    INSERT INTO temp_path_trace
-    WITH RECURSIVE backward_trace AS (
-        SELECT
-            0::bigint as step,
-            p_start_segment_id as current_segment_id,
-            p_start_fiber_no as current_fiber_no,
-            NULL::uuid as previous_splice_id,
-            ARRAY[p_start_segment_id] as visited_segments
-        
-        UNION ALL
-        
-        SELECT
-            p.step - 1,
-            s.incoming_segment_id,
-            s.incoming_fiber_no,
-            s.id,
-            p.visited_segments || s.incoming_segment_id
-        FROM backward_trace p
-        JOIN public.fiber_splices s 
-            ON p.current_segment_id = s.outgoing_segment_id 
-            AND p.current_fiber_no = s.outgoing_fiber_no
-        WHERE s.incoming_segment_id IS NOT NULL
-          AND NOT (s.incoming_segment_id = ANY(p.visited_segments))
-          AND p.step > -100
-    )
-    SELECT * FROM backward_trace WHERE step < 0;
-    
-    -- Return results
-    RETURN QUERY
-    WITH path_elements AS (
-        -- Segments
-        SELECT
-            fp.step * 2 AS order_key,
-            'SEGMENT'::text as element_type,
-            fp.current_segment_id as element_id,
-            fp.current_fiber_no as fiber_in,
-            fp.current_fiber_no as fiber_out
-        FROM temp_path_trace fp
-        
-        UNION ALL
-        
-        -- Splices
-        SELECT
-            fp.step * 2 - 1 AS order_key,
-            'SPLICE'::text,
-            fp.previous_splice_id,
-            LAG(fp.current_fiber_no) OVER (ORDER BY fp.step) as fiber_in,
-            fp.current_fiber_no as fiber_out
-        FROM temp_path_trace fp
-        WHERE fp.previous_splice_id IS NOT NULL
-    )
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY pe.order_key) AS step_order,
-        pe.element_type,
-        pe.element_id,
-        CASE
-            WHEN pe.element_type = 'SEGMENT' THEN oc.route_name
-            WHEN pe.element_type = 'SPLICE' THEN n.name
-        END AS element_name,
-        CASE
-            WHEN pe.element_type = 'SEGMENT' THEN 
-                'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
-            WHEN pe.element_type = 'SPLICE' THEN 
-                'Junction Closure Splice'
-        END AS details,
-        pe.fiber_in,
-        pe.fiber_out,
-        cs.distance_km,
-        fs.loss_db,
-        cs.original_cable_id,
-        cs.start_node_id,     
-        cs.end_node_id        
-    FROM path_elements pe
-    LEFT JOIN public.cable_segments cs 
-        ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
-    LEFT JOIN public.ofc_cables oc 
-        ON cs.original_cable_id = oc.id
-    LEFT JOIN public.nodes sn ON cs.start_node_id = sn.id
-    LEFT JOIN public.nodes en ON cs.end_node_id = en.id
-    LEFT JOIN public.fiber_splices fs 
-        ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
-    LEFT JOIN public.junction_closures jc 
-        ON fs.jc_id = jc.id
-    LEFT JOIN public.nodes n 
-        ON jc.node_id = n.id
-    ORDER BY pe.order_key;
-    
-    -- Cleanup
-    DROP TABLE IF EXISTS temp_path_trace;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.trace_fiber_path(UUID, INT) TO authenticated;
-
--- Description: RPC function to handle creating, deleting, and updating splices.
-CREATE OR REPLACE FUNCTION public.manage_splice(
-    p_action TEXT, p_jc_id UUID, p_splice_id UUID DEFAULT NULL, p_incoming_segment_id UUID DEFAULT NULL,
-    p_incoming_fiber_no INT DEFAULT NULL, p_outgoing_segment_id UUID DEFAULT NULL, p_outgoing_fiber_no INT DEFAULT NULL,
-    p_splice_type_id UUID DEFAULT NULL, p_loss_db NUMERIC DEFAULT NULL
-)
-RETURNS RECORD
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    result RECORD;
-    v_splice_type_id UUID;
-BEGIN
-    IF p_splice_type_id IS NULL THEN
-            SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_splice_type_id;
-        ELSE
-            v_splice_type_id := p_splice_type_id;
-        END IF;
-    IF p_action = 'create' THEN
-        INSERT INTO public.fiber_splices (jc_id, incoming_segment_id, incoming_fiber_no, outgoing_segment_id, outgoing_fiber_no, splice_type_id, loss_db)
-        VALUES (p_jc_id, p_incoming_segment_id, p_incoming_fiber_no, p_outgoing_segment_id, p_outgoing_fiber_no, v_splice_type_id, p_loss_db)
-        RETURNING id, 'created' INTO result;
-    ELSIF p_action = 'delete' THEN
-        DELETE FROM public.fiber_splices WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'deleted' INTO result;
-        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
-    ELSIF p_action = 'update_loss' THEN
-        UPDATE public.fiber_splices SET loss_db = p_loss_db, updated_at = now()
-        WHERE id = p_splice_id AND jc_id = p_jc_id RETURNING id, 'updated' INTO result;
-        IF NOT FOUND THEN RAISE EXCEPTION 'Splice not found.'; END IF;
-    ELSE
-        RAISE EXCEPTION 'Invalid action specified.';
-    END IF;
-    RETURN result;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID, INT, UUID, NUMERIC) TO authenticated;
-
-
-
--- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
-CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
-RETURNS JSONB
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
--- Fetches info about the requested JC
-WITH jc_info AS (
-  SELECT jc.id, n.name, jc.node_id 
-  FROM public.junction_closures jc 
-  JOIN public.nodes n ON jc.node_id = n.id 
-  WHERE jc.id = p_jc_id
-),
--- Finds all JCs at the same node 
-all_jcs_at_node AS (
-  SELECT id 
-  FROM public.junction_closures 
-  WHERE node_id = (SELECT node_id FROM jc_info)
-), 
--- Finds all segments at the same node 
-segments_at_jc AS (
-  SELECT 
-    cs.id as segment_id, 
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
-    cs.fiber_count
-  FROM public.cable_segments cs 
-  JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
-     OR cs.end_node_id = (SELECT node_id FROM jc_info)
-), 
-fiber_universe AS (
-  SELECT s.segment_id, series.i as fiber_no 
-  FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-), 
-splice_info AS (
-  SELECT
-    fs.id as splice_id, 
-    fs.jc_id, 
-    fs.incoming_segment_id, 
-    fs.incoming_fiber_no, 
-    fs.outgoing_segment_id, 
-    fs.outgoing_fiber_no, 
-    fs.loss_db,
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
-     FROM cable_segments cs_out 
-     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
-     WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
-     FROM cable_segments cs_in 
-     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
-     WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs 
-  WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
-)
-SELECT jsonb_build_object(
-  'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
-  'segments_at_jc', (
-    SELECT jsonb_agg(jsonb_build_object(
-      'segment_id', seg.segment_id, 
-      'segment_name', seg.segment_name, 
-      'fiber_count', seg.fiber_count,
-      'fibers', (
-        SELECT jsonb_agg(jsonb_build_object(
-          'fiber_no', fu.fiber_no,
-          'status', CASE 
-            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
-            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
-            ELSE 'available' 
-          END,
-          'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
-          'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
-          'connected_to_fiber', COALESCE(s_in.outgoing_fiber_no, s_out.incoming_fiber_no),
-          'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
-        ) ORDER BY fu.fiber_no)
-        FROM fiber_universe fu
-        LEFT JOIN splice_info s_in 
-          ON fu.segment_id = s_in.incoming_segment_id 
-          AND fu.fiber_no = s_in.incoming_fiber_no
-        LEFT JOIN splice_info s_out 
-          ON fu.segment_id = s_out.outgoing_segment_id 
-          AND fu.fiber_no = s_out.outgoing_fiber_no
-        WHERE fu.segment_id = seg.segment_id
-      )
-    ))
-    FROM segments_at_jc seg
-  )
-)
-FROM jc_info;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_jc_splicing_details(UUID) TO authenticated;
-
--- Description: Provisions a working and protection fiber pair on a logical path.
-CREATE OR REPLACE FUNCTION public.provision_logical_path(
-    p_path_name TEXT,
-    p_physical_path_id UUID,
-    p_working_fiber_no INT,
-    p_protection_fiber_no INT,
-    p_system_id UUID
-)
-RETURNS TABLE(working_path_id UUID, protection_path_id UUID)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_working_path_id UUID;
-    v_protection_path_id UUID;
-    v_active_status_id UUID;
-BEGIN
-    -- Get the ID for the 'active' operational status from lookup_types
-    SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN
-        RAISE EXCEPTION 'Operational status "active" not found in lookup_types. Please add it to continue.';
-    END IF;
-
-    -- Step 1: Create the "working" logical path record
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id)
-    VALUES (p_path_name || ' (Working)', p_system_id, 'working', v_active_status_id) RETURNING id INTO v_working_path_id;
-
-    -- Step 2: Create the "protection" logical path record, linking it to the working path
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id)
-    VALUES (p_path_name || ' (Protection)', p_system_id, 'protection', v_working_path_id, v_active_status_id) RETURNING id INTO v_protection_path_id;
-
-    -- Step 3: Atomically update all ofc_connections for the working fiber across all segments in the path
-    UPDATE public.ofc_connections
-    SET
-        logical_path_id = v_working_path_id,
-        fiber_role = 'working'
-    WHERE
-        fiber_no_sn = p_working_fiber_no AND
-        ofc_id IN (
-            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
-        );
-
-    -- Step 4: Atomically update all ofc_connections for the protection fiber across all segments in the path
-    UPDATE public.ofc_connections
-    SET
-        logical_path_id = v_protection_path_id,
-        fiber_role = 'protection'
-    WHERE
-        fiber_no_sn = p_protection_fiber_no AND
-        ofc_id IN (
-            SELECT lps.ofc_cable_id FROM public.logical_path_segments lps WHERE lps.logical_path_id = p_physical_path_id
-        );
-
-    -- Return the IDs of the newly created paths
-    RETURN QUERY SELECT v_working_path_id, v_protection_path_id;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UUID) TO authenticated;
-
--- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
-CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(
-    p_jc_id UUID, 
-    p_segment1_id UUID, 
-    p_segment2_id UUID,
-    p_loss_db NUMERIC DEFAULT 0
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    segment1_fibers INT; 
-    segment2_fibers INT; 
-    i INT; 
-    splice_count INT := 0;
-    available_fibers_s1 INT[]; 
-    available_fibers_s2 INT[];
-    v_straight_splice_id UUID;
-BEGIN
-    -- Look up the UUID for the 'straight' splice type once.
-    SELECT public.get_lookup_type_id('SPLICE_TYPES', 'straight') INTO v_straight_splice_id;
-    IF v_straight_splice_id IS NULL THEN
-        RAISE EXCEPTION 'Lookup type "straight" for category "SPLICE_TYPES" not found.';
-    END IF;
-    -- Get fiber counts for both segments
-    SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
-    SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
-    
-    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN 
-        RAISE EXCEPTION 'One or both segments not found.'; 
-    END IF;
-
-    -- Find available fibers in segment 1
-    SELECT array_agg(s.i) INTO available_fibers_s1 
-    FROM generate_series(1, segment1_fibers) s(i)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs 
-        WHERE fs.jc_id = p_jc_id 
-        AND (
-            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) 
-            OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)
-        )
-    );
-    
-    -- Find available fibers in segment 2
-    SELECT array_agg(s.i) INTO available_fibers_s2 
-    FROM generate_series(1, segment2_fibers) s(i)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs 
-        WHERE fs.jc_id = p_jc_id 
-        AND (
-            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) 
-            OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)
-        )
-    );
-
-    -- Create splices for each available fiber pair
-    FOR i IN 1..LEAST(cardinality(available_fibers_s1), cardinality(available_fibers_s2)) LOOP
-        INSERT INTO public.fiber_splices (
-            jc_id, 
-            incoming_segment_id, 
-            incoming_fiber_no, 
-            outgoing_segment_id, 
-            outgoing_fiber_no, 
-            splice_type_id,
-            loss_db
-        )
-        VALUES (
-            p_jc_id, 
-            p_segment1_id, 
-            available_fibers_s1[i], 
-            p_segment2_id, 
-            available_fibers_s2[i], 
-            v_straight_splice_id,
-            p_loss_db
-        );
-        splice_count := splice_count + 1;
-    END LOOP;
-    
-    RETURN jsonb_build_object(
-        'status', 'success', 
-        'splices_created', splice_count,
-        'loss_db_applied', p_loss_db
-    );
-END;
-$$;
-
--- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) TO authenticated;
-
--- Optional: Keep backward compatibility with old function signature
-COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
-'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
-
-
-
--- Description: Get a list of all splices with their full JC and segment details.
-CREATE OR REPLACE FUNCTION public.get_all_splices()
-RETURNS TABLE (
-    splice_id UUID, jc_id UUID, jc_name TEXT, jc_position_km NUMERIC,
-    incoming_segment_id UUID, incoming_fiber_no INT, outgoing_segment_id UUID,
-    outgoing_fiber_no INT, loss_db NUMERIC
-)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT
-        s.id, s.jc_id, n.name, jc.position_km,
-        s.incoming_segment_id, s.incoming_fiber_no,
-        s.outgoing_segment_id, s.outgoing_fiber_no,
-        s.loss_db
-    FROM public.fiber_splices s
-    JOIN public.junction_closures jc ON s.jc_id = jc.id
-    JOIN public.nodes n ON jc.node_id = n.id;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_all_splices() TO authenticated;
-
 
 ```
 
@@ -10294,6 +5570,367 @@ export const useAuth = () => {
 };
 ```
 
+<!-- path: hooks/data/useNodesData.ts -->
+```typescript
+// hooks/data/useNodesData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { localDb } from '@/hooks/data/localDb';
+
+/**
+ * Implements the local-first data fetching strategy for the Nodes page.
+ */
+export const useNodesData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_nodes_completeRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // 1. Online Fetcher
+  const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({ 
+      ...filters, 
+      or: searchQuery 
+        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude.ilike.%${searchQuery}%,longitude.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%)` 
+        : undefined 
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_nodes_complete',
+      p_limit: 5000, // Fetch all matching records
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+    if (error) throw error;
+    return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher
+  const localQueryFn = useCallback(() => {
+    return localDb.v_nodes_complete.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allNodes = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_nodes_complete'>({
+    queryKey: ['nodes-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_nodes_complete,
+  });
+
+  // 4. Client-side processing (filtering and pagination)
+  const processedData = useMemo(() => {
+    if (!allNodes) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+
+    let filtered = allNodes;
+    if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter((node) =>
+            node.name?.toLowerCase().includes(lowerQuery) ||
+            node.node_type_name?.toLowerCase().includes(lowerQuery) ||
+            node.maintenance_area_name?.toLowerCase().includes(lowerQuery)
+        );
+    }
+    if (filters.node_type_id) {
+        filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((n) => n.status === true).length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return { data: paginatedData, totalCount, activeCount, inactiveCount: totalCount - activeCount };
+  }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useDesignationsData.ts -->
+```typescript
+// hooks/data/useDesignationsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_employee_designationsRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DesignationWithRelations } from '@/config/designations';
+
+/**
+ * Implements the local-first data fetching strategy for the Designations page.
+ * This version constructs the hierarchical data expected by the UI.
+ */
+export const useDesignationsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<DesignationWithRelations> => {
+  const { filters, searchQuery } = params;
+
+  // 1. Online Fetcher (fetches the flat view)
+  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery ? `(name.ilike.%${searchQuery}%)` : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_employee_designations',
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+    if (error) throw error;
+    return (data as { data: V_employee_designationsRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher
+  const localQueryFn = useCallback(() => {
+    // THE FIX: Query the new view-specific table.
+    return localDb.v_employee_designations.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allDesignationsFlat = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_employee_designations'>({
+    queryKey: ['designations-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    // THE FIX: Point to the new, correctly typed Dexie table.
+    dexieTable: localDb.v_employee_designations,
+  });
+
+  // 4. Client-side processing
+  const processedData = useMemo(() => {
+    if (!allDesignationsFlat) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    // Filter out records with null IDs, which are invalid for our UI components.
+    let filtered = allDesignationsFlat.filter(d => d.id != null);
+    
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      const searchFilteredIds = new Set<string>();
+      
+      const initialFilter = filtered.filter(d => d.name?.toLowerCase().includes(lowerQuery));
+
+      const addParents = (designation: V_employee_designationsRowSchema) => {
+        if (designation.id && !searchFilteredIds.has(designation.id)) {
+          searchFilteredIds.add(designation.id);
+          if (designation.parent_id) {
+            const parent = allDesignationsFlat.find(d => d.id === designation.parent_id);
+            if (parent) addParents(parent);
+          }
+        }
+      };
+      initialFilter.forEach(addParents);
+      filtered = allDesignationsFlat.filter(d => d.id && searchFilteredIds.has(d.id));
+    }
+
+    if (filters.status) {
+      filtered = filtered.filter(d => String(d.status) === filters.status);
+    }
+
+    const designationsWithRelations = filtered.map(d => ({
+      ...d,
+      id: d.id!,
+      name: d.name!,
+      parent_designation: null,
+      child_designations: [],
+    })) as DesignationWithRelations[];
+    
+    const designationMap = new Map(designationsWithRelations.map(d => [d.id, d]));
+
+    designationsWithRelations.forEach(designation => {
+      if (designation.parent_id) {
+        const parent = designationMap.get(designation.parent_id);
+        if (parent) {
+          parent.child_designations.push(designation);
+          designation.parent_designation = parent;
+        }
+      }
+    });
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((d) => d.status === true).length;
+    
+    return {
+      data: designationsWithRelations,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allDesignationsFlat, searchQuery, filters]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/localDb.ts -->
+```typescript
+// hooks/data/localDb.ts
+import Dexie, { Table } from 'dexie';
+import {
+  Lookup_typesRowSchema as Lookup_typesRow,
+  Maintenance_areasRowSchema as Maintenance_areasRow,
+  Employee_designationsRowSchema as Employee_designationsRow,
+  EmployeesRowSchema as EmployeesRow,
+  NodesRowSchema as NodesRow,
+  RingsRowSchema as RingsRow,
+  Ofc_cablesRowSchema as Ofc_cablesRow,
+  SystemsRowSchema as SystemsRow,
+  Cable_segmentsRowSchema as Cable_segmentsRow,
+  Junction_closuresRowSchema as Junction_closuresRow,
+  Fiber_splicesRowSchema as Fiber_splicesRow,
+  System_connectionsRowSchema as System_connectionsRow,
+  User_profilesRowSchema as BaseUserProfilesRow,
+  Inventory_itemsRowSchema,
+  V_nodes_completeRowSchema,
+  V_ofc_cables_completeRowSchema,
+  V_systems_completeRowSchema,
+  V_ringsRowSchema,
+  V_employeesRowSchema,
+  V_maintenance_areasRowSchema,
+  V_cable_utilizationRowSchema,
+  V_ring_nodesRowSchema,
+  Diary_notesRowSchema,
+  V_employee_designationsRowSchema,
+  V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
+  V_inventory_itemsRowSchema,
+} from '@/schemas/zod-schemas';
+import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
+
+export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
+  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+};
+
+export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences'> & {
+  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+};
+
+export interface SyncStatus {
+  tableName: string;
+  lastSynced: string | null;
+  status: 'pending' | 'syncing' | 'success' | 'error';
+  error?: string;
+}
+
+export interface MutationTask {
+  id?: number;
+  tableName: PublicTableName;
+  type: 'insert' | 'update' | 'delete';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload: any;
+  timestamp: string;
+  status: 'pending' | 'processing' | 'success' | 'failed';
+  attempts: number;
+  lastAttempt?: string;
+  error?: string;
+}
+
+export class HNVTMDatabase extends Dexie {
+  lookup_types!: Table<Lookup_typesRow, string>;
+  maintenance_areas!: Table<Maintenance_areasRow, string>;
+  employee_designations!: Table<Employee_designationsRow, string>;
+  employees!: Table<EmployeesRow, string>;
+  nodes!: Table<NodesRow, string>;
+  rings!: Table<RingsRow, string>;
+  ofc_cables!: Table<Ofc_cablesRow, string>;
+  systems!: Table<SystemsRow, string>;
+  cable_segments!: Table<Cable_segmentsRow, string>;
+  junction_closures!: Table<Junction_closuresRow, string>;
+  fiber_splices!: Table<Fiber_splicesRow, string>;
+  system_connections!: Table<System_connectionsRow, string>;
+  user_profiles!: Table<StoredUserProfiles, string>;
+  diary_notes!: Table<Diary_notesRowSchema, string>;
+  inventory_items!: Table<Inventory_itemsRowSchema, string>;
+
+  v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
+  v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
+  v_systems_complete!: Table<V_systems_completeRowSchema, string>;
+  v_rings!: Table<V_ringsRowSchema, string>;
+  v_employees!: Table<V_employeesRowSchema, string>;
+  v_maintenance_areas!: Table<V_maintenance_areasRowSchema, string>;
+  v_cable_utilization!: Table<V_cable_utilizationRowSchema, string>;
+  v_ring_nodes!: Table<V_ring_nodesRowSchema, string>;
+  v_employee_designations!: Table<V_employee_designationsRowSchema, string>;
+  v_inventory_items!: Table<V_inventory_itemsRowSchema, string>;
+  v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
+
+  sync_status!: Table<SyncStatus, string>;
+  mutation_queue!: Table<MutationTask, number>;
+
+  constructor() {
+    super('HNVTMDatabase');
+    // THE FIX: Incremented version to 13 and added the missing `note_date` index.
+    this.version(13).stores({
+      lookup_types: '&id, category, name',
+      maintenance_areas: '&id, name, parent_id, area_type_id',
+      employee_designations: '&id, name, parent_id',
+      employees: '&id, employee_name, employee_pers_no',
+      nodes: '&id, name, node_type_id',
+      rings: '&id, name, ring_type_id',
+      ofc_cables: '&id, route_name, sn_id, en_id',
+      systems: '&id, system_name, node_id',
+      cable_segments: '&id, original_cable_id',
+      junction_closures: '&id, node_id',
+      fiber_splices: '&id, jc_id',
+      system_connections: '&id, system_id',
+      user_profiles: '&id, first_name, last_name, role',
+      // THE FIX: Added `note_date` as a separate index for querying.
+      diary_notes: '&id, &[user_id+note_date], note_date',
+      inventory_items: '&id, asset_no, name',
+      
+      v_nodes_complete: '&id, name',
+      v_ofc_cables_complete: '&id, route_name',
+      v_systems_complete: '&id, system_name',
+      v_rings: '&id, name',
+      v_employees: '&id, employee_name',
+      v_maintenance_areas: '&id, name',
+      v_cable_utilization: 'cable_id',
+      v_ring_nodes: '&id, ring_id',
+      v_employee_designations: '&id, name',
+      v_inventory_items: '&id, asset_no, name',
+      v_user_profiles_extended: '&id, email, full_name, role, status',
+      
+      sync_status: 'tableName',
+      mutation_queue: '++id, timestamp, status',
+    });
+  }
+}
+
+export const localDb = new HNVTMDatabase();
+
+export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
+    const table = localDb.table(tableName);
+    if (!table) {
+        throw new Error(`Table ${tableName} does not exist`);
+    }
+    return table as Table<Row<T>, string>;
+}
+```
+
 <!-- path: hooks/data/useMutationQueue.ts -->
 ```typescript
 // hooks/data/useMutationQueue.ts
@@ -10301,7 +5938,7 @@ import { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { localDb, MutationTask } from '@/data/localDb';
+import { localDb, MutationTask } from '@/hooks/data/localDb';
 import { createClient } from '@/utils/supabase/client';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
@@ -10393,6 +6030,170 @@ export const addMutationToQueue = async (task: Omit<MutationTask, 'id' | 'timest
 };
 ```
 
+<!-- path: hooks/data/useDashboardOverview.ts -->
+```typescript
+// path: hooks/data/useDashboardOverview.ts
+"use client";
+
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { z } from 'zod';
+
+const dashboardOverviewSchema = z.object({
+  system_status_counts: z.object({
+    Active: z.number().optional(),
+    Inactive: z.number().optional(),
+  }).nullable(),
+  node_status_counts: z.object({
+    Active: z.number().optional(),
+    Inactive: z.number().optional(),
+  }).nullable(),
+  path_operational_status: z.record(z.string(), z.number()).nullable(),
+  cable_utilization_summary: z.object({
+    average_utilization_percent: z.number().nullable(),
+    high_utilization_count: z.number().nullable(),
+    total_cables: z.number().nullable(),
+  }).nullable(),
+  user_activity_last_30_days: z.array(z.object({
+    date: z.string(),
+    count: z.number(),
+  })).nullable(),
+  systems_per_maintenance_area: z.record(z.string(), z.number()).nullable(),
+});
+
+export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
+
+export function useDashboardOverview() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['dashboard-overview'],
+    queryFn: async (): Promise<DashboardOverviewData | null> => {
+      const { data, error } = await supabase.rpc('get_dashboard_overview');
+      
+      if (error) {
+        console.error("Error fetching dashboard overview:", error);
+        throw new Error(error.message);
+      }
+      
+      const parsed = dashboardOverviewSchema.safeParse(data);
+      if (!parsed.success) {
+        console.error("Zod validation error for dashboard overview:", parsed.error);
+        throw new Error("Received invalid data structure from dashboard overview function.");
+      }
+
+      return parsed.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+```
+
+<!-- path: hooks/data/useRingsData.ts -->
+```typescript
+// hooks/data/useRingsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+/**
+ * This is the refactored data fetching hook for the Rings page.
+ * It now uses the `useLocalFirstQuery` hook to implement a local-first strategy.
+ */
+export const useRingsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_ringsRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // THE FIX: Wrap onlineQueryFn in useCallback to stabilize its reference.
+  const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_rings',
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+    if (error) throw error;
+    return (data as { data: V_ringsRowSchema[] })?.data || [];
+  }, [searchQuery, filters]); // Dependencies are correct.
+
+  // THE FIX: Wrap localQueryFn in useCallback to stabilize its reference.
+  const localQueryFn = useCallback(() => {
+    return localDb.v_rings.toArray();
+  }, []); // This function has no dependencies.
+
+  const {
+    data: allRings = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_rings'>({
+    queryKey: ['rings-manager-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_rings,
+  });
+
+  const processedData = useMemo(() => {
+    if (!allRings) {
+        return {
+            data: [],
+            totalCount: 0,
+            activeCount: 0,
+            inactiveCount: 0,
+        };
+    }
+    
+    let filtered = allRings;
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (ring) =>
+          ring.name?.toLowerCase().includes(lowerQuery) ||
+          ring.description?.toLowerCase().includes(lowerQuery) ||
+          ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
+          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (filters.status) {
+      filtered = filtered.filter(r => String(r.status) === filters.status);
+    }
+
+    filtered.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((r) => r.status === true).length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allRings, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
 <!-- path: hooks/data/useDataSync.ts -->
 ```typescript
 // hooks/data/useDataSync.ts
@@ -10400,12 +6201,18 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTMDatabase, getTable } from '@/data/localDb';
+import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
-import { useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+// THE FIX: This is the single, correct list of all tables AND views we want to cache locally.
+// All of these will be fetched via the get_paged_data RPC to bypass RLS.
 const entitiesToSync: PublicTableOrViewName[] = [
+  'lookup_types',
+  'employee_designations',
+  'user_profiles',
+  'diary_notes',
+  'inventory_items',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -10414,23 +6221,10 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_maintenance_areas',
   'v_cable_utilization',
   'v_ring_nodes',
-  'lookup_types',
-  'employee_designations',
-  'user_profiles',
-  'diary_notes',
+  'v_employee_designations',
+  'v_inventory_items',
+  'v_user_profiles_extended',
 ];
-
-// A set of our view names for a fast lookup
-const viewNames = new Set<PublicTableOrViewName>([
-    'v_nodes_complete',
-    'v_ofc_cables_complete',
-    'v_systems_complete',
-    'v_rings',
-    'v_employees',
-    'v_maintenance_areas',
-    'v_cable_utilization',
-    'v_ring_nodes',
-]);
 
 export async function syncEntity(
   supabase: SupabaseClient,
@@ -10440,40 +6234,34 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
+    // --- THE DEFINITIVE FIX ---
+    // ALWAYS use the `get_paged_data` RPC. This is the only secure and reliable way to bypass RLS
+    // for a full data sync for both tables and views.
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+      p_view_name: entityName,
+      p_limit: 50000,
+      p_offset: 0,
+      p_filters: {}, 
+    });
+
+    if (rpcError) throw rpcError;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let data: any[] | null = null;
-
-    // THE DEFINITIVE FIX: Use the correct data fetching strategy based on entity type.
-    if (viewNames.has(entityName)) {
-      // For VIEWS, use the RPC to bypass RLS issues.
-      const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
-        p_view_name: entityName,
-        p_limit: 50000,
-        p_offset: 0,
-      });
-      if (rpcError) throw rpcError;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data = (rpcResponse as { data: any[] })?.data || [];
-    } else {
-      // For TABLES, use a direct select.
-      const { data: tableData, error: tableError } = await supabase.from(entityName).select('*');
-      if (tableError) throw tableError;
-      data = tableData;
-    }
+    const data = (rpcResponse as { data: any[] })?.data || [];
     
-    if (!data) {
-        throw new Error("No data returned from the server.");
-    }
-
+    // The previous `validData` filter is crucial.
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);
-    await table.bulkPut(validData);
+
+    await db.transaction('rw', table, async () => {
+      await table.clear();
+      await table.bulkPut(validData);
+    });
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
   } catch (err) {
-    // IMPROVED ERROR LOGGING
     const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
     console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage, JSON.stringify(err, null, 2));
     await db.sync_status.put({
@@ -10490,41 +6278,1177 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
 
-  const { isLoading, isError, error, refetch } = useQuery({
+  const { isLoading, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
-    queryFn: async () => {
-      const results = await Promise.allSettled(
-        entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
-      );
-      
-      const failedEntities = results
-        .map((result, index) => ({ result, name: entitiesToSync[index] }))
-        .filter(item => item.result.status === 'rejected');
-
-      if (failedEntities.length > 0) {
-        // Construct a more detailed error message
-        const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
-        throw new Error(`Failed to sync the following entities: ${errorDetails}`);
-      }
-      return { lastSynced: new Date().toISOString() };
-    },
+    queryFn: () => 
+      toast.promise(
+        async () => {
+          const results = await Promise.allSettled(
+            entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
+          );
+          
+          const failedEntities = results
+            .map((result, index) => ({ result, name: entitiesToSync[index] }))
+            .filter(item => item.result.status === 'rejected');
+    
+          if (failedEntities.length > 0) {
+            const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
+            throw new Error(`Failed to sync the following entities: ${errorDetails}`);
+          }
+          return { lastSynced: new Date().toISOString() };
+        },
+        {
+          loading: 'Syncing data with server...',
+          success: 'Local data is up to date.',
+          error: (err: Error) => `Data sync failed: ${err.message}`,
+        }
+      ),
     staleTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
 
-  useEffect(() => {
-    if (isLoading && !syncStatus?.some(s => s.status === 'syncing')) {
-      toast.info("Starting data sync with server...", { id: 'sync-status' });
-    } else if (!isLoading && !isError) {
-      toast.success("Local data is up to date.", { id: 'sync-status' });
-    } else if (isError) {
-      toast.error(`Data sync failed: ${error.message}`, { id: 'sync-status', duration: 10000 });
-    }
-  }, [isLoading, isError, error, syncStatus]);
-
-  return { isSyncing: isLoading, syncError: error, syncStatus, refetchSync: refetch };
+  return { 
+    isSyncing: isLoading, 
+    syncError: error, 
+    syncStatus, 
+    sync: refetch 
+  };
 }
+```
+
+<!-- path: hooks/data/useOfcData.ts -->
+```typescript
+// hooks/data/useOfcData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
+
+/**
+ * Implements the local-first data fetching strategy for the OFC Cables page.
+ */
+export const useOfcData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(route_name.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%,transnet_id.ilike.%${searchQuery}%,sn_name.ilike.%${searchQuery}%,en_name.ilike.%${searchQuery}%,ofc_owner_name.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc("get_paged_data", {
+      p_view_name: "v_ofc_cables_complete",
+      p_limit: DEFAULTS.PAGE_SIZE,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: "route_name",
+    });
+    if (error) throw error;
+    return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  const localQueryFn = useCallback(() => {
+    return localDb.v_ofc_cables_complete.toArray();
+  }, []);
+
+  const {
+    data: allCables = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_ofc_cables_complete'>({
+    queryKey: ['ofc-cables-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_ofc_cables_complete,
+  });
+
+  const processedData = useMemo(() => {
+    if (!allCables) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    let filtered = allCables;
+    // Client-side filtering for offline mode or when all data is local
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (cable) =>
+          cable.route_name?.toLowerCase().includes(lowerQuery) ||
+          cable.asset_no?.toLowerCase().includes(lowerQuery) ||
+          cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
+          cable.sn_name?.toLowerCase().includes(lowerQuery) ||
+          cable.en_name?.toLowerCase().includes(lowerQuery) ||
+          cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (filters.ofc_type_id)
+      filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
+    if (filters.status) filtered = filtered.filter((c) => c.status === (filters.status === "true"));
+    if (filters.ofc_owner_id)
+      filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
+    if (filters.maintenance_terminal_id)
+      filtered = filtered.filter(
+        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
+      );
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((c) => c.status === true).length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allCables, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useAdminUserMutations.ts -->
+```typescript
+// hooks/data/useAdminUserMutations.ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Database } from "@/types/supabase-types";
+import { createClient } from "@/utils/supabase/client";
+
+// --- Type Definitions ---
+
+export type UserCreateInput = {
+  id?: string;
+  email: string;
+  password: string;
+  email_confirm?: boolean;
+  first_name: string;
+  last_name: string;
+  role: string;
+};
+
+type AdminUpdateUserProfile = Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
+
+// Query Keys (centralized for consistency)
+export const adminUserKeys = {
+  all: ["admin-users"] as const,
+  lists: () => [...adminUserKeys.all, "list"] as const,
+  detail: (id: string) => [...adminUserKeys.all, "detail", id] as const,
+};
+
+// --- Mutation Hooks ---
+
+export const useAdminUpdateUserProfile = () => {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: AdminUpdateUserProfile): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("admin_update_user_profile", params);
+      if (error) throw new Error(error.message);
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success("User profile updated successfully");
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.detail(variables.user_id) });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user profile: ${error.message}`);
+    },
+  });
+};
+
+export const useAdminBulkDeleteUsers = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: params.user_ids }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete users.');
+      }
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Successfully deleted ${variables.user_ids.length} user(s)`);
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      variables.user_ids.forEach((userId) => {
+        queryClient.removeQueries({ queryKey: adminUserKeys.detail(userId) });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete users: ${error.message}`);
+    },
+  });
+};
+
+export const useAdminBulkUpdateUserRole = () => {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { user_ids: string[], new_role: string }): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("admin_bulk_update_role", params);
+      if (error) throw new Error(error.message);
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Successfully updated role for ${variables.user_ids.length} user(s)`);
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      variables.user_ids.forEach((userId) => {
+        queryClient.invalidateQueries({ queryKey: adminUserKeys.detail(userId) });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user roles: ${error.message}`);
+    },
+  });
+};
+
+export const useAdminBulkUpdateUserStatus = () => {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { user_ids: string[], new_status: string }): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("admin_bulk_update_status", params);
+      if (error) throw new Error(error.message);
+      return data || false;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Successfully updated status for ${variables.user_ids.length} user(s)`);
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      variables.user_ids.forEach((userId) => {
+        queryClient.invalidateQueries({ queryKey: adminUserKeys.detail(userId) });
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update user status: ${error.message}`);
+    },
+  });
+};
+
+export const useAdminCreateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userData: UserCreateInput) => {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create user");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      toast.success("User created successfully");
+    },
+    onError: (error: Error) => {
+      console.error("User creation error:", error);
+      toast.error(error.message || "Failed to create user");
+    },
+  });
+};
+
+// Combined hook for multiple operations
+interface UserOperations {
+  createUser: ReturnType<typeof useAdminCreateUser>;
+  updateUser: ReturnType<typeof useAdminUpdateUserProfile>;
+  deleteUsers: ReturnType<typeof useAdminBulkDeleteUsers>;
+  updateUserRoles: ReturnType<typeof useAdminBulkUpdateUserRole>;
+  updateUserStatus: ReturnType<typeof useAdminBulkUpdateUserStatus>;
+  isLoading: boolean;
+}
+
+export const useAdminUserOperations = (): UserOperations => {
+  const createUser = useAdminCreateUser();
+  const updateUser = useAdminUpdateUserProfile();
+  const deleteUsers = useAdminBulkDeleteUsers();
+  const updateUserRoles = useAdminBulkUpdateUserRole();
+  const updateUserStatus = useAdminBulkUpdateUserStatus();
+
+  return {
+    createUser,
+    updateUser,
+    deleteUsers,
+    updateUserRoles,
+    updateUserStatus,
+    isLoading: createUser.isPending || 
+               updateUser.isPending || 
+               deleteUsers.isPending || 
+               updateUserRoles.isPending || 
+               updateUserStatus.isPending
+  };
+};
+```
+
+<!-- path: hooks/data/useUsersData.ts -->
+```typescript
+// hooks/data/useUsersData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb, StoredUserProfiles } from '@/hooks/data/localDb'; // Import StoredUserProfiles
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+/**
+ * Implements the local-first data fetching strategy for the Users page.
+ */
+export const useUsersData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  const onlineQueryFn = useCallback(async (): Promise<V_user_profiles_extendedRowSchema[]> => {
+    const { data, error } = await createClient().rpc("admin_get_all_users_extended", {
+      search_query: searchQuery || undefined,
+      filter_role: (filters.role as string) || undefined,
+      filter_status: (filters.status as string) || undefined,
+      page_limit: 5000,
+      page_offset: 0,
+    });
+    if (error) throw error;
+    return (data?.data || []) as V_user_profiles_extendedRowSchema[];
+  }, [searchQuery, filters]);
+
+  // This function now correctly returns a promise of our specific StoredUserProfiles type.
+  const localQueryFn = useCallback(() => {
+    return localDb.user_profiles.toArray();
+  }, []);
+
+  // THE FIX: We now provide three generic arguments to useLocalFirstQuery:
+  // 1. The base table/view name ('user_profiles').
+  // 2. The type returned by the online fetcher (`V_user_profiles_extendedRowSchema`).
+  // 3. The type stored in Dexie (`StoredUserProfiles`).
+  const {
+    data: allUsers = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'user_profiles', V_user_profiles_extendedRowSchema, StoredUserProfiles>({
+    queryKey: ['admin-users-data', searchQuery, filters],
+    onlineQueryFn, 
+    localQueryFn,
+    dexieTable: localDb.user_profiles,
+  });
+
+  const processedData = useMemo(() => {
+    if (!allUsers) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    // Transform the local StoredUserProfiles data into the extended view format the UI expects.
+    const extendedUsers = allUsers.map(user => ({
+      ...user,
+      full_name: `${user.first_name} ${user.last_name}`,
+      email: user.id, 
+      is_super_admin: false,
+    })) as V_user_profiles_extendedRowSchema[];
+    
+    let filtered = extendedUsers;
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(user => 
+        user.full_name?.toLowerCase().includes(lowerQuery) ||
+        user.email?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (filters.role) {
+      filtered = filtered.filter(user => user.role === filters.role);
+    }
+    if (filters.status) {
+      filtered = filtered.filter(user => user.status === filters.status);
+    }
+    
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((u) => u.status === 'active').length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allUsers, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useMaintenanceAreasData.ts -->
+```typescript
+// hooks/data/useMaintenanceAreasData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_maintenance_areasRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { MaintenanceAreaWithRelations } from '@/config/areas';
+
+/**
+ * Implements the local-first data fetching strategy for the Maintenance Areas page.
+ * This version now correctly constructs the hierarchical data expected by the UI.
+ */
+export const useMaintenanceAreasData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<MaintenanceAreaWithRelations> => {
+  const { filters, searchQuery } = params;
+
+  // 1. Online Fetcher (remains the same, fetches the flat view)
+  const onlineQueryFn = useCallback(async (): Promise<V_maintenance_areasRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(name.ilike.%${searchQuery}%,code.ilike.%${searchQuery}%,contact_person.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_maintenance_areas',
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+    if (error) throw error;
+    return (data as { data: V_maintenance_areasRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher (remains the same)
+  const localQueryFn = useCallback(() => {
+    return localDb.v_maintenance_areas.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allAreasFlat = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_maintenance_areas'>({
+    queryKey: ['maintenance-areas-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_maintenance_areas,
+  });
+
+  // 4. Client-side processing (filtering, hierarchy construction, pagination)
+  const processedData = useMemo(() => {
+    if (!allAreasFlat) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+
+    let filtered = allAreasFlat;
+    
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      const searchFilteredIds = new Set<string>();
+      
+      // Initial filter based on search term
+      const initialFilter = filtered.filter(area => 
+        area.name?.toLowerCase().includes(lowerQuery) ||
+        area.code?.toLowerCase().includes(lowerQuery) ||
+        area.contact_person?.toLowerCase().includes(lowerQuery) ||
+        area.email?.toLowerCase().includes(lowerQuery)
+      );
+
+      // Include parents of matched items to maintain tree structure
+      const addParents = (area: V_maintenance_areasRowSchema) => {
+        if (area.id && !searchFilteredIds.has(area.id)) {
+          searchFilteredIds.add(area.id);
+          if (area.parent_id) {
+            const parent = allAreasFlat.find(a => a.id === area.parent_id);
+            if (parent) {
+              addParents(parent);
+            }
+          }
+        }
+      };
+      initialFilter.forEach(addParents);
+      filtered = allAreasFlat.filter(area => area.id && searchFilteredIds.has(area.id));
+    }
+
+    if (filters.status) {
+      filtered = filtered.filter(area => String(area.status) === filters.status);
+    }
+    if (filters.area_type_id) {
+      filtered = filtered.filter(area => area.area_type_id === filters.area_type_id);
+    }
+
+    // --- THE FIX: Construct the hierarchical data structure ---
+    const areasWithRelations = filtered.map(area => ({
+      ...area,
+      id: area.id!, // Assert id is not null after filtering
+      name: area.name!, // Assert name is not null
+      area_type: null, // Placeholder
+      parent_area: null, // Placeholder
+      child_areas: [],   // Placeholder
+    })) as MaintenanceAreaWithRelations[];
+    
+    const areaMap = new Map(areasWithRelations.map(a => [a.id, a]));
+
+    areasWithRelations.forEach(area => {
+      if (area.parent_id) {
+        const parent = areaMap.get(area.parent_id);
+        if (parent) {
+          parent.child_areas.push(area);
+          area.parent_area = parent;
+        }
+      }
+    });
+    // --- END FIX ---
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((a) => a.status === true).length;
+    
+    // For hierarchical data, pagination is often handled differently (e.g., virtual scrolling)
+    // or applied only to root items. Here, we'll return the full structure for the EntityManagementComponent to handle.
+    return {
+      data: areasWithRelations,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allAreasFlat, searchQuery, filters]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useLookupTypesData.ts -->
+```typescript
+// hooks/data/useLookupTypesData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+/**
+ * Implements the local-first data fetching strategy for the Lookup Types page.
+ */
+export const useLookupTypesData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<Lookup_typesRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // 1. Online Fetcher
+  const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery ? `(name.ilike.%${searchQuery}%,code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%)` : undefined,
+    });
+
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'lookup_types', // Note: We query the base table here
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+    });
+    if (error) throw error;
+    return (data as { data: Lookup_typesRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher
+  const localQueryFn = useCallback(() => {
+    return localDb.lookup_types.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allLookups = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'lookup_types'>({
+    queryKey: ['lookup-types-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.lookup_types,
+  });
+
+  // 4. Client-side processing
+  const processedData = useMemo(() => {
+    if (!allLookups) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    let filtered = allLookups;
+
+    // Filter by selected category (from the main filters object)
+    if (filters.category) {
+        filtered = filtered.filter(lookup => lookup.category === filters.category);
+    }
+
+    // Filter by search term
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(lookup => 
+        lookup.name?.toLowerCase().includes(lowerQuery) ||
+        lookup.code?.toLowerCase().includes(lowerQuery) ||
+        lookup.description?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    // Exclude the 'DEFAULT' entries from the main view
+    filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((l) => l.status === true).length;
+    
+    // Apply pagination
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allLookups, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useDiaryData.ts -->
+```typescript
+// hooks/data/useDiaryData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { Diary_notesRowSchema, User_profilesRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { useUser } from '@/providers/UserProvider';
+import { useAuthStore } from '@/stores/authStore';
+import { useLiveQuery } from 'dexie-react-hooks';
+
+export type DiaryEntryWithUser = Diary_notesRowSchema & { full_name?: string | null };
+
+/**
+ * A local-first data fetching hook for diary entries.
+ * It fetches all entries for a given month and joins them with user information.
+ */
+export const useDiaryData = (
+  params: DataQueryHookParams & { currentDate: Date }
+): DataQueryHookReturn<DiaryEntryWithUser> => {
+  const { currentPage, pageLimit, filters, searchQuery, currentDate } = params;
+  const { isSuperAdmin, role } = useUser();
+  const userId = useAuthStore(state => state.getUserId());
+
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split("T")[0];
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split("T")[0];
+
+  const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
+    const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
+      start_date: startOfMonth,
+      end_date: endOfMonth,
+    });
+    if (error) throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((entry: any) => ({
+      id: entry.id,
+      user_id: entry.user_id,
+      note_date: entry.note_date,
+      content: entry.content,
+      tags: entry.tags,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+    }));
+  }, [startOfMonth, endOfMonth]);
+
+  const localQueryFn = useCallback(() => {
+    return localDb.diary_notes
+      .where('note_date')
+      .between(startOfMonth, endOfMonth)
+      .toArray();
+  }, [startOfMonth, endOfMonth]);
+  
+  const {
+    data: notesForMonth = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'diary_notes'>({
+    queryKey: ['diary-data', startOfMonth, endOfMonth],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.diary_notes,
+  });
+
+  const userProfiles = useLiveQuery(() => localDb.user_profiles.toArray(), []);
+
+  const processedData = useMemo(() => {
+    if (!notesForMonth || !userProfiles) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    const profileMap = new Map(userProfiles.map(p => [p.id, `${p.first_name} ${p.last_name}`]));
+
+    const allNotes: DiaryEntryWithUser[] = notesForMonth.map(note => ({
+      ...note,
+      full_name: profileMap.get(note.user_id) || 'Unknown User'
+    }));
+    
+    let roleFiltered = (isSuperAdmin || role === 'admin')
+      ? allNotes
+      : allNotes.filter(note => note.user_id === userId);
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      roleFiltered = roleFiltered.filter(note => 
+        note.content?.toLowerCase().includes(lowerQuery) ||
+        note.full_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    roleFiltered.sort((a, b) => new Date(b.note_date!).getTime() - new Date(a.note_date!).getTime());
+
+    const totalCount = roleFiltered.length;
+    
+    // THE FIX: The `useCrudManager` was removed from the page, but this hook still needs to return all data for the month
+    // so the page component can do the final filtering by `selectedDate`. The pagination logic here was incorrect for this page.
+    return {
+      data: roleFiltered,
+      totalCount,
+      activeCount: totalCount,
+      inactiveCount: 0,
+    };
+  }, [notesForMonth, userProfiles, isSuperAdmin, role, userId, searchQuery]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useSystemsData.ts -->
+```typescript
+// hooks/data/useSystemsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+/**
+ * Implements the local-first data fetching strategy for the Systems page.
+ */
+export const useSystemsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_systems_completeRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // 1. Online Fetcher
+  const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_systems_complete',
+      p_limit: 5000, // Fetch all matching for client-side processing
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'system_name',
+    });
+    if (error) throw error;
+    return (data as { data: V_systems_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher
+  const localQueryFn = useCallback(() => {
+    return localDb.v_systems_complete.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allSystems = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_systems_complete'>({
+    queryKey: ['systems-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_systems_complete,
+  });
+
+  // 4. Client-side processing (filtering and pagination)
+  const processedData = useMemo(() => {
+    if (!allSystems) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    let filtered = allSystems;
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (system) =>
+          system.system_name?.toLowerCase().includes(lowerQuery) ||
+          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
+          system.node_name?.toLowerCase().includes(lowerQuery) ||
+          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (filters.system_type_name) {
+      filtered = filtered.filter(
+        (system) =>
+          system.system_type_name === filters.system_type_name
+      );
+    }
+    if (filters.status) {
+      filtered = filtered.filter(
+        (system) => system.status === (filters.status === "true")
+      );
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((s) => s.status === true).length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useInventoryData.ts -->
+```typescript
+// hooks/data/useInventoryData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
+
+/**
+ * Implements the local-first data fetching strategy for the Inventory page.
+ */
+export const useInventoryData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // 1. Online Fetcher
+  const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_inventory_items',
+      p_limit: DEFAULTS.PAGE_SIZE,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'created_at',
+      p_order_dir: 'desc',
+    });
+    if (error) throw error;
+    return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher
+  const localQueryFn = useCallback(() => {
+    return localDb.v_inventory_items.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allItems = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_inventory_items'>({
+    queryKey: ['inventory-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_inventory_items,
+  });
+
+  // 4. Client-side processing
+  const processedData = useMemo(() => {
+    if (!allItems) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    let filtered = allItems;
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.name?.toLowerCase().includes(lowerQuery) ||
+        item.description?.toLowerCase().includes(lowerQuery) ||
+        item.asset_no?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    // Add other client-side filters if needed from the `filters` object
+
+    const totalCount = filtered.length;
+    // This view doesn't have a standard 'status' boolean, so we count all as 'active' for stats purposes.
+    const activeCount = totalCount;
+    
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: 0,
+    };
+  }, [allItems, searchQuery, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useLocalFirstQuery.ts -->
+```typescript
+// hooks/data/useLocalFirstQuery.ts
+import { useQuery, type QueryKey } from '@tanstack/react-query';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect } from 'react';
+// import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { PublicTableOrViewName, Row } from '@/hooks/database';
+import { Table, PromiseExtended } from 'dexie';
+
+// THE FIX: Added a second generic parameter `TLocal` to represent the Dexie-specific type.
+// `TRow` now defaults to `Row<T>`, but `TLocal` defaults to `TRow`, allowing for overrides.
+interface UseLocalFirstQueryOptions<
+  T extends PublicTableOrViewName,
+  TRow = Row<T>,
+  TLocal = TRow
+> {
+  queryKey: QueryKey;
+  onlineQueryFn: () => Promise<TRow[]>;
+  localQueryFn: () => PromiseExtended<TLocal[]>;
+  dexieTable: Table<TLocal, string>; // This now uses TLocal
+  enabled?: boolean;
+  staleTime?: number;
+}
+
+export function useLocalFirstQuery<
+  T extends PublicTableOrViewName,
+  TRow = Row<T>,
+  TLocal = TRow
+>({
+  queryKey,
+  onlineQueryFn,
+  localQueryFn,
+  dexieTable,
+  // enabled = true,
+  staleTime = 5 * 60 * 1000,
+}: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
+  // const isOnline = useOnlineStatus();
+  // const queryClient = useQueryClient();
+
+  // This `useLiveQuery` will now correctly return `TLocal[] | undefined`
+  const localData = useLiveQuery(localQueryFn, [], undefined);
+
+  const {
+    data: networkData,
+    isLoading: isNetworkLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery<TRow[]>({
+    queryKey,
+    queryFn: onlineQueryFn,
+    enabled: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime,
+  });
+
+  useEffect(() => {
+    if (networkData) {
+      const syncToLocal = async () => {
+        try {
+          // The `bulkPut` operation now expects data that conforms to `TLocal`.
+          // The `onlineQueryFn` must return data that can be safely cast to `TLocal[]`.
+          await dexieTable.bulkPut(networkData as unknown as TLocal[]);
+          console.log(`[useLocalFirstQuery] Synced ${networkData.length} records to ${dexieTable.name}`);
+        } catch (e) {
+          console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
+        }
+      };
+      syncToLocal();
+    }
+  }, [networkData, dexieTable]);
+
+  const isLoading = isNetworkLoading && localData === undefined;
+
+  return {
+    data: localData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  };
+}
+```
+
+<!-- path: hooks/data/useEmployeesData.ts -->
+```typescript
+// hooks/data/useEmployeesData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_employeesRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
+
+/**
+ * This is the refactored data fetching hook for the Employees page.
+ * It now uses the `useLocalFirstQuery` hook to implement a local-first strategy.
+ */
+export const useEmployeesData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_employeesRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // THE FIX: Wrap onlineQueryFn in useCallback.
+  const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(employee_name.ilike.%${searchQuery}%,employee_pers_no.ilike.%${searchQuery}%,employee_email.ilike.%${searchQuery}%,employee_contact.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_employees',
+      p_limit: 5000, // Fetch all for client-side filtering
+      p_offset: 0,
+      p_filters: rpcFilters,
+    });
+    if (error) throw error;
+    return (data as { data: V_employeesRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // THE FIX: Wrap localQueryFn in useCallback.
+  const localQueryFn = useCallback(() => {
+    return localDb.v_employees.toArray();
+  }, []);
+
+  // 3. Use the local-first query hook
+  const {
+    data: allEmployees = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_employees'>({
+    queryKey: ['employees-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_employees,
+  });
+
+  // 4. Client-side processing
+  const processedData = useMemo(() => {
+    if (!allEmployees) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+    
+    let filtered = allEmployees;
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (emp) =>
+          emp.employee_name?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_email?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
+          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (filters.employee_designation_id) {
+      filtered = filtered.filter((emp) => emp.employee_designation_id === filters.employee_designation_id);
+    }
+    if (filters.maintenance_terminal_id) {
+      filtered = filtered.filter((emp) => emp.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+    if (filters.status) {
+      const statusBool = filters.status === 'true';
+      filtered = filtered.filter((emp) => emp.status === statusBool);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((n) => n.status === true).length;
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
 ```
 
 <!-- path: hooks/data/useOfflineQuery.ts -->
@@ -10550,11 +7474,11 @@ export function useOfflineQuery<TData>(
   queryKey: QueryKey,
   onlineQueryFn: () => Promise<TData>,
   offlineQueryFn: () => Promise<TData>,
-  options?: Omit<UseQueryOptions<TData>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<TData, Error>, 'queryKey' | 'queryFn'>
 ) {
   const isOnline = useOnlineStatus();
 
-  return useQuery<TData>({
+  return useQuery<TData, Error>({
     queryKey,
     queryFn: async () => {
       if (isOnline) {
@@ -16004,13 +12928,12 @@ export function useImportRouteTopology(supabase: SupabaseClient<Database>) {
 // hooks/database/excel-queries/useDiaryExcelUpload.ts
 import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
-import { EnhancedUploadResult, logRowProcessing, validateValue, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, validateValue, ValidationError } from './excel-helpers';
 import { Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
+import { createClient } from '@/utils/supabase/client'; // THE FIX: Import createClient
 
 export interface DiaryUploadOptions {
   file: File;
@@ -16042,10 +12965,10 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
 };
 
 export function useDiaryExcelUpload(
-  supabase: SupabaseClient<Database>,
-  options?: UseExcelUploadOptions<'diary_notes'>
+  // THE FIX: supabase client is no longer passed as an argument
 ) {
-  const { showToasts = true, ...mutationOptions } = options || {};
+  const supabase = createClient(); // THE FIX: Get the client instance here
+  const { showToasts = true, ...mutationOptions } = {} as UseExcelUploadOptions<'diary_notes'>;
   const queryClient = useQueryClient();
 
   return useMutation<EnhancedUploadResult, Error, DiaryUploadOptions>({
@@ -16094,7 +13017,6 @@ export function useDiaryExcelUpload(
         const processedData: Record<string, unknown> = {};
 
         for (const mapping of columns) {
-            // Skip user_id processing for now, we'll handle it specially
             if (mapping.dbKey === 'user_id') continue;
 
             const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
@@ -16109,7 +13031,6 @@ export function useDiaryExcelUpload(
             processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
         
-        // THE FIX: Implement the new flexible logic for user_id
         if (isAdmin) {
             if (hasUserIdColumn) {
                 const userIdFromCell = row[headerMap['user_id']];
@@ -16119,11 +13040,9 @@ export function useDiaryExcelUpload(
                     processedData.user_id = userIdFromCell;
                 }
             } else {
-                // If admin uploads without a user_id column, assume it's for themselves.
                 processedData.user_id = currentUserId;
             }
         } else {
-            // For non-admins, always force their own user ID for security.
             processedData.user_id = currentUserId;
         }
 
@@ -16184,92 +13103,123 @@ export function useDiaryExcelUpload(
 // path: hooks/useRoleFunctions.ts
 "use client";
 
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/utils/supabase/client'
-import React from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import React from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { v_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { z } from 'zod';
+import { Json } from '@/types/supabase-types';
 
-type UserRole = string | null
-type SuperAdminStatus = boolean | null
+type UserPermissionsData = z.infer<typeof v_user_profiles_extendedRowSchema> | null;
 
 interface UserPermissions {
-  role: UserRole
-  isSuperAdmin: SuperAdminStatus
-  isLoading: boolean
-  error: Error | null
-  isError: boolean
-  refetch: () => void
+  profile: UserPermissionsData;
+  role: UserRole;
+  isSuperAdmin: SuperAdminStatus;
+  isLoading: boolean;
+  error: Error | null;
+  isError: boolean;
+  refetch: () => Promise<UseQueryResult<UserPermissionsData, Error>>;
 }
 
-// THE FIX: The individual hooks are now removed.
-// useUserPermissionsExtended is the single source of truth for data fetching.
+type UserRole = string | null;
+type SuperAdminStatus = boolean | null;
+
+// Helper function to safely parse JSON strings
+const safeJsonParse = (jsonString: unknown): Json | null => {
+  if (typeof jsonString === 'object' && jsonString !== null) return jsonString as Json;
+  if (typeof jsonString !== 'string') return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    return null;
+  }
+};
 
 export const useUserPermissionsExtended = () => {
-  const supabase = createClient()
-  const { user, authState, syncSession } = useAuth()
+  const supabase = createClient();
+  const { user, authState } = useAuth();
 
   const { data, isLoading, error, isError, refetch } = useQuery({
-    queryKey: ['user-permissions', user?.id],
-    queryFn: async (): Promise<{ role: UserRole, isSuperAdmin: SuperAdminStatus }> => {
-      try {
-        let [roleRes, superAdminRes] = await Promise.all([
-          supabase.rpc('get_my_role'),
-          supabase.rpc('is_super_admin')
-        ]);
-        
-        // If we get null data, try refreshing the session and retry
-        if (roleRes.data === null || superAdminRes.data === null) {
-          const sessionRefreshed = await syncSession();
-          if (sessionRefreshed) {
-            [roleRes, superAdminRes] = await Promise.all([
-              supabase.rpc('get_my_role'),
-              supabase.rpc('is_super_admin')
-            ]);
-          }
-        }
+    queryKey: ['user-full-profile', user?.id],
+    queryFn: async (): Promise<UserPermissionsData> => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase.rpc('get_my_user_details');
 
-        if (roleRes.error) throw new Error(`Failed to get user role: ${roleRes.error.message}`);
-        if (superAdminRes.error) throw new Error(`Failed to check super admin status: ${superAdminRes.error.message}`);
-
-        return { role: roleRes.data as UserRole, isSuperAdmin: superAdminRes.data as SuperAdminStatus };
-      } catch (err) {
-        console.error('Permissions query error:', err);
-        throw err;
+      if (error) {
+        console.error('Error fetching full user profile via RPC:', error);
+        throw new Error(error.message);
       }
+      
+      if (!data || data.length === 0) {
+          return null;
+      }
+
+      const profileData = data[0];
+
+      // THE DEFINITIVE FIX: Robustly handle data transformation from the RPC result.
+      const transformedData = {
+        ...profileData,
+        id: profileData.id,
+        email: profileData.email,
+        address: safeJsonParse(profileData.address), // Safely parse address
+        preferences: safeJsonParse(profileData.preferences), // Safely parse preferences
+        status: profileData.status || 'inactive', // Provide a default for status
+        // Ensure timestamps are valid ISO strings or null
+        created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
+        updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
+        last_sign_in_at: profileData.last_sign_in_at ? new Date(profileData.last_sign_in_at).toISOString() : null,
+        // Fill in missing fields from the view with defaults or nulls
+        computed_status: null, 
+        account_age_days: null,
+        last_activity_period: null,
+        is_phone_verified: false,
+        phone_confirmed_at: null,
+        email_confirmed_at: null,
+        auth_updated_at: null,
+        raw_app_meta_data: null,
+        raw_user_meta_data: null,
+        full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
+      };
+
+      const parsed = v_user_profiles_extendedRowSchema.safeParse(transformedData);
+      if (!parsed.success) {
+        console.error("Zod validation failed for transformed user profile:", parsed.error.flatten());
+        throw new Error("Received invalid user profile data from server RPC.");
+      }
+      return parsed.data;
     },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (error.message.includes('JWT') || error.message.includes('auth')) return false;
-      return failureCount < 2;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     enabled: authState === "authenticated" && !!user?.id,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   const permissions = React.useMemo(() => ({
+    profile: data ?? null,
     role: data?.role ?? null,
-    isSuperAdmin: data?.isSuperAdmin ?? null,
+    isSuperAdmin: data?.is_super_admin ?? null,
     isLoading,
     error: error || null,
     isError,
-    refetch
+    refetch: refetch as () => Promise<UseQueryResult<UserPermissionsData, Error>>,
   }), [data, isLoading, error, isError, refetch]);
   
   const hasRole = React.useCallback((requiredRole: string): boolean => {
-    return permissions.role === requiredRole
-  }, [permissions.role])
+    return permissions.role === requiredRole;
+  }, [permissions.role]);
 
   const hasAnyRole = React.useCallback((requiredRoles: string[]): boolean => {
-    return permissions.role ? requiredRoles.includes(permissions.role) : false
-  }, [permissions.role])
+    return permissions.role ? requiredRoles.includes(permissions.role) : false;
+  }, [permissions.role]);
 
   const canAccess = React.useCallback((allowedRoles?: string[]): boolean => {
-    if (permissions.isSuperAdmin) return true
-    if (!allowedRoles || allowedRoles.length === 0) return !!permissions.role
-    return hasAnyRole(allowedRoles)
-  }, [permissions.isSuperAdmin, permissions.role, hasAnyRole])
+    if (permissions.isSuperAdmin) return true;
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+    return hasAnyRole(allowedRoles);
+  }, [permissions.isSuperAdmin, permissions.role, hasAnyRole]);
 
   return {
     ...permissions,
@@ -16277,15 +13227,15 @@ export const useUserPermissionsExtended = () => {
     hasAnyRole,
     canAccess,
     isReady: !permissions.isLoading && !permissions.error
-  }
+  };
 }
 
 export const useHasPermission = (allowedRoles?: string[]): boolean => {
-  const { canAccess } = useUserPermissionsExtended()
-  return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles])
-}
+  const { canAccess } = useUserPermissionsExtended();
+  return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles]);
+};
 
-export type { UserRole, SuperAdminStatus, UserPermissions }
+export type { UserRole, SuperAdminStatus, UserPermissions };
 ```
 
 <!-- path: hooks/useDeleteManager.ts -->
@@ -16296,7 +13246,8 @@ import { toast } from 'sonner';
 import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers';
+// THE FIX: The import path is now corrected to the new location of the user mutation hooks.
+import { useAdminBulkDeleteUsers } from '@/hooks/data/useAdminUserMutations';
 import { PostgrestError } from '@supabase/supabase-js';
 
 interface DeleteItem {
@@ -16320,6 +13271,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<DeleteItem[]>([]);
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<DeleteItem | null>(null);
 
   const supabase = createClient();
 
@@ -16329,18 +13281,21 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const deleteSingle = useCallback((item: DeleteItem) => {
     setItemsToDelete([item]);
+    setItemToDelete(item);
     setBulkFilter(null);
     setIsConfirmModalOpen(true);
   }, []);
 
   const deleteMultiple = useCallback((items: DeleteItem[]) => {
     setItemsToDelete(items);
+    setItemToDelete(null);
     setBulkFilter(null);
     setIsConfirmModalOpen(true);
   }, []);
 
   const deleteBulk = useCallback((filter: BulkDeleteFilter) => {
     setItemsToDelete([]);
+    setItemToDelete(null);
     setBulkFilter(filter);
     setIsConfirmModalOpen(true);
   }, []);
@@ -16349,6 +13304,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setIsConfirmModalOpen(false);
     setItemsToDelete([]);
     setBulkFilter(null);
+    setItemToDelete(null);
   }, []);
 
   const handleConfirm = useCallback(async () => {
@@ -16363,9 +13319,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         onSuccess?.();
       },
       onError: (err: Error) => {
-        // THE FIX: Add specific error handling for foreign key violations.
-        const pgError = err as PostgrestError;
-        if (pgError.code === '23503') { // Foreign key violation
+        const pgError = err as unknown as PostgrestError;
+        if (pgError.code === '23503') { 
           const match = pgError.message.match(/on table "(.*?)"/);
           const referencingTable = match ? match[1] : 'another table';
           toast.error("Deletion Failed", {
@@ -16377,9 +13332,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         }
       },
       onSettled: () => {
-        setIsConfirmModalOpen(false);
-        setItemsToDelete([]);
-        setBulkFilter(null);
+        handleCancel();
       }
     };
 
@@ -16417,7 +13370,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   return {
     deleteSingle, deleteMultiple, deleteBulk, handleConfirm, handleCancel,
     isConfirmModalOpen, isPending, confirmationMessage: getConfirmationMessage(),
-    itemToDelete: itemsToDelete[0] ?? null,
+    itemToDelete: itemToDelete || (itemsToDelete.length > 0 ? itemsToDelete[0] : null),
   };
 }
 ```
@@ -16615,11 +13568,10 @@ import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { addMutationToQueue } from "./data/useMutationQueue";
-import { getTable } from "@/data/localDb";
+import { getTable } from "@/hooks/data/localDb";
 import { DEFAULTS } from "@/constants/constants";
 import { UseQueryResult } from "@tanstack/react-query";
 
-// --- TYPE DEFINITIONS for the Hook's Interface ---
 export type RecordWithId = {
   id: string | number | null;
   system_id?: string | number | null;
@@ -16651,7 +13603,10 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
-type BaseRecord = { id: string | null; [key: string]: unknown };
+// THE FIX: The `id` is now strictly a string, as we filter out nulls before use.
+// The index signature remains `any` for flexibility with Zod types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BaseRecord = { id: string | number | null; [key: string]: any };
 
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
@@ -16661,7 +13616,6 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
 }
 
-// --- THE HOOK ---
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
   dataQueryHook,
@@ -16672,7 +13626,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const supabase = createClient();
   const isOnline = useOnlineStatus();
 
-  // --- STATE MANAGEMENT ---
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, _setCurrentPage] = useState(1);
@@ -16684,7 +13637,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
   const [debouncedSearch] = useDebounce(searchQuery, 400);
 
-  // THE FIX: Wrap all state setters in useCallback to stabilize their references.
   const setCurrentPage = useCallback((page: number) => _setCurrentPage(page), []);
   const setPageLimit = useCallback((limit: number) => _setPageLimit(limit), []);
   const setSearchQuery = useCallback((query: string) => _setSearchQuery(query), []);
@@ -16717,7 +13669,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- ONLINE MUTATIONS ---
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
     onSuccess: () => { refetch(); closeModal(); toast.success("Record created successfully."); },
     onError: (error) => toast.error(`Failed to create record: ${error.message}`),
@@ -16737,13 +13688,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
   const isMutating = isInserting || isUpdating || deleteManager.isPending || bulkUpdate.isPending;
 
-  // --- MODAL HANDLERS ---
   const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
   const openEditModal = useCallback((record: V) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
   const openViewModal = useCallback((record: V) => { setViewingRecord(record); setIsViewModalOpen(true); }, []);
   const closeModal = useCallback(() => { setIsEditModalOpen(false); setEditingRecord(null); setIsViewModalOpen(false); setViewingRecord(null); }, []);
 
-  // --- OFFLINE & ONLINE SAVE HANDLER ---
   const handleSave = useCallback(async (formData: TableInsertWithDates<T>) => {
     const processedData = processDataForSave ? processDataForSave(formData) : (formData as TableInsert<T>);
 
@@ -16753,7 +13702,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       } else {
         insertItem(processedData as TableInsert<T>);
       }
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
@@ -16775,7 +13724,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: newRecord,
           });
         }
-        refetch(); // Refetch from local data source
+        refetch(); 
         closeModal();
       } catch (err) {
         toast.error(`Offline operation failed: ${(err as Error).message}`);
@@ -16805,7 +13754,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
     if (isOnline) {
       deleteManager.deleteSingle({ id: idToDelete, name: displayName });
-    } else { // OFFLINE LOGIC
+    } else { 
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
           const table = getTable(tableName);
@@ -16830,7 +13779,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     
     if (isOnline) {
       toggleStatus({ id: idToUpdate, status: newStatus });
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16847,7 +13796,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     }
   }, [isOnline, tableName, toggleStatus, refetch]);
   
-  // THE FIX: Wrap row selection handlers in useCallback
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
     setSelectedRowIds(validIds);
@@ -16863,7 +13811,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         id: String(record.id), name: getDisplayName(record as RecordWithId),
       }));
       deleteManager.deleteMultiple(selectedRecords);
-    } else { // OFFLINE LOGIC
+    } else { 
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
           const table = getTable(tableName);
@@ -16896,7 +13844,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         },
         onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
-    } else { // OFFLINE LOGIC
+    } else { 
       try {
         const table = getTable(tableName);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16920,8 +13868,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       deleteManager.deleteBulk({ column, value, displayName });
     }, [deleteManager]);
 
-
-  // THE FIX: Re-assemble the query result object to match the `UseQueryResult` type.
   const queryResult = useMemo((): UseQueryResult<PagedQueryResult<V>, Error> => ({
     data: { data, count: totalCount },
     isLoading,
@@ -16937,7 +13883,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
-    isLoading, isFetching, error, isMutating, refetch,
+    isLoading, isFetching, error, isMutating, 
+    refetch,
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },
@@ -17646,341 +14593,6 @@ export const RouteBasedUploadConfigProvider: FC<{
   return <>{children}</>;
 };
 
-```
-
-<!-- path: hooks/useAdminUsers.ts -->
-```typescript
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Database } from "@/types/supabase-types";
-import { createClient } from "@/utils/supabase/client";
-import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
-
-
-type UserCreateInput = {
-  id?: string;  // This will be your custom UUID, optional as it can be auto-generated
-  email: string;
-  password: string;
-  email_confirm?: boolean;
-  first_name: string;
-  last_name: string;
-  role: string;
-};
-
-// Define the shape of the RPC response
-type UserDataResult = {
-  data: V_user_profiles_extendedRowSchema[];
-  counts: {
-    total: number;
-    active: number;
-    inactive: number;
-  };
-};
-
-export type { UserCreateInput };
-
-// Types
-type AdminGetAllUsersExtended =
-  Database["public"]["Functions"]["admin_get_all_users_extended"]["Args"];
-
-type AdminBulkDeleteUsersFunction =
-  Database["public"]["Functions"]["admin_bulk_delete_users"]["Args"];
-
-type AdminBulkUpdateUserRole =
-  Database["public"]["Functions"]["admin_bulk_update_role"]["Args"];
-
-type AdminBulkUpdateUserStatus =
-  Database["public"]["Functions"]["admin_bulk_update_status"]["Args"];
-
-type AdminUpdateUserProfile =
-  Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
-
-
-
-// Query Keys
-export const adminUserKeys = {
-  all: ["admin-users"] as const,
-  lists: () => [...adminUserKeys.all, "list"] as const,
-  list: (filters: AdminGetAllUsersExtended) =>
-    [...adminUserKeys.lists(), filters] as const,
-  details: () => [...adminUserKeys.all, "detail"] as const,
-  detail: (id: string) => [...adminUserKeys.details(), id] as const,
-  role: () => [...adminUserKeys.all, "my-role"] as const,
-  userDetails: () => [...adminUserKeys.all, "my-details"] as const,
-  superAdmin: () => [...adminUserKeys.all, "super-admin"] as const,
-};
-
-export const useAdminGetAllUsersExtended = (params: AdminGetAllUsersExtended = {}) => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.list(params),
-    // CORRECTED: Update the query function to expect the new JSONB structure
-    queryFn: async (): Promise<UserDataResult> => {
-      const { data, error } = await supabase.rpc("admin_get_all_users_extended", params);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Return the structured data, providing defaults if the RPC returns null
-      return {
-        data: data?.data || [],
-        counts: data?.counts || { total: 0, active: 0, inactive: 0 },
-      };
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-// Hook to get user by ID
-export const useAdminGetUserById = (userId: string, enabled = true) => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.detail(userId),
-    queryFn: async (): Promise<User_profilesUpdateSchema | null> => {
-      const { data, error } = await supabase.rpc("admin_get_user_by_id", {
-        user_id: userId,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data?.[0] as User_profilesUpdateSchema || null;
-    },
-    enabled: enabled && !!userId,
-    staleTime: 5 * 60 * 1000,
-  });
-};
-
-// Hook to get current user's details
-export const useGetMyUserDetails = () => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: adminUserKeys.userDetails(),
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_my_user_details");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data?.[0] as User_profilesUpdateSchema || null;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-};
-
-// Hook to update user profile
-export const useAdminUpdateUserProfile = () => {
-  const supabase = createClient();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (params: AdminUpdateUserProfile): Promise<boolean> => {
-      const { data, error } = await supabase.rpc(
-        "admin_update_user_profile",
-        params
-      );
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || false;
-    },
-    onSuccess: (_, variables) => {
-      toast.success("User profile updated successfully");
-
-      // Invalidate and refetch relevant queries
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      queryClient.invalidateQueries({
-        queryKey: adminUserKeys.detail(variables.user_id),
-      });
-    },
-    onError: (error) => {
-      toast.error(`Failed to update user profile: ${error.message}`);
-    },
-  });
-};
-
-// Hook to bulk delete users
-export const useAdminBulkDeleteUsers = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
-      const response = await fetch('/api/admin/users', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userIds: params.user_ids }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete users.');
-      }
-    },
-    onSuccess: (_, variables) => {
-      toast.success(
-        `Successfully deleted ${variables.user_ids.length} user(s)`
-      );
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      variables.user_ids.forEach((userId) => {
-        queryClient.removeQueries({ queryKey: adminUserKeys.detail(userId) });
-      });
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete users: ${error.message}`);
-    },
-  });
-};
-
-
-// Hook to bulk update user roles
-export const useAdminBulkUpdateUserRole = () => {
-  const supabase = createClient();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (params: AdminBulkUpdateUserRole): Promise<boolean> => {
-      const { data, error } = await supabase.rpc(
-        "admin_bulk_update_role",
-        params
-      );
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || false;
-    },
-    onSuccess: (_, variables) => {
-      toast.success(
-        `Successfully updated role for ${variables.user_ids.length} user(s)`
-      );
-
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-
-      // Invalidate individual user details
-      variables.user_ids.forEach((userId) => {
-        queryClient.invalidateQueries({
-          queryKey: adminUserKeys.detail(userId),
-        });
-      });
-    },
-    onError: (error) => {
-      toast.error(`Failed to update user roles: ${error.message}`);
-    },
-  });
-};
-
-// Hook to bulk update user status
-export const useAdminBulkUpdateUserStatus = () => {
-  const supabase = createClient();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (params: AdminBulkUpdateUserStatus): Promise<boolean> => {
-      const { data, error } = await supabase.rpc(
-        "admin_bulk_update_status",
-        params
-      );
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data || false;
-    },
-    onSuccess: (_, variables) => {
-      toast.success(
-        `Successfully updated status for ${variables.user_ids.length} user(s)`
-      );
-
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-
-      // Invalidate individual user details
-      variables.user_ids.forEach((userId) => {
-        queryClient.invalidateQueries({
-          queryKey: adminUserKeys.detail(userId),
-        });
-      });
-    },
-    onError: (error) => {
-      toast.error(`Failed to update user status: ${error.message}`);
-    },
-  });
-};
-
-// Hook to create a new user
-export const useAdminCreateUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (userData: UserCreateInput) => {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to create user");
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      toast.success("User created successfully");
-    },
-    onError: (error: Error) => {
-      console.error("User creation error:", error);
-      toast.error(error.message || "Failed to create user");
-    },
-  });
-};
-
-
-// Combined hook for multiple operations
-interface UserOperations {
-  createUser: ReturnType<typeof useAdminCreateUser>;
-  updateUser: ReturnType<typeof useAdminUpdateUserProfile>;
-  deleteUsers: ReturnType<typeof useAdminBulkDeleteUsers>;
-  updateUserRoles: ReturnType<typeof useAdminBulkUpdateUserRole>;
-  updateUserStatus: ReturnType<typeof useAdminBulkUpdateUserStatus>;
-  isLoading: boolean;
-}
-
-export const useAdminUserOperations = (): UserOperations => {
-  const createUser = useAdminCreateUser();
-  const updateUser = useAdminUpdateUserProfile();
-  const deleteUsers = useAdminBulkDeleteUsers();
-  const updateUserRoles = useAdminBulkUpdateUserRole();
-  const updateUserStatus = useAdminBulkUpdateUserStatus();
-
-  return {
-    createUser,
-    updateUser,
-    deleteUsers,
-    updateUserRoles,
-    updateUserStatus,
-    isLoading: createUser.isPending || 
-               updateUser.isPending || 
-               deleteUsers.isPending || 
-               updateUserRoles.isPending || 
-               updateUserStatus.isPending
-  };
-};
 ```
 
 <!-- path: hooks/useDebugSession.ts -->
@@ -21133,183 +17745,33 @@ export function useViewSettings() {
 
 <!-- path: components/lookup/lookup-hooks.ts -->
 ```typescript
+// components/lookup/lookup-hooks.ts
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
-import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
-import { useDeduplicated, useTableQuery, useToggleStatus } from '@/hooks/database';
-import { Lookup_typesUpdateSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { useCallback } from 'react';
 
-interface UseLookupTypesProps {
-  deleteHandler: (item: { id: string; name: string }) => void;
-  initialCategory?: string;
-}
-
-export function useLookupTypes({ deleteHandler, initialCategory = '' }: UseLookupTypesProps) {
+/**
+ * A simplified hook that provides only the category selection and routing logic for the Lookups page.
+ * All data fetching and CRUD actions are now handled by useCrudManager on the page itself.
+ */
+export function useLookupActions() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState(
-    initialCategory || searchParams.get('category') || ''
-  );
-  const [isLookupModalOpen, setIsLookupModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingLookup, setEditingLookup] = useState<Lookup_typesUpdateSchema | null>(null);
 
-  const supabase = createClient();
-
-  // Database hooks
-  const {
-    data: categoriesResult,
-    isLoading: categoriesLoading,
-    error: categoriesError,
-    refetch: refetchCategories,
-  } = useDeduplicated(supabase, 'lookup_types', {
-    // CORRECTED: Deduplicate by 'category' only to get a unique list of categories.
-    columns: ['category'],
-    orderBy: [{ column: 'category', ascending: true }],
-  });
-  const categories = categoriesResult?.data || [];
-
-  const {
-    data: lookupTypesResult,
-    isLoading: lookupLoading,
-    error: lookupError,
-    refetch: refetchLookups,
-  } = useTableQuery(supabase, 'lookup_types', {
-    orderBy: [{ column: 'name', ascending: true }],
-    filters: {
-      name: { operator: 'neq', value: 'DEFAULT' },
-      ...(selectedCategory && {
-        category: { operator: 'eq', value: selectedCategory },
-      }),
-    },
-  });
-  const lookupTypes = lookupTypesResult?.data || [];
-
-  const { mutate: toggleStatus } = useToggleStatus(supabase, 'lookup_types');
-
-  const hasCategories = categories.length > 0;
-  const hasSelectedCategory = !!selectedCategory;
-  const isLoading = categoriesLoading || lookupLoading;
-
-  const filteredLookups = lookupTypes.filter(
-    (lookup) =>
-      lookup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lookup.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lookup.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Handlers
   const handleCategoryChange = useCallback(
     (category: string) => {
-      setSelectedCategory(category);
-      setSearchTerm('');
-      router.push(`/dashboard/lookup${category ? `?category=${category}` : ''}`);
+      const newPath = `/dashboard/lookup${category ? `?category=${category}` : ''}`;
+      router.push(newPath);
     },
     [router]
   );
 
-  const handleRefresh = useCallback(async () => {
-    try {
-      await Promise.all([refetchCategories(), refetchLookups()]);
-      toast.success('Data refreshed successfully');
-    } catch (error) {
-      console.log(error);
-      toast.error('Failed to refresh data');
-    }
-  }, [refetchCategories, refetchLookups]);
-
-  const handleAddNew = useCallback(() => {
-    if (!hasSelectedCategory) {
-      toast.error('Please select a category first');
-      return;
-    }
-    setEditingLookup(null);
-    setIsLookupModalOpen(true);
-  }, [hasSelectedCategory]);
-
-  const handleEdit = useCallback((lookup: Lookup_typesUpdateSchema) => {
-    setEditingLookup(lookup);
-    setIsLookupModalOpen(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    (lookup: Lookup_typesRowSchema) => {
-      if (!lookup.id || !lookup.name) {
-        toast.error('Cannot delete item: missing ID or name.');
-        return;
-      }
-      deleteHandler({ id: lookup.id, name: lookup.name });
-    },
-    [deleteHandler]
-  );
-
-  const handleToggleStatus = useCallback(
-    (id: string, currentStatus: boolean) => {
-      toggleStatus(
-        { id, status: !currentStatus },
-        {
-          onSuccess: () => {
-            toast.success(
-              `Lookup type ${currentStatus ? 'deactivated' : 'activated'} successfully`
-            );
-            refetchLookups();
-          },
-          onError: (error: Error) => {
-            toast.error(`Failed to toggle status: ${error.message}`);
-          },
-        }
-      );
-    },
-    [toggleStatus, refetchLookups]
-  );
-
-  const handleModalClose = useCallback(() => {
-    setIsLookupModalOpen(false);
-    setEditingLookup(null);
-  }, []);
-
-  const handleLookupCreated = useCallback(() => {
-    toast.success('Lookup type created successfully');
-    refetchLookups();
-    handleModalClose();
-  }, [refetchLookups, handleModalClose]);
-
-  const handleLookupUpdated = useCallback(() => {
-    toast.success('Lookup type updated successfully');
-    refetchLookups();
-    handleModalClose();
-  }, [refetchLookups, handleModalClose]);
-
   return {
-    state: {
-      selectedCategory,
-      isLookupModalOpen,
-      searchTerm,
-      editingLookup,
-      categories: categories as Lookup_typesRowSchema[],
-      lookupTypes: filteredLookups,
-      isLoading,
-      hasCategories,
-      hasSelectedCategory,
-      categoriesError: categoriesError as Error | null,
-      lookupError: lookupError as Error | null,
-    },
     handlers: {
-      setSearchTerm,
       handleCategoryChange,
-      handleRefresh,
-      handleAddNew,
-      handleEdit,
-      handleDelete,
-      handleToggleStatus,
-      handleModalClose,
-      handleLookupCreated,
-      handleLookupUpdated,
     },
+    selectedCategory: searchParams.get('category') || '',
   };
 }
-
 ```
 
 <!-- path: components/lookup/LookupModal.tsx -->
@@ -21761,6 +18223,7 @@ interface LookupTypesTableProps {
   lookups: Lookup_typesRowSchema[];
   onEdit: (lookup: Lookup_typesRowSchema) => void;
   onDelete: (lookup: Lookup_typesRowSchema) => void;
+  // THE FIX: The prop signature is now correct.
   onToggleStatus: (id: string, currentStatus: boolean) => void;
   selectedCategory: string;
   searchTerm: string;
@@ -21843,12 +18306,10 @@ export function LookupTypesTable({
   getSortDirection
 }: LookupTypesTableProps) {
 
-  // initial sort according to Sort Order
   const sortedLookups = useMemo(() => {
     return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
   }, [lookups]);
 
-  // Filter lookups based on search term (if not already filtered externally)
   const filteredLookups = useMemo(() => {
     if (!searchTerm.trim()) return lookups;
     
@@ -21971,7 +18432,6 @@ export function LookupTypesTable({
         </div>
       )}
 
-      {/* Optional: Show sorting/filtering info */}
       {(searchTerm || (getSortDirection && Object.values(['name', 'code', 'description', 'status']).some(key => getSortDirection(key)))) && (
         <div className="px-6 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
           {searchTerm && (
@@ -26209,7 +22669,7 @@ import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { syncEntity } from '@/hooks/data/useDataSync'; // THE FIX: Import syncEntity
-import { localDb } from '@/data/localDb'; // THE FIX: Import localDb
+import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
 
 interface SystemOption {
   id: string;
@@ -29317,32 +25777,8 @@ import { PageSpinner } from "../common/ui/LoadingSpinner";
 import { UserRole } from "@/types/user-roles";
 import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/providers/UserProvider";
-
-const useUserProfileCheck = (userId?: string) => {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ['user-profile-check', userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('preferences')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
-      return data;
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-  });
-};
+import { User_profilesRowSchema } from "@/schemas/zod-schemas";
 
 interface ProtectedProps {
   children: ReactNode;
@@ -29351,32 +25787,26 @@ interface ProtectedProps {
 }
 
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
-  // THE FIX: Call ALL hooks unconditionally at the top of the component.
-  const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const { canAccess, isSuperAdmin, role, isLoading: isRoleLoading } = useUser();
-  const { data: profile, isLoading: isProfileLoading } = useUserProfileCheck(user?.id);
+  // THE FIX: Get all user data from the single, consolidated useUser context.
+  const { canAccess, isSuperAdmin, role, profile, isLoading: isUserLoading } = useUser();
 
-  // Derive state from the results of the hooks. This is safe to do before conditional returns.
   const needsOnboarding = 
-    !isProfileLoading && // Only check if profile is loaded
+    !isUserLoading && 
     profile && 
     typeof profile.preferences === 'object' && 
     profile.preferences !== null && 
     !Array.isArray(profile.preferences) &&
     'needsOnboarding' in profile.preferences &&
-    (profile.preferences as { needsOnboarding?: boolean }).needsOnboarding === true;
+    (profile.preferences as User_profilesRowSchema['preferences'])?.needsOnboarding === true;
 
-  // THE FIX: The useEffect hook is now also called unconditionally at the top level.
   useEffect(() => {
-    // The logic *inside* the effect can be conditional. This is the correct pattern.
-    if (!isProfileLoading && !isRoleLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
+    if (!isUserLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
       router.replace('/onboarding');
     }
-  }, [isProfileLoading, isRoleLoading, needsOnboarding, router]);
+  }, [isUserLoading, needsOnboarding, router]);
   
-  // THE FIX: All conditional returns now happen AFTER all hooks have been called.
-  if (isRoleLoading || isProfileLoading) {
+  if (isUserLoading) {
      return <PageSpinner text="Verifying permissions..." />;
   }
   
@@ -29412,8 +25842,6 @@ export const Protected: React.FC<ProtectedProps> = ({ children, allowedRoles, re
   }
 
   if (authState === 'authenticated') {
-    // The UserProvider is still wrapping the content in the layout, which is correct.
-    // We just render the content gatekeeper here.
     return (
       <ProtectedContent allowedRoles={allowedRoles}>
         {children}
@@ -32376,7 +28804,6 @@ import { Cloud, CloudOff, AlertTriangle, RefreshCw } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useDataSync } from "@/hooks/data/useDataSync";
 import { useCallback, useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32386,7 +28813,7 @@ interface DashboardHeaderProps {
   title?: string;
 }
 
-// New Sync Status Indicator Component
+// Sync Status Indicator Component remains unchanged
 const SyncStatusIndicator = () => {
   const { pendingCount, failedCount } = useMutationQueue();
   const isOnline = useOnlineStatus();
@@ -32432,18 +28859,17 @@ export default function DashboardHeader({
   title = "Dashboard",
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
-  const { isSyncing, refetchSync } = useDataSync();
+  // THE FIX: Renamed 'refetchSync' to 'sync' for clarity.
+  const { isSyncing, sync } = useDataSync();
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // THE FIX: The handler is now simpler. It just calls the sync function.
+  // The toast notifications are handled inside the useDataSync hook.
   const handleRefresh = useCallback(() => {
-    toast.promise(refetchSync(), {
-      loading: 'Starting manual data sync with the server...',
-      success: 'Local data successfully synced!',
-      error: (err: Error) => `Sync failed: ${err.message}`,
-    });
-  }, [refetchSync]);
+    sync();
+  }, [sync]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32477,7 +28903,6 @@ export default function DashboardHeader({
               <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* THE FIX: Conditional rendering for mobile vs desktop */}
             {isMobile ? (
               <div ref={menuRef}>
                 <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="block">
@@ -32514,7 +28939,6 @@ export default function DashboardHeader({
                 </AnimatePresence>
               </div>
             ) : (
-              // Desktop View
               <>
                 <div className="group">
                   <Link
@@ -32659,7 +29083,6 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import { useDebounce } from "use-debounce";
 import { PageSpinner } from "@/components/common/ui";
-import { BlurLoader } from "@/components/common/ui/LoadingSpinner";
 
 type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity; };
 
@@ -32685,7 +29108,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
   config, entitiesQuery, toggleStatusMutation, onEdit, onDelete,
   onCreateNew, selectedEntityId, onSelect, onViewDetails,
   searchTerm, onSearchChange, filters, onFilterChange, onClearFilters,
-  isFetching
 }: EntityManagementComponentProps<T>) {
   const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
   const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
@@ -32712,7 +29134,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
     
     const rootEntities: EntityWithChildren<T>[] = [];
 
-    // THE FIX: Type guards to safely access parent properties without using 'any'
     const isParentEntity = (value: unknown): value is { id: string } => {
       return value != null && typeof value === 'object' && 'id' in value && typeof (value as { id: unknown }).id === 'string';
     };
@@ -32727,7 +29148,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
       let parentId: string | null = null;
       
-      // Attempt to get parent ID from the loaded relation object (e.g., parent_area)
       if (config.parentField) {
         const parentRelation = entity[config.parentField];
         if (isParentEntity(parentRelation)) {
@@ -32735,7 +29155,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
         }
       }
       
-      // If the relation object didn't provide an ID, fall back to the direct parent_id foreign key
       if (!parentId && hasParentId(entity) && entity.parent_id) {
         parentId = entity.parent_id;
       }
@@ -32771,7 +29190,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
-      {isFetching && !isInitialLoading && <BlurLoader />}
+      {/* THE FIX: The BlurLoader component has been removed entirely from here. */}
       
       <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -32964,10 +29383,12 @@ export function DetailItem<T extends BaseEntity>({
 ```typescript
 // components/common/entity-management/types.ts
 import { UseQueryResult } from '@tanstack/react-query';
-import { PagedQueryResult } from '@/hooks/database'; // IMPORT THE NEW TYPE
+import { PagedQueryResult } from '@/hooks/database';
 
 export interface BaseEntity {
-  id: string;
+  // THE FIX: The `id` property is now correctly typed as potentially being null,
+  // which aligns with the schemas generated from database views (e.g., v_employee_designations).
+  id: string | null;
   name: string;
   status: boolean | null;
   created_at?: string | null;
@@ -32979,12 +29400,10 @@ export interface HierarchicalEntity extends BaseEntity {
   parent?: HierarchicalEntity | null;
 }
 
-// Utility type for entities with computed children
 export type EntityWithChildren<T extends BaseEntity> = T & {
   children: EntityWithChildren<T>[];
 };
 
-// Type guard functions
 export function isHierarchicalEntity<T extends BaseEntity>(
   entity: T
 ): entity is T & HierarchicalEntity {
@@ -33024,8 +29443,6 @@ export interface UseEntityManagementProps<T extends BaseEntity> {
   onSelect: (id: string | null) => void;
 }
 
-
-// Updated component interfaces
 export interface EntityTreeItemProps<T extends BaseEntity> {
     entity: EntityWithChildren<T>;
     config: EntityConfig<T>;
@@ -33036,7 +29453,7 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
     onToggleExpand: (id: string) => void;
     onToggleStatus: (e: React.MouseEvent, entity: T) => void;
     isLoading: boolean;
-  }
+}
 ```
 
 <!-- path: components/common/entity-management/EntityTreeItem.tsx -->
@@ -37966,8 +34383,6 @@ export { ScrollArea, ScrollBar }
 
 <!-- path: components/common/ui/theme/ThemeToggle.tsx -->
 ```typescript
-
-
 "use client";
 
 import { useThemeStore, Theme } from "@/stores/themeStore";
@@ -39684,17 +36099,18 @@ export const LoadingCard: React.FC<{
   </div>
 );
 
+// THE FIX: Changed from `items-center` to `items-start` and added `pt-10` to position
+// the loader near the top, making it less obtrusive.
 export const BlurLoader: React.FC<{
   className?: string;
 }> = ({ className }) => (
-  <div className={cn('absolute inset-0 bg-white/70 dark:bg-gray-900/70 z-20 flex items-center justify-center backdrop-blur-sm', className)}>
-    <div className='flex items-center space-x-2 text-gray-500'>
+  <div className={cn('absolute inset-0 bg-white/50 dark:bg-gray-900/50 z-20 flex items-start justify-center pt-10 backdrop-blur-sm pointer-events-none', className)}>
+    <div className='flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-md border dark:border-gray-700'>
       <div className='h-5 w-5 animate-spin rounded-full border-b-2 border-blue-500'></div>
-      <span>Refreshing data...</span>
+      <span className="text-gray-600 dark:text-gray-300">Syncing latest data...</span>
     </div>
   </div>
 );
-
 ```
 
 <!-- path: components/common/ui/LoadingSpinner/AdvancedLoader.tsx -->
@@ -43436,7 +39852,6 @@ import {
   RPCConfig,
 } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
-import { BlurLoader } from '@/components/common/ui/LoadingSpinner';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
@@ -43520,7 +39935,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   tableName,
   columns,
   loading = false,
-  isFetching = false,
   pagination,
   actions = [],
   searchable = true,
@@ -43589,7 +40003,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
   }, [filterable]);
 
-  // (Excel download hooks remain the same)
   const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
     showToasts: true,
   });
@@ -43739,7 +40152,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   }, []);
 
   const handleExport = useCallback(async () => {
-    // 1) If a custom export handler is provided by the parent, use it
     if (onExport) {
       await onExport(
         processedData as Row<T>[],
@@ -43748,7 +40160,6 @@ export function DataTable<T extends PublicTableOrViewName>({
       return;
     }
 
-    // 2) Build export options: prefer explicit options, else use current visible columns and filters
     const columnsToExport = (exportOptions?.columns ??
       visibleColumnsData) as Column<Row<T>>[];
     const mergedFilters = exportOptions?.includeFilters
@@ -43765,7 +40176,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     };
 
     try {
-      // 3) Use RPC-based download if rpcConfig is provided; otherwise, table/view download
       if (exportOptions?.rpcConfig) {
         const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
           ...baseOptions,
@@ -43776,7 +40186,6 @@ export function DataTable<T extends PublicTableOrViewName>({
         await tableExcelDownload.mutateAsync(baseOptions);
       }
     } catch (err) {
-      // 4) Optional CSV fallback using currently processed rows
       if (exportOptions?.fallbackToCsv) {
         try {
           const headers = columnsToExport.map((c) => c.title).join(',');
@@ -43806,7 +40215,6 @@ export function DataTable<T extends PublicTableOrViewName>({
           document.body.removeChild(link);
           URL.revokeObjectURL(link.href);
         } catch {
-          // If CSV fallback also fails, rethrow original error
           throw err;
         }
       } else {
@@ -43834,7 +40242,6 @@ export function DataTable<T extends PublicTableOrViewName>({
         className
       )}
     >
-      {/* Section 1: Toolbar and Filters (Non-scrolling) */}
       <div className="flex-shrink-0">
       <TableToolbar
         title={title}
@@ -43881,11 +40288,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       />
       </div>
 
-      {/* Section 2: Scrollable Table Area */}
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
-      {isFetching && !loading && (
-          <BlurLoader className='h-full w-full' />
-        )}
         <table className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
             <TableHeader
               columns={columns}
@@ -43933,14 +40336,12 @@ export function DataTable<T extends PublicTableOrViewName>({
           </table>
       </div>
 
-      {/* Section 3: Pagination (Non-scrolling) */}
       <div className="flex-shrink-0">
         <TablePagination pagination={pagination} bordered={bordered} />
       </div>
     </div>
   );
 }
-
 ```
 
 <!-- path: components/table/datatable-types.ts -->
@@ -44029,66 +40430,6 @@ export interface SortConfig<T> {
 
 export type TablePaginationProps = Pick<DataTableProps<TableOrViewName>, 'pagination' | 'bordered'>;
 
-```
-
-<!-- path: components/bsnl/useDashboardOverview.ts -->
-```typescript
-// path: components/bsnl/useDashboardOverview.ts
-"use client";
-
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
-import { z } from 'zod';
-
-// CORRECTED: The z.record schema now correctly specifies both a key and a value type.
-const dashboardOverviewSchema = z.object({
-  system_status_counts: z.object({
-    Active: z.number().optional(),
-    Inactive: z.number().optional(),
-  }).nullable(),
-  node_status_counts: z.object({
-    Active: z.number().optional(),
-    Inactive: z.number().optional(),
-  }).nullable(),
-  path_operational_status: z.record(z.string(), z.number()).nullable(),
-  cable_utilization_summary: z.object({
-    average_utilization_percent: z.number().nullable(),
-    high_utilization_count: z.number().nullable(),
-    total_cables: z.number().nullable(),
-  }).nullable(),
-  user_activity_last_30_days: z.array(z.object({
-    date: z.string(),
-    count: z.number(),
-  })).nullable(),
-  systems_per_maintenance_area: z.record(z.string(), z.number()).nullable(),
-});
-
-export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
-
-export function useDashboardOverview() {
-  const supabase = createClient();
-
-  return useQuery({
-    queryKey: ['dashboard-overview'],
-    queryFn: async (): Promise<DashboardOverviewData | null> => {
-      const { data, error } = await supabase.rpc('get_dashboard_overview');
-      
-      if (error) {
-        console.error("Error fetching dashboard overview:", error);
-        throw new Error(error.message);
-      }
-      
-      const parsed = dashboardOverviewSchema.safeParse(data);
-      if (!parsed.success) {
-        console.error("Zod validation error for dashboard overview:", parsed.error);
-        throw new Error("Received invalid data structure from dashboard overview function.");
-      }
-
-      return parsed.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
 ```
 
 <!-- path: components/bsnl/types.ts -->
@@ -44401,7 +40742,7 @@ import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { LatLngBounds } from 'leaflet';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 
 interface BsnlDashboardData {
@@ -44740,8 +41081,8 @@ export function OptimizedNetworkMap({
 
 import React from 'react';
 import { Network, Activity, AlertTriangle, CheckCircle, GitBranch, Cable } from 'lucide-react';
-import { useDashboardOverview } from './useDashboardOverview';
 import { Card } from '@/components/common/ui';
+import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 
 // Stat Card subcomponent for consistent styling
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string; }> = ({ icon, label, value, color }) => (
@@ -53028,6 +49369,7 @@ export type Database = {
           phone_number: string
           preferences: Json
           role: string
+          status: string
           updated_at: string
         }[]
       }
@@ -57474,13 +53816,9 @@ import React from 'react';
 // path: app/dashboard/lookup/page.tsx
 'use client';
 
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { Card } from '@/components/common/ui/card';
-import { useLookupTypes } from '@/components/lookup/lookup-hooks';
 import { LookupModal } from '@/components/lookup/LookupModal';
 import {
   ErrorState,
@@ -57490,155 +53828,146 @@ import {
 } from '@/components/lookup/LookupTypesEmptyStates';
 import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
-import { Filters } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useSorting } from '@/hooks/useSorting';
-import { useMemo } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { Lookup_typesRowSchema, Lookup_typesInsertSchema } from '@/schemas/zod-schemas';
+import { useLookupTypesData } from '@/hooks/data/useLookupTypesData';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { useLookupActions } from '@/components/lookup/lookup-hooks';
 
 export default function LookupTypesPage() {
+  const { handlers: { handleCategoryChange }, selectedCategory } = useLookupActions();
+
+  const {
+    data: lookupTypes, totalCount, activeCount, inactiveCount,
+    isLoading: isLoadingLookups, error, refetch,
+    search, filters, editModal,
+    actions: crudActions,
+  } = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
+    tableName: 'lookup_types',
+    dataQueryHook: useLookupTypesData,
+    displayNameField: 'name',
+  });
+  
+  // THE FIX: The online query now selects '*' to match the expected return type.
+  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useOfflineQuery<Lookup_typesRowSchema[]>(
+      ['unique-categories'],
+      async () => {
+          const { data, error: dbError } = await createClient().from('lookup_types').select('*').neq('name', 'DEFAULT');
+          if(dbError) throw dbError;
+          const unique = Array.from(new Map(data.map(item => [item.category, item])).values());
+          return unique;
+      },
+      async () => {
+          const allLookups = await localDb.lookup_types.filter(l => l.name !== 'DEFAULT').toArray();
+          const unique = Array.from(new Map(allLookups.map(item => [item.category, item])).values());
+          return unique;
+      }
+  );
+  const categories = useMemo(() => categoriesData || [], [categoriesData]);
+
+  useState(() => {
+    filters.setFilters({ category: selectedCategory });
+  });
+
   const deleteManager = useDeleteManager({
     tableName: 'lookup_types',
-    onSuccess: () => {
-      handleRefresh();
-    },
+    onSuccess: refetch,
   });
 
-  const {
-    state: {
-      selectedCategory,
-      isLookupModalOpen,
-      searchTerm,
-      editingLookup,
-      categories,
-      lookupTypes,
-      isLoading,
-      hasCategories,
-      hasSelectedCategory,
-      categoriesError,
-      lookupError,
-    },
-    handlers: {
-      setSearchTerm,
-      handleCategoryChange,
-      handleRefresh,
-      handleAddNew,
-      handleEdit,
-      handleDelete,
-      handleToggleStatus,
-      handleModalClose,
-      handleLookupCreated,
-      handleLookupUpdated,
-    },
-  } = useLookupTypes({ deleteHandler: deleteManager.deleteSingle });
-
-  const {
-    sortedData: sortedLookupTypes,
-    handleSort,
-    getSortDirection,
-  } = useSorting({
+  const { sortedData: sortedLookupTypes, handleSort, getSortDirection } = useSorting({
     data: lookupTypes,
-    defaultSortKey: 'category',
-    defaultDirection: 'asc',
+    defaultSortKey: 'sort_order',
   });
+  
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+    toast.success('Data refreshed successfully');
+  }, [refetch]);
 
-  const filteredAndSortedLookupTypes = useMemo(() => {
-    if (!searchTerm.trim()) return sortedLookupTypes;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return sortedLookupTypes.filter(
-      (lookup) =>
-        lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
-        lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
-        lookup.description?.toLowerCase().includes(lowerSearchTerm)
-    );
-  }, [sortedLookupTypes, searchTerm]);
-
-  const serverFilters = useMemo((): Filters => {
-    const f: Filters = { name: { operator: 'neq', value: 'DEFAULT' } };
-    return f;
-  }, []);
+  const hasCategories = categories.length > 0;
+  const hasSelectedCategory = !!selectedCategory;
+  const isLoading = isLoadingLookups || isLoadingCategories;
 
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
-    onRefresh: async () => {
-      await handleRefresh();
-      toast.success('Refreshed successfully!');
-    },
-    onAddNew: handleAddNew,
+    onRefresh: handleRefresh,
+    onAddNew: hasSelectedCategory ? editModal.openAdd : () => toast.error('Please select a category first.'),
     isLoading: isLoading,
-    exportConfig: { tableName: 'lookup_types', filters: serverFilters },
+    exportConfig: { tableName: 'lookup_types', filters: { category: selectedCategory } },
   });
 
-  const activeLookups = lookupTypes.filter((lookup) => lookup.status);
-  const inactiveLookups = lookupTypes.filter((lookup) => !lookup.status);
   const headerStats = [
-    { value: lookupTypes.length, label: 'Total Lookup Types' },
-    { value: activeLookups.length, label: 'Active', color: 'success' as const },
-    { value: inactiveLookups.length, label: 'Inactive', color: 'danger' as const },
+    { value: totalCount, label: 'Total Types in Category' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (lookupError) {
-    return (
-      <ErrorDisplay
-        error={lookupError.message}
-        actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]}
-      />
-    );
+  // THE FIX: Create an adapter function for the onToggleStatus prop.
+  const handleToggleStatusAdapter = (id: string, currentStatus: boolean) => {
+    const record = lookupTypes.find(lt => lt.id === id);
+    if (record) {
+      crudActions.handleToggleStatus({ ...record, status: currentStatus });
+    }
+  };
+
+  if (categoriesError) {
+    return <ErrorDisplay error={categoriesError.message} actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]} />;
   }
 
   return (
     <div className="space-y-6 p-6">
       <PageHeader
         title="Lookup Types"
-        description="Manage lookup types"
+        description="Manage lookup types for various categories."
         icon={<FiList />}
-        stats={headerStats}
+        stats={hasSelectedCategory ? headerStats : []}
         actions={headerActions}
         isLoading={isLoading}
       />
 
-      {!hasCategories && !isLoading && (
-        <NoCategoriesState error={categoriesError as Error} isLoading={isLoading} />
-      )}
-
-      {hasCategories && (
+      {!hasCategories && !isLoading ? (
+        <NoCategoriesState
+          error={categoriesError ?? undefined}
+          isLoading={isLoading}
+        />
+      ) : (
         <LookupTypesFilters
           categories={categories}
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
+          searchTerm={search.searchQuery}
+          onSearchTermChange={search.setSearchQuery}
           hasSelectedCategory={hasSelectedCategory}
         />
       )}
+      
+      {/* THE FIX: Pass `error.message` to the ErrorState component. */}
+      {error && hasSelectedCategory && <ErrorState error={error} onRetry={handleRefresh} />}
+      {isLoading && hasSelectedCategory && <LoadingState selectedCategory={selectedCategory} />}
 
-      {lookupError && hasSelectedCategory && (
-        <ErrorState error={lookupError} onRetry={handleRefresh} />
-      )}
-
-      {isLoading && hasSelectedCategory && (
-        <LoadingState selectedCategory={selectedCategory} />
-      )}
-
-      {hasSelectedCategory && !isLoading && !lookupError && (
+      {hasSelectedCategory && !isLoading && !error && (
         <Card className="overflow-hidden">
           <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredAndSortedLookupTypes.length} of {lookupTypes.length} lookup types for category:{' '}
+              Showing {lookupTypes.length} of {totalCount} lookup types for category:{' '}
               <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
-              {searchTerm && (
-                <span className="ml-2">(filtered by: <em>&quot;{searchTerm}&quot;</em>)</span>
-              )}
             </p>
           </div>
           <LookupTypesTable
-            lookups={filteredAndSortedLookupTypes}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onToggleStatus={handleToggleStatus}
+            lookups={sortedLookupTypes}
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            // THE FIX: Pass the new adapter function to the table.
+            onToggleStatus={handleToggleStatusAdapter}
             selectedCategory={selectedCategory}
-            searchTerm={searchTerm}
+            searchTerm={search.searchQuery}
             onSort={handleSort}
             getSortDirection={getSortDirection}
           />
@@ -57648,11 +53977,11 @@ export default function LookupTypesPage() {
       {!hasSelectedCategory && !isLoading && hasCategories && <SelectCategoryPrompt />}
 
       <LookupModal
-        isOpen={isLookupModalOpen}
-        onClose={handleModalClose}
-        onLookupCreated={handleLookupCreated}
-        onLookupUpdated={handleLookupUpdated}
-        editingLookup={editingLookup}
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        onLookupCreated={(data) => crudActions.handleSave(data)}
+        onLookupUpdated={(data) => crudActions.handleSave(data as Lookup_typesInsertSchema)}
+        editingLookup={editModal.record}
         category={selectedCategory}
         categories={categories}
       />
@@ -57680,57 +54009,18 @@ import { useMemo } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
-import { useCrudManager, DataQueryHookParams, DataQueryHookReturn } from "@/hooks/useCrudManager";
-import { createClient } from "@/utils/supabase/client";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import { FiArchive} from "react-icons/fi";
 import { toast } from "sonner";
-import { buildRpcFilters, PagedDataResult, Row } from "@/hooks/database";
+import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
-import { useQuery } from "@tanstack/react-query";
 import { getInventoryTableColumns } from "@/components/inventory/InventoryTableColumns";
 import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
-
-const useInventoryData = (params: DataQueryHookParams): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['inventory-data', currentPage, pageLimit, filters, searchQuery],
-    queryFn: async () => {
-      const rpcFilters = buildRpcFilters({
-        ...filters,
-        or: searchQuery ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,asset_tag.ilike.%${searchQuery}%)` : undefined,
-      });
-
-      const { data: rpcData, error: rpcError } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_inventory_items',
-        p_limit: pageLimit,
-        p_offset: (currentPage - 1) * pageLimit,
-        p_filters: rpcFilters,
-        p_order_by: 'created_at',
-        p_order_dir: 'desc',
-      });
-
-      if (rpcError) throw rpcError;
-      return rpcData as PagedDataResult<V_inventory_itemsRowSchema>;
-    },
-  });
-
-  return {
-    data: data?.data ?? [],
-    totalCount: data?.total_count ?? 0,
-    activeCount: data?.active_count ?? 0, // Note: status is not on this table, so these are placeholders
-    inactiveCount: data?.inactive_count ?? 0,
-    isLoading,
-    isFetching,
-    error: (error as Error) ?? null,
-    refetch: () => { void refetch(); },
-  };
-};
-
+import { useInventoryData } from "@/hooks/data/useInventoryData";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -57742,6 +54032,7 @@ export default function InventoryPage() {
     tableName: 'inventory_items',
     dataQueryHook: useInventoryData,
     displayNameField: 'name',
+    searchColumn: ['name', 'description', 'asset_no'],
   });
 
   const columns = getInventoryTableColumns();
@@ -57754,7 +54045,6 @@ export default function InventoryPage() {
       onDelete: canPerformActions ? crudActions.handleDelete : undefined,
     });
     
-    // Add QR Code action
     standardActions.unshift({
       key: 'qr-code',
       label: 'View QR Code',
@@ -57766,7 +54056,9 @@ export default function InventoryPage() {
     return standardActions;
   }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
 
-  const headerActions = useStandardHeaderActions({
+  const headerActions = useStandardHeaderActions<'v_inventory_items'>({
+    // THE FIX: The `data` prop is now correctly cast to the view's row type,
+    // and the exportConfig also correctly references the view name.
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
     onAddNew: canPerformActions ? editModal.openAdd : undefined,
@@ -58147,7 +54439,7 @@ import { useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiMap } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
@@ -58340,140 +54632,35 @@ export default function RingMapPage() {
 <!-- path: app/dashboard/rings/page.tsx -->
 ```typescript
 // app/dashboard/rings/page.tsx
-'use client';
+"use client";
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal } from '@/components/common/ui';
-import { RingModal } from '@/components/rings/RingModal';
-import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
-import { RingsFilters } from '@/components/rings/RingsFilters';
-import { createStandardActions } from '@/components/table/action-helpers';
-import { DataTable } from '@/components/table/DataTable';
-import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
-import { useCrudManager, DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
+import { ConfirmModal } from "@/components/common/ui";
+import { RingModal } from "@/components/rings/RingModal";
+import { RingSystemsModal } from "@/components/rings/RingSystemsModal";
+import { RingsFilters } from "@/components/rings/RingsFilters";
+import { createStandardActions } from "@/components/table/action-helpers";
+import { DataTable } from "@/components/table/DataTable";
+import { RingsColumns } from "@/config/table-columns/RingsTableColumns";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import {
   V_ringsRowSchema,
   RingsRowSchema,
   RingsInsertSchema,
   Lookup_typesRowSchema,
   Maintenance_areasRowSchema,
-} from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { useMemo, useCallback, useState } from 'react';
-import { GiLinkedRings } from 'react-icons/gi';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
-import { FaNetworkWired } from 'react-icons/fa';
-import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
-import { buildRpcFilters } from '@/hooks/database';
-
-const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  // Online Fetcher: Uses the consistent RPC function pattern
-  const onlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`,
-    });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_rings',
-      p_limit: 1000, // Fetch all for client-side pagination when online too
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-      p_order_dir: 'asc',
-    });
-
-    if (error) throw error;
-    // The RPC returns a JSON object with a 'data' property
-    return (data as { data: V_ringsRowSchema[] })?.data || [];
-  };
-
-  // Offline Fetcher: Remains the same, reads from Dexie
-  const offlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-     const allRings = await localDb.v_rings.orderBy('name').toArray();
-    // Perform client-side filtering for offline data
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      return allRings.filter(
-        (ring: V_ringsRowSchema) =>
-          ring.name?.toLowerCase().includes(lowerQuery) ||
-          ring.description?.toLowerCase().includes(lowerQuery) ||
-          ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
-          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    return allRings;
-  };
-
-  const {
-    data: allRings = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(
-    ['rings-data', searchQuery, filters], // Query key now includes filters
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
-  );
-
-  // Client-side pagination is now applied to both online and offline results
-const processedData = useMemo(() => {
-    let processed = allRings;
-
-    // Client-side Search Filter
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      processed = processed.filter((ring: V_ringsRowSchema) =>
-        ring.name?.toLowerCase().includes(lowerQuery) ||
-        ring.description?.toLowerCase().includes(lowerQuery) ||
-        ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
-        ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    
-    // Client-side Dropdown Filters
-    if (filters.status) {
-      processed = processed.filter(r => String(r.status) === filters.status);
-    }
-
-    // THE FIX: Apply a robust "natural sort" to the filtered data.
-    // This ensures 'HNV-3' comes before 'HNV-18'.
-    processed.sort((a, b) => {
-        const nameA = a.name || '';
-        const nameB = b.name || '';
-        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    });
-
-    const totalCount = processed.length;
-    const activeCount = processed.filter((r: V_ringsRowSchema) => r.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = processed.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allRings, searchQuery, filters, currentPage, pageLimit]);
-
-  return {
-    ...processedData,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  };
-};
+} from "@/schemas/zod-schemas";
+import { createClient } from "@/utils/supabase/client";
+import { useMemo, useCallback, useState } from "react";
+import { GiLinkedRings } from "react-icons/gi";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { FaNetworkWired } from "react-icons/fa";
+import useOrderedColumns from "@/hooks/useOrderedColumns";
+import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
+import { localDb } from "@/hooks/data/localDb";
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { useRingsData } from "@/hooks/data/useRingsData";
 
 const RingsPage = () => {
   const router = useRouter();
@@ -58490,39 +54677,41 @@ const RingsPage = () => {
     isLoading,
     isMutating,
     isFetching,
+    error,
     refetch,
     pagination,
     search,
     editModal,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'rings', V_ringsRowSchema>({
-    tableName: 'rings',
+  } = useCrudManager<"rings", V_ringsRowSchema>({
+    tableName: "rings",
     dataQueryHook: useRingsData,
+    displayNameField: "name",
   });
 
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['ring-types-for-filter'],
+    ["ring-types-for-filter"],
     async () =>
       (
         await createClient()
-          .from('lookup_types')
-          .select('*')
-          .eq('category', 'RING_TYPES')
-          .neq('name', 'DEFAULT')
+          .from("lookup_types")
+          .select("*")
+          .eq("category", "RING_TYPES")
+          .neq("name", "DEFAULT")
       ).data ?? [],
     async () =>
       await localDb.lookup_types
-        .where({ category: 'RING_TYPES' })
-        .filter((rt) => rt.name !== 'DEFAULT')
+        .where({ category: "RING_TYPES" })
+        .filter((rt) => rt.name !== "DEFAULT")
         .toArray()
   );
   const ringTypes = useMemo(() => ringTypesData || [], [ringTypesData]);
 
   const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-    ['maintenance-areas-for-filter'],
+    ["maintenance-areas-for-filter"],
     async () =>
-      (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+      (await createClient().from("maintenance_areas").select("*").eq("status", true)).data ?? [],
     async () => await localDb.maintenance_areas.where({ status: true }).toArray()
   );
   const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
@@ -58535,7 +54724,7 @@ const RingsPage = () => {
       if (record.id) {
         router.push(`/dashboard/rings/${record.id}`);
       } else {
-        toast.error('Cannot view ring: Missing ID.');
+        toast.error("Cannot view ring: Missing ID.");
       }
     },
     [router]
@@ -58553,11 +54742,11 @@ const RingsPage = () => {
       onDelete: crudActions.handleDelete,
     });
     standardActions.unshift({
-      key: 'manage-systems',
-      label: 'Manage Systems',
-      icon: <FaNetworkWired className="w-4 h-4" />,
+      key: "manage-systems",
+      label: "Manage Systems",
+      icon: <FaNetworkWired className='w-4 h-4' />,
       onClick: handleManageSystems,
-      variant: 'secondary',
+      variant: "secondary",
     });
     return standardActions;
   }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems]);
@@ -58568,24 +54757,28 @@ const RingsPage = () => {
     data: rings as RingsRowSchema[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
+      toast.success("Refreshed successfully!");
     },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
-    exportConfig: { tableName: 'rings' },
+    exportConfig: { tableName: "rings" },
   });
 
   const headerStats = [
-    { value: totalCount, label: 'Total Rings' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+    { value: totalCount, label: "Total Rings" },
+    { value: activeCount, label: "Active", color: "success" as const },
+    { value: inactiveCount, label: "Inactive", color: "danger" as const },
   ];
 
+  if (error) {
+    // You should handle the error state here, e.g., show an error message
+  }
+
   return (
-    <div className="mx-auto space-y-4 p-6">
+    <div className='mx-auto space-y-4 p-6'>
       <PageHeader
-        title="Ring Management"
-        description="Manage network rings and their related information."
+        title='Ring Management'
+        description='Manage network rings and their related information.'
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
@@ -58593,7 +54786,7 @@ const RingsPage = () => {
         isFetching={isFetching}
       />
       <DataTable
-        tableName="v_rings"
+        tableName='v_rings'
         data={rings}
         columns={orderedColumns}
         loading={isLoading}
@@ -58617,15 +54810,15 @@ const RingsPage = () => {
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        editingRing={editModal.record as RingsRowSchema | null}
         onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
-        isLoading={isMutating}
+        editingRing={editModal.record as RingsRowSchema | null}
         ringTypes={ringTypes.map((rt) => ({ id: rt.id, name: rt.name, code: rt.code }))}
         maintenanceAreas={maintenanceAreas.map((ma) => ({
           id: ma.id,
           name: ma.name,
           code: ma.code,
         }))}
+        isLoading={isMutating}
       />
 
       <RingSystemsModal
@@ -58638,11 +54831,11 @@ const RingsPage = () => {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteModal.message}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
         showIcon
         loading={deleteModal.loading}
       />
@@ -58662,7 +54855,8 @@ export default RingsPage;
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+// THE FIX: Import the context hook `useUser` instead of the old data-fetching hook.
+import { useUser } from "@/providers/UserProvider";
 import { useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { OnboardingPromptModal } from "@/components/auth/OnboardingPromptModal";
@@ -58673,15 +54867,14 @@ import { User_profilesRowSchema } from "@/schemas/zod-schemas";
 export default function DashboardPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { data: profile, isLoading: isProfileLoading, refetch } = useGetMyUserDetails();
+  // THE FIX: Get the profile and its loading state from the `useUser` context.
+  const { profile, isLoading: isProfileLoading, refetch } = useUser();
   const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
 
   const [isPromptOpen, setIsPromptOpen] = useState(false);
 
   useEffect(() => {
     if (!isProfileLoading && profile) {
-      // ** Check the 'needsOnboarding' flag directly from the user's preferences.**
-      // This is the reliable source of truth.
       const needsOnboarding = (profile.preferences as User_profilesRowSchema["preferences"])?.needsOnboarding === true;
       const hasDismissedPrompt = (profile.preferences as User_profilesRowSchema["preferences"])?.showOnboardingPrompt === false;
 
@@ -58708,7 +54901,6 @@ export default function DashboardPage() {
       updateProfile({ id: user.id, data: { preferences: newPreferences } }, {
         onSuccess: () => {
           toast.success("Preference saved. We won't ask again.");
-          // Manually update the local profile state to prevent the prompt from reappearing before a full refetch
           refetch(); 
         },
         onError: (error) => {
@@ -59284,58 +55476,53 @@ export default function CategoriesPage() {
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { ConfirmModal } from '@/components/common/ui/Modal';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
-import { Filters, PagedQueryResult, Row, useTableQuery, useTableWithRelations } from '@/hooks/database';
+import { Filters, PagedQueryResult, Row } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
+import { Maintenance_areasInsertSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
 import { FiMapPin } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { UseQueryResult } from '@tanstack/react-query';
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<MaintenanceAreaWithRelations | null>(null);
 
-  const serverFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.status) f.status = filters.status === 'true';
-    if (filters.areaType) f.area_type_id = filters.areaType;
-    if (searchTerm) {
-      f.or = `(name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%)`;
-    }
-    return f;
-  }, [filters, searchTerm]);
-
-  const areasQuery = useTableWithRelations<'maintenance_areas', PagedQueryResult<MaintenanceAreaWithRelations>>(
-    supabase, 'maintenance_areas',
-    [ 'area_type:area_type_id(id, name)', 'parent_area:parent_id(id, name, code)', 'child_areas:maintenance_areas!parent_id(id, name, code, status)' ],
-    { filters: serverFilters, orderBy: [{ column: 'name', ascending: true }], placeholderData: (prev) => prev }
-  );
-
-  const { refetch, error, data, isLoading, isFetching } = areasQuery;
-  const allAreas = useMemo(() => data?.data || [], [data]);
-  const totalCount = data?.count || 0;
-  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
-
-  const isInitialLoad = isLoading && allAreas.length === 0;
-  
-  const { data: areaTypesResult } = useTableQuery(supabase, 'lookup_types', {
-    filters: { category: { operator: 'eq', value: 'MAINTENANCE_AREA_TYPES' } },
-    orderBy: [{ column: 'name', ascending: true }],
+  const {
+    data: allAreas,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isMutating, isFetching, error, refetch,
+    search, filters,
+  } = useCrudManager<'maintenance_areas', MaintenanceAreaWithRelations>({
+    tableName: 'maintenance_areas',
+    dataQueryHook: useMaintenanceAreasData,
+    displayNameField: 'name',
+    searchColumn: ['name', 'code', 'contact_person', 'email'],
   });
-  const areaTypes = useMemo(() => areaTypesResult?.data || [], [areaTypesResult]);
+
+  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
+  const isInitialLoad = isLoading && allAreas.length === 0;
+
+  const { data: areaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['maintenance-area-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MAINTENANCE_AREA_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'MAINTENANCE_AREA_TYPES' }).toArray()
+  );
+  const areaTypes = useMemo(() => areaTypesData || [], [areaTypesData]);
 
   const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } = useMaintenanceAreasMutations(supabase, () => {
     refetch(); setFormOpen(false); setEditingArea(null);
@@ -59357,19 +55544,25 @@ export default function MaintenanceAreasPage() {
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: handleOpenCreateForm, isLoading: areasQuery.isLoading,
+    onAddNew: handleOpenCreateForm, isLoading: isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
   
   const headerStats = [
     { value: totalCount, label: 'Total Areas' },
-    { value: allAreas.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
-    { value: allAreas.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
+  
+  // This is a workaround to satisfy the type expected by EntityManagementComponent
+  const areasQuery: UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error> = {
+    data: { data: allAreas, count: totalCount },
+    isLoading, isFetching, error, isError: !!error, refetch,
+  } as UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error>;
   
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
@@ -59387,7 +55580,7 @@ export default function MaintenanceAreasPage() {
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
-        isFetching={isFetching}
+        isFetching={isFetching || isMutating}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
         onEdit={() => handleOpenEditForm(selectedEntity!)}
         onDelete={deleteManager.deleteSingle}
@@ -59395,11 +55588,11 @@ export default function MaintenanceAreasPage() {
         selectedEntityId={selectedAreaId}
         onSelect={setSelectedAreaId}
         onViewDetails={() => setIsDetailsModalOpen(true)}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={setFilters}
-        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
+        searchTerm={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        filters={filters.filters as Record<string, string>}
+        onFilterChange={(f) => filters.setFilters(f as Filters)}
+        onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
       />
 
       {isFormOpen && (
@@ -59436,8 +55629,7 @@ import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
-import { buildRpcFilters } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_employeesRowSchema,
   EmployeesRowSchema,
@@ -59453,91 +55645,8 @@ import { toast } from 'sonner';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
-import { DEFAULTS } from '@/constants/constants';
-
-const useEmployeesData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_employeesRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_employeesRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchQuery
-        ? `(employee_name.ilike.%${searchQuery}%,employee_pers_no.ilike.%${searchQuery}%,employee_email.ilike.%${searchQuery}%,employee_contact.ilike.%${searchQuery}%)`
-        : undefined,
-    });
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_employees',
-      p_limit: DEFAULTS.PAGE_SIZE,
-      p_offset: 0,
-      p_filters: rpcFilters,
-    });
-    if (error) throw error;
-    return (data as { data: V_employeesRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_employeesRowSchema[]> => {
-    return await localDb.v_employees.toArray();
-  };
-
-  const {
-    data: allEmployees = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(['employees-data', searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allEmployees;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (emp: V_employeesRowSchema) =>
-          emp.employee_name?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_email?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.employee_designation_id) {
-      filtered = filtered.filter(
-        (emp: V_employeesRowSchema) =>
-          emp.employee_designation_id === filters.employee_designation_id
-      );
-    }
-    if (filters.maintenance_terminal_id) {
-      filtered = filtered.filter(
-        (emp: V_employeesRowSchema) =>
-          emp.maintenance_terminal_id === filters.maintenance_terminal_id
-      );
-    }
-    if (filters.status) {
-      const statusBool = filters.status === 'true';
-      filtered = filtered.filter((emp: V_employeesRowSchema) => emp.status === statusBool);
-    }
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((n: V_employeesRowSchema) => n.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+import { localDb } from '@/hooks/data/localDb';
+import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -59702,9 +55811,6 @@ const EmployeesPage = () => {
     </div>
   );
 };
-
-export default EmployeesPage;
-
 ```
 
 <!-- path: app/dashboard/designations/page.tsx -->
@@ -59723,7 +55829,6 @@ import {
   Row,
   useTableInsert,
   useTableUpdate,
-  useTableWithRelations,
   useToggleStatus,
 } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
@@ -59732,48 +55837,34 @@ import {
   Employee_designationsUpdateSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
 import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { UseQueryResult } from '@tanstack/react-query';
+import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
-  
-  const [filters, setFilters] = useState<{ status?: string }>({});
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const serverFilters = useMemo(() => {
-    const f: Filters = {};
-    if (filters.status) f.status = filters.status === 'true';
-    if (searchTerm) {
-      f.or = `(name.ilike.%${searchTerm}%)`;
-    }
-    return f;
-  }, [filters, searchTerm]);
+  const {
+    data: allDesignations,
+    totalCount, activeCount, inactiveCount,
+    isLoading, isMutating, isFetching,
+    error, refetch,
+    search, filters,
+  } = useCrudManager<'employee_designations', DesignationWithRelations>({
+    tableName: 'employee_designations',
+    dataQueryHook: useDesignationsData,
+    displayNameField: 'name',
+    searchColumn: 'name',
+  });
 
-  const designationsQuery = useTableWithRelations<
-    'employee_designations',
-    PagedQueryResult<DesignationWithRelations>
-  >(
-    supabase,
-    'employee_designations',
-    ['parent_designation:parent_id(id, name)'],
-    {
-      filters: serverFilters,
-      orderBy: [{ column: 'name', ascending: true }],
-      placeholderData: (prev) => prev,
-    }
-  );
-
-  const { refetch, error, data, isLoading, isFetching } = designationsQuery;
-
-  const allDesignations = useMemo(() => data?.data || [], [data]);
-  const totalCount = data?.count || 0;
-
+  // const selectedEntity = useMemo(() => allDesignations.find(d => d.id === selectedDesignationId) || null, [allDesignations, selectedDesignationId]);
   const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const onMutationSuccess = () => {
@@ -59784,16 +55875,12 @@ export default function DesignationManagerPage() {
 
   const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
   const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
+  
+  // Explicitly type the mutation hook
   const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
-    mutate: (variables: { id: string; status: boolean; nameField?: string }) => void;
+    mutate: (variables: { id: string; status: boolean; nameField?: keyof DesignationWithRelations }) => void;
     isPending: boolean;
   };
-
-  const toggleStatus = (variables: { id: string; status: boolean; nameField?: string }) => {
-    return toggleStatusMutation.mutate({ ...variables, nameField: 'status' });
-  };
-
-  const { isPending } = toggleStatusMutation;
 
   const deleteManager = useDeleteManager({
     tableName: 'employee_designations',
@@ -59830,19 +55917,25 @@ export default function DesignationManagerPage() {
     data: allDesignations as Row<'employee_designations'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: handleOpenCreateForm,
-    isLoading: designationsQuery.isLoading,
+    isLoading: isLoading,
     exportConfig: { tableName: 'employee_designations' },
   });
 
   const headerStats = [
     { value: totalCount, label: 'Total Designations' },
-    { value: allDesignations.filter((r) => r.status).length, label: 'Active', color: 'success' as const },
-    { value: allDesignations.filter((r) => !r.status).length, label: 'Inactive', color: 'danger' as const },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
+  
+  const designationsQuery: UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error> = {
+    data: { data: allDesignations, count: totalCount },
+    isLoading, isFetching, error, isError: !!error, refetch,
+  } as UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error>;
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -59858,18 +55951,18 @@ export default function DesignationManagerPage() {
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
         entitiesQuery={designationsQuery}
-        isFetching={isFetching}
-        toggleStatusMutation={{ mutate: toggleStatus, isPending }}
+        isFetching={isFetching || isMutating}
+        toggleStatusMutation={toggleStatusMutation}
         onEdit={handleOpenEditForm}
         onDelete={deleteManager.deleteSingle}
         onCreateNew={handleOpenCreateForm}
         selectedEntityId={selectedDesignationId}
         onSelect={setSelectedDesignationId}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={filters}
-        onFilterChange={setFilters}
-        onClearFilters={() => { setSearchTerm(''); setFilters({}); }}
+        searchTerm={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        filters={filters.filters as Record<string, string>}
+        onFilterChange={(f) => filters.setFilters(f as Filters)}
+        onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
       />
 
       {isFormOpen && (
@@ -60428,8 +56521,6 @@ import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { DataTable } from "@/components/table/DataTable";
 import { OfcTableColumns } from "@/config/table-columns/OfcTableColumns";
-import { buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
 import {
   Ofc_cablesRowSchema,
   V_ofc_cables_completeRowSchema,
@@ -60445,87 +56536,10 @@ import { TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { useUser } from "@/providers/UserProvider";
 import { AiFillMerge } from "react-icons/ai";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
-
-const useOfcData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchQuery
-        ? `(route_name.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%,transnet_id.ilike.%${searchQuery}%,sn_name.ilike.%${searchQuery}%,en_name.ilike.%${searchQuery}%,ofc_owner_name.ilike.%${searchQuery}%)`
-        : undefined,
-    });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_ofc_cables_complete",
-      p_limit: DEFAULTS.PAGE_SIZE,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: "route_name",
-    });
-    if (error) throw error;
-    return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    return await localDb.v_ofc_cables_complete.toArray();
-  };
-
-  const {
-    data: allCables = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(["ofc-cables-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allCables;
-    // Client-side filtering for offline mode
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (cable: V_ofc_cables_completeRowSchema) =>
-          cable.route_name?.toLowerCase().includes(lowerQuery) ||
-          cable.asset_no?.toLowerCase().includes(lowerQuery) ||
-          cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
-          cable.sn_name?.toLowerCase().includes(lowerQuery) ||
-          cable.en_name?.toLowerCase().includes(lowerQuery) ||
-          cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.ofc_type_id)
-      filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
-    if (filters.status) filtered = filtered.filter((c) => c.status === (filters.status === "true"));
-    if (filters.ofc_owner_id)
-      filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
-    if (filters.maintenance_terminal_id)
-      filtered = filtered.filter(
-        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
-      );
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((c) => c.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allCables, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+import { localDb } from '@/hooks/data/localDb';
+import { useCrudManager } from "@/hooks/useCrudManager";
+import { useOfcData } from "@/hooks/data/useOfcData";
+import { TableAction } from "@/components/table";
 
 const OfcPage = () => {
   const router = useRouter();
@@ -60582,7 +56596,6 @@ const OfcPage = () => {
   const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
   const ofcOwners = useMemo(() => ofcOwnersData || [], [ofcOwnersData]);
 
-  // Define BSNL filter for export configuration
   const OFC_OWNERS_BSNL = useMemo(() => {
     const bsnlOwner = ofcOwners.find(owner =>
       owner.name?.toLowerCase().includes('bsnl') ||
@@ -60591,7 +56604,6 @@ const OfcPage = () => {
     return bsnlOwner ? { ofc_owner_id: bsnlOwner.id } : undefined;
   }, [ofcOwners]);
 
-  // Define BBNL filter for export configuration
   const OFC_OWNERS_BBNL = useMemo(() => {
     const bbnlOwner = ofcOwners.find(owner =>
       owner.name?.toLowerCase().includes('bbnl') ||
@@ -60610,7 +56622,7 @@ const OfcPage = () => {
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
         canDelete: () => isSuperAdmin === true,
-      }),
+      }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions, isSuperAdmin]
   );
   const headerActions = useStandardHeaderActions({
@@ -60765,7 +56777,6 @@ const OfcPage = () => {
 };
 
 export default OfcPage;
-
 ```
 
 <!-- path: app/dashboard/systems/[id]/page.tsx -->
@@ -61049,12 +57060,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
 import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from "react-icons/fi";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader, ActionButton } from "@/components/common/page-header";
 import { ErrorDisplay, ConfirmModal } from "@/components/common/ui";
 import { DataTable } from "@/components/table";
 import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
-import { useRpcMutation, RpcFunctionArgs, buildRpcFilters } from "@/hooks/database";
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from "@/hooks/useCrudManager";
+import { useRpcMutation, RpcFunctionArgs, buildRpcFilters, Row, TableOrViewName } from "@/hooks/database";
+import { useCrudManager } from "@/hooks/useCrudManager";
 import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { createClient } from "@/utils/supabase/client";
 import { SystemModal } from "@/components/systems/SystemModal";
@@ -61062,96 +57073,17 @@ import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SystemFormData } from "@/schemas/system-schemas";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/data/localDb";
-import { DEFAULTS } from "@/constants/constants";
+import { localDb } from "@/hooks/data/localDb";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
 import { buildColumnConfig, TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { buildUploadConfig } from "@/constants/table-column-keys";
 import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
 import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
-import { ActionButton } from "@/components/common/page-header";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { Row, TableOrViewName } from "@/hooks/database";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { formatDate } from "@/utils/formatters";
 import { SystemPortsManagerModal } from "@/components/systems/SystemPortsManagerModal";
-
-const useSystemsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_systems_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    // This hook now correctly receives the multi-column `or` filter from useCrudManager
-    const rpcFilters = buildRpcFilters({ ...filters });
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_systems_complete",
-      p_limit: DEFAULTS.PAGE_SIZE,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: "system_name",
-    });
-    if (error) throw error;
-    return (data as { data: V_systems_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_systems_completeRowSchema[]> => {
-    return await localDb.v_systems_complete.toArray();
-  };
-
-  const {
-    data: allSystems = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(["systems-data", searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allSystems;
-    // Client-side filtering is now primarily for the offline fallback
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_name?.toLowerCase().includes(lowerQuery) ||
-          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-          system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) =>
-          system.system_type_name === filters.system_type_name
-      );
-    }
-    if (filters.status) {
-      filtered = filtered.filter(
-        (system: V_systems_completeRowSchema) => system.status === (filters.status === "true")
-      );
-    }
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter(
-      (s: V_systems_completeRowSchema) => s.status === true
-    ).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+import { useSystemsData } from "@/hooks/data/useSystemsData";
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -61178,7 +57110,6 @@ export default function SystemsPage() {
   } = useCrudManager<"systems", V_systems_completeRowSchema>({
     tableName: "systems",
     dataQueryHook: useSystemsData,
-    // THE FIX: Provide all searchable columns to the generic hook.
     searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: "system_name",
   });
@@ -61244,7 +57175,6 @@ export default function SystemsPage() {
       onToggleStatus: crudActions.handleToggleStatus,
     });
 
-    // Add the new "Manage Ports" action button
     actions.unshift({
       key: "manage-ports",
       label: "Manage Ports",
@@ -61274,8 +57204,8 @@ export default function SystemsPage() {
   const handleExport = useCallback(() => {
     exportSystems({
       fileName: `${formatDate(new Date(), {
-        format: "dd-mm-yyyy",
-      })}-systems-export.xlsx`,
+                format: "dd-mm-yyyy",
+              })}-systems-export.xlsx`,
       sheetName: "Systems",
       columns: allExportColumns as Column<Row<TableOrViewName>>[],
       rpcConfig: {
@@ -61346,7 +57276,6 @@ export default function SystemsPage() {
       const selectedSystemType = systemTypes.find((st) => st.id === formData.system_type_id);
       const isRingBased = selectedSystemType?.is_ring_based;
 
-      // --- THIS IS THE FIX ---
       const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
@@ -61366,7 +57295,6 @@ export default function SystemsPage() {
             ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
             : null,
       };
-      // --- END FIX ---
 
       upsertSystemMutation.mutate(payload);
     },
@@ -61480,7 +57408,6 @@ export default function SystemsPage() {
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/nodes/page.tsx -->
@@ -61497,8 +57424,8 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { Filters, buildRpcFilters } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { Filters } from '@/hooks/database';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -61506,72 +57433,12 @@ import { useMemo } from 'react';
 import { FiCpu } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
+import { useNodesData } from '@/hooks/data/useNodesData';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string; } | null;
   node_type?: { id: string; name: string; } | null;
-};
-
-const useNodesData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_nodes_completeRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({ 
-      ...filters, 
-      or: searchQuery 
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude.ilike.%${searchQuery}%,longitude.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%)` 
-        : undefined 
-    });
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_nodes_complete',
-      p_limit: 1000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-    });
-    if (error) throw error;
-    return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_nodes_completeRowSchema[]> => {
-    return await localDb.v_nodes_complete.toArray();
-  };
-
-  const { data: allNodes = [], isLoading, isFetching, error, refetch } = useOfflineQuery(
-    ['nodes-data', searchQuery, filters],
-    onlineQueryFn,
-    offlineQueryFn,
-    { staleTime: 5 * 60 * 1000 }
-  );
-
-  const processedData = useMemo(() => {
-    let filtered = allNodes;
-    // Client-side filtering is now primarily for the offline fallback
-    if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((node: V_nodes_completeRowSchema) =>
-            node.name?.toLowerCase().includes(lowerQuery) ||
-            node.node_type_name?.toLowerCase().includes(lowerQuery) ||
-            node.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-        );
-    }
-    if (filters.node_type_id) {
-        filtered = filtered.filter((node: V_nodes_completeRowSchema) => node.node_type_id === filters.node_type_id);
-    }
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((n) => n.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return { data: paginatedData, totalCount, activeCount, inactiveCount: totalCount - activeCount };
-  }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
 };
 
 const NodesPage = () => {
@@ -61652,12 +57519,12 @@ export default NodesPage;
 
 <!-- path: app/dashboard/users/page.tsx -->
 ```typescript
+// app/dashboard/users/page.tsx
+
+
 'use client';
 
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from '@/components/common/page-header';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
@@ -61667,16 +57534,9 @@ import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
-import {
-  useAdminGetAllUsersExtended,
-  useAdminUserOperations,
-  UserCreateInput,
-} from '@/hooks/useAdminUsers';
-import {
-  DataQueryHookParams,
-  DataQueryHookReturn,
-  useCrudManager,
-} from '@/hooks/useCrudManager';
+import { useAdminUserOperations } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import from the new location
+import type { UserCreateInput } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import type from the new location
+import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -61685,39 +57545,10 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
 import { useUser } from '@/providers/UserProvider';
+import { useUsersData } from '@/hooks/data/useUsersData';
 
-// This hook adapts the specific RPC hook to the generic interface required by useCrudManager.
-// 1. ADAPTER HOOK: Makes `useAdminGetAllUsersExtended` compatible with `useCrudManager`
-const useUsersData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
-  const { currentPage, pageLimit, searchQuery, filters } = params;
-
-  const { data, isLoading, error, refetch } = useAdminGetAllUsersExtended({
-    search_query: searchQuery || undefined,
-    filter_role: (filters.role as string) || undefined,
-    filter_status: (filters.status as string) || undefined,
-    page_offset: (currentPage - 1) * pageLimit,
-    page_limit: pageLimit,
-  });
-
-
-  return {
-    data: (data?.data || []) as V_user_profiles_extendedRowSchema[],
-    totalCount: data?.counts?.total || 0,
-    activeCount: data?.counts?.active || 0,
-    inactiveCount: data?.counts?.inactive || 0,
-    isLoading,
-    error: (error as Error) || null,
-    refetch: () => {
-      void refetch();
-    },
-  };
-};
 const AdminUsersPage = () => {
-  // --- STATE MANAGEMENT (Mimicking useCrudManager) ---
   const [showFilters, setShowFilters] = useState(false);
-  // Get permissions from the context.
   const { isSuperAdmin } = useUser();
   const {
     createUser,
@@ -61727,10 +57558,11 @@ const AdminUsersPage = () => {
     isLoading: isOperationLoading,
   } = useAdminUserOperations();
 
-  // 2. USE THE CRUD MANAGER with the adapter hook and both generic types
   const {
     data: users,
     totalCount,
+    activeCount,
+    inactiveCount,
     isLoading,
     isMutating,
     error,
@@ -61807,7 +57639,6 @@ const AdminUsersPage = () => {
     [selectedRowIds, bulkUpdateStatus, handleClearSelection]
   );
 
-  // --- Define header content using the hook ---
   const headerActions = useStandardHeaderActions<'user_profiles'>({
     data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
@@ -61855,7 +57686,7 @@ const AdminUsersPage = () => {
         description="Manage network users and their related information."
         icon={<FiUsers />}
         stats={headerStats}
-        actions={headerActions} // <-- Pass the generated actions
+        actions={headerActions}
         isLoading={isLoading}
       />
       <BulkActions
@@ -61881,7 +57712,6 @@ const AdminUsersPage = () => {
         actions={tableActions}
         selectable
         onRowSelect={(rows) => {
-          // Filter out any rows where id is null
           const validRows = rows.filter(
             (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
           );
@@ -61911,7 +57741,7 @@ const AdminUsersPage = () => {
             onStatusFilterChange={(value) =>
               filters.setFilters((prev) => ({ ...prev, status: value }))
             }
-            emailVerificationFilter={''} // This filter is not implemented in the hook yet
+            emailVerificationFilter={''}
             onEmailVerificationFilterChange={() => {}}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
@@ -61955,9 +57785,6 @@ const AdminUsersPage = () => {
     </div>
   );
 };
-
-export default AdminUsersPage;
-
 ```
 
 <!-- path: app/dashboard/diary/page.tsx -->
@@ -61965,7 +57792,7 @@ export default AdminUsersPage;
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -61974,70 +57801,98 @@ import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DiaryEntryCard } from "@/components/diary/DiaryEntryCard";
 import { DiaryFormModal } from "@/components/diary/DiaryFormModal";
 import { DiaryCalendar } from "@/components/diary/DiaryCalendar";
-import { useCrudManager } from "@/hooks/useCrudManager";
-import { Diary_notesRowSchema } from "@/schemas/zod-schemas";
+import { Diary_notesRowSchema, Diary_notesInsertSchema } from "@/schemas/zod-schemas";
 import { useAuthStore } from "@/stores/authStore";
-import { createClient } from "@/utils/supabase/client";
-import { useRpcQuery } from "@/hooks/database";
 import { useUser } from "@/providers/UserProvider";
 import { useDiaryExcelUpload } from "@/hooks/database/excel-queries/useDiaryExcelUpload";
 import { buildUploadConfig } from "@/constants/table-column-keys";
+import { createClient } from "@/utils/supabase/client";
+import { useDeleteManager } from "@/hooks/useDeleteManager";
+import { useTableInsert, useTableUpdate } from "@/hooks/database";
+import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
+import { localDb } from "@/hooks/data/localDb";
 
 const useDiaryEntries = (currentDate: Date) => {
-  const supabase = createClient();
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-    .toISOString()
-    .split("T")[0];
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split("T")[0];
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split("T")[0];
 
-  return useRpcQuery(
-    supabase,
-    "get_diary_notes_for_range",
-    { start_date: startOfMonth, end_date: endOfMonth },
-    {
-      staleTime: 5 * 60 * 1000,
-    }
-  );
+  const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
+    const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
+      start_date: startOfMonth,
+      end_date: endOfMonth,
+    });
+    if (error) throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((entry: any) => ({
+      id: entry.id,
+      user_id: entry.user_id,
+      note_date: entry.note_date,
+      content: entry.content,
+      tags: entry.tags,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+    }));
+  }, [startOfMonth, endOfMonth]);
+
+  const localQueryFn = useCallback(() => {
+    return localDb.diary_notes
+      .where('note_date')
+      .between(startOfMonth, endOfMonth)
+      .toArray();
+  }, [startOfMonth, endOfMonth]);
+
+  return useLocalFirstQuery<'diary_notes'>({
+    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.diary_notes,
+  });
 };
 
 export default function DiaryPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
+
   const { user } = useAuthStore();
   const { role: currentUserRole } = useUser();
   const supabase = createClient();
 
-  // ToDo : add search functionality
+  const { data: notesForMonth = [], isLoading, isFetching, error, refetch } = useDiaryEntries(currentDate);
 
-  const { data: notesForMonth = [], isLoading, error, refetch } = useDiaryEntries(currentDate);
+  console.log(notesForMonth);
 
-  const {
-    editModal,
-    deleteModal,
-    actions: crudActions,
-    isMutating,
-  } = useCrudManager<"diary_notes", Diary_notesRowSchema>({
-    tableName: "diary_notes",
-    dataQueryHook: () => ({
-      data: [],
-      totalCount: 0,
-      activeCount: 0,
-      inactiveCount: 0,
-      isLoading: false,
-      error: null,
-      refetch: () => {},
-    }),
-    displayNameField: "note_date",
+  const { mutate: insertNote, isPending: isInserting } = useTableInsert(supabase, 'diary_notes', {
+    onSuccess: () => { toast.success('Note created successfully!'); refetch(); setIsFormOpen(false); },
+    onError: (err) => toast.error(`Failed to create note: ${err.message}`),
   });
 
-  const { mutate: uploadDiaryNotes, isPending: isUploading } = useDiaryExcelUpload(supabase);
+  const { mutate: updateNote, isPending: isUpdating } = useTableUpdate(supabase, 'diary_notes', {
+    onSuccess: () => { toast.success('Note updated successfully!'); refetch(); setIsFormOpen(false); },
+    onError: (err) => toast.error(`Failed to update note: ${err.message}`),
+  });
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const deleteManager = useDeleteManager({ tableName: 'diary_notes', onSuccess: refetch });
+
+  const isMutating = isInserting || isUpdating || deleteManager.isPending;
+
+  const openAddModal = () => { setEditingNote(null); setIsFormOpen(true); };
+  const openEditModal = (note: Diary_notesRowSchema) => { setEditingNote(note); setIsFormOpen(true); };
+  const closeFormModal = () => { setIsFormOpen(false); setEditingNote(null); };
+
+  const handleSaveNote = (data: Diary_notesInsertSchema) => {
+    if (editingNote) {
+      updateNote({ id: editingNote.id, data });
+    } else {
+      insertNote(data);
+    }
   };
+  
+  const { mutate: uploadDiaryNotes, isPending: isUploading } = useDiaryExcelUpload();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -62050,19 +57905,33 @@ export default function DiaryPage() {
         currentUserRole,
       });
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const highlightedDates = useMemo(() => {
-    return (notesForMonth || []).map((note) => new Date(note.note_date!));
+    return (notesForMonth || []).map((note) => {
+      const d = new Date(note.note_date!);
+      return new Date(d.valueOf() + d.getTimezoneOffset() * 60 * 1000);
+    });
   }, [notesForMonth]);
 
+  // --- THE DEFINITIVE FIX ---
+  // Compare the year, month, and day parts of the dates numerically to avoid timezone issues.
   const notesForSelectedDay = useMemo(() => {
-    const selectedDayString = selectedDate.toISOString().split("T")[0];
-    return (notesForMonth || []).filter((note) => note.note_date === selectedDayString);
+    if (!notesForMonth) return [];
+    return notesForMonth.filter((note) => {
+      // Create a date object from the note's date string, compensating for UTC interpretation.
+      const noteDate = new Date(note.note_date!);
+      const noteDateUTC = new Date(noteDate.valueOf() + noteDate.getTimezoneOffset() * 60 * 1000);
+      
+      return (
+        noteDateUTC.getFullYear() === selectedDate.getFullYear() &&
+        noteDateUTC.getMonth() === selectedDate.getMonth() &&
+        noteDateUTC.getDate() === selectedDate.getDate()
+      );
+    });
   }, [notesForMonth, selectedDate]);
+  // --- END FIX ---
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
@@ -62076,19 +57945,12 @@ export default function DiaryPage() {
 
   const headerActions = useStandardHeaderActions({
     data: notesForMonth,
-    onRefresh: async () => {
-      await refetch();
-      toast.success("Notes refreshed!");
-    },
-    onAddNew: editModal.openAdd,
+    onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
+    onAddNew: openAddModal,
     isLoading,
-    exportConfig: {
-      tableName: "diary_notes",
-      fileName: "my_diary_notes",
-    },
+    exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
   });
 
-  // Inject the upload button
   headerActions.splice(1, 0, {
     label: isUploading ? "Uploading..." : "Upload Notes",
     onClick: handleUploadClick,
@@ -62131,11 +57993,11 @@ export default function DiaryPage() {
             stats={[{ value: notesForMonth.length, label: "Entries This Month" }]}
             actions={headerActions}
             isLoading={isLoading}
+            isFetching={isFetching}
           />
         </div>
 
         <div className='grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8'>
-          {/* Calendar Section */}
           <div className='xl:col-span-4'>
             <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-xl'>
               <div className='p-4 sm:p-6'>
@@ -62148,10 +58010,8 @@ export default function DiaryPage() {
             </div>
           </div>
 
-          {/* Entries Section */}
           <div className='xl:col-span-8'>
             <div className='space-y-4 sm:space-y-6'>
-              {/* Selected Date Header */}
               <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg'>
@@ -62172,7 +58032,6 @@ export default function DiaryPage() {
                 </div>
               </div>
 
-              {/* Loading State */}
               {isLoading && notesForMonth.length === 0 ? (
                 <div className='space-y-4'>
                   {[...Array(3)].map((_, i) => (
@@ -62184,7 +58043,6 @@ export default function DiaryPage() {
                   ))}
                 </div>
               ) : notesForSelectedDay.length === 0 ? (
-                /* Empty State */
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 sm:py-16 px-4'>
                     <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
@@ -62197,7 +58055,7 @@ export default function DiaryPage() {
                       Start documenting your day by creating a new diary entry.
                     </p>
                     <button
-                      onClick={editModal.openAdd}
+                      onClick={openAddModal}
                       className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
                       <FiBookOpen className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
                       Create Entry
@@ -62205,7 +58063,6 @@ export default function DiaryPage() {
                   </div>
                 </div>
               ) : (
-                /* Entries List */
                 <div className='space-y-4'>
                   {notesForSelectedDay.map((note, index) => (
                     <div
@@ -62214,8 +58071,8 @@ export default function DiaryPage() {
                       style={{ animationDelay: `${index * 50}ms` }}>
                       <DiaryEntryCard
                         entry={note}
-                        onEdit={editModal.openEdit}
-                        onDelete={crudActions.handleDelete}
+                        onEdit={openEditModal}
+                        onDelete={(item) => deleteManager.deleteSingle(item)}
                       />
                     </div>
                   ))}
@@ -62227,27 +58084,26 @@ export default function DiaryPage() {
       </div>
 
       <DiaryFormModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        editingNote={editModal.record}
-        onSubmit={crudActions.handleSave}
+        isOpen={isFormOpen}
+        onClose={closeFormModal}
+        editingNote={editingNote}
+        onSubmit={handleSaveNote}
         isLoading={isMutating}
         selectedDate={selectedDate}
       />
 
       <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
         title='Confirm Deletion'
-        message={deleteModal.message}
-        loading={deleteModal.loading}
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
         type='danger'
       />
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/ring-manager/page.tsx -->
@@ -62289,7 +58145,7 @@ import {
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/data/localDb';
+import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database/utility-functions';
 import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
@@ -63093,7 +58949,8 @@ import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
-import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+// THE FIX: Import the context hook `useUser` instead of the old data-fetching hook.
+import { useUser } from "@/providers/UserProvider";
 import { useEffect } from "react";
 import { Input, Label } from "@/components/common/ui";
 import { Json } from "@/types/supabase-types";
@@ -63140,12 +58997,13 @@ export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
 
+  // THE FIX: Get profile data and actions from the `useUser` context hook.
   const {
-    data: profile,
+    profile,
     isLoading: isProfileLoading,
     error: profileError,
     refetch,
-  } = useGetMyUserDetails();
+  } = useUser();
 
   const {
     register,
@@ -63590,8 +59448,8 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview';
 import { useDataSync } from '@/hooks/data/useDataSync';
+import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 
 const OptimizedNetworkMap = dynamic(
   () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
@@ -63633,14 +59491,10 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const { isSyncing: isDataSyncing, refetchSync } = useDataSync();
+  const { isSyncing: isDataSyncing, sync } = useDataSync();
   const handleRefresh = useCallback(async () => {
-    toast.promise(refetchSync(), {
-      loading: 'Starting manual data sync with the server...',
-      success: 'Local data successfully synced!',
-      error: (err) => `Sync failed: ${err.message}`,
-    });
-  }, [refetchSync]);
+    await sync();
+  }, [sync]);
   
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -63678,7 +59532,6 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  // THE FIX: Define column and action configurations for the DataTables
   const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
     { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
     { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },
@@ -64197,11 +60050,13 @@ export const config = {
     "dexie-react-hooks": "^4.2.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.23.12",
+    "i": "^0.3.7",
     "idb-keyval": "^6.2.2",
     "intersection-observer": "^0.12.2",
     "lodash.isequal": "^4.5.0",
     "lucide-react": "^0.541.0",
     "next": "^15.4.4",
+    "npm": "^11.6.2",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",
     "qrcode.react": "^4.2.0",
@@ -64746,7 +60601,6 @@ export type ColumnMeta = {
   excelFormat?: ExcelFormat;
   transform?: ColumnTransform;
 };
-
 // THE FIX: Allow TableMetaMap to accept view names as keys.
 export type TableMetaMap = {
   [K in keyof (Database['public']['Tables'] & Database['public']['Views'])]?: Partial<Record<keyof Row<K> & string, ColumnMeta>>;

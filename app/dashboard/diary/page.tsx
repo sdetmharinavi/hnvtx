@@ -18,45 +18,8 @@ import { buildUploadConfig } from "@/constants/table-column-keys";
 import { createClient } from "@/utils/supabase/client";
 import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
-import { localDb } from "@/hooks/data/localDb";
-
-const useDiaryEntries = (currentDate: Date) => {
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split("T")[0];
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split("T")[0];
-
-  const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
-    const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
-      start_date: startOfMonth,
-      end_date: endOfMonth,
-    });
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data || []).map((entry: any) => ({
-      id: entry.id,
-      user_id: entry.user_id,
-      note_date: entry.note_date,
-      content: entry.content,
-      tags: entry.tags,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-    }));
-  }, [startOfMonth, endOfMonth]);
-
-  const localQueryFn = useCallback(() => {
-    return localDb.diary_notes
-      .where('note_date')
-      .between(startOfMonth, endOfMonth)
-      .toArray();
-  }, [startOfMonth, endOfMonth]);
-
-  return useLocalFirstQuery<'diary_notes'>({
-    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.diary_notes,
-  });
-};
+import { useDiaryData, DiaryEntryWithUser } from "@/hooks/data/useDiaryData";
+import { UserRole } from "@/types/user-roles";
 
 export default function DiaryPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -66,12 +29,29 @@ export default function DiaryPage() {
   const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
 
   const { user } = useAuthStore();
-  const { role: currentUserRole } = useUser();
+  const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
 
-  const { data: notesForMonth = [], isLoading, isFetching, error, refetch } = useDiaryEntries(currentDate);
+  const {
+    data: allNotesForMonth = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useDiaryData(currentDate);
 
-  console.log(notesForMonth);
+  // THE FIX 1: Define permissions for viewing all notes and for mutating notes.
+  const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
+  const canMutate = isSuperAdmin || currentUserRole === UserRole.ADMIN;
+
+  const roleFilteredNotes = useMemo(() => {
+    if (canViewAll) {
+      return allNotesForMonth;
+    }
+    // For any other role, they only see their own notes.
+    return allNotesForMonth.filter(note => note.user_id === user?.id);
+  }, [allNotesForMonth, canViewAll, user?.id]);
+
 
   const { mutate: insertNote, isPending: isInserting } = useTableInsert(supabase, 'diary_notes', {
     onSuccess: () => { toast.success('Note created successfully!'); refetch(); setIsFormOpen(false); },
@@ -92,10 +72,11 @@ export default function DiaryPage() {
   const closeFormModal = () => { setIsFormOpen(false); setEditingNote(null); };
 
   const handleSaveNote = (data: Diary_notesInsertSchema) => {
+    const payload = { ...data, user_id: user?.id };
     if (editingNote) {
-      updateNote({ id: editingNote.id, data });
+      updateNote({ id: editingNote.id, data: payload });
     } else {
-      insertNote(data);
+      insertNote(payload);
     }
   };
   
@@ -116,31 +97,26 @@ export default function DiaryPage() {
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  
+  const parseLocalDate = (dateString: string): Date => {
+    const datePart = dateString.substring(0, 10);
+    const [year, month, day] = datePart.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
 
   const highlightedDates = useMemo(() => {
-    return (notesForMonth || []).map((note) => {
-      const d = new Date(note.note_date!);
-      return new Date(d.valueOf() + d.getTimezoneOffset() * 60 * 1000);
-    });
-  }, [notesForMonth]);
+    return (roleFilteredNotes || []).map((note) => parseLocalDate(note.note_date!));
+  }, [roleFilteredNotes]);
 
-  // --- THE DEFINITIVE FIX ---
-  // Compare the year, month, and day parts of the dates numerically to avoid timezone issues.
   const notesForSelectedDay = useMemo(() => {
-    if (!notesForMonth) return [];
-    return notesForMonth.filter((note) => {
-      // Create a date object from the note's date string, compensating for UTC interpretation.
-      const noteDate = new Date(note.note_date!);
-      const noteDateUTC = new Date(noteDate.valueOf() + noteDate.getTimezoneOffset() * 60 * 1000);
-      
-      return (
-        noteDateUTC.getFullYear() === selectedDate.getFullYear() &&
-        noteDateUTC.getMonth() === selectedDate.getMonth() &&
-        noteDateUTC.getDate() === selectedDate.getDate()
-      );
+    if (!roleFilteredNotes) return [];
+    
+    const selectedDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+    
+    return roleFilteredNotes.filter((note: DiaryEntryWithUser) => {
+      return note.note_date === selectedDateString;
     });
-  }, [notesForMonth, selectedDate]);
-  // --- END FIX ---
+  }, [roleFilteredNotes, selectedDate]);
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
@@ -153,9 +129,9 @@ export default function DiaryPage() {
   };
 
   const headerActions = useStandardHeaderActions({
-    data: notesForMonth,
+    data: roleFilteredNotes,
     onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
-    onAddNew: openAddModal,
+    onAddNew: canMutate ? openAddModal : undefined, // THE FIX 2: Conditionally enable "Add New"
     isLoading,
     exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
   });
@@ -165,7 +141,7 @@ export default function DiaryPage() {
     onClick: handleUploadClick,
     variant: "outline",
     leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading,
+    disabled: isUploading || isLoading || !canMutate, // THE FIX 3: Conditionally disable "Upload"
   });
 
   if (error)
@@ -199,7 +175,7 @@ export default function DiaryPage() {
             title='My Diary'
             description='A place for your daily notes and logs.'
             icon={<FiBookOpen />}
-            stats={[{ value: notesForMonth.length, label: "Entries This Month" }]}
+            stats={[{ value: roleFilteredNotes.length, label: "Entries This Month" }]}
             actions={headerActions}
             isLoading={isLoading}
             isFetching={isFetching}
@@ -241,7 +217,7 @@ export default function DiaryPage() {
                 </div>
               </div>
 
-              {isLoading && notesForMonth.length === 0 ? (
+              {isLoading && roleFilteredNotes.length === 0 ? (
                 <div className='space-y-4'>
                   {[...Array(3)].map((_, i) => (
                     <div
@@ -263,12 +239,14 @@ export default function DiaryPage() {
                     <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto'>
                       Start documenting your day by creating a new diary entry.
                     </p>
-                    <button
-                      onClick={openAddModal}
-                      className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
-                      <FiBookOpen className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
-                      Create Entry
-                    </button>
+                    {canMutate && (
+                      <button
+                        onClick={openAddModal}
+                        className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
+                        <FiBookOpen className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
+                        Create Entry
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -282,6 +260,7 @@ export default function DiaryPage() {
                         entry={note}
                         onEdit={openEditModal}
                         onDelete={(item) => deleteManager.deleteSingle(item)}
+                        canMutate={canMutate}
                       />
                     </div>
                   ))}
@@ -292,14 +271,16 @@ export default function DiaryPage() {
         </div>
       </div>
 
-      <DiaryFormModal
-        isOpen={isFormOpen}
-        onClose={closeFormModal}
-        editingNote={editingNote}
-        onSubmit={handleSaveNote}
-        isLoading={isMutating}
-        selectedDate={selectedDate}
-      />
+      {isFormOpen && (
+        <DiaryFormModal
+          isOpen={isFormOpen}
+          onClose={closeFormModal}
+          editingNote={editingNote}
+          onSubmit={handleSaveNote}
+          isLoading={isMutating}
+          selectedDate={selectedDate}
+        />
+      )}
 
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen}
