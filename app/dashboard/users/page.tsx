@@ -38,8 +38,8 @@ const AdminUsersPage = () => {
   const {
     data: users,
     totalCount,
-    activeCount,
-    inactiveCount,
+    // activeCount,
+    // inactiveCount,
     isLoading,
     isMutating,
     error,

@@ -6,15 +6,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ConfirmModal } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { Row, usePagedData, useTableQuery } from '@/hooks/database';
+import { Row, useTableQuery } from '@/hooks/database'; // Removed usePagedData import
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit, GitBranch } from 'lucide-react'; // Changed icon for better context
+import { GitCommit, GitBranch } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -25,49 +25,18 @@ import {
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header'; // Import PageHeader components
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { useUser } from '@/providers/UserProvider';
+import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData'; // THE FIX: Import the new hook
 
 export const dynamic = 'force-dynamic';
 
-// Data fetching hook
-const useOfcConnectionsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_ofc_connections_completeRowSchema> => {
-  const { currentPage, pageLimit, searchQuery } = params;
-  const supabase = createClient();
-  const { id } = useParams();
-  const cableId = id as string;
-
-  const { data, isLoading, error, refetch } = usePagedData<V_ofc_connections_completeRowSchema>(
-    supabase,
-    'v_ofc_connections_complete',
-    {
-      filters: {
-        ofc_id: cableId,
-        ...(searchQuery
-          ? { or: `system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%` }
-          : {}),
-      },
-      limit: pageLimit,
-      offset: (currentPage - 1) * pageLimit,
-      orderBy: 'fiber_no_sn',
-      orderDir: 'asc',
-    }
-  );
-
-  return {
-    data: data?.data || [],
-    totalCount: data?.total_count || 0,
-    activeCount: data?.active_count || 0,
-    inactiveCount: data?.inactive_count || 0,
-    isLoading,
-    error,
-    refetch,
-  };
-};
-
 export default function OfcCableDetailsPage() {
+  const { id: cableId } = useParams();
+  const router = useRouter();
+  const supabase = createClient();
+
+  // THE FIX: Use the new local-first hook factory
   const {
     data: cableConnectionsData,
     totalCount,
@@ -81,14 +50,9 @@ export default function OfcCableDetailsPage() {
     actions: crudActions,
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
-    dataQueryHook: useOfcConnectionsData,
-    // Provide human-readable fields for the confirmation dialog.
+    dataQueryHook: useOfcConnectionsData(cableId as string), // Pass cableId to the factory
     displayNameField: ['system_name', 'ofc_route_name'],
   });
-
-  const { id: cableId } = useParams();
-  const router = useRouter();
-  const supabase = createClient();
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(
     cableId as string
@@ -209,7 +173,6 @@ export default function OfcCableDetailsPage() {
         actions={headerActions}
         isLoading={isLoading}
       />
-      {/* --- END REPLACEMENT --- */}
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 

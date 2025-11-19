@@ -203,6 +203,21 @@ function NavItems() {
         roles: [UserRole.ADMIN],
       },
       {
+        id: 'kml-manager',
+        label: 'KML Manager',
+        icon: <FiMap className="h-5 w-5" />,
+        href: '/dashboard/kml-manager',
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+        ],
+      },
+      {
         id: 'map',
         label: 'BTS Map',
         icon: <FiMap className="h-5 w-5" />,
