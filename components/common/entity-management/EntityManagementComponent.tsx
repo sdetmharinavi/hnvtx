@@ -56,7 +56,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
     
     const entityMap = new Map<string, EntityWithChildren<T>>();
     allEntities.forEach((entity) => {
-      entityMap.set(entity.id, { ...entity, children: [] });
+      entityMap.set(entity.id ?? '', { ...entity, children: [] });
     });
     
     const rootEntities: EntityWithChildren<T>[] = [];
@@ -70,7 +70,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
     }
 
     allEntities.forEach((entity) => {
-      const entityWithChildren = entityMap.get(entity.id);
+      const entityWithChildren = entityMap.get(entity.id ?? '');
       if (!entityWithChildren) return;
 
       let parentId: string | null = null;
@@ -103,7 +103,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const handleToggleStatus = useCallback((e: React.MouseEvent, entity: T) => {
     e.stopPropagation();
     if (entity.status === null || entity.status === undefined) return;
-    toggleStatusMutation.mutate({ id: entity.id, status: !entity.status, nameField: 'status' });
+    toggleStatusMutation.mutate({ id: entity.id ?? '', status: !entity.status, nameField: 'status' });
   }, [toggleStatusMutation]);
 
   const handleCloseDetailsPanel = useCallback(() => { setShowDetailsPanel(false); onSelect(null); }, [onSelect]);
@@ -154,7 +154,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {allEntities.map((entity) => (
-                <EntityListItem key={entity.id} entity={entity} config={config} isSelected={entity.id === selectedEntityId} onSelect={() => handleItemSelect(entity.id)} onToggleStatus={(e) => handleToggleStatus(e, entity)} isLoading={toggleStatusMutation.isPending} />
+                <EntityListItem key={entity.id} entity={entity} config={config} isSelected={entity.id === selectedEntityId} onSelect={() => handleItemSelect(entity.id ?? '')} onToggleStatus={(e) => handleToggleStatus(e, entity)} isLoading={toggleStatusMutation.isPending} />
               ))}
             </div>
           )}

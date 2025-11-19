@@ -1,7 +1,7 @@
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 

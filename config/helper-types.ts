@@ -45,6 +45,7 @@ export type TableMetaMap = {
   [K in keyof (Database['public']['Tables'] & Database['public']['Views'])]?: Partial<Record<keyof Row<K> & string, ColumnMeta>>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type UploadTableMeta<T extends PublicTableName> = {
   uploadType: "insert" | "upsert";
   conflictColumn?: string;
