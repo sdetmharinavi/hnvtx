@@ -1,6 +1,4 @@
 // app/dashboard/users/page.tsx
-
-
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
@@ -13,13 +11,13 @@ import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
-import { useAdminUserOperations } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import from the new location
-import type { UserCreateInput } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import type from the new location
+import { useAdminUserOperations } from '@/hooks/data/useAdminUserMutations';
+import type { UserCreateInput } from '@/hooks/data/useAdminUserMutations';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { User_profilesUpdateSchema, V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
@@ -175,7 +173,7 @@ const AdminUsersPage = () => {
         onBulkDelete={handleBulkDelete}
         onBulkUpdateRole={handleBulkUpdateRole}
         onBulkUpdateStatus={handleBulkUpdateStatus}
-        onClearSelection={bulkActions.handleClearSelection}
+        onClearSelection={handleClearSelection}
       />
       <DataTable
         tableName="v_user_profiles_extended"
@@ -233,7 +231,8 @@ const AdminUsersPage = () => {
       />
       <UserProfileEditModal
         isOpen={editModal.isOpen}
-        user={editModal.record as User_profilesUpdateSchema}
+        // THE FIX: The incorrect cast is no longer needed. The types now match.
+        user={editModal.record as V_user_profiles_extendedRowSchema | null}
         onClose={editModal.close}
         onSave={() => {
           refetch();
@@ -264,3 +263,5 @@ const AdminUsersPage = () => {
     </div>
   );
 };
+
+export default AdminUsersPage;

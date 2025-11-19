@@ -16,7 +16,7 @@ export type UserCreateInput = {
   role: string;
 };
 
-type AdminUpdateUserProfile = Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
+export type AdminUpdateUserProfile = Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
 
 // Query Keys (centralized for consistency)
 export const adminUserKeys = {

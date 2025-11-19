@@ -7,18 +7,17 @@ import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// THE FIX: Added essential base tables `rings`, `nodes`, `systems`, and `ring_based_systems`
-// This ensures that all data required to construct views locally is available.
+// THE FIX: Add `v_user_profiles_extended` to the list of entities to sync locally.
 const entitiesToSync: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
   'user_profiles',
   'diary_notes',
   'inventory_items',
-  'rings', // <-- ADDED
-  'nodes', // <-- ADDED
-  'systems', // <-- ADDED
-  'ring_based_systems', // <-- ADDED
+  'rings',
+  'nodes',
+  'systems',
+  'ring_based_systems',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -29,7 +28,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ring_nodes',
   'v_employee_designations',
   'v_inventory_items',
-  'v_user_profiles_extended',
+  'v_user_profiles_extended', // <-- ADDED
 ];
 
 export async function syncEntity(
@@ -52,6 +51,7 @@ export async function syncEntity(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (rpcResponse as { data: any[] })?.data || [];
     
+    // The previous `validData` filter is crucial.
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);

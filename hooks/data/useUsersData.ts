@@ -3,7 +3,7 @@ import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, StoredUserProfiles } from '@/hooks/data/localDb'; // Import StoredUserProfiles
+import { localDb, StoredVUserProfilesExtended } from '@/hooks/data/localDb'; // THE FIX: Import StoredVUserProfilesExtended
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 /**
@@ -26,26 +26,23 @@ export const useUsersData = (
     return (data?.data || []) as V_user_profiles_extendedRowSchema[];
   }, [searchQuery, filters]);
 
-  // This function now correctly returns a promise of our specific StoredUserProfiles type.
+  // THE FIX: The local query now fetches from the complete view data.
   const localQueryFn = useCallback(() => {
-    return localDb.user_profiles.toArray();
+    return localDb.v_user_profiles_extended.toArray();
   }, []);
-
-  // THE FIX: We now provide three generic arguments to useLocalFirstQuery:
-  // 1. The base table/view name ('user_profiles').
-  // 2. The type returned by the online fetcher (`V_user_profiles_extendedRowSchema`).
-  // 3. The type stored in Dexie (`StoredUserProfiles`).
+  
   const {
     data: allUsers = [],
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useLocalFirstQuery<'user_profiles', V_user_profiles_extendedRowSchema, StoredUserProfiles>({
+  } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
     queryKey: ['admin-users-data', searchQuery, filters],
     onlineQueryFn, 
     localQueryFn,
-    dexieTable: localDb.user_profiles,
+    // THE FIX: Point to the new, correctly typed Dexie table.
+    dexieTable: localDb.v_user_profiles_extended,
   });
 
   const processedData = useMemo(() => {
@@ -53,15 +50,8 @@ export const useUsersData = (
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
     
-    // Transform the local StoredUserProfiles data into the extended view format the UI expects.
-    const extendedUsers = allUsers.map(user => ({
-      ...user,
-      full_name: `${user.first_name} ${user.last_name}`,
-      email: user.id, 
-      is_super_admin: false,
-    })) as V_user_profiles_extendedRowSchema[];
-    
-    let filtered = extendedUsers;
+    // THE FIX: Remove the manual data reconstruction. The view data is already complete.
+    let filtered = allUsers as V_user_profiles_extendedRowSchema[];
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
