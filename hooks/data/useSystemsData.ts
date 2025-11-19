@@ -20,7 +20,7 @@ export const useSystemsData = (
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchQuery
-        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address.ilike.%${searchQuery}%)`
+        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address::text.ilike.%${searchQuery}%)`
         : undefined,
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
@@ -62,6 +62,7 @@ export const useSystemsData = (
     let filtered = allSystems;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
+      // THE FIX: This client-side filter now mirrors the server-side search logic.
       filtered = filtered.filter(
         (system) =>
           system.system_name?.toLowerCase().includes(lowerQuery) ||
