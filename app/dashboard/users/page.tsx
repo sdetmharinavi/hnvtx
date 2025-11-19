@@ -1,3 +1,6 @@
+// app/dashboard/users/page.tsx
+
+
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
@@ -10,7 +13,8 @@ import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
-import { useAdminUserOperations, UserCreateInput } from '@/hooks/useAdminUsers';
+import { useAdminUserOperations } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import from the new location
+import type { UserCreateInput } from '@/hooks/data/useAdminUserMutations'; // THE FIX: Import type from the new location
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
@@ -127,8 +131,16 @@ const AdminUsersPage = () => {
 
   const headerStats = [
     { value: totalCount, label: 'Total Users' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+    {
+      value: users.filter((r) => r.status).length,
+      label: 'Active',
+      color: 'success' as const,
+    },
+    {
+      value: users.filter((r) => !r.status).length,
+      label: 'Inactive',
+      color: 'danger' as const,
+    },
   ];
 
   if (error) {
@@ -171,6 +183,7 @@ const AdminUsersPage = () => {
           ...user,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
+          id: user.id || '',
           address: user.address as Json | null
         }))}
         columns={columns}
@@ -179,7 +192,7 @@ const AdminUsersPage = () => {
         selectable
         onRowSelect={(rows) => {
           const validRows = rows.filter(
-            (row): row is V_user_profiles_extendedRowSchema & { id: string } => typeof row.id === 'string' && row.id.length > 0
+            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
           );
           bulkActions.handleRowSelect(validRows);
         }}
@@ -251,5 +264,3 @@ const AdminUsersPage = () => {
     </div>
   );
 };
-
-export default AdminUsersPage;

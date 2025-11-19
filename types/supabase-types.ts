@@ -4752,6 +4752,7 @@ export type Database = {
           phone_number: string
           preferences: Json
           role: string
+          status: string
           updated_at: string
         }[]
       }

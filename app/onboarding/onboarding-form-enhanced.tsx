@@ -8,7 +8,8 @@ import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
-import { useGetMyUserDetails } from "@/hooks/useAdminUsers";
+// THE FIX: Import the context hook `useUser` instead of the old data-fetching hook.
+import { useUser } from "@/providers/UserProvider";
 import { useEffect } from "react";
 import { Input, Label } from "@/components/common/ui";
 import { Json } from "@/types/supabase-types";
@@ -55,12 +56,13 @@ export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
 
+  // THE FIX: Get profile data and actions from the `useUser` context hook.
   const {
-    data: profile,
+    profile,
     isLoading: isProfileLoading,
     error: profileError,
     refetch,
-  } = useGetMyUserDetails();
+  } = useUser();
 
   const {
     register,

@@ -3,25 +3,26 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
 import { UserRole } from '@/types/user-roles';
-// THE FIX: PageSpinner is no longer needed here.
-// import { PageSpinner } from '@/components/common/ui';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { UseQueryResult } from '@tanstack/react-query';
 
 interface UserContextType {
+  profile: V_user_profiles_extendedRowSchema | null;
   role: UserRole | null;
   isSuperAdmin: boolean | null;
   isLoading: boolean;
   canAccess: (allowedRoles?: string[]) => boolean;
+  refetch: () => Promise<UseQueryResult>;
+  error: Error | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const { role, isSuperAdmin, isLoading, canAccess } = useUserPermissionsExtended();
+  const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } = useUserPermissionsExtended();
 
-  // THE FIX: The provider should ONLY provide context. It should not render a loading state itself.
-  // The consumer of the context will decide what to do while isLoading is true.
   return (
-    <UserContext.Provider value={{ role: role as UserRole | null, isSuperAdmin, isLoading, canAccess }}>
+    <UserContext.Provider value={{ profile, role: role as UserRole | null, isSuperAdmin, isLoading, canAccess, refetch: refetch as () => Promise<UseQueryResult>, error }}>
       {children}
     </UserContext.Provider>
   );

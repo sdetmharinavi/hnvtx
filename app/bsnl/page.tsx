@@ -21,8 +21,8 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-import { useDashboardOverview } from '@/components/bsnl/useDashboardOverview';
 import { useDataSync } from '@/hooks/data/useDataSync';
+import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 
 const OptimizedNetworkMap = dynamic(
   () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
@@ -64,14 +64,10 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const { isSyncing: isDataSyncing, refetchSync } = useDataSync();
+  const { isSyncing: isDataSyncing, sync } = useDataSync();
   const handleRefresh = useCallback(async () => {
-    toast.promise(refetchSync(), {
-      loading: 'Starting manual data sync with the server...',
-      success: 'Local data successfully synced!',
-      error: (err) => `Sync failed: ${err.message}`,
-    });
-  }, [refetchSync]);
+    await sync();
+  }, [sync]);
   
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -109,7 +105,6 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  // THE FIX: Define column and action configurations for the DataTables
   const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
     { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
     { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },

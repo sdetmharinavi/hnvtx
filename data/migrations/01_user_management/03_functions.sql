@@ -52,7 +52,8 @@ RETURNS TABLE (
     preferences jsonb,
     role text,
     designation text,
-    updated_at timestamptz
+    updated_at timestamptz,
+    status text -- ADDED STATUS
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -74,7 +75,8 @@ SELECT
     p.preferences,
     p.role,
     p.designation,
-    p.updated_at
+    p.updated_at,
+    p.status -- ADDED STATUS
 FROM auth.users AS u
 LEFT JOIN public.user_profiles AS p ON u.id = p.id
 WHERE u.id = auth.uid();

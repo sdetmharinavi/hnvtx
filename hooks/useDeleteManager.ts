@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-import { useAdminBulkDeleteUsers } from '@/hooks/useAdminUsers';
+// THE FIX: The import path is now corrected to the new location of the user mutation hooks.
+import { useAdminBulkDeleteUsers } from '@/hooks/data/useAdminUserMutations';
 import { PostgrestError } from '@supabase/supabase-js';
 
 interface DeleteItem {
@@ -28,6 +29,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<DeleteItem[]>([]);
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<DeleteItem | null>(null);
 
   const supabase = createClient();
 
@@ -37,18 +39,21 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const deleteSingle = useCallback((item: DeleteItem) => {
     setItemsToDelete([item]);
+    setItemToDelete(item);
     setBulkFilter(null);
     setIsConfirmModalOpen(true);
   }, []);
 
   const deleteMultiple = useCallback((items: DeleteItem[]) => {
     setItemsToDelete(items);
+    setItemToDelete(null);
     setBulkFilter(null);
     setIsConfirmModalOpen(true);
   }, []);
 
   const deleteBulk = useCallback((filter: BulkDeleteFilter) => {
     setItemsToDelete([]);
+    setItemToDelete(null);
     setBulkFilter(filter);
     setIsConfirmModalOpen(true);
   }, []);
@@ -57,6 +62,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setIsConfirmModalOpen(false);
     setItemsToDelete([]);
     setBulkFilter(null);
+    setItemToDelete(null);
   }, []);
 
   const handleConfirm = useCallback(async () => {
@@ -71,9 +77,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         onSuccess?.();
       },
       onError: (err: Error) => {
-        // THE FIX: Add specific error handling for foreign key violations.
-        const pgError = err as PostgrestError;
-        if (pgError.code === '23503') { // Foreign key violation
+        const pgError = err as unknown as PostgrestError;
+        if (pgError.code === '23503') { 
           const match = pgError.message.match(/on table "(.*?)"/);
           const referencingTable = match ? match[1] : 'another table';
           toast.error("Deletion Failed", {
@@ -85,9 +90,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         }
       },
       onSettled: () => {
-        setIsConfirmModalOpen(false);
-        setItemsToDelete([]);
-        setBulkFilter(null);
+        handleCancel();
       }
     };
 
@@ -125,6 +128,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   return {
     deleteSingle, deleteMultiple, deleteBulk, handleConfirm, handleCancel,
     isConfirmModalOpen, isPending, confirmationMessage: getConfirmationMessage(),
-    itemToDelete: itemsToDelete[0] ?? null,
+    itemToDelete: itemToDelete || (itemsToDelete.length > 0 ? itemsToDelete[0] : null),
   };
 }
