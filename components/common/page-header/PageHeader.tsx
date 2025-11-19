@@ -29,6 +29,7 @@ export function PageHeader({
   isFetching = false, // THE FIX: Destructure isFetching
   className,
 }: PageHeaderProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { showHeader, setShowHeader } = useViewSettings();
 
   // Only show full skeleton on initial load.

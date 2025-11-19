@@ -25,6 +25,7 @@ export const useRouteBasedUploadConfig = (
   const previousTableNameRef = useRef<PublicTableOrViewName | null>(null);
 
   // Get current table name from the new hook
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentTableName = useCurrentTableName(tableName as unknown as any);
   const validTableName: PublicTableOrViewName | null =
     currentTableName && (currentTableName in (TABLE_COLUMN_KEYS as Record<string, unknown>))

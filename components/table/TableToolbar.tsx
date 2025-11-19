@@ -59,6 +59,7 @@ export function TableToolbar<T extends TableOrViewName>({
   loading,
   isExporting,
 }: TableToolbarProps<T>) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { showToolbar, setShowToolbar } = useViewSettings();
 
   return (

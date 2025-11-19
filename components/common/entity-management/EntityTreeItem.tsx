@@ -15,7 +15,7 @@ export function EntityTreeItem<T extends BaseEntity>({
     const IconComponent = config.icon;
     const hasChildren = entity.children.length > 0;
     const isSelected = entity.id === selectedEntityId;
-    const isExpanded = expandedEntities.has(entity.id);
+    const isExpanded = expandedEntities.has(entity.id ?? '');
   
     return (
       <div className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
@@ -26,14 +26,14 @@ export function EntityTreeItem<T extends BaseEntity>({
               : "border-l-4 border-l-transparent"
           }`}
           style={{ paddingLeft: `${16 + level * 24}px` }}
-          onClick={() => onSelect(entity.id)}
+          onClick={() => onSelect(entity.id ?? '')}
         >
           <div className="flex flex-1 items-center gap-2 truncate">
             {hasChildren ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleExpand(entity.id);
+                  onToggleExpand(entity.id ?? '');
                 }}
                 className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
               >

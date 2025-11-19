@@ -42,7 +42,7 @@ export function EntityListItem<T extends BaseEntity>({
           ? "border-l-4 border-l-blue-500 bg-blue-50 dark:bg-gray-800"
           : "border-l-4 border-l-transparent"
       }`}
-      onClick={() => onSelect(entity.id)}
+      onClick={() => onSelect(entity.id ?? '')}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">

@@ -1,7 +1,6 @@
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
-import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 
 export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {

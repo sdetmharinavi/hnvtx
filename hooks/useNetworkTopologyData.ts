@@ -9,9 +9,6 @@ const supabase = createClient();
 const NodeSchema = v_nodes_completeRowSchema;
 const CableSchema = v_ofc_cables_completeRowSchema;
 
-type Node = z.infer<typeof NodeSchema>;
-type Cable = z.infer<typeof CableSchema>;
-
 async function fetchTopologyData(maintenanceAreaId: string | null) {
   // Fetch all nodes, optionally filtered by maintenance area
   let nodesQuery = supabase.from('v_nodes_complete').select('*');

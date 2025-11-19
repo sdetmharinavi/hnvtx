@@ -1,7 +1,7 @@
 // path: hooks/useEntityManagement.ts
 "use client";
 
-import { BaseEntity, EntityWithChildren, isHierarchicalEntity, UseEntityManagementProps } from "@/components/common/entity-management/types";
+import { BaseEntity, EntityWithChildren, UseEntityManagementProps } from "@/components/common/entity-management/types";
 import { useCallback, useMemo, useState } from "react";
 
 export function useEntityManagement<T extends BaseEntity>({
@@ -53,11 +53,11 @@ export function useEntityManagement<T extends BaseEntity>({
     if (!config.isHierarchical) return filteredEntities.map((entity) => ({ ...entity, children: [] }));
     const entityMap = new Map<string, EntityWithChildren<T>>();
     allEntities.forEach((entity) => {
-      entityMap.set(entity.id, { ...entity, children: [] });
+      entityMap.set(entity.id ?? '', { ...entity, children: [] });
     });
     const rootEntities: EntityWithChildren<T>[] = [];
     filteredEntities.forEach((entity) => {
-      const entityWithChildren = entityMap.get(entity.id);
+      const entityWithChildren = entityMap.get(entity.id ?? '');
       if (!entityWithChildren) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parentId = (entity as any)[config.parentField as string]?.id ?? (entity as any).parent_id;
