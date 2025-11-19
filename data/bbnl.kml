@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>bbnl.kml</name>
+	<StyleMap id="m_ylw-pushpin0">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_blue-pushpin0">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_blue-pushpin0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_blue-pushpin</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_blue-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_blue-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_blue-pushpin0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_grn-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_grn-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_grn-pushpin</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_ltblu-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_ltblu-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_ltblu-pushpin</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_ylw-pushpin</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin0">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl0">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="sh_blue-pushpin">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/blue-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sh_blue-pushpin0">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/blue-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sh_grn-pushpin">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/grn-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sh_ltblu-pushpin">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ltblu-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sh_ylw-pushpin">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sn_blue-pushpin0">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/blue-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sn_blue-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/blue-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sn_grn-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/grn-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sn_ltblu-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ltblu-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Style id="sn_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<ListStyle>
+		</ListStyle>
+	</Style>
+	<Folder>
+		<name>bbnl</name>
+		<open>1</open>
+		<Placemark>
+			<name>Kalyanpur RLU</name>
+			<LookAt>
+				<longitude>88.41236515642636</longitude>
+				<latitude>22.34200139140558</latitude>
+				<altitude>0</altitude>
+				<heading>1.369165390276413e-05</heading>
+				<tilt>28.19432421648106</tilt>
+				<range>136.8540383930993</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.41240385898122,22.34201497708848,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Baruipur Telephone Exchange</name>
+			<LookAt>
+				<longitude>88.43439129500635</longitude>
+				<latitude>22.35697823403727</latitude>
+				<altitude>0</altitude>
+				<heading>-4.24698767248663e-05</heading>
+				<tilt>20.20352705718075</tilt>
+				<range>306.0234767721446</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.43431720540976,22.35698885235502,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>JC</name>
+			<LookAt>
+				<longitude>88.41237254270544</longitude>
+				<latitude>22.34199267696864</latitude>
+				<altitude>0</altitude>
+				<heading>2.0306967260545e-05</heading>
+				<tilt>26.14567338553021</tilt>
+				<range>124.0927183286636</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_grn-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.41241420280232,22.34195645476484,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>BJC</name>
+			<LookAt>
+				<longitude>88.42195806811085</longitude>
+				<latitude>22.34186398976157</latitude>
+				<altitude>0</altitude>
+				<heading>-5.754795727869121e-05</heading>
+				<tilt>28.33624863208333</tilt>
+				<range>147.8068375117153</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_blue-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.42215599930795,22.34174421013154,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Shakharballi-II</name>
+			<LookAt>
+				<longitude>88.4188271388053</longitude>
+				<latitude>22.33515004826372</latitude>
+				<altitude>0</altitude>
+				<heading>7.25891239568758e-05</heading>
+				<tilt>25.75708062681511</tilt>
+				<range>213.851354455167</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.41873456422591,22.33504850340022,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Shakharballi-I</name>
+			<LookAt>
+				<longitude>88.43369999972082</longitude>
+				<latitude>22.33542999931755</latitude>
+				<altitude>0</altitude>
+				<heading>-1.060948558252503e-10</heading>
+				<tilt>0</tilt>
+				<range>1000.000030993554</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.4336542491842,22.335342340603,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>SJC</name>
+			<LookAt>
+				<longitude>88.43005381570271</longitude>
+				<latitude>22.34161534015096</latitude>
+				<altitude>0</altitude>
+				<heading>-3.585656012925243e-05</heading>
+				<tilt>7.798678434602166</tilt>
+				<range>650.9078032959183</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_ltblu-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.43015623837202,22.34172544369767,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>BJC</name>
+			<LookAt>
+				<longitude>88.43296400054508</longitude>
+				<latitude>22.3478000000562</latitude>
+				<altitude>0</altitude>
+				<heading>2.07274959528969e-10</heading>
+				<tilt>0</tilt>
+				<range>1000.000048234135</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#msn_blue-pushpin0</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.43295093399642,22.34776676595706,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>KALYANPUR - SHIKHARBALI II GP</name>
+			<styleUrl>#m_ylw-pushpin0</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					88.41240405500726,22.34201820155001,0 88.41241613566191,22.34195576990129,0 88.41260095979072,22.34196421967775,0 88.41274593322242,22.34195095321697,0 88.41299241634712,22.34190887030843,0 88.41332105390316,22.34182563596861,0 88.41370503178265,22.34174405980194,0 88.41428994674374,22.34164450080685,0 88.41499327611189,22.34146096864627,0 88.41499631306471,22.34115440708431,0 88.41488226131837,22.34083257695832,0 88.41476532346068,22.34064047066154,0 88.41468277752249,22.34034678324666,0 88.41466573308446,22.34016510086129,0 88.41467438012019,22.33995730356049,0 88.41469567499081,22.33960498140138,0 88.41481686726661,22.33888552621126,0 88.41488410456043,22.33846496652991,0 88.41503397270907,22.33780448502117,0 88.41516387148219,22.3372561454984,0 88.41532305113198,22.3367928338307,0 88.41541143306303,22.33648533613259,0 88.41560398927474,22.33599415179784,0 88.41573892767148,22.33572905387583,0 88.41596804865245,22.33574339749872,0 88.41620178554911,22.33582360920002,0 88.41645116753544,22.33575559643062,0 88.41675079940349,22.33561718986376,0 88.41719560657133,22.3355154833667,0 88.41743999289297,22.3354854646553,0 88.41793473712447,22.335444197664,0 88.41871515891793,22.33529552592054,0 88.41887338823321,22.33523296540758,0 88.41893623338281,22.33508015957008,0 88.41876300436429,22.33505311846295,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>SHIKHARBALI II GP - SHIKHARBALI I GP</name>
+			<styleUrl>#m_ylw-pushpin0</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					88.4187385084837,22.33504736059354,0 88.41890920712142,22.33506805978096,0 88.41884401141613,22.33552729215518,0 88.41884133840119,22.3358523445635,0 88.41889723462678,22.33618692995276,0 88.41886878838224,22.3366051767786,0 88.4189199271795,22.33703866893352,0 88.41898434365899,22.33770233867019,0 88.41890270230989,22.3379347429513,0 88.41878392245098,22.33807156123022,0 88.41882673941585,22.33833823614993,0 88.41890160101131,22.33864432101063,0 88.41889193264886,22.3388426039473,0 88.41874603309773,22.33894543990174,0 88.41874755625828,22.33917260467173,0 88.41888626689206,22.33933614119643,0 88.41920238009567,22.33928306282781,0 88.41943149668812,22.33930016284045,0 88.41947901901685,22.33983143780683,0 88.41952103757112,22.34023140759918,0 88.41955562344421,22.34062634040957,0 88.41951337604598,22.34119267733274,0 88.41951301356393,22.3418837099465,0 88.41985601393209,22.34183278835198,0 88.42018052713972,22.34176363728342,0 88.42063589059742,22.34175814149606,0 88.42106185198909,22.34170813351745,0 88.42146000252873,22.34169005206697,0 88.4221765192851,22.34173840405703,0 88.42247710801695,22.34168121793028,0 88.42294673997337,22.34165434061083,0 88.42349704905423,22.3416660583747,0 88.42386830780035,22.34162465935995,0 88.42445640263969,22.34171483650779,0 88.42488703604138,22.34181067435395,0 88.42517583008838,22.34183759470887,0 88.42554216719655,22.34192354199987,0 88.42618360179145,22.34204122408361,0 88.42665502038624,22.34208420777938,0 88.4270367015659,22.34223771242344,0 88.42747616731219,22.3424206613869,0 88.42791820177996,22.34261944465665,0 88.42820423239871,22.34276122976976,0 88.42852434707599,22.34292962398368,0 88.42873264249994,22.34302501918587,0 88.42921848710827,22.34304600487134,0 88.42988569536384,22.34315901697586,0 88.43022268330871,22.34327643982456,0 88.43033449731993,22.34300651244238,0 88.43027580939813,22.34269561433942,0 88.43025533215193,22.34216158846193,0 88.4301643814529,22.34173608448169,0 88.43032161088864,22.34121599362057,0 88.43046692279945,22.34074023998736,0 88.4305630615073,22.34045929062646,0 88.43077214608567,22.34014107126038,0 88.43096912179539,22.33975232748258,0 88.43096337124706,22.33926821789576,0 88.43088894828642,22.33873413474991,0 88.43086554758391,22.33837708672279,0 88.43081058138216,22.33799008228535,0 88.43079648648046,22.33766298162439,0 88.43079647854509,22.33733614474103,0 88.430890971951,22.33706941523602,0 88.43089538774514,22.33683778214844,0 88.43084889461529,22.33647115521173,0 88.43085049668174,22.33633804742055,0 88.43090051534082,22.33613101268787,0 88.43103282119024,22.33590275376213,0 88.43118368585311,22.33564094370444,0 88.43175824894736,22.33564459790091,0 88.43229783593989,22.33556252665767,0 88.43283379914956,22.33557222603858,0 88.43337260664043,22.33562574911251,0 88.43356505447044,22.33555882271101,0 88.43366740803151,22.3353530627693,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>BARUIPUR – KALYANPUR</name>
+			<styleUrl>#m_ylw-pushpin0</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					88.41241660594,22.34200910279879,0 88.41242703361698,22.34195147885668,0 88.41260950474408,22.34195757028518,0 88.41274994196654,22.34194762370752,0 88.41290526046646,22.34191814823997,0 88.41298101736429,22.3419041140192,0 88.41306555222738,22.34188681715904,0 88.41327726037963,22.34183192326117,0 88.41349674367282,22.34178659721965,0 88.41369343989179,22.34174469114361,0 88.4138877004243,22.34171101482785,0 88.4140726316739,22.34168371579075,0 88.4142882069067,22.34164383015424,0 88.41461989060531,22.34155792315085,0 88.41474555804382,22.3415269906874,0 88.4149424791611,22.34147795088896,0 88.4149905450282,22.34146387122563,0 88.4153983746323,22.34146323920596,0 88.41583355480439,22.34146449442324,0 88.4162487172606,22.34145830856904,0 88.41679683397861,22.34148135901758,0 88.41707279607675,22.34160212206806,0 88.41736539163247,22.34175672304564,0 88.41751796258497,22.34187823554752,0 88.41764467219186,22.34205631257455,0 88.4178510372795,22.34217336177008,0 88.41818048201348,22.34225555210751,0 88.4185518492111,22.34222175833892,0 88.41893118705111,22.34209827872208,0 88.41937228852392,22.34195151969161,0 88.41951448380838,22.34188128966658,0 88.41986329050187,22.34182923695817,0 88.42018027946638,22.34176452450604,0 88.42064808698528,22.34175621484884,0 88.42094294322368,22.34172182622005,0 88.421104830046,22.34170768197614,0 88.42137658137129,22.34169588385571,0 88.42146850620512,22.34168965900011,0 88.42177384741441,22.3417087220607,0 88.42217807819256,22.34173994373724,0 88.42248248095615,22.34168133353237,0 88.422934635069,22.34165297194287,0 88.42342165637126,22.34165904890229,0 88.42351312378419,22.34166429718973,0 88.42387348047691,22.34162033498128,0 88.4243116726316,22.34168949543433,0 88.42490301900058,22.34181230949837,0 88.4251620968239,22.34183245224187,0 88.42566012717802,22.3419435798075,0 88.42597401865611,22.34199814939808,0 88.42620948792782,22.34204271035997,0 88.42665182121266,22.34207989694997,0 88.42713453879044,22.34227828908767,0 88.42771894705604,22.34252970400487,0 88.42793005936205,22.34262169467818,0 88.42827827108917,22.34279867709533,0 88.42850622653518,22.34292166632498,0 88.42873288355339,22.34302287053463,0 88.42921201256657,22.34304472307803,0 88.4298667105062,22.34316074957414,0 88.43022408711043,22.34327438020203,0 88.43089203372865,22.34344253100632,0 88.4318976700589,22.34361830149256,0 88.43288642614139,22.34388318566895,0 88.43322954301937,22.34416320102568,0 88.43326041718099,22.34439713039908,0 88.43310883044774,22.34470766150069,0 88.43351291908645,22.34487583683138,0 88.43403687612077,22.3450146792451,0 88.43454862223719,22.34512902516572,0 88.43474655909772,22.34514864305287,0 88.43479722665555,22.34536042251997,0 88.43476916336331,22.34555632090079,0 88.43498720281718,22.34572029088747,0 88.43506755990421,22.34585394432014,0 88.43472305764178,22.34597209750687,0 88.43433506109442,22.34631426117319,0 88.43405644433771,22.34660274044043,0 88.43371588123364,22.34696474197136,0 88.43323033302069,22.34755860287971,0 88.43294711628783,22.34776365430705,0 88.43223079065379,22.34820001045541,0 88.43121802413026,22.34876107490222,0 88.43019614074409,22.34935776596105,0 88.42936082825443,22.35006245272923,0 88.42850750815042,22.35076887508579,0 88.42805781849704,22.35121152005618,0 88.42766881045125,22.35158692867419,0 88.42786363648689,22.3518007911687,0 88.42836533890883,22.35222611138013,0 88.42908534578524,22.35276202982461,0 88.42966864312007,22.35335198713041,0 88.43010055991984,22.3537180818284,0 88.43043184670404,22.35395658254156,0 88.43088450147697,22.35416965474298,0 88.43138945278409,22.35436060403963,0 88.43184119568964,22.35455632097677,0 88.43244446747596,22.3545574915227,0 88.43268723412912,22.35458859361212,0 88.43261174459595,22.35495617237286,0 88.43305322781252,22.3549848083221,0 88.43299793022426,22.3553338404331,0 88.43303140808929,22.35570409037912,0 88.43313143041034,22.35599695895031,0 88.43350049416713,22.35619876211555,0 88.43389590751586,22.35626077112111,0 88.43427660199046,22.35630379282506,0 88.43432877823345,22.35653712548448,0 88.43448191999197,22.3566554733251,0 88.43429697668398,22.35672205367525,0 88.43414817466847,22.35685429498382,0 88.43431955166145,22.35699408213826,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+	</Folder>
+</Document>
+</kml>

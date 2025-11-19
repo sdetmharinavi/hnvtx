@@ -13,6 +13,7 @@ import {
   FiHelpCircle,
   FiCalendar,
   FiArchive,
+  FiGlobe,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -205,7 +206,7 @@ function NavItems() {
       {
         id: 'kml-manager',
         label: 'KML Manager',
-        icon: <FiMap className="h-5 w-5" />,
+        icon: <FiGlobe className="h-5 w-5" />,
         href: '/dashboard/kml-manager',
         roles: [
           UserRole.ADMIN,
