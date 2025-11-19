@@ -1,29 +1,26 @@
 // hooks/data/useDiaryData.ts
 import { useMemo, useCallback } from 'react';
-import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
-import { Diary_notesRowSchema, User_profilesRowSchema } from '@/schemas/zod-schemas';
+import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { useUser } from '@/providers/UserProvider';
-import { useAuthStore } from '@/stores/authStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export type DiaryEntryWithUser = Diary_notesRowSchema & { full_name?: string | null };
 
 /**
  * A local-first data fetching hook for diary entries.
- * It fetches all entries for a given month and joins them with user information.
+ * Its ONLY responsibility is to fetch all entries for a given month
+ * and join them with user information. It performs NO filtering.
  */
-export const useDiaryData = (
-  params: DataQueryHookParams & { currentDate: Date }
-): DataQueryHookReturn<DiaryEntryWithUser> => {
-  const { currentPage, pageLimit, filters, searchQuery, currentDate } = params;
-  const { isSuperAdmin, role } = useUser();
-  const userId = useAuthStore(state => state.getUserId());
-
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split("T")[0];
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split("T")[0];
+export const useDiaryData = (currentDate: Date) => {
+  // Create dates in local timezone
+  const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  
+  // Format dates as YYYY-MM-DD in local timezone
+  const startOfMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+  const endOfMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
   const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
     const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
@@ -49,59 +46,34 @@ export const useDiaryData = (
       .between(startOfMonth, endOfMonth)
       .toArray();
   }, [startOfMonth, endOfMonth]);
-  
-  const {
-    data: notesForMonth = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useLocalFirstQuery<'diary_notes'>({
-    queryKey: ['diary-data', startOfMonth, endOfMonth],
+
+  const { data: notes, isLoading, isFetching, error, refetch } = useLocalFirstQuery<'diary_notes'>({
+    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
     onlineQueryFn,
     localQueryFn,
+    localQueryDeps: [startOfMonth, endOfMonth],
     dexieTable: localDb.diary_notes,
   });
 
   const userProfiles = useLiveQuery(() => localDb.user_profiles.toArray(), []);
 
-  const processedData = useMemo(() => {
-    if (!notesForMonth || !userProfiles) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+  const entriesWithUsers = useMemo(() => {
+    if (!notes || !userProfiles) return [];
     
     const profileMap = new Map(userProfiles.map(p => [p.id, `${p.first_name} ${p.last_name}`]));
 
-    const allNotes: DiaryEntryWithUser[] = notesForMonth.map(note => ({
+    return notes.map(note => ({
       ...note,
       full_name: profileMap.get(note.user_id) || 'Unknown User'
-    }));
-    
-    let roleFiltered = (isSuperAdmin || role === 'admin')
-      ? allNotes
-      : allNotes.filter(note => note.user_id === userId);
+    })).sort((a, b) => new Date(b.note_date!).getTime() - new Date(a.note_date!).getTime());
 
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      roleFiltered = roleFiltered.filter(note => 
-        note.content?.toLowerCase().includes(lowerQuery) ||
-        note.full_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    
-    roleFiltered.sort((a, b) => new Date(b.note_date!).getTime() - new Date(a.note_date!).getTime());
+  }, [notes, userProfiles]);
 
-    const totalCount = roleFiltered.length;
-    
-    // THE FIX: The `useCrudManager` was removed from the page, but this hook still needs to return all data for the month
-    // so the page component can do the final filtering by `selectedDate`. The pagination logic here was incorrect for this page.
-    return {
-      data: roleFiltered,
-      totalCount,
-      activeCount: totalCount,
-      inactiveCount: 0,
-    };
-  }, [notesForMonth, userProfiles, isSuperAdmin, role, userId, searchQuery]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return {
+    data: entriesWithUsers,
+    isLoading: isLoading || !userProfiles,
+    isFetching,
+    error,
+    refetch,
+  };
 };

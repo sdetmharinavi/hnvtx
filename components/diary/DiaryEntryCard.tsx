@@ -4,15 +4,18 @@ import { FiCalendar, FiEdit, FiTrash2, FiUser } from 'react-icons/fi';
 import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 import { Button } from '@/components/common/ui';
 import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 interface DiaryEntryCardProps {
-  entry: Diary_notesRowSchema & { full_name?: string | null }; // Allow full_name for admins
+  entry: Diary_notesRowSchema & { full_name?: string | null };
   onEdit: (entry: Diary_notesRowSchema) => void;
   onDelete: (entry: { id: string; name: string }) => void;
+  canMutate: boolean;
 }
 
-export const DiaryEntryCard = ({ entry, onEdit, onDelete }: DiaryEntryCardProps) => {
-  const { isSuperAdmin } = useUser();
+export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntryCardProps) => {
+  // THE FIX: Destructure `role` from useUser and alias it to `currentUserRole`.
+  const { isSuperAdmin, role: currentUserRole } = useUser();
   const formattedDate = new Date(entry.note_date!).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -32,15 +35,18 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete }: DiaryEntryCardProps)
             <FiCalendar className="w-5 h-5 text-blue-500 dark:text-blue-400" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{formattedDate}</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => onEdit(entry)}><FiEdit className="w-4 h-4" /></Button>
-            <Button size="sm" variant="ghost" onClick={() => onDelete({ id: entry.id!, name: `Note from ${formattedDate}` })} className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50">
-              <FiTrash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          {canMutate && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => onEdit(entry)}><FiEdit className="w-4 h-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={() => onDelete({ id: entry.id!, name: `Note from ${formattedDate}` })} className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50">
+                <FiTrash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
-        {isSuperAdmin && entry.full_name && (
+        {/* THE FIX: This conditional now works because `currentUserRole` is defined. */}
+        {(isSuperAdmin || currentUserRole === UserRole.ADMIN) && entry.full_name && (
           <div className="flex items-center gap-2 mt-2 pl-8 text-sm text-gray-500 dark:text-gray-400">
             <FiUser className="w-4 h-4" />
             <span>{entry.full_name}</span>
