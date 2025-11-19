@@ -7,7 +7,6 @@ import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// THE FIX: Add `v_user_profiles_extended` to the list of entities to sync locally.
 const entitiesToSync: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
@@ -28,7 +27,10 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ring_nodes',
   'v_employee_designations',
   'v_inventory_items',
-  'v_user_profiles_extended', // <-- ADDED
+  'v_user_profiles_extended',
+  // THE FIX: Add the connection views to the sync list
+  'v_ofc_connections_complete',
+  'v_system_connections_complete',
 ];
 
 export async function syncEntity(
@@ -51,7 +53,6 @@ export async function syncEntity(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (rpcResponse as { data: any[] })?.data || [];
     
-    // The previous `validData` filter is crucial.
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);

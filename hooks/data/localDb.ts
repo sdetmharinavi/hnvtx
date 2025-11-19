@@ -27,7 +27,10 @@ import {
   V_employee_designationsRowSchema,
   V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
-  Ring_based_systemsRowSchema, // THE FIX: Import the missing schema type
+  Ring_based_systemsRowSchema,
+  // THE FIX: Import connection view schemas
+  V_ofc_connections_completeRowSchema,
+  V_system_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -80,7 +83,7 @@ export class HNVTMDatabase extends Dexie {
   user_profiles!: Table<StoredUserProfiles, string>;
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
-  ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>; // THE FIX: Add table definition
+  ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -93,14 +96,17 @@ export class HNVTMDatabase extends Dexie {
   v_employee_designations!: Table<V_employee_designationsRowSchema, string>;
   v_inventory_items!: Table<V_inventory_itemsRowSchema, string>;
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
+  // THE FIX: Add tables for connection views
+  v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
+  v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    // THE FIX: Incremented version to 15 and added the missing `ring_based_systems` table.
-    this.version(15).stores({
+    // THE FIX: Incremented version to 16 and added new view tables
+    this.version(16).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -116,7 +122,6 @@ export class HNVTMDatabase extends Dexie {
       user_profiles: '&id, first_name, last_name, role',
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
-      // THE FIX: Added `ring_based_systems` with its composite primary key.
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       
       v_nodes_complete: '&id, name',
@@ -130,6 +135,9 @@ export class HNVTMDatabase extends Dexie {
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
+      // THE FIX: Schemas for new views. Indexing by foreign keys is crucial for performance.
+      v_ofc_connections_complete: '&id, ofc_id, system_id',
+      v_system_connections_complete: '&id, system_id, connected_system_name',
       
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
