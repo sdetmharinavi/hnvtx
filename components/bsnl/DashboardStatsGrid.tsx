@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { Network, Activity, AlertTriangle, CheckCircle, GitBranch, Cable } from 'lucide-react';
-import { useDashboardOverview } from './useDashboardOverview';
 import { Card } from '@/components/common/ui';
+import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 
 // Stat Card subcomponent for consistent styling
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string; }> = ({ icon, label, value, color }) => (

@@ -1,11 +1,10 @@
-// path: components/bsnl/useDashboardOverview.ts
+// path: hooks/data/useDashboardOverview.ts
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod';
 
-// CORRECTED: The z.record schema now correctly specifies both a key and a value type.
 const dashboardOverviewSchema = z.object({
   system_status_counts: z.object({
     Active: z.number().optional(),

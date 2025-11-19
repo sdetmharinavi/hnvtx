@@ -22,9 +22,14 @@ GRANT EXECUTE ON FUNCTION public.admin_bulk_delete_users(uuid[]) TO authenticate
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin;
 GRANT SELECT ON public.user_profiles TO viewer;
 
+-- THE FIX: Grant SELECT permission on the view to authenticated users.
+-- The `security_invoker` property on the view will ensure that the underlying
+-- RLS policies on `user_profiles` are applied for each user.
+GRANT SELECT ON public.v_user_profiles_extended TO authenticated;
+
 
 -- =================================================================
--- Section 2: RLS Policies for user_profiles
+-- Section 2: RLS Policies for user_profiles TABLE
 -- =================================================================
 
 -- Enable RLS on the table
