@@ -7,14 +7,18 @@ import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-// THE FIX: This is the single, correct list of all tables AND views we want to cache locally.
-// All of these will be fetched via the get_paged_data RPC to bypass RLS.
+// THE FIX: Added essential base tables `rings`, `nodes`, `systems`, and `ring_based_systems`
+// This ensures that all data required to construct views locally is available.
 const entitiesToSync: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
   'user_profiles',
   'diary_notes',
   'inventory_items',
+  'rings', // <-- ADDED
+  'nodes', // <-- ADDED
+  'systems', // <-- ADDED
+  'ring_based_systems', // <-- ADDED
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -36,9 +40,6 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
-    // --- THE DEFINITIVE FIX ---
-    // ALWAYS use the `get_paged_data` RPC. This is the only secure and reliable way to bypass RLS
-    // for a full data sync for both tables and views.
     const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
       p_view_name: entityName,
       p_limit: 50000,
@@ -51,7 +52,6 @@ export async function syncEntity(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (rpcResponse as { data: any[] })?.data || [];
     
-    // The previous `validData` filter is crucial.
     const validData = data.filter(item => item.id != null);
     
     const table = getTable(entityName);

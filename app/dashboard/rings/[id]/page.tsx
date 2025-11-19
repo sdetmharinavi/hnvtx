@@ -20,19 +20,43 @@ const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   loading: () => <PageSpinner text="Loading Ring Map..." />,
 });
 
+// THE FIX: Create a stable, memoized mapping function outside the main component body.
+const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
+  if (node.lat == null || node.long == null || node.id == null || node.name == null) {
+    return null;
+  }
+  return {
+    id: node.id,
+    ring_id: node.ring_id,
+    name: node.name,
+    lat: node.lat,
+    long: node.long,
+    order_in_ring: node.order_in_ring,
+    type: node.type!,
+    system_type: node.system_type,
+    ring_status: node.ring_status,
+    system_status: node.system_status,
+    ring_name: node.ring_name,
+    ip: node.ip,
+    remark: node.remark,
+    is_hub: node.is_hub,
+    system_type_code: node.system_type_code,
+    system_node_name: node.system_node_name,
+  };
+};
+
 export default function RingMapPage() {
   const params = useParams();
   const router = useRouter();
   const ringId = params.id as string;
 
-  // Fetch details for the current ring to check its type
   const { data: ringDetails, isLoading: isLoadingRingDetails } = useTableRecord(
     createClient(),
     'v_rings',
     ringId
   );
 
-  const { data: nodes, isLoading: isLoadingNodes } = useOfflineQuery(
+  const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
     ['ring-nodes-detail', ringId],
     async () => {
       if (!ringId) return [];
@@ -57,32 +81,15 @@ export default function RingMapPage() {
       staleTime: 5 * 60 * 1000,
     }
   );
-
+  
+  // THE FIX: This is now the single source of truth for mapped nodes.
   const mappedNodes = useMemo((): RingMapNode[] => {
-    if (!nodes) return [];
-    return nodes
-      .filter((node) => node.lat != null && node.long != null)
-      .map((node) => ({
-        id: node.id!,
-        ring_id: node.ring_id,
-        name: node.name!,
-        lat: node.lat!,
-        long: node.long!,
-        order_in_ring: node.order_in_ring,
-        type: node.type!,
-        system_type: node.system_type,
-        ring_status: node.ring_status,
-        system_status: node.system_status,
-        ring_name: node.ring_name,
-        ip: node.ip,
-        remark: node.remark,
-        is_hub: node.is_hub,
-        system_type_code: node.system_type_code,
-        system_node_name: node.system_node_name,
-      }));
-  }, [nodes]);
+    if (!rawNodes) return [];
+    return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
+  }, [rawNodes]);
 
   const { mainSegments, spurConnections, allPairs } = useMemo(() => {
+    // This logic now correctly depends on the stable `mappedNodes`.
     if (mappedNodes.length === 0) {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
@@ -92,9 +99,8 @@ export default function RingMapPage() {
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
     const spokes = mappedNodes.filter((node) => !node.is_hub);
 
-    // If there are no hubs, treat it as a simple ring connecting all nodes.
     if (hubs.length === 0) {
-      const allNodesSorted = mappedNodes.sort(
+      const allNodesSorted = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );
       const segments: Array<[RingMapNode, RingMapNode]> = [];
@@ -107,7 +113,6 @@ export default function RingMapPage() {
       return { mainSegments: segments, spurConnections: [], allPairs: segments };
     }
 
-    // Logic for topologies with hubs (Ring, Mesh, etc.)
     const hubConnections: Array<[RingMapNode, RingMapNode]> = [];
     if (hubs.length > 1) {
       hubs.forEach((hub, index) => {
@@ -117,11 +122,9 @@ export default function RingMapPage() {
     }
 
     const spokeToHubConnections: Array<[RingMapNode, RingMapNode]> = [];
-    // Create a map of hubs using their integer order_in_ring as the key.
     const hubMapByOrder = new Map(hubs.map((h) => [Math.floor(h.order_in_ring || 0), h]));
 
     spokes.forEach((spoke) => {
-      // Find the parent hub by matching the integer part of the spoke's order_in_ring.
       const parentHub = hubMapByOrder.get(Math.floor(spoke.order_in_ring || 0));
       if (parentHub) {
         spokeToHubConnections.push([parentHub, spoke]);
@@ -144,19 +147,25 @@ export default function RingMapPage() {
   }, [router]);
 
   const renderContent = () => {
+    // THE FIX: The loading condition is now more robust.
     const isLoading = isLoadingNodes || isLoadingRingDetails || isLoadingDistances;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
-    if (mappedNodes.length === 0)
+    
+    // THE FIX: Check the final mapped data, not the raw fetch result.
+    if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
-          <FiMap className="mx-auto h-12 w-12 text-gray-400" />{' '}
+          <FiMap className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
             No Nodes Found For This Ring
           </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            There are no systems with geographic data associated with this ring.
+          </p>
         </div>
       );
-
-    // The ClientRingMap component can now handle both topologies based on the lines it receives.
+    }
+    
     return (
       <ClientRingMap
         nodes={mappedNodes}

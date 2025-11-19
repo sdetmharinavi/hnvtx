@@ -1,7 +1,8 @@
+// hooks/useColumnConfig.tsx
+
 import { useMemo, ReactNode } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-// import { inferColumnWidth } from "@/config/column-width";
 import {
   inferDynamicColumnWidth,
   inferExcelFormat,
@@ -39,9 +40,6 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {
-  // [K in keyof Row<T>]?: Partial<
-  //   Omit<Column<Row<T>>, 'key' | 'dataIndex'>
-  // >;
   [K in keyof Row<T>]?: Partial<ColumnConfig<T>>;
 };
 
@@ -55,13 +53,13 @@ interface UseDynamicColumnConfigOptions<T extends PublicTableOrViewName> {
  * A hook that dynamically generates a detailed and type-safe column configuration array
  * that is fully compatible with the application's standard `Column<T>` interface.
  */
-// FIX: The hook is now fully generic for tables and views.
 export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
   tableName: T,
   options: UseDynamicColumnConfigOptions<T> = {}
 ): Column<Row<T>>[] {
   const { overrides = {}, omit = [], data = [] } = options;
 
+  // THE FIX 1: Move dateColumns calculation to its own top-level useMemo.
   const dateColumns = useMemo(
     () =>
       new Set([
@@ -74,9 +72,9 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         'phone_confirmed_at',
       ]),
     []
-  ); // Memoize once
+  );
 
-  // generate column widths dynamically
+  // THE FIX 2: Move columnWidths calculation to its own top-level useMemo.
   const columnWidths = useMemo(() => {
     const widths: Record<string, number> = {};
     if (data.length > 0) {
@@ -89,12 +87,11 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
     return widths;
   }, [data, dateColumns]);
 
+  // THE FIX 3: The main columns calculation is now its own top-level useMemo.
   const columns = useMemo(() => {
-    // --- THIS IS THE FIX: The conditional check is now INSIDE the hook ---
     if (!tableName) {
-      return []; // Gracefully handle the case where tableName is not provided.
+      return [];
     }
-    // --- END FIX ---
 
     const keysToUse = TABLE_COLUMN_KEYS[
       tableName as keyof typeof TABLE_COLUMN_KEYS
@@ -113,7 +110,7 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         const columnOverride =
           (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
           {};
-        // console.log(key + ":" + columnWidths?.[key]);
+        
         const defaultConfig: Column<Row<T>> = {
           title: toTitleCase(key),
           dataIndex: key,
@@ -124,7 +121,7 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
 
         return { ...defaultConfig, ...columnOverride };
       });
-  }, [tableName, overrides, omit, columnWidths]);
+  }, [tableName, overrides, omit, columnWidths]); // Its dependencies are now correct.
 
   // const columnsKeys = columns.map((col) => col.key);
 
