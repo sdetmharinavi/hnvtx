@@ -27,17 +27,21 @@ import {
   V_employee_designationsRowSchema,
   V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
+  Ring_based_systemsRowSchema, // THE FIX: Import the missing schema type
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
+import { Json } from '@/types/supabase-types';
 
 export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
 };
 
-export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences'> & {
+export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences' | 'raw_app_meta_data' | 'raw_user_meta_data'> & {
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+  raw_app_meta_data: Json | null;
+  raw_user_meta_data: Json | null;
 };
 
 export interface SyncStatus {
@@ -76,6 +80,7 @@ export class HNVTMDatabase extends Dexie {
   user_profiles!: Table<StoredUserProfiles, string>;
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
+  ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>; // THE FIX: Add table definition
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -94,8 +99,8 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-    // THE FIX: Incremented version to 13 and added the missing `note_date` index.
-    this.version(13).stores({
+    // THE FIX: Incremented version to 15 and added the missing `ring_based_systems` table.
+    this.version(15).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -109,9 +114,10 @@ export class HNVTMDatabase extends Dexie {
       fiber_splices: '&id, jc_id',
       system_connections: '&id, system_id',
       user_profiles: '&id, first_name, last_name, role',
-      // THE FIX: Added `note_date` as a separate index for querying.
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
+      // THE FIX: Added `ring_based_systems` with its composite primary key.
+      ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -133,10 +139,10 @@ export class HNVTMDatabase extends Dexie {
 
 export const localDb = new HNVTMDatabase();
 
-export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string> {
+export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | [string, string]> {
     const table = localDb.table(tableName);
     if (!table) {
         throw new Error(`Table ${tableName} does not exist`);
     }
-    return table as Table<Row<T>, string>;
+    return table as Table<Row<T>, string | [string, string]>;
 }

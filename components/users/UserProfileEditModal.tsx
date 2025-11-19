@@ -1,10 +1,9 @@
+// components/users/UserProfileEditModal.tsx
 'use client';
 
 import React, { useEffect } from 'react';
 import { FiShield } from 'react-icons/fi';
-import {
-  useAdminUpdateUserProfile,
-} from '@/hooks/useAdminUsers';
+import { useAdminUpdateUserProfile, type AdminUpdateUserProfile } from '@/hooks/data/useAdminUserMutations';
 import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
 import Image from 'next/image';
@@ -13,32 +12,53 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput, FormDateInput } from '../common/form/FormControls';
 import { Input, Label, Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
-import { user_profilesUpdateSchema } from '@/schemas/zod-schemas';
+import { user_profilesUpdateSchema, V_user_profiles_extendedRowSchema, v_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 import { useUser } from '@/providers/UserProvider';
+import { Json } from '@/types/supabase-types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/common/ui/select/Select';
 
-// ** Define types based on the Zod schema, not manually.**
-const addressSchema = user_profilesUpdateSchema.shape.address;
-const preferencesSchema = user_profilesUpdateSchema.shape.preferences;
-
-// Extend the auto-generated schema to handle nested objects for the form
+// THE FIX: Define a form schema that is perfectly compatible with the incoming `v_user_profiles_extendedRowSchema` prop.
+// We do this by taking the base update schema and overriding the nested objects to match the view's structure (without `undefined`).
 const userProfileFormSchema = user_profilesUpdateSchema.extend({
-    address: addressSchema,
-    preferences: preferencesSchema,
+  // This precisely matches the shape of the `address` object in `v_user_profiles_extendedRowSchema`
+  address: z.object({
+      street: z.string().optional().nullable(),
+      city: z.string().optional().nullable(),
+      state: z.string().optional().nullable(),
+      zip_code: z.string().optional().nullable(),
+      country: z.string().optional().nullable(),
+  }).nullable(),
+  // This matches the `preferences` object shape as well.
+  preferences: z.object({
+      language: z.string().optional().nullable(),
+      theme: z.string().optional().nullable(),
+      needsOnboarding: z.boolean().optional().nullable(),
+      showOnboardingPrompt: z.boolean().optional().nullable(),
+  }).nullable(),
 });
 
+// The form data type is now inferred from our new, compatible schema.
 type UserProfileFormData = z.infer<typeof userProfileFormSchema>;
 
 interface UserProfileEditProps {
-  user: UserProfileFormData | null; // The component now accepts the Zod-inferred type
+  // THE FIX: The prop type now correctly uses the view schema, which is what the parent page provides.
+  user: V_user_profiles_extendedRowSchema | null;
   onClose: () => void;
   onSave?: () => void;
   isOpen: boolean;
 }
 
 const toObject = (val: unknown): Record<string, unknown> => {
-  if (!val) return {};
-  if (typeof val === 'object') return val as Record<string, unknown>;
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    return val as Record<string, unknown>;
+  }
   return {};
 };
 
@@ -51,31 +71,26 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting, isDirty, dirtyFields },
     reset,
     control,
     watch,
   } = useForm<UserProfileFormData>({
     resolver: zodResolver(userProfileFormSchema),
-    defaultValues: {
-      first_name: '', last_name: '', avatar_url: null, phone_number: null, date_of_birth: null,
-      address: {}, preferences: {}, role: UserRole.VIEWER, designation: null, status: 'inactive',
-    },
   });
 
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
       reset({
+        // Spread the user data, which now matches the form schema's top-level fields
         ...user,
+        // Ensure nested objects are correctly handled, even if they are null
         address: toObject(user.address),
         preferences: toObject(user.preferences),
       });
     } else {
-      reset({
-        first_name: '', last_name: '', avatar_url: null, phone_number: null, date_of_birth: null,
-        address: {}, preferences: {}, role: UserRole.VIEWER, designation: null, status: 'inactive',
-      });
+      reset(); // Reset to default form values if no user is provided
     }
   }, [isOpen, reset, user]);
 
@@ -90,25 +105,35 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
       return;
     }
     
-    // The payload now perfectly matches the expected type for the RPC function
-    const updateParams: { user_id: string; [key: string]: unknown } = { user_id: user.id };
-    
-    (Object.keys(data) as Array<keyof UserProfileFormData>).forEach(key => {
-      updateParams[`update_${key}`] = data[key];
-    });
+    const updateParams: Partial<AdminUpdateUserProfile> & { user_id: string } = { user_id: user.id };
+
+    for (const key in dirtyFields) {
+      const typedKey = key as keyof UserProfileFormData;
+      const rpcKey = `update_${typedKey}` as keyof AdminUpdateUserProfile;
+      
+      if (typedKey === 'address' || typedKey === 'preferences') {
+        if(data[typedKey]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (updateParams as any)[rpcKey] = data[typedKey];
+        }
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (updateParams as any)[rpcKey] = data[typedKey];
+      }
+    }
 
     try {
-      await updateProfile.mutateAsync(updateParams);
+      await updateProfile.mutateAsync(updateParams as AdminUpdateUserProfile);
       onSave?.();
+      onClose();
     } catch (error) {
       console.error('Update failed:', error);
     }
-    onClose();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="full" visible={false} className="h-screen w-screen transparent bg-gray-700 rounded-2xl">
-      <FormCard onSubmit={handleSubmit(onValidSubmit)} isLoading={isSubmitting} title="Edit User Profile" onCancel={onClose}>
+      <FormCard onSubmit={handleSubmit(onValidSubmit)} isLoading={isSubmitting} title="Edit User Profile" onCancel={onClose} submitText="Update" disableSubmit={!isDirty}>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-4">
             <Image src={avatarUrl || '/default-avatar.png'} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover bg-gray-200" />
