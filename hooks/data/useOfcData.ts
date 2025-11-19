@@ -56,9 +56,10 @@ export const useOfcData = (
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
     let filtered = allCables;
-    // Client-side filtering for offline mode or when all data is local
+    
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
+      // THE FIX: This client-side filter now mirrors the server-side search logic.
       filtered = filtered.filter(
         (cable) =>
           cable.route_name?.toLowerCase().includes(lowerQuery) ||

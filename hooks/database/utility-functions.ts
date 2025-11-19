@@ -16,8 +16,9 @@ export function buildRpcFilters(filters: Filters): Json {
 
   for (const key in filters) {
     // --- THIS IS THE FIX ---
-    // Pass the 'or' object through directly without converting it to a string.
-    if (key === 'or' && typeof filters.or === 'object' && filters.or !== null) {
+    // Pass the 'or' string value directly through to the RPC parameters.
+    // The previous implementation was only looking for an object, which was incorrect for the data hooks.
+    if (key === 'or' && typeof filters.or === 'string' && filters.or.trim() !== '') {
       rpcFilters.or = filters.or;
       continue; // Continue to the next key
     }
@@ -76,7 +77,7 @@ export function applyFilters(query: any, filters: Filters): any {
     if (value === undefined || value === null) return;
 
     if (key === 'or') {
-      // THE FIX: Handle both string and object formats for the 'or' filter.
+      // THE FIX: Handle both string and object formats for the 'or' filter for consistency.
       if (typeof value === 'string' && value.trim() !== '') {
         // Handles strings like `(column1.ilike.%value%,column2.ilike.%value%)`
         const orConditions = value.replace(/[()]/g, ''); // Remove parentheses
