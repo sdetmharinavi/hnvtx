@@ -8,6 +8,8 @@ import { useKmlManager, BlobFile } from '@/hooks/useKmlManager';
 import dynamic from 'next/dynamic';
 import { PageSpinner, ConfirmModal } from '@/components/common/ui';
 import { formatFileSize, formatDate } from '@/utils/formatters';
+import { useUser } from '@/providers/UserProvider'; // Import User Provider
+import { UserRole } from '@/types/user-roles';
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const KmlMap = dynamic(() => import('@/components/kml/KmlMap'), {
@@ -24,17 +26,27 @@ export default function KmlManagerPage() {
   const [selectedKml, setSelectedKml] = useState<BlobFile | null>(null);
   const [fileToDelete, setFileToDelete] = useState<BlobFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get User Permissions
+  const { isSuperAdmin, role } = useUser();
+
+  console.log("isSuperAdmin", isSuperAdmin, "role", role);
+  
+  
+  // Permission Logic
+  const canDelete = isSuperAdmin; // Strict Super Admin only
+  const canUpload = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN; // Admins can upload
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.name.toLowerCase().endsWith('.kml')) {
-        alert("Please upload a valid .kml file");
+      const name = file.name.toLowerCase();
+      if (!name.endsWith('.kml') && !name.endsWith('.kmz')) {
+        alert("Please upload a valid .kml or .kmz file");
         return;
       }
       uploadKml(file);
     }
-    // Reset input so the same file can be selected again if needed
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -61,13 +73,14 @@ export default function KmlManagerPage() {
              leftIcon: <FiRefreshCw />,
              disabled: isLoading
           },
-          {
+          // Conditionally render Upload button
+          ...(canUpload ? [{
             label: isUploading ? "Uploading..." : "Upload KML",
             leftIcon: <FiUpload />,
             onClick: () => fileInputRef.current?.click(),
-            variant: 'primary',
+            variant: 'primary' as const,
             disabled: isUploading
-          }
+          }] : [])
         ]}
       />
 
@@ -76,7 +89,7 @@ export default function KmlManagerPage() {
         type="file" 
         ref={fileInputRef} 
         className="hidden" 
-        accept=".kml" 
+        accept=".kml,.kmz" 
         onChange={handleFileChange} 
       />
 
@@ -100,7 +113,7 @@ export default function KmlManagerPage() {
                     <FiFileText className="text-gray-400" size={24} />
                  </div>
                  <p className="text-gray-500 dark:text-gray-400 text-sm">No KML files found.</p>
-                 <p className="text-xs text-gray-400 mt-1">Upload a file to get started.</p>
+                 {canUpload && <p className="text-xs text-gray-400 mt-1">Upload a file to get started.</p>}
               </div>
             ) : (
               kmlFiles.map((file) => {
@@ -134,7 +147,7 @@ export default function KmlManagerPage() {
                       </div>
                     </div>
 
-                    {/* Action Buttons (Visible on Hover or Selection) */}
+                    {/* Action Buttons */}
                     <div className={`
                         absolute right-2 top-2 flex gap-1 bg-white/90 dark:bg-gray-800/90 p-1 rounded-md shadow-sm backdrop-blur-sm border border-gray-100 dark:border-gray-700 transition-opacity duration-200
                         ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 lg:opacity-0'}
@@ -149,16 +162,20 @@ export default function KmlManagerPage() {
                         >
                             <FiDownload size={14} />
                         </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setFileToDelete(file);
-                            }}
-                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                            title="Delete"
-                        >
-                            <FiTrash2 size={14} />
-                        </button>
+                        
+                        {/* Conditionally render Delete button based on permissions */}
+                        {canDelete && (
+                          <button
+                              onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFileToDelete(file);
+                              }}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                              title="Delete (Super Admin)"
+                          >
+                              <FiTrash2 size={14} />
+                          </button>
+                        )}
                     </div>
                   </div>
                 );

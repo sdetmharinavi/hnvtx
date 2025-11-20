@@ -5,17 +5,27 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
+import JSZip from 'jszip';
 import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
 import { Maximize, Minimize } from 'lucide-react';
+import useIsMobile from '@/hooks/useIsMobile';
 
-// Fix for default marker icons in Next.js
+// Fix for default marker icons - HALVED SIZE
 const iconDefault = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+  // Original: [25, 41] -> New: [12, 20]
+  iconSize: [12, 20],
+  // Original: [12, 41] -> New: [6, 20] (Bottom center-ish of the new size)
+  iconAnchor: [6, 20],
+  // Original: [1, -34] -> New: [0, -20] (Above the icon)
+  popupAnchor: [0, -20],
+  // Shadow needs to scale too, or it looks weird. 
+  // Original shadow: [41, 41]. New: [20, 20]
+  shadowSize: [20, 20],
+  shadowAnchor: [6, 20] 
 });
 
 L.Marker.prototype.options.icon = iconDefault;
@@ -24,17 +34,56 @@ interface KmlMapProps {
   kmlUrl: string | null;
 }
 
-// Helper to generate random bright colors
-const getRandomColor = () => {
-  const letters = '0123456789ABCDEF';
-  let color = '#';
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
+// Helper to extract KML Styles
+const extractKmlStyles = (doc: Document): Record<string, string> => {
+  const styleMap: Record<string, string> = {};
+  
+  const styles = doc.getElementsByTagName('Style');
+  for (let i = 0; i < styles.length; i++) {
+    const style = styles[i];
+    const id = style.getAttribute('id');
+    const icon = style.getElementsByTagName('Icon')[0];
+    if (id && icon) {
+      let href = icon.getElementsByTagName('href')[0]?.textContent?.trim();
+      if (href) {
+        href = href.replace(/^http:\/\//i, 'https://');
+        styleMap[`#${id}`] = href;
+      }
+    }
   }
-  return color;
+
+  const styleMaps = doc.getElementsByTagName('StyleMap');
+  for (let i = 0; i < styleMaps.length; i++) {
+    const sm = styleMaps[i];
+    const id = sm.getAttribute('id');
+    const pairs = sm.getElementsByTagName('Pair');
+    let normalStyleUrl = '';
+
+    for (let j = 0; j < pairs.length; j++) {
+      const key = pairs[j].getElementsByTagName('key')[0]?.textContent;
+      if (key === 'normal') {
+        normalStyleUrl = pairs[j].getElementsByTagName('styleUrl')[0]?.textContent?.trim() || '';
+        break;
+      }
+    }
+
+    if (id && normalStyleUrl && styleMap[normalStyleUrl]) {
+      styleMap[`#${id}`] = styleMap[normalStyleUrl];
+    }
+  }
+  
+  return styleMap;
 };
 
-// Component to auto-zoom to the KML bounds and handle resize
+// const getRandomColor = () => {
+//   const letters = '0123456789ABCDEF';
+//   let color = '#';
+//   for (let i = 0; i < 6; i++) {
+//     color += letters[Math.floor(Math.random() * 16)];
+//   }
+//   return color;
+// };
+
 const MapController = ({ 
   data, 
   isFullScreen 
@@ -44,7 +93,6 @@ const MapController = ({
 }) => {
   const map = useMap();
   
-  // Handle Auto-zoom when data loads
   useEffect(() => {
     if (data && map) {
       try {
@@ -59,11 +107,10 @@ const MapController = ({
     }
   }, [data, map]);
 
-  // Handle Map Resize when toggling fullscreen
   useEffect(() => {
     const timer = setTimeout(() => {
       map.invalidateSize();
-    }, 300); // Delay to match CSS transition
+    }, 300);
     return () => clearTimeout(timer);
   }, [isFullScreen, map]);
 
@@ -72,22 +119,21 @@ const MapController = ({
 
 export default function KmlMap({ kmlUrl }: KmlMapProps) {
   const [geoJsonData, setGeoJsonData] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [kmlStyles, setKmlStyles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
-  // Handle body scroll lock when in full screen
   useEffect(() => {
     if (isFullScreen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, [isFullScreen]);
 
-  // Listen for ESC key to exit full screen
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsFullScreen(false);
@@ -99,51 +145,109 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   useEffect(() => {
     if (!kmlUrl) {
       setGeoJsonData(null);
+      setKmlStyles({});
+      setErrorMsg(null);
       return;
     }
 
-    const fetchAndParseKml = async () => {
+    const fetchAndParseData = async () => {
       setLoading(true);
+      setErrorMsg(null);
+      setGeoJsonData(null);
+      setKmlStyles({});
+
       try {
-        // Fetch the raw KML content
         const response = await fetch(kmlUrl);
-        const text = await response.text();
+        if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`);
+
+        const arrayBuffer = await response.arrayBuffer();
+        let kmlText = "";
+
+        try {
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          const kmlFileName = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+          
+          if (kmlFileName) {
+            kmlText = await zip.file(kmlFileName)!.async("string");
+          } else {
+            throw new Error("No KML in zip"); 
+          }
+        } catch (e) {
+          void e;
+          const decoder = new TextDecoder("utf-8");
+          kmlText = decoder.decode(arrayBuffer);
+        }
         
-        // Parse XML string to DOM
+        const cleanText = kmlText.trim();
+        if (!cleanText.startsWith('<')) {
+             throw new Error("File content is not valid XML/KML.");
+        }
+
         const parser = new DOMParser();
-        const kmlDom = parser.parseFromString(text, 'text/xml');
+        const kmlDom = parser.parseFromString(cleanText, 'text/xml');
+
+        if (kmlDom.querySelector("parsererror")) {
+            throw new Error("XML Parsing Error: Invalid syntax.");
+        }
         
-        // Convert DOM to GeoJSON using mapbox/togeojson
+        const styles = extractKmlStyles(kmlDom);
+        setKmlStyles(styles);
+
         const converted = toGeoJSON.kml(kmlDom);
         
-        // Basic validation to ensure we have features
         if (converted && converted.features && converted.features.length > 0) {
             setGeoJsonData(converted);
         } else {
-            console.warn("Parsed KML has no features");
-            setGeoJsonData(null);
+            setErrorMsg("File contains no valid geographical data.");
         }
 
       } catch (error) {
-        console.error("Error parsing KML:", error);
+        console.error("Error parsing file:", error);
+        setErrorMsg(error instanceof Error ? error.message : "Failed to parse file");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAndParseKml();
+    fetchAndParseData();
   }, [kmlUrl]);
 
-  // Style for GeoJSON features & Event Handling
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pointToLayer = (feature: any, latlng: L.LatLng) => {
+    const styleUrl = feature.properties?.styleUrl;
+    const iconUrl = styleUrl ? kmlStyles[styleUrl] : null;
+
+    if (iconUrl) {
+      const customIcon = L.icon({
+        iconUrl: iconUrl,
+        // Original: [32, 32] -> New: [16, 16] (Halved)
+        iconSize: [16, 16],
+        // Original: [16, 32] -> New: [8, 16] (Bottom center of new size)
+        iconAnchor: [8, 16],
+        // Original: [0, -32] -> New: [0, -16] (Top of icon)
+        popupAnchor: [0, -16],
+      });
+      return L.marker(latlng, { icon: customIcon });
+    }
+    return L.marker(latlng, { icon: iconDefault });
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onEachFeature = (feature: any, layer: L.Layer) => {
     if (feature.properties) {
       const { name, description } = feature.properties;
       
-      if (name || description) {
-        let popupContent = `<div class="font-sans p-1">`;
+      let coordsHtml = "";
+      if (feature.geometry.type === "Point") {
+        const [lng, lat] = feature.geometry.coordinates;
+        coordsHtml = `<div class="text-xs text-gray-500 mt-1">Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}</div>`;
+      }
+
+      if (name || description || coordsHtml) {
+        let popupContent = `<div class="font-sans p-1 min-w-[200px]">`;
         if (name) popupContent += `<h3 class="font-bold text-sm mb-1">${name}</h3>`;
-        if (description) popupContent += `<div class="text-xs text-gray-600 max-h-32 overflow-y-auto">${description}</div>`;
+        if (description) popupContent += `<div class="text-xs text-gray-600 max-h-32 overflow-y-auto mb-1">${description}</div>`;
+        popupContent += coordsHtml;
         popupContent += `</div>`;
         
         layer.bindPopup(popupContent, {
@@ -152,30 +256,21 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
           closeButton: true    
         });
 
-        // Event Listeners for Highlighting
         layer.on({
-          // When popup opens (user clicked the line)
           popupopen: (e) => {
              const l = e.target;
-             // Check if it's a polyline/polygon (has setStyle method)
-             if (l.setStyle) {
-               const randomColor = getRandomColor();
-               l.setStyle({
-                 color: randomColor,
-                 weight: 7, // Make it thicker
-                 opacity: 1
-               });
+             if (l.setStyle && feature.geometry.type !== 'Point') {
+               const letters = '0123456789ABCDEF';
+               let color = '#';
+               for (let i = 0; i < 6; i++) { color += letters[Math.floor(Math.random() * 16)]; }
+               
+               l.setStyle({ color: color, weight: isMobile ? 10 : 7, opacity: 1 });
              }
           },
-          // When popup closes (user clicked X)
           popupclose: (e) => {
             const l = e.target;
-            if (l.setStyle) {
-              l.setStyle({
-                color: "#3b82f6", // Revert to default blue
-                weight: 4, // Revert to default thickness
-                opacity: 0.8
-              });
+            if (l.setStyle && feature.geometry.type !== 'Point') {
+              l.setStyle({ color: "#3b82f6", weight: isMobile ? 8 : 4, opacity: 0.8 });
             }
           }
         });
@@ -189,14 +284,19 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
 
   return (
     <div className={containerClass}>
-      {/* Loading Overlay */}
       {loading && (
         <div className="absolute inset-0 z-[1000] bg-white/80 dark:bg-gray-900/80 flex items-center justify-center backdrop-blur-sm">
-           <PageSpinner text="Parsing KML Data..." />
+           <PageSpinner text="Processing File..." />
         </div>
       )}
 
-      {/* Fullscreen Toggle Button */}
+      {errorMsg && !loading && (
+        <div className="absolute inset-0 z-[999] bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center text-red-500 p-4 text-center">
+           <p className="font-semibold mb-2">Error Loading Preview</p>
+           <p className="text-sm text-gray-500 dark:text-gray-400">{errorMsg}</p>
+        </div>
+      )}
+
       <button
         onClick={() => setIsFullScreen(!isFullScreen)}
         className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -206,11 +306,11 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
       </button>
       
       <MapContainer
-        center={[22.57, 88.36]} // Default to Kolkata
+        center={[22.57, 88.36]} 
         zoom={10}
         style={{ height: '100%', width: '100%' }}
         className="z-0 bg-gray-100 dark:bg-gray-800"
-        closePopupOnClick={false} // Disable map click closing popups
+        closePopupOnClick={false}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -220,13 +320,14 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         {geoJsonData && (
           <>
             <GeoJSON 
-              key={kmlUrl} // Force re-render when URL changes
+              key={kmlUrl} 
               data={geoJsonData} 
               onEachFeature={onEachFeature}
-              style={() => ({
-                color: "#3b82f6", // Default Blue color
-                weight: 4,
-                opacity: 0.8
+              pointToLayer={pointToLayer}
+              style={() => ({ 
+                  color: "#3b82f6", 
+                  weight: isMobile ? 8 : 4,
+                  opacity: 0.8 
               })}
             />
             <MapController data={geoJsonData} isFullScreen={isFullScreen} />
