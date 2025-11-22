@@ -74,6 +74,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} ${fontHeading.variable} antialiased`}>
+        {/* 1. LOAD POLYFILLS FIRST */}
+        <PolyfillLoader />
+        {/* 2. Theme Script */}
         {/* ** Inline script to prevent theme flashing** */}
         <script
           dangerouslySetInnerHTML={{
@@ -109,6 +112,7 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* 3. Providers & App */}
         <ThemeProvider>
           <QueryProvider>
             <LocalDbProvider>
@@ -119,7 +123,6 @@ export default function RootLayout({
             </LocalDbProvider>
           </QueryProvider>
         </ThemeProvider>
-        <PolyfillLoader />
       </body>
     </html>
   );

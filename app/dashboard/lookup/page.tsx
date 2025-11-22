@@ -15,7 +15,7 @@ import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useSorting } from '@/hooks/useSorting';
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useEffect } from 'react'; // Changed useState to useEffect
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -40,7 +40,6 @@ export default function LookupTypesPage() {
     displayNameField: 'name',
   });
   
-  // THE FIX: The online query now selects '*' to match the expected return type.
   const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useOfflineQuery<Lookup_typesRowSchema[]>(
       ['unique-categories'],
       async () => {
@@ -57,9 +56,12 @@ export default function LookupTypesPage() {
   );
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
-  useState(() => {
+  // THE FIX: Use useEffect to sync the selectedCategory from the URL to the filters state.
+  // This ensures that when the URL changes (via dropdown navigation), the filters update and the table re-renders.
+  useEffect(() => {
     filters.setFilters({ category: selectedCategory });
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, filters.setFilters]);
 
   const deleteManager = useDeleteManager({
     tableName: 'lookup_types',
@@ -94,7 +96,6 @@ export default function LookupTypesPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // THE FIX: Create an adapter function for the onToggleStatus prop.
   const handleToggleStatusAdapter = (id: string, currentStatus: boolean) => {
     const record = lookupTypes.find(lt => lt.id === id);
     if (record) {
@@ -133,7 +134,6 @@ export default function LookupTypesPage() {
         />
       )}
       
-      {/* THE FIX: Pass `error.message` to the ErrorState component. */}
       {error && hasSelectedCategory && <ErrorState error={error} onRetry={handleRefresh} />}
       {isLoading && hasSelectedCategory && <LoadingState selectedCategory={selectedCategory} />}
 
@@ -149,7 +149,6 @@ export default function LookupTypesPage() {
             lookups={sortedLookupTypes}
             onEdit={editModal.openEdit}
             onDelete={crudActions.handleDelete}
-            // THE FIX: Pass the new adapter function to the table.
             onToggleStatus={handleToggleStatusAdapter}
             selectedCategory={selectedCategory}
             searchTerm={search.searchQuery}

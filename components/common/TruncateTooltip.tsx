@@ -1,5 +1,5 @@
 // @/components/common/TruncateTooltip.tsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface TruncateTooltipProps {
   /**
@@ -51,13 +51,18 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     const el = textRef.current;
     if (!el) return;
     checkOverflow();
-    const ro = new ResizeObserver(() => checkOverflow());
-    ro.observe(el);
+    // FIX: Check if ResizeObserver exists before using it
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => checkOverflow());
+      ro.observe(el);
+    }
     const onWin = () => checkOverflow();
-    window.addEventListener("resize", onWin);
+    window.addEventListener('resize', onWin);
+
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", onWin);
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', onWin);
     };
   }, []);
 
@@ -76,7 +81,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     <>
       <span
         ref={textRef}
-        className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 ${className ?? ""}`}
+        className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 ${className ?? ''}`}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
@@ -104,4 +109,3 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 };
 
 export default TruncateTooltip;
-
