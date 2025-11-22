@@ -4096,6 +4096,7 @@ export type Database = {
           en_name: string | null
           en_node_id: string | null
           en_node_name: string | null
+          en_system_type_name: string | null
           id: string | null
           media_type_id: string | null
           media_type_name: string | null
@@ -4114,6 +4115,7 @@ export type Database = {
           sn_name: string | null
           sn_node_id: string | null
           sn_node_name: string | null
+          sn_system_type_name: string | null
           status: boolean | null
           system_id: string | null
           system_name: string | null

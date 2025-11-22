@@ -70,7 +70,11 @@ SELECT
   s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
   s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
   lt_media.name AS media_type_name, sc.bandwidth, COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
-  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, sc.vlan, sc.commissioned_on,
+  -- Added individual system type names here:
+  lt_sn_type.name AS sn_system_type_name,
+  lt_en_type.name AS en_system_type_name,
+  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, 
+  sc.vlan, sc.commissioned_on,
   sc.remark, sc.status, sc.created_at, sc.updated_at,
   sc.customer_name,
   sc.bandwidth_allocated,

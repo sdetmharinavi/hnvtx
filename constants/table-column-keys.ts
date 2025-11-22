@@ -635,6 +635,8 @@ const TABLE_COLUMN_OBJECTS = {
     en_interface: "en_interface",
     connected_system_name: "connected_system_name",
     connected_system_type_name: "connected_system_type_name",
+    sn_system_type_name: "sn_system_type_name",
+    en_system_type_name: "en_system_type_name",
     sn_node_name: "sn_node_name",
     en_node_name: "en_node_name",
     sn_node_id: "sn_node_id",
