@@ -77,7 +77,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         width: 180,
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
-            {(value as string) || 'N/A'}
+            {(value as string)?.split("/")[0]|| 'N/A'}
           </code>
         ),
       },

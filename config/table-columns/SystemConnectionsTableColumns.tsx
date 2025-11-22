@@ -90,7 +90,7 @@ export const SystemConnectionsTableColumns = (
               {(value as string) || record.connected_system_name}
             </span>
             <span className='text-xs text-gray-500 dark:text-gray-400'>
-              {record.connected_system_type_name}
+              {record.en_system_type_name}
             </span>
           </div>
         ),
