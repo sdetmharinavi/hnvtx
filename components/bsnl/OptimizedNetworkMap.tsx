@@ -8,8 +8,8 @@ import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
-// THE FIX: Import the helper
 import { getNodeIcon } from '@/utils/getNodeIcons';
+import { MapLegend } from '@/components/map/MapLegend'; // THE FIX: Import Legend
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -48,7 +48,6 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
   return null;
 }
 
-// THE FIX: Update props to accept nodeSystemMap
 const MapContent = ({
   cables,
   visibleLayers,
@@ -100,7 +99,6 @@ const MapContent = ({
     })}
 
     {visibleNodes.map((node: BsnlNode) => {
-        // THE FIX: Determine icon using both System Types present and the Node Type
         const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
         const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
         
@@ -126,7 +124,6 @@ MapContent.displayName = 'MapContent';
 interface OptimizedNetworkMapProps {
   nodes: BsnlNode[];
   cables: BsnlCable[];
-  // THE FIX: Add systems prop
   systems: BsnlSystem[];
   selectedSystem: BsnlSystem | null;
   visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean };
@@ -174,15 +171,11 @@ export function OptimizedNetworkMap({
 
   const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
-  // THE FIX: Pre-calculate a map of Node ID -> Comma-separated System Types
-  // This allows us to know if a node contains specific equipment (like MAAN or CPAN)
-  // even if the node type itself is generic.
   const nodeSystemMap = useMemo(() => {
     const map = new Map<string, string>();
     systems.forEach(sys => {
         if (sys.node_id && sys.system_type_name) {
             const current = map.get(sys.node_id) || '';
-            // Avoid duplicates in the string
             if (!current.includes(sys.system_type_name)) {
                 map.set(sys.node_id, current ? `${current}, ${sys.system_type_name}` : sys.system_type_name);
             }
@@ -210,19 +203,16 @@ export function OptimizedNetworkMap({
     return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
   }
 
-   // const mapUrl = theme === 'dark'
-  //   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-  //   : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  
-  // const mapAttribution = theme === 'dark'
-  //   ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  //   : '&copy; OpenStreetMap contributors';
   const mapAttribution = '&copy; OpenStreetMap contributors';
- 
+
   return (
     <>
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
+        
+        {/* THE FIX: Add Legend */}
+        <MapLegend />
+
         <MapContainer key="normal" bounds={initialBounds!} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
           <MapContent
             cables={cables}
@@ -246,6 +236,7 @@ export function OptimizedNetworkMap({
       </div>
       {isFullScreen && (
         <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
+          <MapLegend /> {/* Legend for fullscreen too */}
           <MapContainer key="fullscreen" bounds={initialBounds!} className="h-full w-full bg-gray-200 dark:bg-gray-800">
             <MapContent
               cables={cables}
