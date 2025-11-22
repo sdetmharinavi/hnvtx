@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapNode, RingMapNode } from './types/node';
+import { MapLegend } from './MapLegend'; // THE FIX: Import Legend
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -108,13 +109,11 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
 
-  // console.log(nodes);
-
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
-  // Re-implemented the popup offset logic from the old component.
+  // ... (popupOffsets and nodeLabelDirections useMemos remain unchanged) ...
   const popupOffsets = useMemo(() => {
     const groups: Record<string, string[]> = {};
     nodes.forEach((node) => {
@@ -139,7 +138,6 @@ export default function ClientRingMap({
     return offsets;
   }, [nodes]);
 
-   // THE FIX: Calculate the optimal direction for each node's label.
   const nodeLabelDirections = useMemo(() => {
     const directions = new Map<string, 'left' | 'right'>();
     if (nodes.length < 2) return directions;
@@ -160,9 +158,7 @@ export default function ClientRingMap({
     return directions;
   }, [nodes]);
 
-  console.log(nodes);
-  
-
+  // ... (useEffect for icons and popups remain unchanged) ...
   useEffect(() => {
     const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
       _getIconUrl?: () => string;
@@ -213,6 +209,10 @@ export default function ClientRingMap({
 
   return (
     <div className={mapContainerClass}>
+      
+      {/* THE FIX: Add Legend */}
+      <MapLegend />
+
       {showControls && (
         <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
           {onBack && (
@@ -253,6 +253,7 @@ export default function ClientRingMap({
         <MapFlyToController coords={flyToCoordinates} />
         <TileLayer url={mapUrl} attribution={mapAttribution} />
 
+        {/* Lines rendering logic remains the same... */}
         {solidLines
           .filter(
             ([start, end]) =>
@@ -333,7 +334,6 @@ export default function ClientRingMap({
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
             const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
             
-            // THE FIX: Pass both system_type and type (node type) to getNodeIcon
             return (
               <Marker
                 key={node.id! + i}

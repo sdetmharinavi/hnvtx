@@ -18,9 +18,9 @@ const createSvgDivIcon = (
     `,
   });
 
-// Blue teardrop markers with dark icon symbols inside - viewBox 0 0 36 36 for correct size
-// Blue teardrop markers with dark icon symbols inside - viewBox 0 0 36 36, 1.4x height, smooth gradients
-const SVG_CELL_TOWER = `
+// --- EXPORTED SVGs (For MapLegend) ---
+
+export const SVG_CELL_TOWER = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -36,7 +36,7 @@ const SVG_CELL_TOWER = `
   <circle cx="18" cy="4.5" r="1" fill="#263238" />
 </svg>`;
 
-const SVG_RADIO_ANTENNA = `
+export const SVG_RADIO_ANTENNA = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -53,7 +53,7 @@ const SVG_RADIO_ANTENNA = `
   <path d="M21 6.8 Q22 8 22 10" fill="none" stroke="#263238" stroke-width="1" stroke-linecap="round"/>
 </svg>`;
 
-const SVG_NETWORK_SWITCH = `
+export const SVG_NETWORK_SWITCH = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="grayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -71,7 +71,7 @@ const SVG_NETWORK_SWITCH = `
   <circle cx="23.2" cy="12.25" r="0.7" fill="#52BE80" />
 </svg>`;
 
-const SVG_COMPASS = `
+export const SVG_COMPASS = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -86,12 +86,12 @@ const SVG_COMPASS = `
   <polygon points="21.8,8.8 24.2,11.2 19.4,11.2" fill="#ECF0F1" />
 </svg>`;
 
-const SVG_NETWORK_NODE = `
+export const SVG_NETWORK_NODE = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#7DCEA0;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#27AE60;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#797D7F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#424949;stop-opacity:1" />
     </linearGradient>
   </defs>
   <path d="M18 0 C11.1 0 5.5 5.6 5.5 12.5 C5.5 15.6 6.5 18.4 8.3 20.6 L18 45 L27.7 20.6 C29.5 18.4 30.5 15.6 30.5 12.5 C30.5 5.6 24.9 0 18 0 Z" fill="url(#greenGrad)" stroke="#27AE60" stroke-width="1" opacity="0.95"/>
@@ -104,7 +104,20 @@ const SVG_NETWORK_NODE = `
   <line x1="19.8" y1="14.3" x2="20.7" y2="16.2" stroke="#263238" stroke-width="1.3" stroke-linecap="round" />
 </svg>`;
 
-// --- PNG ICONS (unchanged) ---
+export const SVG_CALCULATOR = `
+<svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <path d="M18 0 C11.1 0 5.5 5.6 5.5 12.5 C5.5 15.6 6.5 18.4 8.3 20.6 L18 45 L27.7 20.6 C29.5 18.4 30.5 15.6 30.5 12.5 C30.5 5.6 24.9 0 18 0 Z" fill="#20B2AA" stroke="#178F88" stroke-width="1" opacity="0.95"/>
+  <rect x="11" y="11" width="14" height="14" rx="2" fill="white" />
+  <rect x="13" y="13" width="10" height="4" rx="1" fill="#20B2AA" />
+  <rect x="13" y="19" width="2" height="2" rx="0.5" fill="#20B2AA" />
+  <rect x="17" y="19" width="2" height="2" rx="0.5" fill="#20B2AA" />
+  <rect x="21" y="19" width="2" height="2" rx="0.5" fill="#20B2AA" />
+  <rect x="13" y="22" width="2" height="2" rx="0.5" fill="#20B2AA" />
+  <rect x="17" y="22" width="2" height="2" rx="0.5" fill="#20B2AA" />
+  <rect x="21" y="22" width="2" height="2" rx="0.5" fill="#20B2AA" />
+</svg>`;
+
+// --- ICONS (PNG Fallbacks) ---
 export const MaanIcon = L.icon({
   iconUrl: '/images/switch_image.png',
   iconSize: [40, 40],
@@ -126,23 +139,23 @@ export const BTSRLIcon = L.icon({
 export const DefaultIcon = L.icon({
   iconUrl: '/images/marker-icon.png',
   shadowUrl: '/images/marker-shadow.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [36, 41],
+  iconAnchor: [18, 38],
 });
 
 export const HighlightedIcon = L.icon({
   iconUrl: '/images/marker-icon-highlight.png',
   shadowUrl: '/images/marker-shadow.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [28, 46],
+  iconAnchor: [14, 46],
 });
 
-// --- SVG DIVICONS (matching PNG size: 25x41) ---
-const IconMAAN = createSvgDivIcon(SVG_NETWORK_SWITCH, [25, 41], [12, 41]);
-const IconNetwork = createSvgDivIcon(SVG_NETWORK_NODE, [25, 41], [12, 41]);
-const IconDefault = createSvgDivIcon(SVG_COMPASS, [25, 41], [12, 41]);
+// --- SVG DIVICONS (Using consistent size from your specific design) ---
+const IconMAAN = createSvgDivIcon(SVG_NETWORK_SWITCH);
+const IconNetwork = createSvgDivIcon(SVG_NETWORK_NODE);
+const IconDefault = createSvgDivIcon(SVG_COMPASS);
 
-// Icon selection logic
+// Updated logic to check both System Type and Node Type
 export const getNodeIcon = (
   systemType: string | null | undefined,
   nodeType: string | null | undefined,
@@ -159,7 +172,7 @@ export const getNodeIcon = (
     sType.includes('metro access') || 
     sType.includes('multi-access')
   ) {
-    return MaanIcon;
+    return MaanIcon; // Using PNG for MAAN as per previous preference, or swich to IconMAAN
   }
 
   if (
@@ -167,7 +180,7 @@ export const getNodeIcon = (
     sType.includes('compact passive') || 
     sType.includes('converged packet')
   ) {
-    return IconMAAN;
+    return IconMAAN; // Using the Gray/Green SVG
   }
 
   // 2. Priority: Radio/Microwave (checked in both system and node types)
@@ -201,12 +214,12 @@ export const getNodeIcon = (
     nType.includes('core') ||
     nType.includes('office')
   ) {
-    return IconDefault;
+    return IconDefault; // Using the Purple Compass SVG
   }
   
   // 5. Priority: OLTs
   if (sType.includes('olt') || nType.includes('olt')) {
-    return IconNetwork;
+      return IconNetwork; // Using the Green Network Node SVG
   }
 
   // Fallback
