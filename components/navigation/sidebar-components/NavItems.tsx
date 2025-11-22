@@ -9,7 +9,6 @@ import {
   FiCpu,
   FiMapPin,
   FiList,
-  FiGitBranch,
   FiHelpCircle,
   FiCalendar,
   FiArchive,
@@ -164,13 +163,6 @@ function NavItems() {
             icon: <FaRoute className="h-5 w-5" />,
             href: '/dashboard/route-manager',
             roles: [UserRole.ADMIN],
-          },
-          {
-            id: 'logical-paths',
-            label: 'Logical Paths',
-            icon: <FiGitBranch className="h-5 w-5" />,
-            href: '/dashboard/logical-paths',
-            roles: [UserRole.ADMIN, UserRole.VIEWER], // Accessible to admins and viewers
           },
         ],
       },
