@@ -1,5 +1,6 @@
 // path: components/map/MapLegend.tsx
 import { useState } from "react";
+import Image from "next/image";
 import { FiChevronDown, FiChevronUp, FiMap } from "react-icons/fi";
 import { 
   SVG_NETWORK_SWITCH, 
@@ -29,11 +30,15 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
 
       {/* 2. Render PNG Image */}
       {type === 'icon' && imgSrc && (
-        <img 
-          src={imgSrc} 
-          alt={label} 
-          className="w-6 h-8 object-contain drop-shadow-sm" 
-        />
+        <div className="relative w-6 h-8">
+          <Image 
+            src={imgSrc} 
+            alt={label}
+            fill
+            className="object-contain drop-shadow-sm"
+            sizes="24px"
+          />
+        </div>
       )}
 
       {/* 3. Render Polyline Style */}
