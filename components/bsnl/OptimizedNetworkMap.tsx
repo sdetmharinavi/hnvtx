@@ -8,7 +8,8 @@ import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
-// import { useThemeStore } from '@/stores/themeStore';
+// THE FIX: Import the helper
+import { getNodeIcon } from '@/utils/getNodeIcons';
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -47,11 +48,13 @@ function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBou
   return null;
 }
 
+// THE FIX: Update props to accept nodeSystemMap
 const MapContent = ({
   cables,
   visibleLayers,
   visibleNodes,
   nodeMap,
+  nodeSystemMap,
   mapUrl,
   mapAttribution,
   setMapBounds,
@@ -61,6 +64,7 @@ const MapContent = ({
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
   visibleNodes: BsnlNode[];
   nodeMap: Map<string, BsnlNode>;
+  nodeSystemMap: Map<string, string>;
   mapUrl: string;
   mapAttribution: string;
   setMapBounds: (bounds: LatLngBounds | null) => void;
@@ -95,22 +99,26 @@ const MapContent = ({
         return null;
     })}
 
-    {visibleNodes.map((node: BsnlNode) => (
-      (node.latitude && node.longitude) && (
-          <Marker key={node.id} position={[node.latitude, node.longitude]}>
+    {visibleNodes.map((node: BsnlNode) => {
+        // THE FIX: Determine icon using both System Types present and the Node Type
+        const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
+        const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
+        
+        return (node.latitude && node.longitude) && (
+          <Marker key={node.id} position={[node.latitude, node.longitude]} icon={icon}>
               <Popup>
                   <div className="min-w-48 max-w-72">
                       <h3 className="font-semibold text-base">{node.name}</h3>
                       <p className="text-sm">Type: {node.node_type_code}</p>
                       <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                      {node.latitude && <p className="text-sm">Lat: {node.latitude}</p>}
-                      {node.longitude && <p className="text-sm">Long: {node.longitude}</p>}
-                      {node.remark && <p className="text-sm">Remark: {node.remark}</p>}
+                      {systemTypesAtNode && <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>}
+                      {node.latitude && <p className="text-sm mt-1 text-gray-500">{node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}</p>}
+                      {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
                   </div>
               </Popup>
           </Marker>
       )
-    ))}
+    })}
   </>
 );
 MapContent.displayName = 'MapContent';
@@ -118,6 +126,8 @@ MapContent.displayName = 'MapContent';
 interface OptimizedNetworkMapProps {
   nodes: BsnlNode[];
   cables: BsnlCable[];
+  // THE FIX: Add systems prop
+  systems: BsnlSystem[];
   selectedSystem: BsnlSystem | null;
   visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean };
   mapBounds: LatLngBounds | null;
@@ -129,6 +139,7 @@ interface OptimizedNetworkMapProps {
 export function OptimizedNetworkMap({
   nodes,
   cables,
+  systems,
   visibleLayers = { nodes: true, cables: true, systems: true },
   mapBounds,
   zoom,
@@ -136,7 +147,6 @@ export function OptimizedNetworkMap({
   onZoomChange
 }: OptimizedNetworkMapProps) {
   const [isFullScreen, setIsFullScreen] = React.useState(false);
-  // const { theme } = useThemeStore();
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -164,10 +174,25 @@ export function OptimizedNetworkMap({
 
   const nodeMap = useMemo(() => new Map<string, BsnlNode>(nodes.map(node => [node.id!, node])), [nodes]);
 
-  // THE FIX: Create a new memoized array of only the nodes that should be visible as markers.
+  // THE FIX: Pre-calculate a map of Node ID -> Comma-separated System Types
+  // This allows us to know if a node contains specific equipment (like MAAN or CPAN)
+  // even if the node type itself is generic.
+  const nodeSystemMap = useMemo(() => {
+    const map = new Map<string, string>();
+    systems.forEach(sys => {
+        if (sys.node_id && sys.system_type_name) {
+            const current = map.get(sys.node_id) || '';
+            // Avoid duplicates in the string
+            if (!current.includes(sys.system_type_name)) {
+                map.set(sys.node_id, current ? `${current}, ${sys.system_type_name}` : sys.system_type_name);
+            }
+        }
+    });
+    return map;
+  }, [systems]);
+
   const visibleNodes = useMemo(() => {
     if (!mapBounds || !visibleLayers.nodes) return [];
-    // Performance optimization: Render fewer markers when zoomed out.
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
     return nodes.slice(0, maxItems).filter(node => {
         const lat = node.latitude;
@@ -185,16 +210,16 @@ export function OptimizedNetworkMap({
     return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
   }
 
-  // const mapUrl = theme === 'dark'
+   // const mapUrl = theme === 'dark'
   //   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
   //   : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const mapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-
+  
   // const mapAttribution = theme === 'dark'
   //   ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   //   : '&copy; OpenStreetMap contributors';
-    const mapAttribution = '&copy; OpenStreetMap contributors';
-
+  const mapAttribution = '&copy; OpenStreetMap contributors';
+ 
   return (
     <>
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
@@ -204,6 +229,7 @@ export function OptimizedNetworkMap({
             visibleLayers={visibleLayers}
             visibleNodes={visibleNodes}
             nodeMap={nodeMap}
+            nodeSystemMap={nodeSystemMap}
             mapUrl={mapUrl}
             mapAttribution={mapAttribution}
             setMapBounds={onBoundsChange}
@@ -226,6 +252,7 @@ export function OptimizedNetworkMap({
               visibleLayers={visibleLayers}
               visibleNodes={visibleNodes}
               nodeMap={nodeMap}
+              nodeSystemMap={nodeSystemMap}
               mapUrl={mapUrl}
               mapAttribution={mapAttribution}
               setMapBounds={onBoundsChange}
