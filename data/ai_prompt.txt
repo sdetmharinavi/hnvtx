@@ -129,5 +129,5 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all data fetching(Read operations) should prioritize local indexDB data, it seems its still some pages implementation is pending for the same purpose. It should fetch from supabase only on refresh or sync button click or create/delete/update operations. All table datas should be available locally. Also check if any file is now obsolete and can be deleted
+Let's begin! First of all fix adding natural_sort functionality also as it is needed in config/table-columns/SystemConnectionsTableColumns.tsx. Also check if any file is now obsolete and can be deleted
 

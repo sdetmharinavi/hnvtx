@@ -23,6 +23,8 @@ import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -47,7 +49,7 @@ export default function SystemConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
 
-  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
+  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
   const parentSystem = systemData?.data?.[0];
 
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
@@ -70,6 +72,7 @@ export default function SystemConnectionsPage() {
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { onSuccess: (result) => { if (result.successCount > 0) refetch(); } });
 
   const columns = SystemConnectionsTableColumns(connections);
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
 
   const openEditModal = useCallback((record: V_system_connections_completeRowSchema) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
   const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
@@ -167,12 +170,14 @@ export default function SystemConnectionsPage() {
       ...standard,
     ];
   }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal]);
+// console.log(parentSystem);
 
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
     isLoading: isLoadingConnections,
-    exportConfig: { tableName: 'v_system_connections_complete', fileName: `${parentSystem?.system_name || 'system'}_connections`, filters: { system_id: systemId } }
+    // Export failed: Worksheet name BARUIPUR B3(CAT2) /1_connections cannot include any of the following characters: * ? : \ / [ ]
+    exportConfig: { tableName: 'v_system_connections_complete', fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`, filters: { system_id: systemId } }
   });
 
   headerActions.splice(1, 0, {
@@ -229,7 +234,7 @@ export default function SystemConnectionsPage() {
       <DataTable
         tableName="v_system_connections_complete"
         data={connections}
-        columns={columns}
+        columns={orderedColumns}
         loading={isLoadingConnections}
         isFetching={isLoadingConnections}
         actions={tableActions}

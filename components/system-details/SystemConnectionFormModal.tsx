@@ -26,12 +26,14 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 // THE FIX: The form schema now correctly omits the new array-based fiber ID columns.
-const formSchema = system_connectionsInsertSchema.omit({
+const formSchema = system_connectionsInsertSchema
+  .omit({
     working_fiber_in_ids: true,
     working_fiber_out_ids: true,
     protection_fiber_in_ids: true,
     protection_fiber_out_ids: true,
-}).extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
+  })
+  .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape);
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
@@ -52,32 +54,55 @@ type SystemWithCode = SystemsRowSchema & {
   system_type: { code: string | null } | null;
 };
 
-export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ isOpen, onClose, parentSystem, editingConnection, onSubmit, isLoading }) => {
+export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
+  isOpen,
+  onClose,
+  parentSystem,
+  editingConnection,
+  onSubmit,
+  isLoading,
+}) => {
   const supabase = createClient();
   const isEditMode = !!editingConnection;
 
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", { 
-    columns: "id, system_name, ip_address, system_type:system_type_id(code)" 
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
+    columns: "id, system_name, ip_address, system_type:system_type_id(code)",
   });
-  const systems = useMemo(() => (systemsResult.data as SystemWithCode[]) ?? [], [systemsResult.data]);
+  const systems = useMemo(
+    () => (systemsResult.data as SystemWithCode[]) ?? [],
+    [systemsResult.data]
+  );
 
-  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "MEDIA_TYPES", name: { operator: 'neq', value: 'DEFAULT' } } });
-  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "LINK_TYPES", name: { operator: 'neq', value: 'DEFAULT' } } });
+  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
+  });
+  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
+  });
 
-  const systemOptions = useMemo(() => 
-    systems.map((s) => {
-      const typeCode = s.system_type?.code;
-      const ip = s.ip_address ? `(${s.ip_address})` : '';
-      const type = typeCode ? `[${typeCode}]` : '';
-      const label = `${s.system_name || s.id} ${type} ${ip}`.trim();
-      return { value: s.id, label };
-    }), 
+  const systemOptions = useMemo(
+    () =>
+      systems.map((s) => {
+        const typeCode = s.system_type?.code;
+        const ip = s.ip_address ? `(${s.ip_address})` : "";
+        const type = typeCode ? `[${typeCode}]` : "";
+        const label = `${s.system_name || s.id} ${type} ${ip}`.trim();
+        return { value: s.id, label };
+      }),
     [systems]
   );
 
-  const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
-  const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes]);
-  
+  const mediaTypeOptions = useMemo(
+    () => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })),
+    [mediaTypes]
+  );
+  const linkTypeOptions = useMemo(
+    () => linkTypes.data.map((t) => ({ value: t.id, label: t.name })),
+    [linkTypes]
+  );
+
   const {
     control,
     handleSubmit,
@@ -130,43 +155,123 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({ 
     },
     [onSubmit]
   );
-  
+
   const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = () => {
     toast.error("Please fix the validation errors.");
   };
-  
+
   const modalTitle = isEditMode ? "Edit Connection" : "New Connection";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl" className="w-0 h-0 transparent">
-      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone widthClass="w-full" heightClass="h-full" >
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={modalTitle}
+      size='xl'
+      className='w-0 h-0 transparent'>
+      <FormCard
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        onCancel={onClose}
+        isLoading={isLoading}
+        title={modalTitle}
+        standalone
+        widthClass='w-full'
+        heightClass='h-full'>
         <div className='max-h-[70vh] overflow-y-auto p-1 pr-4 space-y-6'>
           <section>
             <h3 className='text-lg font-medium border-b pb-2 mb-4'>General</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              <FormInput name='system_working_interface' label='Working Interface' register={register} error={errors.system_working_interface} />
-              <FormInput name='system_protection_interface' label='Protection Interface' register={register} error={errors.system_protection_interface} />
-              <FormSearchableSelect name='media_type_id' label='Media Type' control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
-              <FormInput name='bandwidth' label='Bandwidth (Mbps)' register={register} type='number' error={errors.bandwidth} />
+              <FormInput
+                name='system_working_interface'
+                label='Working Interface'
+                register={register}
+                error={errors.system_working_interface}
+              />
+              <FormInput
+                name='system_protection_interface'
+                label='Protection Interface'
+                register={register}
+                error={errors.system_protection_interface}
+              />
+              <FormSearchableSelect
+                name='media_type_id'
+                label='Media Type'
+                control={control}
+                options={mediaTypeOptions}
+                error={errors.media_type_id}
+                required
+              />
+              <FormInput
+                name='bandwidth'
+                label='Bandwidth (Mbps)'
+                register={register}
+                type='number'
+                error={errors.bandwidth}
+              />
               <FormInput name='vlan' label='VLAN' register={register} error={errors.vlan} />
-              <FormDateInput name='commissioned_on' label='Commissioned On' control={control} error={errors.commissioned_on} />
-              <FormInput name='customer_name' label='Customer Name' register={register} error={errors.customer_name} />
-              <FormInput name='bandwidth_allocated' label='Allocated (Mbps)' type='number' register={register} error={errors.bandwidth_allocated} />
+              <FormDateInput
+                name='commissioned_on'
+                label='Commissioned On'
+                control={control}
+                error={errors.commissioned_on}
+              />
+              <FormInput
+                name='customer_name'
+                label='Customer Name'
+                register={register}
+                error={errors.customer_name}
+                required
+              />
+              <FormInput
+                name='bandwidth_allocated'
+                label='Allocated (Mbps)'
+                type='number'
+                register={register}
+                error={errors.bandwidth_allocated}
+              />
             </div>
           </section>
 
           <section>
             <h3 className='text-lg font-medium border-b pt-4 pb-2 mb-4'>Connectivity</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <FormSearchableSelect name='sn_id' label='Start Node System' control={control} options={systemOptions} error={errors.sn_id} />
-              <FormInput name='sn_interface' label='Start Node Interface' register={register} error={errors.sn_interface} />
-              <FormSearchableSelect name='en_id' label='End Node System' control={control} options={systemOptions} error={errors.en_id} />
-              <FormInput name='en_interface' label='End Node Interface' register={register} error={errors.en_interface} />
-              <FormSearchableSelect name='connected_link_type_id' label='Connected Link Type' control={control} options={linkTypeOptions} error={errors.connected_link_type_id} />
+              <FormSearchableSelect
+                name='sn_id'
+                label='Start Node System'
+                control={control}
+                options={systemOptions}
+                error={errors.sn_id}
+              />
+              <FormInput
+                name='sn_interface'
+                label='Start Node Interface'
+                register={register}
+                error={errors.sn_interface}
+              />
+              <FormSearchableSelect
+                name='en_id'
+                label='End Node System'
+                control={control}
+                options={systemOptions}
+                error={errors.en_id}
+              />
+              <FormInput
+                name='en_interface'
+                label='End Node Interface'
+                register={register}
+                error={errors.en_interface}
+              />
+              <FormSearchableSelect
+                name='connected_link_type_id'
+                label='Connected Link Type'
+                control={control}
+                options={linkTypeOptions}
+                error={errors.connected_link_type_id}
+              />
             </div>
           </section>
-          
-          <div className="mt-6 space-y-4 border-t pt-6 dark:border-gray-700">
+
+          <div className='mt-6 space-y-4 border-t pt-6 dark:border-gray-700'>
             <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} />
             <FormSwitch name='status' label='Status' control={control} className='my-4' />
           </div>

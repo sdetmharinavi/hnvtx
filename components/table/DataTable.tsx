@@ -1,25 +1,12 @@
 // @/components/table/DataTable.tsx
-import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import {
-  useTableExcelDownload,
-  useRPCExcelDownload,
-} from '@/hooks/database/excel-queries';
-import {
-  TableToolbar,
-  TableHeader,
-  TableBody,
-  TablePagination,
-  TableFilterPanel,
-} from './';
-import { DataTableProps, SortConfig } from '@/components/table/datatable-types';
-import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
-import {
-  Column,
-  DownloadOptions,
-  RPCConfig,
-} from '@/hooks/database/excel-queries/excel-helpers';
-import { cn } from '@/lib/utils';
+import React, { useMemo, useCallback, useEffect, useReducer } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { useTableExcelDownload, useRPCExcelDownload } from "@/hooks/database/excel-queries";
+import { TableToolbar, TableHeader, TableBody, TablePagination, TableFilterPanel } from "./";
+import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
+import { PublicTableOrViewName, Row, Filters } from "@/hooks/database";
+import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queries/excel-helpers";
+import { cn } from "@/lib/utils";
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
@@ -40,40 +27,40 @@ type TableState<T extends PublicTableOrViewName> = {
 
 // Base action type that works with any row type
 type BaseTableAction<R> =
-  | { type: 'SET_SEARCH_QUERY'; payload: string }
-  | { type: 'SET_SELECTED_ROWS'; payload: R[] }
-  | { type: 'SET_VISIBLE_COLUMNS'; payload: string[] }
+  | { type: "SET_SEARCH_QUERY"; payload: string }
+  | { type: "SET_SELECTED_ROWS"; payload: R[] }
+  | { type: "SET_VISIBLE_COLUMNS"; payload: string[] }
   | {
-      type: 'START_EDIT_CELL';
+      type: "START_EDIT_CELL";
       payload: { rowIndex: number; columnKey: string; value: string };
     }
-  | { type: 'SET_EDIT_VALUE'; payload: string }
-  | { type: 'CANCEL_EDIT' }
-  | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
-  | { type: 'TOGGLE_FILTERS'; payload?: boolean };
+  | { type: "SET_EDIT_VALUE"; payload: string }
+  | { type: "CANCEL_EDIT" }
+  | { type: "TOGGLE_COLUMN_SELECTOR"; payload?: boolean }
+  | { type: "TOGGLE_FILTERS"; payload?: boolean };
 
 // Table-specific action type that extends the base with table-aware actions
 type TableAction<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
-  | { type: 'SET_SORT_CONFIG'; payload: SortConfig<Row<T>> | null }
-  | { type: 'SET_FILTERS'; payload: Filters };
+  | { type: "SET_SORT_CONFIG"; payload: SortConfig<Row<T>> | null }
+  | { type: "SET_FILTERS"; payload: Filters };
 
 function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
   action: TableAction<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
   switch (action.type) {
-    case 'SET_SEARCH_QUERY':
+    case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
-    case 'SET_SORT_CONFIG':
+    case "SET_SORT_CONFIG":
       return { ...state, sortConfig: action.payload };
-    case 'SET_FILTERS':
+    case "SET_FILTERS":
       return { ...state, filters: action.payload };
-    case 'SET_SELECTED_ROWS':
+    case "SET_SELECTED_ROWS":
       return { ...state, selectedRows: action.payload };
-    case 'SET_VISIBLE_COLUMNS':
+    case "SET_VISIBLE_COLUMNS":
       return { ...state, visibleColumns: action.payload };
-    case 'START_EDIT_CELL':
+    case "START_EDIT_CELL":
       return {
         ...state,
         editingCell: {
@@ -82,16 +69,16 @@ function tableReducer<T extends PublicTableOrViewName>(
         },
         editValue: action.payload.value,
       };
-    case 'SET_EDIT_VALUE':
+    case "SET_EDIT_VALUE":
       return { ...state, editValue: action.payload };
-    case 'CANCEL_EDIT':
-      return { ...state, editingCell: null, editValue: '' };
-    case 'TOGGLE_COLUMN_SELECTOR':
+    case "CANCEL_EDIT":
+      return { ...state, editingCell: null, editValue: "" };
+    case "TOGGLE_COLUMN_SELECTOR":
       return {
         ...state,
         showColumnSelector: action.payload ?? !state.showColumnSelector,
       };
-    case 'TOGGLE_FILTERS':
+    case "TOGGLE_FILTERS":
       return { ...state, showFilters: action.payload ?? !state.showFilters };
     default:
       return state;
@@ -112,12 +99,12 @@ export function DataTable<T extends PublicTableOrViewName>({
   selectable = false,
   exportable = false,
   refreshable = false,
-  density = 'default',
+  density = "default",
   bordered = true,
   striped = true,
   hoverable = true,
-  className = '',
-  emptyText = 'No data available',
+  className = "",
+  emptyText = "No data available",
   title,
   onRefresh,
   onExport,
@@ -130,13 +117,13 @@ export function DataTable<T extends PublicTableOrViewName>({
   onSearchChange,
 }: DataTableProps<T>): React.ReactElement {
   const initialState: TableState<T> = {
-    searchQuery: '',
+    searchQuery: "",
     sortConfig: null,
     filters: {},
     selectedRows: [],
     visibleColumns: columns.map((col) => col.key),
     editingCell: null,
-    editValue: '',
+    editValue: "",
     showColumnSelector: !!showColumnSelectorProp,
     showFilters: false,
   };
@@ -157,9 +144,9 @@ export function DataTable<T extends PublicTableOrViewName>({
   const supabase = createClient();
 
   useEffect(() => {
-    if (typeof showColumnSelectorProp === 'boolean') {
+    if (typeof showColumnSelectorProp === "boolean") {
       dispatch({
-        type: 'TOGGLE_COLUMN_SELECTOR',
+        type: "TOGGLE_COLUMN_SELECTOR",
         payload: showColumnSelectorProp,
       });
     }
@@ -167,7 +154,7 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   useEffect(() => {
     if (!filterable) {
-      dispatch({ type: 'SET_FILTERS', payload: {} });
+      dispatch({ type: "SET_FILTERS", payload: {} });
     }
   }, [filterable]);
 
@@ -187,7 +174,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         columns.some((column) => {
           if (column.searchable === false) return false;
           const value = item[column.dataIndex as keyof typeof item];
-          return String(value ?? '')
+          return String(value ?? "")
             .toLowerCase()
             .includes(q);
         })
@@ -196,9 +183,9 @@ export function DataTable<T extends PublicTableOrViewName>({
 
     if (filterable && Object.keys(filters).length > 0) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== "") {
           filteredData = filteredData.filter((item) =>
-            String(item[key as keyof DataRow<T>] ?? '')
+            String(item[key as keyof DataRow<T>] ?? "")
               .toLowerCase()
               .includes(String(value).toLowerCase())
           );
@@ -207,17 +194,33 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
 
     if (sortConfig && sortable) {
+      // --- ADDED: Check for natural sort configuration on the column ---
+      const sortColumn = columns.find((c) => c.key === sortConfig.key);
+      const useNaturalSort = !!sortColumn?.naturalSort;
+
+      const collator = useNaturalSort
+        ? new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
+        : null;
+
       filteredData.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
+
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortConfig.direction === 'asc'
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          if (useNaturalSort && collator) {
+            const result = collator.compare(aValue, bValue);
+            return sortConfig.direction === "asc" ? result : -result;
+          }
+
+          return sortConfig.direction === "asc"
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
-        return sortConfig.direction === 'asc'
+
+        return sortConfig.direction === "asc"
           ? aValue > bValue
             ? 1
             : -1
@@ -226,7 +229,6 @@ export function DataTable<T extends PublicTableOrViewName>({
           : -1;
       });
     }
-
     return filteredData;
   }, [
     data,
@@ -244,14 +246,12 @@ export function DataTable<T extends PublicTableOrViewName>({
     (columnKey: keyof Row<T> & string) => {
       if (!sortable) return;
       const direction =
-        sortConfig?.key === columnKey && sortConfig.direction === 'asc'
-          ? 'desc'
-          : 'asc';
-      if (sortConfig?.key === columnKey && sortConfig.direction === 'desc') {
-        dispatch({ type: 'SET_SORT_CONFIG', payload: null });
+        sortConfig?.key === columnKey && sortConfig.direction === "asc" ? "desc" : "asc";
+      if (sortConfig?.key === columnKey && sortConfig.direction === "desc") {
+        dispatch({ type: "SET_SORT_CONFIG", payload: null });
       } else {
         dispatch({
-          type: 'SET_SORT_CONFIG',
+          type: "SET_SORT_CONFIG",
           payload: { key: columnKey, direction },
         });
       }
@@ -264,7 +264,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       const newSelection = selected
         ? [...selectedRows, record]
         : selectedRows.filter((row) => row.id !== record.id);
-      dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
+      dispatch({ type: "SET_SELECTED_ROWS", payload: newSelection });
       onRowSelect?.(newSelection);
     },
     [selectedRows, onRowSelect]
@@ -273,7 +273,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   const handleSelectAll = useCallback(
     (selected: boolean) => {
       const newSelection = selected ? [...processedData] : [];
-      dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
+      dispatch({ type: "SET_SELECTED_ROWS", payload: newSelection });
       onRowSelect?.(newSelection);
     },
     [processedData, onRowSelect]
@@ -283,11 +283,11 @@ export function DataTable<T extends PublicTableOrViewName>({
     (record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => {
       if (!column.editable) return;
       dispatch({
-        type: 'START_EDIT_CELL',
+        type: "START_EDIT_CELL",
         payload: {
           rowIndex,
           columnKey: column.key,
-          value: String(record[column.dataIndex as keyof DataRow<T>] ?? ''),
+          value: String(record[column.dataIndex as keyof DataRow<T>] ?? ""),
         },
       });
     },
@@ -301,40 +301,32 @@ export function DataTable<T extends PublicTableOrViewName>({
     if (column && onCellEdit) {
       onCellEdit(record, column, editValue);
     }
-    dispatch({ type: 'CANCEL_EDIT' });
+    dispatch({ type: "CANCEL_EDIT" });
   }, [editingCell, processedData, columns, onCellEdit, editValue]);
 
-  const cancelCellEdit = useCallback(
-    () => dispatch({ type: 'CANCEL_EDIT' }),
-    []
-  );
+  const cancelCellEdit = useCallback(() => dispatch({ type: "CANCEL_EDIT" }), []);
 
   const visibleColumnsData = useMemo<Column<Row<T>>[]>(
-    () =>
-      columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden),
+    () => columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden),
     [columns, visibleColumns]
   );
 
   const setSearchQueryCb = useCallback((query: string) => {
-    dispatch({ type: 'SET_SEARCH_QUERY', payload: query });
+    dispatch({ type: "SET_SEARCH_QUERY", payload: query });
   }, []);
 
   const handleExport = useCallback(async () => {
     if (onExport) {
-      await onExport(
-        processedData as Row<T>[],
-        visibleColumnsData as Column<Row<T>>[]
-      );
+      await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
       return;
     }
 
-    const columnsToExport = (exportOptions?.columns ??
-      visibleColumnsData) as Column<Row<T>>[];
+    const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
     const mergedFilters = exportOptions?.includeFilters
       ? { ...filters, ...(exportOptions?.filters ?? {}) }
       : exportOptions?.filters;
 
-    const baseOptions: Omit<DownloadOptions<T>, 'rpcConfig'> = {
+    const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
       fileName: exportOptions?.fileName,
       sheetName: exportOptions?.sheetName,
       maxRows: exportOptions?.maxRows,
@@ -356,26 +348,22 @@ export function DataTable<T extends PublicTableOrViewName>({
     } catch (err) {
       if (exportOptions?.fallbackToCsv) {
         try {
-          const headers = columnsToExport.map((c) => c.title).join(',');
-          const keys = columnsToExport.map(
-            (c) => c.dataIndex as keyof Row<T> & string
-          );
+          const headers = columnsToExport.map((c) => c.title).join(",");
+          const keys = columnsToExport.map((c) => c.dataIndex as keyof Row<T> & string);
           const rows = (processedData as Row<T>[])?.map((r) =>
             keys
               .map((k) => {
                 const v = (r as Row<T>)[k] as unknown;
-                if (v === null || v === undefined) return '';
+                if (v === null || v === undefined) return "";
                 const s = String(v).replace(/"/g, '""');
                 return `"${s}"`;
               })
-              .join(',')
+              .join(",")
           );
-          const csv = [headers, ...(rows || [])].join('\n');
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a');
-          const csvName =
-            (exportOptions?.fileName?.replace(/\.xlsx$/i, '') || 'export') +
-            '.csv';
+          const csv = [headers, ...(rows || [])].join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          const csvName = (exportOptions?.fileName?.replace(/\.xlsx$/i, "") || "export") + ".csv";
           link.href = URL.createObjectURL(blob);
           link.download = csvName;
           document.body.appendChild(link);
@@ -399,112 +387,105 @@ export function DataTable<T extends PublicTableOrViewName>({
     rpcExcelDownload,
   ]);
   const hasActions = actions.length > 0;
-  const isExporting =
-    tableExcelDownload.isPending || rpcExcelDownload.isPending;
+  const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
   return (
-    <div 
+    <div
       className={cn(
-        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-100px)] relative", 
-        bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md", 
+        "flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-100px)] relative",
+        bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md",
         className
-      )}
-    >
-      <div className="flex-shrink-0">
-      <TableToolbar
-        title={title}
-        searchable={searchable}
-        filterable={filterable}
-        exportable={exportable}
-        refreshable={refreshable}
-        customToolbar={customToolbar}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQueryCb}
-        onSearchChange={onSearchChange}
-        showFilters={showFilters}
-        setShowFilters={() => dispatch({ type: 'TOGGLE_FILTERS' })}
-        showColumnSelector={showColumnSelector}
-        setShowColumnSelector={(show) =>
-          dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: show })
-        }
-        showColumnsToggle={showColumnsToggle}
-        columns={columns}
-        visibleColumns={visibleColumns}
-        setVisibleColumns={(cols: string[]) =>
-          dispatch({ type: 'SET_VISIBLE_COLUMNS', payload: cols })
-        }
-        onRefresh={onRefresh}
-        onExport={handleExport}
-        loading={loading}
-        isExporting={isExporting}
-      />
+      )}>
+      <div className='flex-shrink-0'>
+        <TableToolbar
+          title={title}
+          searchable={searchable}
+          filterable={filterable}
+          exportable={exportable}
+          refreshable={refreshable}
+          customToolbar={customToolbar}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQueryCb}
+          onSearchChange={onSearchChange}
+          showFilters={showFilters}
+          setShowFilters={() => dispatch({ type: "TOGGLE_FILTERS" })}
+          showColumnSelector={showColumnSelector}
+          setShowColumnSelector={(show) =>
+            dispatch({ type: "TOGGLE_COLUMN_SELECTOR", payload: show })
+          }
+          showColumnsToggle={showColumnsToggle}
+          columns={columns}
+          visibleColumns={visibleColumns}
+          setVisibleColumns={(cols: string[]) =>
+            dispatch({ type: "SET_VISIBLE_COLUMNS", payload: cols })
+          }
+          onRefresh={onRefresh}
+          onExport={handleExport}
+          loading={loading}
+          isExporting={isExporting}
+        />
 
-      <TableFilterPanel
-        columns={columns}
-        filters={filters}
-        setFilters={(f) =>
-          dispatch({
-            type: 'SET_FILTERS',
-            payload:
-              typeof f === 'function'
-                ? (f as (prev: Filters) => Filters)(filters)
-                : f,
-          })
-        }
-        showFilters={showFilters}
-        filterable={filterable}
-      />
+        <TableFilterPanel
+          columns={columns}
+          filters={filters}
+          setFilters={(f) =>
+            dispatch({
+              type: "SET_FILTERS",
+              payload: typeof f === "function" ? (f as (prev: Filters) => Filters)(filters) : f,
+            })
+          }
+          showFilters={showFilters}
+          filterable={filterable}
+        />
       </div>
 
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
-        <table className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? "border-separate border-spacing-0" : ""}`}>
-            <TableHeader
-              columns={columns}
-              visibleColumns={visibleColumnsData}
-              selectable={selectable}
-              sortable={sortable}
-              bordered={bordered}
-              density={density}
-              actions={actions}
-              hasActions={hasActions}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-              onSelectAll={handleSelectAll}
-              allSelected={
-                processedData.length > 0 &&
-                selectedRows.length === processedData.length
-              }
-              hasData={processedData.length > 0}
-            />
-            <TableBody
-              columns={columns}
-              processedData={processedData}
-              visibleColumns={visibleColumnsData}
-              selectable={selectable}
-              bordered={bordered}
-              density={density}
-              actions={actions}
-              hasActions={hasActions}
-              striped={striped}
-              hoverable={hoverable}
-              loading={loading}
-              emptyText={emptyText}
-              selectedRows={selectedRows}
-              editingCell={editingCell}
-              editValue={editValue}
-              setEditValue={(value) =>
-                dispatch({ type: 'SET_EDIT_VALUE', payload: value })
-              }
-              onRowSelect={handleRowSelect}
-              onCellEdit={handleCellEdit}
-              saveCellEdit={saveCellEdit}
-              cancelCellEdit={cancelCellEdit}
-              isLoading={loading}
-            />
-          </table>
+        <table
+          className={`min-w-full w-full table-auto sm:table-fixed ${
+            bordered ? "border-separate border-spacing-0" : ""
+          }`}>
+          <TableHeader
+            columns={columns}
+            visibleColumns={visibleColumnsData}
+            selectable={selectable}
+            sortable={sortable}
+            bordered={bordered}
+            density={density}
+            actions={actions}
+            hasActions={hasActions}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            onSelectAll={handleSelectAll}
+            allSelected={processedData.length > 0 && selectedRows.length === processedData.length}
+            hasData={processedData.length > 0}
+          />
+          <TableBody
+            columns={columns}
+            processedData={processedData}
+            visibleColumns={visibleColumnsData}
+            selectable={selectable}
+            bordered={bordered}
+            density={density}
+            actions={actions}
+            hasActions={hasActions}
+            striped={striped}
+            hoverable={hoverable}
+            loading={loading}
+            emptyText={emptyText}
+            selectedRows={selectedRows}
+            editingCell={editingCell}
+            editValue={editValue}
+            setEditValue={(value) => dispatch({ type: "SET_EDIT_VALUE", payload: value })}
+            onRowSelect={handleRowSelect}
+            onCellEdit={handleCellEdit}
+            saveCellEdit={saveCellEdit}
+            cancelCellEdit={cancelCellEdit}
+            isLoading={loading}
+          />
+        </table>
       </div>
 
-      <div className="flex-shrink-0">
+      <div className='flex-shrink-0'>
         <TablePagination pagination={pagination} bordered={bordered} />
       </div>
     </div>

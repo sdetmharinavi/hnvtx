@@ -19,6 +19,7 @@ export interface Column<T> {
   hidden?: boolean;
   excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
+  naturalSort?: boolean; 
 }
 export interface RPCConfig<TParams = Record<string, unknown>> {
   functionName: string;

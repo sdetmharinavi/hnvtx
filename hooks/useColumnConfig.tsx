@@ -29,6 +29,7 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   width?: number | string;
   /** Optional: Allow sorting on this column. */
   sortable?: boolean;
+  naturalSort?: boolean;
   /** Optional: Allow searching on this column. */
   searchable?: boolean;
   /** Optional: Allow filtering on this column. */
