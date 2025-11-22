@@ -1,3 +1,4 @@
+// path: components/map/MeshDiagram.tsx
 'use client';
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
@@ -119,7 +120,10 @@ const MeshDiagram: React.FC<MeshDiagramProps> = ({ nodes, connections, ringName:
       {Array.from(nodePositions.entries()).map(([nodeId, pos]) => {
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return null;
-        const icon = getNodeIcon(node.system_type, false);
+        
+        // THE FIX: Pass both system_type and node type to getNodeIcon
+        const icon = getNodeIcon(node.system_type, node.type, false);
+        
         return (
           <motion.div
             key={nodeId}
