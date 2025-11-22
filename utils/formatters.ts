@@ -660,6 +660,12 @@ export const highlightSearchTerms = (
   return result;
 };
 
+export const sanitizeSheetFileName = (name: string) => {
+  return name
+    .replace(/[*?:\\/\[\]]/g, "_")  // replace invalid chars
+    .substring(0, 31);              // Excel limit (31 chars)
+}
+
 // =============================================================================
 // =============================================================================
 
@@ -695,6 +701,7 @@ const formatters = {
   
   normalizeSearchQuery,
   highlightSearchTerms,
+  sanitizeSheetFileName,
 };
 
 export default formatters;

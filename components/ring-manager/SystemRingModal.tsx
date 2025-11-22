@@ -19,11 +19,10 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { SystemFormData, systemFormValidationSchema } from "@/schemas/system-schemas";
 
-// A new local schema for this specific form's logic, overriding ring_id to non-null string for UI control,
-// and adding a field for the selected ID
+// Local schema override: ensure fields accept empty string inputs from UI
 const systemRingFormSchema = systemFormValidationSchema.extend({
-  ring_id: z.uuid().optional(),
-  selected_system_id: z.uuid().optional().nullable(),
+  ring_id: z.union([z.uuid(), z.literal('')]).optional().nullable(),
+  selected_system_id: z.union([z.uuid(), z.literal('')]).optional().nullable(),
 });
 type SystemRingFormValues = z.infer<typeof systemRingFormSchema>;
 

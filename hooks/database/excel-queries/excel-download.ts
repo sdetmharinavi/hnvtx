@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelDownloadResult, formatCellValue, getDefaultStyles, RPCConfig, sanitizeFileName, UseExcelDownloadOptions } from "@/hooks/database/excel-queries/excel-helpers";
 import { toast } from "sonner";
 import { applyFilters } from "@/hooks/database/utility-functions";
+import { sanitizeSheetFileName } from "@/utils/formatters";
 
 
 // Extended types for new functionality
@@ -129,7 +130,7 @@ const {
     if (dataArray.length === 0) {
       toast.info("No data found for the selected criteria to export.");
       return {
-        fileName: fileName,
+        fileName: sanitizeSheetFileName(fileName),
         rowCount: 0,
         columnCount: exportColumns.length,
       };

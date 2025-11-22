@@ -15,7 +15,13 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    ring_id: ring_based_systemsInsertSchema.shape.ring_id.transform((val) => val || null).optional(),
+    // THE FIX: Allow empty string (default state) or valid UUID. 
+    // Transform empty string to null for the backend.
+    ring_id: z.union([z.uuid(), z.literal('')])
+      .optional()
+      .nullable()
+      .transform((val) => val || null),
+      
     // ADDED: order_in_ring with transformation to handle empty form inputs
     order_in_ring: ring_based_systemsInsertSchema.shape.order_in_ring.transform(val => {
       if (val == null) return null; // This catches both null and undefined

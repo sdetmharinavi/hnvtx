@@ -28,10 +28,6 @@ BEGIN
         CREATE ROLE mng_admin NOINHERIT;
     END IF;
 
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'asset_admin') THEN
-        CREATE ROLE asset_admin NOINHERIT;
-    END IF;
-
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'viewer') THEN
         CREATE ROLE viewer NOINHERIT;
     END IF;
@@ -45,7 +41,7 @@ DECLARE
     r TEXT;
 BEGIN
     FOR r IN
-        SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin', 'asset_admin', 'viewer'])
+        SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin', 'viewer'])
     LOOP
         IF NOT EXISTS (
             SELECT 1

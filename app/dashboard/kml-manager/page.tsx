@@ -29,8 +29,6 @@ export default function KmlManagerPage() {
   
   // Get User Permissions
   const { isSuperAdmin, role } = useUser();
-
-  console.log("isSuperAdmin", isSuperAdmin, "role", role);
   
   
   // Permission Logic
