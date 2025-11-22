@@ -191,7 +191,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const onInvalidSubmit: SubmitErrorHandler<SystemFormValues> = (errors) => {
     // Build a readable error list
     const errorList = Object.entries(errors).map(([field, err]) => {
-      return `${field}: ${(err as any)?.message ?? "Invalid value"}`;
+      return `${field}: ${(err)?.message ?? "Invalid value"}`;
     });
 
     // Show full error list in toast

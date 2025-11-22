@@ -108,7 +108,7 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
 
-  console.log(nodes);
+  // console.log(nodes);
 
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
@@ -159,6 +159,9 @@ export default function ClientRingMap({
 
     return directions;
   }, [nodes]);
+
+  console.log(nodes);
+  
 
   useEffect(() => {
     const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
@@ -327,16 +330,15 @@ export default function ClientRingMap({
           .map((node, i) => {
             const isHighlighted = highlightedNodeIds.includes(node.id!);
             const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
-            // THE FIX: Get the dynamically calculated direction and offset.
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
             const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
-            console.log(node);
             
+            // THE FIX: Pass both system_type and type (node type) to getNodeIcon
             return (
               <Marker
                 key={node.id! + i}
                 position={[node.lat as number, node.long as number]}
-                icon={getNodeIcon(node.system_type, isHighlighted)}
+                icon={getNodeIcon(node.system_type, node.type, isHighlighted)}
                 eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
                 ref={(el) => {
                   if (el) markerRefs.current[node.id!] = el;
@@ -351,10 +353,10 @@ export default function ClientRingMap({
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
                     {node.system_type_code && <p>Type: {node.system_type_code}</p>}
+                    {node.type && <p>Node: {node.type}</p>}
                     {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>
-                {/* THE FIX: Use the dynamic direction and offset */}
                 <Tooltip
                   permanent
                   direction={direction}

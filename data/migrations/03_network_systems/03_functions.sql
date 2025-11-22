@@ -58,15 +58,16 @@ BEGIN
 
     -- Step 2: Handle ring associations if the system is ring-based and associations are provided.
     IF v_system_type_record.is_ring_based = true AND p_ring_associations IS NOT NULL AND jsonb_array_length(p_ring_associations) > 0 THEN
-        -- First, clear out all old associations for this system to handle removals.
-        DELETE FROM public.ring_based_systems WHERE system_id = v_system_id;
-
+        -- THE FIX: Removed the bulk DELETE statement here. 
+        -- We want to merge/upsert the provided associations without destroying existing ones 
+        -- for other rings that aren't part of this payload.
+        
         -- Loop through the provided JSON array and insert the new associations.
         FOR ring_assoc_record IN SELECT * FROM jsonb_to_recordset(p_ring_associations) AS x(ring_id UUID, order_in_ring NUMERIC)
         LOOP
             INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
             VALUES (v_system_id, ring_assoc_record.ring_id, ring_assoc_record.order_in_ring)
-            -- This conflict clause gracefully handles any re-insertions, though the DELETE above makes it less critical.
+            -- This conflict clause handles updates to the order for existing ring associations.
             ON CONFLICT (system_id, ring_id) DO UPDATE SET
                 order_in_ring = EXCLUDED.order_in_ring;
         END LOOP;
