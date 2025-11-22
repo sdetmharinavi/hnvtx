@@ -239,9 +239,11 @@ export default function ScalableFiberNetworkDashboard() {
             <div className="space-y-6">
               <DashboardStatsGrid />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                {/* THE FIX: Added the systems prop here */}
                 <OptimizedNetworkMap
                   nodes={data.nodes}
                   cables={data.ofcCables}
+                  systems={data.systems} 
                   selectedSystem={selectedSystem}
                   visibleLayers={{ nodes: true, cables: true, systems: true }}
                   mapBounds={mapBounds}
