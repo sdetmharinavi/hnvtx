@@ -1,15 +1,30 @@
 // path: hooks/database/excel-queries/excel-download.ts
 
-import { TableOrViewName, isTableName, Row, ViewName, PublicTableName, PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
-import * as ExcelJS from "exceljs";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
-import { useMutation } from "@tanstack/react-query";
-import { applyCellFormatting, convertFiltersToRPCParams, DownloadOptions, ExcelDownloadResult, formatCellValue, getDefaultStyles, RPCConfig, sanitizeFileName, UseExcelDownloadOptions } from "@/hooks/database/excel-queries/excel-helpers";
-import { toast } from "sonner";
-import { applyFilters } from "@/hooks/database/utility-functions";
-import { sanitizeSheetFileName } from "@/utils/formatters";
-
+import {
+  TableOrViewName,
+  isTableName,
+  Row,
+  ViewName,
+  PublicTableName,
+  PublicTableOrViewName,
+} from '@/hooks/database/queries-type-helpers';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
+import { useMutation } from '@tanstack/react-query';
+import {
+  applyCellFormatting,
+  convertFiltersToRPCParams,
+  DownloadOptions,
+  ExcelDownloadResult,
+  formatCellValue,
+  getDefaultStyles,
+  RPCConfig,
+  sanitizeFileName,
+  UseExcelDownloadOptions,
+} from '@/hooks/database/excel-queries/excel-helpers';
+import { toast } from 'sonner';
+import { applyFilters } from '@/hooks/database/utility-functions';
+import { sanitizeSheetFileName } from '@/utils/formatters';
 
 // Extended types for new functionality
 interface OrderByOption {
@@ -23,7 +38,8 @@ interface EnhancedDownloadOptions<T extends TableOrViewName> extends DownloadOpt
   autoFitColumns?: boolean;
 }
 
-interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName> extends UseExcelDownloadOptions<T> {
+interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName>
+  extends UseExcelDownloadOptions<T> {
   defaultOrderBy?: OrderByOption[];
   defaultWrapText?: boolean;
   defaultAutoFitColumns?: boolean;
@@ -49,10 +65,12 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
     EnhancedDownloadOptions<T> & { rpcConfig: RPCConfig }
   >({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
+      // THE FIX: Dynamically import ExcelJS only when the function is called
+      const ExcelJS = (await import('exceljs')).default;
       try {
         const defaultStyles = getDefaultStyles();
         const mergedOptions = {
-          sheetName: "Data",
+          sheetName: 'Data',
           maxRows: batchSize,
           customStyles: defaultStyles,
           orderBy: defaultOrderBy,
@@ -61,247 +79,235 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           ...downloadOptions,
         };
 
-const {
-      fileName = `export-${new Date().toISOString().split('T')[0]}.xlsx`,
-      filters,
-      columns,
-      sheetName,
-      maxRows,
-      rpcConfig,
-      orderBy,
-      wrapText,
-      autoFitColumns,
-    } = mergedOptions;
+        const {
+          fileName = `export-${new Date().toISOString().split('T')[0]}.xlsx`,
+          filters,
+          columns,
+          sheetName,
+          maxRows,
+          rpcConfig,
+          orderBy,
+          wrapText,
+          autoFitColumns,
+        } = mergedOptions;
 
-    const styles = { ...defaultStyles, ...mergedOptions.customStyles };
+        const styles = { ...defaultStyles, ...mergedOptions.customStyles };
 
-    if (!columns || columns.length === 0)
-      throw new Error('No columns specified for export');
-    const exportColumns = columns.filter((col) => !col.excludeFromExport);
-    if (exportColumns.length === 0)
-      throw new Error('All columns are excluded from export');
+        if (!columns || columns.length === 0) throw new Error('No columns specified for export');
+        const exportColumns = columns.filter((col) => !col.excludeFromExport);
+        if (exportColumns.length === 0) throw new Error('All columns are excluded from export');
 
-    toast.info('Fetching data via RPC...');
+        toast.info('Fetching data via RPC...');
 
-    const rpcParams: Record<string, unknown> = {
-      ...rpcConfig.parameters,
-      ...convertFiltersToRPCParams(filters),
-    };
+        const rpcParams: Record<string, unknown> = {
+          ...rpcConfig.parameters,
+          ...convertFiltersToRPCParams(filters),
+        };
 
-    if (maxRows) {
-      rpcParams.row_limit = maxRows;
-    }
+        if (maxRows) {
+          rpcParams.row_limit = maxRows;
+        }
 
-    if (orderBy && orderBy.length > 0) {
-      rpcParams.order_by = orderBy
-        .map((order) =>
-          `${order.column}.${order.ascending !== false ? 'asc' : 'desc'}`
-        )
-        .join(',');
-    }
+        if (orderBy && orderBy.length > 0) {
+          rpcParams.order_by = orderBy
+            .map((order) => `${order.column}.${order.ascending !== false ? 'asc' : 'desc'}`)
+            .join(',');
+        }
 
-    const { data, error } = await supabase.rpc(
-      rpcConfig.functionName as keyof Database['public']['Functions'],
-      rpcParams
-    );
-    
+        const { data, error } = await supabase.rpc(
+          rpcConfig.functionName as keyof Database['public']['Functions'],
+          rpcParams
+        );
 
-    if (error) throw new Error(`RPC call failed: ${error.message}`);
-    
-    // --- THIS IS THE FIX ---
-    // Intelligently extract the array of records from the RPC response.
-    let dataArray: unknown[] = [];
-    if (data) {
-      if (Array.isArray(data)) {
-        dataArray = data; // RPC returned a flat array
-      } else if (
-        typeof data === 'object' &&
-        'data' in data &&
-        Array.isArray((data as { data: unknown[] }).data)
-      ) {
-        // RPC returned a structured object like { data: [...] } from get_paged_data
-        dataArray = (data as { data: unknown[] }).data;
-      } else if (typeof data === 'object' && data !== null) {
-        // RPC returned a single object
-        dataArray = [data];
-      }
-    }
+        if (error) throw new Error(`RPC call failed: ${error.message}`);
 
-    if (dataArray.length === 0) {
-      toast.info("No data found for the selected criteria to export.");
-      return {
-        fileName: sanitizeSheetFileName(fileName),
-        rowCount: 0,
-        columnCount: exportColumns.length,
-      };
-    }
-    // --- END FIX ---
-    
-    if (orderBy && orderBy.length > 0) {
-      dataArray = dataArray.sort((a, b) => {
-        for (const order of orderBy) {
-          const aVal = (a as Record<string, unknown>)[order.column];
-          const bVal = (b as Record<string, unknown>)[order.column];
-
-          if (aVal === bVal) continue;
-
-          let comparison = 0;
-          if (aVal == null && bVal != null) comparison = 1;
-          else if (aVal != null && bVal == null) comparison = -1;
-          else if (aVal != null && bVal != null) {
-            if (aVal < bVal) comparison = -1;
-            else if (aVal > bVal) comparison = 1;
+        // --- THIS IS THE FIX ---
+        // Intelligently extract the array of records from the RPC response.
+        let dataArray: unknown[] = [];
+        if (data) {
+          if (Array.isArray(data)) {
+            dataArray = data; // RPC returned a flat array
+          } else if (
+            typeof data === 'object' &&
+            'data' in data &&
+            Array.isArray((data as { data: unknown[] }).data)
+          ) {
+            // RPC returned a structured object like { data: [...] } from get_paged_data
+            dataArray = (data as { data: unknown[] }).data;
+          } else if (typeof data === 'object' && data !== null) {
+            // RPC returned a single object
+            dataArray = [data];
           }
-
-          return order.ascending !== false ? comparison : -comparison;
-        }
-        return 0;
-      });
-    }
-
-    toast.success(
-      `Fetched ${dataArray.length} records. Generating Excel file...`
-    );
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(sheetName || 'Data');
-
-    worksheet.columns = exportColumns.map((col) => ({
-      key: String(col.dataIndex),
-      width: typeof col.width === 'number' ? col.width / 8 : 20,
-    }));
-
-    const headerTitles = exportColumns.map((col) => col.title);
-    const headerRow = worksheet.addRow(headerTitles);
-    headerRow.height = 25;
-
-    exportColumns.forEach((col, index) => {
-      const cell = headerRow.getCell(index + 1);
-      if (styles.headerFont) cell.font = styles.headerFont;
-      if (styles.headerFill) cell.fill = styles.headerFill;
-
-      cell.alignment = {
-        horizontal: 'center',
-        vertical: 'middle',
-        wrapText: wrapText || false,
-      };
-
-      if (styles.borderStyle) {
-        cell.border = {
-          top: styles.borderStyle.top,
-          bottom: styles.borderStyle.bottom,
-          right: styles.borderStyle.right,
-          left: index === 0 ? styles.borderStyle.left : undefined,
-        };
-      }
-    });
-
-    dataArray.forEach((record, rowIndex: number) => {
-      if (record === null || typeof record !== 'object') {
-        return;
-      }
-
-      const obj = record as Record<string, unknown>;
-      const rowData: Record<string, unknown> = {};
-      exportColumns.forEach((col) => {
-        const key = String(col.dataIndex);
-        const value = obj[key];
-        rowData[key] = formatCellValue(value, col);
-      });
-      const excelRow = worksheet.addRow(rowData);
-
-      exportColumns.forEach((col, colIndex) => {
-        const cell = excelRow.getCell(colIndex + 1);
-
-        if (styles.dataFont) cell.font = styles.dataFont;
-
-        if (rowIndex % 2 === 1 && styles.alternateRowFill) {
-          cell.fill = styles.alternateRowFill;
         }
 
-        cell.alignment = {
-          ...cell.alignment,
-          wrapText: wrapText || false,
-          vertical: 'top',
-        };
-
-        applyCellFormatting(cell, col);
-
-        if (styles.borderStyle) {
-          const isLastDataRow = rowIndex === dataArray.length - 1;
-          cell.border = {
-            right: styles.borderStyle.right,
-            left: colIndex === 0 ? styles.borderStyle.left : undefined,
-            top: styles.borderStyle.top,
-            bottom: isLastDataRow ? styles.borderStyle.bottom : undefined,
+        if (dataArray.length === 0) {
+          toast.info('No data found for the selected criteria to export.');
+          return {
+            fileName: sanitizeSheetFileName(fileName),
+            rowCount: 0,
+            columnCount: exportColumns.length,
           };
         }
-      });
-    });
+        // --- END FIX ---
 
-    if (autoFitColumns) {
-      exportColumns.forEach((col, index) => {
-        const column = worksheet.getColumn(index + 1);
-        let maxLength = col.title.length;
+        if (orderBy && orderBy.length > 0) {
+          dataArray = dataArray.sort((a, b) => {
+            for (const order of orderBy) {
+              const aVal = (a as Record<string, unknown>)[order.column];
+              const bVal = (b as Record<string, unknown>)[order.column];
 
-        dataArray.forEach((record) => {
-          if (record && typeof record === 'object') {
-            const obj = record as Record<string, unknown>;
-            const key = String(col.dataIndex);
-            const value = obj[key];
-            const cellText = String(formatCellValue(value, col) || '');
+              if (aVal === bVal) continue;
 
-            if (wrapText) {
-              const lines = cellText.split('\n');
-              const maxLineLength = Math.max(
-                ...lines.map((line) => line.length)
-              );
-              maxLength = Math.max(maxLength, maxLineLength);
-            } else {
-              maxLength = Math.max(maxLength, cellText.length);
+              let comparison = 0;
+              if (aVal == null && bVal != null) comparison = 1;
+              else if (aVal != null && bVal == null) comparison = -1;
+              else if (aVal != null && bVal != null) {
+                if (aVal < bVal) comparison = -1;
+                else if (aVal > bVal) comparison = 1;
+              }
+
+              return order.ascending !== false ? comparison : -comparison;
             }
+            return 0;
+          });
+        }
+
+        toast.success(`Fetched ${dataArray.length} records. Generating Excel file...`);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(sheetName || 'Data');
+
+        worksheet.columns = exportColumns.map((col) => ({
+          key: String(col.dataIndex),
+          width: typeof col.width === 'number' ? col.width / 8 : 20,
+        }));
+
+        const headerTitles = exportColumns.map((col) => col.title);
+        const headerRow = worksheet.addRow(headerTitles);
+        headerRow.height = 25;
+
+        exportColumns.forEach((col, index) => {
+          const cell = headerRow.getCell(index + 1);
+          if (styles.headerFont) cell.font = styles.headerFont;
+          if (styles.headerFill) cell.fill = styles.headerFill;
+
+          cell.alignment = {
+            horizontal: 'center',
+            vertical: 'middle',
+            wrapText: wrapText || false,
+          };
+
+          if (styles.borderStyle) {
+            cell.border = {
+              top: styles.borderStyle.top,
+              bottom: styles.borderStyle.bottom,
+              right: styles.borderStyle.right,
+              left: index === 0 ? styles.borderStyle.left : undefined,
+            };
           }
         });
 
-        const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), 50);
-        column.width = calculatedWidth;
-      });
-    }
+        dataArray.forEach((record, rowIndex: number) => {
+          if (record === null || typeof record !== 'object') {
+            return;
+          }
 
-    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+          const obj = record as Record<string, unknown>;
+          const rowData: Record<string, unknown> = {};
+          exportColumns.forEach((col) => {
+            const key = String(col.dataIndex);
+            const value = obj[key];
+            rowData[key] = formatCellValue(value, col);
+          });
+          const excelRow = worksheet.addRow(rowData);
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const sanitizedFileName = sanitizeFileName(fileName);
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+          exportColumns.forEach((col, colIndex) => {
+            const cell = excelRow.getCell(colIndex + 1);
 
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = sanitizedFileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+            if (styles.dataFont) cell.font = styles.dataFont;
 
-    toast.success(
-      `Excel file "${sanitizedFileName}" downloaded successfully!`
-    );
-    return {
-      fileName: sanitizedFileName,
-      rowCount: dataArray.length,
-      columnCount: exportColumns.length,
-    };
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error occurred';
-    if (showToasts) {
-      toast.error(`Download failed: ${errorMessage}`);
-    }
-    throw error;
-  }
-},
-...mutationOptions,
+            if (rowIndex % 2 === 1 && styles.alternateRowFill) {
+              cell.fill = styles.alternateRowFill;
+            }
+
+            cell.alignment = {
+              ...cell.alignment,
+              wrapText: wrapText || false,
+              vertical: 'top',
+            };
+
+            applyCellFormatting(cell, col);
+
+            if (styles.borderStyle) {
+              const isLastDataRow = rowIndex === dataArray.length - 1;
+              cell.border = {
+                right: styles.borderStyle.right,
+                left: colIndex === 0 ? styles.borderStyle.left : undefined,
+                top: styles.borderStyle.top,
+                bottom: isLastDataRow ? styles.borderStyle.bottom : undefined,
+              };
+            }
+          });
+        });
+
+        if (autoFitColumns) {
+          exportColumns.forEach((col, index) => {
+            const column = worksheet.getColumn(index + 1);
+            let maxLength = col.title.length;
+
+            dataArray.forEach((record) => {
+              if (record && typeof record === 'object') {
+                const obj = record as Record<string, unknown>;
+                const key = String(col.dataIndex);
+                const value = obj[key];
+                const cellText = String(formatCellValue(value, col) || '');
+
+                if (wrapText) {
+                  const lines = cellText.split('\n');
+                  const maxLineLength = Math.max(...lines.map((line) => line.length));
+                  maxLength = Math.max(maxLength, maxLineLength);
+                } else {
+                  maxLength = Math.max(maxLength, cellText.length);
+                }
+              }
+            });
+
+            const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), 50);
+            column.width = calculatedWidth;
+          });
+        }
+
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const sanitizedFileName = sanitizeFileName(fileName);
+        const blob = new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = sanitizedFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        toast.success(`Excel file "${sanitizedFileName}" downloaded successfully!`);
+        return {
+          fileName: sanitizedFileName,
+          rowCount: dataArray.length,
+          columnCount: exportColumns.length,
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        if (showToasts) {
+          toast.error(`Download failed: ${errorMessage}`);
+        }
+        throw error;
+      }
+    },
+    ...mutationOptions,
   });
 }
 
@@ -320,16 +326,14 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
     ...mutationOptions
   } = options || {};
 
-  return useMutation<
-    ExcelDownloadResult,
-    Error,
-    Omit<EnhancedDownloadOptions<T>, "rpcConfig">
-  >({
+  return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
+      const ExcelJS = (await import('exceljs')).default;
+      
       try {
         const defaultStyles = getDefaultStyles();
         const mergedOptions = {
-          sheetName: "Data",
+          sheetName: 'Data',
           maxRows: batchSize,
           customStyles: defaultStyles,
           orderBy: defaultOrderBy,
@@ -339,9 +343,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
         };
 
         const {
-          fileName = `${String(tableName)}-${
-            new Date().toISOString().split("T")[0]
-          }.xlsx`,
+          fileName = `${String(tableName)}-${new Date().toISOString().split('T')[0]}.xlsx`,
           filters,
           columns,
           sheetName,
@@ -353,62 +355,54 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
 
         const styles = { ...defaultStyles, ...mergedOptions.customStyles };
 
-        if (!columns || columns.length === 0)
-          throw new Error("No columns specified for export");
+        if (!columns || columns.length === 0) throw new Error('No columns specified for export');
         const exportColumns = columns.filter((col) => !col.excludeFromExport);
-        if (exportColumns.length === 0)
-          throw new Error("All columns are excluded from export");
+        if (exportColumns.length === 0) throw new Error('All columns are excluded from export');
 
-        toast.info("Fetching data for download...");
+        toast.info('Fetching data for download...');
 
-        const selectFields = exportColumns
-          .map((col) => col.dataIndex)
-          .join(",");
-        
+        const selectFields = exportColumns.map((col) => col.dataIndex).join(',');
+
         // Build the base query and allow TypeScript to infer the correct builder type
         let query = isTableName(tableName)
           ? supabase.from(tableName as PublicTableName).select(selectFields)
           : supabase.from(tableName as ViewName).select(selectFields);
 
-
         if (filters) query = applyFilters(query, filters);
-        
+
         if (orderBy && orderBy.length > 0) {
-          orderBy.forEach(order => {
+          orderBy.forEach((order) => {
             query = query.order(order.column, { ascending: order.ascending !== false });
           });
         }
-        
+
         if (maxRows) query = query.limit(maxRows);
 
         const { data, error } = await query;
 
         if (error) throw new Error(`Failed to fetch data: ${error.message}`);
-        if (!data || data.length === 0)
-          throw new Error("No data found for the selected criteria");
+        if (!data || data.length === 0) throw new Error('No data found for the selected criteria');
 
         const typedData = data as Row<T>[];
-        toast.success(
-          `Fetched ${typedData.length} records. Generating Excel file...`
-        );
+        toast.success(`Fetched ${typedData.length} records. Generating Excel file...`);
 
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet(sheetName || "Data");
+        const worksheet = workbook.addWorksheet(sheetName || 'Data');
 
         worksheet.columns = exportColumns.map((col) => ({
           key: String(col.dataIndex),
           header: col.title,
-          width: typeof col.width === "number" ? col.width / 8 : 20,
+          width: typeof col.width === 'number' ? col.width / 8 : 20,
         }));
 
         typedData.forEach((record, rowIndex) => {
-          const rowData: unknown[] = exportColumns.map(col => {
+          const rowData: unknown[] = exportColumns.map((col) => {
             const key = col.dataIndex as keyof Row<T> & string;
             return formatCellValue(record[key], col);
           });
 
           const excelRow = worksheet.addRow(rowData);
-          
+
           if (wrapText) {
             excelRow.height = 20;
           }
@@ -425,7 +419,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
             cell.alignment = {
               ...cell.alignment,
               wrapText: wrapText || false,
-              vertical: 'top'
+              vertical: 'top',
             };
 
             applyCellFormatting(cell, col);
@@ -444,38 +438,38 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
 
         if (autoFitColumns) {
           worksheet.columns.forEach((column, index) => {
-              const col = exportColumns[index];
-              if (!column) return;
-              
-              let maxLength = col.title.length;
-              typedData.forEach(record => {
-                  const key = col.dataIndex as keyof Row<T> & string;
-                  const value = record[key];
-                  const cellText = String(formatCellValue(value, col) || '');
-                  
-                  if (wrapText) {
-                      const lines = cellText.split('\n');
-                      const maxLineLength = Math.max(...lines.map(line => line.length));
-                      maxLength = Math.max(maxLength, maxLineLength);
-                  } else {
-                      maxLength = Math.max(maxLength, cellText.length);
-                  }
-              });
-              
-              const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), wrapText ? 30 : 50);
-              column.width = calculatedWidth;
-          });
-      }
+            const col = exportColumns[index];
+            if (!column) return;
 
-        worksheet.views = [{ state: "frozen", ySplit: 1 }];
+            let maxLength = col.title.length;
+            typedData.forEach((record) => {
+              const key = col.dataIndex as keyof Row<T> & string;
+              const value = record[key];
+              const cellText = String(formatCellValue(value, col) || '');
+
+              if (wrapText) {
+                const lines = cellText.split('\n');
+                const maxLineLength = Math.max(...lines.map((line) => line.length));
+                maxLength = Math.max(maxLength, maxLineLength);
+              } else {
+                maxLength = Math.max(maxLength, cellText.length);
+              }
+            });
+
+            const calculatedWidth = Math.min(Math.max(maxLength + 2, 10), wrapText ? 30 : 50);
+            column.width = calculatedWidth;
+          });
+        }
+
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
         const buffer = await workbook.xlsx.writeBuffer();
         const sanitizedFileName = sanitizeFileName(fileName);
         const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         });
 
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = sanitizedFileName;
         document.body.appendChild(link);
@@ -483,21 +477,15 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
 
-        toast.success(
-          `Excel file "${sanitizedFileName}" downloaded successfully!`
-        );
+        toast.success(`Excel file "${sanitizedFileName}" downloaded successfully!`);
         return {
           fileName: sanitizedFileName,
           rowCount: typedData.length,
           columnCount: exportColumns.length,
         };
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        if (
-          showToasts &&
-          errorMessage !== "No data found for the selected criteria"
-        ) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        if (showToasts && errorMessage !== 'No data found for the selected criteria') {
           toast.error(`Download failed: ${errorMessage}`);
         }
         throw error;

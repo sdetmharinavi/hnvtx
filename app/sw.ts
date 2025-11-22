@@ -4,7 +4,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from "@serwist/strategies"; // --- IMPORT NetworkFirst ---
+import { StaleWhileRevalidate, CacheFirst } from "@serwist/strategies"; // Removed NetworkFirst
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -15,22 +15,20 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-// --- THIS IS THE FIX: A NEW CACHING RULE FOR NAVIGATION ---
+// --- FIX: Use StaleWhileRevalidate for Navigation ---
+// This serves the cached HTML immediately (instant nav) and updates in background.
 const navigationCache: RuntimeCaching = {
-  // Match any request that is a navigation to a new page.
   matcher: ({ request }) => request.mode === 'navigate',
-  // Use a NetworkFirst strategy.
-  handler: new NetworkFirst({
+  handler: new StaleWhileRevalidate({
     cacheName: 'pages-cache',
     plugins: [
       new ExpirationPlugin({
-        maxEntries: 50, // Cache up to 50 pages.
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+        maxEntries: 50,
+        maxAgeSeconds: 24 * 60 * 60, // 24 Hours
       }),
     ],
   }),
 };
-// --- END FIX ---
 
 const customCache: RuntimeCaching[] = [
   {
@@ -64,8 +62,6 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  // --- THIS IS THE FIX: Add the new navigation rule to the runtimeCaching array ---
-  // It's important to place it BEFORE defaultCache so it takes precedence for navigation requests.
   runtimeCaching: [navigationCache, ...defaultCache, ...customCache],
 });
 
