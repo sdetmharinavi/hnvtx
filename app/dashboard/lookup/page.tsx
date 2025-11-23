@@ -31,7 +31,7 @@ export default function LookupTypesPage() {
 
   const {
     data: lookupTypes, totalCount, activeCount, inactiveCount,
-    isLoading: isLoadingLookups, error, refetch,
+    isLoading: isLoadingLookups, isMutating, error, refetch, // Added isMutating
     search, filters, editModal,
     actions: crudActions,
   } = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
@@ -40,15 +40,13 @@ export default function LookupTypesPage() {
     displayNameField: 'name',
   });
   
-  // THE FIX: Explicitly fetch ALL lookup types to build the unique category list.
-  // We removed the .neq('name', 'DEFAULT') filter so categories like SYSTEM_CAPACITY appear.
   const { 
     data: categoriesData, 
     isLoading: isLoadingCategories, 
     error: categoriesError,
     refetch: refetchCategories 
   } = useOfflineQuery<Lookup_typesRowSchema[]>(
-      ['unique-categories'],
+      ['unique-categories-v2'], 
       async () => {
           const { data, error: dbError } = await createClient().from('lookup_types').select('*');
           if(dbError) throw dbError;
@@ -111,6 +109,11 @@ export default function LookupTypesPage() {
     }
   };
 
+  // THE FIX: Simple submission handler that passes data to useCrudManager
+  const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
+    crudActions.handleSave(data);
+  };
+
   if (categoriesError) {
     return <ErrorDisplay error={categoriesError.message} actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]} />;
   }
@@ -171,8 +174,9 @@ export default function LookupTypesPage() {
       <LookupModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        onLookupCreated={(data) => crudActions.handleSave(data)}
-        onLookupUpdated={(data) => crudActions.handleSave(data as Lookup_typesInsertSchema)}
+        // THE FIX: Passed handleModalSubmit to onSubmit, removed old callback props
+        onSubmit={handleModalSubmit}
+        isLoading={isMutating}
         editingLookup={editModal.record}
         category={selectedCategory}
         categories={categories}

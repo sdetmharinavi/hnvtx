@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/common/ui/Button";
-import { FiEdit2, FiTrash2, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import { useMemo } from "react";
-import { SortDirection } from "@/hooks/useSorting";
-import { Lookup_typesRowSchema } from "@/schemas/zod-schemas";
+import { Button } from '@/components/common/ui/Button';
+import { FiEdit2, FiTrash2, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { useMemo } from 'react';
+import { SortDirection, useSorting } from '@/hooks/useSorting';
+import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 
 interface LookupTypesTableProps {
   lookups: Lookup_typesRowSchema[];
@@ -26,12 +26,12 @@ interface SortableHeaderProps {
   className?: string;
 }
 
-function SortableHeader({ 
-  children, 
-  sortKey, 
-  onSort, 
-  getSortDirection, 
-  className = "" 
+function SortableHeader({
+  children,
+  sortKey,
+  onSort,
+  getSortDirection,
+  className = '',
 }: SortableHeaderProps) {
   const sortDirection = getSortDirection?.(sortKey);
   const isSortable = onSort && getSortDirection;
@@ -44,14 +44,16 @@ function SortableHeader({
 
   if (!isSortable) {
     return (
-      <th className={`px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase ${className}`}>
+      <th
+        className={`px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase ${className}`}
+      >
         {children}
       </th>
     );
   }
 
   return (
-    <th 
+    <th
       className={`px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors select-none ${className}`}
       onClick={handleClick}
       role="button"
@@ -90,56 +92,66 @@ export function LookupTypesTable({
   selectedCategory,
   searchTerm,
   onSort,
-  getSortDirection
+  getSortDirection,
 }: LookupTypesTableProps) {
+  // const sortedLookups = useMemo(() => {
+  //   return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
+  // }, [lookups]);
 
-  const sortedLookups = useMemo(() => {
-    return [...lookups].sort((a, b) => (a.sort_order ?? 0) - (b?.sort_order ?? 0));
-  }, [lookups]);
+  const { sortedData: sortedLookups, getSortDirection: getInternalSortDirection } = useSorting({
+    data: lookups,
+    defaultSortKey: 'sort_order',
+    defaultDirection: 'asc',
+  });
+
+  // Then pass handleSort and getInternalSortDirection to your SortableHeader components
 
   const filteredLookups = useMemo(() => {
     if (!searchTerm.trim()) return lookups;
-    
+
     const lowerSearchTerm = searchTerm.toLowerCase();
-    return lookups.filter(lookup => 
-      lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
-      lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
-      lookup.description?.toLowerCase().includes(lowerSearchTerm)
+    return lookups.filter(
+      (lookup) =>
+        lookup.name?.toLowerCase().includes(lowerSearchTerm) ||
+        lookup.code?.toLowerCase().includes(lowerSearchTerm) ||
+        lookup.description?.toLowerCase().includes(lowerSearchTerm)
     );
   }, [lookups, searchTerm]);
 
-  const displayedLookups = searchTerm ? filteredLookups.filter(l => l.name !== 'DEFAULT') : sortedLookups.filter(l => l.name !== 'DEFAULT');
+  const displayedLookups = searchTerm
+    ? filteredLookups.filter((l) => l.name !== 'DEFAULT')
+    : sortedLookups.filter((l) => l.name !== 'DEFAULT');
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <SortableHeader 
-              sortKey="name" 
-              onSort={onSort} 
-              getSortDirection={getSortDirection}
+            <SortableHeader
+              sortKey="name"
+              onSort={onSort}
+              getSortDirection={getInternalSortDirection}
             >
               Name
             </SortableHeader>
-            <SortableHeader 
-              sortKey="code" 
-              onSort={onSort} 
-              getSortDirection={getSortDirection}
+            <SortableHeader
+              sortKey="code"
+              onSort={onSort}
+              getSortDirection={getInternalSortDirection}
             >
               Short Code
             </SortableHeader>
-            <SortableHeader 
-              sortKey="description" 
-              onSort={onSort} 
-              getSortDirection={getSortDirection}
+            <SortableHeader
+              sortKey="description"
+              onSort={onSort}
+              getSortDirection={getInternalSortDirection}
             >
               Description
             </SortableHeader>
-            <SortableHeader 
-              sortKey="status" 
-              onSort={onSort} 
-              getSortDirection={getSortDirection}
+            <SortableHeader
+              sortKey="status"
+              onSort={onSort}
+              getSortDirection={getInternalSortDirection}
             >
               Status
             </SortableHeader>
@@ -152,13 +164,13 @@ export function LookupTypesTable({
           {displayedLookups.map((lookup) => (
             <tr key={lookup.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
               <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 max-w-[150px] break-words">
-                {lookup.name ?? "-"}
+                {lookup.name ?? '-'}
               </td>
               <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                {lookup.code || "-"}
+                {lookup.code || '-'}
               </td>
               <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs break-words">
-                {lookup.description || "-"}
+                {lookup.description || '-'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Button
@@ -166,12 +178,12 @@ export function LookupTypesTable({
                   onClick={() => onToggleStatus(lookup.id!, !!lookup.status)}
                   className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                     lookup.status
-                      ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50"
-                      : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50"
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
                   }`}
                   disabled={!!lookup.is_system_default}
                 >
-                  {lookup.status ? "Active" : "Inactive"}
+                  {lookup.status ? 'Active' : 'Inactive'}
                 </Button>
               </td>
               <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
@@ -181,11 +193,7 @@ export function LookupTypesTable({
                     variant="outline"
                     disabled={!!lookup.is_system_default}
                     onClick={() => onEdit(lookup)}
-                    title={
-                      lookup.is_system_default
-                        ? "Cannot edit system default"
-                        : "Edit"
-                    }
+                    title={lookup.is_system_default ? 'Cannot edit system default' : 'Edit'}
                     className="hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     <FiEdit2 className="h-4 w-4" />
@@ -196,11 +204,7 @@ export function LookupTypesTable({
                     onClick={() => onDelete(lookup)}
                     className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                     disabled={!!lookup.is_system_default}
-                    title={
-                      lookup.is_system_default
-                        ? "Cannot delete system default"
-                        : "Delete"
-                    }
+                    title={lookup.is_system_default ? 'Cannot delete system default' : 'Delete'}
                   >
                     <FiTrash2 className="h-4 w-4" />
                   </Button>
@@ -219,18 +223,25 @@ export function LookupTypesTable({
         </div>
       )}
 
-      {(searchTerm || (getSortDirection && Object.values(['name', 'code', 'description', 'status']).some(key => getSortDirection(key)))) && (
+      {(searchTerm ||
+        (getSortDirection &&
+          Object.values(['name', 'code', 'description', 'status']).some((key) =>
+            getSortDirection(key)
+          ))) && (
         <div className="px-6 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-          {searchTerm && (
-            <span>Filtered by: &quot;{searchTerm}&quot; • </span>
-          )}
-          {getSortDirection && (() => {
-            const sortedColumn = ['name', 'code', 'description', 'status'].find(key => getSortDirection(key));
-            const sortDirection = sortedColumn ? getSortDirection(sortedColumn) : null;
-            return sortedColumn && sortDirection ? (
-              <span>Sorted by: {sortedColumn} ({sortDirection})</span>
-            ) : null;
-          })()}
+          {searchTerm && <span>Filtered by: &quot;{searchTerm}&quot; • </span>}
+          {getSortDirection &&
+            (() => {
+              const sortedColumn = ['name', 'code', 'description', 'status'].find((key) =>
+                getSortDirection(key)
+              );
+              const sortDirection = sortedColumn ? getSortDirection(sortedColumn) : null;
+              return sortedColumn && sortDirection ? (
+                <span>
+                  Sorted by: {sortedColumn} ({sortDirection})
+                </span>
+              ) : null;
+            })()}
         </div>
       )}
     </div>

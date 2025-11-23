@@ -2350,6 +2350,13 @@ export type Database = {
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_capacity_name"]
+          },
+          {
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["system_category", "system_type_name"]
           },
           {
@@ -2879,6 +2886,7 @@ export type Database = {
           remark: string | null
           s_no: string | null
           status: boolean | null
+          system_capacity_id: string | null
           system_name: string | null
           system_type_id: string
           updated_at: string | null
@@ -2896,6 +2904,7 @@ export type Database = {
           remark?: string | null
           s_no?: string | null
           status?: boolean | null
+          system_capacity_id?: string | null
           system_name?: string | null
           system_type_id: string
           updated_at?: string | null
@@ -2913,6 +2922,7 @@ export type Database = {
           remark?: string | null
           s_no?: string | null
           status?: boolean | null
+          system_capacity_id?: string | null
           system_name?: string | null
           system_type_id?: string
           updated_at?: string | null
@@ -2966,6 +2976,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_system_connections_complete"
             referencedColumns: ["sn_node_id"]
+          },
+          {
+            foreignKeyName: "systems_system_capacity_id_fkey"
+            columns: ["system_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_system_capacity_id_fkey"
+            columns: ["system_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "systems_system_type_id_fkey"
@@ -3778,6 +3802,13 @@ export type Database = {
             columns: ["connection_category", "connection_type"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["system_category", "system_capacity_name"]
+          },
+          {
+            foreignKeyName: "fk_connection_type"
+            columns: ["connection_category", "connection_type"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["system_category", "system_type_name"]
           },
           {
@@ -4346,6 +4377,8 @@ export type Database = {
           ring_logical_area_name: string | null
           s_no: string | null
           status: boolean | null
+          system_capacity_id: string | null
+          system_capacity_name: string | null
           system_category: string | null
           system_maintenance_terminal_name: string | null
           system_name: string | null
@@ -4403,6 +4436,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_system_connections_complete"
             referencedColumns: ["sn_node_id"]
+          },
+          {
+            foreignKeyName: "systems_system_capacity_id_fkey"
+            columns: ["system_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "systems_system_capacity_id_fkey"
+            columns: ["system_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "systems_system_type_id_fkey"
@@ -5007,6 +5054,7 @@ export type Database = {
           p_ring_associations?: Json
           p_s_no?: string
           p_status: boolean
+          p_system_capacity_id?: string
           p_system_name: string
           p_system_type_id: string
         }
@@ -5023,6 +5071,7 @@ export type Database = {
           remark: string | null
           s_no: string | null
           status: boolean | null
+          system_capacity_id: string | null
           system_name: string | null
           system_type_id: string
           updated_at: string | null
