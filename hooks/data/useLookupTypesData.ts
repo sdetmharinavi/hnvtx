@@ -74,8 +74,11 @@ export const useLookupTypesData = (
       );
     }
     
-    // Exclude the 'DEFAULT' entries from the main view
-    filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
+    // THE FIX: Only hide 'DEFAULT' items if NO specific category is selected.
+    // If a user actively selects 'SYSTEM_CAPACITY', they should see the 'DEFAULT' item.
+    if (!filters.category) {
+        filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
+    }
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((l) => l.status === true).length;

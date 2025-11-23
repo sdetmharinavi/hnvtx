@@ -108,7 +108,7 @@ export function LookupTypesTable({
     );
   }, [lookups, searchTerm]);
 
-  const displayedLookups = searchTerm ? filteredLookups : sortedLookups;
+  const displayedLookups = searchTerm ? filteredLookups.filter(l => l.name !== 'DEFAULT') : sortedLookups.filter(l => l.name !== 'DEFAULT');
 
   return (
     <div className="overflow-x-auto">

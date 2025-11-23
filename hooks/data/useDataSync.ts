@@ -1,11 +1,13 @@
 // hooks/data/useDataSync.ts
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
+
+const BATCH_SIZE = 2500; // Fetch in chunks to prevent timeouts
 
 const entitiesToSync: PublicTableOrViewName[] = [
   'lookup_types',
@@ -28,7 +30,6 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_employee_designations',
   'v_inventory_items',
   'v_user_profiles_extended',
-  // THE FIX: Add the connection views to the sync list
   'v_ofc_connections_complete',
   'v_system_connections_complete',
 ];
@@ -41,32 +42,52 @@ export async function syncEntity(
   try {
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
-    const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
-      p_view_name: entityName,
-      p_limit: 50000,
-      p_offset: 0,
-      p_filters: {}, 
-    });
-
-    if (rpcError) throw rpcError;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (rpcResponse as { data: any[] })?.data || [];
-    
-    const validData = data.filter(item => item.id != null);
-    
     const table = getTable(entityName);
+    
+    // Clear the local table first (Full Refresh Strategy)
+    await table.clear();
 
-    await db.transaction('rw', table, async () => {
-      await table.clear();
-      await table.bulkPut(validData);
-    });
+    let offset = 0;
+    let hasMore = true;
+    let totalSynced = 0;
+
+    while (hasMore) {
+        // Fetch data in chunks using the RPC
+        const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+            p_view_name: entityName,
+            p_limit: BATCH_SIZE,
+            p_offset: offset,
+            p_filters: {},
+        });
+
+        if (rpcError) throw rpcError;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const responseData = (rpcResponse as { data: any[] })?.data || [];
+        const validData = responseData.filter(item => item.id != null);
+
+        if (validData.length > 0) {
+            // Bulk add to Dexie
+            await db.transaction('rw', table, async () => {
+                await table.bulkPut(validData);
+            });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            totalSynced += validData.length;
+        }
+
+        // Check if we reached the end
+        if (responseData.length < BATCH_SIZE) {
+            hasMore = false;
+        } else {
+            offset += BATCH_SIZE;
+        }
+    }
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
   } catch (err) {
     const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
-    console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage, JSON.stringify(err, null, 2));
+    console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage);
     await db.sync_status.put({
       tableName: entityName,
       status: 'error',
@@ -80,24 +101,33 @@ export async function syncEntity(
 export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
+  const queryClient = useQueryClient();
 
   const { isLoading, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
-    queryFn: () => 
-      toast.promise(
+    queryFn: async () => {
+      // Use toast.promise to show progress/success/error UI
+      return toast.promise(
         async () => {
-          const results = await Promise.allSettled(
-            entitiesToSync.map(entityName => syncEntity(supabase, localDb, entityName))
-          );
+          const failures: string[] = [];
           
-          const failedEntities = results
-            .map((result, index) => ({ result, name: entitiesToSync[index] }))
-            .filter(item => item.result.status === 'rejected');
-    
-          if (failedEntities.length > 0) {
-            const errorDetails = failedEntities.map(item => `${item.name} (${(item.result as PromiseRejectedResult).reason.message})`).join(', ');
-            throw new Error(`Failed to sync the following entities: ${errorDetails}`);
+          for (const entity of entitiesToSync) {
+            try {
+                await syncEntity(supabase, localDb, entity);
+            } catch (e) {
+                failures.push(`${entity} (${(e as Error).message})`);
+            }
           }
+    
+          if (failures.length > 0) {
+            throw new Error(`Failed entities: ${failures.join(', ')}`);
+          }
+          
+          // THE FIX: Invalidate all queries EXCEPT the sync query itself to prevent infinite loops.
+          await queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] !== 'data-sync-all'
+          });
+          
           return { lastSynced: new Date().toISOString() };
         },
         {
@@ -105,10 +135,15 @@ export function useDataSync() {
           success: 'Local data is up to date.',
           error: (err: Error) => `Data sync failed: ${err.message}`,
         }
-      ),
-    staleTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
+      );
+    },
+    // Keep these settings to ensure it only runs once on mount/refresh
+    staleTime: Infinity,          
+    gcTime: 1000 * 60 * 60 * 24,  
+    refetchOnMount: false,        
+    refetchOnWindowFocus: false,  
+    refetchOnReconnect: false,    
+    retry: false,                 
   });
 
   return { 
