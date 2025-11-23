@@ -15,7 +15,7 @@ import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useSorting } from '@/hooks/useSorting';
-import { useMemo, useCallback, useEffect } from 'react'; // Changed useState to useEffect
+import { useMemo, useCallback, useEffect } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -40,24 +40,29 @@ export default function LookupTypesPage() {
     displayNameField: 'name',
   });
   
-  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useOfflineQuery<Lookup_typesRowSchema[]>(
+  // THE FIX: Explicitly fetch ALL lookup types to build the unique category list.
+  // We removed the .neq('name', 'DEFAULT') filter so categories like SYSTEM_CAPACITY appear.
+  const { 
+    data: categoriesData, 
+    isLoading: isLoadingCategories, 
+    error: categoriesError,
+    refetch: refetchCategories 
+  } = useOfflineQuery<Lookup_typesRowSchema[]>(
       ['unique-categories'],
       async () => {
-          const { data, error: dbError } = await createClient().from('lookup_types').select('*').neq('name', 'DEFAULT');
+          const { data, error: dbError } = await createClient().from('lookup_types').select('*');
           if(dbError) throw dbError;
           const unique = Array.from(new Map(data.map(item => [item.category, item])).values());
-          return unique;
+          return unique.sort((a, b) => a.category.localeCompare(b.category));
       },
       async () => {
-          const allLookups = await localDb.lookup_types.filter(l => l.name !== 'DEFAULT').toArray();
+          const allLookups = await localDb.lookup_types.toArray();
           const unique = Array.from(new Map(allLookups.map(item => [item.category, item])).values());
-          return unique;
+          return unique.sort((a, b) => a.category.localeCompare(b.category));
       }
   );
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
-  // THE FIX: Use useEffect to sync the selectedCategory from the URL to the filters state.
-  // This ensures that when the URL changes (via dropdown navigation), the filters update and the table re-renders.
   useEffect(() => {
     filters.setFilters({ category: selectedCategory });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,9 +79,12 @@ export default function LookupTypesPage() {
   });
   
   const handleRefresh = useCallback(async () => {
-    await refetch();
+    await Promise.all([
+      refetch(),
+      refetchCategories()
+    ]);
     toast.success('Data refreshed successfully');
-  }, [refetch]);
+  }, [refetch, refetchCategories]);
 
   const hasCategories = categories.length > 0;
   const hasSelectedCategory = !!selectedCategory;
@@ -91,8 +99,8 @@ export default function LookupTypesPage() {
   });
 
   const headerStats = [
-    { value: totalCount, label: 'Total Types in Category' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: totalCount-1, label: 'Total Types in Category' },
+    { value: activeCount-1, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 

@@ -36,7 +36,7 @@ export const useSystemsData = (
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    return localDb.v_systems_complete.toArray();
+    return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
   // 3. Use the local-first query hook
@@ -56,9 +56,9 @@ export const useSystemsData = (
   // 4. Client-side processing (filtering and pagination)
   const processedData = useMemo(() => {
     if (!allSystems) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-    
+
     let filtered = allSystems;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -72,15 +72,10 @@ export const useSystemsData = (
       );
     }
     if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system) =>
-          system.system_type_name === filters.system_type_name
-      );
+      filtered = filtered.filter((system) => system.system_type_name === filters.system_type_name);
     }
     if (filters.status) {
-      filtered = filtered.filter(
-        (system) => system.status === (filters.status === "true")
-      );
+      filtered = filtered.filter((system) => system.status === (filters.status === 'true'));
     }
 
     const totalCount = filtered.length;

@@ -28,7 +28,7 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
   const isEditMode = !!editingRecord;
 
   const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "PORT_TYPES" } });
-  const portTypeOptions = useMemo(() => portTypesResult.data.map((t) => ({ value: t.id, label: t.name })), [portTypesResult]);
+  const portTypeOptions = useMemo(() => portTypesResult.data.filter((t) => t.name !== "DEFAULT").map((t) => ({ value: t.id, label: t.name })), [portTypesResult]);
 
   const {
     control,
