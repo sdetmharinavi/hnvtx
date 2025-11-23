@@ -17,7 +17,8 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_id UUID DEFAULT NULL,
     -- THE FIX: These parameters now accept arrays from the Excel upload logic.
     p_ring_associations JSONB DEFAULT NULL,
-    p_make TEXT DEFAULT NULL
+    p_make TEXT DEFAULT NULL,
+    p_system_capacity_id UUID DEFAULT NULL
 )
 RETURNS SETOF public.systems
 LANGUAGE plpgsql
@@ -35,10 +36,10 @@ BEGIN
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
         id, system_name, system_type_id, maan_node_id, node_id, ip_address,
-        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub
+        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub, system_capacity_id
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_maan_node_id, p_node_id, p_ip_address,
-        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub
+        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub, p_system_capacity_id
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
@@ -53,6 +54,7 @@ BEGIN
         status = EXCLUDED.status,
         make = EXCLUDED.make,
         is_hub = EXCLUDED.is_hub,
+        system_capacity_id = EXCLUDED.system_capacity_id,
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
@@ -79,7 +81,7 @@ END;
 $$;
 
 -- Grant execute on the modified function signature
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,

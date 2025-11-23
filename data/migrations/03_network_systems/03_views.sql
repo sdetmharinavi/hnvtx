@@ -10,6 +10,7 @@ SELECT
   s.node_id,
   s.system_name,
   s.is_hub,
+  s.system_capacity_id,
   -- THE FIX: Cast the ip_address from INET to TEXT directly in the view definition.
   -- This makes it directly searchable with text operators like ILIKE.
   s.ip_address::text,
@@ -29,6 +30,7 @@ SELECT
   lt_system.name AS system_type_name,
   lt_system.code AS system_type_code,
   lt_system.category AS system_category,
+  lt_capacity.name AS system_capacity_name,
   ma.name AS system_maintenance_terminal_name,
   -- Aggregated ring information
   r_agg.ring_associations,
@@ -39,6 +41,7 @@ SELECT
 FROM public.systems s
   JOIN public.nodes n ON s.node_id = n.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+  LEFT JOIN public.lookup_types lt_capacity ON s.system_capacity_id = lt_capacity.id
   LEFT JOIN public.lookup_types lt_node_type ON n.node_type_id = lt_node_type.id
   LEFT JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
   LEFT JOIN LATERAL (

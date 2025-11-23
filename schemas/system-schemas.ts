@@ -30,6 +30,12 @@ export const systemFormValidationSchema = systemsInsertSchema
       const num = Number(stringVal);
       return Number.isNaN(num) ? null : num;
     }).optional(),
+    
+    // ADDED: System Capacity
+    system_capacity_id: z.union([z.uuid(), z.literal('')])
+    .optional()
+    .nullable()
+    .transform((val) => val || null),
   });
 
 // This is the type that will be used by the form state.

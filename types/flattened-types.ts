@@ -1676,6 +1676,7 @@ export type SystemsRow = {
     remark: string | null;
     s_no: string | null;
     status: boolean | null;
+    system_capacity_id: string | null;
     system_name: string | null;
     system_type_id: string;
     updated_at: string | null;
@@ -1694,6 +1695,7 @@ export type SystemsInsert = {
     remark?: string | null;
     s_no?: string | null;
     status?: boolean | null;
+    system_capacity_id?: string | null;
     system_name?: string | null;
     system_type_id: string;
     updated_at?: string | null;
@@ -1712,6 +1714,7 @@ export type SystemsUpdate = {
     remark?: string | null;
     s_no?: string | null;
     status?: boolean | null;
+    system_capacity_id?: string | null;
     system_name?: string | null;
     system_type_id?: string;
     updated_at?: string | null;
@@ -2106,6 +2109,8 @@ export type V_systems_completeRow = {
     ring_logical_area_name: string | null;
     s_no: string | null;
     status: boolean | null;
+    system_capacity_id: string | null;
+    system_capacity_name: string | null;
     system_category: string | null;
     system_maintenance_terminal_name: string | null;
     system_name: string | null;

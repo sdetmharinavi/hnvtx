@@ -37,6 +37,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'created_at',
       'status',
       'is_hub',
+      'system_capacity_id' // Omit the ID, we'll show the name
     ],
     overrides: {
       system_name: {
@@ -62,6 +63,11 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         dataIndex: 'system_type_code',
         width: 120,
       },
+      // ADDED
+      system_capacity_name: {
+        title: 'Capacity',
+        width: 100,
+      },
       node_name: {
         title: 'Node / Location',
         width: 150,
@@ -77,7 +83,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         width: 180,
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
-            {(value as string)?.split("/")[0]|| 'N/A'}
+            {(value as string) || 'N/A'}
           </code>
         ),
       },

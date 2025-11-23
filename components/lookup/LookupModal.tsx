@@ -4,28 +4,25 @@
 import { Button } from "@/components/common/ui/Button";
 import { Input } from "@/components/common/ui/Input";
 import { Modal } from "@/components/common/ui/Modal";
-import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import {
   lookup_typesInsertSchema,
   Lookup_typesInsertSchema,
   Lookup_typesRowSchema,
-  Lookup_typesUpdateSchema,
 } from "@/schemas/zod-schemas";
 import { snakeToTitleCase } from "@/utils/formatters";
-import { createClient } from "@/utils/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import z from "zod";
 import { generateCodeFromName } from "@/config/helper-functions";
 
 interface LookupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLookupCreated?: (lookupData: Lookup_typesInsertSchema) => void;
-  onLookupUpdated?: (lookupData: Lookup_typesUpdateSchema) => void;
-  editingLookup?: Lookup_typesUpdateSchema | null;
+  // THE FIX: Replaced individual callbacks with a single onSubmit and isLoading prop
+  onSubmit: (data: Lookup_typesInsertSchema) => void;
+  isLoading: boolean;
+  editingLookup?: Lookup_typesRowSchema | null;
   category?: string;
   categories?: Lookup_typesRowSchema[];
 }
@@ -44,15 +41,15 @@ const getUniqueCategories = (data?: Lookup_typesRowSchema[]) => {
 export function LookupModal({
   isOpen,
   onClose,
-  onLookupCreated,
-  onLookupUpdated,
+  onSubmit,
+  isLoading,
   editingLookup,
   category,
   categories,
 }: LookupModalProps) {
-  const supabase = createClient();
-  const { mutate: createLookup } = useTableInsert(supabase, "lookup_types");
-  const { mutate: updateLookup } = useTableUpdate(supabase, "lookup_types");
+  
+  // THE FIX: Removed internal useTableInsert/useTableUpdate hooks. 
+  // The modal is now purely presentational regarding data persistence.
 
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
   const isEditMode = Boolean(editingLookup);
@@ -73,7 +70,7 @@ export function LookupModal({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors }, // removed isSubmitting from here, using prop isLoading
     reset,
     watch,
     setValue,
@@ -105,7 +102,7 @@ export function LookupModal({
         sort_order: editingLookup?.sort_order || 0,
         is_system_default: editingLookup?.is_system_default || false,
         status: editingLookup?.status !== false,
-        is_ring_based: editingLookup?.is_ring_based || false, // ADDED
+        is_ring_based: editingLookup?.is_ring_based || false,
       };
       reset(resetData);
     }
@@ -127,50 +124,24 @@ export function LookupModal({
         name: data.name?.trim(),
         category: data.category?.trim(),
       };
-      if (isEditMode && editingLookup?.id) {
-        updateLookup(
-          { id: editingLookup.id, data: submissionData },
-          {
-            onSuccess: (updatedData) => {
-              onLookupUpdated?.(updatedData as Lookup_typesUpdateSchema);
-              onClose();
-            },
-            onError: (error) => toast.error(`Failed to update lookup type: ${error.message}`),
-          }
-        );
-      } else {
-        createLookup(submissionData, {
-          onSuccess: (createdData) => {
-            onLookupCreated?.(createdData as unknown as Lookup_typesInsertSchema);
-            onClose();
-          },
-          onError: (error) => toast.error(`Failed to create lookup type: ${error.message}`),
-        });
-      }
+      
+      // THE FIX: Delegate submission to the parent component
+      onSubmit(submissionData as Lookup_typesInsertSchema);
     },
-    [
-      isEditMode,
-      editingLookup,
-      updateLookup,
-      createLookup,
-      onLookupUpdated,
-      onLookupCreated,
-      onClose,
-    ]
+    [onSubmit]
   );
 
   const modalTitle = isEditMode ? "Edit Lookup Type" : "Add Lookup Type";
   const submitButtonText = isEditMode
-    ? isSubmitting
+    ? isLoading
       ? "Updating..."
       : "Update"
-    : isSubmitting
+    : isLoading
     ? "Creating..."
     : "Create";
-  const canSubmit = Boolean(watch("category")?.trim() && watch("name")?.trim() && !isSubmitting);
+  const canSubmit = Boolean(watch("category")?.trim() && watch("name")?.trim() && !isLoading);
   const watchedCode = watch("code");
 
-  // Determine if the special system type flags should be shown
   const showSystemFlags = watchedCategory === "SYSTEM_TYPES";
 
   return (
@@ -200,7 +171,7 @@ export function LookupModal({
               <select
                 {...register("category")}
                 className='w-full rounded-md border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none border-gray-300 dark:border-gray-600'
-                disabled={isSubmitting}
+                disabled={isLoading}
                 value={watchedCategory || ""}
                 onChange={(e) => setValue("category", e.target.value)}>
                 <option value=''>Select category...</option>
@@ -227,7 +198,7 @@ export function LookupModal({
               type='text'
               {...register("name")}
               placeholder='Enter lookup name'
-              disabled={isSubmitting}
+              disabled={isLoading}
               className='bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600'
             />
             {errors.name && (
@@ -246,7 +217,7 @@ export function LookupModal({
               {...register("code")}
               placeholder='Auto-generated or manual'
               value={watchedCode || ""}
-              disabled={isSubmitting}
+              disabled={isLoading}
               onChange={(e) => {
                 setIsCodeManuallyEdited(true);
                 setValue("code", e.target.value);
@@ -268,7 +239,7 @@ export function LookupModal({
               id='sort_order'
               {...register("sort_order", { valueAsNumber: true })}
               placeholder='0'
-              disabled={isSubmitting}
+              disabled={isLoading}
               min='0'
               className='bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600'
             />
@@ -289,7 +260,7 @@ export function LookupModal({
               rows={3}
               {...register("description")}
               placeholder='Enter description (optional)'
-              disabled={isSubmitting}
+              disabled={isLoading}
             />
             {errors.description && (
               <p className='text-xs text-red-500 dark:text-red-400 mt-1'>
@@ -303,7 +274,7 @@ export function LookupModal({
                 type='checkbox'
                 id='status'
                 {...register("status")}
-                disabled={isSubmitting}
+                disabled={isLoading}
                 className='h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500'
               />
               <label htmlFor='status' className='ml-2 text-sm text-gray-700 dark:text-gray-300'>
@@ -315,7 +286,7 @@ export function LookupModal({
                 type='checkbox'
                 id='is_system_default'
                 {...register("is_system_default")}
-                disabled={isSubmitting || (isEditMode && !!editingLookup?.is_system_default)}
+                disabled={isLoading || (isEditMode && !!editingLookup?.is_system_default)}
                 className='h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500'
               />
               <label
@@ -325,7 +296,6 @@ export function LookupModal({
               </label>
             </div>
 
-            {/* ADDED: Conditional rendering for system type flags */}
             {showSystemFlags && (
               <>
                 <div className='flex items-center'>
@@ -333,7 +303,7 @@ export function LookupModal({
                     type='checkbox'
                     id='is_ring_based'
                     {...register("is_ring_based")}
-                    disabled={isSubmitting}
+                    disabled={isLoading}
                     className='h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500'
                   />
                   <label
@@ -347,7 +317,7 @@ export function LookupModal({
           </div>
         </div>
         <div className='flex justify-end gap-2 pt-4'>
-          <Button type='button' variant='outline' onClick={onClose} disabled={isSubmitting}>
+          <Button type='button' variant='outline' onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button type='submit' disabled={!canSubmit}>

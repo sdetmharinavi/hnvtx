@@ -24,15 +24,17 @@ import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 
-// Local schema override: ensure ring_id accepts empty string from the UI component
+// Local schema override: ensure fields accept empty string from the UI component
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
+  system_capacity_id: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
 });
 type SystemFormValues = z.infer<typeof systemModalFormSchema>;
 
 const createDefaultFormValues = (): SystemFormValues => ({
   system_name: "",
   system_type_id: "",
+  system_capacity_id: "", // Added
   node_id: "",
   maan_node_id: null,
   maintenance_terminal_id: null,
@@ -72,6 +74,15 @@ export const SystemModal: FC<SystemModalProps> = ({
     orderBy: [{ column: "code", ascending: true }],
   });
   const systemTypes = systemTypesResult.data;
+
+  // NEW: Fetch Capacity Options
+  const { data: capacitiesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: "SYSTEM_CAPACITY" },
+    orderBy: [{ column: "sort_order", ascending: true }],
+  });
+  const capacities = capacitiesResult.data;
+
   const { data: nodesResult = { data: [] } } = useTableQuery(supabase, "nodes", {
     columns: "id, name, maintenance_terminal_id",
   });
@@ -83,7 +94,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   );
   const maintenanceTerminals = maintenanceTerminalsResult.data;
   
-  // Fetch rings for the dropdown in step 2
   const { data: ringsResult = { data: [] } } = useTableQuery(supabase, "rings", {
     columns: "id, name",
     filters: { status: true },
@@ -97,6 +107,15 @@ export const SystemModal: FC<SystemModalProps> = ({
         .map((st) => ({ value: st.id, label: st.code ?? st.name ?? "" })),
     [systemTypes]
   );
+
+  const capacityOptions = useMemo(
+    () =>
+      capacities
+        .filter((c) => c.name !== "DEFAULT")
+        .map((c) => ({ value: c.id, label: c.name })),
+    [capacities]
+  );
+
   const nodeOptions = useMemo(() => nodes.map((n) => ({ value: n.id, label: n.name })), [nodes]);
   const maintenanceTerminalOptions = useMemo(
     () => maintenanceTerminals.map((mt) => ({ value: mt.id, label: mt.name })),
@@ -150,6 +169,7 @@ export const SystemModal: FC<SystemModalProps> = ({
         reset({
           system_name: rowData.system_name || "",
           system_type_id: rowData.system_type_id || "",
+          system_capacity_id: rowData.system_capacity_id || "", // Added
           node_id: rowData.node_id || "",
           maan_node_id: rowData.maan_node_id || null,
           maintenance_terminal_id: rowData.maintenance_terminal_id,
@@ -181,7 +201,6 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const onValidSubmit: SubmitHandler<SystemFormValues> = useCallback(
     (formData) => {
-      // The zod transform handles empty string -> null conversion for us
       const payload = formData as unknown as SystemFormData;
       onSubmit(payload);
     },
@@ -189,53 +208,14 @@ export const SystemModal: FC<SystemModalProps> = ({
   );
 
   const onInvalidSubmit: SubmitErrorHandler<SystemFormValues> = (errors) => {
-    // Build a readable error list
-    const errorList = Object.entries(errors).map(([field, err]) => {
-      return `${field}: ${(err)?.message ?? "Invalid value"}`;
-    });
-
-    // Show full error list in toast
-    toast.error(
-      <>
-        <div className='font-semibold mb-1'>Validation Errors:</div>
-        <ul className='list-disc pl-5 space-y-1'>
-          {errorList.map((e, i) => (
-            <li key={i}>{e}</li>
-          ))}
-        </ul>
-      </>
+    toast.error("Validation failed. Please check required fields on all steps.");
+    const step1Fields: (keyof SystemFormValues)[] = ["system_name", "system_type_id", "node_id"];
+    const hasErrorInStep1 = Object.keys(errors).some((key) =>
+      step1Fields.includes(key as keyof SystemFormValues)
     );
-
-    // Step 1 fields
-    const step1Fields: (keyof SystemFormValues)[] = [
-      "system_name",
-      "system_type_id",
-      "node_id",
-      "maintenance_terminal_id",
-      "ip_address",
-      "commissioned_on",
-      "maan_node_id",
-    ];
-
-    // Step 2 fields
-    const step2Fields: (keyof SystemFormValues)[] = [
-      "make",
-      "s_no",
-      "remark",
-      "order_in_ring",
-      "ring_id",
-      "is_hub",
-    ];
-
-    const errorKeys = Object.keys(errors) as (keyof SystemFormValues)[];
-
-    // Check where errors are
-    const hasStep1Error = errorKeys.some((f) => step1Fields.includes(f));
-    const hasStep2Error = errorKeys.some((f) => step2Fields.includes(f));
-
-    // Jump to correct step
-    if (hasStep1Error) setStep(1);
-    else if (hasStep2Error) setStep(2);
+    if (hasErrorInStep1 && step !== 1) {
+      setStep(1);
+    }
   };
 
   const handleNext = async (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -316,6 +296,17 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.system_type_id}
           required
         />{" "}
+        
+        {/* Added System Capacity Field */}
+        <FormSearchableSelect
+          name='system_capacity_id'
+          label='Capacity'
+          control={control}
+          options={capacityOptions}
+          error={errors.system_capacity_id}
+          placeholder="Select capacity"
+        />
+
         <FormSearchableSelect
           name='node_id'
           label='Node / Location'
