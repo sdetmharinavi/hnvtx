@@ -1,7 +1,7 @@
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui';
 import { FiMapPin } from 'react-icons/fi';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatIP } from '@/utils/formatters';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
@@ -81,9 +81,12 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       ip_address: {
         title: 'IP Address',
         width: 180,
+        // Apply the transform for Excel export
+        transform: (val) => formatIP(val),
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
-            {(value as string) || 'N/A'}
+            {/* Apply the formatter for UI display */}
+            {formatIP(value) || 'N/A'}
           </code>
         ),
       },

@@ -217,7 +217,8 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           exportColumns.forEach((col) => {
             const key = String(col.dataIndex);
             const value = obj[key];
-            rowData[key] = formatCellValue(value, col);
+            // UPDATE: Pass the full record as the third argument
+            rowData[key] = formatCellValue(value, col, record as Row<T>);
           });
           const excelRow = worksheet.addRow(rowData);
 

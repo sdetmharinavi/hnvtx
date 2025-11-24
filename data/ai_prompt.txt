@@ -129,5 +129,5 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all fix adding natural_sort functionality also as it is needed in config/table-columns/SystemConnectionsTableColumns.tsx. Also check if any file is now obsolete and can be deleted
+Let's begin! First of all we will fix ip address display as its automatically displaying /32 added to the end of the IP address. We need to modify the display logic to show just the IP without the subnet mask. Please identify all places where IP addresses are displayed and modify the formatting logic to strip the subnet mask from the displayed value in the front end. Also, in system export we need to strip the subnet mask before export.
 

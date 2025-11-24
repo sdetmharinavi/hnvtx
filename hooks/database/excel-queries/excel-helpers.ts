@@ -14,6 +14,7 @@ export interface Column<T> {
   filterable?: boolean;
   editable?: boolean;
   render?: (value: unknown, record: T, index: number) => React.ReactNode;
+  transform?: (value: unknown, record?: T) => unknown; 
   filterOptions?: { label: string; value: unknown }[];
   align?: "left" | "center" | "right";
   hidden?: boolean;
@@ -83,7 +84,12 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
 });
 
 // THE FIX: The default case now correctly stringifies objects and arrays.
-export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>): unknown => {
+export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, record?: T): unknown => {
+
+  if (column.transform) {
+    return column.transform(value, record);
+  }
+
   if (value === null || value === undefined || value === '') {
     return null;
   }

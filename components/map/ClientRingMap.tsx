@@ -9,6 +9,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapNode, RingMapNode } from './types/node';
 import { MapLegend } from './MapLegend'; // THE FIX: Import Legend
+import { formatIP } from '@/utils/formatters';
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -71,7 +72,7 @@ const FullscreenControl = ({
       },
     });
     // Wait for the map to be ready before adding the control.
-    const control = new Fullscreen({ position: "topleft" });
+    const control = new Fullscreen({ position: 'topleft' });
     map.whenReady(() => {
       control.addTo(map);
     });
@@ -142,13 +143,13 @@ export default function ClientRingMap({
     const directions = new Map<string, 'left' | 'right'>();
     if (nodes.length < 2) return directions;
 
-    const validNodes = nodes.filter(n => n.long != null && isFinite(n.long as number));
+    const validNodes = nodes.filter((n) => n.long != null && isFinite(n.long as number));
     if (validNodes.length === 0) return directions;
 
-    const lngs = validNodes.map(n => n.long as number);
+    const lngs = validNodes.map((n) => n.long as number);
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
 
-    validNodes.forEach(node => {
+    validNodes.forEach((node) => {
       if (node.id) {
         const direction = (node.long as number) < centerLng ? 'left' : 'right';
         directions.set(node.id, direction);
@@ -209,7 +210,6 @@ export default function ClientRingMap({
 
   return (
     <div className={mapContainerClass}>
-      
       {/* THE FIX: Add Legend */}
       <MapLegend />
 
@@ -296,7 +296,7 @@ export default function ClientRingMap({
               target.lat !== null &&
               target.long !== null
           )
-          .map(([source, target],i) => (
+          .map(([source, target], i) => (
             <Polyline
               key={`dashed-${source.id}-${target.id}`}
               positions={[
@@ -330,10 +330,11 @@ export default function ClientRingMap({
           .filter((node) => node.lat !== null && node.long !== null)
           .map((node, i) => {
             const isHighlighted = highlightedNodeIds.includes(node.id!);
-            const displayIp = node.ip ? node.ip.split('/')[0] : 'N/A';
+            const displayIp = node.ip ? formatIP(node.ip) : 'N/A';
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
-            const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
-            
+            const offset =
+              direction === 'left' ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
+
             return (
               <Marker
                 key={node.id! + i}

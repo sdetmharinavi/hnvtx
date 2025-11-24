@@ -8,6 +8,7 @@ import {
   import { FiCpu, FiMapPin, FiClock, FiServer, FiGitBranch, FiInfo } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
   import { BsnlSystem } from '@/components/bsnl/types';
+import { formatIP } from '@/utils/formatters';
   
   export const systemDetailsConfig = {
     header: {
@@ -29,7 +30,7 @@ import {
           { key: 'system_name', label: 'System Name', icon: <FiInfo size={18} /> },
           { key: 'system_type_name', label: 'System Type', icon: <FiCpu size={18} /> },
           { key: 's_no', label: 'Serial Number', icon: <FiInfo size={18} /> },
-          { key: 'ip_address', label: 'IP Address', icon: <FiInfo size={18} />, formatter: (value) => <code className="text-sm">{String(value)}</code> },
+          { key: 'ip_address', label: 'IP Address', icon: <FiInfo size={18} />, formatter: (value) => <code className="text-sm">{formatIP(value)}</code> },
         ]
       },
       {
