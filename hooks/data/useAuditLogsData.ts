@@ -32,7 +32,7 @@ export const useAuditLogsData = (
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_audit_logs?.orderBy('created_at').reverse().toArray();
+    return localDb.v_audit_logs.orderBy('created_at').reverse().toArray();
   }, []);
 
   const {
@@ -41,7 +41,7 @@ export const useAuditLogsData = (
     isFetching,
     error,
     refetch,
-  } = useLocalFirstQuery<'v_audit_logs'>({
+  } = useLocalFirstQuery<'v_audit_logs', V_audit_logsRowSchema>({
     queryKey: ['audit-logs-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,

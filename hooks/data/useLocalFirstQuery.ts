@@ -14,8 +14,10 @@ interface UseLocalFirstQueryOptions<
   queryKey: QueryKey;
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => PromiseExtended<TLocal[]>;
-  localQueryDeps?: unknown[]; // THE FIX: Added an optional dependency array for the local query.
-  dexieTable: Table<TLocal, string>;
+  localQueryDeps?: unknown[];
+  // THE FIX: Allow any key type (string, number, compound) for the Dexie table
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
 }
@@ -28,7 +30,7 @@ export function useLocalFirstQuery<
   queryKey,
   onlineQueryFn,
   localQueryFn,
-  localQueryDeps = [], // THE FIX: Destructure the new prop with a default value.
+  localQueryDeps = [],
   dexieTable,
   // enabled = true,
   staleTime = 5 * 60 * 1000,
@@ -36,7 +38,6 @@ export function useLocalFirstQuery<
   // const isOnline = useOnlineStatus();
   // const queryClient = useQueryClient();
 
-  // THE FIX: Pass the dependencies to useLiveQuery so it re-subscribes when they change.
   const localData = useLiveQuery(localQueryFn, localQueryDeps, undefined);
 
   const {
