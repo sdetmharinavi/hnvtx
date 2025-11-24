@@ -42,6 +42,7 @@ const createDefaultFormValues = (): SystemRingFormValues => ({
   make: null,
   is_hub: false,
   selected_system_id: null,
+  system_capacity_id: null
 });
 
 interface SystemRingModalProps {
@@ -153,6 +154,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         remark: formData.remark,
         maintenance_terminal_id: formData.maintenance_terminal_id,
         maan_node_id: formData.maan_node_id,
+        system_capacity_id: formData.system_capacity_id,
       };
 
       setSystemsToAdd((prev) => [...prev, systemData]);
