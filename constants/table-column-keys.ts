@@ -313,6 +313,7 @@ const TABLE_COLUMN_OBJECTS = {
   systems: {
     id: "id",
     system_name: "system_name",
+
     s_no: "s_no",
     node_id: "node_id",
     system_type_id: "system_type_id",
@@ -326,6 +327,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
     make: "make",
     is_hub: "is_hub",
+    system_capacity_id: "system_capacity_id",
   },
   system_connections: {
     id: "id",
@@ -661,6 +663,7 @@ const TABLE_COLUMN_OBJECTS = {
   v_systems_complete: {
     system_name: "system_name",
     system_type_code: "system_type_code",
+    system_capacity_name: "system_capacity_name",
     node_name: "node_name",
     is_hub: "is_hub",
     ip_address: "ip_address",
@@ -686,6 +689,7 @@ const TABLE_COLUMN_OBJECTS = {
     ring_associations: "ring_associations",
     updated_at: "updated_at",
     created_at: "created_at",
+    system_capacity_id: "system_capacity_id",
     id: "id",
   },
   v_user_profiles_extended: {
