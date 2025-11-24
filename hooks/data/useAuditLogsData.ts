@@ -32,7 +32,7 @@ export const useAuditLogsData = (
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_audit_logs.orderBy('created_at').reverse().toArray();
+    return localDb.v_audit_logs?.orderBy('created_at').reverse().toArray();
   }, []);
 
   const {
