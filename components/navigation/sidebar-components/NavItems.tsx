@@ -13,6 +13,7 @@ import {
   FiCalendar,
   FiArchive,
   FiGlobe,
+  FiShield,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
