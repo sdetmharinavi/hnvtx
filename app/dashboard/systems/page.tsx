@@ -96,6 +96,16 @@ export default function SystemsPage() {
   );
   const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
 
+  // THE FIX: Fetch System Capacities
+  const { data: systemCapacitiesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ["system-capacities-for-filter"],
+    async () =>
+      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_CAPACITY")).data ??
+      [],
+    async () => await localDb.lookup_types.where({ category: "SYSTEM_CAPACITY" }).toArray()
+  );
+  const systemCapacities = useMemo(() => systemCapacitiesResult || [], [systemCapacitiesResult]);
+
   const handleView = useCallback(
     (system: V_systems_completeRowSchema) => {
       if (system.id) {
@@ -235,7 +245,7 @@ export default function SystemsPage() {
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
-        p_system_capacity_id: formData.system_capacity_id || undefined, // ADDED
+        p_system_capacity_id: formData.system_capacity_id || undefined, 
         p_ring_associations:
           isRingBased && formData.ring_id
             ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
@@ -315,6 +325,19 @@ export default function SystemsPage() {
                 .map((t) => ({
                   value: t.name,
                   label: t.code || t.name,
+                }))}
+            />
+            {/* THE FIX: Added Capacity Filter */}
+            <SelectFilter
+              label='Capacity'
+              filterKey='system_capacity_name'
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={(systemCapacities || [])
+                .filter((s) => s.name !== "DEFAULT")
+                .map((t) => ({
+                  value: t.name,
+                  label: t.name,
                 }))}
             />
             <SelectFilter

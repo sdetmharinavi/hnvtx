@@ -36,6 +36,7 @@ export const useSystemsData = (
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
+    // THE FIX: Use orderBy to get initial sorted data from Dexie
     return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
@@ -56,13 +57,12 @@ export const useSystemsData = (
   // 4. Client-side processing (filtering and pagination)
   const processedData = useMemo(() => {
     if (!allSystems) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-
+    
     let filtered = allSystems;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      // THE FIX: This client-side filter now mirrors the server-side search logic.
       filtered = filtered.filter(
         (system) =>
           system.system_name?.toLowerCase().includes(lowerQuery) ||
@@ -72,11 +72,31 @@ export const useSystemsData = (
       );
     }
     if (filters.system_type_name) {
-      filtered = filtered.filter((system) => system.system_type_name === filters.system_type_name);
+      filtered = filtered.filter(
+        (system) =>
+          system.system_type_name === filters.system_type_name
+      );
+    }
+    // THE FIX: Add filtering for system capacity
+    if (filters.system_capacity_name) {
+      filtered = filtered.filter(
+        (system) =>
+          system.system_capacity_name === filters.system_capacity_name
+      );
     }
     if (filters.status) {
-      filtered = filtered.filter((system) => system.status === (filters.status === 'true'));
+      filtered = filtered.filter(
+        (system) => system.status === (filters.status === "true")
+      );
     }
+
+    // Explicitly sort the filtered results before pagination
+    filtered.sort((a, b) => 
+      (a.system_name || '').localeCompare(b.system_name || '', undefined, { 
+        numeric: true, 
+        sensitivity: 'base' 
+      })
+    );
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((s) => s.status === true).length;

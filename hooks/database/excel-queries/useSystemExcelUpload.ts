@@ -202,6 +202,7 @@ export function useSystemExcelUpload(
           p_remark: (processedData.remark as string | null) || undefined,
           p_make: (processedData.make as string | null) || undefined,
           p_ring_associations: ringAssociationsJson,
+          p_system_capacity_id: (processedData.system_capacity_id as string | null) || undefined,
         };
         // --- END FIX ---
 
