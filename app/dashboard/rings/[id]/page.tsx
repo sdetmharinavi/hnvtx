@@ -9,7 +9,7 @@ import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
-import useORSRouteDistances from '@/hooks/useORSRouteDistances';
+// REMOVED: import useORSRouteDistances from '@/hooks/useORSRouteDistances';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema } from '@/schemas/zod-schemas';
@@ -20,7 +20,6 @@ const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   loading: () => <PageSpinner text="Loading Ring Map..." />,
 });
 
-// THE FIX: Create a stable, memoized mapping function outside the main component body.
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   if (node.lat == null || node.long == null || node.id == null || node.name == null) {
     return null;
@@ -82,14 +81,12 @@ export default function RingMapPage() {
     }
   );
   
-  // THE FIX: This is now the single source of truth for mapped nodes.
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  const { mainSegments, spurConnections, allPairs } = useMemo(() => {
-    // This logic now correctly depends on the stable `mappedNodes`.
+  const { mainSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) {
       return { mainSegments: [], spurConnections: [], allPairs: [] };
     }
@@ -138,7 +135,7 @@ export default function RingMapPage() {
     };
   }, [mappedNodes]);
 
-  const { distances = {}, isLoading: isLoadingDistances } = useORSRouteDistances(allPairs);
+  // REMOVED: const { distances = {}, isLoading: isLoadingDistances } = useORSRouteDistances(allPairs);
 
   const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
 
@@ -147,11 +144,10 @@ export default function RingMapPage() {
   }, [router]);
 
   const renderContent = () => {
-    // THE FIX: The loading condition is now more robust.
-    const isLoading = isLoadingNodes || isLoadingRingDetails || isLoadingDistances;
+    // MODIFIED: Removed isLoadingDistances check
+    const isLoading = isLoadingNodes || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
     
-    // THE FIX: Check the final mapped data, not the raw fetch result.
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
@@ -171,7 +167,7 @@ export default function RingMapPage() {
         nodes={mappedNodes}
         solidLines={mainSegments}
         dashedLines={spurConnections}
-        distances={distances}
+        // REMOVED: distances={distances}
         onBack={handleBack}
         showControls={true}
       />
