@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { useTableBulkOperations } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase-types';
-// THE FIX: The import path is now corrected to the new location of the user mutation hooks.
 import { useAdminBulkDeleteUsers } from '@/hooks/data/useAdminUserMutations';
 import { PostgrestError } from '@supabase/supabase-js';
 
@@ -22,7 +21,8 @@ interface BulkDeleteFilter {
 
 interface UseDeleteManagerProps {
   tableName: keyof Database['public']['Tables'];
-  onSuccess?: () => void;
+  // THE FIX: Callback now accepts the list of deleted IDs
+  onSuccess?: (deletedIds: string[]) => void;
 }
 
 export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps) {
@@ -66,6 +66,9 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   }, []);
 
   const handleConfirm = useCallback(async () => {
+    // Capture IDs before operation
+    const idsToDelete = itemsToDelete.map(item => item.id);
+
     const mutationOptions = {
       onSuccess: () => {
         const successMessage = itemsToDelete.length === 1
@@ -74,7 +77,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
             ? `Successfully deleted ${itemsToDelete.length} items.`
             : `Successfully performed bulk delete.`;
         toast.success(successMessage);
-        onSuccess?.();
+        // THE FIX: Pass the IDs to the callback
+        onSuccess?.(idsToDelete);
       },
       onError: (err: Error) => {
         const pgError = err as unknown as PostgrestError;
@@ -96,7 +100,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
     if (tableName === 'user_profiles') {
       if (itemsToDelete.length > 0) {
-        const idsToDelete = itemsToDelete.map(item => item.id);
         userDelete({ user_ids: idsToDelete }, mutationOptions);
       } else {
         toast.error("Bulk delete by filter is not supported for users.");
@@ -104,9 +107,10 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       }
     } else {
       if (itemsToDelete.length > 0) {
-        const idsToDelete = itemsToDelete.map(item => item.id);
         genericBulkDelete({ ids: idsToDelete }, mutationOptions);
       } else if (bulkFilter) {
+        // Note: For bulk filter deletes, we don't know the IDs easily, so idsToDelete will be empty.
+        // The caller should probably refetch everything in this case.
         genericBulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, mutationOptions);
       }
     }

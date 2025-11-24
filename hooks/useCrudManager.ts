@@ -17,6 +17,7 @@ import {
   TableInsertWithDates,
   Row,
   PagedQueryResult,
+  PublicTableOrViewName,
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
@@ -57,25 +58,27 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
-// THE FIX: The `id` is now strictly a string, as we filter out nulls before use.
-// The index signature remains `any` for flexibility with Zod types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BaseRecord = { id: string | number | null; [key: string]: any };
 
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
+  localTableName?: PublicTableOrViewName;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
   displayNameField?: (keyof V & string) | (keyof V & string)[];
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
+  idType?: 'string' | 'number';
 }
 
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   tableName,
+  localTableName,
   dataQueryHook,
   searchColumn,
   displayNameField = 'name',
   processDataForSave,
+  idType = 'string', // Default to string as UUIDs are most common
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -138,7 +141,35 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onError: (error) => toast.error(`Failed to update status: ${error.message}`),
   });
 
-  const deleteManager = useDeleteManager({ tableName, onSuccess: () => { refetch(); handleClearSelection(); } });
+  const handleLocalCleanup = useCallback(async (deletedIds: string[]) => {
+    if (!deletedIds.length) return;
+    
+    const targetTable = localTableName || tableName;
+    
+    try {
+        const table = getTable(targetTable);
+        // Cast IDs based on configured type before deletion
+        const idsToDelete = idType === 'number' 
+          ? deletedIds.map(Number).filter(n => !isNaN(n)) 
+          : deletedIds;
+          
+        // THE FIX: Explicitly cast to the widened type supported by getTable
+        await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
+        console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
+    } catch (e) {
+        console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
+    }
+  }, [tableName, localTableName, idType]);
+
+  const deleteManager = useDeleteManager({ 
+      tableName, 
+      onSuccess: async (deletedIds) => { 
+          await handleLocalCleanup(deletedIds);
+          refetch(); 
+          handleClearSelection(); 
+      } 
+  });
+
   const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
   const isMutating = isInserting || isUpdating || deleteManager.isPending || bulkUpdate.isPending;
 
@@ -212,11 +243,14 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
           const table = getTable(tableName);
-          await table.delete(idToDelete);
+          // Handle numeric ID locally if needed
+          const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
+          await table.delete(idKey);
+          
           await addMutationToQueue({
             tableName,
             type: 'delete',
-            payload: { ids: [idToDelete] },
+            payload: { ids: [idToDelete] }, // Queue always stores ID as string for consistency
           });
           refetch();
         } catch (err) {
@@ -224,7 +258,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, tableName, deleteManager, getDisplayName, refetch]);
+  }, [isOnline, tableName, deleteManager, getDisplayName, refetch, idType]);
 
   const handleToggleStatus = useCallback(async (record: RecordWithId & { status?: boolean | null }) => {
     if (!record.id) { toast.error("Cannot update status: Invalid ID"); return; }
@@ -236,8 +270,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       try {
         const table = getTable(tableName);
+        const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (table.update as any)(idToUpdate, { status: newStatus });
+        await (table.update as any)(idKey, { status: newStatus });
         await addMutationToQueue({
           tableName,
           type: 'update',
@@ -248,7 +283,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, tableName, toggleStatus, refetch]);
+  }, [isOnline, tableName, toggleStatus, refetch, idType]);
   
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
@@ -269,7 +304,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
           const table = getTable(tableName);
-          await table.bulkDelete(selectedRowIds);
+          const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
+          // Explicitly cast for local deletion
+          await table.bulkDelete(idsKey as (string | number | [string, string])[]);
           await addMutationToQueue({
             tableName,
             type: 'delete',
@@ -282,7 +319,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, selectedRowIds, data, tableName, deleteManager, getDisplayName, refetch, handleClearSelection]);
+  }, [isOnline, selectedRowIds, data, tableName, deleteManager, getDisplayName, refetch, handleClearSelection, idType]);
 
   const handleBulkUpdateStatus = useCallback(async (status: "active" | "inactive") => {
     if (selectedRowIds.length === 0) return;
@@ -301,8 +338,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       try {
         const table = getTable(tableName);
+        const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await table.where('id').anyOf(selectedRowIds).modify({ status: newStatus } as any);
+        await table.where('id').anyOf(idsKey).modify({ status: newStatus } as any);
         for (const id of selectedRowIds) {
           await addMutationToQueue({
             tableName,
@@ -316,7 +354,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline bulk status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, selectedRowIds, tableName, bulkUpdate, refetch, handleClearSelection]);
+  }, [isOnline, selectedRowIds, tableName, bulkUpdate, refetch, handleClearSelection, idType]);
 
   const handleBulkDeleteByFilter = useCallback((column: string, value: string | number | boolean | null, displayName: string) => {
       deleteManager.deleteBulk({ column, value, displayName });

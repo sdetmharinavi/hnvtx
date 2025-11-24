@@ -28,7 +28,6 @@ import {
   V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
   Ring_based_systemsRowSchema,
-  // THE FIX: Import connection view schemas
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
   V_audit_logsRowSchema,
@@ -97,18 +96,18 @@ export class HNVTMDatabase extends Dexie {
   v_employee_designations!: Table<V_employee_designationsRowSchema, string>;
   v_inventory_items!: Table<V_inventory_itemsRowSchema, string>;
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
-  // THE FIX: Add tables for connection views
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
-  v_audit_logs!: Table<V_audit_logsRowSchema, string>;
+  
+  // THE FIX: Update type to number for auto-incrementing ID tables
+  v_audit_logs!: Table<V_audit_logsRowSchema, number>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    // THE FIX: Incremented version to 16 and added new view tables
-    this.version(16).stores({
+    this.version(17).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -137,9 +136,9 @@ export class HNVTMDatabase extends Dexie {
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
-      // THE FIX: Schemas for new views. Indexing by foreign keys is crucial for performance.
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, connected_system_name',
+      v_audit_logs: '&id, action_type, table_name, created_at',
       
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
@@ -149,10 +148,11 @@ export class HNVTMDatabase extends Dexie {
 
 export const localDb = new HNVTMDatabase();
 
-export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | [string, string]> {
+// THE FIX: Widen the return type to include 'number' for tables with integer primary keys
+export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | number | [string, string]> {
     const table = localDb.table(tableName);
     if (!table) {
         throw new Error(`Table ${tableName} does not exist`);
     }
-    return table as Table<Row<T>, string | [string, string]>;
+    return table as Table<Row<T>, string | number | [string, string]>;
 }

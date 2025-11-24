@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useAuditLogsData } from '@/hooks/data/useAuditLogsData';
@@ -19,6 +19,7 @@ import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 import { UserRole } from '@/types/user-roles';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { BulkActions } from '@/components/common/BulkActions';
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
@@ -29,16 +30,20 @@ export default function AuditLogsPage() {
     totalCount,
     isLoading,
     isFetching,
+    isMutating,
     error,
     refetch,
     pagination,
     search,
     filters,
-    viewModal
+    viewModal,
+    bulkActions,
+    deleteModal,
   } = useCrudManager<'user_activity_logs', V_audit_logsRowSchema>({
-    // THE FIX: Use the table name here to satisfy the constraint,
-    // even though we are fetching view data via the hook.
     tableName: 'user_activity_logs', 
+    localTableName: 'v_audit_logs',
+    // THE FIX: Identify IDs as numbers for correct local DB operations
+    idType: 'number',
     dataQueryHook: useAuditLogsData,
     displayNameField: 'action_type',
   });
@@ -56,7 +61,6 @@ export default function AuditLogsPage() {
     }
   ], [viewModal.open]);
 
-  // Note: passing 'v_audit_logs' as T here works because useStandardHeaderActions uses TableOrViewName
   const headerActions = useStandardHeaderActions<'v_audit_logs'>({
     data: logs,
     onRefresh: async () => { await refetch(); toast.success('Logs refreshed!'); },
@@ -85,14 +89,31 @@ export default function AuditLogsPage() {
         isFetching={isFetching}
       />
 
+      <BulkActions
+        selectedCount={bulkActions.selectedCount}
+        onBulkDelete={bulkActions.handleBulkDelete}
+        onBulkUpdateStatus={() => {}} // Not applicable for audit logs
+        onClearSelection={bulkActions.handleClearSelection}
+        showStatusUpdate={false}
+        entityName="audit log"
+        isOperationLoading={isMutating}
+      />
+
       <DataTable
         tableName="v_audit_logs"
         data={logs}
         columns={orderedColumns}
         loading={isLoading}
-        isFetching={isFetching}
+        isFetching={isFetching || isMutating}
         actions={tableActions}
         searchable
+        selectable={true}
+        onRowSelect={(selectedRows) => {
+          const validRows = selectedRows.filter(
+            (row): row is V_audit_logsRowSchema & { id: number } => row.id !== null
+          );
+          bulkActions.handleRowSelect(validRows);
+        }}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -132,6 +153,16 @@ export default function AuditLogsPage() {
         isOpen={viewModal.isOpen}
         onClose={viewModal.close}
         log={viewModal.record as V_audit_logsRowSchema | null}
+      />
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type="danger"
       />
     </div>
   );
