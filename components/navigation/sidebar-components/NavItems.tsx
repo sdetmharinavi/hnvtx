@@ -65,6 +65,13 @@ function NavItems() {
         roles: [],
       },
       {
+        id: 'audit-logs',
+        label: 'Audit Logs',
+        icon: <FiShield className="h-5 w-5" />,
+        href: '/dashboard/audit-logs',
+        roles: [UserRole.ADMIN], // Only admin/super admin
+      },
+      {
         id: 'employees',
         label: 'Employees',
         icon: <BsPeople className="h-5 w-5" />,

@@ -31,6 +31,7 @@
     "push:final": "dotenv -e .env node scripts/push-sql.js data/migrations/99_finalization/",
     "push:sql": "dotenv -e .env node scripts/push-sql.js",
     "push:without-audit": "npm run push:core && npm run push:ofc && npm run push:systems && npm run push:util && npm run push:diary && npm run push:inventory && npm run push:final",
+    "push:all": "npm run push:core && npm run push:ofc && npm run push:systems && npm run push:util && npm run push:diary && npm run push:inventory && npm run push:final && npm run push:audit",
     "blob": "vercel env pull",
     "link": "vercel link",
     "deploy": "vercel deploy",

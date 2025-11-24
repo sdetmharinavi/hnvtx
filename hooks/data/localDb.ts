@@ -31,6 +31,7 @@ import {
   // THE FIX: Import connection view schemas
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
+  V_audit_logsRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -99,6 +100,7 @@ export class HNVTMDatabase extends Dexie {
   // THE FIX: Add tables for connection views
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
+  v_audit_logs!: Table<V_audit_logsRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
