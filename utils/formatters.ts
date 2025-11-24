@@ -666,6 +666,12 @@ export const sanitizeSheetFileName = (name: string) => {
     .substring(0, 31);              // Excel limit (31 chars)
 }
 
+export const formatIP = (ip: unknown): string => {
+  if (!ip || typeof ip !== 'string') return '';
+  // Split by '/' to remove subnet mask if present (e.g., "192.168.1.1/32" -> "192.168.1.1")
+  return ip.split('/')[0];
+};
+
 // =============================================================================
 // =============================================================================
 
@@ -702,6 +708,7 @@ const formatters = {
   normalizeSearchQuery,
   highlightSearchTerms,
   sanitizeSheetFileName,
+  formatIP,
 };
 
 export default formatters;

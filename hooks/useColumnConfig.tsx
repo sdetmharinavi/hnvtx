@@ -36,6 +36,8 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   filterable?: boolean;
   /** Optional: A custom render function for the cell. */
   render?: (value: unknown, record: Row<T>, index: number) => ReactNode;
+  /** Optional: A custom transformation function for Excel export. */
+  transform?: (value: unknown, record?: Row<T>) => unknown;
   // ... and any other properties from your master Column<T> type.
   resizable?: boolean;
 }

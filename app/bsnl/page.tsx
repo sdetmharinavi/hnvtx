@@ -23,6 +23,7 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
+import { formatIP } from '@/utils/formatters';
 
 const OptimizedNetworkMap = dynamic(
   () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
@@ -109,7 +110,7 @@ export default function ScalableFiberNetworkDashboard() {
     { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
     { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },
     { key: 'node_name', title: 'Node', dataIndex: 'node_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{String(val)}</code> : null },
+    { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{formatIP(val)}</code> : null },
     { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
   ], []);
 
