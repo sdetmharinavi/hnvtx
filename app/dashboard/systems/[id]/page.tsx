@@ -68,7 +68,10 @@ export default function SystemConnectionsPage() {
 
   const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { onSuccess: () => { refetch(); closeModal(); } });
   const deprovisionMutation = useDeprovisionServicePath();
-  const deleteManager = useDeleteManager({ tableName: 'system_connections', onSuccess: refetch });
+  const deleteManager = useDeleteManager({ 
+    tableName: 'system_connections', 
+    onSuccess: () => { refetch(); } 
+  });
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { onSuccess: (result) => { if (result.successCount > 0) refetch(); } });
 
   const columns = SystemConnectionsTableColumns(connections);

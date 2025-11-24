@@ -79,7 +79,7 @@ export default function LookupTypesPage() {
 
   const deleteManager = useDeleteManager({
     tableName: "lookup_types",
-    onSuccess: refetch,
+   onSuccess: () => { refetch(); }
   });
 
   const {

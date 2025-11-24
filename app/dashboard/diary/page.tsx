@@ -63,7 +63,11 @@ export default function DiaryPage() {
     onError: (err) => toast.error(`Failed to update note: ${err.message}`),
   });
 
-  const deleteManager = useDeleteManager({ tableName: 'diary_notes', onSuccess: refetch });
+  // THE FIX: Wrap refetch in an arrow function to ignore the deletedIds argument
+  const deleteManager = useDeleteManager({ 
+    tableName: 'diary_notes', 
+    onSuccess: () => { refetch(); } 
+  });
 
   const isMutating = isInserting || isUpdating || deleteManager.isPending;
 
