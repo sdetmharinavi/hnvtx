@@ -1720,6 +1720,45 @@ export type SystemsUpdate = {
     updated_at?: string | null;
 };
 
+export type User_activity_logsRow = {
+    action_type: string;
+    created_at: string | null;
+    details: string | null;
+    id: number;
+    new_data: Json | null;
+    old_data: Json | null;
+    record_id: string | null;
+    table_name: string | null;
+    user_id: string | null;
+    user_role: string | null;
+};
+
+export type User_activity_logsInsert = {
+    action_type: string;
+    created_at?: string | null;
+    details?: string | null;
+    id?: number;
+    new_data?: Json | null;
+    old_data?: Json | null;
+    record_id?: string | null;
+    table_name?: string | null;
+    user_id?: string | null;
+    user_role?: string | null;
+};
+
+export type User_activity_logsUpdate = {
+    action_type?: string;
+    created_at?: string | null;
+    details?: string | null;
+    id?: number;
+    new_data?: Json | null;
+    old_data?: Json | null;
+    record_id?: string | null;
+    table_name?: string | null;
+    user_id?: string | null;
+    user_role?: string | null;
+};
+
 export type User_profilesRow = {
     address: Json | null;
     avatar_url: string | null;
@@ -1769,6 +1808,22 @@ export type User_profilesUpdate = {
 };
 
 // ============= VIEWS =============
+
+export type V_audit_logsRow = {
+    action_type: string | null;
+    created_at: string | null;
+    details: string | null;
+    id: number | null;
+    new_data: Json | null;
+    old_data: Json | null;
+    performed_by_avatar: string | null;
+    performed_by_email: string | null;
+    performed_by_name: string | null;
+    record_id: string | null;
+    table_name: string | null;
+    user_id: string | null;
+    user_role: string | null;
+};
 
 export type V_cable_segments_at_jcRow = {
     end_node_id: string | null;
@@ -2215,10 +2270,12 @@ export const tableNames = [
   "sdh_connections",
   "system_connections",
   "systems",
+  "user_activity_logs",
   "user_profiles"
 ] as const;
 
 export const viewNames = [
+  "v_audit_logs",
   "v_cable_segments_at_jc",
   "v_cable_utilization",
   "v_employee_designations",

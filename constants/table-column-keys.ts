@@ -108,6 +108,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   diary_notes: {
     note_date: { transform: toPgDate, excelFormat: "date" },
   },
+  v_audit_logs: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    old_data: { excelFormat: "json" },
+    new_data: { excelFormat: "json" },
+  },
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
@@ -307,6 +312,18 @@ const TABLE_COLUMN_OBJECTS = {
     name: "name",
     user_id: "user_id",
     created_at: "created_at",
+  },
+  user_activity_logs: {
+    action_type: "action_type",
+    created_at: "created_at",
+    details: "details",
+    id: "id",
+    new_data: "new_data",
+    old_data: "old_data",
+    record_id: "record_id",
+    table_name: "table_name",
+    user_id: "user_id",
+    user_role: "user_role",
   },
 
   // ==================== System Tables ====================
@@ -872,6 +889,21 @@ const TABLE_COLUMN_OBJECTS = {
     port_capacity: "port_capacity",
     sfp_serial_no: "sfp_serial_no",
   },
+  v_audit_logs: {
+    id: "id",
+    user_id: "user_id",
+    user_role: "user_role",
+    action_type: "action_type",
+    table_name: "table_name",
+    record_id: "record_id",
+    old_data: "old_data",
+    new_data: "new_data",
+    details: "details",
+    created_at: "created_at",
+    performed_by_name: "performed_by_name",
+    performed_by_email: "performed_by_email",
+    performed_by_avatar: "performed_by_avatar",
+  },
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
@@ -932,6 +964,7 @@ export const VIEWS = {
   v_junction_closures_complete: "v_junction_closures_complete",
   v_ring_nodes: "v_ring_nodes",
   v_inventory_items: "v_inventory_items",
+  v_audit_logs: "v_audit_logs",
 } as const;
 
 export const TABLE_NAMES = {
