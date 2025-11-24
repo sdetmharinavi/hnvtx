@@ -8,14 +8,126 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapNode, RingMapNode } from './types/node';
-import { MapLegend } from './MapLegend'; // THE FIX: Import Legend
+import { MapLegend } from './MapLegend';
 import { formatIP } from '@/utils/formatters';
+import { useQuery } from '@tanstack/react-query';
+import { ButtonSpinner } from '@/components/common/ui';
 
+// --- Rate Limiter for ORS API ---
+// Simple singleton queue to prevent 429s
+let fetchChain: Promise<void> = Promise.resolve();
+const requestDelay = 1600; 
+
+const rateLimitedFetchDistance = async (start: MapNode, end: MapNode) => {
+  const makeRequest = async () => {
+    const response = await fetch('/api/ors-distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: start, b: end }),
+    });
+    if (!response.ok) throw new Error('Failed to fetch distance');
+    return response.json();
+  };
+
+  // Chain requests
+  const resultPromise = fetchChain.then(makeRequest);
+  
+  // Add delay for the next request in the chain
+  fetchChain = resultPromise
+    .then(() => new Promise<void>(res => setTimeout(res, requestDelay)))
+    .catch(() => new Promise<void>(res => setTimeout(res, requestDelay)));
+
+  return resultPromise;
+};
+
+// --- Sub-component for Lines ---
+interface ConnectionLineProps {
+  start: MapNode;
+  end: MapNode;
+  type: 'solid' | 'dashed';
+  theme: string;
+  showPopup: boolean; // Controlled by parent "Show All"
+  setPolylineRef: (key: string, el: L.Polyline | null) => void;
+}
+
+const ConnectionLine = ({ start, end, type, theme, showPopup, setPolylineRef }: ConnectionLineProps) => {
+  // We track if the popup has been opened by the user OR by the "Show All" toggle
+  const [isInteracted, setIsInteracted] = useState(false);
+
+  // Trigger fetch if explicitly shown or user interacted
+  const shouldFetch = showPopup || isInteracted;
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['ors-distance', start.id, end.id],
+    queryFn: () => rateLimitedFetchDistance(start, end),
+    enabled: shouldFetch, // Lazy load!
+    staleTime: Infinity,
+  });
+
+  const color = type === 'solid' 
+    ? (theme === 'dark' ? '#3b82f6' : '#2563eb') 
+    : (theme === 'dark' ? '#ef4444' : '#dc2626');
+    
+  const distanceText = isLoading 
+    ? <span className="flex items-center gap-2 text-gray-500"><ButtonSpinner size="xs"/> Calculating...</span> 
+    : isError 
+      ? <span className="text-red-500">Calculation failed</span> 
+      : data?.distance_km 
+        ? <span className="font-bold">{data.distance_km} km</span> 
+        : 'N/A';
+
+  return (
+    <Polyline
+      positions={[
+        [start.lat as number, start.long as number],
+        [end.lat as number, end.long as number],
+      ]}
+      color={color}
+      weight={type === 'solid' ? 3 : 2.5}
+      opacity={type === 'solid' ? 1 : 0.7}
+      dashArray={type === 'dashed' ? "6" : undefined}
+      eventHandlers={{
+        // When user clicks, we flag interaction to trigger fetch
+        click: () => setIsInteracted(true),
+        popupopen: () => setIsInteracted(true),
+      }}
+      ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
+    >
+      <Popup
+        autoClose={false}
+        closeOnClick={false}
+        className={theme === 'dark' ? 'dark-popup' : ''}
+      >
+        <div className="text-sm min-w-[150px]">
+          <div className="font-semibold mb-1 border-b border-gray-200 dark:border-gray-700 pb-1">
+             {type === 'solid' ? 'Main Route' : 'Spur Connection'}
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500">From:</span>
+              <span>{start.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">To:</span>
+              <span>{end.name}</span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+               <span className="text-gray-500">Road Dist:</span>
+               {distanceText}
+            </div>
+          </div>
+        </div>
+      </Popup>
+    </Polyline>
+  );
+};
+
+// --- Main Component Props ---
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
   dashedLines?: Array<[RingMapNode, RingMapNode]>;
-  distances?: Record<string, string>;
+  // distances prop REMOVED
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;
   onBack?: () => void;
@@ -23,6 +135,7 @@ interface ClientRingMapProps {
   showControls?: boolean;
 }
 
+// ... MapController, FullscreenControl, MapFlyToController remain the same ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -32,21 +145,12 @@ const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   return null;
 };
 
-const FullscreenControl = ({
-  isFullScreen,
-  setIsFullScreen,
-}: {
-  isFullScreen: boolean;
-  setIsFullScreen: (fs: boolean) => void;
-}) => {
+const FullscreenControl = ({ isFullScreen, setIsFullScreen }: { isFullScreen: boolean; setIsFullScreen: (fs: boolean) => void; }) => {
   const map = useMap();
   useEffect(() => {
     const Fullscreen = L.Control.extend({
       onAdd: function () {
-        const container = L.DomUtil.create(
-          'div',
-          'leaflet-bar leaflet-control leaflet-control-custom'
-        );
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
         container.style.backgroundColor = 'white';
         container.style.color = 'black';
         container.style.width = '34px';
@@ -57,13 +161,10 @@ const FullscreenControl = ({
         container.style.alignItems = 'center';
         container.style.justifyContent = 'center';
         container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
-
         const iconHTML = isFullScreen
           ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
           : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
-
         container.innerHTML = iconHTML;
-
         L.DomEvent.on(container, 'click', (e) => {
           L.DomEvent.stopPropagation(e);
           setIsFullScreen(!isFullScreen);
@@ -71,15 +172,9 @@ const FullscreenControl = ({
         return container;
       },
     });
-    // Wait for the map to be ready before adding the control.
-    const control = new Fullscreen({ position: 'topleft' });
-    map.whenReady(() => {
-      control.addTo(map);
-    });
-
-    return () => {
-      control.remove();
-    };
+    const control = new Fullscreen({ position: "topleft" });
+    map.whenReady(() => { control.addTo(map); });
+    return () => { control.remove(); };
   }, [map, isFullScreen, setIsFullScreen]);
   return null;
 };
@@ -98,7 +193,6 @@ export default function ClientRingMap({
   nodes,
   solidLines = [],
   dashedLines = [],
-  distances = {},
   onBack,
   highlightedNodeIds = [],
   onNodeClick,
@@ -113,6 +207,17 @@ export default function ClientRingMap({
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
+
+  // Helper to register refs from the sub-component
+  const setPolylineRef = (key: string, el: L.Polyline | null) => {
+      if (el) {
+          polylineRefs.current[key] = el;
+          // If "Show All" is active, open popup immediately on mount
+          if (showAllLinePopups) el.openPopup();
+      } else {
+          delete polylineRefs.current[key];
+      }
+  };
 
   // ... (popupOffsets and nodeLabelDirections useMemos remain unchanged) ...
   const popupOffsets = useMemo(() => {
@@ -129,7 +234,7 @@ export default function ClientRingMap({
       if (total > 1) {
         nodeIds.forEach((nodeId, index) => {
           const angle = (index / total) * (Math.PI * 2) - Math.PI / 2;
-          const radius = 40; // pixels from marker center
+          const radius = 40;
           const offsetX = Math.cos(angle) * radius;
           const offsetY = Math.sin(angle) * radius;
           offsets[nodeId] = [offsetX, offsetY];
@@ -142,30 +247,22 @@ export default function ClientRingMap({
   const nodeLabelDirections = useMemo(() => {
     const directions = new Map<string, 'left' | 'right'>();
     if (nodes.length < 2) return directions;
-
-    const validNodes = nodes.filter((n) => n.long != null && isFinite(n.long as number));
+    const validNodes = nodes.filter(n => n.long != null && isFinite(n.long as number));
     if (validNodes.length === 0) return directions;
-
-    const lngs = validNodes.map((n) => n.long as number);
+    const lngs = validNodes.map(n => n.long as number);
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-
-    validNodes.forEach((node) => {
+    validNodes.forEach(node => {
       if (node.id) {
         const direction = (node.long as number) < centerLng ? 'left' : 'right';
         directions.set(node.id, direction);
       }
     });
-
     return directions;
   }, [nodes]);
 
-  // ... (useEffect for icons and popups remain unchanged) ...
   useEffect(() => {
-    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
-      _getIconUrl?: () => string;
-    };
+    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: () => string; };
     delete iconPrototype._getIconUrl;
-
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
       iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
@@ -187,53 +284,34 @@ export default function ClientRingMap({
 
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
-    const validNodes = nodes.filter(
-      (n) =>
-        n.lat !== null && n.long !== null && typeof n.lat === 'number' && typeof n.long === 'number'
-    );
+    const validNodes = nodes.filter((n) => n.lat !== null && n.long !== null && typeof n.lat === 'number' && typeof n.long === 'number');
     if (validNodes.length === 0) return null;
     const lats = validNodes.map((n) => n.lat as number);
     const lngs = validNodes.map((n) => n.long as number);
-    return new LatLngBounds(
-      [Math.min(...lats), Math.min(...lngs)],
-      [Math.max(...lats), Math.max(...lngs)]
-    );
+    return new LatLngBounds([Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]);
   }, [nodes]);
 
   if (nodes.length === 0) return <div className="py-10 text-center">No nodes to display</div>;
 
   const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const mapAttribution = '&copy; OpenStreetMap contributors &copy; CARTO';
-  const mapContainerClass = isFullScreen
-    ? 'fixed inset-0 z-[100]'
-    : 'relative h-full w-full rounded-lg overflow-hidden';
+  const mapContainerClass = isFullScreen ? 'fixed inset-0 z-[100]' : 'relative h-full w-full rounded-lg overflow-hidden';
 
   return (
     <div className={mapContainerClass}>
-      {/* THE FIX: Add Legend */}
       <MapLegend />
-
       {showControls && (
         <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
           {onBack && (
-            <button
-              onClick={onBack}
-              className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
-            >
+            <button onClick={onBack} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
               ← Back
             </button>
           )}
-          <button
-            onClick={() => setShowAllNodePopups(!showAllNodePopups)}
-            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
-          >
+          <button onClick={() => setShowAllNodePopups(!showAllNodePopups)} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
             <span className={showAllNodePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
             {showAllNodePopups ? 'Hide' : 'Show'} Node Info
           </button>
-          <button
-            onClick={() => setShowAllLinePopups(!showAllLinePopups)}
-            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
-          >
+          <button onClick={() => setShowAllLinePopups(!showAllLinePopups)} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
             <span className={showAllLinePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
             {showAllLinePopups ? 'Hide' : 'Show'} Line Info
           </button>
@@ -253,88 +331,42 @@ export default function ClientRingMap({
         <MapFlyToController coords={flyToCoordinates} />
         <TileLayer url={mapUrl} attribution={mapAttribution} />
 
-        {/* Lines rendering logic remains the same... */}
         {solidLines
-          .filter(
-            ([start, end]) =>
-              start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
-          )
+          .filter(([start, end]) => start.lat !== null && start.long !== null && end.lat !== null && end.long !== null)
           .map(([start, end], i) => (
-            <Polyline
+            <ConnectionLine
               key={`solid-${start.id}-${end.id}-${i}`}
-              positions={[
-                [start.lat as number, start.long as number],
-                [end.lat as number, end.long as number],
-              ]}
-              color={theme === 'dark' ? '#3b82f6' : '#2563eb'}
-              weight={3}
-              opacity={1}
-              ref={(el) => {
-                if (el) polylineRefs.current[`solid-${start.id}-${end.id}-${i}`] = el;
-              }}
-            >
-              <Popup
-                autoClose={false}
-                closeOnClick={false}
-                className={theme === 'dark' ? 'dark-popup' : ''}
-              >
-                <div className="text-sm">
-                  <p>
-                    {start.name} → {end.name}
-                  </p>
-                  <p>Road Distance: {distances[`${start.id}-${end.id}`] ?? '...'}</p>
-                </div>
-              </Popup>
-            </Polyline>
+              start={start}
+              end={end}
+              type="solid"
+              theme={theme}
+              showPopup={showAllLinePopups}
+              setPolylineRef={setPolylineRef}
+            />
           ))}
 
         {dashedLines
-          .filter(
-            ([source, target]) =>
-              source.lat !== null &&
-              source.long !== null &&
-              target.lat !== null &&
-              target.long !== null
-          )
+          .filter(([source, target]) => source.lat !== null && source.long !== null && target.lat !== null && target.long !== null)
           .map(([source, target], i) => (
-            <Polyline
-              key={`dashed-${source.id}-${target.id}`}
-              positions={[
-                [source.lat as number, source.long as number],
-                [target.lat as number, target.long as number],
-              ]}
-              color={theme === 'dark' ? '#ef4444' : '#dc2626'}
-              weight={2.5}
-              opacity={0.7}
-              dashArray="6"
-              ref={(el) => {
-                if (el) polylineRefs.current[`dashed-${source.id}-${target.id}-${i}`] = el;
-              }}
-            >
-              <Popup
-                autoClose={false}
-                closeOnClick={false}
-                className={theme === 'dark' ? 'dark-popup' : ''}
-              >
-                <div className="text-sm">
-                  <p>
-                    {source.name} ↔ {target.name}
-                  </p>
-                  <p>Road Distance: {distances[`${source.id}-${target.id}`] ?? '...'}</p>
-                </div>
-              </Popup>
-            </Polyline>
+            <ConnectionLine
+              key={`dashed-${source.id}-${target.id}-${i}`}
+              start={source}
+              end={target}
+              type="dashed"
+              theme={theme}
+              showPopup={showAllLinePopups}
+              setPolylineRef={setPolylineRef}
+            />
           ))}
 
         {nodes
           .filter((node) => node.lat !== null && node.long !== null)
           .map((node, i) => {
             const isHighlighted = highlightedNodeIds.includes(node.id!);
-            const displayIp = node.ip ? formatIP(node.ip) : 'N/A';
+            const displayIp = formatIP(node.ip);
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
-            const offset =
-              direction === 'left' ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
-
+            const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
+            
             return (
               <Marker
                 key={node.id! + i}
@@ -345,12 +377,7 @@ export default function ClientRingMap({
                   if (el) markerRefs.current[node.id!] = el;
                 }}
               >
-                <Popup
-                  autoClose={false}
-                  closeOnClick={false}
-                  className={theme === 'dark' ? 'dark-popup' : ''}
-                  offset={popupOffsets[node.id!] || [0, 0]}
-                >
+                <Popup autoClose={false} closeOnClick={false} className={theme === 'dark' ? 'dark-popup' : ''} offset={popupOffsets[node.id!] || [0, 0]}>
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
                     {node.system_type_code && <p>Type: {node.system_type_code}</p>}
@@ -358,12 +385,7 @@ export default function ClientRingMap({
                     {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>
-                <Tooltip
-                  permanent
-                  direction={direction}
-                  offset={offset}
-                  className="permanent-label"
-                >
+                <Tooltip permanent direction={direction} offset={offset} className="permanent-label">
                   {node.system_node_name}
                 </Tooltip>
               </Marker>
