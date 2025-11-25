@@ -287,8 +287,9 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
           {/* Purpose section */}
           <motion.div variants={itemVariants} className='flex items-start gap-3'>
             <div
+              // FIX: Added bg-white/dark:bg-gray-800 fallback
               className={`
-              p-2.5 bg-white dark:bg-gray-800 bg-gradient-to-br border rounded-xl shadow-lg 
+              p-2.5 bg-white dark:bg-gray-800 bg-gradient-to-br border rounded-xl shadow-lg
               dark:${colors.gradient.dark} light:${colors.gradient.light}
               dark:${colors.border.dark} light:${colors.border.light}
             `}>

@@ -14,6 +14,7 @@ const SystemFiberTraceModal: React.FC<{
   const RouteDisplay = ({ 
     title, 
     route, 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     icon: Icon, 
     color 
   }: { 
@@ -64,6 +65,7 @@ const SystemFiberTraceModal: React.FC<{
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
+        {/* FIX: Added bg-blue-600 as fallback */}
         <div className="bg-blue-600 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Network className="w-6 h-6 text-white" />

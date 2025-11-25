@@ -38,7 +38,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.MNGADMIN:
         return { 
-          bg: "bg-orange-50 dark:bg-orange-900/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
+          bg: "bg-amber-50 dark:bg-amber-900/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
           text: "text-amber-700 dark:text-amber-300",
           border: "border-amber-200/60 dark:border-amber-500/40",
           shadow: "shadow-amber-500/20 dark:shadow-amber-500/30",
@@ -62,7 +62,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.ANON:
         return { 
-          bg: "bg-stone-50 dark:bg-stone-900/50 bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
+          bg: "bg-zinc-50 dark:bg-zinc-900/50 bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
           text: "text-zinc-600 dark:text-zinc-400",
           border: "border-zinc-200/50 dark:border-zinc-600/40",
           shadow: "shadow-zinc-500/10 dark:shadow-zinc-500/20",
