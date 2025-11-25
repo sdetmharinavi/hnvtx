@@ -34,7 +34,7 @@ export default function AuthButton() {
                   height={32}
                 />
               ) : (
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full bg--blue-500 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                   <BiUser className="h-4 w-4 text-white" />
                 </div>
               )}

@@ -343,7 +343,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                   </div>
                 ) : null}
                 <div
-                  className={`h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-blue-500/20 ${
+                  className={`h-16 w-16 rounded-full bg-blue-500 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-blue-500/20 ${
                     avatarUrl ? "hidden" : ""
                   }`}
                 >

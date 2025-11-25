@@ -34,7 +34,7 @@ export default function HeaderSection() {
           {particles.map((particle) => (
             <motion.div
               key={particle.id}
-              className="absolute rounded-full bg-gradient-to-br from-violet-500/40 to-cyan-500/40 blur-sm"
+              className="absolute rounded-full bg-blue-500 bg-gradient-to-br from-violet-500/40 to-cyan-500/40 blur-sm"
               style={{
                 width: particle.size,
                 height: particle.size,
