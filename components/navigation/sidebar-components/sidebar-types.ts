@@ -18,6 +18,7 @@ export interface NavItem {
   children?: NavItem[];
   roles: UserRole[];
   external?: boolean;
+  preferNative?: boolean;
 }
 
 // Animation variants
