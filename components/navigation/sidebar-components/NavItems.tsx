@@ -46,7 +46,7 @@ function NavItems() {
       {
         id: 'diary',
         label: 'Diary',
-        icon: <FiCalendar className="h-5 w-5" />, // Use the Calendar icon
+        icon: <FiCalendar className="h-5 w-5" />, 
         href: '/dashboard/diary',
         roles: [
           UserRole.ADMIN,
@@ -71,7 +71,7 @@ function NavItems() {
         label: 'Audit Logs',
         icon: <FiShield className="h-5 w-5" />,
         href: '/dashboard/audit-logs',
-        roles: [UserRole.ADMIN], // Only admin/super admin
+        roles: [UserRole.ADMIN],
       },
       {
         id: 'employees',
@@ -163,7 +163,7 @@ function NavItems() {
             id: 'ofc-menu',
             label: 'Optical Fiber Cable',
             href: '/dashboard/ofc',
-            icon: <AiFillMerge className="h-5 w-5" />, // replaced non-existent TbCableData with a valid icon
+            icon: <AiFillMerge className="h-5 w-5" />,
             roles: [UserRole.ADMIN],
           },
           {
@@ -232,6 +232,7 @@ function NavItems() {
           UserRole.ASSETADMIN,
         ],
         external: true,
+        preferNative: true, // Added flag to signal preference for opening installed PWA
       },
       {
         id: 'map',
@@ -247,8 +248,6 @@ function NavItems() {
         ],
         external: true,
       },
-      // Add the new help item to the main navigation array.
-      // It will be filtered and rendered separately in the sidebar layout.
       {
         id: 'help',
         label: 'Help & Documentation',
