@@ -49,7 +49,7 @@ export default function Home() {
 
         {showModal && <OutdatedBrowserModal handleCloseModal={handleCloseModal} />}
 
-        <div className='overflow-hidden relative z-10 flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-black/60 via-black/40 to-black/60'>
+        <div className='overflow-hidden relative z-10 flex min-h-screen flex-col items-center justify-center bg-black/60 bg-gradient-to-b from-black/60 via-black/40 to-black/60'>
           <HeroContent
             variants={{
               containerVariants,
