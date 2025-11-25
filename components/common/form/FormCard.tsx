@@ -157,6 +157,7 @@ export const FormCard: React.FC<FormCardProps> = ({
                   className="px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 rounded-md"
                   style={{
                     animation: "fadeInRight 0.5s ease-out 0.6s both",
+                    backgroundColor: "#2563EB",
                     background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)"
                   }}
                 >

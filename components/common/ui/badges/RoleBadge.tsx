@@ -6,7 +6,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
     switch (role) {
       case UserRole.ADMIN:
         return { 
-          bg: "bg-gradient-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30", 
+          bg: "bg-red-50 dark:bg-red-900/50 bg-gradient-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30", 
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
           shadow: "shadow-red-500/20 dark:shadow-red-500/30",
@@ -14,7 +14,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.MAANADMIN:
         return { 
-          bg: "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30", 
+          bg: "bg-indigo-50 dark:bg-indigo-900/50 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30", 
           text: "text-indigo-700 dark:text-indigo-300",
           border: "border-indigo-200/60 dark:border-indigo-500/40",
           shadow: "shadow-indigo-500/20 dark:shadow-indigo-500/30",
@@ -22,7 +22,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.SDHADMIN:
         return { 
-          bg: "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30", 
+          bg: "bg-emerald-50 dark:bg-emerald-900/50 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30", 
           text: "text-emerald-700 dark:text-emerald-300",
           border: "border-emerald-200/60 dark:border-emerald-500/40",
           shadow: "shadow-emerald-500/20 dark:shadow-emerald-500/30",
@@ -30,7 +30,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.ASSETADMIN:
         return { 
-          bg: "bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30", 
+          bg: "bg-slate-50 dark:bg-slate-900/50 bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30", 
           text: "text-slate-700 dark:text-slate-300",
           border: "border-slate-200/60 dark:border-slate-500/40",
           shadow: "shadow-slate-500/20 dark:shadow-slate-500/30",
@@ -38,7 +38,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.MNGADMIN:
         return { 
-          bg: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
+          bg: "bg-orange-50 dark:bg-orange-900/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
           text: "text-amber-700 dark:text-amber-300",
           border: "border-amber-200/60 dark:border-amber-500/40",
           shadow: "shadow-amber-500/20 dark:shadow-amber-500/30",
@@ -46,7 +46,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.VIEWER:
         return { 
-          bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25", 
+          bg: "bg-gray-50 dark:bg-gray-900/50 bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25", 
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
           shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",
@@ -54,7 +54,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.AUTHENTICATED:
         return { 
-          bg: "bg-gradient-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30", 
+          bg: "bg-sky-50 dark:bg-sky-900/50 bg-gradient-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30", 
           text: "text-sky-700 dark:text-sky-300",
           border: "border-sky-200/60 dark:border-sky-500/40",
           shadow: "shadow-sky-500/20 dark:shadow-sky-500/30",
@@ -62,7 +62,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       case UserRole.ANON:
         return { 
-          bg: "bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
+          bg: "bg-stone-50 dark:bg-stone-900/50 bg-gradient-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
           text: "text-zinc-600 dark:text-zinc-400",
           border: "border-zinc-200/50 dark:border-zinc-600/40",
           shadow: "shadow-zinc-500/10 dark:shadow-zinc-500/20",
@@ -70,7 +70,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
         };
       default:
         return { 
-          bg: "bg-gradient-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25", 
+          bg: "bg-neutral-50 dark:bg-neutral-900/50 bg-gradient-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25", 
           text: "text-neutral-600 dark:text-neutral-400",
           border: "border-neutral-200/50 dark:border-neutral-600/40",
           shadow: "shadow-neutral-500/10 dark:shadow-neutral-500/20",

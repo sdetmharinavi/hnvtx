@@ -164,7 +164,7 @@ export default function DiaryPage() {
   });
 
   return (
-    <div className='min-h-screen bg--gray-50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
+    <div className='min-h-screen bg-gray-50 dark:bg-gray-900 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
       <div className='mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
         <input
           type='file'
@@ -201,7 +201,7 @@ export default function DiaryPage() {
 
           <div className='xl:col-span-8'>
             <div className='space-y-4 sm:space-y-6'>
-              <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
+              <div className='bg-blue-50 dark:bg-blue-900/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg'>
                     <FiCalendar className='h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400' />
@@ -226,7 +226,7 @@ export default function DiaryPage() {
                   {[...Array(3)].map((_, i) => (
                     <div
                       key={i}
-                      className='h-40 sm:h-48 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl animate-pulse shadow-sm'
+                      className='h-40 sm:h-48 bg-gray-50 dark:bg-gray-900 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl animate-pulse shadow-sm'
                       style={{ animationDelay: `${i * 100}ms` }}
                     />
                   ))}
@@ -234,7 +234,7 @@ export default function DiaryPage() {
               ) : notesForSelectedDay.length === 0 ? (
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 sm:py-16 px-4'>
-                    <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg--blue-100 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
+                    <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-100 dark:bg-blue-900/50 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
                       <FiBookOpen className='h-8 w-8 sm:h-10 sm:w-10 text-blue-600 dark:text-blue-400' />
                     </div>
                     <h3 className='text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2'>
@@ -246,7 +246,7 @@ export default function DiaryPage() {
                     {canMutate && (
                       <button
                         onClick={openAddModal}
-                        className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
+                        className='inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 dark:bg-blue-900/50 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'>
                         <FiBookOpen className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
                         Create Entry
                       </button>

@@ -5,7 +5,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
     // Handle null/undefined cases first
     if (status === null || status === undefined) {
       return { 
-        bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
+        bg: "bg-gray-50 dark:bg-gray-900/50 bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
         text: "text-gray-600 dark:text-gray-400",
         border: "border-gray-200/50 dark:border-gray-600/40",
         shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",
@@ -20,7 +20,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
     if (typeof status === 'boolean') {
       return status
         ? {
-            bg: "bg-gradient-to-r from-green-500/20 to-emerald-500/20 dark:from-green-500/30 dark:to-emerald-500/30",
+            bg: "bg-green-50 dark:bg-green-900/50 bg-gradient-to-r from-green-500/20 to-emerald-500/20 dark:from-green-500/30 dark:to-emerald-500/30",
             text: "text-green-700 dark:text-green-300",
             border: "border-green-200/60 dark:border-green-500/40",
             shadow: "shadow-green-500/20 dark:shadow-green-500/30",
@@ -30,7 +30,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
             pulse: true
           }
         : {
-            bg: "bg-gradient-to-r from-red-500/20 to-rose-500/20 dark:from-red-500/30 dark:to-rose-500/30",
+            bg: "bg-red-50 dark:bg-red-900/50 bg-gradient-to-r from-red-500/20 to-rose-500/20 dark:from-red-500/30 dark:to-rose-500/30",
             text: "text-red-700 dark:text-red-300",
             border: "border-red-200/60 dark:border-red-500/40",
             shadow: "shadow-red-500/20 dark:shadow-red-500/30",
@@ -45,7 +45,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
     switch (status.toLowerCase()) {
       case "active":
         return {
-          bg: "bg-gradient-to-r from-green-500/20 to-emerald-500/20 dark:from-green-500/30 dark:to-emerald-500/30",
+          bg: "bg-green-50 dark:bg-green-900/50 bg-gradient-to-r from-green-500/20 to-emerald-500/20 dark:from-green-500/30 dark:to-emerald-500/30",
           text: "text-green-700 dark:text-green-300",
           border: "border-green-200/60 dark:border-green-500/40",
           shadow: "shadow-green-500/20 dark:shadow-green-500/30",
@@ -56,7 +56,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "inactive":
         return { 
-          bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
+          bg: "bg-gray-50 dark:bg-gray-900/50 bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
           shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",
@@ -67,7 +67,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "suspended":
         return { 
-          bg: "bg-gradient-to-r from-red-500/20 to-orange-500/20 dark:from-red-500/30 dark:to-orange-500/30",
+          bg: "bg-red-50 dark:bg-red-900/50 bg-gradient-to-r from-red-500/20 to-orange-500/20 dark:from-red-500/30 dark:to-orange-500/30",
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
           shadow: "shadow-red-500/20 dark:shadow-red-500/30",
@@ -78,7 +78,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "pending":
         return {
-          bg: "bg-gradient-to-r from-amber-500/20 to-yellow-500/20 dark:from-amber-500/30 dark:to-yellow-500/30",
+          bg: "bg-yellow-50 dark:bg-yellow-900/50 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 dark:from-amber-500/30 dark:to-yellow-500/30",
           text: "text-amber-700 dark:text-amber-300",
           border: "border-amber-200/60 dark:border-amber-500/40",
           shadow: "shadow-amber-500/20 dark:shadow-amber-500/30",
@@ -89,7 +89,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "verified":
         return {
-          bg: "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 dark:from-blue-500/30 dark:to-cyan-500/30",
+          bg: "bg-blue-50 dark:bg-blue-900/50 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 dark:from-blue-500/30 dark:to-cyan-500/30",
           text: "text-blue-700 dark:text-blue-300",
           border: "border-blue-200/60 dark:border-blue-500/40",
           shadow: "shadow-blue-500/20 dark:shadow-blue-500/30",
@@ -100,7 +100,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "banned":
         return {
-          bg: "bg-gradient-to-r from-red-600/25 to-red-800/25 dark:from-red-600/35 dark:to-red-800/35",
+          bg: "bg-red-50 dark:bg-red-900/50 bg-gradient-to-r from-red-600/25 to-red-800/25 dark:from-red-600/35 dark:to-red-800/35",
           text: "text-red-800 dark:text-red-200",
           border: "border-red-300/70 dark:border-red-400/50",
           shadow: "shadow-red-600/25 dark:shadow-red-600/35",
@@ -111,7 +111,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "online":
         return {
-          bg: "bg-gradient-to-r from-green-400/25 to-green-600/25 dark:from-green-400/35 dark:to-green-600/35",
+          bg: "bg-green-50 dark:bg-green-900/50 bg-gradient-to-r from-green-400/25 to-green-600/25 dark:from-green-400/35 dark:to-green-600/35",
           text: "text-green-800 dark:text-green-200",
           border: "border-green-300/70 dark:border-green-400/50",
           shadow: "shadow-green-500/25 dark:shadow-green-500/35",
@@ -122,7 +122,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       case "offline":
         return {
-          bg: "bg-gradient-to-r from-slate-400/15 to-gray-500/15 dark:from-slate-500/25 dark:to-gray-600/25",
+          bg: "bg-slate-50 dark:bg-slate-900/50 bg-gradient-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30",
           text: "text-slate-600 dark:text-slate-400",
           border: "border-slate-200/50 dark:border-slate-600/40",
           shadow: "shadow-slate-500/10 dark:shadow-slate-500/20",
@@ -133,7 +133,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         };
       default:
         return { 
-          bg: "bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
+          bg: "bg-gray-50 dark:bg-gray-900/50 bg-gradient-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
           shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",

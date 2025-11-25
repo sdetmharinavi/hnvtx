@@ -36,7 +36,7 @@ const AdvancedLoader: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isLoading) {
     return (
-      <div className='fixed inset-0 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center'>
+      <div className='fixed inset-0 bg-blue-500 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center'>
         <div className='text-center max-w-md mx-auto px-6'>
           {/* Logo or Brand */}
           <div className='mb-8'>
@@ -71,7 +71,7 @@ const AdvancedLoader: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
           {/* Loading Text */}
           <div className='mb-6'>
-            <p className='text-white text-lg font-medium'>{loadingText}</p>
+            <p className='text-white text-lg font-medium bg-blue-500'>{loadingText}</p>
           </div>
 
           {/* Progress Bar */}
