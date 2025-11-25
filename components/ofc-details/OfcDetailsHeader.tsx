@@ -109,8 +109,8 @@ interface OfcDetailsHeaderProps {
               <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
                 <Cable size={20} />
               </div>
-              {/* FIX: Added text-gray-900/100 fallback */}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 supports-[background-clip:text]:bg-clip-text">
+              {/* FIX: Replaced gradient text with solid colors */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 Summary
               </h2>
             </motion.div>
@@ -172,8 +172,8 @@ interface OfcDetailsHeaderProps {
               <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg">
                 <Settings size={20} />
               </div>
-              {/* FIX: Added text-gray-900/100 fallback */}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 supports-[background-clip:text]:bg-clip-text">
+              {/* FIX: Replaced gradient text with solid colors */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 Metadata
               </h2>
             </motion.div>
