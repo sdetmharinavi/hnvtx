@@ -31,10 +31,10 @@ export default function StatsHighlights() {
             y: -5,
             transition: { duration: 0.2 }
           }}
-          className="group relative p-4 sm:p-6 rounded-2xl backdrop-blur-lg border bg-white/10 bg-gradient-to-br from-white/10 to-white/5 dark:from-gray-800/40 dark:to-gray-900/20 border-white/20 dark:border-gray-600/30 shadow-xl hover:shadow-2xl transition-all duration-300"
+          className="group relative p-4 sm:p-6 rounded-2xl backdrop-blur-lg border bg-white/10 border-white/20 dark:border-gray-600/30 shadow-xl hover:shadow-2xl transition-all duration-300"
         >
-          {/* Background glow effect */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/10 to-purple-500/10 dark:from-blue-500/10 dark:to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Background glow effect - using standard bg color with opacity instead of gradient for safety */}
+          <div className="absolute inset-0 rounded-2xl bg-red-500/10 dark:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
           <div className="relative z-10 text-center">
             {/* Icon */}
@@ -62,8 +62,8 @@ export default function StatsHighlights() {
                 type: "spring", 
                 stiffness: 200 
               }}
-              // FIX: Added text-red-400 fallback and supports query
-              className="text-2xl sm:text-3xl md:text-4xl font-black text-red-400 dark:text-blue-400 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-red-400 to-orange-500 supports-[background-clip:text]:bg-clip-text dark:from-blue-400 dark:to-cyan-400 mb-1 sm:mb-2"
+              // FIX: Removed text-transparent, using solid red/blue
+              className="text-2xl sm:text-3xl md:text-4xl font-black text-red-500 dark:text-blue-400 mb-1 sm:mb-2"
             >
               {stat.number}
             </motion.div>
