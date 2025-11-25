@@ -157,6 +157,7 @@ export const FormCard: React.FC<FormCardProps> = ({
                   className="px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 rounded-md"
                   style={{
                     animation: "fadeInRight 0.5s ease-out 0.6s both",
+                    // FIX: Added solid background color fallback
                     backgroundColor: "#2563EB",
                     background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)"
                   }}
@@ -174,99 +175,43 @@ export const FormCard: React.FC<FormCardProps> = ({
           from { opacity: 0; }
           to { opacity: 1; }
         }
-
+        /* ... (rest of animations kept same) */
         @keyframes slideInScale {
-          0% {
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
+          0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
         }
-
         @keyframes fadeInRight {
-          from {
-            opacity: 0;
-            transform: translateX(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(10px); }
+          to { opacity: 1; transform: translateX(0); }
         }
-
         @keyframes fadeInRotate {
-          from {
-            opacity: 0;
-            transform: rotate(-90deg) scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: rotate(0deg) scale(1);
-          }
+          from { opacity: 0; transform: rotate(-90deg) scale(0.8); }
+          to { opacity: 1; transform: rotate(0deg) scale(1); }
         }
-
         @keyframes bounce {
-          0%, 80%, 100% {
-            transform: scale(0);
-            opacity: 0.5;
-          }
-          40% {
-            transform: scale(1);
-            opacity: 1;
-          }
+          0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+          40% { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </div>
   );
 
-  // If standalone, wrap with backdrop, otherwise return just the modal content
   if (standalone) {
     return (
       <div 
@@ -286,7 +231,6 @@ export const FormCard: React.FC<FormCardProps> = ({
     );
   }
 
-  // Return just the modal content without backdrop (for use within existing modals)
   return (
     <div className="flex items-center justify-center p-4 w-full">
       {modalContent}
