@@ -98,7 +98,7 @@ export default function DocSidebar({ sections }: DocSidebarProps) {
                     height={32}
                   />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 bg-gradient-to-br from-blue-500 to-blue-600 ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-blue-500 transition-all">
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                       {userInitials}
                     </span>

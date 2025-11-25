@@ -2,8 +2,8 @@
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useState, useEffect } from "react";
-import HnvImg from "@/public/hnv.webp";
-import HnvImgMobile from "@/public/hnvmobile.webp";
+import HnvImg from "@/public/hnv.png";
+import HnvImgMobile from "@/public/hnvmobile.png";
 import useIsMobile from "@/hooks/useIsMobile";
 
 export default function AnimatedBackground() {

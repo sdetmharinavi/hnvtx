@@ -130,7 +130,7 @@ import { UserRole } from '@/types/user-roles';
         icon: <FiMapPin size={20} />,
         condition: (user: V_user_profiles_extendedRowSchema) => user.address && defaultFormatters.address(user.address),
         renderCustom: (user: V_user_profiles_extendedRowSchema) => (
-          <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div className="p-6 bg-gray-50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700">
             <p className="text-gray-900 dark:text-white font-medium text-lg leading-relaxed">
               {defaultFormatters.address(user.address)}
             </p>
@@ -142,7 +142,7 @@ import { UserRole } from '@/types/user-roles';
         icon: <FiSettings size={20} />,
         condition: (user: V_user_profiles_extendedRowSchema) => user.preferences && Object.keys(user.preferences).length > 0,
         renderCustom: (user: V_user_profiles_extendedRowSchema) => (
-          <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="p-6 bg-gray-50  bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {defaultFormatters.json(user.preferences)}
           </div>
         )
