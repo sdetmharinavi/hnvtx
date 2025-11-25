@@ -45,7 +45,6 @@ export default function HeroContent({
       <motion.div
         variants={variants.ctaVariants}
         animate={floatingAnimation}
-        // Added bg-red-900/50 as fallback
         className="mb-6 rounded-full border border-red-400/40 bg-red-900/50 bg-gradient-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
       >
         <span className="text-xs font-semibold tracking-wide sm:text-sm">
@@ -61,7 +60,7 @@ export default function HeroContent({
         <span className="mb-1 block text-2xl sm:mb-2 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
           Welcome to
         </span>
-        {/* Added text-red-500 as fallback and used supports-[...] for gradient text */}
+        {/* FIX: Added text-red-500 fallback and supports query for gradient text */}
         <span className="block text-red-500 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-red-400 via-red-500 to-orange-500 supports-[background-clip:text]:bg-clip-text text-3xl font-extrabold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl dark:from-blue-400 dark:via-purple-500 dark:to-cyan-400">
           Harinavi Transmission
         </span>
@@ -90,7 +89,6 @@ export default function HeroContent({
             boxShadow: "0 10px 30px rgba(239, 68, 68, 0.3)",
           }}
           whileTap={{ scale: 0.98 }}
-          // Added bg-red-500 as fallback
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-500 bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-base font-bold text-white shadow-xl transition-all hover:from-red-600 hover:to-red-700 sm:px-8 sm:py-4 sm:text-lg dark:from-red-600 dark:to-red-700 dark:hover:from-red-700 dark:hover:to-red-800"
           disabled={loading}
           onClick={handleGetStarted}

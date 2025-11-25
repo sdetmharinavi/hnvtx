@@ -10,7 +10,6 @@ const PARTICLE_COUNT = 8;
 export default function HeaderSection() {
   const prefersReducedMotion = useReducedMotion();
 
-  // Memoize particle positions for consistent animation
   const particles = useMemo(
     () =>
       Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
@@ -154,7 +153,8 @@ export default function HeaderSection() {
       >
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
           <motion.span
-            className="bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-transparent inline-block"
+            // FIX: Added text-gray-900/white fallback for text color
+            className="text-gray-900 dark:text-white supports-[background-clip:text]:text-transparent bg-gradient-to-r from-white via-violet-200 to-cyan-200 supports-[background-clip:text]:bg-clip-text inline-block"
             animate={
               !prefersReducedMotion
                 ? {
@@ -180,7 +180,7 @@ export default function HeaderSection() {
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 0.7, duration: 0.8, ease: "easeOut" }}
-          className="h-1 w-32 mx-auto mt-4 bg-gradient-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-full"
+          className="h-1 w-32 mx-auto mt-4 bg-violet-500 bg-gradient-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-full"
         />
       </motion.div>
 

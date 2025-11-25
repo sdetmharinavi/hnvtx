@@ -31,7 +31,6 @@ export default function StatsHighlights() {
             y: -5,
             transition: { duration: 0.2 }
           }}
-          // Added bg-white/10 as fallback
           className="group relative p-4 sm:p-6 rounded-2xl backdrop-blur-lg border bg-white/10 bg-gradient-to-br from-white/10 to-white/5 dark:from-gray-800/40 dark:to-gray-900/20 border-white/20 dark:border-gray-600/30 shadow-xl hover:shadow-2xl transition-all duration-300"
         >
           {/* Background glow effect */}
@@ -63,8 +62,8 @@ export default function StatsHighlights() {
                 type: "spring", 
                 stiffness: 200 
               }}
-              // Added text-red-400 as fallback
-              className="text-2xl sm:text-3xl md:text-4xl font-black text-red-400 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-red-400 to-orange-500 supports-[background-clip:text]:bg-clip-text dark:from-blue-400 dark:to-cyan-400 mb-1 sm:mb-2"
+              // FIX: Added text-red-400 fallback and supports query
+              className="text-2xl sm:text-3xl md:text-4xl font-black text-red-400 dark:text-blue-400 supports-[background-clip:text]:text-transparent bg-gradient-to-r from-red-400 to-orange-500 supports-[background-clip:text]:bg-clip-text dark:from-blue-400 dark:to-cyan-400 mb-1 sm:mb-2"
             >
               {stat.number}
             </motion.div>
