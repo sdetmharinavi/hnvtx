@@ -2,8 +2,8 @@
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useState, useEffect } from "react";
-import HnvImg from "@/public/hnv.png";
-import HnvImgMobile from "@/public/hnvmobile.png";
+import HnvImg from "@/public/hnv.webp";
+import HnvImgMobile from "@/public/hnvmobile.webp";
 import useIsMobile from "@/hooks/useIsMobile";
 
 export default function AnimatedBackground() {
@@ -28,8 +28,8 @@ export default function AnimatedBackground() {
       {/* Dynamic gradient overlay that adjusts for dark mode */}
       <div className={`fixed inset-0 z-0 transition-opacity duration-500 ${
         isDarkMode 
-          ? "bg-black/70 bg-gradient-to-b from-black/70 via-black/40 to-black/70" 
-          : "bg-black/40 bg-gradient-to-b from-black/40 via-transparent to-black/40"
+          ? "bg-blue-500/70 bg-gradient-to-b from-blue-500/70 via-blue-500/40 to-blue-500/70" 
+          : "bg-blue-500/40 bg-gradient-to-b from-blue-500/40 via-transparent to-blue-500/40"
       }`} />
       
       <motion.div 
