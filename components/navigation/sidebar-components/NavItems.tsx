@@ -14,6 +14,7 @@ import {
   FiArchive,
   FiGlobe,
   FiShield,
+  FiAirplay,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -217,6 +218,20 @@ function NavItems() {
           UserRole.SDHADMIN,
           UserRole.ASSETADMIN,
         ],
+      },
+      {
+        id: 'survey-app',
+        label: 'Route Survey',
+        icon: <FiAirplay className="h-5 w-5" />,
+        href: 'https://route-survey.vercel.app/',
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+        ],
+        external: true,
       },
       {
         id: 'map',

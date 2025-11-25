@@ -123,6 +123,13 @@ export function useDataSync() {
             throw new Error(`Failed entities: ${failures.join(', ')}`);
           }
           
+          // THE FIX: Update the cache buster version in localStorage.
+          // This ensures that on the next reload, the persisted React Query cache (which might be stale) 
+          // is discarded, preventing it from overwriting the fresh data we just put into Dexie.
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
+          }
+          
           // THE FIX: Invalidate all queries EXCEPT the sync query itself to prevent infinite loops.
           await queryClient.invalidateQueries({
             predicate: (query) => query.queryKey[0] !== 'data-sync-all'

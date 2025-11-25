@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider, useIsRestoring } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { useState, ReactNode } from 'react'
+import { useState, ReactNode, useEffect } from 'react'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 import { get, set, del } from 'idb-keyval'
@@ -39,6 +39,18 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     },
   }))
 
+  const [buster, setBuster] = useState('v1');
+
+  // Load the buster version from localStorage on client mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedBuster = localStorage.getItem('query_cache_buster');
+      if (storedBuster) {
+        setBuster(storedBuster);
+      }
+    }
+  }, []);
+
   // Create the async storage interface for idb-keyval. This is correct.
   const asyncStorage = {
     getItem: (key: string) => get(key),
@@ -57,7 +69,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         client={queryClient}
         persistOptions={{
           persister: persister,
-          buster: 'v1',
+          buster: buster, // Dynamic buster ensures stale cache is discarded after sync
           maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
         }}
       >
