@@ -1,90 +1,27 @@
 // components/systems/SystemPortsManagerModal.tsx
 "use client";
 
-import { useMemo, useRef, useCallback, useState } from 'react'; // Added useState
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
-import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi'; // Changed FiZap to FiLayout
+import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi';
 import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { PortsManagementTableColumns } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
-import { PortTemplateModal } from '@/components/systems/PortTemplateModal'; // Import the new modal
-import { usePagedData, useTableBulkOperations } from '@/hooks/database';
+import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
+import { useTableBulkOperations } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
-import { generatePortsFromTemplate } from '@/config/port-templates'; // Updated import
-
-// --- Factory that returns a properly named custom hook ---
-const createPortsDataHook = (systemId: string | null) => {
-  function usePortsDataInner(
-    params: DataQueryHookParams
-  ): DataQueryHookReturn<V_ports_management_completeRowSchema> {
-    const { currentPage, pageLimit, searchQuery, filters } = params;
-
-    const { data, isLoading, isFetching, error, refetch } =
-      usePagedData<V_ports_management_completeRowSchema>(
-        createClient(),
-        'v_ports_management_complete',
-        {
-          filters: { ...filters, system_id: systemId || '' },
-          limit: 5000,
-          offset: 0,
-        },
-        { enabled: !!systemId }
-      );
-
-    const processedData = useMemo(() => {
-      const allPorts = data?.data ?? [];
-      let filtered = allPorts;
-
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((p) =>
-          p.port?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
-          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
-        );
-      }
-
-      filtered.sort((a, b) =>
-        (a.port || '').localeCompare(b.port || '', undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        })
-      );
-
-      const totalCount = filtered.length;
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
-
-      return {
-        data: paginatedData,
-        totalCount,
-        activeCount: totalCount,
-        inactiveCount: 0,
-      };
-    }, [data, searchQuery, currentPage, pageLimit]);
-
-    return {
-      ...processedData,
-      isLoading,
-      isFetching,
-      error: error as Error | null,
-      refetch,
-    };
-  }
-
-  return usePortsDataInner;
-};
+import { generatePortsFromTemplate } from '@/config/port-templates';
+import { usePortsData } from '@/hooks/data/usePortsData'; // THE FIX: Import the new hook
 
 interface SystemPortsManagerModalProps {
   isOpen: boolean;
@@ -100,12 +37,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   // State for Template Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
+  // THE FIX: Use the factory-created hook with systemId closure
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
-    dataQueryHook: createPortsDataHook(systemId),
+    localTableName: 'v_ports_management_complete', // Specify local view for cleanup
+    dataQueryHook: usePortsData(systemId), // Pass systemId to the hook factory
     displayNameField: 'port',
   });
 
@@ -153,11 +92,9 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     });
   }, [exportPorts, system?.system_name, systemId]);
 
-  // New Handler for Template Application
   const handleApplyTemplate = useCallback((templateKey: string) => {
     if (!systemId) return;
 
-    // 1. Generate data (NOW WITHOUT IDs)
     const portsPayload = generatePortsFromTemplate(templateKey, systemId);
     
     if (portsPayload.length === 0) {
@@ -165,11 +102,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       return;
     }
 
-    // 2. Pass data + onConflict config
     bulkUpsert.mutate(
       { 
         data: portsPayload, 
-        onConflict: 'system_id,port'  // <--- CRITICAL FIX
+        onConflict: 'system_id,port'
       }, 
       {
         onSuccess: () => {
@@ -210,7 +146,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         loading: isExporting,
         disabled: isLoading,
       },
-      // Changed: Button now opens the Template Selection Modal
       {
         label: 'Apply Template',
         onClick: () => setIsTemplateModalOpen(true),
@@ -286,7 +221,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           />
         )}
         
-        {/* Template Selection Modal */}
         <PortTemplateModal 
           isOpen={isTemplateModalOpen}
           onClose={() => setIsTemplateModalOpen(false)}

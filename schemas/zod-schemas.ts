@@ -1494,6 +1494,7 @@ export const ofc_connectionsUpdateSchema = z.object({
 });
 
 export const ports_managementRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   port: z.string().nullable(),
   port_admin_status: z.boolean().nullable(),
@@ -1503,9 +1504,11 @@ export const ports_managementRowSchema = z.object({
   services_count: z.number().int().min(0).nullable(),
   sfp_serial_no: z.string().nullable(),
   system_id: z.uuid(),
+  updated_at: z.iso.datetime().nullable(),
 });
 
 export const ports_managementInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_admin_status: z.boolean().nullable().optional(),
@@ -1515,9 +1518,11 @@ export const ports_managementInsertSchema = z.object({
   services_count: z.number().int().min(0).nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_id: z.uuid(),
+  updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const ports_managementUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_admin_status: z.boolean().nullable().optional(),
@@ -1527,6 +1532,7 @@ export const ports_managementUpdateSchema = z.object({
   services_count: z.number().int().min(0).nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_id: z.uuid().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const ring_based_systemsRowSchema = z.object({
@@ -2071,6 +2077,7 @@ export const v_ofc_connections_completeRowSchema = z.object({
 });
 
 export const v_ports_management_completeRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   port: z.string().nullable(),
   port_admin_status: z.boolean().nullable(),
@@ -2082,6 +2089,7 @@ export const v_ports_management_completeRowSchema = z.object({
   sfp_serial_no: z.string().nullable(),
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ring_nodesRowSchema = z.object({

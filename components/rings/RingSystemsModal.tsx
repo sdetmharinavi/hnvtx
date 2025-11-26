@@ -8,8 +8,8 @@ import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui
 import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { syncEntity } from '@/hooks/data/useDataSync'; // THE FIX: Import syncEntity
-import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
+import { syncEntity } from '@/hooks/data/useDataSync';
+import { localDb } from '@/hooks/data/localDb';
 
 interface SystemOption {
   id: string;
@@ -78,15 +78,15 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       });
       if (error) throw error;
     },
-    // THE FIX: Implement the correct two-step offline sync process on success
     onSuccess: async () => {
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
       
       // Step 1: Manually trigger a re-sync of the v_rings view to update IndexedDB
       await syncEntity(supabase, localDb, 'v_rings');
 
-      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB
-      await queryClient.invalidateQueries({ queryKey: ['rings-data', 'all'] });
+      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB/Server
+      // CORRECTED: The key is 'rings-manager-data', not 'rings-data'
+      await queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
 
       onClose();
     },
