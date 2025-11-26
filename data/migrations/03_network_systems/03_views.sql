@@ -119,10 +119,18 @@ SELECT
   pm.sfp_serial_no,
   pm.port_utilization,
   pm.port_admin_status,
-  pm.services_count
+  pm.services_count,
+  pm.created_at,
+  pm.updated_at
 FROM public.ports_management pm
 JOIN public.systems s ON pm.system_id = s.id
 LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id;
+
+-- 3. Attach the auto-update trigger for updated_at
+DROP TRIGGER IF EXISTS trigger_ports_management_updated_at ON public.ports_management;
+CREATE TRIGGER trigger_ports_management_updated_at
+BEFORE UPDATE ON public.ports_management
+FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- View for OFC Connections, now including system details from this module.
 CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS

@@ -1472,6 +1472,7 @@ export type Ofc_connectionsUpdate = {
 };
 
 export type Ports_managementRow = {
+    created_at: string | null;
     id: string;
     port: string | null;
     port_admin_status: boolean | null;
@@ -1481,9 +1482,11 @@ export type Ports_managementRow = {
     services_count: number | null;
     sfp_serial_no: string | null;
     system_id: string;
+    updated_at: string | null;
 };
 
 export type Ports_managementInsert = {
+    created_at?: string | null;
     id?: string;
     port?: string | null;
     port_admin_status?: boolean | null;
@@ -1493,9 +1496,11 @@ export type Ports_managementInsert = {
     services_count?: number | null;
     sfp_serial_no?: string | null;
     system_id: string;
+    updated_at?: string | null;
 };
 
 export type Ports_managementUpdate = {
+    created_at?: string | null;
     id?: string;
     port?: string | null;
     port_admin_status?: boolean | null;
@@ -1505,6 +1510,7 @@ export type Ports_managementUpdate = {
     services_count?: number | null;
     sfp_serial_no?: string | null;
     system_id?: string;
+    updated_at?: string | null;
 };
 
 export type Ring_based_systemsRow = {
@@ -2051,6 +2057,7 @@ export type V_ofc_connections_completeRow = {
 };
 
 export type V_ports_management_completeRow = {
+    created_at: string | null;
     id: string | null;
     port: string | null;
     port_admin_status: boolean | null;
@@ -2062,6 +2069,7 @@ export type V_ports_management_completeRow = {
     sfp_serial_no: string | null;
     system_id: string | null;
     system_name: string | null;
+    updated_at: string | null;
 };
 
 export type V_ring_nodesRow = {

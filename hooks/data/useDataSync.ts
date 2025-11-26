@@ -19,6 +19,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'nodes',
   'systems',
   'ring_based_systems',
+  'ports_management', // Added
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -32,6 +33,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_user_profiles_extended',
   'v_ofc_connections_complete',
   'v_system_connections_complete',
+  'v_ports_management_complete', // Added
 ];
 
 export async function syncEntity(
@@ -123,14 +125,10 @@ export function useDataSync() {
             throw new Error(`Failed entities: ${failures.join(', ')}`);
           }
           
-          // THE FIX: Update the cache buster version in localStorage.
-          // This ensures that on the next reload, the persisted React Query cache (which might be stale) 
-          // is discarded, preventing it from overwriting the fresh data we just put into Dexie.
           if (typeof window !== 'undefined') {
             localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
           }
           
-          // THE FIX: Invalidate all queries EXCEPT the sync query itself to prevent infinite loops.
           await queryClient.invalidateQueries({
             predicate: (query) => query.queryKey[0] !== 'data-sync-all'
           });
@@ -144,7 +142,6 @@ export function useDataSync() {
         }
       );
     },
-    // Keep these settings to ensure it only runs once on mount/refresh
     staleTime: Infinity,          
     gcTime: 1000 * 60 * 60 * 24,  
     refetchOnMount: false,        

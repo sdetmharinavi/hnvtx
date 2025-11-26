@@ -31,6 +31,8 @@ import {
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
   V_audit_logsRowSchema,
+  V_ports_management_completeRowSchema, // Imported
+  Ports_managementRowSchema, // Imported for the base table if needed, though we use the view for offline lists
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -84,6 +86,7 @@ export class HNVTMDatabase extends Dexie {
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
+  ports_management!: Table<Ports_managementRowSchema, string>; // Base table for mutations
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -98,6 +101,7 @@ export class HNVTMDatabase extends Dexie {
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
+  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>; // ADDED THIS LINE
   
   // THE FIX: Update type to number for auto-incrementing ID tables
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
@@ -124,6 +128,7 @@ export class HNVTMDatabase extends Dexie {
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
+      ports_management: '&id, [system_id+port], system_id', // Added base table store
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -138,6 +143,7 @@ export class HNVTMDatabase extends Dexie {
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, connected_system_name',
+      v_ports_management_complete: '&id, system_id, port', // Added view store
       v_audit_logs: '&id, action_type, table_name, created_at',
       
       sync_status: 'tableName',

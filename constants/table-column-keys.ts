@@ -388,7 +388,9 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     port_utilization: "port_utilization",
     port_admin_status: "port_admin_status",
-    services_count: "services_count"
+    services_count: "services_count",
+    created_at: "created_at",
+    updated_at: "updated_at",
   },
   ring_based_systems: {
     system_id: "system_id",
@@ -899,7 +901,9 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     port_utilization: "port_utilization",
     port_admin_status: "port_admin_status",
-    services_count: "services_count"
+    services_count: "services_count",
+    created_at: "created_at",
+    updated_at: "updated_at",
   },
   v_audit_logs: {
     id: "id",

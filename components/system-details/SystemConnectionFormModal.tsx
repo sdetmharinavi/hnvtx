@@ -67,11 +67,38 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
 
+  // --- Form Setup ---
+  const {
+    control,
+    handleSubmit,
+    register,
+    formState: { errors },
+    reset,
+    watch,
+  } = useForm<SystemConnectionFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      system_id: parentSystem.id ?? "",
+      status: true,
+      media_type_id: "",
+      system_working_interface: "",
+      customer_name: "",
+    },
+  });
+
+  // Watch fields to trigger dynamic fetches
+  const watchSystemId = watch("system_id");
+  const watchSnId = watch("sn_id");
+  const watchEnId = watch("en_id");
+
   // --- Data Fetching ---
+  
+  // 1. Systems List
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
     columns: "id, system_name, ip_address, node_name, system_type:system_type_id(code)",
   });
   
+  // 2. Lookups
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
     filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
@@ -82,12 +109,38 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // --- Options ---
+  // 3. Fetch Ports for Main System
+  const { data: mainSystemPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchSystemId || '' },
+    limit: 1000,
+    // Only fetch if system ID is present
+    enabled: !!watchSystemId,
+  });
+
+  // 4. Fetch Ports for Start Node (SN)
+  const { data: snPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchSnId || '' },
+    limit: 1000,
+    enabled: !!watchSnId,
+  });
+
+  // 5. Fetch Ports for End Node (EN)
+  const { data: enPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchEnId || '' },
+    limit: 1000,
+    enabled: !!watchEnId,
+  });
+
+  // --- Options Processing ---
+
   const systems = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  () => (systemsResult.data as any[]) ?? [],
-  [systemsResult.data] // Only recalculate when systemsResult.data changes
-);
+    () => (systemsResult.data as any[]) ?? [],
+    [systemsResult.data]
+  );
 
   const systemOptions = useMemo(
     () =>
@@ -112,23 +165,28 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [linkTypes]
   );
 
-  // --- Form Setup ---
-  const {
-    control,
-    handleSubmit,
-    register,
-    formState: { errors },
-    reset,
-  } = useForm<SystemConnectionFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      system_id: parentSystem.id ?? "",
-      status: true,
-      media_type_id: "",
-      system_working_interface: "",
-      customer_name: "",
-    },
-  });
+  // Helper to map ports to options
+  const mapPortsToOptions = (
+    portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
+    currentValue?: string | null
+  ) => {
+    const options = (portsData || [])
+      .filter(p => p.port)
+      .map(p => ({
+        value: p.port!,
+        label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
+        // Optional: disable if in use, but allow if it's the current value (editing)
+        // disabled: p.port_utilization && p.port !== currentValue 
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+
+    // If editing and the current value isn't in the list (legacy or manual entry), add it
+    if (currentValue && !options.find(o => o.value === currentValue)) {
+      options.unshift({ value: currentValue, label: `${currentValue} (Current)` });
+    }
+
+    return options;
+  };
 
   // --- Reset Logic ---
   useEffect(() => {
@@ -241,21 +299,26 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   />
                 </div>
                 
-                <FormInput
+                <FormSearchableSelect
                   name="system_working_interface"
                   label="Working Port (Interface)"
-                  placeholder="e.g. Gi0/1/1"
-                  register={register}
+                  control={control}
+                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
                   error={errors.system_working_interface}
+                  placeholder="Select Working Port"
+                  searchPlaceholder="Search ports..."
                   required
                 />
                 
-                <FormInput
+                <FormSearchableSelect
                   name="system_protection_interface"
-                  label="Protection Port"
-                  placeholder="e.g. Gi0/1/2 (Optional)"
-                  register={register}
+                  label="Protection Port (Optional)"
+                  control={control}
+                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
                   error={errors.system_protection_interface}
+                  placeholder="Select Protection Port"
+                  searchPlaceholder="Search ports..."
+                  clearable
                 />
 
                 <FormSearchableSelect
@@ -338,12 +401,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     options={systemOptions}
                     error={errors.sn_id}
                   />
-                  <FormInput
+                  
+                  {/* Dynamically fetch ports based on sn_id */}
+                  <FormSearchableSelect
                     name="sn_interface"
                     label="Interface"
-                    register={register}
+                    control={control}
+                    options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
                     error={errors.sn_interface}
+                    placeholder={watchSnId ? "Select Start Port" : "Select System First"}
+                    disabled={!watchSnId}
                   />
+
                   <FormInput
                     name="sn_ip"
                     label="IP Address"
@@ -361,12 +430,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     options={systemOptions}
                     error={errors.en_id}
                   />
-                  <FormInput
+
+                  {/* Dynamically fetch ports based on en_id */}
+                  <FormSearchableSelect
                     name="en_interface"
                     label="Interface"
-                    register={register}
+                    control={control}
+                    options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
                     error={errors.en_interface}
+                    placeholder={watchEnId ? "Select End Port" : "Select System First"}
+                    disabled={!watchEnId}
                   />
+
                    <FormInput
                     name="en_ip"
                     label="IP Address"

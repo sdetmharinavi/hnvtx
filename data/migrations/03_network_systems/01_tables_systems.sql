@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   port_utilization BOOLEAN DEFAULT false,
   port_admin_status BOOLEAN DEFAULT false,
   services_count NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 

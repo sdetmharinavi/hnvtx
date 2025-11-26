@@ -2488,6 +2488,7 @@ export type Database = {
       }
       ports_management: {
         Row: {
+          created_at: string | null
           id: string
           port: string | null
           port_admin_status: boolean | null
@@ -2497,8 +2498,10 @@ export type Database = {
           services_count: number | null
           sfp_serial_no: string | null
           system_id: string
+          updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
           port?: string | null
           port_admin_status?: boolean | null
@@ -2508,8 +2511,10 @@ export type Database = {
           services_count?: number | null
           sfp_serial_no?: string | null
           system_id: string
+          updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
           port?: string | null
           port_admin_status?: boolean | null
@@ -2519,6 +2524,7 @@ export type Database = {
           services_count?: number | null
           sfp_serial_no?: string | null
           system_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -4092,6 +4098,7 @@ export type Database = {
       }
       v_ports_management_complete: {
         Row: {
+          created_at: string | null
           id: string | null
           port: string | null
           port_admin_status: boolean | null
@@ -4103,6 +4110,7 @@ export type Database = {
           sfp_serial_no: string | null
           system_id: string | null
           system_name: string | null
+          updated_at: string | null
         }
         Relationships: [
           {
