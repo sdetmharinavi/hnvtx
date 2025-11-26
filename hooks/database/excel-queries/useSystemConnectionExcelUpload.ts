@@ -71,7 +71,7 @@ export function useSystemConnectionExcelUpload(
         return arr.length > 0 ? arr : undefined;
       };
 
-      const uploadResult: EnhancedUploadResult = { /* ... initialization ... */ successCount: 0, errorCount: 0, totalRows: 0, errors: [], processingLogs: [], validationErrors: [], skippedRows: 0 };
+      const uploadResult: EnhancedUploadResult = { successCount: 0, errorCount: 0, totalRows: 0, errors: [], processingLogs: [], validationErrors: [], skippedRows: 0 };
       const jsonData = await parseExcelFile(file);
       if (jsonData.length < 2) {
         toast.warning('No data found.');
@@ -93,6 +93,12 @@ export function useSystemConnectionExcelUpload(
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
+        
+        if (row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')) {
+            uploadResult.skippedRows++;
+            continue;
+        }
+
         const originalData: Record<string, unknown> = {};
         excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
         const rowValidationErrors: ValidationError[] = [];
@@ -202,7 +208,11 @@ export function useSystemConnectionExcelUpload(
     },
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
+        // Invalidate connections list
         queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_system_connections_complete', { filters: { system_id: variables.parentSystemId } }] });
+        
+        // FIX: Invalidate ports management list so the new utilization counts show up
+        queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: variables.parentSystemId } }] });
       }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
     },
