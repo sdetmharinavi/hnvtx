@@ -2,12 +2,12 @@
 WITH port_templates (port, port_type_id, port_capacity) AS (
   VALUES
     -- Slot 1
-    ('1.1', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.2', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.3', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('1.4', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('1.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('1.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-1', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
+    ('ETH-1-1-6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
     
     -- Slot 2 (Repeating pattern from image)
     ('2.1', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
