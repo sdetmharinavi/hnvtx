@@ -2484,24 +2484,33 @@ export type Database = {
         Row: {
           id: string
           port: string | null
+          port_admin_status: boolean | null
           port_capacity: string | null
           port_type_id: string | null
+          port_utilization: boolean | null
+          services_count: number | null
           sfp_serial_no: string | null
           system_id: string
         }
         Insert: {
           id?: string
           port?: string | null
+          port_admin_status?: boolean | null
           port_capacity?: string | null
           port_type_id?: string | null
+          port_utilization?: boolean | null
+          services_count?: number | null
           sfp_serial_no?: string | null
           system_id: string
         }
         Update: {
           id?: string
           port?: string | null
+          port_admin_status?: boolean | null
           port_capacity?: string | null
           port_type_id?: string | null
+          port_utilization?: boolean | null
+          services_count?: number | null
           sfp_serial_no?: string | null
           system_id?: string
         }
@@ -4079,9 +4088,12 @@ export type Database = {
         Row: {
           id: string | null
           port: string | null
+          port_admin_status: boolean | null
           port_capacity: string | null
           port_type_id: string | null
           port_type_name: string | null
+          port_utilization: boolean | null
+          services_count: number | null
           sfp_serial_no: string | null
           system_id: string | null
           system_name: string | null

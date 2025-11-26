@@ -1,26 +1,28 @@
-// path: components/systems/SystemPortsManagerModal.tsx
+// components/systems/SystemPortsManagerModal.tsx
 "use client";
 
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useState } from 'react'; // Added useState
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
-import { FiServer, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi'; // Changed FiZap to FiLayout
 import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { PortsManagementTableColumns } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
-import { usePagedData } from '@/hooks/database';
+import { PortTemplateModal } from '@/components/systems/PortTemplateModal'; // Import the new modal
+import { usePagedData, useTableBulkOperations } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
+import { generatePortsFromTemplate } from '@/config/port-templates'; // Updated import
 
-// --- FIX: Expose a factory that returns a properly named custom hook ---
+// --- Factory that returns a properly named custom hook ---
 const createPortsDataHook = (systemId: string | null) => {
   function usePortsDataInner(
     params: DataQueryHookParams
@@ -83,8 +85,6 @@ const createPortsDataHook = (systemId: string | null) => {
 
   return usePortsDataInner;
 };
-// --- END FIX ---
-
 
 interface SystemPortsManagerModalProps {
   isOpen: boolean;
@@ -95,6 +95,10 @@ interface SystemPortsManagerModalProps {
 export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = ({ isOpen, onClose, system }) => {
   const systemId = system?.id || null;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  // State for Template Modal
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
@@ -105,13 +109,16 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     displayNameField: 'port',
   });
 
-  const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(createClient(), {
+  const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
     }
   });
 
-  const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(createClient(), 'v_ports_management_complete');
+  const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(supabase, 'v_ports_management_complete');
+
+  // Bulk Operations Hook
+  const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
   const columns = PortsManagementTableColumns(ports);
 
@@ -146,38 +153,81 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     });
   }, [exportPorts, system?.system_name, systemId]);
 
-  const headerActions = useMemo((): ActionButton[] => [
-    {
-      label: 'Refresh',
-      onClick: () => { refetch(); toast.success('Ports refreshed!'); },
-      variant: 'outline' as const,
-      loading: isLoading,
-    },
-    {
-      label: 'Upload',
-      loadingText: 'Uploading...',
-      onClick: handleUploadClick,
-      variant: 'outline' as const,
-      leftIcon: <FiUpload />,
-      loading: isUploading,
-      disabled: isLoading,
-    },
-    {
-      label: 'Export',
-      loadingText: 'Exporting...',
-      onClick: handleExport,
-      variant: 'outline' as const,
-      leftIcon: <FiDownload />,
-      loading: isExporting,
-      disabled: isLoading,
-    },
-    {
-      label: 'Add New Port',
-      onClick: editModal.openAdd,
-      variant: 'primary' as const,
-      disabled: isLoading,
-    },
-  ], [refetch, editModal.openAdd, isLoading, isUploading, isExporting, handleUploadClick, handleExport]);
+  // New Handler for Template Application
+  const handleApplyTemplate = useCallback((templateKey: string) => {
+    if (!systemId) return;
+
+    // 1. Generate data (NOW WITHOUT IDs)
+    const portsPayload = generatePortsFromTemplate(templateKey, systemId);
+    
+    if (portsPayload.length === 0) {
+      toast.error("Selected template is empty or invalid.");
+      return;
+    }
+
+    // 2. Pass data + onConflict config
+    bulkUpsert.mutate(
+      { 
+        data: portsPayload, 
+        onConflict: 'system_id,port'  // <--- CRITICAL FIX
+      }, 
+      {
+        onSuccess: () => {
+          toast.success(`Successfully populated ${portsPayload.length} ports from template.`);
+          refetch();
+          setIsTemplateModalOpen(false);
+        },
+        onError: (err) => {
+          toast.error(`Failed to populate ports: ${err.message}`);
+        }
+      }
+    );
+  }, [systemId, bulkUpsert, refetch]);
+
+  const headerActions = useMemo((): ActionButton[] => {
+    const actions: ActionButton[] = [
+      {
+        label: 'Refresh',
+        onClick: () => { refetch(); toast.success('Ports refreshed!'); },
+        variant: 'outline',
+        loading: isLoading,
+      },
+      {
+        label: 'Upload',
+        loadingText: 'Uploading...',
+        onClick: handleUploadClick,
+        variant: 'outline',
+        leftIcon: <FiUpload />,
+        loading: isUploading,
+        disabled: isLoading,
+      },
+      {
+        label: 'Export',
+        loadingText: 'Exporting...',
+        onClick: handleExport,
+        variant: 'outline',
+        leftIcon: <FiDownload />,
+        loading: isExporting,
+        disabled: isLoading,
+      },
+      // Changed: Button now opens the Template Selection Modal
+      {
+        label: 'Apply Template',
+        onClick: () => setIsTemplateModalOpen(true),
+        variant: 'outline', 
+        leftIcon: <FiLayout className="text-purple-500" />,
+        disabled: isLoading
+      },
+      {
+        label: 'Add New Port',
+        onClick: editModal.openAdd,
+        variant: 'primary',
+        disabled: isLoading,
+      }
+    ];
+
+    return actions;
+  }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
   if (!isOpen) return null;
 
@@ -236,6 +286,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           />
         )}
         
+        {/* Template Selection Modal */}
+        <PortTemplateModal 
+          isOpen={isTemplateModalOpen}
+          onClose={() => setIsTemplateModalOpen(false)}
+          onSubmit={handleApplyTemplate}
+          isLoading={bulkUpsert.isPending}
+        />
+
         <ConfirmModal
           isOpen={deleteModal.isOpen}
           onConfirm={deleteModal.onConfirm}
