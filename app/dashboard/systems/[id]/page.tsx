@@ -1,4 +1,4 @@
-// path: app/dashboard/systems/[id]/page.tsx
+// app/dashboard/systems/[id]/page.tsx
 "use client";
 
 import { useMemo, useState, useRef, useCallback } from 'react';
@@ -25,12 +25,15 @@ import { FiberAllocationModal } from '@/components/system-details/FiberAllocatio
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { useQueryClient } from '@tanstack/react-query'; // Import QueryClient
 
 export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
+  const queryClient = useQueryClient(); // Initialize QueryClient
 
+  // ... (existing state definitions)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,13 +69,37 @@ export default function SystemConnectionsPage() {
   const connections = connectionsData?.data || [];
   const totalCount = connectionsData?.total_count || 0;
 
-  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { onSuccess: () => { refetch(); closeModal(); } });
+  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
+    onSuccess: () => { 
+      refetch(); 
+      closeModal(); 
+      // FIX: Invalidate ports cache to update utilization stats
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+    } 
+  });
+  
+  // ... (rest of the component logic remains the same)
+
   const deprovisionMutation = useDeprovisionServicePath();
   const deleteManager = useDeleteManager({ 
     tableName: 'system_connections', 
-    onSuccess: () => { refetch(); } 
+    onSuccess: () => { 
+      refetch();
+      // FIX: Also invalidate ports on delete to decrement counts
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+    } 
   });
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { onSuccess: (result) => { if (result.successCount > 0) refetch(); } });
+  
+  // ... (rest of the component unchanged)
+
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { 
+    onSuccess: (result) => { 
+      if (result.successCount > 0) {
+        refetch();
+        // The hook itself now handles the port invalidation, but double safety here is fine
+      }
+    } 
+  });
 
   const columns = SystemConnectionsTableColumns(connections);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
@@ -86,6 +113,7 @@ export default function SystemConnectionsPage() {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
       const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+        // ... (mappings unchanged)
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
         { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
@@ -121,6 +149,8 @@ export default function SystemConnectionsPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [uploadConnections, parentSystem]);
   
+  // ... (handleOpenAllocationModal, handleDeprovisionClick, etc. unchanged)
+
   const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
   
   const handleDeprovisionClick = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); }, []);
@@ -147,11 +177,10 @@ export default function SystemConnectionsPage() {
     setTraceModalData(null);
     try {
       const traceData = await tracePath(record);
-      
       setTraceModalData(traceData);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to trace path");
-      setIsTraceModalOpen(false); // Close modal on error
+      setIsTraceModalOpen(false);
     } finally {
       setIsTracing(false);
     }
@@ -173,13 +202,11 @@ export default function SystemConnectionsPage() {
       ...standard,
     ];
   }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal]);
-// console.log(parentSystem);
 
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
     isLoading: isLoadingConnections,
-    // Export failed: Worksheet name BARUIPUR B3(CAT2) /1_connections cannot include any of the following characters: * ? : \ / [ ]
     exportConfig: { tableName: 'v_system_connections_complete', fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`, filters: { system_id: systemId } }
   });
 
@@ -219,14 +246,22 @@ export default function SystemConnectionsPage() {
       p_b_slot: formData.b_slot || undefined,
       p_b_customer: formData.b_customer || undefined,
     };
-    upsertMutation.mutate(payload, { onSuccess: () => { refetch(); closeModal(); } });
+    
+    // upsertMutation is already defined with onSuccess above, but we ensure cache invalidation here just in case
+    upsertMutation.mutate(payload, { 
+      onSuccess: () => { 
+        refetch(); 
+        closeModal();
+        queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+      } 
+    });
   };
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title={parentSystem.system_name || 'System Details'}
-        description={`Manage connections for ${parentSystem.system_type_name} at ${parentSystem.node_name}`}
+        title={`${parentSystem.system_name} (${parentSystem.ip_address?.split("/")[0]})` || 'System Details'}
+        description={`Manage connections for ${parentSystem.system_type_code} at ${parentSystem.node_name}`}
         icon={<FiDatabase />}
         actions={headerActions}
         stats={[{ label: 'Total Connections', value: totalCount }]}

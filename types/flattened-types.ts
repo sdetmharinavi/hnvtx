@@ -245,6 +245,7 @@ export type AuthOauth_authorizationsRow = {
     created_at: string;
     expires_at: string;
     id: string;
+    nonce: string | null;
     redirect_uri: string;
     resource: string | null;
     response_type: Database["auth"]["Enums"]["oauth_response_type"];
@@ -264,6 +265,7 @@ export type AuthOauth_authorizationsInsert = {
     created_at?: string;
     expires_at?: string;
     id: string;
+    nonce?: string | null;
     redirect_uri: string;
     resource?: string | null;
     response_type?: Database["auth"]["Enums"]["oauth_response_type"];
@@ -283,6 +285,7 @@ export type AuthOauth_authorizationsUpdate = {
     created_at?: string;
     expires_at?: string;
     id?: string;
+    nonce?: string | null;
     redirect_uri?: string;
     resource?: string | null;
     response_type?: Database["auth"]["Enums"]["oauth_response_type"];
@@ -522,6 +525,7 @@ export type AuthSessionsRow = {
     refresh_token_counter: number | null;
     refresh_token_hmac_key: string | null;
     refreshed_at: string | null;
+    scopes: string | null;
     tag: string | null;
     updated_at: string | null;
     user_agent: string | null;
@@ -539,6 +543,7 @@ export type AuthSessionsInsert = {
     refresh_token_counter?: number | null;
     refresh_token_hmac_key?: string | null;
     refreshed_at?: string | null;
+    scopes?: string | null;
     tag?: string | null;
     updated_at?: string | null;
     user_agent?: string | null;
@@ -556,6 +561,7 @@ export type AuthSessionsUpdate = {
     refresh_token_counter?: number | null;
     refresh_token_hmac_key?: string | null;
     refreshed_at?: string | null;
+    scopes?: string | null;
     tag?: string | null;
     updated_at?: string | null;
     user_agent?: string | null;
@@ -1729,45 +1735,6 @@ export type SystemsUpdate = {
     updated_at?: string | null;
 };
 
-export type User_activity_logsRow = {
-    action_type: string;
-    created_at: string | null;
-    details: string | null;
-    id: number;
-    new_data: Json | null;
-    old_data: Json | null;
-    record_id: string | null;
-    table_name: string | null;
-    user_id: string | null;
-    user_role: string | null;
-};
-
-export type User_activity_logsInsert = {
-    action_type: string;
-    created_at?: string | null;
-    details?: string | null;
-    id?: number;
-    new_data?: Json | null;
-    old_data?: Json | null;
-    record_id?: string | null;
-    table_name?: string | null;
-    user_id?: string | null;
-    user_role?: string | null;
-};
-
-export type User_activity_logsUpdate = {
-    action_type?: string;
-    created_at?: string | null;
-    details?: string | null;
-    id?: number;
-    new_data?: Json | null;
-    old_data?: Json | null;
-    record_id?: string | null;
-    table_name?: string | null;
-    user_id?: string | null;
-    user_role?: string | null;
-};
-
 export type User_profilesRow = {
     address: Json | null;
     avatar_url: string | null;
@@ -1817,22 +1784,6 @@ export type User_profilesUpdate = {
 };
 
 // ============= VIEWS =============
-
-export type V_audit_logsRow = {
-    action_type: string | null;
-    created_at: string | null;
-    details: string | null;
-    id: number | null;
-    new_data: Json | null;
-    old_data: Json | null;
-    performed_by_avatar: string | null;
-    performed_by_email: string | null;
-    performed_by_name: string | null;
-    record_id: string | null;
-    table_name: string | null;
-    user_id: string | null;
-    user_role: string | null;
-};
 
 export type V_cable_segments_at_jcRow = {
     end_node_id: string | null;
@@ -2282,12 +2233,10 @@ export const tableNames = [
   "sdh_connections",
   "system_connections",
   "systems",
-  "user_activity_logs",
   "user_profiles"
 ] as const;
 
 export const viewNames = [
-  "v_audit_logs",
   "v_cable_segments_at_jc",
   "v_cable_utilization",
   "v_employee_designations",
