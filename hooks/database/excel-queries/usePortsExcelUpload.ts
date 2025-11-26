@@ -7,12 +7,23 @@ import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
 import { EnhancedUploadResult, generateUUID, logRowProcessing, validateValue, ValidationError } from './excel-helpers';
 import { Ports_managementInsertSchema } from '@/schemas/zod-schemas';
+import { toPgBoolean } from '@/config/helper-functions';
 
 export interface PortsUploadOptions {
   file: File;
   columns: UploadColumnMapping<'ports_management'>[];
   systemId: string;
 }
+
+// Helper to parse numeric fields safely
+const parseNumber = (val: unknown): number => {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string' && val.trim() !== '') {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  }
+  return 0;
+};
 
 const parseExcelFile = (file: File): Promise<unknown[][]> => {
   return new Promise((resolve, reject) => {
@@ -66,7 +77,9 @@ export function usePortsExcelUpload(
       });
 
       const dataRows = jsonData.slice(1);
-      const recordsToUpsert: Ports_managementInsertSchema[] = [];
+      // Use any here temporarily until Zod schema is regenerated
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recordsToUpsert: any[] = [];
       const allValidationErrors: ValidationError[] = [];
 
       for (let i = 0; i < dataRows.length; i++) {
@@ -104,8 +117,8 @@ export function usePortsExcelUpload(
             continue;
         }
         
-        // --- THIS IS THE DEFINITIVE FIX ---
-        const recordToUpsert: Ports_managementInsertSchema = {
+        // --- CONSTRUCT RECORD WITH NEW FIELDS ---
+        const recordToUpsert = {
           // If the ID from the Excel sheet is valid, use it. Otherwise, generate a new one.
           id: (processedData.id && typeof processedData.id === 'string' && processedData.id.trim() !== '') ? processedData.id : generateUUID(),
           system_id: systemId,
@@ -113,8 +126,12 @@ export function usePortsExcelUpload(
           port_type_id: processedData.port_type_id as string | null,
           port_capacity: processedData.port_capacity as string | null,
           sfp_serial_no: processedData.sfp_serial_no as string | null,
+          // Map new fields. Note: toPgBoolean is handled by mapping.transform if config is correct,
+          // but we ensure defaults here.
+          port_utilization: processedData.port_utilization !== undefined ? Boolean(processedData.port_utilization) : false,
+          port_admin_status: processedData.port_admin_status !== undefined ? Boolean(processedData.port_admin_status) : false,
+          services_count: parseNumber(processedData.services_count),
         };
-        // --- END FIX ---
         
         recordsToUpsert.push(recordToUpsert);
       }
@@ -124,7 +141,7 @@ export function usePortsExcelUpload(
         toast.info(`Upserting ${recordsToUpsert.length} port records...`);
         const { error } = await supabase
           .from('ports_management')
-          .upsert(recordsToUpsert, { onConflict: 'system_id,port' });
+          .upsert(recordsToUpsert as Ports_managementInsertSchema[], { onConflict: 'system_id,port' });
 
         if (error) {
           uploadResult.errorCount = recordsToUpsert.length;

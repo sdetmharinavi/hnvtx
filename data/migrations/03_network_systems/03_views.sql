@@ -115,7 +115,10 @@ SELECT
   pm.port_type_id,
   lt.name as port_type_name,
   pm.port_capacity,
-  pm.sfp_serial_no
+  pm.sfp_serial_no,
+  pm.port_utilization,
+  pm.port_admin_status,
+  pm.services_count
 FROM public.ports_management pm
 JOIN public.systems s ON pm.system_id = s.id
 LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id;

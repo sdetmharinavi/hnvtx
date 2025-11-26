@@ -100,6 +100,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
   },
+  ports_management: {
+    port_utilization: { title: "Utilized", transform: toPgBoolean },
+    port_admin_status: { title: "Admin Status", transform: toPgBoolean },
+    services_count: { title: "Services Count", excelFormat: "integer" }
+  },
   // THE FIX: Add the new entry for the view to satisfy the type checker.
   v_system_connections_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
@@ -381,6 +386,9 @@ const TABLE_COLUMN_OBJECTS = {
     port_type_id: "port_type_id",
     port_capacity: "port_capacity",
     sfp_serial_no: "sfp_serial_no",
+    port_utilization: "port_utilization",
+    port_admin_status: "port_admin_status",
+    services_count: "services_count"
   },
   ring_based_systems: {
     system_id: "system_id",
@@ -888,6 +896,9 @@ const TABLE_COLUMN_OBJECTS = {
     port_type_name: "port_type_name",
     port_capacity: "port_capacity",
     sfp_serial_no: "sfp_serial_no",
+    port_utilization: "port_utilization",
+    port_admin_status: "port_admin_status",
+    services_count: "services_count"
   },
   v_audit_logs: {
     id: "id",

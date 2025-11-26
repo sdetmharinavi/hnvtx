@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   port_type_id UUID REFERENCES public.lookup_types (id),
   port_capacity TEXT,
   sfp_serial_no TEXT,
+  port_utilization BOOLEAN DEFAULT false,
+  port_admin_status BOOLEAN DEFAULT false,
+  services_count NUMERIC DEFAULT 0,
   CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 
