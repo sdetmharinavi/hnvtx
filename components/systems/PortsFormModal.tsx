@@ -23,6 +23,7 @@ interface PortsFormModalProps {
     port_admin_status?: boolean | null; 
     services_count?: number | null; 
   }) | null;
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }

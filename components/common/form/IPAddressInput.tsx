@@ -35,19 +35,42 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
 
   // IPv4 validation
   const isValidIPv4 = useCallback((ip: string): boolean => {
-    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+    // THE FIX: Updated regex to allow optional CIDR suffix (e.g., /32)
+    // Group 1-4: The octets
+    // Group 5: Optional CIDR suffix
+    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\/(\d{1,2}))?$/;
     const match = ip.match(ipv4Regex);
     if (!match) return false;
 
-    return match.slice(1).every((octet) => {
+    // Validate octets
+    const validOctets = match.slice(1, 5).every((octet) => {
       const num = parseInt(octet, 10);
       return num >= 0 && num <= 255 && octet === num.toString();
     });
+
+    if (!validOctets) return false;
+
+    // Validate CIDR if present
+    const cidr = match[5];
+    if (cidr) {
+      const cidrNum = parseInt(cidr, 10);
+      return cidrNum >= 0 && cidrNum <= 32;
+    }
+
+    return true;
   }, []);
 
   const isValidIPv6Basic = useCallback((ip: string): boolean => {
+    // Remove potential CIDR suffix for validation
+    const [addressPart, cidrPart] = ip.split('/');
+    
+    if (cidrPart) {
+      const cidrNum = parseInt(cidrPart, 10);
+      if (isNaN(cidrNum) || cidrNum < 0 || cidrNum > 128) return false;
+    }
+
     // Normalize the IPv6 address
-    const normalized = ip.toLowerCase();
+    const normalized = addressPart.toLowerCase();
 
     // Handle :: compression
     if (normalized.includes('::')) {
@@ -203,14 +226,14 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
         </div>
       </div>
 
-      <div className="mt-2 min-h-[1.5rem]">
-        {validationState.isValid === false && (
+      {/* {validationState.isValid === false && (
+        <div className="mt-2 min-h-[1.5rem]">
           <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
             <AlertCircle className="w-4 h-4" />
             <span>{validationState.error}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )} */}
     </div>
   );
 };
