@@ -18,7 +18,7 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
   if (!log) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Audit Log Details" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Audit Log Details" size="full">
       <div className="p-6 space-y-6">
         {/* Header Summary */}
         <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border dark:border-gray-700">

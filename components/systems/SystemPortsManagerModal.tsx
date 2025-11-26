@@ -232,7 +232,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Ports for: ${system?.system_name}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Ports for: ${system?.system_name}`} size="full">
       <div className="space-y-4">
         {error && <ErrorDisplay error={error.message} />}
 

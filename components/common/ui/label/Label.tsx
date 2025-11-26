@@ -95,7 +95,7 @@ export const Label: React.FC<LabelProps> = ({
 // <Label htmlFor="api-key" tooltip="Your unique API identifier">API Key</Label>
 
 // // Custom size and weight
-// <Label htmlFor="name" size="lg" weight="bold">Full Name</Label>
+// <Label htmlFor="name" size="full" weight="bold">Full Name</Label>
 
 // // Disabled state
 // <Label htmlFor="readonly" disabled>Read-only Field</Label>

@@ -88,6 +88,7 @@ SELECT
   sc.protection_fiber_out_ids,
   sc.system_working_interface,
   sc.system_protection_interface,
+  sc.connected_link_type_id,
   lt_link_type.name as connected_link_type_name,
   scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
   scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer

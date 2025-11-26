@@ -32,7 +32,7 @@ export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({ isOpen, on
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Apply Port Template" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Apply Port Template" size="full">
       <FormCard
         title="Apply Port Template"
         subtitle="Select a configuration to auto-populate ports."

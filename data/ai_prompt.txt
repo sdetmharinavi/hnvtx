@@ -129,5 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all we will fix the issue of appearing old data after clicking sync and closing browser and reopening it. I think we can solve it by incrementing local database version by 1 on each time we click sync button.
+Let's begin! First of all lets check if there is any file which is unused and can be deleted.
+
 
