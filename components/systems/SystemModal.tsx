@@ -403,7 +403,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={modalTitle}
-      size='xl'
+      size='full'
       visible={false}
       className='h-0 w-0 bg-transparent'>
       <FormCard

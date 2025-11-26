@@ -1,4 +1,4 @@
-// path: components/systems/FiberAllocationModal.tsx
+// path: components/system-details/FiberAllocationModal.tsx
 "use client";
 
 import { FC, useMemo, useState, useEffect, useCallback } from "react";
@@ -94,18 +94,28 @@ const PathBuilder: FC<{
     const { fields, append, remove } = useFieldArray({ control, name: pathType });
     const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
+    // FIX: Watch the array values directly to get reactive updates for fiber_id
+    const pathValues = watch(pathType);
+
     const lastNode = useMemo(() => {
         let currentNode = startNode;
-        fields.forEach(field => {
+        // Use pathValues if available, falling back to fields if empty (though useFieldArray initializes from defaultValues)
+        const currentSteps = pathValues || fields;
+
+        currentSteps.forEach((step) => {
             if (!currentNode) return;
-            const cable = cables.find(c => c.id === (field as PathStep).cable_id);
+            // We need to cast step because pathValues elements don't have 'id' from useFieldArray, 
+            // but fields do. We just need data properties here.
+            const cableId = (step as PathStep).cable_id;
+            
+            const cable = cables.find(c => c.id === cableId);
             if (!cable) return;
             const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
             const nextNode = nodes.find(n => n.id === nextNodeId);
             currentNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
         });
         return currentNode;
-    }, [fields, startNode, cables, nodes]);
+    }, [pathValues, fields, startNode, cables, nodes]);
 
     const availableCables = useMemo(() => {
         if (!lastNode?.id) return [];
@@ -127,21 +137,31 @@ const PathBuilder: FC<{
         <div className="space-y-3">
             {fields.map((field, index) => {
                 let currentStartNode = startNode;
+                // Use pathValues for node calculation history to keep in sync
+                const currentSteps = pathValues || fields;
+                
                 for (let i = 0; i < index; i++) {
-                    const prevCable = cables.find(c => c.id === (fields[i] as PathStep).cable_id);
+                    const prevCableId = (currentSteps[i] as PathStep).cable_id;
+                    const prevCable = cables.find(c => c.id === prevCableId);
                     if (prevCable && currentStartNode) {
                         const nextNodeId = prevCable.sn_id === currentStartNode.id ? prevCable.en_id : prevCable.sn_id;
                         const nextNode = nodes.find(n => n.id === nextNodeId);
                         currentStartNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
                     }
                 }
-                const cable = cables.find(c => c.id === (field as PathStep).cable_id);
+                
+                // FIX: Get the live value from watch(), not the stable field object
+                const currentStepValue = currentSteps[index] as PathStep;
+                const cableId = currentStepValue?.cable_id;
+                const liveFiberId = currentStepValue?.fiber_id;
+
+                const cable = cables.find(c => c.id === cableId);
                 const endNodeId = cable && currentStartNode ? (cable.sn_id === currentStartNode.id ? cable.en_id : cable.sn_id) : null;
                 const endNode = nodes.find(n => n.id === endNodeId);
 
                 return (
                     <PathCascadeRow
-                        key={field.id}
+                        key={field.id} // Key must come from field.id
                         index={index}
                         pathType={pathType}
                         control={control}
@@ -153,7 +173,7 @@ const PathBuilder: FC<{
                         }}
                         onRemove={() => remove(index)}
                         allAllocatedFiberIds={allAllocatedFiberIds}
-                        currentFiberId={(field as PathStep).fiber_id}
+                        currentFiberId={liveFiberId} // FIX: Pass the live ID
                     />
                 );
             })}

@@ -1,93 +1,60 @@
-CREATE OR REPLACE FUNCTION public.update_port_metrics_trigger()
+-- 1. Replace the Function
+CREATE OR REPLACE FUNCTION public.fn_update_port_utilization()
 RETURNS TRIGGER AS $$
 DECLARE
-  affected_system_id UUID;
-  affected_port TEXT;
+    v_system_id uuid;
+    v_port_name text;
+    v_service_count integer;
 BEGIN
-  -- ============================================================
-  -- HANDLE NEW/UPDATED RECORD
-  -- ============================================================
-  IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND NEW.system_working_interface IS NOT NULL THEN
-      affected_system_id := NEW.system_id;
-      affected_port := NEW.system_working_interface;
+    -- Determine context based on operation
+    IF (TG_OP = 'DELETE') THEN
+        v_system_id := OLD.system_id;
+        v_port_name := OLD.system_working_interface;
+    ELSE
+        v_system_id := NEW.system_id;
+        v_port_name := NEW.system_working_interface;
+    END IF;
+
+    -- If interface is null, we can't link to a port, so exit
+    IF v_port_name IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- Calculate active services on this port
+    -- Logic: Only count if customer_name is present (NOT NULL and NOT Empty)
+    SELECT COUNT(*)
+    INTO v_service_count
+    FROM public.system_connections
+    WHERE system_id = v_system_id
+      AND system_working_interface = v_port_name
+      AND customer_name IS NOT NULL 
+      AND trim(customer_name) <> '';
+
+    -- Update the ports_management table
+    UPDATE public.ports_management
+    SET 
+        services_count = v_service_count,
+        
+        -- Mark as utilized if services exist
+        port_utilization = (v_service_count > 0),
+        
+        -- THE FIX: Automatically set Admin Status to TRUE if utilized. 
+        -- If not utilized, keep the existing admin status (don't force down).
+        port_admin_status = CASE 
+            WHEN v_service_count > 0 THEN true 
+            ELSE port_admin_status 
+        END
+    WHERE system_id = v_system_id 
+      AND port = v_port_name;
       
-      -- Update metrics for this specific port
-      UPDATE public.ports_management
-      SET 
-          -- 1. Count specific services (Must have Customer Name & be Active)
-          services_count = (
-              SELECT COUNT(*) 
-              FROM public.system_connections 
-              WHERE system_id = affected_system_id 
-                AND system_working_interface = affected_port
-                AND status = true
-                AND customer_name IS NOT NULL 
-                AND TRIM(customer_name) <> ''
-          ),
-          
-          -- 2. Set Utilization (True if count > 0)
-          port_utilization = (
-              SELECT EXISTS (
-                  SELECT 1 
-                  FROM public.system_connections 
-                  WHERE system_id = affected_system_id 
-                    AND system_working_interface = affected_port
-                    AND status = true
-                    AND customer_name IS NOT NULL 
-                    AND TRIM(customer_name) <> ''
-              )
-          ),
-          
-          -- 3. Set Admin Status (UP if utilized, otherwise keep existing)
-          port_admin_status = CASE 
-              WHEN (
-                  SELECT COUNT(*) 
-                  FROM public.system_connections 
-                  WHERE system_id = affected_system_id 
-                    AND system_working_interface = affected_port 
-                    AND status = true
-                    AND customer_name IS NOT NULL 
-                    AND TRIM(customer_name) <> ''
-              ) > 0 THEN true 
-              ELSE port_admin_status 
-          END
-      WHERE system_id = affected_system_id 
-        AND port = affected_port;
-  END IF;
-
-  -- ============================================================
-  -- HANDLE DELETED/CHANGED RECORD (Cleanup old port)
-  -- ============================================================
-  IF (TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.system_working_interface IS DISTINCT FROM NEW.system_working_interface)) AND OLD.system_working_interface IS NOT NULL THEN
-      affected_system_id := OLD.system_id;
-      affected_port := OLD.system_working_interface;
-
-      UPDATE public.ports_management
-      SET 
-          services_count = (
-              SELECT COUNT(*) 
-              FROM public.system_connections 
-              WHERE system_id = affected_system_id 
-                AND system_working_interface = affected_port
-                AND status = true
-                AND customer_name IS NOT NULL 
-                AND TRIM(customer_name) <> ''
-          ),
-          port_utilization = (
-              SELECT EXISTS (
-                  SELECT 1 
-                  FROM public.system_connections 
-                  WHERE system_id = affected_system_id 
-                    AND system_working_interface = affected_port
-                    AND status = true
-                    AND customer_name IS NOT NULL 
-                    AND TRIM(customer_name) <> ''
-              )
-          )
-      WHERE system_id = affected_system_id 
-        AND port = affected_port;
-  END IF;
-
-  RETURN NULL;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Re-attach Trigger (Ensures it is active)
+DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
+
+CREATE TRIGGER trg_update_port_utilization
+AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_update_port_utilization();

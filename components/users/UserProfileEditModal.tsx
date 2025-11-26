@@ -51,7 +51,7 @@ interface UserProfileEditProps {
 const normalizeUserToForm = (user: V_user_profiles_extendedRowSchema): UserProfileFormData => {
   return {
     // scalars: convert null -> undefined where the update schema expects optional
-    avatar_url: user.avatar_url ?? undefined,
+    avatar_url: user.avatar_url ?? null,
     first_name: user.first_name ?? undefined,
     last_name: user.last_name ?? undefined,
     phone_number: user.phone_number ?? undefined,

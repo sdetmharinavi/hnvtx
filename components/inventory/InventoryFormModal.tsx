@@ -80,7 +80,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Inventory Item' : 'Add Inventory Item'} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Inventory Item' : 'Add Inventory Item'} size="full">
       <FormCard
         onSubmit={handleSubmit(handleFormSubmit)}
         onCancel={onClose}

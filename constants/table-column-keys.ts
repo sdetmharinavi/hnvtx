@@ -657,6 +657,7 @@ const TABLE_COLUMN_OBJECTS = {
     sdh_stm_no: "sdh_stm_no",
     connected_link_type_name: "connected_link_type_name",
     sn_interface: "sn_interface",
+    connected_link_type_id: "connected_link_type_id",
     sn_name: "sn_name",
     en_name: "en_name",
     en_interface: "en_interface",
