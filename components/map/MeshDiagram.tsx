@@ -34,9 +34,9 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const { theme } = useThemeStore();
 
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#0f172a' : '#f1f5f9';
+  const bgColor = isDark ? '#0f172a' : '#99ccff';
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
-  const spurLineColor = isDark ? '#b4083f' : '#cbd5e1';
+  const spurLineColor = isDark ? '#b4083f' : '#ff0066';
   
   const { nodePositions, bounds } = useMemo(() => {
     const hubs = nodes.filter(n => n.is_hub);
@@ -183,8 +183,8 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               pathOptions={{
                 color: isHubLink ? hubLineColor : spurLineColor,
                 weight: isHubLink ? 3 : 1.5,
-                dashArray: isHubLink ? undefined : '5, 10',
-                opacity: isHubLink ? 0.9 : 0.7,
+                dashArray: isHubLink ? undefined : '5, 6',
+                opacity: isHubLink ? 0.9 : 0.9,
                 lineCap: 'round',
                 lineJoin: 'round'
               }}
