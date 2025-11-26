@@ -13,8 +13,7 @@ const SystemFiberTraceModal: React.FC<{
 
   const RouteDisplay = ({ 
     title, 
-    route, 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    route,
     icon: Icon, 
     color 
   }: { 

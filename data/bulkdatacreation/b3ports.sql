@@ -16,6 +16,8 @@ WITH port_templates (port, port_type_id, port_capacity) AS (
     ('ETH-1-1-12', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
     ('ETH-1-1-13', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
     ('ETH-1-1-14', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
+    ('ETH-1-1-15', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
+    ('ETH-1-1-16', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
     ('ETH-1-1-17', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
     ('ETH-1-1-18', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
     ('ETH-1-1-19', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
@@ -33,5 +35,5 @@ SELECT
   t.port_capacity
 FROM systems s
 CROSS JOIN port_templates t
-WHERE s.system_capacity_id = 'b63e879c-6b09-402f-8958-a45a023e4339' -- Filter by System Type
+WHERE s.system_capacity_id = 'ce06f9b7-02e7-4741-8911-46cf1f47ffdd' -- Filter by System Type
 ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times

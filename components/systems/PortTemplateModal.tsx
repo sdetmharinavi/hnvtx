@@ -1,7 +1,7 @@
 // components/systems/PortTemplateModal.tsx
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormSearchableSelect } from '@/components/common/form';
 import { useForm } from 'react-hook-form';
