@@ -56,6 +56,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "user_id,note_date",
     isUploadEnabled: true,
   },
+  inventory_items: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
