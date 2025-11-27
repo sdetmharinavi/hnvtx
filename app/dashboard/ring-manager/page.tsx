@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
-import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
+import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
@@ -47,12 +47,112 @@ import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelU
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 
+// --- Types ---
 interface SystemToDisassociate {
   ringId: string;
   systemId: string;
   systemName: string;
   ringName: string;
 }
+
+// --- Helper Hooks ---
+
+// Hook to fetch systems specifically for a ring
+// This ensures the details panel always has complete data, regardless of the main list limit.
+const useRingSystems = (ringId: string | null) => {
+  const supabase = createClient();
+  return useTableQuery(supabase, 'v_systems_complete', {
+    columns: 'id, system_name, is_hub, order_in_ring',
+    filters: { ring_id: ringId || '' },
+    enabled: !!ringId,
+    orderBy: [{ column: 'order_in_ring', ascending: true }]
+  });
+};
+
+// --- Components ---
+
+// Sub-component to render the list of associated systems
+// It fetches its own data to ensure accuracy.
+const RingAssociatedSystemsView = ({ 
+  ringId, 
+  onEdit, 
+  onDelete 
+}: { 
+  ringId: string; 
+  onEdit: (sys: V_systems_completeRowSchema) => void; 
+  onDelete: (sys: V_systems_completeRowSchema) => void; 
+}) => {
+  const { data: systemsData, isLoading } = useRingSystems(ringId);
+  const systems = systemsData?.data || [];
+
+  if (isLoading) return <div className="py-4 text-center text-sm text-gray-500">Loading associated systems...</div>;
+  
+  if (systems.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 italic py-2">
+        No systems associated with this ring.
+      </div>
+    );
+  }
+
+  // Create a map for quick hub lookup to name the parent of a spur
+  const hubMap = new Map<number, string>();
+  systems.forEach(s => {
+      if (s.is_hub && s.order_in_ring !== null) {
+          hubMap.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
+      }
+  });
+
+  return (
+    <div className="space-y-2">
+      {systems.map((system) => {
+         const isSpur = !system.is_hub && system.order_in_ring !== null;
+         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
+         const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
+
+         return (
+            <div
+              key={system.id}
+              className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-100 dark:border-gray-600"
+            >
+              <div>
+                <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{system.system_name}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Order: {system.order_in_ring ?? 'N/A'}</span>
+                    {system.is_hub ? (
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded"><FiArrowRightCircle className="w-3 h-3"/> Hub</span>
+                    ) : (
+                        <span className="text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded">
+                            <FiGitMerge className="w-3 h-3"/> Spur 
+                            {parentName && <span className="text-gray-400 dark:text-gray-500 ml-1">→ {parentName}</span>}
+                        </span>
+                    )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onEdit(system)}
+                title="Edit System Order/Hub Status"
+              >
+                <FiEdit className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => onDelete(system)}
+                title="Remove from Ring"
+              >
+                <FiTrash2 className="w-4 h-4" />
+              </Button>
+              </div>
+            </div>
+         );
+      })}
+    </div>
+  );
+};
 
 const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
@@ -136,9 +236,7 @@ export default function RingManagerPage() {
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
   const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
-  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(
-    null
-  );
+  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(null);
 
   const {
     data: rings,
@@ -172,7 +270,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      void refetchSystems();
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
@@ -181,21 +278,10 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success('System disassociated from ring.');
       void refetch();
-      void refetchSystems();
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
-
-  const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(
-    supabase,
-    'v_systems_complete',
-    {
-      limit: 5000,
-    }
-  );
-
-  const allSystems = useMemo(() => allSystemsResult?.data || [], [allSystemsResult]);
 
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
@@ -276,7 +362,8 @@ export default function RingManagerPage() {
         toast.success(`Updated "${systemToEdit.system_name}" in ring.`);
         setIsEditSystemModalOpen(false);
         setSystemToEdit(null);
-        void refetchSystems();
+        // Force refresh the ring list to update counts/data
+        void refetch();
       },
     });
   };
@@ -350,7 +437,6 @@ export default function RingManagerPage() {
         },
         { key: 'status', title: 'status', dataIndex: 'status' },
         { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
-        // THE FIX: Explicitly mark this column to be formatted as JSON.
         {
           key: 'associated_systems',
           title: 'associated_systems',
@@ -424,6 +510,7 @@ export default function RingManagerPage() {
     [totalCount, activeCount, inactiveCount]
   );
 
+  // Dynamic Config with the new Component
   const dynamicFilterConfig: EntityConfig<RingEntity> = {
     ...ringConfig,
     filterOptions: ringConfig.filterOptions.map((opt) => {
@@ -448,58 +535,24 @@ export default function RingManagerPage() {
         label: 'Associated Systems',
         type: 'custom' as const,
         render: (_value: unknown, entity: RingEntity) => {
-          const associatedSystems = allSystems
-            .filter((s) => s.ring_id === entity.id)
-            .sort((a, b) => (a.order_in_ring ?? 999) - (b.order_in_ring ?? 999));
-
-          if (associatedSystems.length === 0) {
-            return (
-              <div className="text-sm text-gray-500 italic">
-                No systems associated with this ring.
-              </div>
-            );
-          }
-
+          // THE FIX: Use the new specialized component to render the list
+          // This component manages its own data fetching for the specific ring
           return (
-            <div className="space-y-2">
-              {associatedSystems.map((system) => (
-                <div
-                  key={system.id}
-                  className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{system.system_name}</p>
-                    <p className="text-xs text-gray-500">Order: {system.order_in_ring ?? 'N/A'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setSystemToEdit(system);
-                      setIsEditSystemModalOpen(true);
-                    }}
-                  >
-                    <FiEdit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() =>
-                      setSystemToDisassociate({
-                        ringId: entity.id,
-                        systemId: system.id!,
-                        ringName: entity.name,
-                        systemName: system.system_name || 'this system',
-                      })
-                    }
-                  >
-                    <FiTrash2 className="w-4 h-4" />
-                  </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RingAssociatedSystemsView 
+              ringId={entity.id}
+              onEdit={(system) => {
+                setSystemToEdit(system);
+                setIsEditSystemModalOpen(true);
+              }}
+              onDelete={(system) => 
+                 setSystemToDisassociate({
+                    ringId: entity.id,
+                    systemId: system.id!,
+                    ringName: entity.name,
+                    systemName: system.system_name || 'this system',
+                  })
+              }
+            />
           );
         },
       },

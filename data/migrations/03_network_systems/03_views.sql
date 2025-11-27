@@ -225,6 +225,7 @@ SELECT
   r.ring_type_id,
   r.maintenance_terminal_id,
   r.is_closed_loop,
+  r.topology_config,
   r.status,
   r.created_at,
   r.updated_at,
