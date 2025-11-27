@@ -3,34 +3,34 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid, FiMaximize2, FiMinimize2, FiRefreshCw } from 'react-icons/fi';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
-import { PageSpinner } from '@/components/common/ui';
+import { PageSpinner, Modal, Button } from '@/components/common/ui'; // Added Modal, Button
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database'; // Added useTableUpdate
+import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
 import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
+import { Json } from '@/types/supabase-types';
 
-// Dynamic import for Map
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
-// Extended type to handle the new column until Zod schemas are regenerated
+// Extended type for the new column
 type ExtendedRingDetails = V_ringsRowSchema & {
-  is_closed_loop?: boolean | null;
+  topology_config?: {
+    disabled_segments?: string[]; // Array of "idA-idB" strings
+  } | null;
 };
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
-  if (node.id == null || node.name == null) {
-    return null;
-  }
+  if (node.id == null || node.name == null) return null;
   return {
     id: node.id,
     ring_id: node.ring_id,
@@ -58,34 +58,27 @@ export default function RingMapPage() {
   const supabase = createClient();
   
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
-  // 1. Fetch Ring Details (Now includes is_closed_loop from the view)
+  // 1. Fetch Ring Details
   const { data: ringDetailsData, isLoading: isLoadingRingDetails, refetch: refetchRing } = useTableRecord(
     supabase,
     'v_rings',
     ringId
   );
-  
-  // Cast to extended type to access the new column
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
-  // 2. Mutation to update the ring topology preference in the DB
+  // 2. Mutation
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
     onSuccess: () => {
-      toast.success("Topology updated");
+      toast.success("Topology configuration saved");
       refetchRing();
+      setIsConfigModalOpen(false);
     },
-    onError: (err) => toast.error(`Failed to update topology: ${err.message}`)
+    onError: (err) => toast.error(`Failed to save: ${err.message}`)
   });
 
-  // 3. Toggle Handler
-  const toggleRingClosure = () => {
-    const currentStatus = ringDetails?.is_closed_loop ?? true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateRing({ id: ringId, data: { is_closed_loop: !currentStatus } as any });
-  };
-
-  // 4. Fetch Nodes (Offline supported)
+  // 3. Fetch Nodes
   const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
     ['ring-nodes-detail', ringId],
     async () => {
@@ -106,10 +99,7 @@ export default function RingMapPage() {
       if (!ringId) return [];
       return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
-    {
-      enabled: !!ringId,
-      staleTime: 5 * 60 * 1000,
-    }
+    { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
   );
   
   const mappedNodes = useMemo((): RingMapNode[] => {
@@ -117,13 +107,11 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  const { mainSegments, spurConnections, allConnections } = useMemo(() => {
-    if (mappedNodes.length === 0) {
-      return { mainSegments: [], spurConnections: [], allConnections: [] };
-    }
-
-    // Use the DB value. Default to true if not set.
-    const isClosed = ringDetails?.is_closed_loop ?? true;
+  // 4. Calculate Potential Segments
+  // We generate ALL possible sequential connections (including closing the loop).
+  // The visibility will be controlled by the `topology_config`.
+  const { potentialSegments, spurConnections } = useMemo(() => {
+    if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
@@ -132,66 +120,73 @@ export default function RingMapPage() {
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
     
-    if (hubs.length > 0) {
-      if (hubs.length > 1) {
-        hubs.forEach((hub, index) => {
-          const isLastNode = index === hubs.length - 1;
-          
-          if (!isLastNode) {
-             // Sequential: 1->2, 2->3
-             segments.push([hub, hubs[index + 1]]);
-          } else if (isClosed) {
-             // Loop closure: 3->1 (Only if DB flag is true)
-             segments.push([hub, hubs[0]]);
-          }
-        });
-      }
+    if (hubs.length > 1) {
+      hubs.forEach((hub, index) => {
+        // Connect to next, wrapping around to 0 for the last one
+        const nextIndex = (index + 1) % hubs.length;
+        segments.push([hub, hubs[nextIndex]]);
+      });
     } else {
-      // Fallback for legacy data without hubs
-      const allNodesSorted = [...mappedNodes].sort(
-        (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
-      );
-      if (allNodesSorted.length > 1) {
-        allNodesSorted.forEach((node, index) => {
-           const isLast = index === allNodesSorted.length - 1;
-           if (!isLast) {
-               segments.push([node, allNodesSorted[index + 1]]);
-           } else if (isClosed) {
-               segments.push([node, allNodesSorted[0]]);
-           }
-        });
-      }
+       // Fallback logic for non-hubs
+       const allNodes = [...mappedNodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+       if (allNodes.length > 1) {
+         allNodes.forEach((node, index) => {
+            const nextIndex = (index + 1) % allNodes.length;
+            segments.push([node, allNodes[nextIndex]]);
+         });
+       }
     }
 
+    // Spurs logic (unchanged)
     const spurs: Array<[RingMapNode, RingMapNode]> = [];
     const hubMapByOrder = new Map<number, RingMapNode>();
-    
-    hubs.forEach(h => {
-        if (h.order_in_ring !== null) {
-            hubMapByOrder.set(Math.floor(h.order_in_ring), h);
-        }
-    });
+    hubs.forEach(h => { if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h); });
 
     spokes.forEach((spoke) => {
       const parentOrder = Math.floor(spoke.order_in_ring || 0);
       const parentHub = hubMapByOrder.get(parentOrder);
-      if (parentHub) {
-        spurs.push([parentHub, spoke]);
-      }
+      if (parentHub) spurs.push([parentHub, spoke]);
     });
 
-    return {
-      mainSegments: segments,
-      spurConnections: spurs,
-      allConnections: [...segments, ...spurs]
-    };
-  }, [mappedNodes, ringDetails?.is_closed_loop]);
+    return { potentialSegments: segments, spurConnections: spurs };
+  }, [mappedNodes]);
+
+  // 5. Filter Segments based on DB Config
+  const activeSegments = useMemo(() => {
+    const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
+    
+    return potentialSegments.filter(([start, end]) => {
+      // Check both A-B and B-A keys to be safe
+      const key1 = `${start.id}-${end.id}`;
+      const key2 = `${end.id}-${start.id}`;
+      return !disabledKeys.has(key1) && !disabledKeys.has(key2);
+    });
+  }, [potentialSegments, ringDetails]);
+
+  const allConnections = useMemo(() => [...activeSegments, ...spurConnections], [activeSegments, spurConnections]);
+
+  // 6. Configuration Handlers
+  const handleToggleSegment = (startId: string, endId: string) => {
+    const key = `${startId}-${endId}`;
+    const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
+    const isCurrentlyDisabled = currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
+
+    let newDisabled = [...currentDisabled];
+    if (isCurrentlyDisabled) {
+      // Re-enable: Remove both permutations
+      newDisabled = newDisabled.filter(k => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`);
+    } else {
+      // Disable: Add key
+      newDisabled.push(key);
+    }
+
+    const newConfig = { ...ringDetails?.topology_config, disabled_segments: newDisabled };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
+  };
 
   const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
-
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {
     const isLoading = isLoadingNodes || isLoadingRingDetails;
@@ -200,51 +195,24 @@ export default function RingMapPage() {
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
-          <FiMap className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-            No Nodes Found For This Ring
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            There are no systems associated with this ring yet.
-          </p>
+          <p className="text-gray-500">No nodes found.</p>
         </div>
       );
     }
     
     if (viewMode === 'schematic') {
-      return (
-        <MeshDiagram 
-          nodes={mappedNodes} 
-          connections={allConnections} 
-          ringName={ringName}
-          onBack={handleBack}
-        />
-      );
+      return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
     }
 
     const mapNodes = mappedNodes.filter(n => n.lat != null && n.long != null);
-    
     if (mapNodes.length === 0) {
-       return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4">
-           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-center">
-              <p className="font-semibold">No Geographic Data</p>
-              <p className="text-sm">None of the nodes in this ring have latitude/longitude coordinates.</p>
-              <button 
-                onClick={() => setViewMode('schematic')}
-                className="mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm"
-              >
-                Switch to Schematic View
-              </button>
-           </div>
-        </div>
-       );
+       return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
     }
 
     return (
       <ClientRingMap
         nodes={mapNodes}
-        solidLines={mainSegments}
+        solidLines={activeSegments}
         dashedLines={spurConnections}
         onBack={handleBack}
         showControls={true}
@@ -252,24 +220,20 @@ export default function RingMapPage() {
     );
   };
 
-  const isClosed = ringDetails?.is_closed_loop ?? true;
-
   return (
     <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
       <div className="flex-shrink-0">
         <PageHeader
           title={ringName}
-          description={`Visualizing the ${
-            ringDetails?.ring_type_name || 'ring'
-          } network topology.`}
+          description="Visualize and configure topology."
           icon={<FiMap />}
           actions={[
             {
-              label: isUpdating ? 'Saving...' : (isClosed ? 'Open Loop (Linear)' : 'Close Loop (Ring)'),
-              onClick: toggleRingClosure,
-              variant: isClosed ? 'outline' : 'primary',
-              leftIcon: isUpdating ? <FiRefreshCw className="animate-spin" /> : (isClosed ? <FiMinimize2 /> : <FiMaximize2 />),
-              disabled: isUpdating || isLoadingRingDetails
+              label: 'Configure Topology',
+              onClick: () => setIsConfigModalOpen(true),
+              variant: 'primary',
+              leftIcon: <FiSettings />,
+              disabled: isLoadingRingDetails || isUpdating
             },
             {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
@@ -290,6 +254,47 @@ export default function RingMapPage() {
       <div className="flex-grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
+
+      {/* Topology Configuration Modal */}
+      <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Toggle the switches below to enable or disable specific connections between hubs.
+          </p>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {potentialSegments.map(([start, end], idx) => {
+               const key = `${start.id}-${end.id}`;
+               const reverseKey = `${end.id}-${start.id}`;
+               const disabledList = ringDetails?.topology_config?.disabled_segments || [];
+               const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
+
+               return (
+                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
+                        {start.name} ↔ {end.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                         Order: {start.order_in_ring} ↔ {end.order_in_ring}
+                      </span>
+                    </div>
+                    <Button
+                        size="xs"
+                        variant={isActive ? 'success' : 'secondary'}
+                        onClick={() => handleToggleSegment(start.id!, end.id!)}
+                        disabled={isUpdating}
+                    >
+                        {isActive ? 'Connected' : 'Disconnected'}
+                    </Button>
+                 </div>
+               );
+            })}
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setIsConfigModalOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
