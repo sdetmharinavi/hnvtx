@@ -8,7 +8,6 @@ import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
-// THE FIX: Import the context hook `useUser` instead of the old data-fetching hook.
 import { useUser } from "@/providers/UserProvider";
 import { useEffect } from "react";
 import { Input, Label } from "@/components/common/ui";
@@ -20,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/common/ui/select/Select";
+import { useQueryClient } from "@tanstack/react-query"; // THE FIX: Import useQueryClient
 
 const toObject = (data: Json | null | undefined): Record<string, unknown> => {
   if (data && typeof data === "object" && !Array.isArray(data)) {
@@ -55,8 +55,8 @@ const normalizePreferenceValue = (value: unknown): string | null => {
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
+  const queryClient = useQueryClient(); // THE FIX: Initialize QueryClient
 
-  // THE FIX: Get profile data and actions from the `useUser` context hook.
   const {
     profile,
     isLoading: isProfileLoading,
@@ -82,6 +82,10 @@ export default function OnboardingFormEnhanced() {
       onSuccess: (data) => {
         toast.success("Profile updated successfully!");
         refetch();
+        
+        // THE FIX: Explicitly invalidate the user permissions query to ensure
+        // the `needsOnboarding` flag updates globally immediately.
+        queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
 
         if (data && data[0]) {
           const updatedProfile = data[0] as User_profilesUpdateSchema;
@@ -147,10 +151,11 @@ export default function OnboardingFormEnhanced() {
       }
     }
 
+    // THE FIX: Explicitly set needsOnboarding to false when saving
     const newPreferences = {
       ...toObject(profile?.preferences),
       ...toObject(data.preferences),
-      needsOnboarding: false,
+      needsOnboarding: false, 
     };
     updates.preferences = newPreferences;
 
@@ -411,7 +416,7 @@ export default function OnboardingFormEnhanced() {
                 <path
                   className='opacity-75'
                   fill='currentColor'
-                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                  d='M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                 />
               </svg>
             )}
