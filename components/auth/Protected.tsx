@@ -1,3 +1,4 @@
+// components/auth/Protected.tsx
 "use client";
 
 import { useEffect, useRef, ReactNode } from "react";
@@ -7,7 +8,6 @@ import { UserRole } from "@/types/user-roles";
 import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useUser } from "@/providers/UserProvider";
-import { User_profilesRowSchema } from "@/schemas/zod-schemas";
 
 interface ProtectedProps {
   children: ReactNode;
@@ -16,33 +16,14 @@ interface ProtectedProps {
 }
 
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
-  const router = useRouter();
   // THE FIX: Get all user data from the single, consolidated useUser context.
-  const { canAccess, isSuperAdmin, role, profile, isLoading: isUserLoading } = useUser();
-
-  const needsOnboarding = 
-    !isUserLoading && 
-    profile && 
-    typeof profile.preferences === 'object' && 
-    profile.preferences !== null && 
-    !Array.isArray(profile.preferences) &&
-    'needsOnboarding' in profile.preferences &&
-    (profile.preferences as User_profilesRowSchema['preferences'])?.needsOnboarding === true;
-
-  useEffect(() => {
-    if (!isUserLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
-      router.replace('/onboarding');
-    }
-  }, [isUserLoading, needsOnboarding, router]);
+  const { canAccess, isSuperAdmin, role, isLoading: isUserLoading } = useUser();
   
   if (isUserLoading) {
      return <PageSpinner text="Verifying permissions..." />;
   }
-  
-  if (needsOnboarding) {
-    return <PageSpinner text="Redirecting to onboarding..." />;
-  }
 
+  // Security check for roles
   if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
     return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
   }

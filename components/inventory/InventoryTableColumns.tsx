@@ -15,10 +15,11 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         key: 'name',
         title: 'Name',
         dataIndex: 'name',
+        width: 180,
         render: (val, record) => (
-            <div>
+            <div className='contain-content text-wrap'>
                 <TruncateTooltip text={val as string} className="font-semibold" />
-                <p className="text-xs text-gray-500">{record.description}</p>
+                <p className="text-xs text-gray-500 max-w-44 wrap-break-word">{record.description}</p>
             </div>
         )
     },
