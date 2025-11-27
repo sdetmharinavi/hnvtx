@@ -3,7 +3,7 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid } from 'react-icons/fi';
+import { FiArrowLeft, FiMap, FiGrid, FiMaximize2, FiMinimize2, FiRefreshCw } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner } from '@/components/common/ui';
@@ -11,15 +11,21 @@ import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { createClient } from '@/utils/supabase/client';
-import { V_ring_nodesRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useTableRecord } from '@/hooks/database';
-import MeshDiagram from '@/components/map/MeshDiagram'; // Import the MeshDiagram
+import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database'; // Added useTableUpdate
+import MeshDiagram from '@/components/map/MeshDiagram';
+import { toast } from 'sonner';
 
-// Dynamic import for Map (Leaflet needs no SSR)
+// Dynamic import for Map
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });
+
+// Extended type to handle the new column until Zod schemas are regenerated
+type ExtendedRingDetails = V_ringsRowSchema & {
+  is_closed_loop?: boolean | null;
+};
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   if (node.id == null || node.name == null) {
@@ -49,22 +55,43 @@ export default function RingMapPage() {
   const params = useParams();
   const router = useRouter();
   const ringId = params.id as string;
+  const supabase = createClient();
   
-  // New State for View Mode
-  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('schematic');
+  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
 
-  const { data: ringDetails, isLoading: isLoadingRingDetails } = useTableRecord(
-    createClient(),
+  // 1. Fetch Ring Details (Now includes is_closed_loop from the view)
+  const { data: ringDetailsData, isLoading: isLoadingRingDetails, refetch: refetchRing } = useTableRecord(
+    supabase,
     'v_rings',
     ringId
   );
+  
+  // Cast to extended type to access the new column
+  const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
+  // 2. Mutation to update the ring topology preference in the DB
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
+    onSuccess: () => {
+      toast.success("Topology updated");
+      refetchRing();
+    },
+    onError: (err) => toast.error(`Failed to update topology: ${err.message}`)
+  });
+
+  // 3. Toggle Handler
+  const toggleRingClosure = () => {
+    const currentStatus = ringDetails?.is_closed_loop ?? true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateRing({ id: ringId, data: { is_closed_loop: !currentStatus } as any });
+  };
+
+  // 4. Fetch Nodes (Offline supported)
   const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
     ['ring-nodes-detail', ringId],
     async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
-      const { data, error } = await createClient().rpc('get_paged_data', {
+      const { data, error } = await supabase.rpc('get_paged_data', {
         p_view_name: 'v_ring_nodes',
         p_limit: 1000,
         p_offset: 0,
@@ -95,41 +122,59 @@ export default function RingMapPage() {
       return { mainSegments: [], spurConnections: [], allConnections: [] };
     }
 
+    // Use the DB value. Default to true if not set.
+    const isClosed = ringDetails?.is_closed_loop ?? true;
+
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+    
     const spokes = mappedNodes.filter((node) => !node.is_hub);
-
     const segments: Array<[RingMapNode, RingMapNode]> = [];
     
-    // 1. Create Main Ring Loop
     if (hubs.length > 0) {
-      // If we have hubs, connect them in a circle
       if (hubs.length > 1) {
         hubs.forEach((hub, index) => {
-          const nextHub = hubs[(index + 1) % hubs.length];
-          segments.push([hub, nextHub]);
+          const isLastNode = index === hubs.length - 1;
+          
+          if (!isLastNode) {
+             // Sequential: 1->2, 2->3
+             segments.push([hub, hubs[index + 1]]);
+          } else if (isClosed) {
+             // Loop closure: 3->1 (Only if DB flag is true)
+             segments.push([hub, hubs[0]]);
+          }
         });
       }
     } else {
-      // If no hubs defined, assume linear/ring based on order of all nodes
+      // Fallback for legacy data without hubs
       const allNodesSorted = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );
       if (allNodesSorted.length > 1) {
         allNodesSorted.forEach((node, index) => {
-          const nextNode = allNodesSorted[(index + 1) % allNodesSorted.length];
-          segments.push([node, nextNode]);
+           const isLast = index === allNodesSorted.length - 1;
+           if (!isLast) {
+               segments.push([node, allNodesSorted[index + 1]]);
+           } else if (isClosed) {
+               segments.push([node, allNodesSorted[0]]);
+           }
         });
       }
     }
 
-    // 2. Create Spur Connections (Spoke -> Hub)
     const spurs: Array<[RingMapNode, RingMapNode]> = [];
-    const hubMapByOrder = new Map(hubs.map((h) => [Math.floor(h.order_in_ring || 0), h]));
+    const hubMapByOrder = new Map<number, RingMapNode>();
+    
+    hubs.forEach(h => {
+        if (h.order_in_ring !== null) {
+            hubMapByOrder.set(Math.floor(h.order_in_ring), h);
+        }
+    });
 
     spokes.forEach((spoke) => {
-      const parentHub = hubMapByOrder.get(Math.floor(spoke.order_in_ring || 0));
+      const parentOrder = Math.floor(spoke.order_in_ring || 0);
+      const parentHub = hubMapByOrder.get(parentOrder);
       if (parentHub) {
         spurs.push([parentHub, spoke]);
       }
@@ -140,7 +185,7 @@ export default function RingMapPage() {
       spurConnections: spurs,
       allConnections: [...segments, ...spurs]
     };
-  }, [mappedNodes]);
+  }, [mappedNodes, ringDetails?.is_closed_loop]);
 
   const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
 
@@ -166,20 +211,17 @@ export default function RingMapPage() {
       );
     }
     
-    // Render based on view mode
     if (viewMode === 'schematic') {
       return (
         <MeshDiagram 
           nodes={mappedNodes} 
           connections={allConnections} 
           ringName={ringName}
-          onBack={handleBack} // Pass the onBack handler here
+          onBack={handleBack}
         />
       );
     }
 
-    // Default to Map View
-    // Filter out nodes without coordinates for the map
     const mapNodes = mappedNodes.filter(n => n.lat != null && n.long != null);
     
     if (mapNodes.length === 0) {
@@ -210,6 +252,8 @@ export default function RingMapPage() {
     );
   };
 
+  const isClosed = ringDetails?.is_closed_loop ?? true;
+
   return (
     <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
       <div className="flex-shrink-0">
@@ -221,9 +265,16 @@ export default function RingMapPage() {
           icon={<FiMap />}
           actions={[
             {
+              label: isUpdating ? 'Saving...' : (isClosed ? 'Open Loop (Linear)' : 'Close Loop (Ring)'),
+              onClick: toggleRingClosure,
+              variant: isClosed ? 'outline' : 'primary',
+              leftIcon: isUpdating ? <FiRefreshCw className="animate-spin" /> : (isClosed ? <FiMinimize2 /> : <FiMaximize2 />),
+              disabled: isUpdating || isLoadingRingDetails
+            },
+            {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
               onClick: () => setViewMode(prev => prev === 'map' ? 'schematic' : 'map'),
-              variant: 'primary',
+              variant: 'secondary',
               leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
             {
