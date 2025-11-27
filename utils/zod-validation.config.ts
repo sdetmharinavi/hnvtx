@@ -71,7 +71,7 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'International phone number format',
     },
     {
-      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', 'sn_dom', 'en_dom', 'note_date'],
+      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', 'sn_dom', 'en_dom', 'note_date', 'purchase_date'],
       validation: 'z.iso.date()',
       description: 'ISO date string validation (e.g., YYYY-MM-DD)',
     },

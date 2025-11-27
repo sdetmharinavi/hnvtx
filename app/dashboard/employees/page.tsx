@@ -1,7 +1,7 @@
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -15,6 +15,7 @@ import {
   EmployeesRowSchema,
   Employee_designationsRowSchema,
   Maintenance_areasRowSchema,
+  EmployeesUpdateSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -27,9 +28,12 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
+import { useTableUpdate } from '@/hooks/database'; // Added import
+import { Column } from '@/hooks/database/excel-queries/excel-helpers'; // Added import
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
+  const supabase = createClient();
 
   const {
     data: employees,
@@ -54,6 +58,37 @@ const EmployeesPage = () => {
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
   });
+
+  // --- Setup Inline Edit Mutation ---
+  const { mutate: updateEmployee } = useTableUpdate(supabase, 'employees', {
+    onSuccess: () => {
+      toast.success('Updated successfully');
+      refetch();
+    },
+    onError: (err) => toast.error(`Update failed: ${err.message}`),
+  });
+
+  // --- Handle Cell Edit ---
+  const handleCellEdit = useCallback(
+    (record: V_employeesRowSchema, column: Column<V_employeesRowSchema>, newValue: string) => {
+      if (!record.id) return;
+
+      const updateData: EmployeesUpdateSchema = {};
+      
+      // Map view columns to table columns
+      if (column.key === 'employee_contact') {
+        updateData.employee_contact = newValue;
+      } else if (column.key === 'employee_email') {
+        updateData.employee_email = newValue;
+      }
+
+      // Trigger mutation if we have data to update
+      if (Object.keys(updateData).length > 0) {
+        updateEmployee({ id: record.id, data: updateData });
+      }
+    },
+    [updateEmployee]
+  );
 
   const { data: designationsData } = useOfflineQuery<Employee_designationsRowSchema[]>(
     ['all-designations-filter'],
@@ -141,6 +176,8 @@ const EmployeesPage = () => {
           );
           bulkActions.handleRowSelect(validRows);
         }}
+        // Passed the edit handler here
+        onCellEdit={handleCellEdit}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

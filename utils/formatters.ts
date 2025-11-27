@@ -79,16 +79,17 @@ export const formatNumber = (
     return num.toString();
   }
 
-  const { locale = 'en-US', ...intlOptions } = options;
+  const { locale = 'en-IN', ...intlOptions } = options;
   const formatter = getCachedFormatter('number', locale, intlOptions);
   
   return formatter.format(num);
 };
 
+// THE FIX: Changed defaults to INR and en-IN
 export const formatCurrency = (
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US',
+  currency: string = 'INR',
+  locale: string = 'en-IN',
   options: Intl.NumberFormatOptions = {}
 ): string => {
   return formatNumber(amount, {
@@ -386,7 +387,7 @@ export const formatDate = (
   options: FormatDateOptions = {}
 ): string => {
   const {
-    locale = 'en-US',
+    locale = 'en-IN', // Changed default
     format,
     ...intlOptions
   } = options;
@@ -486,7 +487,7 @@ export const formatTimeRange = (
   endTime: Date | string,
   options: Intl.DateTimeFormatOptions & { locale?: string } = {}
 ): string => {
-  const { locale = 'en-US', ...intlOptions } = options;
+  const { locale = 'en-IN', ...intlOptions } = options;
   
   const formatOptions = {
     hour: 'numeric' as const,

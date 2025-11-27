@@ -93,9 +93,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // --- Data Fetching ---
   
-  // 1. Systems List
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
-    columns: "id, system_name, ip_address, node_name, system_type:system_type_id(code)",
+  // 1. Systems List (THE FIX: Query the View, not the Table, to get node_name)
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
+    columns: "id, system_name, ip_address, node_name",
+    limit: 5000,
+    orderBy: [{ column: "system_name", ascending: true }]
   });
   
   // 2. Lookups
