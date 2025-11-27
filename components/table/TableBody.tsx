@@ -127,7 +127,8 @@ function TableRowBase<T extends TableOrViewName>({
               }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
-                <div className='flex items-center gap-2'>
+                // THE FIX: Stop propagation here to prevent td onClick from firing when interacting with edit controls
+                <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
                   <input
                     ref={editInputRef}
                     type='text'
@@ -139,10 +140,20 @@ function TableRowBase<T extends TableOrViewName>({
                     }}
                     className='flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
                   />
-                  <button onClick={saveCellEdit} className='p-1 text-green-600 hover:text-green-700' aria-label="Save cell edit">
+                  <button 
+                    type="button"
+                    onClick={saveCellEdit} 
+                    className='p-1 text-green-600 hover:text-green-700' 
+                    aria-label="Save cell edit"
+                  >
                     <FiCheck size={14} />
                   </button>
-                  <button onClick={cancelCellEdit} className='p-1 text-red-600 hover:text-red-700' aria-label="Cancel cell edit">
+                  <button 
+                    type="button"
+                    onClick={cancelCellEdit} 
+                    className='p-1 text-red-600 hover:text-red-700' 
+                    aria-label="Cancel cell edit"
+                  >
                     <FiX size={14} />
                   </button>
                 </div>
