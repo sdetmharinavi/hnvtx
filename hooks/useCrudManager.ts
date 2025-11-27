@@ -26,6 +26,7 @@ import { addMutationToQueue } from "./data/useMutationQueue";
 import { getTable } from "@/hooks/data/localDb";
 import { DEFAULTS } from "@/constants/constants";
 import { UseQueryResult } from "@tanstack/react-query";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 
 export type RecordWithId = {
   id: string | number | null;
@@ -153,7 +154,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           ? deletedIds.map(Number).filter(n => !isNaN(n)) 
           : deletedIds;
           
-        // THE FIX: Explicitly cast to the widened type supported by getTable
+        // Explicitly cast to the widened type supported by getTable
         await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
         console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
     } catch (e) {
@@ -284,6 +285,45 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     }
   }, [isOnline, tableName, toggleStatus, refetch, idType]);
+
+  // --- GENERIC HANDLE CELL EDIT ---
+  const handleCellEdit = useCallback(
+    async (record: V, column: Column<V>, newValue: string) => {
+      if (!record.id) return;
+      
+      const id = String(record.id);
+      const key = column.dataIndex;
+      
+      // Simple validation to ensure we are not trying to update a computed property that doesn't exist on the base table.
+      // In a more complex system, we might need a 'editableKey' property on the Column definition if it differs from dataIndex.
+      
+      // Construct partial update object. 
+      // Casting to 'any' is necessary here because we are constructing a partial based on dynamic keys
+      // which TS cannot verify against TableUpdate<T> without more specific type constraints.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateData = { [key]: newValue } as any;
+
+      if (isOnline) {
+        updateItem({ id, data: updateData });
+      } else {
+         try {
+          const table = getTable(tableName);
+          const idKey = idType === 'number' ? Number(id) : id;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (table.update as any)(idKey, updateData);
+          await addMutationToQueue({
+            tableName,
+            type: 'update',
+            payload: { id, data: updateData },
+          });
+          refetch();
+        } catch (err) {
+          toast.error(`Offline edit failed: ${(err as Error).message}`);
+        }
+      }
+    },
+    [isOnline, updateItem, tableName, idType, refetch]
+  );
   
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
@@ -383,7 +423,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     queryResult,
     editModal: { isOpen: isEditModalOpen, record: editingRecord, openAdd: openAddModal, openEdit: openEditModal, close: closeModal },
     viewModal: { isOpen: isViewModalOpen, record: viewingRecord, open: openViewModal, close: closeModal },
-    actions: { handleSave, handleDelete, handleToggleStatus },
+    // Added handleCellEdit to actions
+    actions: { handleSave, handleDelete, handleToggleStatus, handleCellEdit },
     bulkActions: { selectedRowIds, selectedCount: selectedRowIds.length, handleBulkDelete, handleBulkDeleteByFilter, handleBulkUpdateStatus, handleClearSelection, handleRowSelect },
     deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, onConfirm: deleteManager.handleConfirm, onCancel: deleteManager.handleCancel, loading: deleteManager.isPending },
     utils: { getDisplayName },

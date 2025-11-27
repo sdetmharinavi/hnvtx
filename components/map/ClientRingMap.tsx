@@ -380,8 +380,7 @@ export default function ClientRingMap({
                 <Popup autoClose={false} closeOnClick={false} className={theme === 'dark' ? 'dark-popup' : ''} offset={popupOffsets[node.id!] || [0, 0]}>
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
-                    {node.system_type_code && <p>Type: {node.system_type_code}</p>}
-                    {node.type && <p>Node: {node.type}</p>}
+                    {node.remark && <p>Remark: {node.remark}</p>}
                     {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>

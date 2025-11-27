@@ -2,7 +2,6 @@
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { StatusBadge } from '@/components/common/ui';
 
 export const PortsManagementTableColumns = (data: V_ports_management_completeRowSchema[]) => {
   return useDynamicColumnConfig('v_ports_management_complete', {
