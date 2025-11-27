@@ -40,6 +40,7 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   transform?: (value: unknown, record?: Row<T>) => unknown;
   // ... and any other properties from your master Column<T> type.
   resizable?: boolean;
+  editable?: boolean;
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {

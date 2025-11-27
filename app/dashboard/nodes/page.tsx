@@ -78,6 +78,7 @@ const NodesPage = () => {
         actions={tableActions}
         selectable={true}
         showColumnsToggle={true}
+        onCellEdit={crudActions.handleCellEdit}
         pagination={{
           current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
           onChange: (page, pageSize) => { pagination.setCurrentPage(page); pagination.setPageLimit(pageSize); },

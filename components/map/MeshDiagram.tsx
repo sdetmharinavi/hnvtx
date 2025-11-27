@@ -19,13 +19,13 @@ interface MeshDiagramProps {
 
 const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
   const map = useMap();
-  
+
   useEffect(() => {
     if (bounds) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [map, bounds]);
-  
+
   return null;
 };
 
@@ -37,10 +37,10 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const bgColor = isDark ? '#0f172a' : '#99ccff';
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
   const spurLineColor = isDark ? '#b4083f' : '#ff0066';
-  
+
   const { nodePositions, bounds } = useMemo(() => {
-    const hubs = nodes.filter(n => n.is_hub);
-    const spokes = nodes.filter(n => !n.is_hub);
+    const hubs = nodes.filter((n) => n.is_hub);
+    const spokes = nodes.filter((n) => !n.is_hub);
     const spokesByHub = new Map<string, RingMapNode[]>();
     const positions = new Map<string, L.LatLng>();
 
@@ -70,15 +70,15 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
       });
     }
 
-    hubs.forEach(hub => {
+    hubs.forEach((hub) => {
       const hubPos = positions.get(hub.id!);
       const childSpokes = spokesByHub.get(hub.id!) || [];
       if (!hubPos || childSpokes.length === 0) return;
 
       const angleToCenter = Math.atan2(centerY - hubPos.lat, centerX - hubPos.lng);
       const angleOutward = angleToCenter + Math.PI;
-      const spread = hubs.length === 1 ? (2 * Math.PI) : (Math.PI / 1.5);
-      const startAngle = hubs.length === 1 ? 0 : (angleOutward - spread / 2);
+      const spread = hubs.length === 1 ? 2 * Math.PI : Math.PI / 1.5;
+      const startAngle = hubs.length === 1 ? 0 : angleOutward - spread / 2;
 
       childSpokes.forEach((spoke, index) => {
         const angle = startAngle + ((index + 1) / (childSpokes.length + 1)) * spread;
@@ -88,7 +88,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
       });
     });
 
-    const unpositionedSpokes = spokes.filter(s => !positions.has(s.id!));
+    const unpositionedSpokes = spokes.filter((s) => !positions.has(s.id!));
     if (unpositionedSpokes.length > 0) {
       const outerRadius = 400;
       unpositionedSpokes.forEach((spoke, index) => {
@@ -99,15 +99,18 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
       });
     }
 
-    const lats = Array.from(positions.values()).map(p => p.lat);
-    const lngs = Array.from(positions.values()).map(p => p.lng);
-    
+    const lats = Array.from(positions.values()).map((p) => p.lat);
+    const lngs = Array.from(positions.values()).map((p) => p.lng);
+
     const minLat = Math.min(...lats, centerY) - 50;
     const maxLat = Math.max(...lats, centerY) + 50;
     const minLng = Math.min(...lngs, centerX) - 50;
     const maxLng = Math.max(...lngs, centerX) + 50;
 
-    const bounds: L.LatLngBoundsExpression = [[minLat, minLng], [maxLat, maxLng]];
+    const bounds: L.LatLngBoundsExpression = [
+      [minLat, minLng],
+      [maxLat, maxLng],
+    ];
 
     return { nodePositions: positions, bounds };
   }, [nodes, connections]);
@@ -119,7 +122,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
     window.addEventListener('keydown', handleEsc);
     if (isFullScreen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = '';
-    
+
     return () => {
       window.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = '';
@@ -144,12 +147,12 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
             <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-200" />
           </button>
         )}
-        
+
         <button
           onClick={() => setIsFullScreen(!isFullScreen)}
           className="p-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg shadow-md border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-lg transition-all duration-200 flex items-center justify-center"
-          title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
-          aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
+          title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
+          aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
         >
           {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
         </button>
@@ -164,7 +167,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         scrollWheelZoom={true}
         attributionControl={false}
         zoomControl={false}
-        className='dark:!bg-blue-900 shadow-lg'
+        className="dark:!bg-blue-900 shadow-lg"
       >
         <MeshController bounds={bounds} />
 
@@ -186,7 +189,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                 dashArray: isHubLink ? undefined : '5, 6',
                 opacity: isHubLink ? 0.9 : 0.9,
                 lineCap: 'round',
-                lineJoin: 'round'
+                lineJoin: 'round',
               }}
             />
           );
@@ -194,7 +197,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
 
         {/* Render Nodes */}
         {Array.from(nodePositions.entries()).map(([nodeId, pos]) => {
-          const node = nodes.find(n => n.id === nodeId);
+          const node = nodes.find((n) => n.id === nodeId);
           if (!node) return null;
 
           return (
@@ -204,10 +207,10 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               icon={getNodeIcon(node.system_type, node.type, false)}
             >
               {/* Permanent Label Tooltip */}
-              <Tooltip 
-                direction="bottom" 
-                offset={[0, 10]} 
-                opacity={1} 
+              <Tooltip
+                direction="bottom"
+                offset={[0, 10]}
+                opacity={1}
                 permanent
                 className="bg-transparent border-none shadow-none p-0"
               >
@@ -224,22 +227,31 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                       {node.name}
                     </h3>
                   </div>
-                  
+
                   <div className="space-y-2 p-3 text-slate-600 dark:text-slate-300">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-700 dark:text-slate-200">IP:</span>
-                      <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
-                        {node.ip?.split('/')[0] || 'N/A'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-700 dark:text-slate-200">Type:</span>
-                      <span className="text-slate-600 dark:text-slate-300">
-                        {node.system_type_code || node.type}
-                      </span>
-                    </div>
-                    
+                    {node.ip && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                            IP:
+                          </span>
+                          <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
+                            {node.ip?.split('/')[0]}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {node.remark && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {<p>Remark: {node.remark}</p>}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
                     {node.is_hub && (
                       <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-600">
                         <span className="inline-block px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-100 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-md">
