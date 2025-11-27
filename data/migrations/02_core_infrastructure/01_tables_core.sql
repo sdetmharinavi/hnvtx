@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.rings (
   description TEXT,
   maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
   total_nodes INTEGER DEFAULT 0,
+  is_closed_loop BOOLEAN DEFAULT true,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

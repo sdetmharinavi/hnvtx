@@ -1538,6 +1538,7 @@ export type RingsRow = {
     created_at: string | null;
     description: string | null;
     id: string;
+    is_closed_loop: boolean | null;
     maintenance_terminal_id: string | null;
     name: string;
     ring_type_id: string | null;
@@ -1550,6 +1551,7 @@ export type RingsInsert = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name: string;
     ring_type_id?: string | null;
@@ -1562,6 +1564,7 @@ export type RingsUpdate = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name?: string;
     ring_type_id?: string | null;
@@ -2095,6 +2098,7 @@ export type V_ringsRow = {
     created_at: string | null;
     description: string | null;
     id: string | null;
+    is_closed_loop: boolean | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
