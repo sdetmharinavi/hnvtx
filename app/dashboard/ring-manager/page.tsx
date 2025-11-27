@@ -9,7 +9,7 @@ import { FaNetworkWired } from 'react-icons/fa';
 import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
@@ -58,14 +58,34 @@ interface SystemToDisassociate {
 // --- Helper Hooks ---
 
 // Hook to fetch systems specifically for a ring
-// This ensures the details panel always has complete data, regardless of the main list limit.
+// THE FIX: Query 'ring_based_systems' directly to ensure we get ALL associations for this ring,
+// regardless of whether the system is primarily associated with another ring.
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
-  return useTableQuery(supabase, 'v_systems_complete', {
-    columns: 'id, system_name, is_hub, order_in_ring',
+  return useTableQuery(supabase, 'ring_based_systems', {
+    columns: 'order_in_ring, systems(id, system_name, is_hub, status)',
     filters: { ring_id: ringId || '' },
     enabled: !!ringId,
-    orderBy: [{ column: 'order_in_ring', ascending: true }]
+    orderBy: [{ column: 'order_in_ring', ascending: true }],
+    // THE FIX: Transform the nested join result into the flat structure required by the UI components.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    select: (result: PagedQueryResult<any>) => {
+        const flattened = result.data.map((item) => ({
+            id: item.systems?.id,
+            system_name: item.systems?.system_name,
+            is_hub: item.systems?.is_hub,
+            order_in_ring: item.order_in_ring,
+            status: item.systems?.status,
+            // Provide defaults for fields not fetched but required by the type
+            node_id: null,
+            system_type_id: null,
+        })) as unknown as V_systems_completeRowSchema[];
+        
+        return {
+            data: flattened,
+            count: result.count
+        };
+    }
   });
 };
 
@@ -82,6 +102,7 @@ const RingAssociatedSystemsView = ({
   onEdit: (sys: V_systems_completeRowSchema) => void; 
   onDelete: (sys: V_systems_completeRowSchema) => void; 
 }) => {
+  // This hook now uses the robust query defined above
   const { data: systemsData, isLoading } = useRingSystems(ringId);
   const systems = systemsData?.data || [];
 
@@ -535,7 +556,7 @@ export default function RingManagerPage() {
         label: 'Associated Systems',
         type: 'custom' as const,
         render: (_value: unknown, entity: RingEntity) => {
-          // THE FIX: Use the new specialized component to render the list
+          // Use the specialized component to render the list
           // This component manages its own data fetching for the specific ring
           return (
             <RingAssociatedSystemsView 
