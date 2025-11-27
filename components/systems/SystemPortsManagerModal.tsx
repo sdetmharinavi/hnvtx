@@ -22,6 +22,7 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
 import { usePortsData } from '@/hooks/data/usePortsData'; // THE FIX: Import the new hook
+import { formatDate } from '@/utils/formatters';
 
 interface SystemPortsManagerModalProps {
   isOpen: boolean;
@@ -85,11 +86,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     const allExportColumns = buildColumnConfig('v_ports_management_complete');
     
     exportPorts({
-      fileName: `${system?.system_name}_ports.xlsx`,
+      fileName: `${formatDate(new Date(), {
+                      format: "dd-mm-yyyy",
+                    })}-${system?.system_name}-${system?.system_type_code}_ports.xlsx`,
       sheetName: 'Ports',
       columns: allExportColumns as Column<Row<TableOrViewName>>[],
       filters: { system_id: systemId }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exportPorts, system?.system_name, systemId]);
 
   const handleApplyTemplate = useCallback((templateKey: string) => {
