@@ -36,6 +36,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "maintenance_areas";
       case "lookup":
         return "lookup_types";
+      case "inventory":
+        return "inventory_items";
       case "ofc":
         // Check if there's a third segment (ID) after ofc
         const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
