@@ -129,6 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all lets check if there is any file which is unused and can be deleted.
+Let's begin! First of all lets fix that in some cases in ring manager map showing all nodes but in info panel its showing correct count but not displaying all nodes.
 
 

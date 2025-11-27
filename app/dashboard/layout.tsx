@@ -2,7 +2,7 @@
 "use client";
 
 import useIsMobile from "@/hooks/useIsMobile";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Protected } from "@/components/auth/Protected";
 import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
 import 'leaflet/dist/leaflet.css';
@@ -18,26 +18,12 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(0);
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const updateSidebarWidth = () => {
-      const sidebarEl = document.querySelector('[data-sidebar]');
-      if (sidebarEl) {
-        setSidebarWidth(sidebarEl.getBoundingClientRect().width);
-      }
-    };
-
-    updateSidebarWidth();
-    window.addEventListener('resize', updateSidebarWidth);
-    const timeoutId = setTimeout(updateSidebarWidth, 350);
-
-    return () => {
-      window.removeEventListener('resize', updateSidebarWidth);
-      clearTimeout(timeoutId);
-    };
-  }, [isCollapsed]);
+  // Determine widths based on state constants matching sidebar-types.ts variants
+  // Collapsed: 64px, Expanded: 260px
+  const desktopSidebarWidth = isCollapsed ? 64 : 260;
+  const marginValue = isMobile ? 0 : desktopSidebarWidth;
 
   return (
     <UserProvider>
@@ -52,11 +38,9 @@ export default function DashboardLayout({
                 showMenuFeatures={true}
               />
               <div
-                className="transition-all duration-300"
-                // THE FIX: Conditionally set marginLeft to 0 on mobile when the sidebar is collapsed.
+                className="transition-all duration-300 ease-in-out"
                 style={{
-                  marginLeft: isCollapsed ? (isMobile ? '0' : '4rem') : '16rem',
-                  transition: 'margin-left 0.3s ease-in-out',
+                  marginLeft: `${marginValue}px`,
                 }}
               >
                 <DashboardHeader title="" onMenuClick={() => setIsCollapsed(!isCollapsed)} />
@@ -65,9 +49,9 @@ export default function DashboardLayout({
 
             {/* Main Content Area - This will be visible on screen and potentially in print */}
             <main
-              className="transition-all duration-300"
+              className="transition-all duration-300 ease-in-out"
               style={{
-                marginLeft: isMobile ? 0 : `${sidebarWidth}px`
+                marginLeft: `${marginValue}px`
               }}
             >
               {children}

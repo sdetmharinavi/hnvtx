@@ -1184,7 +1184,7 @@ export const inventory_itemsRowSchema = z.object({
   id: z.uuid(),
   location_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  purchase_date: z.iso.datetime().nullable(),
+  purchase_date: z.iso.date().nullable(),
   quantity: z.number().int().min(0),
   status_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -1201,7 +1201,7 @@ export const inventory_itemsInsertSchema = z.object({
   id: z.uuid().optional(),
   location_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
-  purchase_date: z.iso.datetime().nullable().optional(),
+  purchase_date: z.iso.date().nullable().optional(),
   quantity: z.number().int().min(0).optional(),
   status_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1218,7 +1218,7 @@ export const inventory_itemsUpdateSchema = z.object({
   id: z.uuid().optional(),
   location_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
-  purchase_date: z.iso.datetime().nullable().optional(),
+  purchase_date: z.iso.date().nullable().optional(),
   quantity: z.number().int().min(0).optional(),
   status_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1667,6 +1667,7 @@ export const ofc_connectionsUpdateSchema = z.object({
 });
 
 export const ports_managementRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   port: z.string().nullable(),
   port_admin_status: z.boolean().nullable(),
@@ -1676,9 +1677,11 @@ export const ports_managementRowSchema = z.object({
   services_count: z.number().int().min(0).nullable(),
   sfp_serial_no: z.string().nullable(),
   system_id: z.uuid(),
+  updated_at: z.iso.datetime().nullable(),
 });
 
 export const ports_managementInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_admin_status: z.boolean().nullable().optional(),
@@ -1688,9 +1691,11 @@ export const ports_managementInsertSchema = z.object({
   services_count: z.number().int().min(0).nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_id: z.uuid(),
+  updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const ports_managementUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   port: z.string().nullable().optional(),
   port_admin_status: z.boolean().nullable().optional(),
@@ -1700,6 +1705,7 @@ export const ports_managementUpdateSchema = z.object({
   services_count: z.number().int().min(0).nullable().optional(),
   sfp_serial_no: z.string().nullable().optional(),
   system_id: z.uuid().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
 });
 
 export const ring_based_systemsRowSchema = z.object({
@@ -1727,6 +1733,7 @@ export const ringsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid(),
+  is_closed_loop: z.boolean().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_type_id: z.uuid().nullable(),
@@ -1739,6 +1746,7 @@ export const ringsInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   description: z.string().max(10000, "Text is too long").nullable().optional(),
   id: z.uuid().optional(),
+  is_closed_loop: z.boolean().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_type_id: z.uuid().nullable().optional(),
@@ -1751,6 +1759,7 @@ export const ringsUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
   description: z.string().max(10000, "Text is too long").nullable().optional(),
   id: z.uuid().optional(),
+  is_closed_loop: z.boolean().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   ring_type_id: z.uuid().nullable().optional(),
@@ -2104,7 +2113,7 @@ export const v_inventory_itemsRowSchema = z.object({
   id: z.uuid().nullable(),
   location_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  purchase_date: z.iso.datetime().nullable(),
+  purchase_date: z.iso.date().nullable(),
   quantity: z.number().int().min(0).nullable(),
   status_id: z.uuid().nullable(),
   status_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -2244,6 +2253,7 @@ export const v_ofc_connections_completeRowSchema = z.object({
 });
 
 export const v_ports_management_completeRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   port: z.string().nullable(),
   port_admin_status: z.boolean().nullable(),
@@ -2255,6 +2265,7 @@ export const v_ports_management_completeRowSchema = z.object({
   sfp_serial_no: z.string().nullable(),
   system_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  updated_at: z.iso.datetime().nullable(),
 });
 
 export const v_ring_nodesRowSchema = z.object({
@@ -2280,6 +2291,7 @@ export const v_ringsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
+  is_closed_loop: z.boolean().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
@@ -5005,28 +5017,34 @@ import React from 'react';
 
 import { useMemo, useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid } from 'react-icons/fi';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
-import { PageSpinner } from '@/components/common/ui';
+import { PageSpinner, Modal, Button } from '@/components/common/ui'; // Added Modal, Button
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { createClient } from '@/utils/supabase/client';
-import { V_ring_nodesRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useTableRecord } from '@/hooks/database';
-import MeshDiagram from '@/components/map/MeshDiagram'; // Import the MeshDiagram
+import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
+import MeshDiagram from '@/components/map/MeshDiagram';
+import { toast } from 'sonner';
+import { Json } from '@/types/supabase-types';
 
-// Dynamic import for Map (Leaflet needs no SSR)
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
+// Extended type for the new column
+type ExtendedRingDetails = V_ringsRowSchema & {
+  topology_config?: {
+    disabled_segments?: string[]; // Array of "idA-idB" strings
+  } | null;
+};
+
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
-  if (node.id == null || node.name == null) {
-    return null;
-  }
+  if (node.id == null || node.name == null) return null;
   return {
     id: node.id,
     ring_id: node.ring_id,
@@ -5051,22 +5069,36 @@ export default function RingMapPage() {
   const params = useParams();
   const router = useRouter();
   const ringId = params.id as string;
+  const supabase = createClient();
   
-  // New State for View Mode
-  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('schematic');
+  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
-  const { data: ringDetails, isLoading: isLoadingRingDetails } = useTableRecord(
-    createClient(),
+  // 1. Fetch Ring Details
+  const { data: ringDetailsData, isLoading: isLoadingRingDetails, refetch: refetchRing } = useTableRecord(
+    supabase,
     'v_rings',
     ringId
   );
+  const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
+  // 2. Mutation
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
+    onSuccess: () => {
+      toast.success("Topology configuration saved");
+      refetchRing();
+      setIsConfigModalOpen(false);
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`)
+  });
+
+  // 3. Fetch Nodes
   const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
     ['ring-nodes-detail', ringId],
     async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
-      const { data, error } = await createClient().rpc('get_paged_data', {
+      const { data, error } = await supabase.rpc('get_paged_data', {
         p_view_name: 'v_ring_nodes',
         p_limit: 1000,
         p_offset: 0,
@@ -5081,10 +5113,7 @@ export default function RingMapPage() {
       if (!ringId) return [];
       return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
-    {
-      enabled: !!ringId,
-      staleTime: 5 * 60 * 1000,
-    }
+    { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
   );
   
   const mappedNodes = useMemo((): RingMapNode[] => {
@@ -5092,63 +5121,86 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  const { mainSegments, spurConnections, allConnections } = useMemo(() => {
-    if (mappedNodes.length === 0) {
-      return { mainSegments: [], spurConnections: [], allConnections: [] };
-    }
+  // 4. Calculate Potential Segments
+  // We generate ALL possible sequential connections (including closing the loop).
+  // The visibility will be controlled by the `topology_config`.
+  const { potentialSegments, spurConnections } = useMemo(() => {
+    if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+    
     const spokes = mappedNodes.filter((node) => !node.is_hub);
-
     const segments: Array<[RingMapNode, RingMapNode]> = [];
     
-    // 1. Create Main Ring Loop
-    if (hubs.length > 0) {
-      // If we have hubs, connect them in a circle
-      if (hubs.length > 1) {
-        hubs.forEach((hub, index) => {
-          const nextHub = hubs[(index + 1) % hubs.length];
-          segments.push([hub, nextHub]);
-        });
-      }
+    if (hubs.length > 1) {
+      hubs.forEach((hub, index) => {
+        // Connect to next, wrapping around to 0 for the last one
+        const nextIndex = (index + 1) % hubs.length;
+        segments.push([hub, hubs[nextIndex]]);
+      });
     } else {
-      // If no hubs defined, assume linear/ring based on order of all nodes
-      const allNodesSorted = [...mappedNodes].sort(
-        (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
-      );
-      if (allNodesSorted.length > 1) {
-        allNodesSorted.forEach((node, index) => {
-          const nextNode = allNodesSorted[(index + 1) % allNodesSorted.length];
-          segments.push([node, nextNode]);
-        });
-      }
+       // Fallback logic for non-hubs
+       const allNodes = [...mappedNodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+       if (allNodes.length > 1) {
+         allNodes.forEach((node, index) => {
+            const nextIndex = (index + 1) % allNodes.length;
+            segments.push([node, allNodes[nextIndex]]);
+         });
+       }
     }
 
-    // 2. Create Spur Connections (Spoke -> Hub)
+    // Spurs logic (unchanged)
     const spurs: Array<[RingMapNode, RingMapNode]> = [];
-    const hubMapByOrder = new Map(hubs.map((h) => [Math.floor(h.order_in_ring || 0), h]));
+    const hubMapByOrder = new Map<number, RingMapNode>();
+    hubs.forEach(h => { if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h); });
 
     spokes.forEach((spoke) => {
-      const parentHub = hubMapByOrder.get(Math.floor(spoke.order_in_ring || 0));
-      if (parentHub) {
-        spurs.push([parentHub, spoke]);
-      }
+      const parentOrder = Math.floor(spoke.order_in_ring || 0);
+      const parentHub = hubMapByOrder.get(parentOrder);
+      if (parentHub) spurs.push([parentHub, spoke]);
     });
 
-    return {
-      mainSegments: segments,
-      spurConnections: spurs,
-      allConnections: [...segments, ...spurs]
-    };
+    return { potentialSegments: segments, spurConnections: spurs };
   }, [mappedNodes]);
 
-  const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
+  // 5. Filter Segments based on DB Config
+  const activeSegments = useMemo(() => {
+    const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
+    
+    return potentialSegments.filter(([start, end]) => {
+      // Check both A-B and B-A keys to be safe
+      const key1 = `${start.id}-${end.id}`;
+      const key2 = `${end.id}-${start.id}`;
+      return !disabledKeys.has(key1) && !disabledKeys.has(key2);
+    });
+  }, [potentialSegments, ringDetails]);
 
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const allConnections = useMemo(() => [...activeSegments, ...spurConnections], [activeSegments, spurConnections]);
+
+  // 6. Configuration Handlers
+  const handleToggleSegment = (startId: string, endId: string) => {
+    const key = `${startId}-${endId}`;
+    const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
+    const isCurrentlyDisabled = currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
+
+    let newDisabled = [...currentDisabled];
+    if (isCurrentlyDisabled) {
+      // Re-enable: Remove both permutations
+      newDisabled = newDisabled.filter(k => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`);
+    } else {
+      // Disable: Add key
+      newDisabled.push(key);
+    }
+
+    const newConfig = { ...ringDetails?.topology_config, disabled_segments: newDisabled };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
+  };
+
+  const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
+  const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {
     const isLoading = isLoadingNodes || isLoadingRingDetails;
@@ -5157,54 +5209,24 @@ export default function RingMapPage() {
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
-          <FiMap className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-            No Nodes Found For This Ring
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            There are no systems associated with this ring yet.
-          </p>
+          <p className="text-gray-500">No nodes found.</p>
         </div>
       );
     }
     
-    // Render based on view mode
     if (viewMode === 'schematic') {
-      return (
-        <MeshDiagram 
-          nodes={mappedNodes} 
-          connections={allConnections} 
-          ringName={ringName}
-          onBack={handleBack} // Pass the onBack handler here
-        />
-      );
+      return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
     }
 
-    // Default to Map View
-    // Filter out nodes without coordinates for the map
     const mapNodes = mappedNodes.filter(n => n.lat != null && n.long != null);
-    
     if (mapNodes.length === 0) {
-       return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4">
-           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-center">
-              <p className="font-semibold">No Geographic Data</p>
-              <p className="text-sm">None of the nodes in this ring have latitude/longitude coordinates.</p>
-              <button 
-                onClick={() => setViewMode('schematic')}
-                className="mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm"
-              >
-                Switch to Schematic View
-              </button>
-           </div>
-        </div>
-       );
+       return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
     }
 
     return (
       <ClientRingMap
         nodes={mapNodes}
-        solidLines={mainSegments}
+        solidLines={activeSegments}
         dashedLines={spurConnections}
         onBack={handleBack}
         showControls={true}
@@ -5217,15 +5239,20 @@ export default function RingMapPage() {
       <div className="flex-shrink-0">
         <PageHeader
           title={ringName}
-          description={`Visualizing the ${
-            ringDetails?.ring_type_name || 'ring'
-          } network topology.`}
+          description="Visualize and configure topology."
           icon={<FiMap />}
           actions={[
             {
+              label: 'Configure Topology',
+              onClick: () => setIsConfigModalOpen(true),
+              variant: 'primary',
+              leftIcon: <FiSettings />,
+              disabled: isLoadingRingDetails || isUpdating
+            },
+            {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
               onClick: () => setViewMode(prev => prev === 'map' ? 'schematic' : 'map'),
-              variant: 'primary',
+              variant: 'secondary',
               leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
             {
@@ -5241,6 +5268,47 @@ export default function RingMapPage() {
       <div className="flex-grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
+
+      {/* Topology Configuration Modal */}
+      <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Toggle the switches below to enable or disable specific connections between hubs.
+          </p>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {potentialSegments.map(([start, end], idx) => {
+               const key = `${start.id}-${end.id}`;
+               const reverseKey = `${end.id}-${start.id}`;
+               const disabledList = ringDetails?.topology_config?.disabled_segments || [];
+               const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
+
+               return (
+                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
+                        {start.name} ↔ {end.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                         Order: {start.order_in_ring} ↔ {end.order_in_ring}
+                      </span>
+                    </div>
+                    <Button
+                        size="xs"
+                        variant={isActive ? 'success' : 'secondary'}
+                        onClick={() => handleToggleSegment(start.id!, end.id!)}
+                        disabled={isUpdating}
+                    >
+                        {isActive ? 'Connected' : 'Disconnected'}
+                    </Button>
+                 </div>
+               );
+            })}
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setIsConfigModalOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -5484,7 +5552,9 @@ const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: stri
 export default function QrCodePage() {
   const params = useParams();
   const itemId = params.id as string;
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+  
+  // We no longer need the page URL for the QR code
+  // const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const { data: item, isLoading, isError, error } = useTableRecord<"v_inventory_items", V_inventory_itemsRowSchema>(
     createClient(),
@@ -5496,8 +5566,15 @@ export default function QrCodePage() {
   if (isError) return <ErrorDisplay error={error.message} />;
   if (!item) return <ErrorDisplay error="Asset not found." />;
 
+  // THE FIX: Construct formatted text content for the QR code
+  const qrData = `Asset: ${item.asset_no || 'N/A'}
+Item: ${item.name || 'N/A'}
+Related To: ${item.category_name || 'N/A'}
+Location: ${item.store_location || 'N/A'}
+Func. Location: ${item.functional_location || 'N/A'}
+Status: ${item.status_name || 'N/A'}`.trim();
+
   return (
-    // THE FIX: Simplified wrapper. The `min-h-screen` and layout classes are applied here for screen view.
     <div className="qr-page-wrapper min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
       
       {/* The main content card */}
@@ -5508,7 +5585,7 @@ export default function QrCodePage() {
         
         <div className="flex flex-col items-center space-y-8">
           <div className="p-4 border-4 border-gray-200 rounded-lg">
-            <QRCodeCanvas value={pageUrl} size={200} bgColor={"#ffffff"} fgColor={"#000000"} level={"H"} />
+            <QRCodeCanvas value={qrData} size={200} bgColor={"#ffffff"} fgColor={"#000000"} level={"H"} />
           </div>
           
           <div className="w-full space-y-3">
@@ -5519,7 +5596,8 @@ export default function QrCodePage() {
             <DetailItem icon={<FiInfo size={18} />} label="Store Location" value={item.store_location} />
             <DetailItem icon={<FiMapPin size={18} />} label="Functional Location" value={item.functional_location} />
             <DetailItem icon={<FiCalendar size={18} />} label="Purchase Date" value={item.purchase_date} />
-            <DetailItem icon={<FiDollarSign size={18} />} label="Cost" value={item.cost ? `$${item.cost}` : null} />
+            {/* THE FIX: Use Rupee symbol */}
+            <DetailItem icon={<FiDollarSign size={18} />} label="Cost" value={item.cost ? `₹${item.cost}` : null} />
             <DetailItem icon={<FiInfo size={18} />} label="Status" value={item.status_name} />
           </div>
         </div>
@@ -6872,7 +6950,7 @@ export default NodesPage;
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
@@ -6886,6 +6964,7 @@ import {
   EmployeesRowSchema,
   Employee_designationsRowSchema,
   Maintenance_areasRowSchema,
+  EmployeesUpdateSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { FiUsers } from 'react-icons/fi';
@@ -6898,9 +6977,12 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
+import { useTableUpdate } from '@/hooks/database'; // Added import
+import { Column } from '@/hooks/database/excel-queries/excel-helpers'; // Added import
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
+  const supabase = createClient();
 
   const {
     data: employees,
@@ -6925,6 +7007,37 @@ const EmployeesPage = () => {
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
   });
+
+  // --- Setup Inline Edit Mutation ---
+  const { mutate: updateEmployee } = useTableUpdate(supabase, 'employees', {
+    onSuccess: () => {
+      toast.success('Updated successfully');
+      refetch();
+    },
+    onError: (err) => toast.error(`Update failed: ${err.message}`),
+  });
+
+  // --- Handle Cell Edit ---
+  const handleCellEdit = useCallback(
+    (record: V_employeesRowSchema, column: Column<V_employeesRowSchema>, newValue: string) => {
+      if (!record.id) return;
+
+      const updateData: EmployeesUpdateSchema = {};
+      
+      // Map view columns to table columns
+      if (column.key === 'employee_contact') {
+        updateData.employee_contact = newValue;
+      } else if (column.key === 'employee_email') {
+        updateData.employee_email = newValue;
+      }
+
+      // Trigger mutation if we have data to update
+      if (Object.keys(updateData).length > 0) {
+        updateEmployee({ id: record.id, data: updateData });
+      }
+    },
+    [updateEmployee]
+  );
 
   const { data: designationsData } = useOfflineQuery<Employee_designationsRowSchema[]>(
     ['all-designations-filter'],
@@ -7012,6 +7125,8 @@ const EmployeesPage = () => {
           );
           bulkActions.handleRowSelect(validRows);
         }}
+        // Passed the edit handler here
+        onCellEdit={handleCellEdit}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -7999,10 +8114,10 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
-import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
+import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
@@ -8040,12 +8155,112 @@ import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelU
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 
+// --- Types ---
 interface SystemToDisassociate {
   ringId: string;
   systemId: string;
   systemName: string;
   ringName: string;
 }
+
+// --- Helper Hooks ---
+
+// Hook to fetch systems specifically for a ring
+// This ensures the details panel always has complete data, regardless of the main list limit.
+const useRingSystems = (ringId: string | null) => {
+  const supabase = createClient();
+  return useTableQuery(supabase, 'v_systems_complete', {
+    columns: 'id, system_name, is_hub, order_in_ring',
+    filters: { ring_id: ringId || '' },
+    enabled: !!ringId,
+    orderBy: [{ column: 'order_in_ring', ascending: true }]
+  });
+};
+
+// --- Components ---
+
+// Sub-component to render the list of associated systems
+// It fetches its own data to ensure accuracy.
+const RingAssociatedSystemsView = ({ 
+  ringId, 
+  onEdit, 
+  onDelete 
+}: { 
+  ringId: string; 
+  onEdit: (sys: V_systems_completeRowSchema) => void; 
+  onDelete: (sys: V_systems_completeRowSchema) => void; 
+}) => {
+  const { data: systemsData, isLoading } = useRingSystems(ringId);
+  const systems = systemsData?.data || [];
+
+  if (isLoading) return <div className="py-4 text-center text-sm text-gray-500">Loading associated systems...</div>;
+  
+  if (systems.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 italic py-2">
+        No systems associated with this ring.
+      </div>
+    );
+  }
+
+  // Create a map for quick hub lookup to name the parent of a spur
+  const hubMap = new Map<number, string>();
+  systems.forEach(s => {
+      if (s.is_hub && s.order_in_ring !== null) {
+          hubMap.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
+      }
+  });
+
+  return (
+    <div className="space-y-2">
+      {systems.map((system) => {
+         const isSpur = !system.is_hub && system.order_in_ring !== null;
+         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
+         const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
+
+         return (
+            <div
+              key={system.id}
+              className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-100 dark:border-gray-600"
+            >
+              <div>
+                <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{system.system_name}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Order: {system.order_in_ring ?? 'N/A'}</span>
+                    {system.is_hub ? (
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded"><FiArrowRightCircle className="w-3 h-3"/> Hub</span>
+                    ) : (
+                        <span className="text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded">
+                            <FiGitMerge className="w-3 h-3"/> Spur 
+                            {parentName && <span className="text-gray-400 dark:text-gray-500 ml-1">→ {parentName}</span>}
+                        </span>
+                    )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onEdit(system)}
+                title="Edit System Order/Hub Status"
+              >
+                <FiEdit className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => onDelete(system)}
+                title="Remove from Ring"
+              >
+                <FiTrash2 className="w-4 h-4" />
+              </Button>
+              </div>
+            </div>
+         );
+      })}
+    </div>
+  );
+};
 
 const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
@@ -8129,9 +8344,7 @@ export default function RingManagerPage() {
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
   const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
-  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(
-    null
-  );
+  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(null);
 
   const {
     data: rings,
@@ -8165,7 +8378,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      void refetchSystems();
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
@@ -8174,21 +8386,10 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success('System disassociated from ring.');
       void refetch();
-      void refetchSystems();
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
-
-  const { data: allSystemsResult, refetch: refetchSystems } = useTableQuery(
-    supabase,
-    'v_systems_complete',
-    {
-      limit: 5000,
-    }
-  );
-
-  const allSystems = useMemo(() => allSystemsResult?.data || [], [allSystemsResult]);
 
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
@@ -8269,7 +8470,8 @@ export default function RingManagerPage() {
         toast.success(`Updated "${systemToEdit.system_name}" in ring.`);
         setIsEditSystemModalOpen(false);
         setSystemToEdit(null);
-        void refetchSystems();
+        // Force refresh the ring list to update counts/data
+        void refetch();
       },
     });
   };
@@ -8343,7 +8545,6 @@ export default function RingManagerPage() {
         },
         { key: 'status', title: 'status', dataIndex: 'status' },
         { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
-        // THE FIX: Explicitly mark this column to be formatted as JSON.
         {
           key: 'associated_systems',
           title: 'associated_systems',
@@ -8417,6 +8618,7 @@ export default function RingManagerPage() {
     [totalCount, activeCount, inactiveCount]
   );
 
+  // Dynamic Config with the new Component
   const dynamicFilterConfig: EntityConfig<RingEntity> = {
     ...ringConfig,
     filterOptions: ringConfig.filterOptions.map((opt) => {
@@ -8441,58 +8643,24 @@ export default function RingManagerPage() {
         label: 'Associated Systems',
         type: 'custom' as const,
         render: (_value: unknown, entity: RingEntity) => {
-          const associatedSystems = allSystems
-            .filter((s) => s.ring_id === entity.id)
-            .sort((a, b) => (a.order_in_ring ?? 999) - (b.order_in_ring ?? 999));
-
-          if (associatedSystems.length === 0) {
-            return (
-              <div className="text-sm text-gray-500 italic">
-                No systems associated with this ring.
-              </div>
-            );
-          }
-
+          // THE FIX: Use the new specialized component to render the list
+          // This component manages its own data fetching for the specific ring
           return (
-            <div className="space-y-2">
-              {associatedSystems.map((system) => (
-                <div
-                  key={system.id}
-                  className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{system.system_name}</p>
-                    <p className="text-xs text-gray-500">Order: {system.order_in_ring ?? 'N/A'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setSystemToEdit(system);
-                      setIsEditSystemModalOpen(true);
-                    }}
-                  >
-                    <FiEdit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() =>
-                      setSystemToDisassociate({
-                        ringId: entity.id,
-                        systemId: system.id!,
-                        ringName: entity.name,
-                        systemName: system.system_name || 'this system',
-                      })
-                    }
-                  >
-                    <FiTrash2 className="w-4 h-4" />
-                  </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RingAssociatedSystemsView 
+              ringId={entity.id}
+              onEdit={(system) => {
+                setSystemToEdit(system);
+                setIsEditSystemModalOpen(true);
+              }}
+              onDelete={(system) => 
+                 setSystemToDisassociate({
+                    ringId: entity.id,
+                    systemId: system.id!,
+                    ringName: entity.name,
+                    systemName: system.system_name || 'this system',
+                  })
+              }
+            />
           );
         },
       },
@@ -8623,7 +8791,6 @@ export default function RingManagerPage() {
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/diary/page.tsx -->
@@ -10467,7 +10634,6 @@ import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { user_profilesUpdateSchema, User_profilesUpdateSchema } from "@/schemas/zod-schemas";
-// THE FIX: Import the context hook `useUser` instead of the old data-fetching hook.
 import { useUser } from "@/providers/UserProvider";
 import { useEffect } from "react";
 import { Input, Label } from "@/components/common/ui";
@@ -10479,6 +10645,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/common/ui/select/Select";
+import { useQueryClient } from "@tanstack/react-query"; // THE FIX: Import useQueryClient
 
 const toObject = (data: Json | null | undefined): Record<string, unknown> => {
   if (data && typeof data === "object" && !Array.isArray(data)) {
@@ -10514,8 +10681,8 @@ const normalizePreferenceValue = (value: unknown): string | null => {
 export default function OnboardingFormEnhanced() {
   const user = useAuthStore((state) => state.user);
   const supabase = createClient();
+  const queryClient = useQueryClient(); // THE FIX: Initialize QueryClient
 
-  // THE FIX: Get profile data and actions from the `useUser` context hook.
   const {
     profile,
     isLoading: isProfileLoading,
@@ -10541,6 +10708,10 @@ export default function OnboardingFormEnhanced() {
       onSuccess: (data) => {
         toast.success("Profile updated successfully!");
         refetch();
+        
+        // THE FIX: Explicitly invalidate the user permissions query to ensure
+        // the `needsOnboarding` flag updates globally immediately.
+        queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
 
         if (data && data[0]) {
           const updatedProfile = data[0] as User_profilesUpdateSchema;
@@ -10606,10 +10777,11 @@ export default function OnboardingFormEnhanced() {
       }
     }
 
+    // THE FIX: Explicitly set needsOnboarding to false when saving
     const newPreferences = {
       ...toObject(profile?.preferences),
       ...toObject(data.preferences),
-      needsOnboarding: false,
+      needsOnboarding: false, 
     };
     updates.preferences = newPreferences;
 
@@ -10870,7 +11042,7 @@ export default function OnboardingFormEnhanced() {
                 <path
                   className='opacity-75'
                   fill='currentColor'
-                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                  d='M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                 />
               </svg>
             )}
@@ -10889,10 +11061,18 @@ export default function OnboardingFormEnhanced() {
 import Link from "next/link";
 import OnboardingFormEnhanced from "./onboarding-form-enhanced";
 import { useAuth } from "@/hooks/useAuth";
+import { useUser } from "@/providers/UserProvider"; // THE FIX: Import useUser
+import { FiRefreshCw } from "react-icons/fi";
+import { toast } from "sonner";
 
 export default function OnboardingPage() {
   const { logout } = useAuth();
-  
+  const { refetch, isLoading } = useUser(); // THE FIX: Get refetch handler
+
+  const handleRefresh = async () => {
+    await refetch();
+    toast.success("Profile refreshed!");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -10900,20 +11080,29 @@ export default function OnboardingPage() {
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Update Your Profile</h1>
         <div className="flex items-center gap-4">
+          
+          {/* THE FIX: Added Refresh Button */}
+          <button
+             onClick={handleRefresh}
+             disabled={isLoading}
+             className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+             title="Refresh Profile"
+          >
+             <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
           <Link
             href="/dashboard"
             className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
           >
             Go to Dashboard
           </Link>
-          <form onSubmit={logout}>
-            <button
-              type="submit"
-              className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
+          <button
+             onClick={logout}
+             className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
               Sign Out
-            </button>
-          </form>
+          </button>
         </div>
       </div>
 
@@ -15768,6 +15957,7 @@ export type Database = {
       }
       ports_management: {
         Row: {
+          created_at: string | null
           id: string
           port: string | null
           port_admin_status: boolean | null
@@ -15777,8 +15967,10 @@ export type Database = {
           services_count: number | null
           sfp_serial_no: string | null
           system_id: string
+          updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
           port?: string | null
           port_admin_status?: boolean | null
@@ -15788,8 +15980,10 @@ export type Database = {
           services_count?: number | null
           sfp_serial_no?: string | null
           system_id: string
+          updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
           port?: string | null
           port_admin_status?: boolean | null
@@ -15799,6 +15993,7 @@ export type Database = {
           services_count?: number | null
           sfp_serial_no?: string | null
           system_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -15907,6 +16102,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_closed_loop: boolean | null
           maintenance_terminal_id: string | null
           name: string
           ring_type_id: string | null
@@ -15918,6 +16114,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_closed_loop?: boolean | null
           maintenance_terminal_id?: string | null
           name: string
           ring_type_id?: string | null
@@ -15929,6 +16126,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_closed_loop?: boolean | null
           maintenance_terminal_id?: string | null
           name?: string
           ring_type_id?: string | null
@@ -17372,6 +17570,7 @@ export type Database = {
       }
       v_ports_management_complete: {
         Row: {
+          created_at: string | null
           id: string | null
           port: string | null
           port_admin_status: boolean | null
@@ -17383,6 +17582,7 @@ export type Database = {
           sfp_serial_no: string | null
           system_id: string | null
           system_name: string | null
+          updated_at: string | null
         }
         Relationships: [
           {
@@ -17441,6 +17641,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string | null
+          is_closed_loop: boolean | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null
           name: string | null
@@ -20143,6 +20344,7 @@ export type Ofc_connectionsUpdate = {
 };
 
 export type Ports_managementRow = {
+    created_at: string | null;
     id: string;
     port: string | null;
     port_admin_status: boolean | null;
@@ -20152,9 +20354,11 @@ export type Ports_managementRow = {
     services_count: number | null;
     sfp_serial_no: string | null;
     system_id: string;
+    updated_at: string | null;
 };
 
 export type Ports_managementInsert = {
+    created_at?: string | null;
     id?: string;
     port?: string | null;
     port_admin_status?: boolean | null;
@@ -20164,9 +20368,11 @@ export type Ports_managementInsert = {
     services_count?: number | null;
     sfp_serial_no?: string | null;
     system_id: string;
+    updated_at?: string | null;
 };
 
 export type Ports_managementUpdate = {
+    created_at?: string | null;
     id?: string;
     port?: string | null;
     port_admin_status?: boolean | null;
@@ -20176,6 +20382,7 @@ export type Ports_managementUpdate = {
     services_count?: number | null;
     sfp_serial_no?: string | null;
     system_id?: string;
+    updated_at?: string | null;
 };
 
 export type Ring_based_systemsRow = {
@@ -20203,6 +20410,7 @@ export type RingsRow = {
     created_at: string | null;
     description: string | null;
     id: string;
+    is_closed_loop: boolean | null;
     maintenance_terminal_id: string | null;
     name: string;
     ring_type_id: string | null;
@@ -20215,6 +20423,7 @@ export type RingsInsert = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name: string;
     ring_type_id?: string | null;
@@ -20227,6 +20436,7 @@ export type RingsUpdate = {
     created_at?: string | null;
     description?: string | null;
     id?: string;
+    is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name?: string;
     ring_type_id?: string | null;
@@ -20722,6 +20932,7 @@ export type V_ofc_connections_completeRow = {
 };
 
 export type V_ports_management_completeRow = {
+    created_at: string | null;
     id: string | null;
     port: string | null;
     port_admin_status: boolean | null;
@@ -20733,6 +20944,7 @@ export type V_ports_management_completeRow = {
     sfp_serial_no: string | null;
     system_id: string | null;
     system_name: string | null;
+    updated_at: string | null;
 };
 
 export type V_ring_nodesRow = {
@@ -20758,6 +20970,7 @@ export type V_ringsRow = {
     created_at: string | null;
     description: string | null;
     id: string | null;
+    is_closed_loop: boolean | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
@@ -21102,6 +21315,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "user_id,note_date",
     isUploadEnabled: true,
   },
+  inventory_items: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -21312,6 +21530,7 @@ const TABLE_COLUMN_OBJECTS = {
     description: "description",
     ring_type_id: "ring_type_id",
     maintenance_terminal_id: "maintenance_terminal_id",
+    is_closed_loop: "is_closed_loop",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
@@ -21434,7 +21653,9 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     port_utilization: "port_utilization",
     port_admin_status: "port_admin_status",
-    services_count: "services_count"
+    services_count: "services_count",
+    created_at: "created_at",
+    updated_at: "updated_at",
   },
   ring_based_systems: {
     system_id: "system_id",
@@ -21858,6 +22079,7 @@ const TABLE_COLUMN_OBJECTS = {
     ring_type_name: "ring_type_name",
     ring_type_code: "ring_type_code",
     maintenance_area_name: "maintenance_area_name",
+    is_closed_loop: "is_closed_loop",
     status: "status",
     created_at: "created_at",
     updated_at: "updated_at",
@@ -21945,7 +22167,9 @@ const TABLE_COLUMN_OBJECTS = {
     sfp_serial_no: "sfp_serial_no",
     port_utilization: "port_utilization",
     port_admin_status: "port_admin_status",
-    services_count: "services_count"
+    services_count: "services_count",
+    created_at: "created_at",
+    updated_at: "updated_at",
   },
   v_audit_logs: {
     id: "id",
@@ -23572,6 +23796,8 @@ CREATE TABLE IF NOT EXISTS public.rings (
   description TEXT,
   maintenance_terminal_id UUID REFERENCES public.maintenance_areas (id),
   total_nodes INTEGER DEFAULT 0,
+  is_closed_loop BOOLEAN DEFAULT true,
+  topology_config JSONB DEFAULT '{}'::jsonb,
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -25432,10 +25658,18 @@ SELECT
   pm.sfp_serial_no,
   pm.port_utilization,
   pm.port_admin_status,
-  pm.services_count
+  pm.services_count,
+  pm.created_at,
+  pm.updated_at
 FROM public.ports_management pm
 JOIN public.systems s ON pm.system_id = s.id
 LEFT JOIN public.lookup_types lt ON pm.port_type_id = lt.id;
+
+-- 3. Attach the auto-update trigger for updated_at
+DROP TRIGGER IF EXISTS trigger_ports_management_updated_at ON public.ports_management;
+CREATE TRIGGER trigger_ports_management_updated_at
+BEFORE UPDATE ON public.ports_management
+FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- View for OFC Connections, now including system details from this module.
 CREATE OR REPLACE VIEW public.v_ofc_connections_complete WITH (security_invoker = true) AS
@@ -25529,6 +25763,8 @@ SELECT
   r.description,
   r.ring_type_id,
   r.maintenance_terminal_id,
+  r.is_closed_loop,
+  r.topology_config,
   r.status,
   r.created_at,
   r.updated_at,
@@ -26005,6 +26241,8 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   port_utilization BOOLEAN DEFAULT false,
   port_admin_status BOOLEAN DEFAULT false,
   services_count NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 
@@ -26944,483 +27182,6 @@ REFERENCES public.system_connections(id)
 ON DELETE SET NULL;
 
 -- REMOVED: Redundant index creation, handled in `01_tables_advanced_ofc.sql`
-```
-
-<!-- path: data/bulkdatacreation/adm16ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-        -- Slot 1
-    ('1.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-
-    -- Slot 2
-    ('2.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    
-    -- Slot 3
-    ('3.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'), 
-    ('3.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'), 
-    ('3.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    
-    ('3.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    
-    ('3.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    
-    -- Slot 4
-    ('4.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('4.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- Slot 5
-    ('5.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('5.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- Slot 6
-    ('6.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('6.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = '8e4dde01-4900-4fa5-a9e5-9b89bfe2663a' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/b1ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-        -- Slot 1
-    ('1.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-
-    -- Slot 2
-    ('2.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    -- Slot 3
-    ('3.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('3.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    
-    -- Slot 4
-    ('4.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('4.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-
-
-
-
-
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = '3beb3ea2-55a4-48da-a7fa-f7c9ccf7de79' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/b2ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-        -- Slot 1
-    ('1.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('1.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-
-    -- Slot 2
-    ('2.1', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.2', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.3', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.4', '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'::uuid, 'STM1'),
-    ('2.5', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.6', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.7', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.8', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.9', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.10', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.11', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.12', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.13', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.14', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.15', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.16', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.17', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.18', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.19', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.20', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    
-    -- Slot 3
-    ('3.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'), 
-    ('3.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'), 
-    ('3.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    
-    ('3.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    
-    ('3.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('3.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('3.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    
-    -- Slot 4
-    ('4.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('4.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('4.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('4.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- Slot 5
-    ('5.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('5.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('5.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('5.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- Slot 6
-    ('6.1', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('6.2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('6.7', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.8', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.9', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.10', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.11', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('6.12', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = '8e4dde01-4900-4fa5-a9e5-9b89bfe2663a' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/a1ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-    -- Slot 1
-    ('1.1', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.2', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('1.3', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('1.4', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('1.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('1.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    
-    -- Slot 2 (Repeating pattern from image)
-    ('2.1', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.2', '1b49c00c-734e-4dd9-8e0f-c0525edd9fa1'::uuid, '2mbps'),
-    ('2.3', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('2.4', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'),
-    ('2.5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('2.6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = '42f21547-e070-4a94-a13d-d4f158e51fc1' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/b3ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-    -- Slot 1
-    ('ETH-1-1-1', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-7', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-8', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-9', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-10', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-11', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-12', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-13', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-14', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-15', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-16', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-17', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-18', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-19', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-20', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = 'ce06f9b7-02e7-4741-8911-46cf1f47ffdd' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/a3ports.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-    -- Slot 1
-    ('ETH-1-1-1', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-4', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-5', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-6', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-7', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-8', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-9', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-10', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-11', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-12', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),
-    ('ETH-1-1-13', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-14', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'),
-    ('ETH-1-1-17', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-18', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-19', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    ('ETH-1-1-20', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(E)'),
-    
-    -- CPAN NMS
-    ('NMS', '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c'::uuid, 'FE')
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = 'b63e879c-6b09-402f-8958-a45a023e4339' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
-```
-
-<!-- path: data/bulkdatacreation/bbuportsy.sql -->
-```sql
--- SQL Script to populate ports for a specific System Type
-WITH port_templates (port, port_type_id, port_capacity) AS (
-  VALUES
-    ('P1', 'bf63f1aa-0976-401a-8309-1ede374d0c54'::uuid, 'GE(E)'), -- Gigabit Ethernet
-    ('P2', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    -- Gigabit Ethernet
-    ('P3', '4b86eede-d502-4368-85c1-8e68d9b50282'::uuid, 'GE(O)'),    -- Gigabit Ethernet
-    ('P4', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE'), -- Gigabit Ethernet
-    ('P5', '6c9460cb-22dd-4457-82e3-0ccebe0f3afc'::uuid, '10GE')    -- Gigabit Ethernet
-    
-)
-INSERT INTO ports_management (id, system_id, port, port_type_id, port_capacity)
-SELECT 
-  gen_random_uuid(), -- Generate new ID
-  s.id,              -- The System ID
-  t.port, 
-  t.port_type_id, 
-  t.port_capacity
-FROM systems s
-CROSS JOIN port_templates t
-WHERE s.system_capacity_id = '3830d349-f4ce-4391-9796-111cbf942a6f' -- Filter by System Type
-ON CONFLICT (system_id, port) DO NOTHING; -- Prevent duplicates if run multiple times
 ```
 
 <!-- path: components/bsnl/AdvancedSearchBar.tsx -->
@@ -29361,7 +29122,8 @@ function TableRowBase<T extends TableOrViewName>({
               }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
-                <div className='flex items-center gap-2'>
+                // THE FIX: Stop propagation here to prevent td onClick from firing when interacting with edit controls
+                <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
                   <input
                     ref={editInputRef}
                     type='text'
@@ -29373,10 +29135,20 @@ function TableRowBase<T extends TableOrViewName>({
                     }}
                     className='flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
                   />
-                  <button onClick={saveCellEdit} className='p-1 text-green-600 hover:text-green-700' aria-label="Save cell edit">
+                  <button 
+                    type="button"
+                    onClick={saveCellEdit} 
+                    className='p-1 text-green-600 hover:text-green-700' 
+                    aria-label="Save cell edit"
+                  >
                     <FiCheck size={14} />
                   </button>
-                  <button onClick={cancelCellEdit} className='p-1 text-red-600 hover:text-red-700' aria-label="Cancel cell edit">
+                  <button 
+                    type="button"
+                    onClick={cancelCellEdit} 
+                    className='p-1 text-red-600 hover:text-red-700' 
+                    aria-label="Cancel cell edit"
+                  >
                     <FiX size={14} />
                   </button>
                 </div>
@@ -30009,8 +29781,8 @@ import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui
 import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { syncEntity } from '@/hooks/data/useDataSync'; // THE FIX: Import syncEntity
-import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
+import { syncEntity } from '@/hooks/data/useDataSync';
+import { localDb } from '@/hooks/data/localDb';
 
 interface SystemOption {
   id: string;
@@ -30079,15 +29851,15 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       });
       if (error) throw error;
     },
-    // THE FIX: Implement the correct two-step offline sync process on success
     onSuccess: async () => {
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
       
       // Step 1: Manually trigger a re-sync of the v_rings view to update IndexedDB
       await syncEntity(supabase, localDb, 'v_rings');
 
-      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB
-      await queryClient.invalidateQueries({ queryKey: ['rings-data', 'all'] });
+      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB/Server
+      // CORRECTED: The key is 'rings-manager-data', not 'rings-data'
+      await queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
 
       onClose();
     },
@@ -30219,6 +29991,7 @@ import { FormCard, FormInput, FormSearchableSelect, FormDateInput, FormTextarea 
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Inventory_itemsInsertSchema, inventory_itemsInsertSchema, V_inventory_itemsRowSchema } from "@/schemas/zod-schemas";
+import { z } from "zod";
 
 interface InventoryFormModalProps {
   isOpen: boolean;
@@ -30228,19 +30001,25 @@ interface InventoryFormModalProps {
   isLoading: boolean;
 }
 
+// THE FIX: Locally override the purchase_date validation to allow date strings (YYYY-MM-DD)
+// instead of strictly requiring ISO DateTime format.
+const formSchema = inventory_itemsInsertSchema.extend({
+  purchase_date: z.string().nullable().optional(),
+});
+
+type FormSchemaType = z.infer<typeof formSchema>;
+
 export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose, editingItem, onSubmit, isLoading }) => {
   const isEditMode = !!editingItem;
   const supabase = createClient();
 
   const { data: categoriesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_CATEGORY' } });
   const { data: statusesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_STATUS' } });
-  // THE FIX: Fetch from 'v_nodes_complete' for physical locations and 'maintenance_areas' for functional locations.
   const { data: locationsResult } = useTableQuery(supabase, 'v_nodes_complete', { filters: { status: true } });
   const { data: functionalLocationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
   
   const categoryOptions = useMemo(() => categoriesResult?.data?.map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
   const statusOptions = useMemo(() => statusesResult?.data?.map(s => ({ value: s.id, label: s.name })) || [], [statusesResult]);
-  // THE FIX: Correctly map the options for both location types.
   const locationOptions = useMemo(() => locationsResult?.data?.map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
   const functionalLocationOptions = useMemo(() => functionalLocationsResult?.data?.map(l => ({ value: l.id, label: l.name })) || [], [functionalLocationsResult]);
 
@@ -30250,8 +30029,8 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
     reset,
     control,
     formState: { errors },
-  } = useForm<Inventory_itemsInsertSchema>({
-    resolver: zodResolver(inventory_itemsInsertSchema),
+  } = useForm<FormSchemaType>({
+    resolver: zodResolver(formSchema), // Use the relaxed schema
   });
 
   useEffect(() => {
@@ -30278,15 +30057,10 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
     }
   }, [isOpen, editingItem, reset]);
 
-  // Ensure purchase_date conforms to z.iso.datetime expected by schema
-  const handleFormSubmit = (values: Inventory_itemsInsertSchema) => {
-    const formatted = {
-      ...values,
-      purchase_date: values.purchase_date
-        ? new Date(values.purchase_date as unknown as string).toISOString()
-        : null,
-    } as Inventory_itemsInsertSchema;
-    onSubmit(formatted);
+  const handleFormSubmit = (values: FormSchemaType) => {
+    // The date string (YYYY-MM-DD) is perfectly valid for a DATE column in Postgres.
+    // We don't need to convert it to a full ISO datetime string.
+    onSubmit(values as Inventory_itemsInsertSchema);
   };
 
   return (
@@ -30338,10 +30112,11 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         key: 'name',
         title: 'Name',
         dataIndex: 'name',
+        width: 180,
         render: (val, record) => (
-            <div>
+            <div className='contain-content text-wrap'>
                 <TruncateTooltip text={val as string} className="font-semibold" />
-                <p className="text-xs text-gray-500">{record.description}</p>
+                <p className="text-xs text-gray-500 max-w-44 wrap-break-word">{record.description}</p>
             </div>
         )
     },
@@ -30380,7 +30155,8 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         key: 'cost',
         title: 'Cost',
         dataIndex: 'cost',
-        render: (val) => val ? `$${Number(val).toFixed(2)}` : null,
+        // THE FIX: Use Rupee symbol
+        render: (val) => val ? `₹${Number(val).toFixed(2)}` : null,
     }
 ];
 ```
@@ -33802,7 +33578,7 @@ export default function AuthButton() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name || user.email?.split('@')[0] || 'User'}
+                {(user.user_metadata?.first_name? user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name : user.email?.split('@')[0]) || 'User'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {user.email}
@@ -33855,6 +33631,7 @@ export default function AuthButton() {
 
 <!-- path: components/auth/Protected.tsx -->
 ```typescript
+// components/auth/Protected.tsx
 "use client";
 
 import { useEffect, useRef, ReactNode } from "react";
@@ -33864,7 +33641,6 @@ import { UserRole } from "@/types/user-roles";
 import { UnauthorizedModal } from "./UnauthorizedModal";
 import { useAuthStore } from "@/stores/authStore";
 import { useUser } from "@/providers/UserProvider";
-import { User_profilesRowSchema } from "@/schemas/zod-schemas";
 
 interface ProtectedProps {
   children: ReactNode;
@@ -33873,33 +33649,14 @@ interface ProtectedProps {
 }
 
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
-  const router = useRouter();
   // THE FIX: Get all user data from the single, consolidated useUser context.
-  const { canAccess, isSuperAdmin, role, profile, isLoading: isUserLoading } = useUser();
-
-  const needsOnboarding = 
-    !isUserLoading && 
-    profile && 
-    typeof profile.preferences === 'object' && 
-    profile.preferences !== null && 
-    !Array.isArray(profile.preferences) &&
-    'needsOnboarding' in profile.preferences &&
-    (profile.preferences as User_profilesRowSchema['preferences'])?.needsOnboarding === true;
-
-  useEffect(() => {
-    if (!isUserLoading && needsOnboarding && window.location.pathname !== '/onboarding') {
-      router.replace('/onboarding');
-    }
-  }, [isUserLoading, needsOnboarding, router]);
+  const { canAccess, isSuperAdmin, role, isLoading: isUserLoading } = useUser();
   
   if (isUserLoading) {
      return <PageSpinner text="Verifying permissions..." />;
   }
-  
-  if (needsOnboarding) {
-    return <PageSpinner text="Redirecting to onboarding..." />;
-  }
 
+  // Security check for roles
   if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
     return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
   }
@@ -34988,12 +34745,17 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     key: 'employee_contact',
     width: 220,
     searchable: true,
+    editable: true, // Enabled cell edit
     render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
-        {record.employee_contact && (
+        {record.employee_contact ? (
           <div className="text-sm text-gray-700 dark:text-gray-300">
             {record.employee_contact}
           </div>
+        ) : (
+          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
+            Click to add
+          </span>
         )}
       </div>
     ),
@@ -35004,12 +34766,17 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     key: 'employee_email',
     width: 220,
     searchable: true,
+    editable: true, // Enabled cell edit
     render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
-        {record.employee_email && (
+        {record.employee_email ? (
           <div className="text-sm text-gray-700 dark:text-gray-300">
             {record.employee_email}
           </div>
+        ) : (
+          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
+            Click to add
+          </span>
         )}
       </div>
     ),
@@ -37848,90 +37615,27 @@ export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ is
 // components/systems/SystemPortsManagerModal.tsx
 "use client";
 
-import { useMemo, useRef, useCallback, useState } from 'react'; // Added useState
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
-import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi'; // Changed FiZap to FiLayout
+import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi';
 import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { PortsManagementTableColumns } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
-import { PortTemplateModal } from '@/components/systems/PortTemplateModal'; // Import the new modal
-import { usePagedData, useTableBulkOperations } from '@/hooks/database';
+import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
+import { useTableBulkOperations } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
-import { generatePortsFromTemplate } from '@/config/port-templates'; // Updated import
-
-// --- Factory that returns a properly named custom hook ---
-const createPortsDataHook = (systemId: string | null) => {
-  function usePortsDataInner(
-    params: DataQueryHookParams
-  ): DataQueryHookReturn<V_ports_management_completeRowSchema> {
-    const { currentPage, pageLimit, searchQuery, filters } = params;
-
-    const { data, isLoading, isFetching, error, refetch } =
-      usePagedData<V_ports_management_completeRowSchema>(
-        createClient(),
-        'v_ports_management_complete',
-        {
-          filters: { ...filters, system_id: systemId || '' },
-          limit: 5000,
-          offset: 0,
-        },
-        { enabled: !!systemId }
-      );
-
-    const processedData = useMemo(() => {
-      const allPorts = data?.data ?? [];
-      let filtered = allPorts;
-
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((p) =>
-          p.port?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
-          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
-        );
-      }
-
-      filtered.sort((a, b) =>
-        (a.port || '').localeCompare(b.port || '', undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        })
-      );
-
-      const totalCount = filtered.length;
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
-
-      return {
-        data: paginatedData,
-        totalCount,
-        activeCount: totalCount,
-        inactiveCount: 0,
-      };
-    }, [data, searchQuery, currentPage, pageLimit]);
-
-    return {
-      ...processedData,
-      isLoading,
-      isFetching,
-      error: error as Error | null,
-      refetch,
-    };
-  }
-
-  return usePortsDataInner;
-};
+import { generatePortsFromTemplate } from '@/config/port-templates';
+import { usePortsData } from '@/hooks/data/usePortsData'; // THE FIX: Import the new hook
 
 interface SystemPortsManagerModalProps {
   isOpen: boolean;
@@ -37947,12 +37651,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   // State for Template Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
+  // THE FIX: Use the factory-created hook with systemId closure
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
-    dataQueryHook: createPortsDataHook(systemId),
+    localTableName: 'v_ports_management_complete', // Specify local view for cleanup
+    dataQueryHook: usePortsData(systemId), // Pass systemId to the hook factory
     displayNameField: 'port',
   });
 
@@ -38000,11 +37706,9 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     });
   }, [exportPorts, system?.system_name, systemId]);
 
-  // New Handler for Template Application
   const handleApplyTemplate = useCallback((templateKey: string) => {
     if (!systemId) return;
 
-    // 1. Generate data (NOW WITHOUT IDs)
     const portsPayload = generatePortsFromTemplate(templateKey, systemId);
     
     if (portsPayload.length === 0) {
@@ -38012,11 +37716,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       return;
     }
 
-    // 2. Pass data + onConflict config
     bulkUpsert.mutate(
       { 
         data: portsPayload, 
-        onConflict: 'system_id,port'  // <--- CRITICAL FIX
+        onConflict: 'system_id,port'
       }, 
       {
         onSuccess: () => {
@@ -38057,7 +37760,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         loading: isExporting,
         disabled: isLoading,
       },
-      // Changed: Button now opens the Template Selection Modal
       {
         label: 'Apply Template',
         onClick: () => setIsTemplateModalOpen(true),
@@ -38133,7 +37835,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           />
         )}
         
-        {/* Template Selection Modal */}
         <PortTemplateModal 
           isOpen={isTemplateModalOpen}
           onClose={() => setIsTemplateModalOpen(false)}
@@ -53182,11 +52883,40 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
 
+  // --- Form Setup ---
+  const {
+    control,
+    handleSubmit,
+    register,
+    formState: { errors },
+    reset,
+    watch,
+  } = useForm<SystemConnectionFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      system_id: parentSystem.id ?? "",
+      status: true,
+      media_type_id: "",
+      system_working_interface: "",
+      customer_name: "",
+    },
+  });
+
+  // Watch fields to trigger dynamic fetches
+  const watchSystemId = watch("system_id");
+  const watchSnId = watch("sn_id");
+  const watchEnId = watch("en_id");
+
   // --- Data Fetching ---
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "systems", {
-    columns: "id, system_name, ip_address, node_name, system_type:system_type_id(code)",
+  
+  // 1. Systems List (THE FIX: Query the View, not the Table, to get node_name)
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
+    columns: "id, system_name, ip_address, node_name",
+    limit: 5000,
+    orderBy: [{ column: "system_name", ascending: true }]
   });
   
+  // 2. Lookups
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
     filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
@@ -53197,12 +52927,38 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // --- Options ---
+  // 3. Fetch Ports for Main System
+  const { data: mainSystemPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchSystemId || '' },
+    limit: 1000,
+    // Only fetch if system ID is present
+    enabled: !!watchSystemId,
+  });
+
+  // 4. Fetch Ports for Start Node (SN)
+  const { data: snPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchSnId || '' },
+    limit: 1000,
+    enabled: !!watchSnId,
+  });
+
+  // 5. Fetch Ports for End Node (EN)
+  const { data: enPorts } = useTableQuery(supabase, "ports_management", {
+    columns: "port, port_utilization",
+    filters: { system_id: watchEnId || '' },
+    limit: 1000,
+    enabled: !!watchEnId,
+  });
+
+  // --- Options Processing ---
+
   const systems = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  () => (systemsResult.data as any[]) ?? [],
-  [systemsResult.data] // Only recalculate when systemsResult.data changes
-);
+    () => (systemsResult.data as any[]) ?? [],
+    [systemsResult.data]
+  );
 
   const systemOptions = useMemo(
     () =>
@@ -53227,23 +52983,28 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [linkTypes]
   );
 
-  // --- Form Setup ---
-  const {
-    control,
-    handleSubmit,
-    register,
-    formState: { errors },
-    reset,
-  } = useForm<SystemConnectionFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      system_id: parentSystem.id ?? "",
-      status: true,
-      media_type_id: "",
-      system_working_interface: "",
-      customer_name: "",
-    },
-  });
+  // Helper to map ports to options
+  const mapPortsToOptions = (
+    portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
+    currentValue?: string | null
+  ) => {
+    const options = (portsData || [])
+      .filter(p => p.port)
+      .map(p => ({
+        value: p.port!,
+        label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
+        // Optional: disable if in use, but allow if it's the current value (editing)
+        // disabled: p.port_utilization && p.port !== currentValue 
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+
+    // If editing and the current value isn't in the list (legacy or manual entry), add it
+    if (currentValue && !options.find(o => o.value === currentValue)) {
+      options.unshift({ value: currentValue, label: `${currentValue} (Current)` });
+    }
+
+    return options;
+  };
 
   // --- Reset Logic ---
   useEffect(() => {
@@ -53356,21 +53117,26 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   />
                 </div>
                 
-                <FormInput
+                <FormSearchableSelect
                   name="system_working_interface"
                   label="Working Port (Interface)"
-                  placeholder="e.g. Gi0/1/1"
-                  register={register}
+                  control={control}
+                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
                   error={errors.system_working_interface}
+                  placeholder="Select Working Port"
+                  searchPlaceholder="Search ports..."
                   required
                 />
                 
-                <FormInput
+                <FormSearchableSelect
                   name="system_protection_interface"
-                  label="Protection Port"
-                  placeholder="e.g. Gi0/1/2 (Optional)"
-                  register={register}
+                  label="Protection Port (Optional)"
+                  control={control}
+                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
                   error={errors.system_protection_interface}
+                  placeholder="Select Protection Port"
+                  searchPlaceholder="Search ports..."
+                  clearable
                 />
 
                 <FormSearchableSelect
@@ -53453,12 +53219,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     options={systemOptions}
                     error={errors.sn_id}
                   />
-                  <FormInput
+                  
+                  {/* Dynamically fetch ports based on sn_id */}
+                  <FormSearchableSelect
                     name="sn_interface"
                     label="Interface"
-                    register={register}
+                    control={control}
+                    options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
                     error={errors.sn_interface}
+                    placeholder={watchSnId ? "Select Start Port" : "Select System First"}
+                    disabled={!watchSnId}
                   />
+
                   <FormInput
                     name="sn_ip"
                     label="IP Address"
@@ -53476,12 +53248,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     options={systemOptions}
                     error={errors.en_id}
                   />
-                  <FormInput
+
+                  {/* Dynamically fetch ports based on en_id */}
+                  <FormSearchableSelect
                     name="en_interface"
                     label="Interface"
-                    register={register}
+                    control={control}
+                    options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
                     error={errors.en_interface}
+                    placeholder={watchEnId ? "Select End Port" : "Select System First"}
+                    disabled={!watchEnId}
                   />
+
                    <FormInput
                     name="en_ip"
                     label="IP Address"
@@ -64606,6 +64384,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'nodes',
   'systems',
   'ring_based_systems',
+  'ports_management', // Added
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -64619,6 +64398,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_user_profiles_extended',
   'v_ofc_connections_complete',
   'v_system_connections_complete',
+  'v_ports_management_complete', // Added
 ];
 
 export async function syncEntity(
@@ -64710,14 +64490,10 @@ export function useDataSync() {
             throw new Error(`Failed entities: ${failures.join(', ')}`);
           }
           
-          // THE FIX: Update the cache buster version in localStorage.
-          // This ensures that on the next reload, the persisted React Query cache (which might be stale) 
-          // is discarded, preventing it from overwriting the fresh data we just put into Dexie.
           if (typeof window !== 'undefined') {
             localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
           }
           
-          // THE FIX: Invalidate all queries EXCEPT the sync query itself to prevent infinite loops.
           await queryClient.invalidateQueries({
             predicate: (query) => query.queryKey[0] !== 'data-sync-all'
           });
@@ -64731,7 +64507,6 @@ export function useDataSync() {
         }
       );
     },
-    // Keep these settings to ensure it only runs once on mount/refresh
     staleTime: Infinity,          
     gcTime: 1000 * 60 * 60 * 24,  
     refetchOnMount: false,        
@@ -65358,6 +65133,8 @@ import {
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
   V_audit_logsRowSchema,
+  V_ports_management_completeRowSchema, // Imported
+  Ports_managementRowSchema, // Imported for the base table if needed, though we use the view for offline lists
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -65411,6 +65188,7 @@ export class HNVTMDatabase extends Dexie {
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
+  ports_management!: Table<Ports_managementRowSchema, string>; // Base table for mutations
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -65425,6 +65203,7 @@ export class HNVTMDatabase extends Dexie {
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
+  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>; // ADDED THIS LINE
   
   // THE FIX: Update type to number for auto-incrementing ID tables
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
@@ -65451,6 +65230,7 @@ export class HNVTMDatabase extends Dexie {
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
+      ports_management: '&id, [system_id+port], system_id', // Added base table store
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -65465,6 +65245,7 @@ export class HNVTMDatabase extends Dexie {
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, connected_system_name',
+      v_ports_management_complete: '&id, system_id, port', // Added view store
       v_audit_logs: '&id, action_type, table_name, created_at',
       
       sync_status: 'tableName',
@@ -65794,6 +65575,117 @@ export const addMutationToQueue = async (task: Omit<MutationTask, 'id' | 'timest
     attempts: 0,
   });
   toast.info("Offline. Your change has been saved and will sync when you're back online.");
+};
+```
+
+<!-- path: hooks/data/usePortsData.ts -->
+```typescript
+// hooks/data/usePortsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+/**
+ * Implements the local-first data fetching strategy for System Ports.
+ * Filters by system ID and performs client-side search.
+ */
+export const usePortsData = (
+  systemId: string | null
+) => {
+  // Wrapped in a factory function to be used by useCrudManager
+  return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> {
+    const { currentPage, pageLimit, filters, searchQuery } = params;
+    
+    const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
+      if (!systemId) return [];
+
+      const rpcFilters = buildRpcFilters({
+        ...filters,
+        system_id: systemId,
+        or: searchQuery
+          ? `(port.ilike.%${searchQuery}%,port_type_name.ilike.%${searchQuery}%,sfp_serial_no.ilike.%${searchQuery}%)`
+          : undefined,
+      });
+
+      const { data, error } = await createClient().rpc('get_paged_data', {
+        p_view_name: 'v_ports_management_complete',
+        p_limit: 5000, // Fetch larger set for client-side processing
+        p_offset: 0,
+        p_filters: rpcFilters,
+        p_order_by: 'port',
+        p_order_dir: 'asc',
+      });
+
+      if (error) throw error;
+      return (data as { data: V_ports_management_completeRowSchema[] })?.data || [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, filters, systemId]);
+
+    const localQueryFn = useCallback(() => {
+      if (!systemId) {
+        return localDb.v_ports_management_complete.limit(0).toArray();
+      }
+      return localDb.v_ports_management_complete.where('system_id').equals(systemId).toArray();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [systemId]);
+
+    const {
+      data: allPorts = [],
+      isLoading,
+      isFetching,
+      error,
+      refetch,
+    } = useLocalFirstQuery<'v_ports_management_complete', V_ports_management_completeRowSchema>({
+      queryKey: ['ports-data', systemId, searchQuery, filters],
+      onlineQueryFn,
+      localQueryFn,
+      dexieTable: localDb.v_ports_management_complete,
+      localQueryDeps: [systemId], 
+    });
+
+    const processedData = useMemo(() => {
+      if (!allPorts || !systemId) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+      }
+
+      let filtered = allPorts;
+      
+      if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter((p) =>
+          p.port?.toLowerCase().includes(lowerQuery) ||
+          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
+          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
+        );
+      }
+      
+      // Natural sort for ports (e.g., 1.1, 1.2, 1.10)
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+      filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
+
+      const totalCount = filtered.length;
+      // Assuming valid port means "active" in this context since there is no active status column on the view
+      const activeCount = totalCount;
+      
+      const start = (currentPage - 1) * pageLimit;
+      const end = start + pageLimit;
+      const paginatedData = filtered.slice(start, end);
+
+      return {
+        data: paginatedData,
+        totalCount,
+        activeCount,
+        inactiveCount: 0,
+      };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allPorts, searchQuery, currentPage, pageLimit, systemId]);
+
+    return { ...processedData, isLoading, isFetching, error, refetch };
+  };
 };
 ```
 
@@ -66827,6 +66719,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "maintenance_areas";
       case "lookup":
         return "lookup_types";
+      case "inventory":
+        return "inventory_items";
       case "ofc":
         // Check if there's a third segment (ID) after ofc
         const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
@@ -68357,7 +68251,7 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'International phone number format',
     },
     {
-      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', 'sn_dom', 'en_dom', 'note_date'],
+      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', 'sn_dom', 'en_dom', 'note_date', 'purchase_date'],
       validation: 'z.iso.date()',
       description: 'ISO date string validation (e.g., YYYY-MM-DD)',
     },
@@ -68583,16 +68477,17 @@ export const formatNumber = (
     return num.toString();
   }
 
-  const { locale = 'en-US', ...intlOptions } = options;
+  const { locale = 'en-IN', ...intlOptions } = options;
   const formatter = getCachedFormatter('number', locale, intlOptions);
   
   return formatter.format(num);
 };
 
+// THE FIX: Changed defaults to INR and en-IN
 export const formatCurrency = (
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US',
+  currency: string = 'INR',
+  locale: string = 'en-IN',
   options: Intl.NumberFormatOptions = {}
 ): string => {
   return formatNumber(amount, {
@@ -68890,7 +68785,7 @@ export const formatDate = (
   options: FormatDateOptions = {}
 ): string => {
   const {
-    locale = 'en-US',
+    locale = 'en-IN', // Changed default
     format,
     ...intlOptions
   } = options;
@@ -68990,7 +68885,7 @@ export const formatTimeRange = (
   endTime: Date | string,
   options: Intl.DateTimeFormatOptions & { locale?: string } = {}
 ): string => {
-  const { locale = 'en-US', ...intlOptions } = options;
+  const { locale = 'en-IN', ...intlOptions } = options;
   
   const formatOptions = {
     hour: 'numeric' as const,
