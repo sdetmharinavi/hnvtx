@@ -41,7 +41,7 @@ export default function AuthButton() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name || user.email?.split('@')[0] || 'User'}
+                {(user.user_metadata?.first_name? user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name : user.email?.split('@')[0]) || 'User'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {user.email}
