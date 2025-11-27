@@ -26,7 +26,9 @@ const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: stri
 export default function QrCodePage() {
   const params = useParams();
   const itemId = params.id as string;
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+  
+  // We no longer need the page URL for the QR code
+  // const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const { data: item, isLoading, isError, error } = useTableRecord<"v_inventory_items", V_inventory_itemsRowSchema>(
     createClient(),
@@ -38,8 +40,15 @@ export default function QrCodePage() {
   if (isError) return <ErrorDisplay error={error.message} />;
   if (!item) return <ErrorDisplay error="Asset not found." />;
 
+  // THE FIX: Construct formatted text content for the QR code
+  const qrData = `Asset: ${item.asset_no || 'N/A'}
+Item: ${item.name || 'N/A'}
+Related To: ${item.category_name || 'N/A'}
+Location: ${item.store_location || 'N/A'}
+Func. Location: ${item.functional_location || 'N/A'}
+Status: ${item.status_name || 'N/A'}`.trim();
+
   return (
-    // THE FIX: Simplified wrapper. The `min-h-screen` and layout classes are applied here for screen view.
     <div className="qr-page-wrapper min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
       
       {/* The main content card */}
@@ -50,7 +59,7 @@ export default function QrCodePage() {
         
         <div className="flex flex-col items-center space-y-8">
           <div className="p-4 border-4 border-gray-200 rounded-lg">
-            <QRCodeCanvas value={pageUrl} size={200} bgColor={"#ffffff"} fgColor={"#000000"} level={"H"} />
+            <QRCodeCanvas value={qrData} size={200} bgColor={"#ffffff"} fgColor={"#000000"} level={"H"} />
           </div>
           
           <div className="w-full space-y-3">
@@ -61,7 +70,8 @@ export default function QrCodePage() {
             <DetailItem icon={<FiInfo size={18} />} label="Store Location" value={item.store_location} />
             <DetailItem icon={<FiMapPin size={18} />} label="Functional Location" value={item.functional_location} />
             <DetailItem icon={<FiCalendar size={18} />} label="Purchase Date" value={item.purchase_date} />
-            <DetailItem icon={<FiDollarSign size={18} />} label="Cost" value={item.cost ? `$${item.cost}` : null} />
+            {/* THE FIX: Use Rupee symbol */}
+            <DetailItem icon={<FiDollarSign size={18} />} label="Cost" value={item.cost ? `₹${item.cost}` : null} />
             <DetailItem icon={<FiInfo size={18} />} label="Status" value={item.status_name} />
           </div>
         </div>

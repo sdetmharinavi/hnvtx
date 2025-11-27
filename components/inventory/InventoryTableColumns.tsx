@@ -57,6 +57,7 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         key: 'cost',
         title: 'Cost',
         dataIndex: 'cost',
-        render: (val) => val ? `$${Number(val).toFixed(2)}` : null,
+        // THE FIX: Use Rupee symbol
+        render: (val) => val ? `₹${Number(val).toFixed(2)}` : null,
     }
 ];
