@@ -72,7 +72,7 @@ export const Modal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -99,7 +99,7 @@ export const Modal = ({
             {(title || showCloseButton) && visible && (
               <div className="flex items-center justify-between border-b border-gray-200 p-6">
                 {title && (
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {title}
                   </h2>
                 )}

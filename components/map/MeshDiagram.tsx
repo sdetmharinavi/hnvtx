@@ -130,13 +130,13 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   }, [isFullScreen]);
 
   const containerClass = isFullScreen
-    ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900'
+    ? 'fixed inset-0 z-40 bg-slate-50 dark:bg-slate-900'
     : 'relative w-full h-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm';
 
   return (
     <div className={containerClass}>
       {/* Controls Overlay */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
         {onBack && (
           <button
             onClick={onBack}

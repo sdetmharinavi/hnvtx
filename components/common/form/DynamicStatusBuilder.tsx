@@ -128,7 +128,7 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
           return (
             <div 
               key={item.id} 
-              className={`flex items-start justify-between p-3 rounded-lg border ${colorObj.bg} ${colorObj.border} bg-opacity-50 dark:bg-opacity-10 transition-all`}
+              className={`flex items-start justify-between p-3 rounded-lg border ${colorObj.border} bg-opacity-50 dark:bg-opacity-10 transition-all`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm break-all">
                 <span className={`font-bold ${item.color} whitespace-nowrap`}>{item.label}:</span>
