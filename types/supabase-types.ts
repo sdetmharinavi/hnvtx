@@ -2638,6 +2638,7 @@ export type Database = {
           name: string
           ring_type_id: string | null
           status: boolean | null
+          topology_config: Json | null
           total_nodes: number | null
           updated_at: string | null
         }
@@ -2650,6 +2651,7 @@ export type Database = {
           name: string
           ring_type_id?: string | null
           status?: boolean | null
+          topology_config?: Json | null
           total_nodes?: number | null
           updated_at?: string | null
         }
@@ -2662,6 +2664,7 @@ export type Database = {
           name?: string
           ring_type_id?: string | null
           status?: boolean | null
+          topology_config?: Json | null
           total_nodes?: number | null
           updated_at?: string | null
         }
@@ -2753,6 +2756,7 @@ export type Database = {
           en_interface: string | null
           en_ip: unknown
           id: string
+          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
@@ -2764,6 +2768,7 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
+          unique_id: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in_ids: string[] | null
@@ -2780,6 +2785,7 @@ export type Database = {
           en_interface?: string | null
           en_ip?: unknown
           id?: string
+          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
@@ -2791,6 +2797,7 @@ export type Database = {
           system_id: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
+          unique_id?: string | null
           updated_at?: string | null
           vlan?: string | null
           working_fiber_in_ids?: string[] | null
@@ -2807,6 +2814,7 @@ export type Database = {
           en_interface?: string | null
           en_ip?: unknown
           id?: string
+          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
@@ -2818,6 +2826,7 @@ export type Database = {
           system_id?: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
+          unique_id?: string | null
           updated_at?: string | null
           vlan?: string | null
           working_fiber_in_ids?: string[] | null
@@ -3031,6 +3040,53 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          details: string | null
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          details?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          details?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           address: Json | null
@@ -3089,6 +3145,32 @@ export type Database = {
       }
     }
     Views: {
+      v_audit_logs: {
+        Row: {
+          action_type: string | null
+          created_at: string | null
+          details: string | null
+          id: number | null
+          new_data: Json | null
+          old_data: Json | null
+          performed_by_avatar: string | null
+          performed_by_email: string | null
+          performed_by_name: string | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_cable_segments_at_jc: {
         Row: {
           end_node_id: string | null
@@ -4108,6 +4190,7 @@ export type Database = {
           ring_type_id: string | null
           ring_type_name: string | null
           status: boolean | null
+          topology_config: Json | null
           total_nodes: number | null
           updated_at: string | null
         }
@@ -4161,6 +4244,7 @@ export type Database = {
           en_node_name: string | null
           en_system_type_name: string | null
           id: string | null
+          lc_id: string | null
           media_type_id: string | null
           media_type_name: string | null
           protection_fiber_in_ids: string[] | null
@@ -4185,6 +4269,7 @@ export type Database = {
           system_protection_interface: string | null
           system_type_name: string | null
           system_working_interface: string | null
+          unique_id: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in_ids: string[] | null
@@ -4929,6 +5014,17 @@ export type Database = {
         }[]
       }
       is_super_admin: { Args: never; Returns: boolean }
+      log_user_activity: {
+        Args: {
+          p_action_type: string
+          p_details?: string
+          p_new_data?: Json
+          p_old_data?: Json
+          p_record_id?: string
+          p_table_name?: string
+        }
+        Returns: undefined
+      }
       manage_splice: {
         Args: {
           p_action: string
@@ -5036,6 +5132,7 @@ export type Database = {
           p_en_interface?: string
           p_en_ip?: unknown
           p_id?: string
+          p_lc_id?: string
           p_media_type_id: string
           p_protection_fiber_in_ids?: string[]
           p_protection_fiber_out_ids?: string[]
@@ -5048,6 +5145,7 @@ export type Database = {
           p_system_id: string
           p_system_protection_interface?: string
           p_system_working_interface?: string
+          p_unique_id?: string
           p_vlan?: string
           p_working_fiber_in_ids?: string[]
           p_working_fiber_out_ids?: string[]
@@ -5063,6 +5161,7 @@ export type Database = {
           en_interface: string | null
           en_ip: unknown
           id: string
+          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
@@ -5074,6 +5173,7 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
+          unique_id: string | null
           updated_at: string | null
           vlan: string | null
           working_fiber_in_ids: string[] | null

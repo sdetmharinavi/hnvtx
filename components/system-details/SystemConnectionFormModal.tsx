@@ -38,12 +38,20 @@ const formSchema = system_connectionsInsertSchema
   })
   .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape)
   .extend({
+    // Validation: Customer Name and Interface are now mandatory
     customer_name: z.string().min(1, "Customer / Link Name is required"),
     system_working_interface: z.string().min(1, "Working Interface is required"),
     media_type_id: z.string().uuid("Media Type is required"),
+    // Add new fields to schema
+    lc_id: z.string().nullable().optional(),
+    unique_id: z.string().nullable().optional(),
   });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
+
+// Helper to handle potential type mismatches before regeneration
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ExtendedConnectionRow = V_system_connections_completeRowSchema & { lc_id?: string | null; unique_id?: string | null };
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
@@ -82,10 +90,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       media_type_id: "",
       system_working_interface: "",
       customer_name: "",
+      lc_id: "",
+      unique_id: "",
     },
   });
 
-  // Watch fields to trigger dynamic fetches
   const watchSystemId = watch("system_id");
   const watchSnId = watch("sn_id");
   const watchEnId = watch("en_id");
@@ -96,14 +105,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // --- Data Fetching ---
   
-  // 1. Systems List
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
     columns: "id, system_name, ip_address, node_name",
     limit: 5000,
     orderBy: [{ column: "system_name", ascending: true }]
   });
   
-  // 2. Lookups
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
     filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
@@ -114,8 +121,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // 3. Fetch Ports for Main System
-  // UPDATED: Fetch 'port_type_code' from the view
+  const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name, code",
+    filters: { category: "PORT_TYPES" },
+  });
+
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchSystemId || '' },
@@ -123,7 +133,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSystemId,
   });
 
-  // 4. Fetch Ports for Start Node (SN)
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchSnId || '' },
@@ -131,7 +140,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSnId,
   });
 
-  // 5. Fetch Ports for End Node (EN)
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchEnId || '' },
@@ -160,12 +168,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     return options;
   };
 
-  // Helper to get port type display: Prefer Code, fallback to Name
   const getPortTypeDisplay = useCallback((portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
     if (!portsList?.data || !portInterface) return "";
     const port = portsList.data.find(p => p.port === portInterface);
-    if (!port) return "";
-    // Use Code if available, else Name
+    if (!port) return "Unknown";
     return port.port_type_code || port.port_type_name || "Unknown";
   }, []);
 
@@ -200,6 +206,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     if (isOpen) {
       setActiveTab("general");
       if (isEditMode && editingConnection) {
+        const extConnection = editingConnection as ExtendedConnectionRow;
         reset({
           system_id: editingConnection.system_id ?? parentSystem.id ?? "",
           customer_name: editingConnection.customer_name ?? "",
@@ -212,6 +219,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           bandwidth: editingConnection.bandwidth ?? null,
           bandwidth_allocated: editingConnection.bandwidth_allocated ?? null,
           vlan: editingConnection.vlan ?? null,
+          lc_id: extConnection.lc_id ?? null,         // New field
+          unique_id: extConnection.unique_id ?? null, // New field
           connected_link_type_id: editingConnection.connected_link_type_id ?? null,
           sn_id: editingConnection.sn_id ?? null,
           en_id: editingConnection.en_id ?? null,
@@ -233,6 +242,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           media_type_id: "",
           system_working_interface: "",
           customer_name: "",
+          lc_id: "",
+          unique_id: "",
         });
       }
     }
@@ -281,7 +292,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
             {/* --- TAB 1: GENERAL --- */}
             <TabsContent value="general" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="col-span-full md:col-span-2">
+                <div className="col-span-full md:col-span-1">
                    <FormInput
                     name="customer_name"
                     label="Customer / Link Name"
@@ -292,6 +303,22 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   />
                 </div>
                 
+                {/* New fields */}
+                <FormInput
+                  name="lc_id"
+                  label="LC ID / Circuit ID"
+                  placeholder="e.g. 12345"
+                  register={register}
+                  error={errors.lc_id}
+                />
+                <FormInput
+                  name="unique_id"
+                  label="Unique ID"
+                  placeholder="e.g. UID-001"
+                  register={register}
+                  error={errors.unique_id}
+                />
+
                 <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-2">
                    <div className="col-span-2">
                      <FormSearchableSelect
@@ -306,7 +333,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     />
                   </div>
                   <div className="col-span-1">
-                    <Label disabled className="mb-1">Port Type</Label>
+                    <Label disabled className="mb-1">Type</Label>
                     <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
                   </div>
                 </div>
@@ -325,7 +352,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     />
                   </div>
                   <div className="col-span-1">
-                    <Label disabled className="mb-1">Port Type</Label>
+                    <Label disabled className="mb-1">Type</Label>
                     <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
                   </div>
                 </div>
@@ -425,7 +452,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       />
                     </div>
                     <div className="col-span-1">
-                      <Label disabled className="mb-1">Port Type</Label>
+                      <Label disabled className="mb-1">Type</Label>
                       <Input disabled value={snPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
                     </div>
                   </div>
@@ -462,7 +489,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       />
                     </div>
                     <div className="col-span-1">
-                       <Label disabled className="mb-1">Port Type</Label>
+                       <Label disabled className="mb-1">Type</Label>
                        <Input disabled value={enPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
                     </div>
                   </div>

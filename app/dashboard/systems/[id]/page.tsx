@@ -14,7 +14,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye } from 'lucide-react';
+import { ZapOff, Eye, Monitor } from 'lucide-react'; // Added Monitor icon
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
@@ -23,17 +23,18 @@ import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+// NEW IMPORT
+import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { useQueryClient } from '@tanstack/react-query'; // Import QueryClient
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function SystemConnectionsPage() {
   const params = useParams();
   const systemId = params.id as string;
   const supabase = createClient();
-  const queryClient = useQueryClient(); // Initialize QueryClient
+  const queryClient = useQueryClient();
 
-  // ... (existing state definitions)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,11 +47,15 @@ export default function SystemConnectionsPage() {
   const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
   const [connectionToDeprovision, setConnectionToDeprovision] = useState<V_system_connections_completeRowSchema | null>(null);
   
-  // State for the new trace modal
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
+
+  // NEW STATE for the Details Modal
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
+
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
   const parentSystem = systemData?.data?.[0];
@@ -73,30 +78,23 @@ export default function SystemConnectionsPage() {
     onSuccess: () => { 
       refetch(); 
       closeModal(); 
-      // FIX: Invalidate ports cache to update utilization stats
       queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
     } 
   });
   
-  // ... (rest of the component logic remains the same)
-
   const deprovisionMutation = useDeprovisionServicePath();
   const deleteManager = useDeleteManager({ 
     tableName: 'system_connections', 
     onSuccess: () => { 
       refetch();
-      // FIX: Also invalidate ports on delete to decrement counts
       queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
     } 
   });
   
-  // ... (rest of the component unchanged)
-
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { 
     onSuccess: (result) => { 
       if (result.successCount > 0) {
         refetch();
-        // The hook itself now handles the port invalidation, but double safety here is fine
       }
     } 
   });
@@ -113,7 +111,6 @@ export default function SystemConnectionsPage() {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
       const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
-        // ... (mappings unchanged)
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
         { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
@@ -125,6 +122,8 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'En Interface', dbKey: 'en_interface' },
         { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
         { excelHeader: 'Vlan', dbKey: 'vlan' },
+        { excelHeader: 'LC ID', dbKey: 'lc_id' },       // ADDED
+        { excelHeader: 'Unique ID', dbKey: 'unique_id' }, // ADDED
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'customer_name' },
@@ -149,8 +148,6 @@ export default function SystemConnectionsPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [uploadConnections, parentSystem]);
   
-  // ... (handleOpenAllocationModal, handleDeprovisionClick, etc. unchanged)
-
   const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
   
   const handleDeprovisionClick = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); }, []);
@@ -186,6 +183,12 @@ export default function SystemConnectionsPage() {
     }
   }, [tracePath]);
 
+  // Handler for opening the new details modal
+  const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
+      setDetailsConnectionId(record.id);
+      setIsDetailsModalOpen(true);
+  }, []);
+
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
       onEdit: openEditModal,
@@ -196,12 +199,15 @@ export default function SystemConnectionsPage() {
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
+      // NEW: Full Details View Button
+      { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
+      
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
       { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
       ...standard,
     ];
-  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal]);
+  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal, handleViewDetails]);
 
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
@@ -232,6 +238,8 @@ export default function SystemConnectionsPage() {
       p_en_interface: formData.en_interface || undefined,
       p_bandwidth: formData.bandwidth || undefined,
       p_vlan: formData.vlan || undefined,
+      p_lc_id: formData.lc_id || undefined, // Added
+      p_unique_id: formData.unique_id || undefined, // Added
       p_commissioned_on: formData.commissioned_on || undefined,
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
@@ -247,7 +255,6 @@ export default function SystemConnectionsPage() {
       p_b_customer: formData.b_customer || undefined,
     };
     
-    // upsertMutation is already defined with onSuccess above, but we ensure cache invalidation here just in case
     upsertMutation.mutate(payload, { 
       onSuccess: () => { 
         refetch(); 
@@ -305,6 +312,13 @@ export default function SystemConnectionsPage() {
         onClose={() => setIsTraceModalOpen(false)}
         traceData={traceModalData}
         isLoading={isTracing}
+      />
+
+      {/* The New Modal */}
+      <SystemConnectionDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        connectionId={detailsConnectionId}
       />
     </div>
   );

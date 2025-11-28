@@ -21,7 +21,7 @@ const createPort = (port: string, typeId: string, capacity: string): PortConfig 
   port_capacity: capacity,
   sfp_serial_no: null,
   port_utilization: false,
-  port_admin_status: true,
+  port_admin_status: false,
   services_count: 0
 });
 

@@ -87,7 +87,10 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
     p_en_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
     p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
-    p_bandwidth TEXT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, p_commissioned_on DATE DEFAULT NULL,
+    p_bandwidth TEXT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, 
+    p_lc_id TEXT DEFAULT NULL,
+    p_unique_id TEXT DEFAULT NULL,
+    p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
     p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated TEXT DEFAULT NULL,
     p_working_fiber_in_ids UUID[] DEFAULT NULL, p_working_fiber_out_ids UUID[] DEFAULT NULL,
@@ -110,13 +113,13 @@ BEGIN
 
     INSERT INTO public.system_connections (
         id, system_id, media_type_id, status, sn_id, en_id, sn_ip, sn_interface,
-        en_ip, en_interface, bandwidth, vlan, commissioned_on, remark, customer_name, bandwidth_allocated,
+        en_ip, en_interface, bandwidth, vlan, lc_id, unique_id, commissioned_on, remark, customer_name, bandwidth_allocated,
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
         system_working_interface, system_protection_interface, connected_link_type_id,
         updated_at
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id,
-        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth, p_vlan, p_commissioned_on, p_remark, p_customer_name,
+        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth, p_vlan, p_lc_id, p_unique_id, p_commissioned_on, p_remark, p_customer_name,
         p_bandwidth_allocated, p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
         p_system_working_interface, p_system_protection_interface, p_connected_link_type_id,
         NOW()
@@ -124,7 +127,8 @@ BEGIN
         media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
         en_id = EXCLUDED.en_id, sn_ip = EXCLUDED.sn_ip,
         sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
-        bandwidth = EXCLUDED.bandwidth, vlan = EXCLUDED.vlan, commissioned_on = EXCLUDED.commissioned_on,
+        bandwidth = EXCLUDED.bandwidth, vlan = EXCLUDED.vlan, lc_id = EXCLUDED.lc_id, unique_id = EXCLUDED.unique_id,
+        commissioned_on = EXCLUDED.commissioned_on,
         remark = EXCLUDED.remark, customer_name = EXCLUDED.customer_name, bandwidth_allocated = EXCLUDED.bandwidth_allocated,
         working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
         protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
@@ -147,7 +151,7 @@ BEGIN
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, INET, TEXT, INET, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, UUID[], UUID[], UUID[], UUID[], TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, INET, TEXT, INET, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, UUID[], UUID[], UUID[], UUID[], TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 -- NEW FUNCTION: To manage system associations for a ring
 CREATE OR REPLACE FUNCTION public.update_ring_system_associations(
     p_ring_id UUID,

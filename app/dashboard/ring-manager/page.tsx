@@ -41,7 +41,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { SystemFormData } from '@/schemas/system-schemas';
-import { UseQueryResult } from '@tanstack/react-query';
+import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
@@ -58,16 +58,14 @@ interface SystemToDisassociate {
 // --- Helper Hooks ---
 
 // Hook to fetch systems specifically for a ring
-// THE FIX: Query 'ring_based_systems' directly to ensure we get ALL associations for this ring,
-// regardless of whether the system is primarily associated with another ring.
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    columns: 'order_in_ring, systems(id, system_name, is_hub, status)',
+    // THE FIX: Explicitly include 'ring_id' in the columns list
+    columns: 'order_in_ring, ring_id, systems(id, system_name, is_hub, status, system_type_id, node_id, ip_address, s_no, make, remark, commissioned_on, maintenance_terminal_id, maan_node_id, system_capacity_id)',
     filters: { ring_id: ringId || '' },
     enabled: !!ringId,
     orderBy: [{ column: 'order_in_ring', ascending: true }],
-    // THE FIX: Transform the nested join result into the flat structure required by the UI components.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     select: (result: PagedQueryResult<any>) => {
         const flattened = result.data.map((item) => ({
@@ -75,10 +73,23 @@ const useRingSystems = (ringId: string | null) => {
             system_name: item.systems?.system_name,
             is_hub: item.systems?.is_hub,
             order_in_ring: item.order_in_ring,
+            // THE FIX: Map the ring_id from the junction table to the flat object
+            ring_id: item.ring_id, 
             status: item.systems?.status,
-            // Provide defaults for fields not fetched but required by the type
-            node_id: null,
-            system_type_id: null,
+            
+            // Essential fields for Update/Upsert
+            system_type_id: item.systems?.system_type_id,
+            node_id: item.systems?.node_id,
+            
+            // Optional fields to preserve data integrity
+            ip_address: item.systems?.ip_address,
+            s_no: item.systems?.s_no,
+            make: item.systems?.make,
+            remark: item.systems?.remark,
+            commissioned_on: item.systems?.commissioned_on,
+            maintenance_terminal_id: item.systems?.maintenance_terminal_id,
+            maan_node_id: item.systems?.maan_node_id,
+            system_capacity_id: item.systems?.system_capacity_id,
         })) as unknown as V_systems_completeRowSchema[];
         
         return {
@@ -91,8 +102,6 @@ const useRingSystems = (ringId: string | null) => {
 
 // --- Components ---
 
-// Sub-component to render the list of associated systems
-// It fetches its own data to ensure accuracy.
 const RingAssociatedSystemsView = ({ 
   ringId, 
   onEdit, 
@@ -102,7 +111,6 @@ const RingAssociatedSystemsView = ({
   onEdit: (sys: V_systems_completeRowSchema) => void; 
   onDelete: (sys: V_systems_completeRowSchema) => void; 
 }) => {
-  // This hook now uses the robust query defined above
   const { data: systemsData, isLoading } = useRingSystems(ringId);
   const systems = systemsData?.data || [];
 
@@ -116,7 +124,6 @@ const RingAssociatedSystemsView = ({
     );
   }
 
-  // Create a map for quick hub lookup to name the parent of a spur
   const hubMap = new Map<number, string>();
   systems.forEach(s => {
       if (s.is_hub && s.order_in_ring !== null) {
@@ -251,6 +258,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
 export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
+  const queryClient = useQueryClient(); // THE FIX: Added queryClient
   const { isSuperAdmin } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,6 +299,8 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
+      // THE FIX: Explicitly invalidate the ring systems query to force the sub-component to re-render
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
@@ -299,6 +309,7 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success('System disassociated from ring.');
       void refetch();
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
@@ -351,6 +362,12 @@ export default function RingManagerPage() {
   }) => {
     if (!systemToEdit) return;
 
+    // THE FIX: Validate that ring_id is present before attempting update
+    if (!systemToEdit.ring_id) {
+        toast.error("Cannot update: System is not correctly associated with a ring context.");
+        return;
+    }
+
     const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
       p_id: systemToEdit.id!,
       p_system_name: systemToEdit.system_name!,
@@ -358,18 +375,15 @@ export default function RingManagerPage() {
       p_node_id: systemToEdit.node_id!,
       p_status: systemToEdit.status!,
       p_is_hub: formData.is_hub ?? systemToEdit.is_hub ?? false,
-      p_ring_associations:
-        systemToEdit.ring_id
-          ? [
-              {
-                ring_id: systemToEdit.ring_id,
-                order_in_ring:
-                  formData.order_in_ring != null
-                    ? Number(formData.order_in_ring)
-                    : systemToEdit.order_in_ring ?? null,
-              },
-            ]
-          : null,
+      p_ring_associations: [
+          {
+            ring_id: systemToEdit.ring_id,
+            order_in_ring:
+              formData.order_in_ring != null
+                ? Number(formData.order_in_ring)
+                : systemToEdit.order_in_ring ?? null,
+          },
+        ],
       p_ip_address: (systemToEdit.ip_address as string) || undefined,
       p_s_no: systemToEdit.s_no ?? undefined,
       p_make: systemToEdit.make ?? undefined,
@@ -377,13 +391,14 @@ export default function RingManagerPage() {
       p_maintenance_terminal_id: systemToEdit.maintenance_terminal_id ?? undefined,
       p_commissioned_on: systemToEdit.commissioned_on ?? undefined,
       p_remark: systemToEdit.remark ?? undefined,
+      p_system_capacity_id: systemToEdit.system_capacity_id ?? undefined
     };
+    
     upsertSystemMutation.mutate(payload, {
       onSuccess: () => {
         toast.success(`Updated "${systemToEdit.system_name}" in ring.`);
         setIsEditSystemModalOpen(false);
         setSystemToEdit(null);
-        // Force refresh the ring list to update counts/data
         void refetch();
       },
     });
@@ -556,8 +571,6 @@ export default function RingManagerPage() {
         label: 'Associated Systems',
         type: 'custom' as const,
         render: (_value: unknown, entity: RingEntity) => {
-          // Use the specialized component to render the list
-          // This component manages its own data fetching for the specific ring
           return (
             <RingAssociatedSystemsView 
               ringId={entity.id}

@@ -24,17 +24,37 @@ interface UserPermissions {
 type UserRole = string | null;
 type SuperAdminStatus = boolean | null;
 
-// Helper function to safely parse JSON strings
-const safeJsonParse = (jsonString: unknown): Json | null => {
-  if (typeof jsonString === 'object' && jsonString !== null) return jsonString as Json;
-  if (typeof jsonString !== 'string') return null;
-  try {
-    return JSON.parse(jsonString);
-  } catch (e) {
-    console.log(e);
+// Helper function to safely parse JSON strings or return objects as-is
+const safeJsonParse = (input: unknown): Json | null => {
+  if (input === null || input === undefined) return null;
 
-    return null;
+  // If it's already an object (and not null), return it
+  if (typeof input === 'object') {
+    return input as Json;
   }
+
+  // If it's a string, try to parse it
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    
+    // Common bad data patterns
+    if (trimmed === '[object Object]' || trimmed === '') {
+      return null;
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      // Only log in development to avoid console noise in prod for malformed data
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('safeJsonParse: Failed to parse value:', input, e);
+      }
+      return null;
+    }
+  }
+
+  // Fallback for numbers, booleans, etc.
+  return null;
 };
 
 export const useUserPermissionsExtended = () => {
@@ -92,7 +112,12 @@ export const useUserPermissionsExtended = () => {
           'Zod validation failed for transformed user profile:',
           parsed.error.flatten()
         );
-        throw new Error('Received invalid user profile data from server RPC.');
+        // Return null or throw? Returning null allows the UI to render in a "logged out" or "loading" state rather than crashing
+        // But let's throw to make it obvious during dev
+        if (process.env.NODE_ENV === 'development') {
+           throw new Error('Received invalid user profile data from server RPC.');
+        }
+        return null; 
       }
       return parsed.data;
     },

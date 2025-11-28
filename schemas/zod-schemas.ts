@@ -1565,6 +1565,7 @@ export const ringsRowSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_type_id: z.uuid().nullable(),
   status: z.boolean().nullable(),
+  topology_config: JsonSchema.nullable(),
   total_nodes: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -1578,6 +1579,7 @@ export const ringsInsertSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_type_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
+  topology_config: JsonSchema.nullable().optional(),
   total_nodes: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1591,6 +1593,7 @@ export const ringsUpdateSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   ring_type_id: z.uuid().nullable().optional(),
   status: z.boolean().nullable().optional(),
+  topology_config: JsonSchema.nullable().optional(),
   total_nodes: z.number().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
@@ -1636,6 +1639,7 @@ export const system_connectionsRowSchema = z.object({
   en_interface: z.string().nullable(),
   en_ip: z.any(),
   id: z.uuid(),
+  lc_id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   protection_fiber_in_ids: z.array(z.string()).nullable(),
   protection_fiber_out_ids: z.array(z.string()).nullable(),
@@ -1647,6 +1651,7 @@ export const system_connectionsRowSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable(),
   system_working_interface: z.string().nullable(),
+  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   working_fiber_in_ids: z.array(z.string()).nullable(),
@@ -1664,6 +1669,7 @@ export const system_connectionsInsertSchema = z.object({
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
@@ -1675,6 +1681,7 @@ export const system_connectionsInsertSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
+  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
@@ -1692,6 +1699,7 @@ export const system_connectionsUpdateSchema = z.object({
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
@@ -1703,6 +1711,7 @@ export const system_connectionsUpdateSchema = z.object({
   system_id: z.uuid().optional(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
+  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
@@ -1766,6 +1775,45 @@ export const systemsUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const user_activity_logsRowSchema = z.object({
+  action_type: z.string(),
+  created_at: z.iso.datetime().nullable(),
+  details: z.string().nullable(),
+  id: z.number().int().positive(),
+  new_data: JsonSchema.nullable(),
+  old_data: JsonSchema.nullable(),
+  record_id: z.uuid().nullable(),
+  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  user_id: z.uuid().nullable(),
+  user_role: z.string().nullable(),
+});
+
+export const user_activity_logsInsertSchema = z.object({
+  action_type: z.string(),
+  created_at: z.iso.datetime().nullable().optional(),
+  details: z.string().nullable().optional(),
+  id: z.number().int().positive().optional(),
+  new_data: JsonSchema.nullable().optional(),
+  old_data: JsonSchema.nullable().optional(),
+  record_id: z.uuid().nullable().optional(),
+  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  user_id: z.uuid().nullable().optional(),
+  user_role: z.string().nullable().optional(),
+});
+
+export const user_activity_logsUpdateSchema = z.object({
+  action_type: z.string().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  details: z.string().nullable().optional(),
+  id: z.number().int().positive().optional(),
+  new_data: JsonSchema.nullable().optional(),
+  old_data: JsonSchema.nullable().optional(),
+  record_id: z.uuid().nullable().optional(),
+  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
+  user_id: z.uuid().nullable().optional(),
+  user_role: z.string().nullable().optional(),
+});
+
 export const user_profilesRowSchema = z.object({
   address: z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), }).nullable(),
   avatar_url: z.url().nullable(),
@@ -1812,6 +1860,22 @@ export const user_profilesUpdateSchema = z.object({
   role: z.enum(UserRole).nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const v_audit_logsRowSchema = z.object({
+  action_type: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  details: z.string().nullable(),
+  id: z.number().int().positive().nullable(),
+  new_data: JsonSchema.nullable(),
+  old_data: JsonSchema.nullable(),
+  performed_by_avatar: z.string().nullable(),
+  performed_by_email: z.email().nullable(),
+  performed_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  record_id: z.uuid().nullable(),
+  table_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  user_id: z.uuid().nullable(),
+  user_role: z.string().nullable(),
 });
 
 export const v_cable_segments_at_jcRowSchema = z.object({
@@ -2072,6 +2136,7 @@ export const v_ringsRowSchema = z.object({
   ring_type_id: z.uuid().nullable(),
   ring_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   status: z.boolean().nullable(),
+  topology_config: JsonSchema.nullable(),
   total_nodes: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
@@ -2094,6 +2159,7 @@ export const v_system_connections_completeRowSchema = z.object({
   en_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
+  lc_id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   media_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   protection_fiber_in_ids: z.array(z.string()).nullable(),
@@ -2118,6 +2184,7 @@ export const v_system_connections_completeRowSchema = z.object({
   system_protection_interface: z.string().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_working_interface: z.string().nullable(),
+  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   working_fiber_in_ids: z.array(z.string()).nullable(),
@@ -2330,9 +2397,13 @@ export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUp
 export type SystemsRowSchema = z.infer<typeof systemsRowSchema>;
 export type SystemsInsertSchema = z.infer<typeof systemsInsertSchema>;
 export type SystemsUpdateSchema = z.infer<typeof systemsUpdateSchema>;
+export type User_activity_logsRowSchema = z.infer<typeof user_activity_logsRowSchema>;
+export type User_activity_logsInsertSchema = z.infer<typeof user_activity_logsInsertSchema>;
+export type User_activity_logsUpdateSchema = z.infer<typeof user_activity_logsUpdateSchema>;
 export type User_profilesRowSchema = z.infer<typeof user_profilesRowSchema>;
 export type User_profilesInsertSchema = z.infer<typeof user_profilesInsertSchema>;
 export type User_profilesUpdateSchema = z.infer<typeof user_profilesUpdateSchema>;
+export type V_audit_logsRowSchema = z.infer<typeof v_audit_logsRowSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;

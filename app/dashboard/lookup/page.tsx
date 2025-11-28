@@ -13,7 +13,8 @@ import {
 } from "@/components/lookup/LookupTypesEmptyStates";
 import { LookupTypesFilters } from "@/components/lookup/LookupTypesFilters";
 import { LookupTypesTable } from "@/components/lookup/LookupTypesTable";
-import { useDeleteManager } from "@/hooks/useDeleteManager";
+// REMOVED: Unused import
+// import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useSorting } from "@/hooks/useSorting";
 import { useMemo, useCallback, useEffect } from "react";
 import { FiList } from "react-icons/fi";
@@ -40,10 +41,11 @@ export default function LookupTypesPage() {
     isLoading: isLoadingLookups,
     isMutating,
     error,
-    refetch, // Added isMutating
+    refetch,
     search,
     filters,
     editModal,
+    deleteModal, // THE FIX: Destructure deleteModal from useCrudManager
     actions: crudActions,
   } = useCrudManager<"lookup_types", Lookup_typesRowSchema>({
     tableName: "lookup_types",
@@ -77,10 +79,8 @@ export default function LookupTypesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, filters.setFilters]);
 
-  const deleteManager = useDeleteManager({
-    tableName: "lookup_types",
-   onSuccess: () => { refetch(); }
-  });
+  // THE FIX: Removed the redundant local deleteManager. 
+  // useCrudManager handles this internally.
 
   const {
     sortedData: sortedLookupTypes,
@@ -132,7 +132,6 @@ export default function LookupTypesPage() {
     }
   };
 
-  // THE FIX: Simple submission handler that passes data to useCrudManager
   const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
     crudActions.handleSave(data);
   };
@@ -199,7 +198,6 @@ export default function LookupTypesPage() {
       <LookupModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
-        // THE FIX: Passed handleModalSubmit to onSubmit, removed old callback props
         onSubmit={handleModalSubmit}
         isLoading={isMutating}
         editingLookup={editModal.record}
@@ -207,14 +205,15 @@ export default function LookupTypesPage() {
         categories={categories}
       />
 
+      {/* THE FIX: Use deleteModal object from useCrudManager */}
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
         title='Confirm Deletion'
-        message={deleteManager.confirmationMessage}
+        message={deleteModal.message}
         type='danger'
-        loading={deleteManager.isPending}
+        loading={deleteModal.loading}
       />
     </div>
   );
