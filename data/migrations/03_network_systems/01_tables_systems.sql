@@ -64,7 +64,9 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   media_type_id UUID REFERENCES public.lookup_types (id),
   bandwidth TEXT,
   vlan TEXT,
-  -- UPDATED: These now store arrays of fiber IDs
+  lc_id TEXT,
+  unique_id TEXT,
+  -- store arrays of fiber IDs
   working_fiber_in_ids UUID[],
   working_fiber_out_ids UUID[],
   protection_fiber_in_ids UUID[],

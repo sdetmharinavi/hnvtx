@@ -133,6 +133,16 @@ export const SystemConnectionsTableColumns = (
           </div>
         ),
       },
+      lc_id: {
+        title: "LC ID",
+        width: 100,
+        excelFormat: 'text',
+      },
+      unique_id: {
+        title: "Unique ID",
+        width: 120,
+        excelFormat: 'text',
+      },
       status: {
         title: "Status",
         sortable: true,

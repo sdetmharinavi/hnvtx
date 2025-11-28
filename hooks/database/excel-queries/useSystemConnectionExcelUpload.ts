@@ -139,12 +139,10 @@ export function useSystemConnectionExcelUpload(
           p_system_id: parentSystemId,
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
-          
-          // --- CRITICAL UPDATE FOR TRIGGER LOGIC ---
           p_customer_name: toUndefined(processedData.customer_name),
           p_system_working_interface: toUndefined(processedData.system_working_interface),
-          // -----------------------------------------
-
+          p_lc_id: toUndefined(processedData.lc_id),
+          p_unique_id: toUndefined(processedData.unique_id),
           p_sn_id: toUndefined(processedData.sn_id),
           p_en_id: toUndefined(processedData.en_id),
           p_sn_ip: processedData.sn_ip || undefined,

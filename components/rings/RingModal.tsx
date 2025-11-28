@@ -11,9 +11,9 @@ import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
-  FormTextarea,
 } from "@/components/common/form/FormControls";
 import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema } from "@/schemas/zod-schemas";
+import { DynamicStatusBuilder } from "@/components/common/form/DynamicStatusBuilder";
 
 interface RingModalProps {
   isOpen: boolean;
@@ -73,6 +73,7 @@ export function RingModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    
     if (editingRing) {
       reset({
         name: editingRing.name ?? "",
@@ -92,14 +93,15 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  // THE FIX: This function now simply calls the onSubmit prop passed from the page.
-  // All useTableInsert and useTableUpdate hooks have been removed from this component.
   const onValidSubmit = useCallback(
     (formData: RingsInsertSchema) => {
       onSubmit(formData);
     },
     [onSubmit]
   );
+
+  // Force a unique key for the builder to ensure it re-initializes its local state when the modal opens/closes or ring changes
+  const builderKey = isOpen ? (editingRing ? `edit-${editingRing.id}` : 'new') : 'closed';
 
   return (
     <Modal
@@ -143,14 +145,14 @@ export function RingModal({
           options={maintenanceAreaOptions}
         />
 
-        <FormTextarea
-          name='description'
-          label='Description'
+        <DynamicStatusBuilder
+          key={builderKey}
+          name="description"
+          label="Status & Description"
           control={control}
           error={errors.description}
-          disabled={isLoading}
-          placeholder='Optional description'
         />
+        
         <FormSwitch
           name='status'
           label='Status'
