@@ -180,7 +180,10 @@ export default function RingMapPage() {
       newDisabled.push(key);
     }
 
-    const newConfig = { ...ringDetails?.topology_config, disabled_segments: newDisabled };
+    const newConfig = { 
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}), 
+      disabled_segments: newDisabled 
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
   };
