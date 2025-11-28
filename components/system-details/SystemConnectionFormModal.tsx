@@ -12,7 +12,7 @@ import {
 } from "@/schemas/zod-schemas";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { Modal, Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/common/ui";
+import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
 import {
   FormCard,
   FormDateInput,
@@ -38,7 +38,6 @@ const formSchema = system_connectionsInsertSchema
   })
   .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape)
   .extend({
-    // Validation: Customer Name and Interface are now mandatory
     customer_name: z.string().min(1, "Customer / Link Name is required"),
     system_working_interface: z.string().min(1, "Working Interface is required"),
     media_type_id: z.string().uuid("Media Type is required"),
@@ -90,10 +89,14 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchSystemId = watch("system_id");
   const watchSnId = watch("sn_id");
   const watchEnId = watch("en_id");
+  const watchWorkingInterface = watch("system_working_interface");
+  const watchProtectionInterface = watch("system_protection_interface");
+  const watchSnInterface = watch("sn_interface");
+  const watchEnInterface = watch("en_interface");
 
   // --- Data Fetching ---
   
-  // 1. Systems List (THE FIX: Query the View, not the Table, to get node_name)
+  // 1. Systems List
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
     columns: "id, system_name, ip_address, node_name",
     limit: 5000,
@@ -112,62 +115,32 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   });
 
   // 3. Fetch Ports for Main System
-  const { data: mainSystemPorts } = useTableQuery(supabase, "ports_management", {
-    columns: "port, port_utilization",
+  // UPDATED: Fetch 'port_type_code' from the view
+  const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchSystemId || '' },
     limit: 1000,
-    // Only fetch if system ID is present
     enabled: !!watchSystemId,
   });
 
   // 4. Fetch Ports for Start Node (SN)
-  const { data: snPorts } = useTableQuery(supabase, "ports_management", {
-    columns: "port, port_utilization",
+  const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchSnId || '' },
     limit: 1000,
     enabled: !!watchSnId,
   });
 
   // 5. Fetch Ports for End Node (EN)
-  const { data: enPorts } = useTableQuery(supabase, "ports_management", {
-    columns: "port, port_utilization",
+  const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { system_id: watchEnId || '' },
     limit: 1000,
     enabled: !!watchEnId,
   });
 
-  // --- Options Processing ---
+  // --- Helper Functions ---
 
-  const systems = useMemo(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    () => (systemsResult.data as any[]) ?? [],
-    [systemsResult.data]
-  );
-
-  const systemOptions = useMemo(
-    () =>
-      systems
-        .filter((s) => s.id !== parentSystem.id) 
-        .map((s) => {
-          const loc = s.node_name ? ` @ ${s.node_name}` : "";
-          const ip = s.ip_address ? ` [${s.ip_address}]` : "";
-          const label = `${s.system_name}${loc}${ip}`;
-          return { value: s.id, label };
-        }),
-    [systems, parentSystem.id]
-  );
-
-  const mediaTypeOptions = useMemo(
-    () => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })),
-    [mediaTypes]
-  );
-  
-  const linkTypeOptions = useMemo(
-    () => linkTypes.data.map((t) => ({ value: t.id, label: t.name })),
-    [linkTypes]
-  );
-
-  // Helper to map ports to options
   const mapPortsToOptions = (
     portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
     currentValue?: string | null
@@ -177,18 +150,50 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       .map(p => ({
         value: p.port!,
         label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
-        // Optional: disable if in use, but allow if it's the current value (editing)
-        // disabled: p.port_utilization && p.port !== currentValue 
       }))
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
 
-    // If editing and the current value isn't in the list (legacy or manual entry), add it
     if (currentValue && !options.find(o => o.value === currentValue)) {
       options.unshift({ value: currentValue, label: `${currentValue} (Current)` });
     }
 
     return options;
   };
+
+  // Helper to get port type display: Prefer Code, fallback to Name
+  const getPortTypeDisplay = useCallback((portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
+    if (!portsList?.data || !portInterface) return "";
+    const port = portsList.data.find(p => p.port === portInterface);
+    if (!port) return "";
+    // Use Code if available, else Name
+    return port.port_type_code || port.port_type_name || "Unknown";
+  }, []);
+
+  // --- Options Processing ---
+
+  const systemOptions = useMemo(
+    () =>
+      (systemsResult.data || [])
+        .filter((s) => s.id !== parentSystem.id) 
+        .map((s) => {
+          const loc = s.node_name ? ` @ ${s.node_name}` : "";
+          const ip = s.ip_address ? ` [${s.ip_address}]` : "";
+          const label = `${s.system_name}${loc}${ip}`;
+          return { value: s.id!, label };
+        }),
+    [systemsResult.data, parentSystem.id]
+  );
+
+  const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
+  const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes]);
+
+  // --- Computed Values for Display ---
+  
+  const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
+  const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
+  
+  const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
+  const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
   // --- Reset Logic ---
   useEffect(() => {
@@ -197,8 +202,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       if (isEditMode && editingConnection) {
         reset({
           system_id: editingConnection.system_id ?? parentSystem.id ?? "",
-          
-          // General
           customer_name: editingConnection.customer_name ?? "",
           media_type_id: editingConnection.media_type_id ?? "",
           system_working_interface: editingConnection.system_working_interface ?? "",
@@ -206,22 +209,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           status: editingConnection.status ?? true,
           commissioned_on: editingConnection.commissioned_on ?? null,
           remark: editingConnection.remark ?? null,
-          
-          // Specs
           bandwidth: editingConnection.bandwidth ?? null,
           bandwidth_allocated: editingConnection.bandwidth_allocated ?? null,
           vlan: editingConnection.vlan ?? null,
           connected_link_type_id: editingConnection.connected_link_type_id ?? null,
-
-          // Connectivity
           sn_id: editingConnection.sn_id ?? null,
           en_id: editingConnection.en_id ?? null,
           sn_interface: editingConnection.sn_interface ?? null,
           en_interface: editingConnection.en_interface ?? null,
           sn_ip: (editingConnection.sn_ip as string) ?? null,
           en_ip: (editingConnection.en_ip as string) ?? null,
-
-          // SDH
           stm_no: editingConnection.sdh_stm_no ?? null,
           carrier: editingConnection.sdh_carrier ?? null,
           a_slot: editingConnection.sdh_a_slot ?? null,
@@ -241,13 +238,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
 
-  const onValidSubmit = useCallback(
-    (formData: SystemConnectionFormValues) => {
-      onSubmit(formData);
-    },
-    [onSubmit]
-  );
-
+  const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => onSubmit(formData), [onSubmit]);
   const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = (errors) => {
     console.error("Form Errors:", errors);
     toast.error("Please fill in all required fields (marked with *).");
@@ -301,27 +292,43 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   />
                 </div>
                 
-                <FormSearchableSelect
-                  name="system_working_interface"
-                  label="Working Port (Interface)"
-                  control={control}
-                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
-                  error={errors.system_working_interface}
-                  placeholder="Select Working Port"
-                  searchPlaceholder="Search ports..."
-                  required
-                />
+                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-2">
+                   <div className="col-span-2">
+                     <FormSearchableSelect
+                      name="system_working_interface"
+                      label="Working Port (Interface)"
+                      control={control}
+                      options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
+                      error={errors.system_working_interface}
+                      placeholder="Select Working Port"
+                      searchPlaceholder="Search ports..."
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label disabled className="mb-1">Port Type</Label>
+                    <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                  </div>
+                </div>
                 
-                <FormSearchableSelect
-                  name="system_protection_interface"
-                  label="Protection Port (Optional)"
-                  control={control}
-                  options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
-                  error={errors.system_protection_interface}
-                  placeholder="Select Protection Port"
-                  searchPlaceholder="Search ports..."
-                  clearable
-                />
+                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-2">
+                  <div className="col-span-2">
+                    <FormSearchableSelect
+                      name="system_protection_interface"
+                      label="Protection Port (Optional)"
+                      control={control}
+                      options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
+                      error={errors.system_protection_interface}
+                      placeholder="Select Protection Port"
+                      searchPlaceholder="Search ports..."
+                      clearable
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label disabled className="mb-1">Port Type</Label>
+                    <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                  </div>
+                </div>
 
                 <FormSearchableSelect
                   name="media_type_id"
@@ -394,6 +401,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
             {/* --- TAB 2: CONNECTIVITY --- */}
             <TabsContent value="connectivity" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Start Node Panel */}
                 <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b pb-2 dark:border-gray-600">Start Node (Side A)</h3>
                   <FormSearchableSelect
@@ -404,16 +412,23 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     error={errors.sn_id}
                   />
                   
-                  {/* Dynamically fetch ports based on sn_id */}
-                  <FormSearchableSelect
-                    name="sn_interface"
-                    label="Interface"
-                    control={control}
-                    options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
-                    error={errors.sn_interface}
-                    placeholder={watchSnId ? "Select Start Port" : "Select System First"}
-                    disabled={!watchSnId}
-                  />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <FormSearchableSelect
+                        name="sn_interface"
+                        label="Interface"
+                        control={control}
+                        options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
+                        error={errors.sn_interface}
+                        placeholder={watchSnId ? "Select Start Port" : "Select System First"}
+                        disabled={!watchSnId}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <Label disabled className="mb-1">Port Type</Label>
+                      <Input disabled value={snPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
+                    </div>
+                  </div>
 
                   <FormInput
                     name="sn_ip"
@@ -423,6 +438,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   />
                 </div>
 
+                {/* End Node Panel */}
                 <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b pb-2 dark:border-gray-600">End Node (Side B)</h3>
                   <FormSearchableSelect
@@ -433,16 +449,23 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     error={errors.en_id}
                   />
 
-                  {/* Dynamically fetch ports based on en_id */}
-                  <FormSearchableSelect
-                    name="en_interface"
-                    label="Interface"
-                    control={control}
-                    options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
-                    error={errors.en_interface}
-                    placeholder={watchEnId ? "Select End Port" : "Select System First"}
-                    disabled={!watchEnId}
-                  />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <FormSearchableSelect
+                        name="en_interface"
+                        label="Interface"
+                        control={control}
+                        options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
+                        error={errors.en_interface}
+                        placeholder={watchEnId ? "Select End Port" : "Select System First"}
+                        disabled={!watchEnId}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                       <Label disabled className="mb-1">Port Type</Label>
+                       <Input disabled value={enPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
+                    </div>
+                  </div>
 
                    <FormInput
                     name="en_ip"

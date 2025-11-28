@@ -96,6 +96,12 @@ export const SystemConnectionsTableColumns = (
         ),
       },
       system_working_interface:{
+        title: 'Working Interface',
+        sortable: true,
+        naturalSort: true
+      },
+      system_protection_interface:{
+        title: 'Protection Interface',
         sortable: true,
         naturalSort: true
       },
