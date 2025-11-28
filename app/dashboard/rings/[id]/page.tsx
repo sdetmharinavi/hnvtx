@@ -260,7 +260,7 @@ export default function RingMapPage() {
 
       {/* Topology Configuration Modal */}
       <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 z-50">
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Toggle the switches below to enable or disable specific connections between hubs.
           </p>
