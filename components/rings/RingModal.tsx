@@ -1,10 +1,10 @@
-// path: components/rings/RingModal.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { useForm } from "react-hook-form";
+// THE FIX: Import Resolver type
+import { useForm, SubmitHandler, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import {
@@ -41,7 +41,8 @@ export function RingModal({
     reset,
     control,
   } = useForm<RingsInsertSchema>({
-    resolver: zodResolver(ringsInsertSchema),
+    // THE FIX: Explicitly cast the resolver to resolve the type mismatch
+    resolver: zodResolver(ringsInsertSchema) as Resolver<RingsInsertSchema>,
     defaultValues: {
       name: "",
       description: null,
@@ -93,8 +94,8 @@ export function RingModal({
     }
   }, [isOpen, editingRing, reset]);
 
-  const onValidSubmit = useCallback(
-    (formData: RingsInsertSchema) => {
+  const onValidSubmit: SubmitHandler<RingsInsertSchema> = useCallback(
+    (formData) => {
       onSubmit(formData);
     },
     [onSubmit]
@@ -111,7 +112,8 @@ export function RingModal({
       visible={false}
       className='transparent bg-gray-700 rounded-2xl'>
       <FormCard
-        onSubmit={handleSubmit(onValidSubmit)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onSubmit={handleSubmit(onValidSubmit as any)}
         heightClass='min-h-calc(90vh - 200px)'
         title={isEdit ? "Edit Ring" : "Add Ring"}
         onCancel={onClose}
