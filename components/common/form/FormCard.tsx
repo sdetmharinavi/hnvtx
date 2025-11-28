@@ -27,7 +27,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   cancelText = "Cancel",
   children,
   footerContent,
-  widthClass = "max-w-3xl",
+  widthClass = "max-w-7xl",
   heightClass = "max-h-[90vh]",
   disableSubmit = false,
   standalone = false, // Default to false - no backdrop

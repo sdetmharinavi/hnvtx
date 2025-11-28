@@ -115,6 +115,7 @@ SELECT
   pm.port,
   pm.port_type_id,
   lt.name as port_type_name,
+  lt.code as port_type_code,
   pm.port_capacity,
   pm.sfp_serial_no,
   pm.port_utilization,

@@ -237,7 +237,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const renderFooter = () => {
     if (step === 1 && needsStep2) {
       return (
-        <div className='flex justify-end gap-2'>
+        <div className='flex justify-end gap-2 w-full'>
           <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
@@ -249,7 +249,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
     if (step === 2) {
       return (
-        <div className='flex justify-end gap-2'>
+        <div className='flex justify-end gap-2 w-full'>
           <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading}>
             Back
           </Button>
@@ -260,7 +260,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       );
     }
     return (
-      <div className='flex justify-end gap-2'>
+      <div className='flex justify-end gap-2 w-full'>
         <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading}>
           Cancel
         </Button>
@@ -403,8 +403,6 @@ export const SystemModal: FC<SystemModalProps> = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={modalTitle}
-      size='full'
-      visible={false}
       className='h-0 w-0 bg-transparent'>
       <FormCard
         standalone
@@ -412,6 +410,8 @@ export const SystemModal: FC<SystemModalProps> = ({
         onCancel={handleClose}
         isLoading={isLoading}
         title={modalTitle}
+        widthClass="w-full"
+        heightClass="h-full"
         footerContent={renderFooter()}>
         <AnimatePresence mode='wait'>{step === 1 ? step1Fields : step2Fields}</AnimatePresence>
       </FormCard>

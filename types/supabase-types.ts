@@ -3031,53 +3031,6 @@ export type Database = {
           },
         ]
       }
-      user_activity_logs: {
-        Row: {
-          action_type: string
-          created_at: string | null
-          details: string | null
-          id: number
-          new_data: Json | null
-          old_data: Json | null
-          record_id: string | null
-          table_name: string | null
-          user_id: string | null
-          user_role: string | null
-        }
-        Insert: {
-          action_type: string
-          created_at?: string | null
-          details?: string | null
-          id?: number
-          new_data?: Json | null
-          old_data?: Json | null
-          record_id?: string | null
-          table_name?: string | null
-          user_id?: string | null
-          user_role?: string | null
-        }
-        Update: {
-          action_type?: string
-          created_at?: string | null
-          details?: string | null
-          id?: number
-          new_data?: Json | null
-          old_data?: Json | null
-          record_id?: string | null
-          table_name?: string | null
-          user_id?: string | null
-          user_role?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_activity_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_profiles: {
         Row: {
           address: Json | null
@@ -3136,32 +3089,6 @@ export type Database = {
       }
     }
     Views: {
-      v_audit_logs: {
-        Row: {
-          action_type: string | null
-          created_at: string | null
-          details: string | null
-          id: number | null
-          new_data: Json | null
-          old_data: Json | null
-          performed_by_avatar: string | null
-          performed_by_email: string | null
-          performed_by_name: string | null
-          record_id: string | null
-          table_name: string | null
-          user_id: string | null
-          user_role: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_activity_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_cable_segments_at_jc: {
         Row: {
           end_node_id: string | null
@@ -4106,6 +4033,7 @@ export type Database = {
           port: string | null
           port_admin_status: boolean | null
           port_capacity: string | null
+          port_type_code: string | null
           port_type_id: string | null
           port_type_name: string | null
           port_utilization: boolean | null
@@ -5001,17 +4929,6 @@ export type Database = {
         }[]
       }
       is_super_admin: { Args: never; Returns: boolean }
-      log_user_activity: {
-        Args: {
-          p_action_type: string
-          p_details?: string
-          p_new_data?: Json
-          p_old_data?: Json
-          p_record_id?: string
-          p_table_name?: string
-        }
-        Returns: undefined
-      }
       manage_splice: {
         Args: {
           p_action: string
