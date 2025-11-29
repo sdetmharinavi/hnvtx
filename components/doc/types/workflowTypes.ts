@@ -1,7 +1,5 @@
 // path: components/doc/types/workflowTypes.ts
 
-// THE FIX: The WorkflowIcon type is now correctly and simply defined as a string.
-// The unused LucideIcon import has been removed.
 export type WorkflowIcon = string;
 
 export interface WorkflowSection {
@@ -20,7 +18,7 @@ export interface WorkflowSection {
 export interface Workflow {
   title: string;
   userSteps: string[];
-  uiSteps: string[];
+  uiSteps?: string[];
   techSteps: string[];
 }
 
@@ -32,26 +30,11 @@ export interface WorkflowSectionProps {
   workflow: Workflow;
   index: number;
   colors: {
-    border: {
-      light: string;
-      dark: string;
-    };
-    glow: {
-      light: string;
-      dark: string;
-    };
-    badge: {
-      light: string;
-      dark: string;
-    };
-    icon: {
-      light: string;
-      dark: string;
-    };
-    gradient: {
-      light: string;
-      dark: string;
-    };
+    border: string;
+    glow: string;
+    badge: string;
+    icon: string;
+    gradient: string;
     accent: string;
   };
   isLast: boolean;

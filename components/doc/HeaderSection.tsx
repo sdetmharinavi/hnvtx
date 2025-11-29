@@ -4,11 +4,15 @@
 import { Workflow, Sparkles, BookOpen, Zap } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useMemo } from "react";
+import { useUser } from "@/providers/UserProvider";
 
 const PARTICLE_COUNT = 8;
 
 export default function HeaderSection() {
   const prefersReducedMotion = useReducedMotion();
+  const { isSuperAdmin } = useUser();
+  console.log("isSuperAdmin", isSuperAdmin);
+  
 
   const particles = useMemo(
     () =>
@@ -61,12 +65,72 @@ export default function HeaderSection() {
       )}
 
       {/* Background gradient glow - using simpler opacity */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.2 }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl pointer-events-none"
-      />
+      {/* Enhanced multi-layer background gradient glow */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Primary violet glow */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ 
+            opacity: [0.3, 0.5, 0.3],
+            scale: [0.8, 1.2, 0.8],
+          }}
+          transition={{ 
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-600/30 rounded-full blur-3xl"
+        />
+        
+        {/* Secondary cyan glow */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ 
+            opacity: [0.2, 0.4, 0.2],
+            scale: [1, 0.8, 1],
+            x: [-50, 50, -50],
+          }}
+          transition={{ 
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-cyan-500/25 rounded-full blur-3xl"
+        />
+        
+        {/* Tertiary pink accent glow */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ 
+            opacity: [0.15, 0.3, 0.15],
+            scale: [0.9, 1.1, 0.9],
+            y: [-30, 30, -30],
+          }}
+          transition={{ 
+            duration: 12,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-pink-500/20 rounded-full blur-3xl"
+        />
+        
+        {/* Center bright core */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ 
+            opacity: [0.4, 0.6, 0.4],
+            scale: [1, 1.05, 1],
+          }}
+          transition={{ 
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/10 rounded-full blur-2xl"
+        />
+      </div>
 
       {/* Badge */}
       <motion.div
@@ -99,7 +163,7 @@ export default function HeaderSection() {
           </motion.div>
 
           <span className="font-medium text-gray-200 text-sm group-hover:text-white transition-colors">
-            Technical Documentation
+            {isSuperAdmin ? "Technical" : "User"} Documentation
           </span>
 
           <motion.div
@@ -140,7 +204,7 @@ export default function HeaderSection() {
         className="relative z-10"
       >
         <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-          Comprehensive step-by-step user and technical workflows for your application
+          Comprehensive step-by-step {isSuperAdmin ? "technical" : "user"} workflows for your application
         </p>
 
         {/* Feature highlights */}
