@@ -12,22 +12,30 @@ interface FeatureCardProps {
   feature: FeatureItem;
 }
 
+// THE FIX: Added solid background colors (e.g., bg-violet-600) before gradients for fallback support.
 const colorStyles = {
-  violet: "bg-violet-500 from-violet-500 to-purple-600 text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-700",
-  blue: "bg-indigo-600 from-blue-500 to-indigo-600 text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700",
-  teal: "bg-emerald-600 from-teal-500 to-emerald-600 text-teal-600 bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-700",
-  cyan: "bg-blue-600 from-cyan-500 to-blue-600 text-cyan-600 bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-700",
-  orange: "bg-red-600 from-orange-500 to-red-600 text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700",
-  yellow: "bg-amber-600 from-yellow-500 to-amber-600 text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
-  rose: "bg-pink-600 from-rose-500 to-pink-600 text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700",
-  green: "bg-emerald-600 from-green-500 to-emerald-600 text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
+  violet: "bg-violet-600 from-violet-500 to-purple-600 text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-700",
+  blue: "bg-blue-600 from-blue-500 to-indigo-600 text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700",
+  teal: "bg-teal-600 from-teal-500 to-emerald-600 text-teal-600 bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-700",
+  cyan: "bg-cyan-600 from-cyan-500 to-blue-600 text-cyan-600 bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-700",
+  orange: "bg-orange-600 from-orange-500 to-red-600 text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700",
+  yellow: "bg-yellow-500 from-yellow-500 to-amber-600 text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
+  rose: "bg-rose-600 from-rose-500 to-pink-600 text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700",
+  green: "bg-green-600 from-green-500 to-emerald-600 text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
 };
 
 export default function FeatureCard({ feature }: FeatureCardProps) {
-  // Dynamic Icon
+  // Dynamic Icon Mapping with Fallback
   const Icon = (LucideIcons[feature.icon as keyof typeof LucideIcons] || LucideIcons.Star) as LucideIcons.LucideIcon;
-  const theme = colorStyles[feature.color] || colorStyles.blue;
-  const gradient = theme.split(" ").slice(0, 2).join(" ");
+  
+  // Extract theme styles
+  const fullStyle = colorStyles[feature.color] || colorStyles.blue;
+  
+  // Extract just the header background classes (first 3 classes: solid bg + gradient from/to)
+  const headerBgClasses = fullStyle.split(" ").slice(0, 3).join(" "); 
+  
+  // Extract border color for the card accent
+  const borderColorVar = `var(--color-${feature.color}-500)`;
 
   return (
     <motion.div 
@@ -53,8 +61,8 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
           </Link>
       </div>
 
-      {/* Hero Header */}
-      <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-8 md:p-12 shadow-2xl`}>
+      {/* Hero Header with Solid Fallback + Gradient */}
+      <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${headerBgClasses} p-8 md:p-12 shadow-2xl`}>
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
           <div className="p-4 bg-white/20 backdrop-blur-md rounded-2xl shadow-inner border border-white/30">
             <Icon className="w-12 h-12 text-white" />
@@ -75,7 +83,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
         
         {/* Description & Benefits */}
         <div className="lg:col-span-2 space-y-8">
-          <Card className="p-8 border-t-4 border-t-current" style={{ borderColor: `var(--color-${feature.color}-500)` }}>
+          <Card className="p-8 border-t-4" style={{ borderColor: borderColorVar }}>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Overview</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
               {feature.description}
