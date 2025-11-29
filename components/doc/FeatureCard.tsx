@@ -13,14 +13,14 @@ interface FeatureCardProps {
 }
 
 const colorStyles = {
-  violet: "from-violet-500 to-purple-600 text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-700",
-  blue: "from-blue-500 to-indigo-600 text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700",
-  teal: "from-teal-500 to-emerald-600 text-teal-600 bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-700",
-  cyan: "from-cyan-500 to-blue-600 text-cyan-600 bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-700",
-  orange: "from-orange-500 to-red-600 text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700",
-  yellow: "from-yellow-500 to-amber-600 text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
-  rose: "from-rose-500 to-pink-600 text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700",
-  green: "from-green-500 to-emerald-600 text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
+  violet: "bg-violet-500 from-violet-500 to-purple-600 text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-700",
+  blue: "bg-indigo-600 from-blue-500 to-indigo-600 text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700",
+  teal: "bg-emerald-600 from-teal-500 to-emerald-600 text-teal-600 bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-700",
+  cyan: "bg-blue-600 from-cyan-500 to-blue-600 text-cyan-600 bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-700",
+  orange: "bg-red-600 from-orange-500 to-red-600 text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700",
+  yellow: "bg-amber-600 from-yellow-500 to-amber-600 text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
+  rose: "bg-pink-600 from-rose-500 to-pink-600 text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700",
+  green: "bg-emerald-600 from-green-500 to-emerald-600 text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
 };
 
 export default function FeatureCard({ feature }: FeatureCardProps) {
