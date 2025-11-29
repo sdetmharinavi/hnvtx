@@ -1,0 +1,105 @@
+// path: components/doc/data/featuresData.ts
+import { FeatureItem } from "../types/featureTypes";
+
+export const featuresData: FeatureItem[] = [
+  {
+    id: "feat-offline-architecture",
+    title: "Offline-First Resilience",
+    subtitle: "Zero downtime, anywhere access",
+    icon: "WifiOff",
+    color: "rose",
+    description: "Never let a poor internet connection stop your maintenance work. Our system ensures you can read, search, and even modify critical network data in the remotest field locations without a signal.",
+    benefits: [
+      "Works completely without internet access.",
+      "Instant page loads using local caching.",
+      "Automatic background synchronization when online.",
+      "Conflict-free data queuing ensures no data is lost.",
+    ],
+    technicalHighlights: [
+      "IndexedDB (Dexie.js) local storage",
+      "Optimistic UI updates",
+      "Background Mutation Queue replay",
+      "Stale-While-Revalidate caching strategy",
+    ],
+  },
+  {
+    id: "feat-network-topology",
+    title: "Interactive Network Topology",
+    subtitle: "Visualize the invisible",
+    icon: "Map",
+    color: "blue",
+    description: "Transform complex spreadsheet data into interactive, visual maps. Understand your network's physical layout at a glance, from high-level ring structures down to individual cable segments.",
+    benefits: [
+      "Toggle between Geographic Maps and Schematic Logical diagrams.",
+      "Visualize Hubs, Spokes, and Spur links instantly.",
+      "Identify breaks or open loops in ring structures.",
+      "Real-time status indicators (Active/Inactive) on the map.",
+    ],
+    technicalHighlights: [
+      "React Leaflet & OpenStreetMap integration",
+      "Auto-calculated mesh layouts",
+      "GeoJSON rendering",
+      "SVG-based dynamic node icons",
+    ],
+  },
+  {
+    id: "feat-fiber-intelligence",
+    title: "Advanced Fiber Intelligence",
+    subtitle: "Trace every strand of light",
+    icon: "GitCommit",
+    color: "cyan",
+    description: "Manage the lifecycle of your optical fiber network with surgical precision. From defining cable capacity to splicing individual strands and tracing end-to-end logical paths.",
+    benefits: [
+      "Visual Splicing Matrix: Connect fibers with a click.",
+      "End-to-End Tracing: See the full path from Source to Destination.",
+      "Automated Loss Calculation based on distance and splices.",
+      "Auto-provisioning for straight-through joints.",
+    ],
+    technicalHighlights: [
+      "Recursive SQL CTEs for path tracing",
+      "Dynamic segmentation logic",
+      "Graph-based data modeling",
+      "Atomic provisioning transactions",
+    ],
+  },
+  {
+    id: "feat-smart-inventory",
+    title: "Smart Inventory & QR",
+    subtitle: "Track assets with physical links",
+    icon: "QrCode",
+    color: "teal",
+    description: "Bridge the gap between digital records and physical equipment. Generate and print QR codes for every asset, making field identification instant and error-free.",
+    benefits: [
+      "Instant QR Code generation for any asset.",
+      "Scan to view details immediately.",
+      "Track costs, vendors, and purchase dates.",
+      "Link physical assets to logical nodes and locations.",
+    ],
+    technicalHighlights: [
+      "Dynamic Canvas QR generation",
+      "Print-optimized CSS layouts",
+      "Relational asset mapping",
+      "Fast search indexing",
+    ],
+  },
+  {
+    id: "feat-role-security",
+    title: "Military-Grade Security",
+    subtitle: "RBAC & Comprehensive Auditing",
+    icon: "ShieldCheck",
+    color: "violet",
+    description: "Keep your critical infrastructure data secure. Granular permissions ensure users only access what they need, while every action is logged for total accountability.",
+    benefits: [
+      "7+ Distinct User Roles (Admin, Viewer, Asset Manager, etc.).",
+      "Complete Audit Trail: Who changed what, and when.",
+      "Diff Viewer: See exactly what data changed (Before vs. After).",
+      "Secure Row-Level Security (RLS) enforcement.",
+    ],
+    technicalHighlights: [
+      "PostgreSQL RLS Policies",
+      "Supabase Auth Integration",
+      "JSONB Diff generation",
+      "Secure API Middleware",
+    ],
+  },
+];
