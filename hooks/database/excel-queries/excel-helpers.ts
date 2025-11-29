@@ -153,6 +153,11 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
   }
 };
 
+export const removeSubnet = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  return String(value).split('/')[0];
+};
+
 export const getDefaultStyles = (): ExcelStyles => ({
   headerFont: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
   headerFill: createFillPattern("FF2563EB"),

@@ -2,6 +2,7 @@ import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
 import type { UploadConfig } from "@/stores/useUploadConfigStore";
 import { PublicTableName, PublicTableOrViewName, Row, isTableName } from "@/hooks/database";
+import { removeSubnet } from "@/hooks/database/excel-queries/excel-helpers";
 
 export const UPLOAD_TABLE_META: UploadMetaMap = {
   employees: {
@@ -104,6 +105,7 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   systems: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
+    ip_address: { transform: removeSubnet },
   },
   ports_management: {
     port_utilization: { title: "Utilized", transform: toPgBoolean },
@@ -114,6 +116,13 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   v_system_connections_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
+    sn_ip: { transform: removeSubnet },
+    en_ip: { transform: removeSubnet },
+  },
+  v_systems_complete: {
+    commissioned_on: { transform: toPgDate, excelFormat: "date" },
+    status: { transform: toPgBoolean },
+    ip_address: { transform: removeSubnet },
   },
   diary_notes: {
     note_date: { transform: toPgDate, excelFormat: "date" },
