@@ -85,7 +85,7 @@ export const featuresData: FeatureItem[] = [
   {
     id: "feat-role-security",
     title: "Military-Grade Security",
-    subtitle: "RBAC & Comprehensive Auditing",
+    subtitle: "RBAC(Role-Based Access Control) & Comprehensive Auditing",
     icon: "ShieldCheck",
     color: "violet",
     description: "Keep your critical infrastructure data secure. Granular permissions ensure users only access what they need, while every action is logged for total accountability.",
