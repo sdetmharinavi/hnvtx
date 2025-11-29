@@ -25,11 +25,14 @@ const iconMap = {
   Route: LucideIcons.Route,
   GitBranch: LucideIcons.GitBranch,
   GitCommit: LucideIcons.GitCommit,
-  WifiOff: LucideIcons.WifiOff, // Added for features
-  Map: LucideIcons.Map,         // Added for features
-  QrCode: LucideIcons.QrCode,   // Added for features
+  WifiOff: LucideIcons.WifiOff, 
+  Map: LucideIcons.Map,         
+  QrCode: LucideIcons.QrCode,   
   Database: LucideIcons.Database,
   MapPin: LucideIcons.MapPin,
+  FileSpreadsheet: LucideIcons.FileSpreadsheet,
+  Globe: LucideIcons.Globe,
+  FileClock: LucideIcons.FileClock,
 } as const;
 
 interface DocSidebarProps {
