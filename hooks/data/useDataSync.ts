@@ -19,7 +19,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'nodes',
   'systems',
   'ring_based_systems',
-  'ports_management', // Added
+  'ports_management',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -33,7 +33,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_user_profiles_extended',
   'v_ofc_connections_complete',
   'v_system_connections_complete',
-  'v_ports_management_complete', // Added
+  'v_ports_management_complete',
 ];
 
 export async function syncEntity(
@@ -45,13 +45,12 @@ export async function syncEntity(
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
     const table = getTable(entityName);
-    
-    // Clear the local table first (Full Refresh Strategy)
-    await table.clear();
-
     let offset = 0;
     let hasMore = true;
-    let totalSynced = 0;
+    
+    // CHANGED: Fetch ALL data into memory first to prevent partial state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allFetchedData: any[] = [];
 
     while (hasMore) {
         // Fetch data in chunks using the RPC
@@ -67,14 +66,9 @@ export async function syncEntity(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const responseData = (rpcResponse as { data: any[] })?.data || [];
         const validData = responseData.filter(item => item.id != null);
-
+        
         if (validData.length > 0) {
-            // Bulk add to Dexie
-            await db.transaction('rw', table, async () => {
-                await table.bulkPut(validData);
-            });
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            totalSynced += validData.length;
+            allFetchedData.push(...validData);
         }
 
         // Check if we reached the end
@@ -84,6 +78,15 @@ export async function syncEntity(
             offset += BATCH_SIZE;
         }
     }
+
+    // CHANGED: Safe transactional update
+    // Only clear and put if we successfully fetched everything
+    await db.transaction('rw', table, async () => {
+        await table.clear();
+        if (allFetchedData.length > 0) {
+            await table.bulkPut(allFetchedData);
+        }
+    });
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 

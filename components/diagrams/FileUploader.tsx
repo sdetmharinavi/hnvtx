@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThemeStore } from '@/stores/themeStore';
 
@@ -40,11 +40,23 @@ export default function FileUploader() {
     setFolderId,
     setNewFolderName,
     handleCreateFolder,
+    handleDeleteFolder, // Changed: Destructure delete handler
+    isDeletingFolder,   // Changed: Destructure delete state
     isLoading: isLoadingFolders,
   } = useFolders({
     onError: (err) => setError(err),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['files'] });
+        // We also want to show a success toast specifically for folder actions if handled here
+        // But useFolders handles specific success callbacks generally
+    },
   });
+  
+  // Helper to wrap delete with specific success message if needed
+  const onDeleteFolderWrapper = (id: string) => {
+      handleDeleteFolder(id);
+      // The hook handles the toast on success/error, or we can chain here if useMutation promise was returned
+  };
 
   const {
     uppyRef,
@@ -54,7 +66,6 @@ export default function FileUploader() {
     handleStartUpload,
     toggleCamera,
     facingMode,
-    // isCameraActive, // Not used in new design
     cameraError,
   } = useUppyUploader({
     folderId: folderId || null,
@@ -112,6 +123,8 @@ export default function FileUploader() {
               folders={folders}
               folderId={folderId}
               setFolderId={setFolderId}
+              onDeleteFolder={onDeleteFolderWrapper} // Passed down
+              isDeleting={isDeletingFolder}          // Passed down
             />
           </div>
 
@@ -130,7 +143,7 @@ export default function FileUploader() {
                   uppyRef={uppyRef}
                   facingMode={facingMode}
                   toggleCamera={toggleCamera}
-                  theme={uppyTheme} // Pass 'light', 'dark', or 'auto'
+                  theme={uppyTheme}
                 />
               ) : (
                 <SimpleUpload

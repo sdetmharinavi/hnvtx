@@ -5,9 +5,8 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
-import { EnhancedUploadResult, generateUUID, logRowProcessing, validateValue, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, generateUUID, validateValue, ValidationError } from './excel-helpers';
 import { Ports_managementInsertSchema } from '@/schemas/zod-schemas';
-import { toPgBoolean } from '@/config/helper-functions';
 
 export interface PortsUploadOptions {
   file: File;
@@ -84,7 +83,7 @@ export function usePortsExcelUpload(
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
-        const excelRowNumber = i + 2;
+        // const excelRowNumber = i + 2;
         const originalData: Record<string, unknown> = {};
         excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
 

@@ -1,9 +1,10 @@
-// hooks/useFolders.ts
+// components/diagrams/hooks/useFolders.ts
 "use client";
 
 import { useState, useCallback } from 'react';
 import { createClient } from "@/utils/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDeleteFolder } from '@/hooks/database/file-queries'; // Import the new hook
 
 interface Folder {
   id: string;
@@ -19,8 +20,10 @@ interface UseFoldersReturn {
   newFolderName: string;
   setNewFolderName: (name: string) => void;
   handleCreateFolder: () => void;
+  handleDeleteFolder: (id: string) => void; // Added
   refreshFolders: () => Promise<void>;
   isCreatingFolder: boolean;
+  isDeletingFolder: boolean; // Added
   isLoading: boolean;
 }
 
@@ -47,8 +50,8 @@ export function useFolders({
 
       const { data, error } = await supabase
         .from("folders")
-        .select("*");
-        // .eq("user_id", user.id);
+        .select("*")
+        .order('name');
 
       if (error) {
         console.error("Fetch folders error:", error);
@@ -90,11 +93,29 @@ export function useFolders({
     },
   });
 
+  // Added Delete Folder Mutation Wrapper
+  const { mutate: deleteFolder, isPending: isDeleting } = useDeleteFolder();
+
   const handleCreateFolder = useCallback(() => {
     if (newFolderName.trim()) {
       createFolder(newFolderName);
     }
   }, [createFolder, newFolderName]);
+
+  const handleDeleteFolder = useCallback((idToDelete: string) => {
+    deleteFolder(idToDelete, {
+        onSuccess: () => {
+            onSuccess?.();
+            // If the deleted folder was selected, deselect it
+            if (folderId === idToDelete) {
+                setFolderId(null);
+            }
+        },
+        onError: (error) => {
+            onError?.(error.message);
+        }
+    });
+  }, [deleteFolder, folderId, onSuccess, onError]);
 
   const refreshFolders = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['folders'] });
@@ -107,8 +128,10 @@ export function useFolders({
     newFolderName,
     setNewFolderName,
     handleCreateFolder,
+    handleDeleteFolder, // Return handler
     refreshFolders,
     isCreatingFolder: isCreating,
+    isDeletingFolder: isDeleting, // Return state
     isLoading,
   };
 }

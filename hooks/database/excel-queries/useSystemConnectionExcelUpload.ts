@@ -1,5 +1,4 @@
 // hooks/database/excel-queries/useSystemConnectionExcelUpload.ts
-import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -25,7 +24,10 @@ export interface SystemConnectionUploadOptions {
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 // ... (parseExcelFile function remains the same) ...
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
+const parseExcelFile = async (file: File): Promise<unknown[][]> => {
+  // DYNAMIC IMPORT HERE
+  const XLSX = await import('xlsx');
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
