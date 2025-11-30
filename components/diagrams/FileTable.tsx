@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Eye, Download, Trash2, Search, Grid, List, X } from "lucide-react";
+import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw, FileSpreadsheet, Folder } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
-import "../../app/customuppy.css"; // Custom styles for Uppy
+import "../../app/customuppy.css"; 
 import Image from "next/image";
+import { createClient } from "@/utils/supabase/client";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { toast } from "sonner";
+import { formatDate } from "@/utils/formatters";
+import { buildColumnConfig } from "@/constants/table-column-keys";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import { Row, TableOrViewName } from "@/hooks/database";
+import { Button } from "@/components/common/ui";
 
-// Define file type for better type safety
 interface FileType {
   id: string;
   file_name: string;
@@ -24,20 +31,54 @@ interface FileTableProps {
   isLoading?: boolean;
 }
 
-export function FileTable({ folders, onFileDelete }: FileTableProps) {
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
+  const supabase = createClient();
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(folderId || null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
-  // Use React Query to fetch files
+  useEffect(() => {
+    if (folderId !== undefined) setSelectedFolder(folderId);
+  }, [folderId]);
+
   const { data: files = [], isLoading, refetch } = useFiles(selectedFolder || undefined);
-  const loading = isLoading; // Use loading state from React Query
+  const loading = isLoading;
   const { mutate: deleteFile } = useDeleteFile();
 
-  // Filter folders based on folder search term and sort alphabetically in ascending order
+  // Configure Excel Download for Files
+  const { mutate: exportFiles, isPending: isExportingFiles } = useTableExcelDownload(supabase, "files");
+  
+  // ADDED: Configure Excel Download for Folders
+  const { mutate: exportFolders, isPending: isExportingFolders } = useTableExcelDownload(supabase, "folders");
+
+  const handleExportFiles = () => {
+    const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name || "all_files";
+    const fileName = `diagrams_${selectedFolderName}_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+    const columns = buildColumnConfig("files") as Column<Row<TableOrViewName>>[];
+
+    exportFiles({
+      fileName,
+      sheetName: "Diagrams",
+      columns,
+      filters: selectedFolder ? { folder_id: selectedFolder } : {},
+    });
+  };
+
+  // ADDED: Export Folders Handler
+  const handleExportFolders = () => {
+    const fileName = `folders_structure_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+    const columns = buildColumnConfig("folders") as Column<Row<TableOrViewName>>[];
+    
+    exportFolders({
+      fileName,
+      sheetName: "Folders",
+      columns,
+    });
+  };
+
   const filteredFolders = useMemo(() => 
     folders
       .filter(folder =>
@@ -47,7 +88,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     [folders, folderSearchTerm]
   );
 
-  // Reset selected folder when it's not in filtered results
   useEffect(() => {
     if (selectedFolder && folderSearchTerm) {
       const isFolderVisible = filteredFolders.some(folder => folder.id === selectedFolder);
@@ -56,9 +96,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
       }
     }
   }, [selectedFolder, folderSearchTerm, filteredFolders]);
-
-
-  // (removed unused processedFiles)
 
   const handleView = (file: FileType) => {
     if (file.file_type === "application/pdf") {
@@ -79,12 +116,13 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
       { id: file.id, folderId: selectedFolder },
       {
         onSuccess: () => {
+          toast.success("File deleted successfully");
           onFileDelete?.();
           refetch();
         },
         onError: (error) => {
           console.error("Delete error:", error);
-          alert("Failed to delete file");
+          toast.error("Failed to delete file");
         },
         onSettled: () => {
           setDeletingFile(null);
@@ -111,7 +149,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     return "📎";
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDisplayDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -121,9 +159,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     });
   };
 
-  // (removed unused truncateFolderName)
-
-  // Clear search functions
   const clearFolderSearch = useCallback(() => {
     setFolderSearchTerm("");
   }, []);
@@ -132,7 +167,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     setFileSearchTerm("");
   }, []);
 
-  // Filter and sort files
   const filteredAndSortedFiles = useMemo(() => {
     return (files as FileType[])
       .filter((file) => {
@@ -141,11 +175,9 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         return matchesSearch && matchesType;
       })
       .sort((a, b) => {
-        // Default: sort by date desc
         const aDate = new Date(a.uploaded_at || 0).getTime();
         const bDate = new Date(b.uploaded_at || 0).getTime();
-        const comparison = aDate - bDate;
-        return -comparison;
+        return bDate - aDate;
       });
   }, [files, fileSearchTerm, fileTypeFilter]);
 
@@ -159,24 +191,52 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
 
   return (
     <div className="mt-8 space-y-6">
-      <h2
-        className={`text-xl font-semibold dark:text-white text-black`}
-      >
-        UPLOADED DIAGRAMS
-      </h2>
-      {/* Files Display */}
+      <div className="flex items-center justify-between">
+        <h2 className={`text-xl font-semibold dark:text-white text-black`}>
+          UPLOADED DIAGRAMS
+        </h2>
+        {/* ADDED: Export Folders Button */}
+        <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportFolders}
+            disabled={isExportingFolders}
+            leftIcon={<Folder className="w-4 h-4" />}
+        >
+            {isExportingFolders ? "Exporting..." : "Export Folders"}
+        </Button>
+      </div>
+      
       {selectedFolder && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className={`text-lg font-medium dark:text-white text-black`}>
               Files ({filteredAndSortedFiles.length})
             </h3>
-            {loading && (
-              <div className="text-sm text-gray-500">Loading files...</div>
-            )}
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetch()} 
+                disabled={loading}
+                leftIcon={<RefreshCw className={loading ? "animate-spin" : ""} />}
+              >
+                Refresh
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportFiles}
+                disabled={isExportingFiles || loading || filteredAndSortedFiles.length === 0}
+                leftIcon={<FileSpreadsheet />}
+              >
+                {isExportingFiles ? "Exporting..." : "Export Files"}
+              </Button>
+            </div>
           </div>
 
-          {/* File Search */}
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -209,7 +269,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                     key={file.id}
                     className={`group relative overflow-hidden rounded-lg border p-3 transition-all hover:shadow-lg dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50`}
                   >
-                    {/* File Preview */}
                     <div className="aspect-square mb-3 overflow-hidden rounded">
                       {file.file_type.includes("image") ? (
                         <Image
@@ -231,7 +290,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                       )}
                     </div>
 
-                    {/* File Info */}
                     <div className="space-y-1">
                       <p
                         className={`truncate text-sm font-medium dark:text-white text-black`}
@@ -240,11 +298,10 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                         {file.file_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(file.uploaded_at)}
+                        {formatDisplayDate(file.uploaded_at)}
                       </p>
                     </div>
 
-                    {/* Action buttons */}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         onClick={() => handleView(file)}
@@ -278,42 +335,42 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                 ))}
               </div>
             ) : (
-              <div className="overflow-hidden rounded-lg border">
-                <div className={`dark:bg-gray-700 bg-gray-50 px-4 py-2 border-b`}>
-                  <div className="grid grid-cols-12 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className={`dark:bg-gray-700 bg-gray-50 px-4 py-2 border-b border-gray-200 dark:border-gray-600`}>
+                  <div className="grid grid-cols-12 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     <div className="col-span-5">Name</div>
                     <div className="col-span-2">Type</div>
                     <div className="col-span-2">Date</div>
-                    <div className="col-span-1">Actions</div>
+                    <div className="col-span-3 text-right">Actions</div>
                   </div>
                 </div>
                 <div className={`divide-y dark:divide-gray-600 divide-gray-200`}>
                   {filteredAndSortedFiles.map((file) => (
                     <div
                       key={file.id}
-                      className={`group px-4 py-3 transition-colors hover:bg-gray-50`}
+                      className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50`}
                     >
                       <div className="grid grid-cols-12 gap-4 items-center">
                         <div className="col-span-5 flex items-center gap-3">
                           <span className="text-lg">{getFileIcon(file.file_type)}</span>
                           <span
-                            className={`truncate text-sm dark:text-white text-black`}
+                            className={`truncate text-sm dark:text-white text-black font-medium`}
                             title={file.file_name}
                           >
                             {file.file_name}
                           </span>
                         </div>
-                        <div className="col-span-2 text-xs text-gray-500 uppercase">
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400 uppercase">
                           {file.file_type.split("/")[1] || "Unknown"}
                         </div>
-                        <div className="col-span-2 text-xs text-gray-500">
-                          {formatDate(file.uploaded_at)}
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">
+                          {formatDisplayDate(file.uploaded_at)}
                         </div>
-                        <div className="col-span-1 flex gap-1">
+                        <div className="col-span-3 flex gap-2 justify-end">
                           <button
                             onClick={() => handleView(file)}
                             title="View"
-                            className={`p-1 text-gray-400 hover:text-blue-500 transition-colors`}
+                            className={`p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors`}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -321,7 +378,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                             href={getDownloadUrl(file)}
                             download={file.file_name}
                             title="Download"
-                            className={`p-1 text-gray-400 hover:text-green-500 transition-colors`}
+                            className={`p-1.5 text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors`}
                           >
                             <Download className="h-4 w-4" />
                           </a>
@@ -329,7 +386,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                             onClick={() => handleDelete(file)}
                             disabled={deletingFile === file.id}
                             title="Delete"
-                            className={`p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50`}
+                            className={`p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50`}
                           >
                             {deletingFile === file.id ? (
                               <div className="h-4 w-4 animate-spin rounded-full border border-gray-400 border-t-transparent"></div>
@@ -345,7 +402,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
               </div>
             )
           ) : (
-            <div className={`text-center py-12 dark:text-gray-400 text-gray-500`}>
+            <div className={`text-center py-12 dark:text-gray-400 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg`}>
               <div className="text-4xl mb-4">📭</div>
               <p className="text-lg font-medium">No files found</p>
               <p className="text-sm">
@@ -357,9 +414,9 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           )}
         </div>
       )}
-      {/* Search and Filter Controls */}
+
+      {/* Search Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Folder Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -380,8 +437,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           )}
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex rounded border overflow-hidden">
+        <div className="flex rounded border overflow-hidden dark:border-gray-600">
           <button
             onClick={(e) => { e.stopPropagation(); setViewMode("grid"); }}
             className={`flex-1 px-3 py-2 text-sm transition-colors ${
@@ -405,7 +461,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         </div>
       </div>
 
-      {/* File Type Filter */}
       {files.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           <button
@@ -420,8 +475,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           </button>
           {getFileTypeOptions().map((option) => {
             const count = files.filter(file => file.file_type.startsWith(option.value)).length;
-            // console.log(`File type: ${option.value}, Count: ${count}`, "label:", option.label);
-            
             return (
               <button
                 key={option.value}
@@ -439,7 +492,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         </div>
       )}
 
-      {/* Folder Selection */}
       <div className="space-y-4">
         <h3 className={`text-lg font-medium dark:text-white text-black`}>
           Select Folder to View Files
@@ -456,7 +508,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                       : "dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50"
                   } dark:text-white text-black`}
                   onClick={() => setSelectedFolder(folder.id)}
-                  title={folder.name} // Show full name on hover
+                  title={folder.name}
                 >
                   <div className="flex items-center justify-between min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -473,7 +525,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                   </div>
                 </button>
                 
-                {/* Tooltip for long folder names */}
                 {folder.name.length > 25 && (
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
                     {folder.name}
@@ -489,8 +540,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           </div>
         )}
       </div>
-
-
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database, Tables } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types';
 
 // --- Type for a structured query result with a count ---
@@ -119,6 +119,8 @@ export interface UploadOptions<T extends TableOrViewName> {
     columns: UploadColumnMapping<T>[];
     uploadType?: UploadType;
     conflictColumn?: T extends PublicTableName ? keyof TableInsert<T> & string : never;
+    // NEW: Allow injecting static data (e.g. user_id)
+    staticData?: Partial<TableInsert<T extends PublicTableName ? T : never>>;
 }
 export interface UploadResult {
     successCount: number;
