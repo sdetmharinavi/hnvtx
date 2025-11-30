@@ -68,7 +68,7 @@ export const useSystemsData = (
           system.system_name?.toLowerCase().includes(lowerQuery) ||
           system.system_type_name?.toLowerCase().includes(lowerQuery) ||
           system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.toLowerCase().includes(lowerQuery)
+          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.system_type_name) {

@@ -173,7 +173,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           node_id: rowData.node_id || "",
           maan_node_id: rowData.maan_node_id || null,
           maintenance_terminal_id: rowData.maintenance_terminal_id,
-          ip_address: (rowData.ip_address as string) || "",
+          ip_address: rowData.ip_address ? rowData.ip_address.split('/')[0] : "",
           commissioned_on: rowData.commissioned_on || null,
           remark: rowData.remark || "",
           s_no: rowData.s_no || "",

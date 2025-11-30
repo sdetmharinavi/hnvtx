@@ -50,7 +50,6 @@ const formSchema = system_connectionsInsertSchema
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
 // Helper to handle potential type mismatches before regeneration
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & { lc_id?: string | null; unique_id?: string | null };
 
 interface SystemConnectionFormModalProps {
@@ -121,28 +120,40 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name, code",
-    filters: { category: "PORT_TYPES" },
-  });
+  // const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+  //   columns: "id, name, code",
+  //   filters: { category: "PORT_TYPES" },
+  // });
 
+  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchSystemId || '' },
+    filters: { 
+      system_id: watchSystemId || '',
+      port_admin_status: true 
+    },
     limit: 1000,
     enabled: !!watchSystemId,
   });
 
+  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchSnId || '' },
+    filters: { 
+      system_id: watchSnId || '',
+      port_admin_status: true 
+    },
     limit: 1000,
     enabled: !!watchSnId,
   });
 
+  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchEnId || '' },
+    filters: { 
+      system_id: watchEnId || '',
+      port_admin_status: true
+    },
     limit: 1000,
     enabled: !!watchEnId,
   });
@@ -183,7 +194,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         .filter((s) => s.id !== parentSystem.id) 
         .map((s) => {
           const loc = s.node_name ? ` @ ${s.node_name}` : "";
-          const ip = s.ip_address ? ` [${s.ip_address}]` : "";
+          const ip = s.ip_address ? ` [${s.ip_address.split('/')[0]}]` : "";
           const label = `${s.system_name}${loc}${ip}`;
           return { value: s.id!, label };
         }),

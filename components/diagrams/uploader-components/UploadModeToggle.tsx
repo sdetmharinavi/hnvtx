@@ -17,21 +17,21 @@ const UploadModeToggle: React.FC<UploadModeToggleProps> = ({
       <button
         onClick={() => setShowDashboard(true)}
         disabled={!folderId}
-        className={`flex-1 rounded px-4 py-2 font-medium transition-colors ${
+        className={`flex-1 rounded px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
           showDashboard
-            ? "dark:bg-blue-700 bg-blue-600"
-            : "dark:bg-gray-600 dark:hover:bg-gray-500 bg-gray-400 hover:bg-gray-500"
-        } text-white disabled:cursor-not-allowed disabled:opacity-50`}
+            ? "bg-blue-600 dark:bg-blue-700"
+            : "bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500"
+        }`}
       >
         Advanced Upload
       </button>
       <button
         onClick={() => setShowDashboard(false)}
-        className={`flex-1 rounded px-4 py-2 font-medium transition-colors ${
+        className={`flex-1 rounded px-4 py-2 text-sm font-medium text-white transition-colors ${
           !showDashboard
-            ? "dark:bg-blue-700 bg-blue-600"
-            : "dark:bg-gray-600 dark:hover:bg-gray-500 bg-gray-400 hover:bg-gray-500"
-        } text-white`}
+            ? "bg-blue-600 dark:bg-blue-700"
+            : "bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500"
+        }`}
       >
         Simple Upload
       </button>

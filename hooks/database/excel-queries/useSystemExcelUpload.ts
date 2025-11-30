@@ -194,7 +194,7 @@ export function useSystemExcelUpload(
           p_status: (processedData.status as boolean) ?? true,
           p_is_hub: (processedData.is_hub as boolean) ?? false,
           p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
-          p_ip_address: (processedData.ip_address as string | null) || undefined,
+          p_ip_address: processedData.ip_address ? ((processedData.ip_address as string).split('/')[0] as string | null) || undefined : undefined,
           p_maintenance_terminal_id:
             (processedData.maintenance_terminal_id as string | null) || undefined,
           p_commissioned_on: (processedData.commissioned_on as string | null) || undefined,
