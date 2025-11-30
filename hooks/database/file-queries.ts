@@ -66,7 +66,7 @@ export function useDeleteFile() {
   return useMutation({
     mutationFn: async ({
       id,
-      folderId,
+      // folderId,
     }: {
       id: string;
       folderId?: string | null;

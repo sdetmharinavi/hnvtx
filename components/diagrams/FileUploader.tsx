@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Toaster, toast } from 'sonner';
+import { Toaster } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThemeStore } from '@/stores/themeStore';
 
