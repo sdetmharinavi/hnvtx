@@ -1,6 +1,7 @@
+// components/diagrams/uploader-components/SimpleUpload.tsx
 import React from "react";
-import type { AppUppy, SelectedFile } from "@/components/diagrams/hooks/useUppyUploader";
-import { Loader2 } from "lucide-react";
+import { AppUppy, SelectedFile } from "@/components/diagrams/hooks/useUppyUploader";
+import { Loader2, Trash2 } from "lucide-react";
 
 interface SimpleUploadProps {
   uppyRef: React.RefObject<AppUppy | null>;
@@ -22,6 +23,7 @@ const formatFileSize = (bytes: number) => {
 };
 
 const SimpleUpload: React.FC<SimpleUploadProps> = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   uppyRef,
   fileInputRef,
   handleFileInputChange,
@@ -31,13 +33,11 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
   isUploading,
   handleStartUpload,
 }) => {
-  void uppyRef;
   return (
     <div className="space-y-4">
       <div
-        id="uppy-drag-drop"
         onClick={triggerFileInput}
-        className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors dark:border-gray-600 dark:bg-gray-750 dark:hover:border-gray-500`}
+        className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center transition-colors hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-gray-500"
       >
         <input
           ref={fileInputRef}
@@ -48,85 +48,51 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
           className="hidden"
         />
         <div>
-          <p className="text-lg font-medium">Drag files here or click to browse</p>
-          <p className="mt-2 text-sm opacity-70">
+          <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
+            Drag files here or click to browse
+          </p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 opacity-70">
             Supports images, PDFs, documents, audio, and video files
           </p>
         </div>
       </div>
 
-      <div id="uppy-progress" className="w-full"></div>
-
       {selectedFiles.length > 0 && (
-        <div
-          className={`rounded-lg border p-4 dark:border-gray-600 dark:bg-gray-700`}
-        >
-          <h4
-            className={`mb-3 text-sm font-medium dark:text-gray-200 text-gray-700`}
-          >
+        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+          <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-200">
             Selected Files ({selectedFiles.length})
           </h4>
-          <div className="max-h-40 space-y-2 overflow-y-auto">
+          <div className="max-h-40 space-y-2 overflow-y-auto custom-scrollbar">
             {selectedFiles.map((file) => (
               <div
                 key={file.id}
-                className={`flex items-center justify-between rounded p-2 dark:hover:bg-gray-600 dark:bg-gray-650 border dark:border-gray-500`}
+                className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <div className="flex min-w-0 flex-1 items-center space-x-3">
                   <div className="flex-shrink-0">
                     {file.type?.startsWith("image/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-green-100">
-                        <span className="text-xs text-green-600">🖼️</span>
-                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-green-100 text-xs">🖼️</div>
                     ) : file.type?.includes("pdf") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-red-100">
-                        <span className="text-xs text-red-600">📄</span>
-                      </div>
-                    ) : file.type?.startsWith("video/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-100">
-                        <span className="text-xs text-blue-600">🎥</span>
-                      </div>
-                    ) : file.type?.startsWith("audio/") ? (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-100">
-                        <span className="text-xs text-purple-600">🎵</span>
-                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-red-100 text-xs">📄</div>
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100">
-                        <span className="text-xs text-gray-600">📁</span>
-                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-xs">📁</div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-sm font-medium dark:text-white text-gray-900`}
-                    >
+                    <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
                       {file.name}
                     </p>
-                    <p
-                      className={`text-xs dark:text-gray-400 text-gray-500`}
-                    >
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatFileSize(file.size)}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => handleRemoveFile(file.id)}
-                  className={`ml-2 flex-shrink-0 rounded-full p-1 transition-colors dark:text-gray-400 dark:hover:bg-red-500 dark:hover:text-red-400 text-gray-500 hover:bg-red-500 hover:text-red`}
+                  className="ml-2 rounded-full p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                   title="Remove file"
                 >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))}
@@ -137,7 +103,7 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
       <button
         onClick={handleStartUpload}
         disabled={selectedFiles.length === 0 || isUploading}
-        className={`flex w-full items-center justify-center gap-2 rounded px-4 py-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800 dark:disabled:bg-gray-600 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white`}
+        className="flex w-full items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700 dark:disabled:bg-gray-600"
       >
         {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
         {isUploading

@@ -18,7 +18,6 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
   folderId,
   setFolderId,
 }) => {
-  // Sort folders alphabetically by name
   const sortedFolders = [...folders].sort((a, b) => 
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   );
@@ -31,26 +30,24 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
           placeholder="New folder name"
           value={newFolderName}
           onChange={(e) => setNewFolderName(e.target.value)}
-          className={`flex-1 rounded border px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400`}
-          onKeyPress={(e) => e.key === "Enter" && handleCreateFolder()}
+          className="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+          onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
         />
         <button
           onClick={handleCreateFolder}
           disabled={!newFolderName.trim()}
-          className={`rounded px-4 py-2 font-medium transition-colors dark:bg-green-700 dark:hover:bg-green-600 dark:disabled:bg-gray-600 bg-green-600 hover:bg-green-500 disabled:bg-gray-400 text-white disabled:cursor-not-allowed`}
+          className="rounded px-4 py-2 text-sm font-medium text-white transition-colors bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-green-700 dark:hover:bg-green-600 dark:disabled:bg-gray-600"
         >
           Create
         </button>
       </div>
 
       <div>
-        <label
-          className={`mb-2 block text-sm font-medium dark:text-gray-200 text-gray-700`}
-        >
+        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
           Select Destination Folder
         </label>
         <select
-          className={`w-full rounded border px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white`}
+          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           value={folderId || ""}
           onChange={(e) => setFolderId(e.target.value || null)}
         >

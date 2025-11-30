@@ -107,7 +107,12 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         setValue("system_name", selectedSystem.system_name || selectedSystem.id);
         setValue("system_type_id", selectedSystem.system_type_id || "");
         setValue("node_id", selectedSystem.node_id || "");
-        setValue("ip_address", (selectedSystem.ip_address as string) || "");
+        setValue(
+          "ip_address",
+          typeof selectedSystem.ip_address === "string"
+            ? selectedSystem.ip_address.split("/")[0]
+            : ""
+        );
         setValue("s_no", selectedSystem.s_no || "");
         setValue("make", selectedSystem.make || "");
       }
@@ -142,7 +147,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         system_name: formData.system_name,
         system_type_id: formData.system_type_id,
         node_id: formData.node_id,
-        ip_address: formData.ip_address,
+        ip_address: formData.ip_address.split('/')[0],
         s_no: formData.s_no,
         make: formData.make,
         status: formData.status,

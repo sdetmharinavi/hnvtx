@@ -11,25 +11,22 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   error,
   cameraError,
 }) => {
+  // This component doesn't render UI directly, it triggers side effects (toasts)
+  // when errors change.
+  
   useEffect(() => {
     if (error) {
-      toast.error(error, {
-        position: "top-right",
-        duration: 5000,
-      });
+      toast.error(error);
     }
   }, [error]);
 
   useEffect(() => {
     if (cameraError) {
-      toast.warning(`Camera Error: ${cameraError}`, {
-        position: "top-right",
-        duration: 5000,
-      });
+      toast.warning(cameraError);
     }
   }, [cameraError]);
 
-  return null; // Toasts are handled globally
+  return null;
 };
 
 export default ErrorDisplay;

@@ -36,7 +36,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
 
       allNodes!.forEach(n => { if (n.name?.toLowerCase().includes(lowerQuery) || n.remark?.toLowerCase().includes(lowerQuery)) nodeIds.add(n.id!); });
       allCables!.forEach(c => { if (c.route_name?.toLowerCase().includes(lowerQuery) || c.asset_no?.toLowerCase().includes(lowerQuery)) cableIds.add(c.id!); });
-      allSystems!.forEach(s => { if (s.system_name?.toLowerCase().includes(lowerQuery) || s.ip_address?.toString().toLowerCase().includes(lowerQuery)) systemIds.add(s.id!); });
+      allSystems!.forEach(s => { if (s.system_name?.toLowerCase().includes(lowerQuery) || (s.ip_address && s.ip_address.split('/')[0].toString().toLowerCase().includes(lowerQuery))) systemIds.add(s.id!); });
 
       visibleNodes = allNodes!.filter(n => nodeIds.has(n.id!));
       visibleCables = allCables!.filter(c => cableIds.has(c.id!));

@@ -82,7 +82,7 @@ const useRingSystems = (ringId: string | null) => {
             node_id: item.systems?.node_id,
             
             // Optional fields to preserve data integrity
-            ip_address: item.systems?.ip_address,
+            ip_address: item.systems?.ip_address.split('/')[0],
             s_no: item.systems?.s_no,
             make: item.systems?.make,
             remark: item.systems?.remark,
@@ -337,7 +337,7 @@ export default function RingManagerPage() {
                 },
               ]
             : null,
-        p_ip_address: (systemData.ip_address as string) || undefined,
+        p_ip_address: systemData.ip_address ? systemData.ip_address.split('/')[0] : undefined,
         p_s_no: systemData.s_no ?? undefined,
         p_make: systemData.make ?? undefined,
         p_maan_node_id: systemData.maan_node_id ?? undefined,
@@ -384,7 +384,7 @@ export default function RingManagerPage() {
                 : systemToEdit.order_in_ring ?? null,
           },
         ],
-      p_ip_address: (systemToEdit.ip_address as string) || undefined,
+      p_ip_address: systemToEdit.ip_address ? systemToEdit.ip_address.split('/')[0] : undefined,
       p_s_no: systemToEdit.s_no ?? undefined,
       p_make: systemToEdit.make ?? undefined,
       p_maan_node_id: systemToEdit.maan_node_id ?? undefined,

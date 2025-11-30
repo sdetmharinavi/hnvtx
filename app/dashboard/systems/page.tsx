@@ -242,7 +242,7 @@ export default function SystemsPage() {
         p_status: formData.status ?? true,
         p_is_hub: formData.is_hub ?? false,
         p_maan_node_id: formData.maan_node_id || undefined,
-        p_ip_address: formData.ip_address || undefined,
+        p_ip_address: formData.ip_address ? formData.ip_address.split('/')[0] : undefined,
         p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
         p_commissioned_on: formData.commissioned_on || undefined,
         p_s_no: formData.s_no || undefined,
