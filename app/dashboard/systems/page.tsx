@@ -29,12 +29,15 @@ import { createStandardActions } from "@/components/table/action-helpers";
 import { formatDate } from "@/utils/formatters";
 import { SystemPortsManagerModal } from "@/components/systems/SystemPortsManagerModal";
 import { useSystemsData } from "@/hooks/data/useSystemsData";
+import { useUser } from "@/providers/UserProvider";
 
 export default function SystemsPage() {
   const router = useRouter();
   const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {isSuperAdmin} = useUser()
 
   const {
     data: systems,
@@ -126,8 +129,8 @@ export default function SystemsPage() {
     const actions = createStandardActions<V_systems_completeRowSchema>({
       onEdit: editModal.openEdit,
       onView: handleView,
-      onDelete: crudActions.handleDelete,
-      onToggleStatus: crudActions.handleToggleStatus,
+      onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
+      onToggleStatus: isSuperAdmin ? crudActions.handleToggleStatus : undefined,
     });
 
     actions.unshift({
@@ -139,7 +142,7 @@ export default function SystemsPage() {
     });
 
     return actions;
-  }, [editModal.openEdit, handleView, crudActions, handleManagePorts]);
+  }, [editModal.openEdit, handleView, crudActions, handleManagePorts, isSuperAdmin]);
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
