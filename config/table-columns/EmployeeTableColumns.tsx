@@ -9,6 +9,7 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     key: 'employee_name',
     width: 220,
     searchable: true,
+    sortable: true,
     render: (_, record: V_employeesRowSchema) => (
       <div className="min-w-[180px]">
         <div className="font-medium text-gray-900 dark:text-white">
@@ -69,6 +70,8 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     dataIndex: 'employee_designation_name',
     key: 'employee_designation_name',
     width: 180,
+    searchable: true,
+    sortable: true,
     render: (_, record: V_employeesRowSchema) => record.employee_designation_name || 'Not set',
   },
   {
@@ -76,6 +79,8 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     dataIndex: 'maintenance_area_name',
     key: 'maintenance_area_name',
     width: 200,
+    searchable: true,
+    sortable: true,
     render: (_, record: V_employeesRowSchema) => record.maintenance_area_name || 'Not set',
   },
   {
@@ -83,12 +88,14 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     dataIndex: 'employee_addr',
     key: 'employee_addr',
     width: 300,
+    searchable: true,
   },
   {
     title: 'Status',
     dataIndex: 'status',
     key: 'status',
     width: 120,
+    sortable: true,
     render: (value: unknown) => <StatusBadge status={!!value} />,
   },
 ];
