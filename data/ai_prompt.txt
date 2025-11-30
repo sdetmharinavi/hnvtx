@@ -129,6 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all lets recreate doc section providing each and every aspects details and clear steps, so that any user using this app should be clear on how to use it.
+Let's begin! First of all lets fix to show only those ports in dropdown for system connection form whose admin status is true.
 
 
