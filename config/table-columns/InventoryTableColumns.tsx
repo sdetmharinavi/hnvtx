@@ -8,12 +8,16 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
     {
         key: 'asset_no',
         title: 'Asset No',
+        searchable: true,
+        sortable: true,
         dataIndex: 'asset_no',
         render: (val) => <span className="font-mono text-xs">{val as string}</span>
     },
     {
         key: 'name',
         title: 'Name',
+        searchable: true,
+        sortable: true,
         dataIndex: 'name',
         width: 180,
         render: (val, record) => (
@@ -26,37 +30,50 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
     {
         key: 'category_name',
         title: 'Category',
+        searchable: true,
+        sortable: true,
         dataIndex: 'category_name',
     },
     {
         key: 'status_name',
         title: 'Status',
+        sortable: true,
         dataIndex: 'status_name',
     },
     {
         key: 'store_location',
         title: 'Location (Node)',
+        searchable: true,
+        sortable: true,
         dataIndex: 'store_location',
     },
     {
         key: 'functional_location',
         title: 'Functional Location (Area)',
+        searchable: true,
+        sortable: true,
         dataIndex: 'functional_location',
     },
     {
         key: 'quantity',
         title: 'Quantity',
+        searchable: true,
+        sortable: true,
         dataIndex: 'quantity',
     },
     {
         key: 'purchase_date',
         title: 'Purchase Date',
+        searchable: true,
+        sortable: true,
         dataIndex: 'purchase_date',
         render: (val) => formatDate(val as string, { format: 'dd-mm-yyyy' })
     },
     {
         key: 'cost',
         title: 'Cost',
+        searchable: true,
+        sortable: true,
         dataIndex: 'cost',
         // THE FIX: Use Rupee symbol
         render: (val) => val ? `₹${Number(val).toFixed(2)}` : null,

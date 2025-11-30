@@ -6,7 +6,7 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
-import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
+import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
 import { useCrudManager } from '@/hooks/useCrudManager';

@@ -13,7 +13,7 @@ import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schem
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
-import { getInventoryTableColumns } from "@/components/inventory/InventoryTableColumns";
+import { getInventoryTableColumns } from "@/config/table-columns/InventoryTableColumns";
 import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 import { useInventoryData } from "@/hooks/data/useInventoryData";
