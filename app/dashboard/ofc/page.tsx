@@ -135,7 +135,7 @@ const OfcPage = () => {
         onEdit: editModal.openEdit,
         onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
         onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
+        onToggleStatus: isSuperAdmin === true ? crudActions.handleToggleStatus : undefined,
         canDelete: () => isSuperAdmin === true,
       }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions, isSuperAdmin]
@@ -206,7 +206,7 @@ const OfcPage = () => {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
-        selectable
+        selectable={isSuperAdmin === true}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null
