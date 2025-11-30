@@ -125,11 +125,11 @@ body {
 }
 
 .react-datepicker__day--highlighted {
-  background-color: #93c5fd !important;
+  background-color: #1b8310 !important;
   color: #1e3a8a !important;
 }
 .dark .react-datepicker__day--highlighted {
-  background-color: #1e40af !important;
+  background-color: #396503 !important;
   color: #dbeafe !important;
 }
 

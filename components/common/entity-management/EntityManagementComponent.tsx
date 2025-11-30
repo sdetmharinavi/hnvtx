@@ -6,8 +6,8 @@ import { EntityTreeItem } from "@/components/common/entity-management/EntityTree
 import { SearchAndFilters } from "@/components/common/entity-management/SearchAndFilters";
 import { BaseEntity, EntityConfig, EntityWithChildren } from "@/components/common/entity-management/types";
 import { ViewModeToggle } from "@/components/common/entity-management/ViewModeToggle";
-import { useMemo, useState, useCallback, useEffect } from "react";
-import { FiInfo, FiPlus } from "react-icons/fi";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { FiInfo, FiPlus, FiMoreVertical } from "react-icons/fi"; // Added FiMoreVertical for grip handle
 import { useDebounce } from "use-debounce";
 import { PageSpinner } from "@/components/common/ui";
 
@@ -43,6 +43,55 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [showFilters, setShowFilters] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+
+  // --- RESIZING LOGIC START ---
+  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000); // Default width
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback(
+    (mouseEvent: MouseEvent) => {
+      if (isResizing) {
+        // Calculate new width based on window width minus mouse position (since panel is on right)
+        const newWidth = window.innerWidth - mouseEvent.clientX;
+        // Set constraints (min 300px, max 1200px)
+        if (newWidth > 300 && newWidth < 1200) {
+          setDetailsPanelWidth(newWidth);
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "col-resize"; // Force cursor during drag
+      document.body.style.userSelect = "none"; // Prevent text selection
+    } else {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "auto";
+      document.body.style.userSelect = "auto";
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "auto";
+      document.body.style.userSelect = "auto";
+    };
+  }, [isResizing, resize, stopResizing]);
+  // --- RESIZING LOGIC END ---
+
 
   useEffect(() => {
     onSearchChange(debouncedSearch);
@@ -116,10 +165,11 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const isInitialLoading = entitiesQuery.isLoading && allEntities.length === 0;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
-      {/* THE FIX: The BlurLoader component has been removed entirely from here. */}
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative overflow-hidden">
       
-      <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
+      {/* LEFT PANEL: LIST/TREE */}
+      {/* Added min-w-0 to prevent flex child overflow issues */}
+      <div className={`flex-1 flex flex-col min-w-0 ${showDetailsPanel ? "hidden lg:flex" : "flex"}`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <SearchAndFilters
             searchTerm={internalSearchTerm} onSearchChange={setInternalSearchTerm}
@@ -129,7 +179,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
           />
           {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
         </div>
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800 custom-scrollbar">
           {isInitialLoading ? (
             <div className="flex items-center justify-center py-12 text-center"><PageSpinner text={`Loading ${config.entityPluralName}...`} /></div>
           ) : entitiesQuery.isError ? (
@@ -160,7 +210,31 @@ export function EntityManagementComponent<T extends BaseEntity>({
           )}
         </div>
       </div>
-      <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
+
+      {/* RESIZER HANDLE (Desktop Only) */}
+      <div
+        className={`
+          hidden lg:flex
+          w-1 cursor-col-resize items-center justify-center
+          bg-gray-100 hover:bg-blue-400 dark:bg-gray-900 dark:hover:bg-blue-600
+          transition-colors z-20 relative
+          ${isResizing ? 'bg-blue-500 dark:bg-blue-500' : ''}
+        `}
+        onMouseDown={startResizing}
+      >
+        {/* Visual Grip Handle */}
+        <div className="absolute pointer-events-none text-gray-400 dark:text-gray-500">
+          <FiMoreVertical size={12} />
+        </div>
+      </div>
+
+      {/* RIGHT PANEL: DETAILS */}
+      <div 
+        ref={sidebarRef}
+        className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700`}
+        // Use inline style for width on desktop, utilize full width logic via flex on mobile
+        style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? detailsPanelWidth : '100%' }}
+      >
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
@@ -172,7 +246,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
         <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {selectedEntity ? (
             <EntityDetailsPanel entity={selectedEntity} config={config} onEdit={handleOpenEditForm} onDelete={onDelete} onViewDetails={onViewDetails} />
           ) : (

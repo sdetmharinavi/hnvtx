@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
 import JSZip from 'jszip';
@@ -74,15 +74,6 @@ const extractKmlStyles = (doc: Document): Record<string, string> => {
   
   return styleMap;
 };
-
-// const getRandomColor = () => {
-//   const letters = '0123456789ABCDEF';
-//   let color = '#';
-//   for (let i = 0; i < 6; i++) {
-//     color += letters[Math.floor(Math.random() * 16)];
-//   }
-//   return color;
-// };
 
 const MapController = ({ 
   data, 
@@ -220,11 +211,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     if (iconUrl) {
       const customIcon = L.icon({
         iconUrl: iconUrl,
-        // Original: [32, 32] -> New: [16, 16] (Halved)
         iconSize: [16, 16],
-        // Original: [16, 32] -> New: [8, 16] (Bottom center of new size)
         iconAnchor: [8, 16],
-        // Original: [0, -32] -> New: [0, -16] (Top of icon)
         popupAnchor: [0, -16],
       });
       return L.marker(latlng, { icon: customIcon });
@@ -297,9 +285,10 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         </div>
       )}
 
+      {/* Fullscreen Toggle - Moved to Bottom Right to avoid conflict with Layer Control */}
       <button
         onClick={() => setIsFullScreen(!isFullScreen)}
-        className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="absolute bottom-6 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         title={isFullScreen ? "Exit Full Screen (Esc)" : "Enter Full Screen"}
       >
         {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
@@ -312,10 +301,21 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         className="z-0 bg-gray-100 dark:bg-gray-800"
         closePopupOnClick={false}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
-        />
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Street View">
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; OpenStreetMap contributors'
+            />
+          </LayersControl.BaseLayer>
+          
+          <LayersControl.BaseLayer name="Satellite View">
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
         
         {geoJsonData && (
           <>

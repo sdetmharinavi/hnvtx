@@ -61,36 +61,60 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    // THE FIX: Explicitly include 'ring_id' in the columns list
-    columns: 'order_in_ring, ring_id, systems(id, system_name, is_hub, status, system_type_id, node_id, ip_address, s_no, make, remark, commissioned_on, maintenance_terminal_id, maan_node_id, system_capacity_id)',
+    // THE FIX: Use explicit foreign key relationship and robust column selection
+    columns: `
+      order_in_ring, 
+      ring_id, 
+      system:systems!ring_based_systems_system_id_fkey (
+        id, 
+        system_name, 
+        is_hub, 
+        status, 
+        system_type_id, 
+        node_id, 
+        ip_address, 
+        s_no, 
+        make, 
+        remark, 
+        commissioned_on, 
+        maintenance_terminal_id, 
+        maan_node_id, 
+        system_capacity_id
+      )
+    `,
     filters: { ring_id: ringId || '' },
     enabled: !!ringId,
     orderBy: [{ column: 'order_in_ring', ascending: true }],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     select: (result: PagedQueryResult<any>) => {
-        const flattened = result.data.map((item) => ({
-            id: item.systems?.id,
-            system_name: item.systems?.system_name,
-            is_hub: item.systems?.is_hub,
-            order_in_ring: item.order_in_ring,
-            // THE FIX: Map the ring_id from the junction table to the flat object
-            ring_id: item.ring_id, 
-            status: item.systems?.status,
+        const flattened = result.data.map((item) => {
+            // Robustly handle nested system object
+            const sys = item.system || item.systems;
+            if (!sys) return null;
             
-            // Essential fields for Update/Upsert
-            system_type_id: item.systems?.system_type_id,
-            node_id: item.systems?.node_id,
-            
-            // Optional fields to preserve data integrity
-            ip_address: item.systems?.ip_address.split('/')[0],
-            s_no: item.systems?.s_no,
-            make: item.systems?.make,
-            remark: item.systems?.remark,
-            commissioned_on: item.systems?.commissioned_on,
-            maintenance_terminal_id: item.systems?.maintenance_terminal_id,
-            maan_node_id: item.systems?.maan_node_id,
-            system_capacity_id: item.systems?.system_capacity_id,
-        })) as unknown as V_systems_completeRowSchema[];
+            return {
+                id: sys.id,
+                system_name: sys.system_name,
+                is_hub: sys.is_hub,
+                order_in_ring: item.order_in_ring,
+                ring_id: item.ring_id, 
+                status: sys.status,
+                
+                // Essential fields for Update/Upsert
+                system_type_id: sys.system_type_id,
+                node_id: sys.node_id,
+                
+                // Optional fields to preserve data integrity
+                ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
+                s_no: sys.s_no,
+                make: sys.make,
+                remark: sys.remark,
+                commissioned_on: sys.commissioned_on,
+                maintenance_terminal_id: sys.maintenance_terminal_id,
+                maan_node_id: sys.maan_node_id,
+                system_capacity_id: sys.system_capacity_id,
+            };
+        }).filter((item): item is V_systems_completeRowSchema => item !== null);
         
         return {
             data: flattened,
@@ -258,7 +282,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
 export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
-  const queryClient = useQueryClient(); // THE FIX: Added queryClient
+  const queryClient = useQueryClient();
   const { isSuperAdmin } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -299,7 +323,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      // THE FIX: Explicitly invalidate the ring systems query to force the sub-component to re-render
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
@@ -362,7 +385,6 @@ export default function RingManagerPage() {
   }) => {
     if (!systemToEdit) return;
 
-    // THE FIX: Validate that ring_id is present before attempting update
     if (!systemToEdit.ring_id) {
         toast.error("Cannot update: System is not correctly associated with a ring context.");
         return;

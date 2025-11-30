@@ -19,10 +19,10 @@ import {
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
 import { ImUserTie } from 'react-icons/im';
-import { GiElectric, GiLinkedRings} from 'react-icons/gi';
+import { GiElectric, GiLinkedRings } from 'react-icons/gi';
 import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
-import {FaRoute } from 'react-icons/fa';
+import { FaRoute } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
 
 function NavItems() {
@@ -46,7 +46,7 @@ function NavItems() {
       {
         id: 'diary',
         label: 'Diary',
-        icon: <FiCalendar className="h-5 w-5" />, 
+        icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
         roles: [
           UserRole.ADMIN,
@@ -179,7 +179,15 @@ function NavItems() {
         id: 'systems',
         label: 'Systems & Rings Manager',
         icon: <GoServer className="h-5 w-5" />,
-        roles: [UserRole.ADMIN],
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+        ],
         children: [
           {
             id: 'systems',
