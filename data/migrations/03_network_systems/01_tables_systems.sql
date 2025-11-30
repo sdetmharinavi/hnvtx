@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   port_capacity TEXT,
   sfp_serial_no TEXT,
   port_utilization BOOLEAN DEFAULT false,
-  port_admin_status BOOLEAN DEFAULT false,
+  port_admin_status BOOLEAN DEFAULT true,
   services_count NUMERIC DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

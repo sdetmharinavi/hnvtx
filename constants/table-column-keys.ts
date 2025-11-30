@@ -102,23 +102,25 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     updated_en_id: { excelFormat: "text" },
   },
   nodes: { status: { transform: toPgBoolean } },
+  // THE FIX: Added ip_address transform to base systems table
   systems: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
-    ip_address: { transform: removeSubnet },
+    ip_address: { transform: removeSubnet }, 
   },
   ports_management: {
     port_utilization: { title: "Utilized", transform: toPgBoolean },
     port_admin_status: { title: "Admin Status", transform: toPgBoolean },
     services_count: { title: "Services Count", excelFormat: "integer" }
   },
-  // THE FIX: Add the new entry for the view to satisfy the type checker.
+  // THE FIX: Added sn_ip and en_ip transforms
   v_system_connections_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
     sn_ip: { transform: removeSubnet },
     en_ip: { transform: removeSubnet },
   },
+  // THE FIX: Added ip_address transform to the systems view
   v_systems_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
@@ -145,7 +147,8 @@ export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T)
   return keys.map((key) => {
     const m = meta[key] || {};
     const title = m.title ?? toTitleCase(key);
-    return { key, dataIndex: key, title, excelFormat: m.excelFormat };
+    // THE FIX: Ensure 'transform' is passed to the returned config
+    return { key, dataIndex: key, title, excelFormat: m.excelFormat, transform: m.transform };
   });
 }
 export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T) {
@@ -191,8 +194,6 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     tableName,
     columnMapping,
     uploadType,
-    // THE FIX: Use `as any` here as a pragmatic way to bypass the complex conditional type.
-    // The logic is sound: conflictColumn will be undefined for views because `tableMeta` will be undefined.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conflictColumn: conflictColumn as any,
     isUploadEnabled,
