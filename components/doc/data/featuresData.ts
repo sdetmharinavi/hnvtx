@@ -11,7 +11,6 @@ export const featuresData: FeatureItem[] = [
     description: "Never let a poor internet connection stop your maintenance work. Our system ensures you can read, search, and even modify critical network data in the remotest field locations without a signal.",
     benefits: [
       "Works completely without internet access.",
-      "Instant page loads using local caching.",
       "Automatic background synchronization when online.",
       "Conflict-free data queuing ensures no data is lost.",
     ],
@@ -33,7 +32,6 @@ export const featuresData: FeatureItem[] = [
       "Toggle between Geographic Maps and Schematic Logical diagrams.",
       "Visualize Hubs, Spokes, and Spur links instantly.",
       "Identify breaks or open loops in ring structures.",
-      "Real-time status indicators (Active/Inactive) on the map.",
     ],
     technicalHighlights: [
       "React Leaflet & OpenStreetMap integration",
@@ -56,7 +54,7 @@ export const featuresData: FeatureItem[] = [
       "Auto-provisioning for straight-through joints.",
     ],
     technicalHighlights: [
-      "Recursive SQL CTEs for path tracing",
+      "Recursive SQL CTEs for path tracing", //Common Table Expression
       "Dynamic segmentation logic",
       "Graph-based data modeling",
       "Atomic provisioning transactions",
@@ -73,7 +71,7 @@ export const featuresData: FeatureItem[] = [
       "Smart Column Mapping: Automatically detects headers.",
       "Real-time Validation: Errors are flagged row-by-row before commit.",
       "Bulk Updates: Supports both 'Insert' and 'Upsert' (Update if exists) modes.",
-      "Export any table to Excel with current filters applied.",
+      "Export any table to Excel.",
     ],
     technicalHighlights: [
       "Client-side parsing via `xlsx` (lazy loaded)",
