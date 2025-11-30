@@ -54,7 +54,7 @@ const normalizeUserToForm = (user: V_user_profiles_extendedRowSchema): UserProfi
     avatar_url: user.avatar_url ?? null,
     first_name: user.first_name ?? undefined,
     last_name: user.last_name ?? undefined,
-    phone_number: user.phone_number ?? undefined,
+    phone_number: user.phone_number ?? null,
     date_of_birth: user.date_of_birth ?? undefined,
     designation: user.designation ?? undefined,
     role: user.role ?? undefined,

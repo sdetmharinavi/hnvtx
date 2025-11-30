@@ -1,7 +1,7 @@
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -22,8 +22,11 @@ import { useDiaryData, DiaryEntryWithUser } from "@/hooks/data/useDiaryData";
 import { UserRole } from "@/types/user-roles";
 
 export default function DiaryPage() {
+  // currentDate controls the "View Range" (which month we fetch data for)
   const [currentDate, setCurrentDate] = useState(new Date());
+  // selectedDate controls which specific day is active in the list
   const [selectedDate, setSelectedDate] = useState(new Date());
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
@@ -32,6 +35,7 @@ export default function DiaryPage() {
   const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
 
+  // This hook automatically re-fetches when 'currentDate' changes (e.g., month switch)
   const {
     data: allNotesForMonth = [],
     isLoading,
@@ -40,7 +44,6 @@ export default function DiaryPage() {
     refetch,
   } = useDiaryData(currentDate);
 
-  // THE FIX 1: Define permissions for viewing all notes and for mutating notes.
   const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
   const canMutate = isSuperAdmin || currentUserRole === UserRole.ADMIN;
 
@@ -48,7 +51,6 @@ export default function DiaryPage() {
     if (canViewAll) {
       return allNotesForMonth;
     }
-    // For any other role, they only see their own notes.
     return allNotesForMonth.filter(note => note.user_id === user?.id);
   }, [allNotesForMonth, canViewAll, user?.id]);
 
@@ -63,7 +65,6 @@ export default function DiaryPage() {
     onError: (err) => toast.error(`Failed to update note: ${err.message}`),
   });
 
-  // THE FIX: Wrap refetch in an arrow function to ignore the deletedIds argument
   const deleteManager = useDeleteManager({ 
     tableName: 'diary_notes', 
     onSuccess: () => { refetch(); } 
@@ -114,16 +115,16 @@ export default function DiaryPage() {
 
   const notesForSelectedDay = useMemo(() => {
     if (!roleFilteredNotes) return [];
-    
     const selectedDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-    
     return roleFilteredNotes.filter((note: DiaryEntryWithUser) => {
       return note.note_date === selectedDateString;
     });
   }, [roleFilteredNotes, selectedDate]);
 
+  // Handles clicking a specific day
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
+    // Also update currentDate if the user clicked a trailing day from prev/next month
     if (
       date.getMonth() !== currentDate.getMonth() ||
       date.getFullYear() !== currentDate.getFullYear()
@@ -132,10 +133,15 @@ export default function DiaryPage() {
     }
   };
 
+  // THE FIX: Handles navigating months via arrows (without changing selected day)
+  const handleMonthChange = useCallback((date: Date) => {
+    setCurrentDate(date);
+  }, []);
+
   const headerActions = useStandardHeaderActions({
     data: roleFilteredNotes,
     onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
-    onAddNew: canMutate ? openAddModal : undefined, // THE FIX 2: Conditionally enable "Add New"
+    onAddNew: canMutate ? openAddModal : undefined,
     isLoading,
     exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
   });
@@ -145,7 +151,7 @@ export default function DiaryPage() {
     onClick: handleUploadClick,
     variant: "outline",
     leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading || !canMutate, // THE FIX 3: Conditionally disable "Upload"
+    disabled: isUploading || isLoading || !canMutate,
   });
 
   if (error)
@@ -164,7 +170,6 @@ export default function DiaryPage() {
   });
 
   return (
-    // FIX: Added bg-gray-50 fallback
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
       <div className='mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
         <input
@@ -194,6 +199,8 @@ export default function DiaryPage() {
                 <DiaryCalendar
                   selectedDate={selectedDate}
                   onDateChange={handleDateChange}
+                  // THE FIX: Pass the month change handler
+                  onMonthChange={handleMonthChange}
                   highlightedDates={highlightedDates}
                 />
               </div>
@@ -202,7 +209,6 @@ export default function DiaryPage() {
 
           <div className='xl:col-span-8'>
             <div className='space-y-4 sm:space-y-6'>
-              {/* FIX: Added bg-blue-50 fallback */}
               <div className='bg-blue-50 dark:bg-blue-900/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg'>
@@ -226,7 +232,6 @@ export default function DiaryPage() {
               {isLoading && roleFilteredNotes.length === 0 ? (
                 <div className='space-y-4'>
                   {[...Array(3)].map((_, i) => (
-                    // FIX: Added bg-gray-100 fallback
                     <div
                       key={i}
                       className='h-40 sm:h-48 bg-gray-100 dark:bg-gray-800 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl animate-pulse shadow-sm'
@@ -237,7 +242,6 @@ export default function DiaryPage() {
               ) : notesForSelectedDay.length === 0 ? (
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 sm:py-16 px-4'>
-                    {/* FIX: Added bg-blue-100 fallback */}
                     <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-100 dark:bg-blue-900/30 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
                       <FiBookOpen className='h-8 w-8 sm:h-10 sm:w-10 text-blue-600 dark:text-blue-400' />
                     </div>
