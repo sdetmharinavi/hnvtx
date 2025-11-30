@@ -14,20 +14,21 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye, Monitor } from 'lucide-react'; // Added Monitor icon
+import { ZapOff, Eye, Monitor } from 'lucide-react'; 
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-// NEW IMPORT
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
+import { StatProps } from '@/components/common/page-header/StatCard';
+import { usePortsData } from '@/hooks/data/usePortsData'; // New Import
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -52,14 +53,14 @@ export default function SystemConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
 
-  // NEW STATE for the Details Modal
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-
+  // --- Fetch System Details ---
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
   const parentSystem = systemData?.data?.[0];
 
+  // --- Fetch Connections ---
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase, 'v_system_connections_complete', {
       filters: {
@@ -70,10 +71,41 @@ export default function SystemConnectionsPage() {
       offset: (currentPage - 1) * pageLimit,
     }
   );
-
   const connections = connectionsData?.data || [];
-  const totalCount = connectionsData?.total_count || 0;
+  const totalConnections = connectionsData?.total_count || 0;
 
+  // --- Fetch Port Stats (Local-First) ---
+  // Initialize the hook with default parameters to get all ports for this system
+  const { data: ports = [] } = usePortsData(systemId)({
+      currentPage: 1, 
+      pageLimit: 5000, // Fetch enough to calculate accurate stats
+      searchQuery: '',
+      filters: {} 
+  });
+
+  const headerStats: StatProps[] = useMemo(() => {
+    if (!ports || ports.length === 0) {
+        return [{ label: 'Total Connections', value: totalConnections }];
+    }
+
+    const totalPorts = ports.length;
+    const usedPorts = ports.filter(p => p.port_utilization).length;
+    // Available = Not utilized AND Admin Status is UP
+    const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
+    const portsDown = ports.filter(p => !p.port_admin_status).length;
+    const utilPercent = totalPorts > 0 ? Math.round((usedPorts / totalPorts) * 100) : 0;
+
+    return [
+        { label: 'Connections', value: totalConnections, color: 'default' },
+        { label: 'Total Ports', value: totalPorts, color: 'default' },
+        { label: 'Ports Used', value: usedPorts, color: 'primary' },
+        { label: 'Ports Available', value: availablePorts, color: 'success' },
+        { label: 'Ports Down', value: portsDown, color: 'danger' },
+        { label: 'Utilization', value: `${utilPercent}%`, color: utilPercent > 80 ? 'warning' : 'default' },
+    ];
+  }, [ports, totalConnections]);
+
+  // --- Mutations ---
   const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
     onSuccess: () => { 
       refetch(); 
@@ -122,8 +154,8 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'En Interface', dbKey: 'en_interface' },
         { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
         { excelHeader: 'Vlan', dbKey: 'vlan' },
-        { excelHeader: 'LC ID', dbKey: 'lc_id' },       // ADDED
-        { excelHeader: 'Unique ID', dbKey: 'unique_id' }, // ADDED
+        { excelHeader: 'LC ID', dbKey: 'lc_id' },      
+        { excelHeader: 'Unique ID', dbKey: 'unique_id' },
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'customer_name' },
@@ -183,7 +215,6 @@ export default function SystemConnectionsPage() {
     }
   }, [tracePath]);
 
-  // Handler for opening the new details modal
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
       setDetailsConnectionId(record.id);
       setIsDetailsModalOpen(true);
@@ -199,9 +230,7 @@ export default function SystemConnectionsPage() {
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
-      // NEW: Full Details View Button
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
-      
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
       { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
@@ -238,8 +267,8 @@ export default function SystemConnectionsPage() {
       p_en_interface: formData.en_interface || undefined,
       p_bandwidth: formData.bandwidth || undefined,
       p_vlan: formData.vlan || undefined,
-      p_lc_id: formData.lc_id || undefined, // Added
-      p_unique_id: formData.unique_id || undefined, // Added
+      p_lc_id: formData.lc_id || undefined,
+      p_unique_id: formData.unique_id || undefined,
       p_commissioned_on: formData.commissioned_on || undefined,
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
@@ -271,7 +300,7 @@ export default function SystemConnectionsPage() {
         description={`Manage connections for ${parentSystem.system_type_code} at ${parentSystem.node_name}`}
         icon={<FiDatabase />}
         actions={headerActions}
-        stats={[{ label: 'Total Connections', value: totalCount }]}
+        stats={headerStats}
       />
 
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
@@ -284,7 +313,7 @@ export default function SystemConnectionsPage() {
         isFetching={isLoadingConnections}
         actions={tableActions}
         pagination={{
-          current: currentPage, pageSize: pageLimit, total: totalCount, showSizeChanger: true,
+          current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
           onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
         }}
         searchable
@@ -314,7 +343,6 @@ export default function SystemConnectionsPage() {
         isLoading={isTracing}
       />
 
-      {/* The New Modal */}
       <SystemConnectionDetailsModal 
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}

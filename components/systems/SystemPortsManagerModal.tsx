@@ -21,7 +21,7 @@ import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-k
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
-import { usePortsData } from '@/hooks/data/usePortsData'; // THE FIX: Import the new hook
+import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
 
 interface SystemPortsManagerModalProps {
@@ -35,19 +35,31 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  // State for Template Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
-  // THE FIX: Use the factory-created hook with systemId closure
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
-    localTableName: 'v_ports_management_complete', // Specify local view for cleanup
-    dataQueryHook: usePortsData(systemId), // Pass systemId to the hook factory
+    localTableName: 'v_ports_management_complete',
+    dataQueryHook: usePortsData(systemId),
     displayNameField: 'port',
   });
+
+  // THE FIX: Calculate granular port statistics
+  const portStats = useMemo(() => {
+    if (!ports) return { total: 0, used: 0, available: 0, down: 0 };
+    
+    const total = ports.length;
+    const used = ports.filter(p => p.port_utilization).length;
+    // Available = Not utilized AND Admin Status is UP
+    const available = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
+    // Down = Admin Status is DOWN (regardless of utilization, though usually 0 util)
+    const down = ports.filter(p => !p.port_admin_status).length;
+
+    return { total, used, available, down };
+  }, [ports]);
 
   const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(supabase, {
     onSuccess: (result) => {
@@ -56,8 +68,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   });
 
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(supabase, 'v_ports_management_complete');
-
-  // Bulk Operations Hook
   const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
   const columns = PortsManagementTableColumns(ports);
@@ -186,7 +196,12 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         <PageHeader
             title="System Ports"
             icon={<FiServer />}
-            stats={[{ value: totalCount, label: 'Total Ports' }]}
+            stats={[
+                { value: portStats.total, label: 'Total Ports' },
+                { value: portStats.used, label: 'In Use', color: 'primary' },
+                { value: portStats.available, label: 'Available', color: 'success' },
+                { value: portStats.down, label: 'Admin Down', color: 'danger' }
+            ]}
             actions={headerActions}
             isLoading={isLoading}
             isFetching={isFetching}

@@ -12,7 +12,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       'created_at',
       'en_id',
       'id',
-      'maintenance_area_name',
+      'maintenance_area_code',
       'maintenance_terminal_id',
       'ofc_owner_id',
       'ofc_owner_name',
@@ -24,6 +24,9 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
     ],
     overrides: {
       asset_no: {
+        title: 'Asset No',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return (
             <TruncateTooltip
@@ -35,6 +38,8 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       },
       route_name: {
         title: 'Route',
+        sortable: true,
+        searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.route_name;
           return (
@@ -44,6 +49,8 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       },
       maintenance_area_name: {
         title: 'Maintenance Area',
+        sortable: true,
+        searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.maintenance_area_name;
           return (
@@ -52,11 +59,17 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
         },
       },
       commissioned_on: {
+        title: 'Commissioned On',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return formatDate(value as string, { format: 'dd-mm-yyyy' });
         },
       },
       status: {
+        title: 'Status',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return <StatusBadge status={value as string} />;
         },

@@ -1,12 +1,12 @@
 // path: app/dashboard/ofc/[id]/page.tsx
-'use client';
+"use client";
 
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ConfirmModal } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { Row, useTableQuery } from '@/hooks/database'; // Removed usePagedData import
+import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
@@ -26,8 +26,9 @@ import {
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
-import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData'; // THE FIX: Import the new hook
+import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +37,8 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // THE FIX: Use the new local-first hook factory
   const {
     data: cableConnectionsData,
-    totalCount,
-    activeCount,
-    inactiveCount,
     isLoading,
     refetch,
     pagination,
@@ -50,7 +47,7 @@ export default function OfcCableDetailsPage() {
     actions: crudActions,
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
-    dataQueryHook: useOfcConnectionsData(cableId as string), // Pass cableId to the factory
+    dataQueryHook: useOfcConnectionsData(cableId as string),
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
@@ -58,6 +55,13 @@ export default function OfcCableDetailsPage() {
     cableId as string
   );
   const { data: allCablesData } = useOfcRoutesForSelection();
+
+  // Fetch specific utilization stats for this cable
+  const { data: utilResult } = useTableQuery(supabase, 'v_cable_utilization', {
+    filters: { cable_id: cableId as string },
+    limit: 1
+  });
+  const utilization = utilResult?.data?.[0];
 
   const [tracingFiber, setTracingFiber] = useState<{
     startSegmentId: string;
@@ -143,11 +147,32 @@ export default function OfcCableDetailsPage() {
     },
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Connections' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
+  const headerStats: StatProps[] = useMemo(() => {
+    const utilPercent = utilization?.utilization_percent ?? 0;
+    
+    return [
+      { 
+        value: utilization?.capacity ?? 0, 
+        label: 'Total Capacity',
+        color: 'default'
+      },
+      { 
+        value: utilization?.used_fibers ?? 0, 
+        label: 'Utilized', 
+        color: 'primary'
+      },
+      { 
+        value: utilization?.available_fibers ?? 0, 
+        label: 'Available', 
+        color: 'success'
+      },
+      { 
+        value: `${utilPercent}%`, 
+        label: 'Utilization', 
+        color: utilPercent > 80 ? 'warning' : 'default'
+      },
+    ];
+  }, [utilization]);
 
   if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
@@ -188,7 +213,7 @@ export default function OfcCableDetailsPage() {
           pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
-            total: totalCount,
+            total: utilization?.capacity ?? 0,
             showSizeChanger: true,
             onChange: (page, limit) => {
               pagination.setCurrentPage(page);
