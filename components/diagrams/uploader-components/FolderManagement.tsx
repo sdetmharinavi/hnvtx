@@ -1,8 +1,13 @@
 // components/diagrams/uploader-components/FolderManagement.tsx
+import React, { useRef, useState } from "react";
+import { FiTrash2, FiUpload } from "react-icons/fi";
 import { ConfirmModal } from "@/components/common/ui";
 import { useUser } from "@/providers/UserProvider";
-import React, { useState } from "react";
-import { FiTrash2 } from "react-icons/fi";
+import { useExcelUpload } from "@/hooks/database/excel-queries";
+import { createClient } from "@/utils/supabase/client";
+import { buildUploadConfig } from "@/constants/table-column-keys";
+import { toast } from "sonner";
+import { useAuthStore } from "@/stores/authStore";
 
 interface FolderManagementProps {
   newFolderName: string;
@@ -11,7 +16,6 @@ interface FolderManagementProps {
   folders: { id: string; name: string }[];
   folderId: string | null;
   setFolderId: (value: string | null) => void;
-  // New Props for deletion
   onDeleteFolder: (id: string) => void;
   isDeleting: boolean;
 }
@@ -27,6 +31,9 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
   isDeleting,
 }) => {
   const { isSuperAdmin } = useUser();
+  const user = useAuthStore(state => state.user);
+  const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const sortedFolders = [...folders].sort((a, b) => 
@@ -42,8 +49,51 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
     }
   };
 
+  // Setup Folder Excel Upload
+  const { mutate: uploadFolders, isPending: isUploadingFolders } = useExcelUpload(
+    supabase,
+    "folders",
+    {
+      onSuccess: (result) => {
+        if (result.successCount > 0) {
+          toast.success(`Imported ${result.successCount} folders.`);
+          // Note: Parent component invalidation handles UI refresh via prop-triggered refetch if needed,
+          // but query key validation inside hook handles it globally.
+        }
+      }
+    }
+  );
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && user?.id) {
+      const uploadConfig = buildUploadConfig("folders");
+      uploadFolders({
+        file,
+        columns: uploadConfig.columnMapping,
+        uploadType: "upsert",
+        conflictColumn: "id",
+        // Inject current user ID for every folder row
+        staticData: { user_id: user.id }
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -63,9 +113,22 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Select Destination Folder
-        </label>
+        <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Select Destination Folder
+            </label>
+            
+            <button
+                onClick={handleImportClick}
+                disabled={isUploadingFolders}
+                className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                title="Import Folders from Excel"
+            >
+                <FiUpload className={isUploadingFolders ? "animate-spin" : ""} />
+                {isUploadingFolders ? "Importing..." : "Import Folders"}
+            </button>
+        </div>
+
         <div className="flex gap-2 items-center">
             <div className="relative flex-1">
                 <select

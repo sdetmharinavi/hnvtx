@@ -24,11 +24,8 @@ import { toast } from 'sonner';
 
 /**
  * Reads a File object and returns its contents as a 2D array using xlsx.
- * @param file The File object to read.
- * @returns A Promise that resolves to a 2D array of the sheet data.
  */
 const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // THE FIX: Dynamic Import
   const XLSX = await import('xlsx');
 
   return new Promise((resolve, reject) => {
@@ -68,10 +65,6 @@ const parseExcelFile = async (file: File): Promise<unknown[][]> => {
 // MAIN ENHANCED UPLOAD HOOK
 //================================================================================
 
-/**
- * Enhanced React hook for uploading data from an Excel file to a Supabase table using 'xlsx'.
- * Includes comprehensive logging and error tracking.
- */
 export function useExcelUpload<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -82,7 +75,7 @@ export function useExcelUpload<T extends PublicTableName>(
 
   return useMutation<EnhancedUploadResult, Error, UploadOptions<T>>({
     mutationFn: async (uploadOptions: UploadOptions<T>): Promise<EnhancedUploadResult> => {
-      const { file, columns, uploadType = 'upsert', conflictColumn } = uploadOptions;
+      const { file, columns, uploadType = 'upsert', conflictColumn, staticData } = uploadOptions;
 
       if (uploadType === 'upsert' && !conflictColumn) {
         throw new Error("A 'conflictColumn' must be specified for 'upsert' operations.");
@@ -308,6 +301,11 @@ export function useExcelUpload<T extends PublicTableName>(
           }
         }
 
+        // --- NEW: Merge static data (like user_id) ---
+        if (staticData) {
+          Object.assign(processedData, staticData);
+        }
+
         const hasRequiredFieldErrors = rowValidationErrors.some(
           (err) => err.error.includes('Required field') || err.error.includes('Missing required')
         );
@@ -339,6 +337,7 @@ export function useExcelUpload<T extends PublicTableName>(
         processingLogs.push(log);
       }
 
+      // ... (Batching logic logic remains identical)
       if (uploadType === 'upsert' && conflictColumn) {
         const conflictCols = String(conflictColumn)
           .split(',')
@@ -443,7 +442,6 @@ export function useExcelUpload<T extends PublicTableName>(
           const { error } = await query;
 
           if (error) {
-            // Error handling logic... (Keep existing error handling logic from your previous file)
             if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
               type RecordWithSnId = { sn_id?: unknown };
               const getSnId = (record: unknown): string | undefined => {
@@ -491,23 +489,22 @@ export function useExcelUpload<T extends PublicTableName>(
                 );
               }
             } else {
-              const errorDetails: Record<string, unknown> = {};
-              if (error.code === '23503') {
+            const errorDetails: Record<string, unknown> = {};
+            if (error.code === '23503') {
                 errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
                 errorDetails.detail = error.message;
-              }
-              uploadResult.errorCount += batch.length;
-              uploadResult.errors.push({
+            }
+            uploadResult.errorCount += batch.length;
+            uploadResult.errors.push({
                 rowIndex: i,
                 data: batch,
                 error: error.message,
                 ...(Object.keys(errorDetails).length > 0 ? { details: errorDetails } : {}),
-              });
+            });
 
-              if (showToasts) {
+            if (showToasts) {
                 toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
-              }
-            }
+                        }            }
           } else {
             uploadResult.successCount += batch.length;
           }
@@ -572,8 +569,6 @@ export function useExcelUpload<T extends PublicTableName>(
           });
         } catch (err) {
           console.log(err);
-
-          // Query invalidation failed silently
         }
       }
 

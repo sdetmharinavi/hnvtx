@@ -62,6 +62,16 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  files: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
+  folders: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -134,6 +144,15 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     old_data: { excelFormat: "json" },
     new_data: { excelFormat: "json" },
   },
+   // ADDED: Metadata formatting for files
+  files: {
+    uploaded_at: { transform: toPgDate, excelFormat: "date" },
+    file_size: { title: "Size (Bytes)", excelFormat: "number" },
+  },
+  folders: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    name: { title: "Folder Name" }
+  }
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
