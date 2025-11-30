@@ -130,6 +130,8 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                     }
                 }
             } catch (e) {
+              console.log(e);
+              
                 rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
             }
         }
@@ -165,7 +167,9 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       }
       
       toast.info(`Upserting ${ringsToUpsert.length} ring records...`);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
+      
       const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
 
       if (upsertError) {

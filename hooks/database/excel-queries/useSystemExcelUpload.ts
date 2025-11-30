@@ -1,5 +1,4 @@
-// path: hooks/database/excel-queries/useSystemExcelUpload.ts
-import * as XLSX from 'xlsx';
+// hooks/database/excel-queries/useSystemExcelUpload.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -24,7 +23,11 @@ export interface SystemUploadOptions {
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
 
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
+// CHANGED: Dynamic import wrapper
+const parseExcelFile = async (file: File): Promise<unknown[][]> => {
+  // DYNAMIC IMPORT HERE
+  const XLSX = await import('xlsx');
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -70,6 +73,7 @@ export function useSystemExcelUpload(
       };
 
       toast.info('Reading and parsing Excel file...');
+      // CHANGED: Await the async parse function
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -183,14 +187,11 @@ export function useSystemExcelUpload(
           }
         }
 
-        // --- THIS IS THE DEFINITIVE FIX ---
-        // Ensure required string fields are not null by providing a fallback.
-        // Convert nulls for optional fields to undefined to match the RPC type.
         const rpcPayload: RpcPayload = {
           p_id: (processedData.id as string) || undefined,
-          p_system_name: (processedData.system_name as string) ?? 'Unnamed System', // Fallback for required field
-          p_system_type_id: (processedData.system_type_id as string) ?? '', // Fallback for required field
-          p_node_id: (processedData.node_id as string) ?? '', // Fallback for required field
+          p_system_name: (processedData.system_name as string) ?? 'Unnamed System',
+          p_system_type_id: (processedData.system_type_id as string) ?? '',
+          p_node_id: (processedData.node_id as string) ?? '',
           p_status: (processedData.status as boolean) ?? true,
           p_is_hub: (processedData.is_hub as boolean) ?? false,
           p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
@@ -204,9 +205,7 @@ export function useSystemExcelUpload(
           p_ring_associations: ringAssociationsJson,
           p_system_capacity_id: (processedData.system_capacity_id as string | null) || undefined,
         };
-        // --- END FIX ---
 
-        // Final check for required UUIDs after processing
         if (!rpcPayload.p_system_type_id || !rpcPayload.p_node_id) {
           const missingFields = [
             !rpcPayload.p_system_type_id && 'System Type ID',
