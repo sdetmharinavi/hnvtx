@@ -97,7 +97,7 @@ interface FormTextareaProps<T extends FieldValues>
       'name' | 'value' | 'onChange'
     > {
   register?: UseFormRegister<T>;
-  control?: Control<T>;
+  control?: Control<T, any, any>;
 }
 
 export function FormTextarea<T extends FieldValues>({
@@ -154,7 +154,7 @@ export function FormTextarea<T extends FieldValues>({
 
 interface FormSearchableSelectProps<T extends FieldValues>
   extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -212,7 +212,7 @@ export function FormSearchableSelect<T extends FieldValues>({
 // --- FORM SELECT COMPONENT ---
 
 interface FormSelectProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -283,7 +283,7 @@ export interface FormDateInputProps<T extends FieldValues>
       React.InputHTMLAttributes<HTMLInputElement>,
       'name' | 'type' | 'size'
     > {
-  control: Control<T>;
+  control: Control<T, any, any>;
   // Optional passthrough for DatePicker props (minDate, maxDate, showTimeSelect, etc.)
   pickerProps?: Partial<
     Omit<
@@ -436,7 +436,7 @@ export function FormDateInput<T extends FieldValues>({
 // --- FORM SWITCH COMPONENT ---
 
 interface FormSwitchProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   description?: string;
 }
 
@@ -481,7 +481,7 @@ export function FormSwitch<T extends FieldValues>({
 // --- FORM IP ADDRESS COMPONENT ---
 
 interface FormIPAddressInputProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   placeholder?: string;
   allowIPv4?: boolean;
   allowIPv6?: boolean;

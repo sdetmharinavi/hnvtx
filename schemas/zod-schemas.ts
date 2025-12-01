@@ -1628,22 +1628,73 @@ export const sdh_connectionsUpdateSchema = z.object({
   system_connection_id: z.uuid().optional(),
 });
 
+export const servicesRowSchema = z.object({
+  bandwidth_allocated: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  id: z.uuid(),
+  lc_id: z.uuid().nullable(),
+  link_type_id: z.uuid().nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  node_id: z.uuid(),
+  services_interface: z.string().nullable(),
+  services_ip: z.any(),
+  status: z.boolean().nullable(),
+  system_id: z.uuid(),
+  unique_id: z.uuid().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vlan: z.string().nullable(),
+});
+
+export const servicesInsertSchema = z.object({
+  bandwidth_allocated: z.string().nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
+  link_type_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  node_id: z.uuid(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
+  status: z.boolean().nullable().optional(),
+  system_id: z.uuid(),
+  unique_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+});
+
+export const servicesUpdateSchema = z.object({
+  bandwidth_allocated: z.string().nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
+  link_type_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  node_id: z.uuid().optional(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
+  status: z.boolean().nullable().optional(),
+  system_id: z.uuid().optional(),
+  unique_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+});
+
 export const system_connectionsRowSchema = z.object({
   bandwidth: z.string().nullable(),
-  bandwidth_allocated: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
-  connected_link_type_id: z.uuid().nullable(),
   created_at: z.iso.datetime().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
   id: z.uuid(),
-  lc_id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   protection_fiber_in_ids: z.array(z.string()).nullable(),
   protection_fiber_out_ids: z.array(z.string()).nullable(),
   remark: z.string().nullable(),
+  service_id: z.uuid().nullable(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -1651,29 +1702,24 @@ export const system_connectionsRowSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable(),
   system_working_interface: z.string().nullable(),
-  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
-  vlan: z.string().nullable(),
   working_fiber_in_ids: z.array(z.string()).nullable(),
   working_fiber_out_ids: z.array(z.string()).nullable(),
 });
 
 export const system_connectionsInsertSchema = z.object({
   bandwidth: z.string().nullable().optional(),
-  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
-  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
+  service_id: z.uuid().nullable().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -1681,29 +1727,24 @@ export const system_connectionsInsertSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
-  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-  vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
   working_fiber_out_ids: z.array(z.string()).nullable().optional(),
 });
 
 export const system_connectionsUpdateSchema = z.object({
   bandwidth: z.string().nullable().optional(),
-  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
-  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
+  service_id: z.uuid().nullable().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -1711,9 +1752,7 @@ export const system_connectionsUpdateSchema = z.object({
   system_id: z.uuid().optional(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
-  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-  vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
   working_fiber_out_ids: z.array(z.string()).nullable().optional(),
 });
@@ -2150,7 +2189,6 @@ export const v_system_connections_completeRowSchema = z.object({
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
@@ -2171,6 +2209,10 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_b_slot: z.string().nullable(),
   sdh_carrier: z.string().nullable(),
   sdh_stm_no: z.string().nullable(),
+  service_id: z.uuid().nullable(),
+  service_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  services_interface: z.string().nullable(),
+  services_ip: z.any(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -2391,6 +2433,9 @@ export type RingsUpdateSchema = z.infer<typeof ringsUpdateSchema>;
 export type Sdh_connectionsRowSchema = z.infer<typeof sdh_connectionsRowSchema>;
 export type Sdh_connectionsInsertSchema = z.infer<typeof sdh_connectionsInsertSchema>;
 export type Sdh_connectionsUpdateSchema = z.infer<typeof sdh_connectionsUpdateSchema>;
+export type ServicesRowSchema = z.infer<typeof servicesRowSchema>;
+export type ServicesInsertSchema = z.infer<typeof servicesInsertSchema>;
+export type ServicesUpdateSchema = z.infer<typeof servicesUpdateSchema>;
 export type System_connectionsRowSchema = z.infer<typeof system_connectionsRowSchema>;
 export type System_connectionsInsertSchema = z.infer<typeof system_connectionsInsertSchema>;
 export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUpdateSchema>;

@@ -2744,23 +2744,138 @@ export type Database = {
           },
         ]
       }
+      services: {
+        Row: {
+          bandwidth_allocated: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          lc_id: string | null
+          link_type_id: string | null
+          name: string
+          node_id: string
+          services_interface: string | null
+          services_ip: unknown
+          status: boolean | null
+          system_id: string
+          unique_id: string | null
+          updated_at: string | null
+          vlan: string | null
+        }
+        Insert: {
+          bandwidth_allocated?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lc_id?: string | null
+          link_type_id?: string | null
+          name: string
+          node_id: string
+          services_interface?: string | null
+          services_ip?: unknown
+          status?: boolean | null
+          system_id: string
+          unique_id?: string | null
+          updated_at?: string | null
+          vlan?: string | null
+        }
+        Update: {
+          bandwidth_allocated?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lc_id?: string | null
+          link_type_id?: string | null
+          name?: string
+          node_id?: string
+          services_interface?: string | null
+          services_ip?: unknown
+          status?: boolean | null
+          system_id?: string
+          unique_id?: string | null
+          updated_at?: string | null
+          vlan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+          {
+            foreignKeyName: "services_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_connections: {
         Row: {
           bandwidth: string | null
-          bandwidth_allocated: string | null
           commissioned_on: string | null
-          connected_link_type_id: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
-          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
           remark: string | null
+          service_id: string | null
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -2768,28 +2883,23 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
-          unique_id: string | null
           updated_at: string | null
-          vlan: string | null
           working_fiber_in_ids: string[] | null
           working_fiber_out_ids: string[] | null
         }
         Insert: {
           bandwidth?: string | null
-          bandwidth_allocated?: string | null
           commissioned_on?: string | null
-          connected_link_type_id?: string | null
           created_at?: string | null
-          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
-          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
+          service_id?: string | null
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -2797,28 +2907,23 @@ export type Database = {
           system_id: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
-          unique_id?: string | null
           updated_at?: string | null
-          vlan?: string | null
           working_fiber_in_ids?: string[] | null
           working_fiber_out_ids?: string[] | null
         }
         Update: {
           bandwidth?: string | null
-          bandwidth_allocated?: string | null
           commissioned_on?: string | null
-          connected_link_type_id?: string | null
           created_at?: string | null
-          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
-          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
+          service_id?: string | null
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -2826,27 +2931,11 @@ export type Database = {
           system_id?: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
-          unique_id?: string | null
           updated_at?: string | null
-          vlan?: string | null
           working_fiber_in_ids?: string[] | null
           working_fiber_out_ids?: string[] | null
         }
         Relationships: [
-          {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
-            columns: ["connected_link_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
-            columns: ["connected_link_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "system_connections_en_id_fkey"
             columns: ["en_id"]
@@ -2874,6 +2963,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "system_connections_sn_id_fkey"
@@ -4235,7 +4338,6 @@ export type Database = {
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
@@ -4256,6 +4358,10 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
+          service_id: string | null
+          service_name: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -4277,14 +4383,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            foreignKeyName: "services_link_type_id_fkey"
             columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            foreignKeyName: "services_link_type_id_fkey"
             columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
@@ -5126,17 +5232,20 @@ export type Database = {
           p_bandwidth_allocated?: string
           p_carrier?: string
           p_commissioned_on?: string
-          p_connected_link_type_id?: string
-          p_customer_name?: string
           p_en_id?: string
           p_en_interface?: string
           p_en_ip?: unknown
           p_id?: string
           p_lc_id?: string
+          p_link_type_id?: string
           p_media_type_id: string
           p_protection_fiber_in_ids?: string[]
           p_protection_fiber_out_ids?: string[]
           p_remark?: string
+          p_service_name?: string
+          p_service_node_id?: string
+          p_services_interface?: string
+          p_services_ip?: unknown
           p_sn_id?: string
           p_sn_interface?: string
           p_sn_ip?: unknown
@@ -5152,20 +5261,17 @@ export type Database = {
         }
         Returns: {
           bandwidth: string | null
-          bandwidth_allocated: string | null
           commissioned_on: string | null
-          connected_link_type_id: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
-          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
           remark: string | null
+          service_id: string | null
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -5173,9 +5279,7 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
-          unique_id: string | null
           updated_at: string | null
-          vlan: string | null
           working_fiber_in_ids: string[] | null
           working_fiber_out_ids: string[] | null
         }[]

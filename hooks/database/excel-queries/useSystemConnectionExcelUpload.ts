@@ -23,9 +23,7 @@ export interface SystemConnectionUploadOptions {
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
-// ... (parseExcelFile function remains the same) ...
 const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // DYNAMIC IMPORT HERE
   const XLSX = await import('xlsx');
 
   return new Promise((resolve, reject) => {
@@ -60,8 +58,6 @@ export function useSystemConnectionExcelUpload(
     mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
       const { file, columns, parentSystemId } = uploadOptions;
 
-      // Helper: Convert empty strings to undefined so they become NULL in DB
-      // This is crucial for the port utilization trigger
       const toUndefined = (val: unknown): string | undefined => {
         if (val === null || val === undefined) return undefined;
         const str = String(val).trim();
@@ -88,6 +84,7 @@ export function useSystemConnectionExcelUpload(
       const recordsToProcess: RpcPayload[] = [];
       const allValidationErrors: ValidationError[] = [];
       
+      // Fetch Link Types for lookup
       const linkTypesResp = await supabase.from('lookup_types').select('id, name').eq('category', 'LINK_TYPES');
       const linkTypeNameToId = new Map<string, string>();
       if (!linkTypesResp.error && linkTypesResp.data) {
@@ -141,10 +138,16 @@ export function useSystemConnectionExcelUpload(
           p_system_id: parentSystemId,
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
-          p_customer_name: toUndefined(processedData.customer_name),
-          p_system_working_interface: toUndefined(processedData.system_working_interface),
+          
+          // Map Excel columns to new Service params
+          p_service_name: toUndefined(processedData.customer_name),
+          p_link_type_id: resolvedLinkTypeId,
+          p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
+          p_vlan: toUndefined(processedData.vlan),
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
+          
+          // Connection Params
           p_sn_id: toUndefined(processedData.sn_id),
           p_en_id: toUndefined(processedData.en_id),
           p_sn_ip: processedData.sn_ip || undefined,
@@ -152,16 +155,18 @@ export function useSystemConnectionExcelUpload(
           p_en_ip: processedData.en_ip || undefined,
           p_en_interface: toUndefined(processedData.en_interface),
           p_bandwidth: (processedData.bandwidth as string) || undefined,
-          p_vlan: toUndefined(processedData.vlan),
           p_commissioned_on: toUndefined(processedData.commissioned_on),
           p_remark: toUndefined(processedData.remark),
-          p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
+          
           p_working_fiber_in_ids: toUuidArray(processedData.working_fiber_in_ids),
           p_working_fiber_out_ids: toUuidArray(processedData.working_fiber_out_ids),
           p_protection_fiber_in_ids: toUuidArray(processedData.protection_fiber_in_ids),
           p_protection_fiber_out_ids: toUuidArray(processedData.protection_fiber_out_ids),
+          
+          p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
-          p_connected_link_type_id: resolvedLinkTypeId,
+          
+          // SDH
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
           p_a_slot: toUndefined(processedData.sdh_a_slot),

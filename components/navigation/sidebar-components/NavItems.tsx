@@ -15,6 +15,7 @@ import {
   FiGlobe,
   FiShield,
   FiAirplay,
+  FiDatabase,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -174,6 +175,13 @@ function NavItems() {
             roles: [UserRole.ADMIN],
           },
         ],
+      },
+      {
+        id: 'services',
+        label: 'Services & Customers',
+        href: '/dashboard/services',
+        icon: <FiDatabase className="h-5 w-5" />,
+        roles: [UserRole.ADMIN],
       },
       {
         id: 'systems',

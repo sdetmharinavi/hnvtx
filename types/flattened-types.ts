@@ -1606,22 +1606,73 @@ export type Sdh_connectionsUpdate = {
     system_connection_id?: string;
 };
 
+export type ServicesRow = {
+    bandwidth_allocated: string | null;
+    created_at: string | null;
+    description: string | null;
+    id: string;
+    lc_id: string | null;
+    link_type_id: string | null;
+    name: string;
+    node_id: string;
+    services_interface: string | null;
+    services_ip: unknown;
+    status: boolean | null;
+    system_id: string;
+    unique_id: string | null;
+    updated_at: string | null;
+    vlan: string | null;
+};
+
+export type ServicesInsert = {
+    bandwidth_allocated?: string | null;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+    lc_id?: string | null;
+    link_type_id?: string | null;
+    name: string;
+    node_id: string;
+    services_interface?: string | null;
+    services_ip?: unknown;
+    status?: boolean | null;
+    system_id: string;
+    unique_id?: string | null;
+    updated_at?: string | null;
+    vlan?: string | null;
+};
+
+export type ServicesUpdate = {
+    bandwidth_allocated?: string | null;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+    lc_id?: string | null;
+    link_type_id?: string | null;
+    name?: string;
+    node_id?: string;
+    services_interface?: string | null;
+    services_ip?: unknown;
+    status?: boolean | null;
+    system_id?: string;
+    unique_id?: string | null;
+    updated_at?: string | null;
+    vlan?: string | null;
+};
+
 export type System_connectionsRow = {
     bandwidth: string | null;
-    bandwidth_allocated: string | null;
     commissioned_on: string | null;
-    connected_link_type_id: string | null;
     created_at: string | null;
-    customer_name: string | null;
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
     id: string;
-    lc_id: string | null;
     media_type_id: string | null;
     protection_fiber_in_ids: string[] | null;
     protection_fiber_out_ids: string[] | null;
     remark: string | null;
+    service_id: string | null;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown;
@@ -1629,29 +1680,24 @@ export type System_connectionsRow = {
     system_id: string;
     system_protection_interface: string | null;
     system_working_interface: string | null;
-    unique_id: string | null;
     updated_at: string | null;
-    vlan: string | null;
     working_fiber_in_ids: string[] | null;
     working_fiber_out_ids: string[] | null;
 };
 
 export type System_connectionsInsert = {
     bandwidth?: string | null;
-    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
-    connected_link_type_id?: string | null;
     created_at?: string | null;
-    customer_name?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
     id?: string;
-    lc_id?: string | null;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
+    service_id?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -1659,29 +1705,24 @@ export type System_connectionsInsert = {
     system_id: string;
     system_protection_interface?: string | null;
     system_working_interface?: string | null;
-    unique_id?: string | null;
     updated_at?: string | null;
-    vlan?: string | null;
     working_fiber_in_ids?: string[] | null;
     working_fiber_out_ids?: string[] | null;
 };
 
 export type System_connectionsUpdate = {
     bandwidth?: string | null;
-    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
-    connected_link_type_id?: string | null;
     created_at?: string | null;
-    customer_name?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
     id?: string;
-    lc_id?: string | null;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
+    service_id?: string | null;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -1689,9 +1730,7 @@ export type System_connectionsUpdate = {
     system_id?: string;
     system_protection_interface?: string | null;
     system_working_interface?: string | null;
-    unique_id?: string | null;
     updated_at?: string | null;
-    vlan?: string | null;
     working_fiber_in_ids?: string[] | null;
     working_fiber_out_ids?: string[] | null;
 };
@@ -2130,7 +2169,6 @@ export type V_system_connections_completeRow = {
     connected_system_name: string | null;
     connected_system_type_name: string | null;
     created_at: string | null;
-    customer_name: string | null;
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
@@ -2151,6 +2189,10 @@ export type V_system_connections_completeRow = {
     sdh_b_slot: string | null;
     sdh_carrier: string | null;
     sdh_stm_no: string | null;
+    service_id: string | null;
+    service_name: string | null;
+    services_interface: string | null;
+    services_ip: unknown;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown;
@@ -2312,6 +2354,7 @@ export const tableNames = [
   "ring_based_systems",
   "rings",
   "sdh_connections",
+  "services",
   "system_connections",
   "systems",
   "user_activity_logs",

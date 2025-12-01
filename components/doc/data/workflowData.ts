@@ -35,24 +35,6 @@ export const workflowSections: WorkflowSection[] = [
           "**Context:** `UserProvider` fetches `v_user_profiles_extended` to check `preferences->needsOnboarding`.",
         ],
       },
-      // {
-      //   title: "2. Admin User Management",
-      //   userSteps: [
-      //     "Admin navigates to `/dashboard/users`.",
-      //     "Uses the 'Filter by Role' dropdown to find specific users.",
-      //     "Clicks 'Edit' (Pencil Icon) on a user row.",
-      //     "Changes Role (e.g., to `MAAN_ADMIN`) or Status (e.g., `Suspended`).",
-      //     "Clicks 'Update'.",
-      //   ],
-      //   uiSteps: [
-      //     "The `DataTable` refreshes immediately.",
-      //     "The user's permissions update instantly due to RLS policy re-evaluation.",
-      //   ],
-      //   techSteps: [
-      //     "**RPC:** `admin_update_user_profile` handles the update securely.",
-      //     "**Trigger:** `sync_user_role_to_auth` ensures the `auth.users` JWT claim matches the `user_profiles` role.",
-      //   ],
-      // },
     ],
   },
 
@@ -223,7 +205,7 @@ export const workflowSections: WorkflowSection[] = [
     iconColor: "text-blue-400",
     bgGlow: "bg-blue-500/10",
     color: "blue",
-    purpose: "To model active equipment (Systems) and organize them into logical Rings for redundancy.",
+    purpose: "To manage the physical and logical network equipment (Systems), their capacities, and their organization into Rings.",
     workflows: [
       {
         title: "1. Creating Systems",
@@ -300,6 +282,7 @@ export const workflowSections: WorkflowSection[] = [
         ],
         uiSteps: [
           "Dropdowns filter ports to show only those available.",
+          "UI Note: If no 'Start Node' is selected, the source system defaults as 'End A' automatically.",
         ],
         techSteps: [
           "**RPC:** `upsert_system_connection_with_details`.",
@@ -333,6 +316,21 @@ export const workflowSections: WorkflowSection[] = [
         ],
         techSteps: [
           "**RPC:** `trace_fiber_path` uses a recursive SQL query (CTE) to traverse `fiber_splices` and `cable_segments`.",
+        ],
+      },
+      {
+        title: "4. Viewing Connection Details",
+        userSteps: [
+          "In the Systems list or Connections table, click 'Full Details' (Monitor Icon).",
+          "A comprehensive modal opens showing Circuit Info, End A/B details, and mapped OFC data.",
+        ],
+        uiSteps: [
+          "The 'End A & End B Details' table dynamically displays connection points.",
+          "If End A (Start Node) is not explicitly defined in the database, the UI intelligently falls back to display the Parent System's Name and IP Address.",
+        ],
+        techSteps: [
+          "**Component:** `SystemConnectionDetailsModal`.",
+          "**Logic:** Uses `useTableRecord` to fetch the parent system and populate missing `sn_ip` or `sn_name` fields on the fly.",
         ],
       },
     ],

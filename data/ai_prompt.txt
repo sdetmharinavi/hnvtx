@@ -129,6 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, let's thoroughly analyze the full project if everything is OK or not
+Let's begin! First of all, let's fix components/system-details/SystemConnectionDetailsModal.tsx
 
 

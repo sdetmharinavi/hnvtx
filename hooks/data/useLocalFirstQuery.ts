@@ -13,7 +13,7 @@ interface UseLocalFirstQueryOptions<
 > {
   queryKey: QueryKey;
   onlineQueryFn: () => Promise<TRow[]>;
-  localQueryFn: () => PromiseExtended<TLocal[]>;
+  localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
   localQueryDeps?: unknown[];
   // THE FIX: Allow any key type (string, number, compound) for the Dexie table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
