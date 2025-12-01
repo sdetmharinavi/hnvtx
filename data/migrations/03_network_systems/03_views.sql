@@ -64,37 +64,79 @@ FROM public.systems s
 -- View for a complete picture of a system connection and its specific details.
 CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT
-  sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
+  sc.id,
+  sc.system_id,
+  s.system_name,
+  lt_system.name AS system_type_name,
   sc.sn_id,
   sc.en_id,
   na.id AS sn_node_id,
   nb.id AS en_node_id,
   sc.media_type_id,
-  s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
-  s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
-  lt_media.name AS media_type_name, sc.bandwidth, COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
+  
+  -- End A details
+  s_sn.system_name AS sn_name, 
+  na.name AS sn_node_name, 
+  sc.sn_ip, 
+  sc.sn_interface,
+  
+  -- End B details
+  s_en.system_name AS en_name, 
+  nb.name AS en_node_name, 
+  sc.en_ip, 
+  sc.en_interface,
+  
+  lt_media.name AS media_type_name,
+  sc.bandwidth, -- Physical link capacity
+  COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
   lt_sn_type.name AS sn_system_type_name,
   lt_en_type.name AS en_system_type_name,
   COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, 
-  sc.vlan, sc.commissioned_on,
-  sc.remark, sc.status, sc.created_at, sc.updated_at,
-  sc.customer_name,
-  sc.bandwidth_allocated,
-  sc.lc_id,
-  sc.unique_id,
+  
+  sc.commissioned_on,
+  sc.remark,
+  sc.status,
+  sc.created_at,
+  sc.updated_at,
+  
+  -- SERVICE DATA JOINED HERE
+  svc.id AS service_id,
+  svc.name AS service_name, -- Replaces customer_name
+  svc.bandwidth_allocated,
+  svc.vlan,
+  svc.lc_id,
+  svc.unique_id,
+  svc.services_ip,
+  svc.services_interface,
+  svc.link_type_id AS connected_link_type_id,
+  lt_link_type.name as connected_link_type_name,
+  
+  -- Fiber Arrays
   sc.working_fiber_in_ids,
   sc.working_fiber_out_ids,
   sc.protection_fiber_in_ids,
   sc.protection_fiber_out_ids,
+  
+  -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
-  sc.connected_link_type_id,
-  lt_link_type.name as connected_link_type_name,
-  scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
+  
+  -- SDH Details
+  scs.stm_no AS sdh_stm_no, 
+  scs.carrier AS sdh_carrier, 
+  scs.a_slot AS sdh_a_slot,
+  scs.a_customer AS sdh_a_customer, 
+  scs.b_slot AS sdh_b_slot, 
+  scs.b_customer AS sdh_b_customer
+
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+  
+  -- Join the new Services table
+  LEFT JOIN public.services svc ON sc.service_id = svc.id
+  LEFT JOIN public.lookup_types lt_link_type ON svc.link_type_id = lt_link_type.id
+  
   LEFT JOIN public.systems s_sn ON sc.sn_id = s_sn.id
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
@@ -102,8 +144,8 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_sn_type ON s_sn.system_type_id = lt_sn_type.id
   LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
-  LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
+
 
 
 -- --- View for ports_management ---

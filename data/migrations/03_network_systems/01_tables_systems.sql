@@ -48,10 +48,29 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 
+CREATE TABLE IF NOT EXISTS public.services (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
+    node_id UUID NOT NULL REFERENCES public.nodes (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    link_type_id UUID REFERENCES public.lookup_types(id),
+    description TEXT,
+    services_ip INET,
+    services_interface TEXT,
+    bandwidth_allocated TEXT,
+    vlan TEXT,
+    lc_id TEXT,
+    unique_id TEXT,
+    status BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_id UUID REFERENCES public.systems (id) NOT NULL,
+  service_id UUID REFERENCES public.services(id) ON DELETE SET NULL,
   system_working_interface TEXT,
   system_protection_interface TEXT,
   sn_id UUID REFERENCES public.systems (id),
@@ -60,19 +79,19 @@ CREATE TABLE IF NOT EXISTS public.system_connections (
   en_id UUID REFERENCES public.systems (id),
   en_ip INET,
   en_interface TEXT,
-  connected_link_type_id UUID REFERENCES public.lookup_types (id),
+  -- connected_link_type_id UUID REFERENCES public.lookup_types (id),
   media_type_id UUID REFERENCES public.lookup_types (id),
   bandwidth TEXT,
-  vlan TEXT,
-  lc_id TEXT,
-  unique_id TEXT,
+  -- vlan TEXT,
+  -- lc_id TEXT,
+  -- unique_id TEXT,
   -- store arrays of fiber IDs
   working_fiber_in_ids UUID[],
   working_fiber_out_ids UUID[],
   protection_fiber_in_ids UUID[],
   protection_fiber_out_ids UUID[],
-  customer_name TEXT,
-  bandwidth_allocated TEXT,
+  -- customer_name TEXT,
+  -- bandwidth_allocated TEXT,
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,

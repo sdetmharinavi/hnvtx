@@ -2935,7 +2935,7 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 }
 
 html {
-  font-size: 14px;
+  font-size: 10px;
 }
 
 
@@ -3045,11 +3045,11 @@ body {
 }
 
 .react-datepicker__day--highlighted {
-  background-color: #93c5fd !important;
+  background-color: #1b8310 !important;
   color: #1e3a8a !important;
 }
 .dark .react-datepicker__day--highlighted {
-  background-color: #1e40af !important;
+  background-color: #396503 !important;
   color: #dbeafe !important;
 }
 
@@ -4185,6 +4185,288 @@ export async function POST(req: NextRequest) {
     console.error("ORS internal API error:", error);
     return NextResponse.json({ error: `Failed to fetch distance: ${errorMessage}` }, { status: 500 });
   }
+}
+```
+
+<!-- path: app/api/upload/route.ts -->
+```typescript
+// app/api/upload/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get authentication
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    // Get folder ID from headers
+    const folderId = request.headers.get("x-folder-id");
+    if (!folderId) {
+      return NextResponse.json(
+        { error: "Folder ID is required" },
+        { status: 400 },
+      );
+    }
+
+    // Parse form data
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // Check for empty files
+    if (file.size === 0) {
+      console.error("Empty file detected:", file.name);
+      return NextResponse.json(
+        { error: "File is empty or corrupted. Please try uploading again." },
+        { status: 400 },
+      );
+    }
+
+    // Validate file size (100MB limit)
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: "File size too large. Maximum 100MB allowed." },
+        { status: 400 },
+      );
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      "image/",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/",
+      "application/rtf",
+      "video/",
+      "audio/",
+    ];
+
+    const isValidType = allowedTypes.some(
+      (type) => file.type.startsWith(type) || file.type === type,
+    );
+    if (!isValidType) {
+      return NextResponse.json(
+        { error: "File type not supported" },
+        { status: 400 },
+      );
+    }
+
+    // Additional validation for images
+    if (file.type.startsWith("image/")) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        if (arrayBuffer.byteLength === 0) {
+          return NextResponse.json(
+            { error: "Image file appears to be corrupted" },
+            { status: 400 },
+          );
+        }
+      } catch (error) {
+        console.error("Error reading file:", error);
+        return NextResponse.json(
+          { error: "Unable to process image file" },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate Cloudinary configuration
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      console.error("Missing Cloudinary configuration:", {
+        cloudName: !!cloudName,
+        uploadPreset: !!uploadPreset,
+      });
+      return NextResponse.json(
+        { error: "Server configuration error: Missing Cloudinary keys" },
+        { status: 500 },
+      );
+    }
+
+    // Check if folder exists and belongs to user (Optional check, disabled for now to allow shared folders)
+    /*
+    const { data: folderData, error: folderError } = await supabase
+      .from("folders")
+      .select("id, user_id")
+      .eq("id", folderId)
+      .single();
+
+    if (folderError || !folderData) {
+      return NextResponse.json(
+        { error: "Invalid folder or access denied" },
+        { status: 403 },
+      );
+    }
+    */
+
+    // Prepare Cloudinary upload
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append("file", file);
+    cloudinaryFormData.append("upload_preset", uploadPreset);
+
+    // Set resource type based on file type
+    const isPDF = file.type === "application/pdf";
+    const isVideo = file.type.startsWith("video/");
+    const isAudio = file.type.startsWith("audio/");
+    const isImage = file.type.startsWith("image/");
+
+    if (isPDF) {
+      cloudinaryFormData.append("resource_type", "raw");
+      cloudinaryFormData.append("tags", "pdf_document");
+    } else if (isVideo) {
+      cloudinaryFormData.append("resource_type", "video");
+      cloudinaryFormData.append("tags", "video_file");
+    } else if (isAudio) {
+      cloudinaryFormData.append("resource_type", "video");
+      cloudinaryFormData.append("tags", "audio_file");
+    } else if (isImage) {
+      cloudinaryFormData.append("resource_type", "image");
+      cloudinaryFormData.append("tags", "image_file");
+      cloudinaryFormData.append("quality", "auto:good");
+      cloudinaryFormData.append("fetch_format", "auto");
+    } else {
+      cloudinaryFormData.append("resource_type", "auto");
+    }
+
+    // Add folder organization in Cloudinary
+    cloudinaryFormData.append("folder", `user_${user.id}/folder_${folderId}`);
+
+    // Add timestamp to avoid filename conflicts
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    cloudinaryFormData.append(
+      "public_id",
+      `${Date.now()}_${sanitizedFileName}`,
+    );
+
+    // Upload to Cloudinary with timeout
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
+
+    const cloudinaryResponse = await Promise.race([
+      fetch(uploadUrl, {
+        method: "POST",
+        body: cloudinaryFormData,
+      }),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error("Upload timeout")), 300000), // 5 minute timeout
+      ),
+    ]);
+
+    if (!cloudinaryResponse.ok) {
+      const errorText = await cloudinaryResponse.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+
+      console.error("Cloudinary upload error:", {
+        status: cloudinaryResponse.status,
+        statusText: cloudinaryResponse.statusText,
+        error: errorData,
+      });
+
+      return NextResponse.json(
+        {
+          error:
+            errorData.message ||
+            `Upload failed: ${cloudinaryResponse.statusText}`,
+        },
+        { status: 500 },
+      );
+    }
+
+    const cloudinaryData = await cloudinaryResponse.json();
+
+    if (!cloudinaryData.secure_url) {
+      return NextResponse.json(
+        { error: "Upload succeeded but no URL returned" },
+        { status: 500 },
+      );
+    }
+
+    // IMPORTANT: Return success response for Uppy
+    // Note: We do NOT insert into the DB here. The client-side useUppyUploader hook
+    // listens for 'upload-success' and performs the DB insert. This avoids duplicates.
+    
+    return NextResponse.json({
+      public_id: cloudinaryData.public_id,
+      secure_url: cloudinaryData.secure_url,
+      // Return all data Uppy might need
+      width: cloudinaryData.width,
+      height: cloudinaryData.height,
+      format: cloudinaryData.format,
+      resource_type: cloudinaryData.resource_type,
+      bytes: cloudinaryData.bytes,
+      success: true, // Signal success to Uppy
+    });
+
+  } catch (error: unknown) {
+    console.error("Upload API error:", error);
+
+    if (
+      error instanceof Error &&
+      (error.name === "AbortError" || error.message.includes("timeout"))
+    ) {
+      return NextResponse.json(
+        { error: "Upload timeout. Please try again with a smaller file." },
+        { status: 408 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: process.env.NODE_ENV === "development" && error instanceof Error ? error.message : undefined,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    "http://localhost:3000",
+    "https://localhost:3000",
+  ].filter(Boolean);
+
+  const corsHeaders = {
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-folder-id, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "86400",
+  } as Record<string, string>;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
+  } else if (process.env.NODE_ENV === "development") {
+    corsHeaders["Access-Control-Allow-Origin"] = "*";
+  }
+
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
 }
 ```
 
@@ -5687,7 +5969,7 @@ import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schem
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
-import { getInventoryTableColumns } from "@/components/inventory/InventoryTableColumns";
+import { getInventoryTableColumns } from "@/config/table-columns/InventoryTableColumns";
 import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 import { useInventoryData } from "@/hooks/data/useInventoryData";
@@ -6886,67 +7168,135 @@ import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useNodesData } from '@/hooks/data/useNodesData';
+import { useUser } from '@/providers/UserProvider';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
-  maintenance_terminal?: { id: string; name: string; } | null;
-  node_type?: { id: string; name: string; } | null;
+  maintenance_terminal?: { id: string; name: string } | null;
+  node_type?: { id: string; name: string } | null;
 };
 
 const NodesPage = () => {
   const {
-    data: nodes, totalCount, activeCount, inactiveCount, isLoading, isMutating, isFetching, error, refetch,
-    pagination, search, filters, editModal, viewModal, deleteModal, actions: crudActions,
+    data: nodes,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isMutating,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters,
+    editModal,
+    viewModal,
+    deleteModal,
+    actions: crudActions,
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
     tableName: 'nodes',
     dataQueryHook: useNodesData,
   });
-  
+  const { isSuperAdmin } = useUser();
+
   const { data: nodeTypeOptionsData } = useOfflineQuery(
     ['node-types-for-filter'],
-    async () => (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ?? [],
-    async () => (await localDb.v_nodes_complete.toArray()).map(n => ({ node_type_id: n.node_type_id, node_type_name: n.node_type_name }))
+    async () =>
+      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ??
+      [],
+    async () =>
+      (await localDb.v_nodes_complete.toArray()).map((n) => ({
+        node_type_id: n.node_type_id,
+        node_type_name: n.node_type_name,
+      }))
   );
 
   const nodeTypes = useMemo(() => {
     if (!nodeTypeOptionsData) return [];
     const uniqueNodeTypes = new Map<string, { id: string; name: string }>();
-    nodeTypeOptionsData.forEach((node: { node_type_id: string | null; node_type_name: string | null; }) => {
-      if (node.node_type_id && node.node_type_name && !uniqueNodeTypes.has(node.node_type_id)) {
-        uniqueNodeTypes.set(node.node_type_id, { id: node.node_type_id, name: node.node_type_name });
+    nodeTypeOptionsData.forEach(
+      (node: { node_type_id: string | null; node_type_name: string | null }) => {
+        if (node.node_type_id && node.node_type_name && !uniqueNodeTypes.has(node.node_type_id)) {
+          uniqueNodeTypes.set(node.node_type_id, {
+            id: node.node_type_id,
+            name: node.node_type_name,
+          });
+        }
       }
-    });
+    );
     return Array.from(uniqueNodeTypes.values());
   }, [nodeTypeOptionsData]);
 
   const isInitialLoad = isLoading && nodes.length === 0;
   const columns = NodesTableColumns(nodes);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
-  const tableActions = useMemo(() => createStandardActions<V_nodes_completeRowSchema>({ onEdit: editModal.openEdit, onView: viewModal.open, onDelete: crudActions.handleDelete }), [editModal.openEdit, viewModal.open, crudActions.handleDelete]);
-  const headerActions = useStandardHeaderActions({ data: nodes as NodesRowSchema[], onAddNew: editModal.openAdd, onRefresh: () => { refetch(); toast.success('Refreshed successfully!'); }, isLoading: isLoading, exportConfig: { tableName: 'nodes' } });
+  const tableActions = useMemo(
+    () =>
+      createStandardActions<V_nodes_completeRowSchema>({
+        onEdit: editModal.openEdit,
+        onView: viewModal.open,
+        onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
+      }),
+    [editModal.openEdit, viewModal.open, crudActions.handleDelete, isSuperAdmin]
+  );
+  const headerActions = useStandardHeaderActions({
+    data: nodes as NodesRowSchema[],
+    onAddNew: editModal.openAdd,
+    onRefresh: () => {
+      refetch();
+      toast.success('Refreshed successfully!');
+    },
+    isLoading: isLoading,
+    exportConfig: { tableName: 'nodes' },
+  });
   const headerStats = [
     { value: totalCount, label: 'Total Nodes' },
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="mx-auto space-y-4 p-6">
-      <PageHeader title="Node Management" description="Manage network nodes and their related information." icon={<FiCpu />} stats={headerStats} actions={headerActions} isLoading={isInitialLoad} isFetching={isFetching} />
-      <NodeDetailsModal isOpen={viewModal.isOpen} node={viewModal.record as V_nodes_completeRowSchema} onClose={viewModal.close} />
+      <PageHeader
+        title="Node Management"
+        description="Manage network nodes and their related information."
+        icon={<FiCpu />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isInitialLoad}
+        isFetching={isFetching}
+      />
+      <NodeDetailsModal
+        isOpen={viewModal.isOpen}
+        node={viewModal.record as V_nodes_completeRowSchema}
+        onClose={viewModal.close}
+      />
       <DataTable
         tableName="v_nodes_complete"
         data={nodes}
         columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
-        selectable={true}
+        selectable={isSuperAdmin ? true : false}
         showColumnsToggle={true}
         onCellEdit={crudActions.handleCellEdit}
         pagination={{
-          current: pagination.currentPage, pageSize: pagination.pageLimit, total: totalCount, showSizeChanger: true,
-          onChange: (page, pageSize) => { pagination.setCurrentPage(page); pagination.setPageLimit(pageSize); },
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
         }}
         customToolbar={
           <NodesFilters
@@ -6954,19 +7304,36 @@ const NodesPage = () => {
             onSearchChange={search.setSearchQuery}
             nodeTypes={nodeTypes}
             selectedNodeType={filters.filters.node_type_id as string | undefined}
-            onNodeTypeChange={(value) => filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))}
+            onNodeTypeChange={(value) =>
+              filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))
+            }
           />
         }
       />
       {editModal.isOpen && (
-        <NodeFormModal isOpen={editModal.isOpen} onClose={editModal.close} editingNode={editModal.record as NodeRowsWithRelations | null} onSubmit={crudActions.handleSave} isLoading={isMutating} />
+        <NodeFormModal
+          isOpen={editModal.isOpen}
+          onClose={editModal.close}
+          editingNode={editModal.record as NodeRowsWithRelations | null}
+          onSubmit={crudActions.handleSave}
+          isLoading={isMutating}
+        />
       )}
-      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title="Confirm Deletion" message={deleteModal.message} loading={deleteModal.loading} type="danger" />
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type="danger"
+      />
     </div>
   );
 };
 
 export default NodesPage;
+
 ```
 
 <!-- path: app/dashboard/employees/page.tsx -->
@@ -6979,7 +7346,7 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
-import { getEmployeeTableColumns } from '@/components/employee/EmployeeTableColumns';
+import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
 import { DataTable } from '@/components/table/DataTable';
 import { BulkActions } from '@/components/common/BulkActions';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -7272,20 +7639,21 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye, Monitor } from 'lucide-react'; // Added Monitor icon
+import { ZapOff, Eye, Monitor } from 'lucide-react'; 
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
 import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-// NEW IMPORT
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
+import { StatProps } from '@/components/common/page-header/StatCard';
+import { usePortsData } from '@/hooks/data/usePortsData'; // New Import
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -7310,14 +7678,14 @@ export default function SystemConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
 
-  // NEW STATE for the Details Modal
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-
+  // --- Fetch System Details ---
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
   const parentSystem = systemData?.data?.[0];
 
+  // --- Fetch Connections ---
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase, 'v_system_connections_complete', {
       filters: {
@@ -7328,10 +7696,41 @@ export default function SystemConnectionsPage() {
       offset: (currentPage - 1) * pageLimit,
     }
   );
-
   const connections = connectionsData?.data || [];
-  const totalCount = connectionsData?.total_count || 0;
+  const totalConnections = connectionsData?.total_count || 0;
 
+  // --- Fetch Port Stats (Local-First) ---
+  // Initialize the hook with default parameters to get all ports for this system
+  const { data: ports = [] } = usePortsData(systemId)({
+      currentPage: 1, 
+      pageLimit: 5000, // Fetch enough to calculate accurate stats
+      searchQuery: '',
+      filters: {} 
+  });
+
+  const headerStats: StatProps[] = useMemo(() => {
+    if (!ports || ports.length === 0) {
+        return [{ label: 'Total Connections', value: totalConnections }];
+    }
+
+    const totalPorts = ports.length;
+    const usedPorts = ports.filter(p => p.port_utilization).length;
+    // Available = Not utilized AND Admin Status is UP
+    const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
+    const portsDown = ports.filter(p => !p.port_admin_status).length;
+    const utilPercent = totalPorts > 0 ? Math.round((usedPorts / totalPorts) * 100) : 0;
+
+    return [
+        { label: 'Connections', value: totalConnections, color: 'default' },
+        { label: 'Total Ports', value: totalPorts, color: 'default' },
+        { label: 'Ports Used', value: usedPorts, color: 'primary' },
+        { label: 'Ports Available', value: availablePorts, color: 'success' },
+        { label: 'Ports Down', value: portsDown, color: 'danger' },
+        { label: 'Utilization', value: `${utilPercent}%`, color: utilPercent > 80 ? 'warning' : 'default' },
+    ];
+  }, [ports, totalConnections]);
+
+  // --- Mutations ---
   const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
     onSuccess: () => { 
       refetch(); 
@@ -7380,8 +7779,8 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'En Interface', dbKey: 'en_interface' },
         { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
         { excelHeader: 'Vlan', dbKey: 'vlan' },
-        { excelHeader: 'LC ID', dbKey: 'lc_id' },       // ADDED
-        { excelHeader: 'Unique ID', dbKey: 'unique_id' }, // ADDED
+        { excelHeader: 'LC ID', dbKey: 'lc_id' },      
+        { excelHeader: 'Unique ID', dbKey: 'unique_id' },
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'customer_name' },
@@ -7426,7 +7825,7 @@ export default function SystemConnectionsPage() {
     setIsAllocationModalOpen(false);
   }, [refetch]);
   
-  const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
+ const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
     setIsTracing(true);
     setIsTraceModalOpen(true);
     setTraceModalData(null);
@@ -7441,7 +7840,6 @@ export default function SystemConnectionsPage() {
     }
   }, [tracePath]);
 
-  // Handler for opening the new details modal
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
       setDetailsConnectionId(record.id);
       setIsDetailsModalOpen(true);
@@ -7457,9 +7855,7 @@ export default function SystemConnectionsPage() {
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
-      // NEW: Full Details View Button
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
-      
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
       { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
@@ -7496,8 +7892,8 @@ export default function SystemConnectionsPage() {
       p_en_interface: formData.en_interface || undefined,
       p_bandwidth: formData.bandwidth || undefined,
       p_vlan: formData.vlan || undefined,
-      p_lc_id: formData.lc_id || undefined, // Added
-      p_unique_id: formData.unique_id || undefined, // Added
+      p_lc_id: formData.lc_id || undefined,
+      p_unique_id: formData.unique_id || undefined,
       p_commissioned_on: formData.commissioned_on || undefined,
       p_remark: formData.remark || undefined,
       p_customer_name: formData.customer_name || undefined,
@@ -7529,7 +7925,7 @@ export default function SystemConnectionsPage() {
         description={`Manage connections for ${parentSystem.system_type_code} at ${parentSystem.node_name}`}
         icon={<FiDatabase />}
         actions={headerActions}
-        stats={[{ label: 'Total Connections', value: totalCount }]}
+        stats={headerStats}
       />
 
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
@@ -7542,7 +7938,7 @@ export default function SystemConnectionsPage() {
         isFetching={isLoadingConnections}
         actions={tableActions}
         pagination={{
-          current: currentPage, pageSize: pageLimit, total: totalCount, showSizeChanger: true,
+          current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
           onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
         }}
         searchable
@@ -7572,7 +7968,6 @@ export default function SystemConnectionsPage() {
         isLoading={isTracing}
       />
 
-      {/* The New Modal */}
       <SystemConnectionDetailsModal 
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
@@ -8180,36 +8575,60 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    // THE FIX: Explicitly include 'ring_id' in the columns list
-    columns: 'order_in_ring, ring_id, systems(id, system_name, is_hub, status, system_type_id, node_id, ip_address, s_no, make, remark, commissioned_on, maintenance_terminal_id, maan_node_id, system_capacity_id)',
+    // THE FIX: Use explicit foreign key relationship and robust column selection
+    columns: `
+      order_in_ring, 
+      ring_id, 
+      system:systems!ring_based_systems_system_id_fkey (
+        id, 
+        system_name, 
+        is_hub, 
+        status, 
+        system_type_id, 
+        node_id, 
+        ip_address, 
+        s_no, 
+        make, 
+        remark, 
+        commissioned_on, 
+        maintenance_terminal_id, 
+        maan_node_id, 
+        system_capacity_id
+      )
+    `,
     filters: { ring_id: ringId || '' },
     enabled: !!ringId,
     orderBy: [{ column: 'order_in_ring', ascending: true }],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     select: (result: PagedQueryResult<any>) => {
-        const flattened = result.data.map((item) => ({
-            id: item.systems?.id,
-            system_name: item.systems?.system_name,
-            is_hub: item.systems?.is_hub,
-            order_in_ring: item.order_in_ring,
-            // THE FIX: Map the ring_id from the junction table to the flat object
-            ring_id: item.ring_id, 
-            status: item.systems?.status,
+        const flattened = result.data.map((item) => {
+            // Robustly handle nested system object
+            const sys = item.system || item.systems;
+            if (!sys) return null;
             
-            // Essential fields for Update/Upsert
-            system_type_id: item.systems?.system_type_id,
-            node_id: item.systems?.node_id,
-            
-            // Optional fields to preserve data integrity
-            ip_address: item.systems?.ip_address.split('/')[0],
-            s_no: item.systems?.s_no,
-            make: item.systems?.make,
-            remark: item.systems?.remark,
-            commissioned_on: item.systems?.commissioned_on,
-            maintenance_terminal_id: item.systems?.maintenance_terminal_id,
-            maan_node_id: item.systems?.maan_node_id,
-            system_capacity_id: item.systems?.system_capacity_id,
-        })) as unknown as V_systems_completeRowSchema[];
+            return {
+                id: sys.id,
+                system_name: sys.system_name,
+                is_hub: sys.is_hub,
+                order_in_ring: item.order_in_ring,
+                ring_id: item.ring_id, 
+                status: sys.status,
+                
+                // Essential fields for Update/Upsert
+                system_type_id: sys.system_type_id,
+                node_id: sys.node_id,
+                
+                // Optional fields to preserve data integrity
+                ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
+                s_no: sys.s_no,
+                make: sys.make,
+                remark: sys.remark,
+                commissioned_on: sys.commissioned_on,
+                maintenance_terminal_id: sys.maintenance_terminal_id,
+                maan_node_id: sys.maan_node_id,
+                system_capacity_id: sys.system_capacity_id,
+            };
+        }).filter((item): item is V_systems_completeRowSchema => item !== null);
         
         return {
             data: flattened,
@@ -8377,7 +8796,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
 export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
-  const queryClient = useQueryClient(); // THE FIX: Added queryClient
+  const queryClient = useQueryClient();
   const { isSuperAdmin } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -8418,7 +8837,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      // THE FIX: Explicitly invalidate the ring systems query to force the sub-component to re-render
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
@@ -8481,7 +8899,6 @@ export default function RingManagerPage() {
   }) => {
     if (!systemToEdit) return;
 
-    // THE FIX: Validate that ring_id is present before attempting update
     if (!systemToEdit.ring_id) {
         toast.error("Cannot update: System is not correctly associated with a ring context.");
         return;
@@ -8843,7 +9260,7 @@ export default function RingManagerPage() {
 // app/dashboard/diary/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { FiBookOpen, FiUpload, FiCalendar } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -8864,8 +9281,11 @@ import { useDiaryData, DiaryEntryWithUser } from "@/hooks/data/useDiaryData";
 import { UserRole } from "@/types/user-roles";
 
 export default function DiaryPage() {
+  // currentDate controls the "View Range" (which month we fetch data for)
   const [currentDate, setCurrentDate] = useState(new Date());
+  // selectedDate controls which specific day is active in the list
   const [selectedDate, setSelectedDate] = useState(new Date());
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
@@ -8874,6 +9294,7 @@ export default function DiaryPage() {
   const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
 
+  // This hook automatically re-fetches when 'currentDate' changes (e.g., month switch)
   const {
     data: allNotesForMonth = [],
     isLoading,
@@ -8882,7 +9303,6 @@ export default function DiaryPage() {
     refetch,
   } = useDiaryData(currentDate);
 
-  // THE FIX 1: Define permissions for viewing all notes and for mutating notes.
   const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
   const canMutate = isSuperAdmin || currentUserRole === UserRole.ADMIN;
 
@@ -8890,7 +9310,6 @@ export default function DiaryPage() {
     if (canViewAll) {
       return allNotesForMonth;
     }
-    // For any other role, they only see their own notes.
     return allNotesForMonth.filter(note => note.user_id === user?.id);
   }, [allNotesForMonth, canViewAll, user?.id]);
 
@@ -8905,7 +9324,6 @@ export default function DiaryPage() {
     onError: (err) => toast.error(`Failed to update note: ${err.message}`),
   });
 
-  // THE FIX: Wrap refetch in an arrow function to ignore the deletedIds argument
   const deleteManager = useDeleteManager({ 
     tableName: 'diary_notes', 
     onSuccess: () => { refetch(); } 
@@ -8956,16 +9374,16 @@ export default function DiaryPage() {
 
   const notesForSelectedDay = useMemo(() => {
     if (!roleFilteredNotes) return [];
-    
     const selectedDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-    
     return roleFilteredNotes.filter((note: DiaryEntryWithUser) => {
       return note.note_date === selectedDateString;
     });
   }, [roleFilteredNotes, selectedDate]);
 
+  // Handles clicking a specific day
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
+    // Also update currentDate if the user clicked a trailing day from prev/next month
     if (
       date.getMonth() !== currentDate.getMonth() ||
       date.getFullYear() !== currentDate.getFullYear()
@@ -8974,10 +9392,15 @@ export default function DiaryPage() {
     }
   };
 
+  // THE FIX: Handles navigating months via arrows (without changing selected day)
+  const handleMonthChange = useCallback((date: Date) => {
+    setCurrentDate(date);
+  }, []);
+
   const headerActions = useStandardHeaderActions({
     data: roleFilteredNotes,
     onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
-    onAddNew: canMutate ? openAddModal : undefined, // THE FIX 2: Conditionally enable "Add New"
+    onAddNew: canMutate ? openAddModal : undefined,
     isLoading,
     exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
   });
@@ -8987,7 +9410,7 @@ export default function DiaryPage() {
     onClick: handleUploadClick,
     variant: "outline",
     leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading || !canMutate, // THE FIX 3: Conditionally disable "Upload"
+    disabled: isUploading || isLoading || !canMutate,
   });
 
   if (error)
@@ -9006,7 +9429,6 @@ export default function DiaryPage() {
   });
 
   return (
-    // FIX: Added bg-gray-50 fallback
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
       <div className='mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
         <input
@@ -9036,6 +9458,8 @@ export default function DiaryPage() {
                 <DiaryCalendar
                   selectedDate={selectedDate}
                   onDateChange={handleDateChange}
+                  // THE FIX: Pass the month change handler
+                  onMonthChange={handleMonthChange}
                   highlightedDates={highlightedDates}
                 />
               </div>
@@ -9044,7 +9468,6 @@ export default function DiaryPage() {
 
           <div className='xl:col-span-8'>
             <div className='space-y-4 sm:space-y-6'>
-              {/* FIX: Added bg-blue-50 fallback */}
               <div className='bg-blue-50 dark:bg-blue-900/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 sm:p-6 border border-blue-100 dark:border-blue-800/30 shadow-sm'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg'>
@@ -9068,7 +9491,6 @@ export default function DiaryPage() {
               {isLoading && roleFilteredNotes.length === 0 ? (
                 <div className='space-y-4'>
                   {[...Array(3)].map((_, i) => (
-                    // FIX: Added bg-gray-100 fallback
                     <div
                       key={i}
                       className='h-40 sm:h-48 bg-gray-100 dark:bg-gray-800 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl animate-pulse shadow-sm'
@@ -9079,7 +9501,6 @@ export default function DiaryPage() {
               ) : notesForSelectedDay.length === 0 ? (
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 sm:py-16 px-4'>
-                    {/* FIX: Added bg-blue-100 fallback */}
                     <div className='inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-100 dark:bg-blue-900/30 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-4 sm:mb-6'>
                       <FiBookOpen className='h-8 w-8 sm:h-10 sm:w-10 text-blue-600 dark:text-blue-400' />
                     </div>
@@ -9573,14 +9994,14 @@ export default function DesignationManagerPage() {
 <!-- path: app/dashboard/ofc/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/ofc/[id]/page.tsx
-'use client';
+"use client";
 
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ConfirmModal } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { Row, useTableQuery } from '@/hooks/database'; // Removed usePagedData import
+import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
@@ -9600,8 +10021,9 @@ import {
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
-import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData'; // THE FIX: Import the new hook
+import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -9610,12 +10032,8 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // THE FIX: Use the new local-first hook factory
   const {
     data: cableConnectionsData,
-    totalCount,
-    activeCount,
-    inactiveCount,
     isLoading,
     refetch,
     pagination,
@@ -9624,7 +10042,7 @@ export default function OfcCableDetailsPage() {
     actions: crudActions,
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
-    dataQueryHook: useOfcConnectionsData(cableId as string), // Pass cableId to the factory
+    dataQueryHook: useOfcConnectionsData(cableId as string),
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
@@ -9632,6 +10050,13 @@ export default function OfcCableDetailsPage() {
     cableId as string
   );
   const { data: allCablesData } = useOfcRoutesForSelection();
+
+  // Fetch specific utilization stats for this cable
+  const { data: utilResult } = useTableQuery(supabase, 'v_cable_utilization', {
+    filters: { cable_id: cableId as string },
+    limit: 1
+  });
+  const utilization = utilResult?.data?.[0];
 
   const [tracingFiber, setTracingFiber] = useState<{
     startSegmentId: string;
@@ -9717,11 +10142,32 @@ export default function OfcCableDetailsPage() {
     },
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Connections' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
+  const headerStats: StatProps[] = useMemo(() => {
+    const utilPercent = utilization?.utilization_percent ?? 0;
+    
+    return [
+      { 
+        value: utilization?.capacity ?? 0, 
+        label: 'Total Capacity',
+        color: 'default'
+      },
+      { 
+        value: utilization?.used_fibers ?? 0, 
+        label: 'Utilized', 
+        color: 'primary'
+      },
+      { 
+        value: utilization?.available_fibers ?? 0, 
+        label: 'Available', 
+        color: 'success'
+      },
+      { 
+        value: `${utilPercent}%`, 
+        label: 'Utilization', 
+        color: utilPercent > 80 ? 'warning' : 'default'
+      },
+    ];
+  }, [utilization]);
 
   if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
@@ -9762,7 +10208,7 @@ export default function OfcCableDetailsPage() {
           pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
-            total: totalCount,
+            total: utilization?.capacity ?? 0,
             showSizeChanger: true,
             onChange: (page, limit) => {
               pagination.setCurrentPage(page);
@@ -9940,7 +10386,7 @@ const OfcPage = () => {
         onEdit: editModal.openEdit,
         onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
         onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
+        onToggleStatus: isSuperAdmin === true ? crudActions.handleToggleStatus : undefined,
         canDelete: () => isSuperAdmin === true,
       }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions, isSuperAdmin]
@@ -10011,7 +10457,7 @@ const OfcPage = () => {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
-        selectable
+        selectable={isSuperAdmin === true}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null
@@ -12673,6 +13119,111 @@ export const AuditLogsTableColumns = (data: V_audit_logsRowSchema[]) => {
 };
 ```
 
+<!-- path: config/table-columns/EmployeeTableColumns.tsx -->
+```typescript
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
+import { V_employeesRowSchema } from '@/schemas/zod-schemas';
+
+export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
+  {
+    title: 'Employee',
+    dataIndex: 'employee_name',
+    key: 'employee_name',
+    width: 220,
+    searchable: true,
+    sortable: true,
+    render: (_, record: V_employeesRowSchema) => (
+      <div className="min-w-[180px]">
+        <div className="font-medium text-gray-900 dark:text-white">
+          {record.employee_name || '—'}
+        </div>
+        {record.employee_pers_no && (
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            ID: {record.employee_pers_no}
+          </div>
+        )}
+      </div>
+    ),
+  },
+  {
+    title: 'Contact',
+    dataIndex: 'employee_contact',
+    key: 'employee_contact',
+    width: 220,
+    searchable: true,
+    editable: true, // Enabled cell edit
+    render: (_, record: V_employeesRowSchema) => (
+      <div className="space-y-1">
+        {record.employee_contact ? (
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            {record.employee_contact}
+          </div>
+        ) : (
+          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
+            Click to add
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    title: 'Email',
+    dataIndex: 'employee_email',
+    key: 'employee_email',
+    width: 220,
+    searchable: true,
+    editable: true, // Enabled cell edit
+    render: (_, record: V_employeesRowSchema) => (
+      <div className="space-y-1">
+        {record.employee_email ? (
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            {record.employee_email}
+          </div>
+        ) : (
+          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
+            Click to add
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    title: 'Designation',
+    dataIndex: 'employee_designation_name',
+    key: 'employee_designation_name',
+    width: 180,
+    searchable: true,
+    sortable: true,
+    render: (_, record: V_employeesRowSchema) => record.employee_designation_name || 'Not set',
+  },
+  {
+    title: 'Maintenance Area',
+    dataIndex: 'maintenance_area_name',
+    key: 'maintenance_area_name',
+    width: 200,
+    searchable: true,
+    sortable: true,
+    render: (_, record: V_employeesRowSchema) => record.maintenance_area_name || 'Not set',
+  },
+  {
+    title: 'Address',
+    dataIndex: 'employee_addr',
+    key: 'employee_addr',
+    width: 300,
+    searchable: true,
+  },
+  {
+    title: 'Status',
+    dataIndex: 'status',
+    key: 'status',
+    width: 120,
+    sortable: true,
+    render: (value: unknown) => <StatusBadge status={!!value} />,
+  },
+];
+```
+
 <!-- path: config/table-columns/NodesTableColumns.tsx -->
 ```typescript
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
@@ -12931,7 +13482,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       'created_at',
       'en_id',
       'id',
-      'maintenance_area_name',
+      'maintenance_area_code',
       'maintenance_terminal_id',
       'ofc_owner_id',
       'ofc_owner_name',
@@ -12943,6 +13494,9 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
     ],
     overrides: {
       asset_no: {
+        title: 'Asset No',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return (
             <TruncateTooltip
@@ -12954,6 +13508,8 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       },
       route_name: {
         title: 'Route',
+        sortable: true,
+        searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.route_name;
           return (
@@ -12963,6 +13519,8 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       },
       maintenance_area_name: {
         title: 'Maintenance Area',
+        sortable: true,
+        searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.maintenance_area_name;
           return (
@@ -12971,11 +13529,17 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
         },
       },
       commissioned_on: {
+        title: 'Commissioned On',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return formatDate(value as string, { format: 'dd-mm-yyyy' });
         },
       },
       status: {
+        title: 'Status',
+        sortable: true,
+        searchable: true,
         render: (value: unknown) => {
           return <StatusBadge status={value as string} />;
         },
@@ -13169,6 +13733,91 @@ export const SystemConnectionsTableColumns = (
   return finalColumns;
 };
 
+```
+
+<!-- path: config/table-columns/InventoryTableColumns.tsx -->
+```typescript
+// path: app/dashboard/inventory/InventoryTableColumns.tsx
+import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
+import { formatDate } from '@/utils/formatters';
+
+export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[] => [
+    {
+        key: 'asset_no',
+        title: 'Asset No',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'asset_no',
+        render: (val) => <span className="font-mono text-xs">{val as string}</span>
+    },
+    {
+        key: 'name',
+        title: 'Name',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'name',
+        width: 180,
+        render: (val, record) => (
+            <div className='contain-content text-wrap'>
+                <TruncateTooltip text={val as string} className="font-semibold" />
+                <p className="text-xs text-gray-500 max-w-44 wrap-break-word">{record.description}</p>
+            </div>
+        )
+    },
+    {
+        key: 'category_name',
+        title: 'Category',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'category_name',
+    },
+    {
+        key: 'status_name',
+        title: 'Status',
+        sortable: true,
+        dataIndex: 'status_name',
+    },
+    {
+        key: 'store_location',
+        title: 'Location (Node)',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'store_location',
+    },
+    {
+        key: 'functional_location',
+        title: 'Functional Location (Area)',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'functional_location',
+    },
+    {
+        key: 'quantity',
+        title: 'Quantity',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'quantity',
+    },
+    {
+        key: 'purchase_date',
+        title: 'Purchase Date',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'purchase_date',
+        render: (val) => formatDate(val as string, { format: 'dd-mm-yyyy' })
+    },
+    {
+        key: 'cost',
+        title: 'Cost',
+        searchable: true,
+        sortable: true,
+        dataIndex: 'cost',
+        // THE FIX: Use Rupee symbol
+        render: (val) => val ? `₹${Number(val).toFixed(2)}` : null,
+    }
+];
 ```
 
 <!-- path: config/table-columns/PortsManagementTableColumns.tsx -->
@@ -13608,7 +14257,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "13.0.5"
   }
   auth: {
     Tables: {
@@ -21480,6 +22129,16 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  files: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
+  folders: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -21552,6 +22211,15 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     old_data: { excelFormat: "json" },
     new_data: { excelFormat: "json" },
   },
+   // ADDED: Metadata formatting for files
+  files: {
+    uploaded_at: { transform: toPgDate, excelFormat: "date" },
+    file_size: { title: "Size (Bytes)", excelFormat: "number" },
+  },
+  folders: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    name: { title: "Folder Name" }
+  }
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
@@ -21994,33 +22662,33 @@ const TABLE_COLUMN_OBJECTS = {
     total_loss_db: "total_loss_db",
   },
   v_ofc_cables_complete: {
-    id: "id",
     route_name: "route_name",
-    sn_id: "sn_id",
-    en_id: "en_id",
-    sn_name: "sn_name",
-    en_name: "en_name",
-    sn_node_type_name: "sn_node_type_name",
-    en_node_type_name: "en_node_type_name",
     capacity: "capacity",
-    ofc_type_id: "ofc_type_id",
-    ofc_type_name: "ofc_type_name",
-    ofc_type_code: "ofc_type_code",
-    ofc_owner_id: "ofc_owner_id",
-    ofc_owner_name: "ofc_owner_name",
-    ofc_owner_code: "ofc_owner_code",
     asset_no: "asset_no",
     transnet_id: "transnet_id",
     transnet_rkm: "transnet_rkm",
     current_rkm: "current_rkm",
-    maintenance_terminal_id: "maintenance_terminal_id",
+    commissioned_on: "commissioned_on",
+    remark: "remark",
+    ofc_type_name: "ofc_type_name",
+    ofc_type_code: "ofc_type_code",
+    ofc_owner_name: "ofc_owner_name",
+    ofc_owner_code: "ofc_owner_code",
+    status: "status",
+    sn_name: "sn_name",
+    en_name: "en_name",
+    sn_node_type_name: "sn_node_type_name",
+    en_node_type_name: "en_node_type_name",
     maintenance_area_name: "maintenance_area_name",
     maintenance_area_code: "maintenance_area_code",
-    commissioned_on: "commissioned_on",
-    status: "status",
-    remark: "remark",
     created_at: "created_at",
     updated_at: "updated_at",
+    id: "id",
+    sn_id: "sn_id",
+    en_id: "en_id",
+    ofc_type_id: "ofc_type_id",
+    ofc_owner_id: "ofc_owner_id",
+    maintenance_terminal_id: "maintenance_terminal_id",
   },
   v_nodes_complete: {
     id: "id",
@@ -24769,62 +25437,74 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 
 <!-- path: data/migrations/06_utilities/13_port_trigger.sql -->
 ```sql
--- 1. Replace the Function
 CREATE OR REPLACE FUNCTION public.fn_update_port_utilization()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_system_id uuid;
-    v_port_name text;
-    v_service_count integer;
+    v_count integer;
 BEGIN
-    -- Determine context based on operation
-    IF (TG_OP = 'DELETE') THEN
-        v_system_id := OLD.system_id;
-        v_port_name := OLD.system_working_interface;
-    ELSE
-        v_system_id := NEW.system_id;
-        v_port_name := NEW.system_working_interface;
+    -- ========================================================================
+    -- LOGIC FOR OLD PORT (Cleanup)
+    -- Runs on DELETE, or on UPDATE if the port assignment changed
+    -- ========================================================================
+    IF (TG_OP = 'DELETE') OR (TG_OP = 'UPDATE' AND OLD.system_working_interface IS DISTINCT FROM NEW.system_working_interface) THEN
+        
+        IF OLD.system_working_interface IS NOT NULL THEN
+            -- 1. Count active services remaining on the OLD port
+            SELECT COUNT(*) INTO v_count
+            FROM public.system_connections
+            WHERE system_id = OLD.system_id
+              AND system_working_interface = OLD.system_working_interface
+              -- Optional: Filter for only 'valid' connections if needed (e.g. customer_name not null)
+              AND customer_name IS NOT NULL 
+              AND trim(customer_name) <> '';
+
+            -- 2. Update the OLD port status in ports_management
+            UPDATE public.ports_management
+            SET 
+                services_count = v_count,
+                port_utilization = (v_count > 0)
+                -- Note: We DO NOT automatically set port_admin_status to false.
+                -- A port usually remains administratively 'UP' even if the cable is unplugged.
+            WHERE system_id = OLD.system_id 
+              AND port = OLD.system_working_interface;
+        END IF;
     END IF;
 
-    -- If interface is null, we can't link to a port, so exit
-    IF v_port_name IS NULL THEN
-        RETURN NULL;
+    -- ========================================================================
+    -- LOGIC FOR NEW PORT (Allocation)
+    -- Runs on INSERT, or on UPDATE (to ensure the new target is marked used)
+    -- ========================================================================
+    IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
+        
+        IF NEW.system_working_interface IS NOT NULL THEN
+            -- 1. Count active services on the NEW port
+            SELECT COUNT(*) INTO v_count
+            FROM public.system_connections
+            WHERE system_id = NEW.system_id
+              AND system_working_interface = NEW.system_working_interface
+              AND customer_name IS NOT NULL 
+              AND trim(customer_name) <> '';
+
+            -- 2. Update the NEW port status in ports_management
+            UPDATE public.ports_management
+            SET 
+                services_count = v_count,
+                port_utilization = (v_count > 0),
+                -- Business Rule: If we plug a service into a port, force Admin Status to UP
+                port_admin_status = CASE 
+                    WHEN v_count > 0 THEN true 
+                    ELSE port_admin_status 
+                END
+            WHERE system_id = NEW.system_id 
+              AND port = NEW.system_working_interface;
+        END IF;
     END IF;
 
-    -- Calculate active services on this port
-    -- Logic: Only count if customer_name is present (NOT NULL and NOT Empty)
-    SELECT COUNT(*)
-    INTO v_service_count
-    FROM public.system_connections
-    WHERE system_id = v_system_id
-      AND system_working_interface = v_port_name
-      AND customer_name IS NOT NULL 
-      AND trim(customer_name) <> '';
-
-    -- Update the ports_management table
-    UPDATE public.ports_management
-    SET 
-        services_count = v_service_count,
-        
-        -- Mark as utilized if services exist
-        port_utilization = (v_service_count > 0),
-        
-        -- THE FIX: Automatically set Admin Status to TRUE if utilized. 
-        -- If not utilized, keep the existing admin status (don't force down).
-        port_admin_status = CASE 
-            WHEN v_service_count > 0 THEN true 
-            ELSE port_admin_status 
-        END
-    WHERE system_id = v_system_id 
-      AND port = v_port_name;
-      
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. Re-attach Trigger (Ensures it is active)
-DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
-
+-- 3. Re-attach the trigger
 CREATE TRIGGER trg_update_port_utilization
 AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
 FOR EACH ROW
@@ -30245,74 +30925,6 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
 };
 ```
 
-<!-- path: components/inventory/InventoryTableColumns.tsx -->
-```typescript
-// path: app/dashboard/inventory/InventoryTableColumns.tsx
-import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
-import { formatDate } from '@/utils/formatters';
-
-export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[] => [
-    {
-        key: 'asset_no',
-        title: 'Asset No',
-        dataIndex: 'asset_no',
-        render: (val) => <span className="font-mono text-xs">{val as string}</span>
-    },
-    {
-        key: 'name',
-        title: 'Name',
-        dataIndex: 'name',
-        width: 180,
-        render: (val, record) => (
-            <div className='contain-content text-wrap'>
-                <TruncateTooltip text={val as string} className="font-semibold" />
-                <p className="text-xs text-gray-500 max-w-44 wrap-break-word">{record.description}</p>
-            </div>
-        )
-    },
-    {
-        key: 'category_name',
-        title: 'Category',
-        dataIndex: 'category_name',
-    },
-    {
-        key: 'status_name',
-        title: 'Status',
-        dataIndex: 'status_name',
-    },
-    {
-        key: 'store_location',
-        title: 'Location (Node)',
-        dataIndex: 'store_location',
-    },
-    {
-        key: 'functional_location',
-        title: 'Functional Location (Area)',
-        dataIndex: 'functional_location',
-    },
-    {
-        key: 'quantity',
-        title: 'Quantity',
-        dataIndex: 'quantity',
-    },
-    {
-        key: 'purchase_date',
-        title: 'Purchase Date',
-        dataIndex: 'purchase_date',
-        render: (val) => formatDate(val as string, { format: 'dd-mm-yyyy' })
-    },
-    {
-        key: 'cost',
-        title: 'Cost',
-        dataIndex: 'cost',
-        // THE FIX: Use Rupee symbol
-        render: (val) => val ? `₹${Number(val).toFixed(2)}` : null,
-    }
-];
-```
-
 <!-- path: components/navigation/sidebar-components/MobileSidebar.tsx -->
 ```typescript
 "use client";
@@ -30512,10 +31124,10 @@ import {
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
 import { ImUserTie } from 'react-icons/im';
-import { GiElectric, GiLinkedRings} from 'react-icons/gi';
+import { GiElectric, GiLinkedRings } from 'react-icons/gi';
 import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
-import {FaRoute } from 'react-icons/fa';
+import { FaRoute } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
 
 function NavItems() {
@@ -30539,7 +31151,7 @@ function NavItems() {
       {
         id: 'diary',
         label: 'Diary',
-        icon: <FiCalendar className="h-5 w-5" />, 
+        icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
         roles: [
           UserRole.ADMIN,
@@ -30672,7 +31284,15 @@ function NavItems() {
         id: 'systems',
         label: 'Systems & Rings Manager',
         icon: <GoServer className="h-5 w-5" />,
-        roles: [UserRole.ADMIN],
+        roles: [
+          UserRole.ADMIN,
+          UserRole.VIEWER,
+          UserRole.AUTHENTICATED,
+          UserRole.CPANADMIN,
+          UserRole.MAANADMIN,
+          UserRole.SDHADMIN,
+          UserRole.ASSETADMIN,
+        ],
         children: [
           {
             id: 'systems',
@@ -30764,6 +31384,7 @@ function NavItems() {
 }
 
 export default NavItems;
+
 ```
 
 <!-- path: components/navigation/sidebar-components/NavItem.tsx -->
@@ -32724,7 +33345,7 @@ const normalizeUserToForm = (user: V_user_profiles_extendedRowSchema): UserProfi
     avatar_url: user.avatar_url ?? null,
     first_name: user.first_name ?? undefined,
     last_name: user.last_name ?? undefined,
-    phone_number: user.phone_number ?? undefined,
+    phone_number: user.phone_number ?? null,
     date_of_birth: user.date_of_birth ?? undefined,
     designation: user.designation ?? undefined,
     role: user.role ?? undefined,
@@ -34863,104 +35484,6 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry: () => vo
     </Card>
   );
 }
-```
-
-<!-- path: components/employee/EmployeeTableColumns.tsx -->
-```typescript
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import { V_employeesRowSchema } from '@/schemas/zod-schemas';
-
-export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
-  {
-    title: 'Employee',
-    dataIndex: 'employee_name',
-    key: 'employee_name',
-    width: 220,
-    searchable: true,
-    render: (_, record: V_employeesRowSchema) => (
-      <div className="min-w-[180px]">
-        <div className="font-medium text-gray-900 dark:text-white">
-          {record.employee_name || '—'}
-        </div>
-        {record.employee_pers_no && (
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            ID: {record.employee_pers_no}
-          </div>
-        )}
-      </div>
-    ),
-  },
-  {
-    title: 'Contact',
-    dataIndex: 'employee_contact',
-    key: 'employee_contact',
-    width: 220,
-    searchable: true,
-    editable: true, // Enabled cell edit
-    render: (_, record: V_employeesRowSchema) => (
-      <div className="space-y-1">
-        {record.employee_contact ? (
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {record.employee_contact}
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
-            Click to add
-          </span>
-        )}
-      </div>
-    ),
-  },
-  {
-    title: 'Email',
-    dataIndex: 'employee_email',
-    key: 'employee_email',
-    width: 220,
-    searchable: true,
-    editable: true, // Enabled cell edit
-    render: (_, record: V_employeesRowSchema) => (
-      <div className="space-y-1">
-        {record.employee_email ? (
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {record.employee_email}
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
-            Click to add
-          </span>
-        )}
-      </div>
-    ),
-  },
-  {
-    title: 'Designation',
-    dataIndex: 'employee_designation_name',
-    key: 'employee_designation_name',
-    width: 180,
-    render: (_, record: V_employeesRowSchema) => record.employee_designation_name || 'Not set',
-  },
-  {
-    title: 'Maintenance Area',
-    dataIndex: 'maintenance_area_name',
-    key: 'maintenance_area_name',
-    width: 200,
-    render: (_, record: V_employeesRowSchema) => record.maintenance_area_name || 'Not set',
-  },
-  {
-    title: 'Address',
-    dataIndex: 'employee_addr',
-    key: 'employee_addr',
-    width: 300,
-  },
-  {
-    title: 'Status',
-    dataIndex: 'status',
-    key: 'status',
-    width: 120,
-    render: (value: unknown) => <StatusBadge status={!!value} />,
-  },
-];
 ```
 
 <!-- path: components/employee/EmployeeForm.tsx -->
@@ -37776,7 +38299,7 @@ import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-k
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
-import { usePortsData } from '@/hooks/data/usePortsData'; // THE FIX: Import the new hook
+import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
 
 interface SystemPortsManagerModalProps {
@@ -37790,19 +38313,31 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  // State for Template Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
-  // THE FIX: Use the factory-created hook with systemId closure
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
-    localTableName: 'v_ports_management_complete', // Specify local view for cleanup
-    dataQueryHook: usePortsData(systemId), // Pass systemId to the hook factory
+    localTableName: 'v_ports_management_complete',
+    dataQueryHook: usePortsData(systemId),
     displayNameField: 'port',
   });
+
+  // THE FIX: Calculate granular port statistics
+  const portStats = useMemo(() => {
+    if (!ports) return { total: 0, used: 0, available: 0, down: 0 };
+    
+    const total = ports.length;
+    const used = ports.filter(p => p.port_utilization).length;
+    // Available = Not utilized AND Admin Status is UP
+    const available = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
+    // Down = Admin Status is DOWN (regardless of utilization, though usually 0 util)
+    const down = ports.filter(p => !p.port_admin_status).length;
+
+    return { total, used, available, down };
+  }, [ports]);
 
   const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(supabase, {
     onSuccess: (result) => {
@@ -37811,8 +38346,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   });
 
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(supabase, 'v_ports_management_complete');
-
-  // Bulk Operations Hook
   const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
   const columns = PortsManagementTableColumns(ports);
@@ -37941,7 +38474,12 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         <PageHeader
             title="System Ports"
             icon={<FiServer />}
-            stats={[{ value: totalCount, label: 'Total Ports' }]}
+            stats={[
+                { value: portStats.total, label: 'Total Ports' },
+                { value: portStats.used, label: 'In Use', color: 'primary' },
+                { value: portStats.available, label: 'Available', color: 'success' },
+                { value: portStats.down, label: 'Admin Down', color: 'danger' }
+            ]}
             actions={headerActions}
             isLoading={isLoading}
             isFetching={isFetching}
@@ -39674,10 +40212,12 @@ import 'react-datepicker/dist/react-datepicker.css';
 interface DiaryCalendarProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
+  // THE FIX: Add onMonthChange prop
+  onMonthChange: (date: Date) => void;
   highlightedDates: Date[];
 }
 
-export const DiaryCalendar = ({ selectedDate, onDateChange, highlightedDates }: DiaryCalendarProps) => {
+export const DiaryCalendar = ({ selectedDate, onDateChange, onMonthChange, highlightedDates }: DiaryCalendarProps) => {
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border dark:border-gray-700 flex justify-center">
       <DatePicker
@@ -39685,6 +40225,9 @@ export const DiaryCalendar = ({ selectedDate, onDateChange, highlightedDates }: 
         onChange={(date: Date | null) => {
           if (date) onDateChange(date);
         }}
+        // THE FIX: capture month navigation
+        onMonthChange={(date: Date) => onMonthChange(date)}
+        onYearChange={(date: Date) => onMonthChange(date)} 
         inline
         highlightDates={highlightedDates}
         className="react-datepicker-custom"
@@ -42127,7 +42670,7 @@ export default function StepList({
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
 import JSZip from 'jszip';
@@ -42199,15 +42742,6 @@ const extractKmlStyles = (doc: Document): Record<string, string> => {
   
   return styleMap;
 };
-
-// const getRandomColor = () => {
-//   const letters = '0123456789ABCDEF';
-//   let color = '#';
-//   for (let i = 0; i < 6; i++) {
-//     color += letters[Math.floor(Math.random() * 16)];
-//   }
-//   return color;
-// };
 
 const MapController = ({ 
   data, 
@@ -42345,11 +42879,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     if (iconUrl) {
       const customIcon = L.icon({
         iconUrl: iconUrl,
-        // Original: [32, 32] -> New: [16, 16] (Halved)
         iconSize: [16, 16],
-        // Original: [16, 32] -> New: [8, 16] (Bottom center of new size)
         iconAnchor: [8, 16],
-        // Original: [0, -32] -> New: [0, -16] (Top of icon)
         popupAnchor: [0, -16],
       });
       return L.marker(latlng, { icon: customIcon });
@@ -42422,9 +42953,10 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         </div>
       )}
 
+      {/* Fullscreen Toggle - Moved to Bottom Right to avoid conflict with Layer Control */}
       <button
         onClick={() => setIsFullScreen(!isFullScreen)}
-        className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="absolute bottom-6 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         title={isFullScreen ? "Exit Full Screen (Esc)" : "Enter Full Screen"}
       >
         {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
@@ -42437,10 +42969,21 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         className="z-0 bg-gray-100 dark:bg-gray-800"
         closePopupOnClick={false}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
-        />
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Street View">
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; OpenStreetMap contributors'
+            />
+          </LayersControl.BaseLayer>
+          
+          <LayersControl.BaseLayer name="Satellite View">
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
         
         {geoJsonData && (
           <>
@@ -43376,8 +43919,8 @@ import { EntityTreeItem } from "@/components/common/entity-management/EntityTree
 import { SearchAndFilters } from "@/components/common/entity-management/SearchAndFilters";
 import { BaseEntity, EntityConfig, EntityWithChildren } from "@/components/common/entity-management/types";
 import { ViewModeToggle } from "@/components/common/entity-management/ViewModeToggle";
-import { useMemo, useState, useCallback, useEffect } from "react";
-import { FiInfo, FiPlus } from "react-icons/fi";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { FiInfo, FiPlus, FiMoreVertical } from "react-icons/fi"; // Added FiMoreVertical for grip handle
 import { useDebounce } from "use-debounce";
 import { PageSpinner } from "@/components/common/ui";
 
@@ -43413,6 +43956,55 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [showFilters, setShowFilters] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+
+  // --- RESIZING LOGIC START ---
+  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000); // Default width
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback(
+    (mouseEvent: MouseEvent) => {
+      if (isResizing) {
+        // Calculate new width based on window width minus mouse position (since panel is on right)
+        const newWidth = window.innerWidth - mouseEvent.clientX;
+        // Set constraints (min 300px, max 1200px)
+        if (newWidth > 300 && newWidth < 1200) {
+          setDetailsPanelWidth(newWidth);
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "col-resize"; // Force cursor during drag
+      document.body.style.userSelect = "none"; // Prevent text selection
+    } else {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "auto";
+      document.body.style.userSelect = "auto";
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "auto";
+      document.body.style.userSelect = "auto";
+    };
+  }, [isResizing, resize, stopResizing]);
+  // --- RESIZING LOGIC END ---
+
 
   useEffect(() => {
     onSearchChange(debouncedSearch);
@@ -43486,10 +44078,11 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const isInitialLoading = entitiesQuery.isLoading && allEntities.length === 0;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative">
-      {/* THE FIX: The BlurLoader component has been removed entirely from here. */}
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative overflow-hidden">
       
-      <div className={`flex-1 flex flex-col ${showDetailsPanel ? "hidden lg:flex" : "flex"} lg:border-r lg:border-gray-200 lg:dark:border-gray-700`}>
+      {/* LEFT PANEL: LIST/TREE */}
+      {/* Added min-w-0 to prevent flex child overflow issues */}
+      <div className={`flex-1 flex flex-col min-w-0 ${showDetailsPanel ? "hidden lg:flex" : "flex"}`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <SearchAndFilters
             searchTerm={internalSearchTerm} onSearchChange={setInternalSearchTerm}
@@ -43499,7 +44092,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
           />
           {config.isHierarchical && <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
         </div>
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800 custom-scrollbar">
           {isInitialLoading ? (
             <div className="flex items-center justify-center py-12 text-center"><PageSpinner text={`Loading ${config.entityPluralName}...`} /></div>
           ) : entitiesQuery.isError ? (
@@ -43530,7 +44123,31 @@ export function EntityManagementComponent<T extends BaseEntity>({
           )}
         </div>
       </div>
-      <div className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col w-full lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-t lg:border-t-0 border-gray-200 dark:border-gray-700`}>
+
+      {/* RESIZER HANDLE (Desktop Only) */}
+      <div
+        className={`
+          hidden lg:flex
+          w-1 cursor-col-resize items-center justify-center
+          bg-gray-100 hover:bg-blue-400 dark:bg-gray-900 dark:hover:bg-blue-600
+          transition-colors z-20 relative
+          ${isResizing ? 'bg-blue-500 dark:bg-blue-500' : ''}
+        `}
+        onMouseDown={startResizing}
+      >
+        {/* Visual Grip Handle */}
+        <div className="absolute pointer-events-none text-gray-400 dark:text-gray-500">
+          <FiMoreVertical size={12} />
+        </div>
+      </div>
+
+      {/* RIGHT PANEL: DETAILS */}
+      <div 
+        ref={sidebarRef}
+        className={`${showDetailsPanel ? "flex" : "hidden lg:flex"} flex-col bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700`}
+        // Use inline style for width on desktop, utilize full width logic via flex on mobile
+        style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? detailsPanelWidth : '100%' }}
+      >
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900 dark:text-white">Details</h2>
@@ -43542,7 +44159,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
         <div className="hidden lg:block border-b border-gray-200 dark:border-gray-700 px-4 py-3">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">{config.entityDisplayName} Details</h2>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {selectedEntity ? (
             <EntityDetailsPanel entity={selectedEntity} config={config} onEdit={handleOpenEditForm} onDelete={onDelete} onViewDetails={onViewDetails} />
           ) : (
@@ -53046,19 +53663,20 @@ export default SystemFiberTraceModal;
 
 <!-- path: components/system-details/SystemConnectionDetailsModal.tsx -->
 ```typescript
-"use client";
+'use client';
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, PageSpinner, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
-import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { formatDate } from '@/utils/formatters';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { TraceRoutes, useTracePath } from '@/hooks/database/trace-hooks';
+import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -53083,21 +53701,29 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   connectionId,
 }) => {
   const supabase = createClient();
+ const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
+  const tracePath = useTracePath(supabase);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
+
+  const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
 
   // 1. Fetch the main connection record
-  const { data: connection, isLoading, refetch } = useTableRecord(
-    supabase,
-    'v_system_connections_complete',
-    connectionId
-  );
+  const {
+    data: connection,
+    isLoading,
+    refetch,
+  } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
 
   // 2. Fetch OFC details related to this connection (via logical paths)
   const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
     // Assuming the connection ID links to logical paths, we find fibers where the system connection matches
     // Note: This relies on the relationship established in previous migrations
-    filters: { 
-      // We need a way to filter OFC connections by the system connection. 
-      // Since v_ofc_connections doesn't have system_connection_id directly, 
+    filters: {
+      // We need a way to filter OFC connections by the system connection.
+      // Since v_ofc_connections doesn't have system_connection_id directly,
       // we filter by the system_id and interfaces, or rely on logical_path linkage if available.
       // For this UI, we will simulate it or use what's available.
       system_id: connection?.system_id ?? '',
@@ -53109,23 +53735,48 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   // 3. Update Mutation for Cell Editing
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
-      toast.success("Field updated successfully");
+      toast.success('Field updated successfully');
       refetch();
     },
     onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
 
   // --- SECTION 1: CIRCUIT INFORMATION ---
-  const circuitColumns = useMemo((): Column<Row<'v_system_connections_complete'>>[] => [
-    { key: 'id', title: 'ID', dataIndex: 'id', width: 100, render: (val) => <span className="font-mono text-xs">{String(val).slice(0, 8)}</span> },
-    { key: 'customer_name', title: 'Service Name', dataIndex: 'customer_name', editable: true, width: 200 },
-    { key: 'media_type_name', title: 'Category', dataIndex: 'media_type_name', width: 120 },
-    { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
-    { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
-    { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
-    { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
-    { key: 'status', title: 'State', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
-  ], []);
+  const circuitColumns = useMemo(
+    (): Column<Row<'v_system_connections_complete'>>[] => [
+      {
+        key: 'customer_name',
+        title: 'Service Name',
+        dataIndex: 'customer_name',
+        editable: true,
+        width: 200,
+      },
+      {
+        key: 'media_type_name',
+        title: 'Category',
+        dataIndex: 'connected_link_type_name',
+        width: 120,
+      },
+      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
+      {
+        key: 'bandwidth_allocated',
+        title: 'Allocated',
+        dataIndex: 'bandwidth_allocated',
+        editable: true,
+        width: 100,
+      },
+      { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
+      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
+      {
+        key: 'status',
+        title: 'State',
+        dataIndex: 'status',
+        render: (val) => <StatusBadge status={val as boolean} />,
+      },
+    ],
+    []
+  );
 
   // --- SECTION 2: END A & END B DETAILS (Transformation) ---
   // We transform the single row into two rows for display
@@ -53136,40 +53787,57 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         id: `${connection.id}-A`, // Virtual ID
         end: 'End A',
         node_ip: connection.sn_ip,
-        system_name: connection.sn_name || 'Unknown System',
+        system_name: connection.sn_name || '',
         interface: connection.sn_interface,
         capacity: connection.bandwidth, // Assuming port capacity matches
         vlan: connection.vlan,
         // For editing mapping
         realId: connection.id,
         fieldMap: {
-           interface: 'sn_interface'
-        }
+          interface: 'sn_interface',
+        },
       },
       {
         id: `${connection.id}-B`, // Virtual ID
         end: 'End B',
         node_ip: connection.en_ip,
-        system_name: connection.en_name || 'Unknown System',
+        system_name: connection.en_name || '',
         interface: connection.en_interface,
         capacity: connection.bandwidth,
         vlan: connection.vlan,
         realId: connection.id,
         fieldMap: {
-           interface: 'en_interface'
-        }
-      }
+          interface: 'en_interface',
+        },
+      },
     ];
   }, [connection]);
 
   // We need a specific column definition for this virtual table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endPointColumns: Column<any>[] = [
-    { key: 'end', title: 'End Info', dataIndex: 'end', width: 80, render: (val) => <span className="font-bold text-blue-600">{val as string}</span> },
+    {
+      key: 'end',
+      title: 'End Info',
+      dataIndex: 'end',
+      width: 80,
+      render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
+    },
     { key: 'node_ip', title: 'Node IP', dataIndex: 'node_ip', width: 120 },
-    { key: 'system_name', title: 'System Name', dataIndex: 'system_name', width: 250, render: (val) => <TruncateTooltip text={val as string} /> },
-    { key: 'interface', title: 'Interface/Port', dataIndex: 'interface', editable: true, width: 150 }, // Editable!
-    { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', width: 80 },
+    {
+      key: 'system_name',
+      title: 'System Name',
+      dataIndex: 'system_name',
+      width: 250,
+      render: (val) => <TruncateTooltip text={val as string} />,
+    },
+    {
+      key: 'interface',
+      title: 'Interface/Port',
+      dataIndex: 'interface',
+      editable: true,
+      width: 150,
+    }, // Editable!
   ];
 
   // --- HANDLERS ---
@@ -53178,18 +53846,18 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const handleCellEdit = (record: any, column: Column<any>, newValue: string) => {
     // 1. Circuit Info Edit
     if (record.id === connection?.id) {
-        const updateData = { [column.dataIndex]: newValue };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateConnection({ id: record.id, data: updateData as any });
-    } 
+      const updateData = { [column.dataIndex]: newValue };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      updateConnection({ id: record.id, data: updateData as any });
+    }
     // 2. End Point Edit (Virtual Rows)
     else if (record.realId) {
-        // Map the virtual column to the real DB column
-        const realColumn = record.fieldMap[column.dataIndex];
-        if (realColumn) {
-             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-             updateConnection({ id: record.realId, data: { [realColumn]: newValue } as any });
-        }
+      // Map the virtual column to the real DB column
+      const realColumn = record.fieldMap[column.dataIndex];
+      if (realColumn) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateConnection({ id: record.realId, data: { [realColumn]: newValue } as any });
+      }
     }
   };
 
@@ -53199,7 +53867,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="" // Custom header
+      title={connection?.system_name + ' Port: ' + connection?.system_working_interface || ''} // Custom header
       size="full"
       className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
     >
@@ -53207,7 +53875,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <PageSpinner text="Loading Circuit Details..." />
       ) : connection ? (
         <div className="space-y-8 pb-10">
-            
           {/* SECTION 1 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
@@ -53228,14 +53895,12 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
           {/* SECTION 2 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader 
-                title="End A & End B Details" 
-            />
+            <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-               {/* We use a generic table config here since the data is virtual */}
-               <DataTable
+              {/* We use a generic table config here since the data is virtual */}
+              <DataTable
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                tableName={'v_system_connections_complete' as any} 
+                tableName={'v_system_connections_complete' as any}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 data={endPointData as any[]}
                 columns={endPointColumns}
@@ -53251,36 +53916,48 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
           {/* SECTION 3 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader 
-                title="OFC Details" 
-                action={
-                    <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm">
-                        + Map OFC
-                    </button>
-                }
+            <SectionHeader
+              title="OFC Details"
+              action={
+                <button onClick={() => handleOpenAllocationModal} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm">
+                  + Map OFC
+                </button>
+              }
             />
             <div className="p-0">
-              {(!ofcData?.data || ofcData.data.length === 0) ? (
-                  <div className="p-8 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No OFC details found for this circuit.</p>
-                      <p className="text-xs text-gray-400 mt-1">Use the &quot;Allocate Fibers&quot; feature in the main dashboard to map fibers.</p>
-                  </div>
+              {!ofcData?.data || ofcData.data.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No OFC details found for this circuit.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Use the &quot;Allocate Fibers&quot; feature in the main dashboard to map fibers.
+                  </p>
+                </div>
               ) : (
-                 // Placeholder for OFC table if data exists
-                 <div className="p-4 text-sm">OFC Data Present (Implementation pending specific view requirement)</div>
+                // Placeholder for OFC table if data exists
+                <div className="p-4 text-sm">
+                  OFC Data Present (Implementation pending specific view requirement)
+                </div>
               )}
             </div>
           </div>
-
+          <SystemFiberTraceModal
+            isOpen={isTraceModalOpen}
+            onClose={() => setIsTraceModalOpen(false)}
+            traceData={traceModalData}
+            isLoading={isTracing}
+          />
         </div>
       ) : (
         <div className="flex items-center justify-center h-full text-red-500">
-            Connection not found
+          Connection not found
         </div>
       )}
     </Modal>
   );
 };
+
 ```
 
 <!-- path: components/system-details/FiberAllocationModal.tsx -->
@@ -53644,18 +54321,16 @@ const formSchema = system_connectionsInsertSchema
   })
   .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape)
   .extend({
-    // Validation: Customer Name and Interface are now mandatory
     customer_name: z.string().min(1, "Customer / Link Name is required"),
-    system_working_interface: z.string().min(1, "Working Interface is required"),
+    // THE FIX: Made system_working_interface optional
+    system_working_interface: z.string().nullable().optional(),
     media_type_id: z.string().uuid("Media Type is required"),
-    // Add new fields to schema
     lc_id: z.string().nullable().optional(),
     unique_id: z.string().nullable().optional(),
   });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-// Helper to handle potential type mismatches before regeneration
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & { lc_id?: string | null; unique_id?: string | null };
 
 interface SystemConnectionFormModalProps {
@@ -53726,12 +54401,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-  //   columns: "id, name, code",
-  //   filters: { category: "PORT_TYPES" },
-  // });
-
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -53742,7 +54411,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSystemId,
   });
 
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -53753,7 +54421,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSnId,
   });
 
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -53797,14 +54464,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const systemOptions = useMemo(
     () =>
       (systemsResult.data || [])
-        .filter((s) => s.id !== parentSystem.id) 
+        // THE FIX: Removed the filter that hid the parent system.
+        // Now all systems, including the current one, are available for selection.
         .map((s) => {
           const loc = s.node_name ? ` @ ${s.node_name}` : "";
           const ip = s.ip_address ? ` [${s.ip_address.split('/')[0]}]` : "";
           const label = `${s.system_name}${loc}${ip}`;
           return { value: s.id!, label };
         }),
-    [systemsResult.data, parentSystem.id]
+    [systemsResult.data]
   );
 
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
@@ -53836,8 +54504,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           bandwidth: editingConnection.bandwidth ?? null,
           bandwidth_allocated: editingConnection.bandwidth_allocated ?? null,
           vlan: editingConnection.vlan ?? null,
-          lc_id: extConnection.lc_id ?? null,         // New field
-          unique_id: extConnection.unique_id ?? null, // New field
+          lc_id: extConnection.lc_id ?? null,
+          unique_id: extConnection.unique_id ?? null,
           connected_link_type_id: editingConnection.connected_link_type_id ?? null,
           sn_id: editingConnection.sn_id ?? null,
           en_id: editingConnection.en_id ?? null,
@@ -53946,7 +54614,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       error={errors.system_working_interface}
                       placeholder="Select Working Port"
                       searchPlaceholder="Search ports..."
-                      required
+                      // THE FIX: Removed `required` prop from UI component
                     />
                   </div>
                   <div className="col-span-1">
@@ -54598,7 +55266,15 @@ export default ErrorDisplay;
 <!-- path: components/diagrams/uploader-components/FolderManagement.tsx -->
 ```typescript
 // components/diagrams/uploader-components/FolderManagement.tsx
-import React from "react";
+import React, { useRef, useState } from "react";
+import { FiTrash2, FiUpload } from "react-icons/fi";
+import { ConfirmModal } from "@/components/common/ui";
+import { useUser } from "@/providers/UserProvider";
+import { useExcelUpload } from "@/hooks/database/excel-queries";
+import { createClient } from "@/utils/supabase/client";
+import { buildUploadConfig } from "@/constants/table-column-keys";
+import { toast } from "sonner";
+import { useAuthStore } from "@/stores/authStore";
 
 interface FolderManagementProps {
   newFolderName: string;
@@ -54607,6 +55283,8 @@ interface FolderManagementProps {
   folders: { id: string; name: string }[];
   folderId: string | null;
   setFolderId: (value: string | null) => void;
+  onDeleteFolder: (id: string) => void;
+  isDeleting: boolean;
 }
 
 const FolderManagement: React.FC<FolderManagementProps> = ({
@@ -54616,13 +55294,73 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
   folders,
   folderId,
   setFolderId,
+  onDeleteFolder,
+  isDeleting,
 }) => {
+  const { isSuperAdmin } = useUser();
+  const user = useAuthStore(state => state.user);
+  const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
   const sortedFolders = [...folders].sort((a, b) => 
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   );
+  
+  const selectedFolderName = folders.find(f => f.id === folderId)?.name || "this folder";
+
+  const handleConfirmDelete = () => {
+    if (folderId) {
+        onDeleteFolder(folderId);
+        setIsDeleteModalOpen(false);
+    }
+  };
+
+  // Setup Folder Excel Upload
+  const { mutate: uploadFolders, isPending: isUploadingFolders } = useExcelUpload(
+    supabase,
+    "folders",
+    {
+      onSuccess: (result) => {
+        if (result.successCount > 0) {
+          toast.success(`Imported ${result.successCount} folders.`);
+          // Note: Parent component invalidation handles UI refresh via prop-triggered refetch if needed,
+          // but query key validation inside hook handles it globally.
+        }
+      }
+    }
+  );
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && user?.id) {
+      const uploadConfig = buildUploadConfig("folders");
+      uploadFolders({
+        file,
+        columns: uploadConfig.columnMapping,
+        uploadType: "upsert",
+        conflictColumn: "id",
+        // Inject current user ID for every folder row
+        staticData: { user_id: user.id }
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -54642,22 +55380,70 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Select Destination Folder
-        </label>
-        <select
-          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-          value={folderId || ""}
-          onChange={(e) => setFolderId(e.target.value || null)}
-        >
-          <option value="">Select Folder</option>
-          {sortedFolders.map((folder) => (
-            <option key={folder.id} value={folder.id}>
-              {folder.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Select Destination Folder
+            </label>
+            
+            <button
+                onClick={handleImportClick}
+                disabled={isUploadingFolders}
+                className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                title="Import Folders from Excel"
+            >
+                <FiUpload className={isUploadingFolders ? "animate-spin" : ""} />
+                {isUploadingFolders ? "Importing..." : "Import Folders"}
+            </button>
+        </div>
+
+        <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+                <select
+                className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                value={folderId || ""}
+                onChange={(e) => setFolderId(e.target.value || null)}
+                >
+                <option value="">Select Folder</option>
+                {sortedFolders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                    </option>
+                ))}
+                </select>
+            </div>
+            
+            {/* Delete Button: Only visible if a folder is selected AND user is super_admin */}
+            {folderId && isSuperAdmin && (
+                <button
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    disabled={isDeleting}
+                    className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded border border-transparent hover:border-red-200 transition-all"
+                    title="Delete Folder"
+                >
+                    <FiTrash2 className="w-5 h-5" />
+                </button>
+            )}
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        title="Delete Folder"
+        message={
+            <div className="space-y-2">
+                <p>Are you sure you want to delete <strong>{selectedFolderName}</strong>?</p>
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                    ⚠️ Warning: This action may fail if the folder contains files. Please delete all files inside this folder first.
+                </p>
+            </div>
+        }
+        confirmText="Delete Folder"
+        type="danger"
+        loading={isDeleting}
+      />
     </>
   );
 };
@@ -55051,12 +55837,19 @@ export interface SupabaseStorageError {
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Eye, Download, Trash2, Search, Grid, List, X } from "lucide-react";
+import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw, FileSpreadsheet, Folder } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
-import "../../app/customuppy.css"; // Custom styles for Uppy
+import "../../app/customuppy.css"; 
 import Image from "next/image";
+import { createClient } from "@/utils/supabase/client";
+import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+import { toast } from "sonner";
+import { formatDate } from "@/utils/formatters";
+import { buildColumnConfig } from "@/constants/table-column-keys";
+import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import { Row, TableOrViewName } from "@/hooks/database";
+import { Button } from "@/components/common/ui";
 
-// Define file type for better type safety
 interface FileType {
   id: string;
   file_name: string;
@@ -55074,20 +55867,54 @@ interface FileTableProps {
   isLoading?: boolean;
 }
 
-export function FileTable({ folders, onFileDelete }: FileTableProps) {
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
+  const supabase = createClient();
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(folderId || null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
-  // Use React Query to fetch files
+  useEffect(() => {
+    if (folderId !== undefined) setSelectedFolder(folderId);
+  }, [folderId]);
+
   const { data: files = [], isLoading, refetch } = useFiles(selectedFolder || undefined);
-  const loading = isLoading; // Use loading state from React Query
+  const loading = isLoading;
   const { mutate: deleteFile } = useDeleteFile();
 
-  // Filter folders based on folder search term and sort alphabetically in ascending order
+  // Configure Excel Download for Files
+  const { mutate: exportFiles, isPending: isExportingFiles } = useTableExcelDownload(supabase, "files");
+  
+  // ADDED: Configure Excel Download for Folders
+  const { mutate: exportFolders, isPending: isExportingFolders } = useTableExcelDownload(supabase, "folders");
+
+  const handleExportFiles = () => {
+    const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name || "all_files";
+    const fileName = `diagrams_${selectedFolderName}_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+    const columns = buildColumnConfig("files") as Column<Row<TableOrViewName>>[];
+
+    exportFiles({
+      fileName,
+      sheetName: "Diagrams",
+      columns,
+      filters: selectedFolder ? { folder_id: selectedFolder } : {},
+    });
+  };
+
+  // ADDED: Export Folders Handler
+  const handleExportFolders = () => {
+    const fileName = `folders_structure_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+    const columns = buildColumnConfig("folders") as Column<Row<TableOrViewName>>[];
+    
+    exportFolders({
+      fileName,
+      sheetName: "Folders",
+      columns,
+    });
+  };
+
   const filteredFolders = useMemo(() => 
     folders
       .filter(folder =>
@@ -55097,7 +55924,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     [folders, folderSearchTerm]
   );
 
-  // Reset selected folder when it's not in filtered results
   useEffect(() => {
     if (selectedFolder && folderSearchTerm) {
       const isFolderVisible = filteredFolders.some(folder => folder.id === selectedFolder);
@@ -55106,9 +55932,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
       }
     }
   }, [selectedFolder, folderSearchTerm, filteredFolders]);
-
-
-  // (removed unused processedFiles)
 
   const handleView = (file: FileType) => {
     if (file.file_type === "application/pdf") {
@@ -55129,12 +55952,13 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
       { id: file.id, folderId: selectedFolder },
       {
         onSuccess: () => {
+          toast.success("File deleted successfully");
           onFileDelete?.();
           refetch();
         },
         onError: (error) => {
           console.error("Delete error:", error);
-          alert("Failed to delete file");
+          toast.error("Failed to delete file");
         },
         onSettled: () => {
           setDeletingFile(null);
@@ -55161,7 +55985,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     return "📎";
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDisplayDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -55171,9 +55995,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     });
   };
 
-  // (removed unused truncateFolderName)
-
-  // Clear search functions
   const clearFolderSearch = useCallback(() => {
     setFolderSearchTerm("");
   }, []);
@@ -55182,7 +56003,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
     setFileSearchTerm("");
   }, []);
 
-  // Filter and sort files
   const filteredAndSortedFiles = useMemo(() => {
     return (files as FileType[])
       .filter((file) => {
@@ -55191,11 +56011,9 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         return matchesSearch && matchesType;
       })
       .sort((a, b) => {
-        // Default: sort by date desc
         const aDate = new Date(a.uploaded_at || 0).getTime();
         const bDate = new Date(b.uploaded_at || 0).getTime();
-        const comparison = aDate - bDate;
-        return -comparison;
+        return bDate - aDate;
       });
   }, [files, fileSearchTerm, fileTypeFilter]);
 
@@ -55209,24 +56027,52 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
 
   return (
     <div className="mt-8 space-y-6">
-      <h2
-        className={`text-xl font-semibold dark:text-white text-black`}
-      >
-        UPLOADED DIAGRAMS
-      </h2>
-      {/* Files Display */}
+      <div className="flex items-center justify-between">
+        <h2 className={`text-xl font-semibold dark:text-white text-black`}>
+          UPLOADED DIAGRAMS
+        </h2>
+        {/* ADDED: Export Folders Button */}
+        <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportFolders}
+            disabled={isExportingFolders}
+            leftIcon={<Folder className="w-4 h-4" />}
+        >
+            {isExportingFolders ? "Exporting..." : "Export Folders"}
+        </Button>
+      </div>
+      
       {selectedFolder && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className={`text-lg font-medium dark:text-white text-black`}>
               Files ({filteredAndSortedFiles.length})
             </h3>
-            {loading && (
-              <div className="text-sm text-gray-500">Loading files...</div>
-            )}
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetch()} 
+                disabled={loading}
+                leftIcon={<RefreshCw className={loading ? "animate-spin" : ""} />}
+              >
+                Refresh
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportFiles}
+                disabled={isExportingFiles || loading || filteredAndSortedFiles.length === 0}
+                leftIcon={<FileSpreadsheet />}
+              >
+                {isExportingFiles ? "Exporting..." : "Export Files"}
+              </Button>
+            </div>
           </div>
 
-          {/* File Search */}
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -55259,7 +56105,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                     key={file.id}
                     className={`group relative overflow-hidden rounded-lg border p-3 transition-all hover:shadow-lg dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50`}
                   >
-                    {/* File Preview */}
                     <div className="aspect-square mb-3 overflow-hidden rounded">
                       {file.file_type.includes("image") ? (
                         <Image
@@ -55281,7 +56126,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                       )}
                     </div>
 
-                    {/* File Info */}
                     <div className="space-y-1">
                       <p
                         className={`truncate text-sm font-medium dark:text-white text-black`}
@@ -55290,11 +56134,10 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                         {file.file_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(file.uploaded_at)}
+                        {formatDisplayDate(file.uploaded_at)}
                       </p>
                     </div>
 
-                    {/* Action buttons */}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         onClick={() => handleView(file)}
@@ -55328,42 +56171,42 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                 ))}
               </div>
             ) : (
-              <div className="overflow-hidden rounded-lg border">
-                <div className={`dark:bg-gray-700 bg-gray-50 px-4 py-2 border-b`}>
-                  <div className="grid grid-cols-12 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className={`dark:bg-gray-700 bg-gray-50 px-4 py-2 border-b border-gray-200 dark:border-gray-600`}>
+                  <div className="grid grid-cols-12 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     <div className="col-span-5">Name</div>
                     <div className="col-span-2">Type</div>
                     <div className="col-span-2">Date</div>
-                    <div className="col-span-1">Actions</div>
+                    <div className="col-span-3 text-right">Actions</div>
                   </div>
                 </div>
                 <div className={`divide-y dark:divide-gray-600 divide-gray-200`}>
                   {filteredAndSortedFiles.map((file) => (
                     <div
                       key={file.id}
-                      className={`group px-4 py-3 transition-colors hover:bg-gray-50`}
+                      className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50`}
                     >
                       <div className="grid grid-cols-12 gap-4 items-center">
                         <div className="col-span-5 flex items-center gap-3">
                           <span className="text-lg">{getFileIcon(file.file_type)}</span>
                           <span
-                            className={`truncate text-sm dark:text-white text-black`}
+                            className={`truncate text-sm dark:text-white text-black font-medium`}
                             title={file.file_name}
                           >
                             {file.file_name}
                           </span>
                         </div>
-                        <div className="col-span-2 text-xs text-gray-500 uppercase">
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400 uppercase">
                           {file.file_type.split("/")[1] || "Unknown"}
                         </div>
-                        <div className="col-span-2 text-xs text-gray-500">
-                          {formatDate(file.uploaded_at)}
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">
+                          {formatDisplayDate(file.uploaded_at)}
                         </div>
-                        <div className="col-span-1 flex gap-1">
+                        <div className="col-span-3 flex gap-2 justify-end">
                           <button
                             onClick={() => handleView(file)}
                             title="View"
-                            className={`p-1 text-gray-400 hover:text-blue-500 transition-colors`}
+                            className={`p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors`}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -55371,7 +56214,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                             href={getDownloadUrl(file)}
                             download={file.file_name}
                             title="Download"
-                            className={`p-1 text-gray-400 hover:text-green-500 transition-colors`}
+                            className={`p-1.5 text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors`}
                           >
                             <Download className="h-4 w-4" />
                           </a>
@@ -55379,7 +56222,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                             onClick={() => handleDelete(file)}
                             disabled={deletingFile === file.id}
                             title="Delete"
-                            className={`p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50`}
+                            className={`p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50`}
                           >
                             {deletingFile === file.id ? (
                               <div className="h-4 w-4 animate-spin rounded-full border border-gray-400 border-t-transparent"></div>
@@ -55395,7 +56238,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
               </div>
             )
           ) : (
-            <div className={`text-center py-12 dark:text-gray-400 text-gray-500`}>
+            <div className={`text-center py-12 dark:text-gray-400 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg`}>
               <div className="text-4xl mb-4">📭</div>
               <p className="text-lg font-medium">No files found</p>
               <p className="text-sm">
@@ -55407,9 +56250,9 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           )}
         </div>
       )}
-      {/* Search and Filter Controls */}
+
+      {/* Search Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Folder Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -55430,8 +56273,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           )}
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex rounded border overflow-hidden">
+        <div className="flex rounded border overflow-hidden dark:border-gray-600">
           <button
             onClick={(e) => { e.stopPropagation(); setViewMode("grid"); }}
             className={`flex-1 px-3 py-2 text-sm transition-colors ${
@@ -55455,7 +56297,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         </div>
       </div>
 
-      {/* File Type Filter */}
       {files.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           <button
@@ -55470,8 +56311,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           </button>
           {getFileTypeOptions().map((option) => {
             const count = files.filter(file => file.file_type.startsWith(option.value)).length;
-            // console.log(`File type: ${option.value}, Count: ${count}`, "label:", option.label);
-            
             return (
               <button
                 key={option.value}
@@ -55489,7 +56328,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
         </div>
       )}
 
-      {/* Folder Selection */}
       <div className="space-y-4">
         <h3 className={`text-lg font-medium dark:text-white text-black`}>
           Select Folder to View Files
@@ -55506,7 +56344,7 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                       : "dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50"
                   } dark:text-white text-black`}
                   onClick={() => setSelectedFolder(folder.id)}
-                  title={folder.name} // Show full name on hover
+                  title={folder.name}
                 >
                   <div className="flex items-center justify-between min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -55523,7 +56361,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
                   </div>
                 </button>
                 
-                {/* Tooltip for long folder names */}
                 {folder.name.length > 25 && (
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
                     {folder.name}
@@ -55539,8 +56376,6 @@ export function FileTable({ folders, onFileDelete }: FileTableProps) {
           </div>
         )}
       </div>
-
-
     </div>
   );
 }
@@ -55789,12 +56624,13 @@ export function useUppyUploader({
 
 <!-- path: components/diagrams/hooks/useFolders.ts -->
 ```typescript
-// hooks/useFolders.ts
+// components/diagrams/hooks/useFolders.ts
 "use client";
 
 import { useState, useCallback } from 'react';
 import { createClient } from "@/utils/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDeleteFolder } from '@/hooks/database/file-queries'; // Import the new hook
 
 interface Folder {
   id: string;
@@ -55810,8 +56646,10 @@ interface UseFoldersReturn {
   newFolderName: string;
   setNewFolderName: (name: string) => void;
   handleCreateFolder: () => void;
+  handleDeleteFolder: (id: string) => void; // Added
   refreshFolders: () => Promise<void>;
   isCreatingFolder: boolean;
+  isDeletingFolder: boolean; // Added
   isLoading: boolean;
 }
 
@@ -55838,8 +56676,8 @@ export function useFolders({
 
       const { data, error } = await supabase
         .from("folders")
-        .select("*");
-        // .eq("user_id", user.id);
+        .select("*")
+        .order('name');
 
       if (error) {
         console.error("Fetch folders error:", error);
@@ -55881,11 +56719,29 @@ export function useFolders({
     },
   });
 
+  // Added Delete Folder Mutation Wrapper
+  const { mutate: deleteFolder, isPending: isDeleting } = useDeleteFolder();
+
   const handleCreateFolder = useCallback(() => {
     if (newFolderName.trim()) {
       createFolder(newFolderName);
     }
   }, [createFolder, newFolderName]);
+
+  const handleDeleteFolder = useCallback((idToDelete: string) => {
+    deleteFolder(idToDelete, {
+        onSuccess: () => {
+            onSuccess?.();
+            // If the deleted folder was selected, deselect it
+            if (folderId === idToDelete) {
+                setFolderId(null);
+            }
+        },
+        onError: (error) => {
+            onError?.(error.message);
+        }
+    });
+  }, [deleteFolder, folderId, onSuccess, onError]);
 
   const refreshFolders = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['folders'] });
@@ -55898,8 +56754,10 @@ export function useFolders({
     newFolderName,
     setNewFolderName,
     handleCreateFolder,
+    handleDeleteFolder, // Return handler
     refreshFolders,
     isCreatingFolder: isCreating,
+    isDeletingFolder: isDeleting, // Return state
     isLoading,
   };
 }
@@ -55991,11 +56849,23 @@ export default function FileUploader() {
     setFolderId,
     setNewFolderName,
     handleCreateFolder,
+    handleDeleteFolder, // Changed: Destructure delete handler
+    isDeletingFolder,   // Changed: Destructure delete state
     isLoading: isLoadingFolders,
   } = useFolders({
     onError: (err) => setError(err),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['files'] }),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['files'] });
+        // We also want to show a success toast specifically for folder actions if handled here
+        // But useFolders handles specific success callbacks generally
+    },
   });
+  
+  // Helper to wrap delete with specific success message if needed
+  const onDeleteFolderWrapper = (id: string) => {
+      handleDeleteFolder(id);
+      // The hook handles the toast on success/error, or we can chain here if useMutation promise was returned
+  };
 
   const {
     uppyRef,
@@ -56005,7 +56875,6 @@ export default function FileUploader() {
     handleStartUpload,
     toggleCamera,
     facingMode,
-    // isCameraActive, // Not used in new design
     cameraError,
   } = useUppyUploader({
     folderId: folderId || null,
@@ -56063,6 +56932,8 @@ export default function FileUploader() {
               folders={folders}
               folderId={folderId}
               setFolderId={setFolderId}
+              onDeleteFolder={onDeleteFolderWrapper} // Passed down
+              isDeleting={isDeletingFolder}          // Passed down
             />
           </div>
 
@@ -56081,7 +56952,7 @@ export default function FileUploader() {
                   uppyRef={uppyRef}
                   facingMode={facingMode}
                   toggleCamera={toggleCamera}
-                  theme={uppyTheme} // Pass 'light', 'dark', or 'auto'
+                  theme={uppyTheme}
                 />
               ) : (
                 <SimpleUpload
@@ -56129,10 +57000,13 @@ export default function FileUploader() {
 <!-- path: components/audit/AuditLogDetailsModal.tsx -->
 ```typescript
 // components/audit/AuditLogDetailsModal.tsx
-import React from 'react';
-import { Modal } from '@/components/common/ui';
+"use client";
+
+import React, { useMemo, useState } from 'react';
+import { Modal, Button } from '@/components/common/ui';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
 import { formatDate } from '@/utils/formatters';
+import { ArrowRight, Code } from 'lucide-react';
 
 interface AuditLogDetailsModalProps {
   isOpen: boolean;
@@ -56140,62 +57014,213 @@ interface AuditLogDetailsModalProps {
   log: V_audit_logsRowSchema | null;
 }
 
+// Helper to format values for display
+const formatValue = (val: unknown): string => {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+};
+
+// Helper to determine change type
+type ChangeType = 'added' | 'removed' | 'modified' | 'unchanged';
+
+interface DiffItem {
+  key: string;
+  oldVal: unknown;
+  newVal: unknown;
+  type: ChangeType;
+}
+
 export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
   isOpen,
   onClose,
   log,
 }) => {
+  const [showRawJson, setShowRawJson] = useState(false);
+
+  // Calculate differences
+  const changes = useMemo((): DiffItem[] => {
+    if (!log) return [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oldData = (log.old_data as Record<string, any>) || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newData = (log.new_data as Record<string, any>) || {};
+
+    const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+    const diffs: DiffItem[] = [];
+
+    allKeys.forEach((key) => {
+      const oldVal = oldData[key];
+      const newVal = newData[key];
+      
+      // Ignore internal fields that might clutter the view
+      if (key === 'updated_at' || key === 'created_at' || key.startsWith('_')) {
+          // Optional: uncomment to hide timestamps from diff
+          // return; 
+      }
+
+      const strOld = JSON.stringify(oldVal);
+      const strNew = JSON.stringify(newVal);
+
+      let type: ChangeType = 'unchanged';
+
+      if (oldVal === undefined && newVal !== undefined) type = 'added';
+      else if (oldVal !== undefined && newVal === undefined) type = 'removed';
+      else if (strOld !== strNew) type = 'modified';
+
+      // Only add to list if it's actually interesting (changed) or we want to show everything
+      if (type !== 'unchanged') {
+        diffs.push({ key, oldVal, newVal, type });
+      }
+    });
+
+    return diffs;
+  }, [log]);
+
   if (!log) return null;
 
+  // Robust User Display Name
+  const userName = log.performed_by_name || log.performed_by_email || 'System / Unknown';
+  const userRole = log.user_role ? `(${log.user_role})` : '';
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Audit Log Details" size="full">
+    <Modal isOpen={isOpen} onClose={onClose} title="Audit Log Details" size="xl">
       <div className="p-6 space-y-6">
+        
         {/* Header Summary */}
-        <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border dark:border-gray-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border dark:border-gray-700">
           <div>
-             <span className="text-xs text-gray-500 uppercase font-semibold">Action</span>
-             <p className="font-medium">{log.action_type} on {log.table_name}</p>
+             <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">Action</span>
+             <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase 
+                  ${log.action_type === 'INSERT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
+                    log.action_type === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                  {log.action_type}
+                </span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">on {log.table_name}</span>
+             </div>
           </div>
           <div>
-             <span className="text-xs text-gray-500 uppercase font-semibold">Timestamp</span>
-             <p className="font-medium">{formatDate(log.created_at || new Date(), { format: 'dd-mm-yyyy', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+             <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">Timestamp</span>
+             <p className="font-medium text-gray-700 dark:text-gray-300 text-sm">
+               {formatDate(log.created_at || new Date(), { format: 'dd-mm-yyyy', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+             </p>
           </div>
           <div>
-             <span className="text-xs text-gray-500 uppercase font-semibold">User</span>
-             <p className="font-medium">{log.performed_by_name} ({log.user_role})</p>
+             <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">User</span>
+             <p className="font-medium text-gray-700 dark:text-gray-300 text-sm flex items-center gap-1">
+                {userName} <span className="text-gray-400 font-normal text-xs">{userRole}</span>
+             </p>
           </div>
           <div>
-             <span className="text-xs text-gray-500 uppercase font-semibold">Record ID</span>
-             <p className="font-mono text-sm">{log.record_id}</p>
+             <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">Record ID</span>
+             <p className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded inline-block">
+               {log.record_id}
+             </p>
           </div>
         </div>
 
-        {/* JSON Data */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {/* Old Data */}
-           <div>
-             <h4 className="text-sm font-bold text-red-600 mb-2">Previous Data</h4>
-             <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded-md border dark:border-gray-700 h-96 overflow-auto text-xs font-mono custom-scrollbar">
-                {log.old_data ? (
-                    <pre>{JSON.stringify(log.old_data, null, 2)}</pre>
-                ) : (
-                    <span className="text-gray-400 italic">No previous data (Insert)</span>
-                )}
-             </div>
-           </div>
-
-           {/* New Data */}
-           <div>
-             <h4 className="text-sm font-bold text-green-600 mb-2">New Data</h4>
-             <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded-md border dark:border-gray-700 h-96 overflow-auto text-xs font-mono custom-scrollbar">
-                {log.new_data ? (
-                    <pre>{JSON.stringify(log.new_data, null, 2)}</pre>
-                ) : (
-                    <span className="text-gray-400 italic">No new data (Delete)</span>
-                )}
-             </div>
-           </div>
+        {/* Toggle View */}
+        <div className="flex justify-end">
+            <Button 
+                size="xs" 
+                variant="outline" 
+                onClick={() => setShowRawJson(!showRawJson)}
+                leftIcon={<Code className="w-3 h-3" />}
+            >
+                {showRawJson ? 'View Diff' : 'View Raw JSON'}
+            </Button>
         </div>
+
+        {/* Content Area */}
+        {showRawJson ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div>
+               <h4 className="text-sm font-bold text-red-600 mb-2">Old Data (Raw)</h4>
+               <div className="bg-gray-100 dark:bg-gray-950 p-3 rounded-md border dark:border-gray-700 h-96 overflow-auto text-xs font-mono custom-scrollbar">
+                  {log.old_data ? (
+                      <pre>{JSON.stringify(log.old_data, null, 2)}</pre>
+                  ) : (
+                      <span className="text-gray-400 italic">No previous data (Insert)</span>
+                  )}
+               </div>
+             </div>
+  
+             <div>
+               <h4 className="text-sm font-bold text-green-600 mb-2">New Data (Raw)</h4>
+               <div className="bg-gray-100 dark:bg-gray-950 p-3 rounded-md border dark:border-gray-700 h-96 overflow-auto text-xs font-mono custom-scrollbar">
+                  {log.new_data ? (
+                      <pre>{JSON.stringify(log.new_data, null, 2)}</pre>
+                  ) : (
+                      <span className="text-gray-400 italic">No new data (Delete)</span>
+                  )}
+               </div>
+             </div>
+          </div>
+        ) : (
+          <div className="border rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b dark:border-gray-700 font-semibold text-sm text-gray-700 dark:text-gray-300 flex justify-between items-center">
+                <span>Changes Detected</span>
+                <span className="text-xs font-normal text-gray-500 bg-white dark:bg-gray-700 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600">
+                    {changes.length} field(s)
+                </span>
+            </div>
+            
+            {changes.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 italic">
+                    No visible changes detected in this log entry.
+                </div>
+            ) : (
+                <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                            <tr>
+                                <th className="px-4 py-2 w-1/4">Field</th>
+                                <th className="px-4 py-2 w-1/3">Previous Value</th>
+                                <th className="px-4 py-2 w-10"></th>
+                                <th className="px-4 py-2 w-1/3">New Value</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {changes.map((diff) => (
+                                <tr key={diff.key} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 break-words align-top">
+                                        {diff.key}
+                                    </td>
+                                    <td className={`px-4 py-3 break-words align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'removed' ? 'bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-300' : 'text-gray-500'}`}>
+                                        {diff.type === 'added' ? (
+                                            <span className="text-gray-300 select-none">—</span>
+                                        ) : (
+                                            formatValue(diff.oldVal)
+                                        )}
+                                    </td>
+                                    <td className="px-2 py-3 text-center align-top text-gray-400">
+                                        <ArrowRight className="w-4 h-4 mx-auto mt-0.5" />
+                                    </td>
+                                    <td className={`px-4 py-3 break-words align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'added' ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-300' : 'text-gray-500'}`}>
+                                        {diff.type === 'removed' ? (
+                                             <span className="text-gray-300 select-none">—</span>
+                                        ) : (
+                                            formatValue(diff.newVal)
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+          </div>
+        )}
+        
+        {/* Footer Actions */}
+        <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700">
+             <Button variant="outline" onClick={onClose}>Close</Button>
+        </div>
+
       </div>
     </Modal>
   );
@@ -59327,6 +60352,8 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                     }
                 }
             } catch (e) {
+              console.log(e);
+              
                 rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
             }
         }
@@ -59362,7 +60389,9 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       }
       
       toast.info(`Upserting ${ringsToUpsert.length} ring records...`);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
+      
       const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
 
       if (upsertError) {
@@ -59408,8 +60437,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
 <!-- path: hooks/database/excel-queries/useSystemExcelUpload.ts -->
 ```typescript
-// path: hooks/database/excel-queries/useSystemExcelUpload.ts
-import * as XLSX from 'xlsx';
+// hooks/database/excel-queries/useSystemExcelUpload.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -59434,7 +60462,11 @@ export interface SystemUploadOptions {
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
 
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
+// CHANGED: Dynamic import wrapper
+const parseExcelFile = async (file: File): Promise<unknown[][]> => {
+  // DYNAMIC IMPORT HERE
+  const XLSX = await import('xlsx');
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -59480,6 +60512,7 @@ export function useSystemExcelUpload(
       };
 
       toast.info('Reading and parsing Excel file...');
+      // CHANGED: Await the async parse function
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -59593,14 +60626,11 @@ export function useSystemExcelUpload(
           }
         }
 
-        // --- THIS IS THE DEFINITIVE FIX ---
-        // Ensure required string fields are not null by providing a fallback.
-        // Convert nulls for optional fields to undefined to match the RPC type.
         const rpcPayload: RpcPayload = {
           p_id: (processedData.id as string) || undefined,
-          p_system_name: (processedData.system_name as string) ?? 'Unnamed System', // Fallback for required field
-          p_system_type_id: (processedData.system_type_id as string) ?? '', // Fallback for required field
-          p_node_id: (processedData.node_id as string) ?? '', // Fallback for required field
+          p_system_name: (processedData.system_name as string) ?? 'Unnamed System',
+          p_system_type_id: (processedData.system_type_id as string) ?? '',
+          p_node_id: (processedData.node_id as string) ?? '',
           p_status: (processedData.status as boolean) ?? true,
           p_is_hub: (processedData.is_hub as boolean) ?? false,
           p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
@@ -59614,9 +60644,7 @@ export function useSystemExcelUpload(
           p_ring_associations: ringAssociationsJson,
           p_system_capacity_id: (processedData.system_capacity_id as string | null) || undefined,
         };
-        // --- END FIX ---
 
-        // Final check for required UUIDs after processing
         if (!rpcPayload.p_system_type_id || !rpcPayload.p_node_id) {
           const missingFields = [
             !rpcPayload.p_system_type_id && 'System Type ID',
@@ -59720,7 +60748,6 @@ export function useSystemExcelUpload(
     },
   });
 }
-
 ```
 
 <!-- path: hooks/database/excel-queries/excel-helpers.ts -->
@@ -60649,11 +61676,8 @@ import { toast } from 'sonner';
 
 /**
  * Reads a File object and returns its contents as a 2D array using xlsx.
- * @param file The File object to read.
- * @returns A Promise that resolves to a 2D array of the sheet data.
  */
 const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // THE FIX: Dynamic Import
   const XLSX = await import('xlsx');
 
   return new Promise((resolve, reject) => {
@@ -60693,10 +61717,6 @@ const parseExcelFile = async (file: File): Promise<unknown[][]> => {
 // MAIN ENHANCED UPLOAD HOOK
 //================================================================================
 
-/**
- * Enhanced React hook for uploading data from an Excel file to a Supabase table using 'xlsx'.
- * Includes comprehensive logging and error tracking.
- */
 export function useExcelUpload<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -60707,7 +61727,7 @@ export function useExcelUpload<T extends PublicTableName>(
 
   return useMutation<EnhancedUploadResult, Error, UploadOptions<T>>({
     mutationFn: async (uploadOptions: UploadOptions<T>): Promise<EnhancedUploadResult> => {
-      const { file, columns, uploadType = 'upsert', conflictColumn } = uploadOptions;
+      const { file, columns, uploadType = 'upsert', conflictColumn, staticData } = uploadOptions;
 
       if (uploadType === 'upsert' && !conflictColumn) {
         throw new Error("A 'conflictColumn' must be specified for 'upsert' operations.");
@@ -60933,6 +61953,11 @@ export function useExcelUpload<T extends PublicTableName>(
           }
         }
 
+        // --- NEW: Merge static data (like user_id) ---
+        if (staticData) {
+          Object.assign(processedData, staticData);
+        }
+
         const hasRequiredFieldErrors = rowValidationErrors.some(
           (err) => err.error.includes('Required field') || err.error.includes('Missing required')
         );
@@ -60964,6 +61989,7 @@ export function useExcelUpload<T extends PublicTableName>(
         processingLogs.push(log);
       }
 
+      // ... (Batching logic logic remains identical)
       if (uploadType === 'upsert' && conflictColumn) {
         const conflictCols = String(conflictColumn)
           .split(',')
@@ -61068,7 +62094,6 @@ export function useExcelUpload<T extends PublicTableName>(
           const { error } = await query;
 
           if (error) {
-            // Error handling logic... (Keep existing error handling logic from your previous file)
             if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
               type RecordWithSnId = { sn_id?: unknown };
               const getSnId = (record: unknown): string | undefined => {
@@ -61116,23 +62141,22 @@ export function useExcelUpload<T extends PublicTableName>(
                 );
               }
             } else {
-              const errorDetails: Record<string, unknown> = {};
-              if (error.code === '23503') {
+            const errorDetails: Record<string, unknown> = {};
+            if (error.code === '23503') {
                 errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
                 errorDetails.detail = error.message;
-              }
-              uploadResult.errorCount += batch.length;
-              uploadResult.errors.push({
+            }
+            uploadResult.errorCount += batch.length;
+            uploadResult.errors.push({
                 rowIndex: i,
                 data: batch,
                 error: error.message,
                 ...(Object.keys(errorDetails).length > 0 ? { details: errorDetails } : {}),
-              });
+            });
 
-              if (showToasts) {
+            if (showToasts) {
                 toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
-              }
-            }
+                        }            }
           } else {
             uploadResult.successCount += batch.length;
           }
@@ -61197,8 +62221,6 @@ export function useExcelUpload<T extends PublicTableName>(
           });
         } catch (err) {
           console.log(err);
-
-          // Query invalidation failed silently
         }
       }
 
@@ -61207,7 +62229,6 @@ export function useExcelUpload<T extends PublicTableName>(
     ...mutationOptions,
   });
 }
-
 ```
 
 <!-- path: hooks/database/excel-queries/usePortsExcelUpload.ts -->
@@ -61219,9 +62240,8 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
-import { EnhancedUploadResult, generateUUID, logRowProcessing, validateValue, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, generateUUID, validateValue, ValidationError } from './excel-helpers';
 import { Ports_managementInsertSchema } from '@/schemas/zod-schemas';
-import { toPgBoolean } from '@/config/helper-functions';
 
 export interface PortsUploadOptions {
   file: File;
@@ -61298,7 +62318,7 @@ export function usePortsExcelUpload(
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
-        const excelRowNumber = i + 2;
+        // const excelRowNumber = i + 2;
         const originalData: Record<string, unknown> = {};
         excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
 
@@ -61395,7 +62415,6 @@ export function usePortsExcelUpload(
 <!-- path: hooks/database/excel-queries/useSystemConnectionExcelUpload.ts -->
 ```typescript
 // hooks/database/excel-queries/useSystemConnectionExcelUpload.ts
-import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -61421,7 +62440,10 @@ export interface SystemConnectionUploadOptions {
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 // ... (parseExcelFile function remains the same) ...
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
+const parseExcelFile = async (file: File): Promise<unknown[][]> => {
+  // DYNAMIC IMPORT HERE
+  const XLSX = await import('xlsx');
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -62271,7 +63293,7 @@ export function useSyncPathUpdates() {
 ```typescript
 // hooks/database/queries-type-helpers.ts
 import { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions, InfiniteData } from "@tanstack/react-query";
-import { Database, Tables } from "@/types/supabase-types";
+import { Database } from "@/types/supabase-types";
 import { tableNames } from '@/types/flattened-types';
 
 // --- Type for a structured query result with a count ---
@@ -62390,6 +63412,8 @@ export interface UploadOptions<T extends TableOrViewName> {
     columns: UploadColumnMapping<T>[];
     uploadType?: UploadType;
     conflictColumn?: T extends PublicTableName ? keyof TableInsert<T> & string : never;
+    // NEW: Allow injecting static data (e.g. user_id)
+    staticData?: Partial<TableInsert<T extends PublicTableName ? T : never>>;
 }
 export interface UploadResult {
     successCount: number;
@@ -62903,11 +63927,12 @@ export function useDeprovisionPath() {
 
 <!-- path: hooks/database/file-queries.ts -->
 ```typescript
+// hooks/database/file-queries.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { Database } from "@/types/supabase-types";
 
-type FileRecord = Database["public"]["Tables"]["files"]["Row"];
+// type FileRecord = Database["public"]["Tables"]["files"]["Row"];
 type FileInsert = Database["public"]["Tables"]["files"]["Insert"];
 type FileUpdate = Database["public"]["Tables"]["files"]["Update"];
 
@@ -62970,7 +63995,7 @@ export function useDeleteFile() {
   return useMutation({
     mutationFn: async ({
       id,
-      folderId,
+      // folderId,
     }: {
       id: string;
       folderId?: string | null;
@@ -63027,6 +64052,33 @@ export function useUpdateFile() {
   });
 }
 
+// --- ADDED: Delete Folder Mutation ---
+export function useDeleteFolder() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (folderId: string) => {
+      // 1. Delete all files in the folder first (optional safety, though Cascade usually handles this)
+      // We rely on DB Constraints or manual cleanup. Here we try direct delete.
+      const { error } = await supabase
+        .from("folders")
+        .delete()
+        .eq("id", folderId);
+
+      if (error) {
+        // Handle FK constraint errors specifically
+        if (error.code === '23503') {
+          throw new Error("Cannot delete folder: It contains files. Please delete all files inside it first.");
+        }
+        throw new Error(error.message);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+    }
+  });
+}
 ```
 
 <!-- path: hooks/database/utility-functions.ts -->
@@ -65001,7 +66053,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'nodes',
   'systems',
   'ring_based_systems',
-  'ports_management', // Added
+  'ports_management',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -65015,7 +66067,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_user_profiles_extended',
   'v_ofc_connections_complete',
   'v_system_connections_complete',
-  'v_ports_management_complete', // Added
+  'v_ports_management_complete',
 ];
 
 export async function syncEntity(
@@ -65027,13 +66079,12 @@ export async function syncEntity(
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
     const table = getTable(entityName);
-    
-    // Clear the local table first (Full Refresh Strategy)
-    await table.clear();
-
     let offset = 0;
     let hasMore = true;
-    let totalSynced = 0;
+    
+    // CHANGED: Fetch ALL data into memory first to prevent partial state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allFetchedData: any[] = [];
 
     while (hasMore) {
         // Fetch data in chunks using the RPC
@@ -65049,14 +66100,9 @@ export async function syncEntity(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const responseData = (rpcResponse as { data: any[] })?.data || [];
         const validData = responseData.filter(item => item.id != null);
-
+        
         if (validData.length > 0) {
-            // Bulk add to Dexie
-            await db.transaction('rw', table, async () => {
-                await table.bulkPut(validData);
-            });
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            totalSynced += validData.length;
+            allFetchedData.push(...validData);
         }
 
         // Check if we reached the end
@@ -65066,6 +66112,15 @@ export async function syncEntity(
             offset += BATCH_SIZE;
         }
     }
+
+    // CHANGED: Safe transactional update
+    // Only clear and put if we successfully fetched everything
+    await db.transaction('rw', table, async () => {
+        await table.clear();
+        if (allFetchedData.length > 0) {
+            await table.bulkPut(allFetchedData);
+        }
+    });
 
     await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
@@ -67338,6 +68393,12 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "system_connections";
       case "user-activity-logs":
         return null;
+       // THE FIX: Map diagrams route to files table
+      case "diagrams":
+        return "files";
+      // THE FIX: Added kml-manager mapping
+      case "kml-manager":
+        return "files"; 
       default:
         return null;
     }

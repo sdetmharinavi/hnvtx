@@ -72,6 +72,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  services: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -152,6 +157,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   folders: {
     created_at: { transform: toPgDate, excelFormat: "date" },
     name: { title: "Folder Name" }
+  },
+  services: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    status: { transform: toPgBoolean },
+    services_ip: { transform: removeSubnet },
   }
 };
 
@@ -389,32 +399,44 @@ const TABLE_COLUMN_OBJECTS = {
   },
   system_connections: {
     id: "id",
-    system_id: "system_id",
-    sn_id: "sn_id",
-    en_id: "en_id",
-    media_type_id: "media_type_id",
-    sn_interface: "sn_interface",
-    en_interface: "en_interface",
-    sn_ip: "sn_ip",
-    en_ip: "en_ip",
-    vlan: "vlan",
     bandwidth: "bandwidth",
     commissioned_on: "commissioned_on",
-    status: "status",
-    remark: "remark",
     created_at: "created_at",
-    updated_at: "updated_at",
-    lc_id: "lc_id",
-    unique_id: "unique_id",
-    system_working_interface: "system_working_interface",
-    system_protection_interface: "system_protection_interface",
-    connected_link_type_id: "connected_link_type_id",
-    working_fiber_in_ids: "working_fiber_in_ids",
-    working_fiber_out_ids: "working_fiber_out_ids",
+    en_id: "en_id",
+    en_interface: "en_interface",
+    en_ip: "en_ip",
+    media_type_id: "media_type_id",
     protection_fiber_in_ids: "protection_fiber_in_ids",
     protection_fiber_out_ids: "protection_fiber_out_ids",
-    customer_name: "customer_name",
+    remark: "remark",
+    service_id: "service_id",
+    sn_id: "sn_id",
+    sn_interface: "sn_interface",
+    sn_ip: "sn_ip",
+    status: "status",
+    system_id: "system_id",
+    system_protection_interface: "system_protection_interface",
+    system_working_interface: "system_working_interface",
+    updated_at: "updated_at",
+    working_fiber_in_ids: "working_fiber_in_ids",
+    working_fiber_out_ids: "working_fiber_out_ids",
+  },
+  services: {
+    id: "id",
     bandwidth_allocated: "bandwidth_allocated",
+    created_at: "created_at",
+    description: "description",
+    lc_id: "lc_id",
+    link_type_id: "link_type_id",
+    name: "name",
+    node_id: "node_id",
+    services_interface: "services_interface",
+    services_ip: "services_ip",
+    status: "status",
+    system_id: "system_id",
+    unique_id: "unique_id",
+    updated_at: "updated_at",
+    vlan: "vlan",
   },
   ports_management: {
     id: "id", // Added primary key
@@ -684,7 +706,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_name: "system_name",
     system_type_name: "system_type_name",
     system_working_interface: "system_working_interface",
-    customer_name: "customer_name",
+    service_name: "service_name",
     system_protection_interface: "system_protection_interface",
     vlan: "vlan",
     bandwidth_allocated: "bandwidth_allocated",
@@ -708,6 +730,9 @@ const TABLE_COLUMN_OBJECTS = {
     en_node_name: "en_node_name",
     lc_id: "lc_id",
     unique_id: "unique_id",
+    service_id: "service_id",
+    services_interface: "services_interface",
+    services_ip: "services_ip",
     sn_node_id: "sn_node_id",
     en_node_id: "en_node_id",
     media_type_id: "media_type_id",
@@ -1001,6 +1026,7 @@ export const TABLES = {
   logical_paths: "logical_paths",
   diary_notes: "diary_notes",
   inventory_items: "inventory_items",
+  services: "services",
 } as const;
 
 export const VIEWS = {
@@ -1023,6 +1049,7 @@ export const VIEWS = {
   v_ring_nodes: "v_ring_nodes",
   v_inventory_items: "v_inventory_items",
   v_audit_logs: "v_audit_logs",
+  v_services: "v_services",
 } as const;
 
 export const TABLE_NAMES = {

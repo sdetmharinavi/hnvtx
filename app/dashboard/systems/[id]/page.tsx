@@ -200,7 +200,7 @@ export default function SystemConnectionsPage() {
     setIsAllocationModalOpen(false);
   }, [refetch]);
   
-  const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
+ const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
     setIsTracing(true);
     setIsTraceModalOpen(true);
     setTraceModalData(null);

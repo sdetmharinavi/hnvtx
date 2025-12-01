@@ -1,3 +1,4 @@
+// config/table-columns/SystemConnectionsTableColumns.tsx
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { FiMapPin } from "react-icons/fi";
@@ -7,7 +8,6 @@ import { useServicePathDisplay } from "@/hooks/database/system-connection-hooks"
 import TruncateTooltip from "@/components/common/TruncateTooltip";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 
-// Sub-component to display path details for a single connection
 const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string | null }) => {
   const { data: pathData, isLoading } = useServicePathDisplay(systemConnectionId);
 
@@ -42,7 +42,6 @@ const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string | null
 export const SystemConnectionsTableColumns = (
   data: Row<"v_system_connections_complete">[]
 ): Column<Row<"v_system_connections_complete">>[] => {
-  // 1. Generate the base columns from the view schema
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
     omit: [
@@ -72,26 +71,35 @@ export const SystemConnectionsTableColumns = (
       "sn_node_name",
       "media_type_name",
       "remark",
-      // Omit the new array columns from direct display
       "working_fiber_in_ids",
       "working_fiber_out_ids",
       "protection_fiber_in_ids",
       "protection_fiber_out_ids",
+      "service_id",
+      "connected_link_type_id",
+      // Ensure customer_name is not in the omit list if it's not in keys, 
+      // but essentially we are omitting fields we don't want to show.
     ],
     overrides: {
-      customer_name: {
-        title: "Customer / Link",
+      // CHANGED: customer_name -> service_name
+      service_name: {
+        title: "Service / Customer",
         sortable: true,
         searchable: true,
-        width: 200,
+        width: 250,
         render: (value, record) => (
           <div className='flex flex-col'>
+            {/* Prefer Service Name */}
             <span className='font-medium text-gray-900 dark:text-white'>
-              {(value as string) || record.connected_system_name}
+              {(value as string) || record.connected_system_name || "N/A"}
             </span>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              {record.en_system_type_name}
-            </span>
+            {/* Show Link Type and Bandwidth */}
+            <div className='text-xs text-gray-500 dark:text-gray-400 flex gap-2'>
+              <span>{record.connected_link_type_name || record.en_system_type_name || ""}</span>
+              {record.bandwidth_allocated && (
+                 <span className="bg-blue-50 text-blue-700 px-1 rounded">{record.bandwidth_allocated}</span>
+              )}
+            </div>
           </div>
         ),
       },
@@ -106,9 +114,9 @@ export const SystemConnectionsTableColumns = (
         naturalSort: true
       },
       bandwidth: {
-        title: "Bandwidth (Mbps)",
+        title: "Capacity (Mbps)",
         sortable: true,
-        width: 150,
+        width: 120,
         render: (value) => <span className='font-mono text-sm'>{value ? `${value}` : "N/A"}</span>,
       },
       en_name: {
@@ -158,22 +166,21 @@ export const SystemConnectionsTableColumns = (
     },
   });
 
-  // 2. Create the new synthetic column object
   const provisionedPathColumn: Column<Row<"v_system_connections_complete">> = {
     key: "provisioned_path",
     title: "Provisioned Path",
-    dataIndex: "id", // Use 'id' to pass the connection ID to the PathDisplay component
+    dataIndex: "id",
     width: 350,
     render: (value) => <PathDisplay systemConnectionId={value as string | null} />,
   };
 
-  // 3. Insert the new column into the array at the desired position
-  const customerNameIndex = baseColumns.findIndex((c) => c.key === "customer_name");
+  const serviceNameIndex = baseColumns.findIndex((c) => c.key === "service_name");
   const finalColumns = [...baseColumns];
-  if (customerNameIndex !== -1) {
-    finalColumns.splice(customerNameIndex + 1, 0, provisionedPathColumn);
+  
+  if (serviceNameIndex !== -1) {
+    finalColumns.splice(serviceNameIndex + 1, 0, provisionedPathColumn);
   } else {
-    finalColumns.unshift(provisionedPathColumn); // Fallback to add at the beginning
+    finalColumns.unshift(provisionedPathColumn);
   }
 
   return finalColumns;

@@ -84,61 +84,152 @@ $$;
 GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
-    p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
-    p_en_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
-    p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
-    p_bandwidth TEXT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, 
+    -- Connection Params
+    p_system_id UUID,
+    p_media_type_id UUID,
+    p_status BOOLEAN,
+    p_id UUID DEFAULT NULL, -- Connection ID
+    
+    -- Service Params (New/Updated)
+    p_service_name TEXT DEFAULT NULL,
+    p_link_type_id UUID DEFAULT NULL,
+    p_services_ip INET DEFAULT NULL,
+    p_services_interface TEXT DEFAULT NULL,
+    p_bandwidth_allocated TEXT DEFAULT NULL,
+    p_vlan TEXT DEFAULT NULL,
     p_lc_id TEXT DEFAULT NULL,
     p_unique_id TEXT DEFAULT NULL,
+    p_service_node_id UUID DEFAULT NULL,
+    
+    -- Physical Params
+    p_sn_id UUID DEFAULT NULL,
+    p_en_id UUID DEFAULT NULL,
+    p_sn_ip INET DEFAULT NULL,
+    p_sn_interface TEXT DEFAULT NULL,
+    p_en_ip INET DEFAULT NULL,
+    p_en_interface TEXT DEFAULT NULL,
+    p_bandwidth TEXT DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
-    p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated TEXT DEFAULT NULL,
-    p_working_fiber_in_ids UUID[] DEFAULT NULL, p_working_fiber_out_ids UUID[] DEFAULT NULL,
-    p_protection_fiber_in_ids UUID[] DEFAULT NULL, p_protection_fiber_out_ids UUID[] DEFAULT NULL,
+    
+    -- Fiber Arrays
+    p_working_fiber_in_ids UUID[] DEFAULT NULL,
+    p_working_fiber_out_ids UUID[] DEFAULT NULL,
+    p_protection_fiber_in_ids UUID[] DEFAULT NULL,
+    p_protection_fiber_out_ids UUID[] DEFAULT NULL,
+    
+    -- Interfaces
     p_system_working_interface TEXT DEFAULT NULL,
     p_system_protection_interface TEXT DEFAULT NULL,
-    p_connected_link_type_id UUID DEFAULT NULL,
-    p_stm_no TEXT DEFAULT NULL, p_carrier TEXT DEFAULT NULL, p_a_slot TEXT DEFAULT NULL,
-    p_a_customer TEXT DEFAULT NULL, p_b_slot TEXT DEFAULT NULL, p_b_customer TEXT DEFAULT NULL
+    
+    -- SDH Params
+    p_stm_no TEXT DEFAULT NULL,
+    p_carrier TEXT DEFAULT NULL,
+    p_a_slot TEXT DEFAULT NULL,
+    p_a_customer TEXT DEFAULT NULL,
+    p_b_slot TEXT DEFAULT NULL,
+    p_b_customer TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_connection_id UUID;
+    v_service_id UUID;
+    v_system_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
-    SELECT lt.* INTO v_system_type_record FROM public.systems s JOIN public.lookup_types lt ON s.system_type_id = lt.id WHERE s.id = p_system_id;
+    -- 1. Get System Node ID (Separate query to avoid INTO list error)
+    SELECT s.node_id INTO v_system_node_id 
+    FROM public.systems s 
+    WHERE s.id = p_system_id;
+
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
+    -- 2. Get System Type Record (Separate query)
+    SELECT lt.* INTO v_system_type_record 
+    FROM public.systems s 
+    JOIN public.lookup_types lt ON s.system_type_id = lt.id 
+    WHERE s.id = p_system_id;
+
+    -- 3. Upsert Service (if name provided)
+    IF p_service_name IS NOT NULL THEN
+        IF p_id IS NOT NULL THEN
+            SELECT service_id INTO v_service_id FROM public.system_connections WHERE id = p_id;
+        END IF;
+
+        IF v_service_id IS NOT NULL THEN
+            UPDATE public.services SET
+                name = p_service_name,
+                link_type_id = p_link_type_id,
+                node_id = COALESCE(p_service_node_id, v_system_node_id),
+                services_ip = p_services_ip,
+                services_interface = p_services_interface,
+                bandwidth_allocated = p_bandwidth_allocated,
+                vlan = p_vlan,
+                lc_id = p_lc_id,
+                unique_id = p_unique_id,
+                updated_at = NOW()
+            WHERE id = v_service_id;
+        ELSE
+            INSERT INTO public.services (
+                system_id, node_id, name, link_type_id, 
+                services_ip, services_interface, bandwidth_allocated, vlan, lc_id, unique_id
+            ) VALUES (
+                p_system_id,
+                COALESCE(p_service_node_id, v_system_node_id),
+                p_service_name,
+                p_link_type_id,
+                p_services_ip,
+                p_services_interface,
+                p_bandwidth_allocated,
+                p_vlan,
+                p_lc_id,
+                p_unique_id
+            ) RETURNING id INTO v_service_id;
+        END IF;
+    END IF;
+
+    -- 4. Upsert Connection
     INSERT INTO public.system_connections (
-        id, system_id, media_type_id, status, sn_id, en_id, sn_ip, sn_interface,
-        en_ip, en_interface, bandwidth, vlan, lc_id, unique_id, commissioned_on, remark, customer_name, bandwidth_allocated,
+        id, system_id, service_id, media_type_id, status, 
+        sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
+        bandwidth, commissioned_on, remark, 
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
-        system_working_interface, system_protection_interface, connected_link_type_id,
+        system_working_interface, system_protection_interface,
         updated_at
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id,
-        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth, p_vlan, p_lc_id, p_unique_id, p_commissioned_on, p_remark, p_customer_name,
-        p_bandwidth_allocated, p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
-        p_system_working_interface, p_system_protection_interface, p_connected_link_type_id,
+        COALESCE(p_id, gen_random_uuid()), p_system_id, v_service_id, p_media_type_id, p_status,
+        p_sn_id, p_en_id, p_sn_ip, p_sn_interface, p_en_ip, p_en_interface,
+        p_bandwidth, p_commissioned_on, p_remark,
+        p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
+        p_system_working_interface, p_system_protection_interface,
         NOW()
     ) ON CONFLICT (id) DO UPDATE SET
-        media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, sn_ip = EXCLUDED.sn_ip,
-        sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
-        bandwidth = EXCLUDED.bandwidth, vlan = EXCLUDED.vlan, lc_id = EXCLUDED.lc_id, unique_id = EXCLUDED.unique_id,
+        media_type_id = EXCLUDED.media_type_id, 
+        service_id = EXCLUDED.service_id,
+        status = EXCLUDED.status, 
+        sn_id = EXCLUDED.sn_id,
+        en_id = EXCLUDED.en_id, 
+        sn_ip = EXCLUDED.sn_ip,
+        sn_interface = EXCLUDED.sn_interface, 
+        en_ip = EXCLUDED.en_ip, 
+        en_interface = EXCLUDED.en_interface,
+        bandwidth = EXCLUDED.bandwidth, 
         commissioned_on = EXCLUDED.commissioned_on,
-        remark = EXCLUDED.remark, customer_name = EXCLUDED.customer_name, bandwidth_allocated = EXCLUDED.bandwidth_allocated,
-        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
-        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
+        remark = EXCLUDED.remark, 
+        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, 
+        working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
+        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, 
+        protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
         system_working_interface = EXCLUDED.system_working_interface,
         system_protection_interface = EXCLUDED.system_protection_interface,
-        connected_link_type_id = EXCLUDED.connected_link_type_id,
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
     
-    IF v_system_type_record.name = 'Plesiochronous Digital Hierarchy' OR v_system_type_record.name = 'Synchronous Digital Hierarchy' OR v_system_type_record.name = 'Next Generation SDH' THEN
+    -- 5. Handle SDH
+    IF v_system_type_record.name IN ('Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
         ) VALUES (
@@ -151,7 +242,17 @@ BEGIN
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, INET, TEXT, INET, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, UUID[], UUID[], UUID[], UUID[], TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+-- Grant execution permission with CORRECTED signature (31 args)
+GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
+    UUID, UUID, BOOLEAN, UUID, 
+    TEXT, UUID, INET, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, 
+    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, 
+    UUID[], UUID[], UUID[], UUID[], 
+    TEXT, TEXT, 
+    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
+) TO authenticated;
+
 -- NEW FUNCTION: To manage system associations for a ring
 CREATE OR REPLACE FUNCTION public.update_ring_system_associations(
     p_ring_id UUID,

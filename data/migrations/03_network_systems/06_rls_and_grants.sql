@@ -12,7 +12,7 @@ BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'systems', 'system_connections', 'ports_management',
     'ring_based_systems',
-    'sdh_connections', 'logical_paths'
+    'sdh_connections', 'logical_paths', 'services'
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
@@ -36,7 +36,7 @@ BEGIN
   -- --- THE FIX: Added 'ports_management' to this list ---
   FOREACH tbl IN ARRAY ARRAY[
     'ports_management', 'ring_based_systems',
-    'sdh_connections'
+    'sdh_connections', 'services'
   ]
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Allow admin full access" ON public.%I;', tbl);
@@ -143,5 +143,17 @@ BEGIN
   TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';
+END;
+$$;
+
+-- =================================================================
+-- PART 6: GRANTS FOR SERVICES TABLE
+-- =================================================================
+DO $$
+BEGIN
+  GRANT SELECT, INSERT, UPDATE, DELETE ON public.services TO admin, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  GRANT SELECT ON public.services TO viewer, authenticated;
+
+  RAISE NOTICE 'Applied SELECT, INSERT, UPDATE, DELETE grants on services table.';
 END;
 $$;

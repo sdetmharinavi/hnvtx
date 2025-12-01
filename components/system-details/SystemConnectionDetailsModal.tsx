@@ -1,6 +1,7 @@
-"use client";
+// components/system-details/SystemConnectionDetailsModal.tsx
+'use client';
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, PageSpinner, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
@@ -9,6 +10,10 @@ import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { TraceRoutes, useTracePath } from '@/hooks/database/trace-hooks';
+import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -33,68 +38,127 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   connectionId,
 }) => {
   const supabase = createClient();
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isTracing, setIsTracing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const tracePath = useTracePath(supabase);
+  
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
 
   // 1. Fetch the main connection record
-  const { data: connection, isLoading, refetch } = useTableRecord(
-    supabase,
-    'v_system_connections_complete',
-    connectionId
-  );
+  const {
+    data: connection,
+    isLoading,
+    refetch,
+  } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
 
-  // 2. Fetch OFC details related to this connection (via logical paths)
-  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
-    // Assuming the connection ID links to logical paths, we find fibers where the system connection matches
-    // Note: This relies on the relationship established in previous migrations
-    filters: { 
-      // We need a way to filter OFC connections by the system connection. 
-      // Since v_ofc_connections doesn't have system_connection_id directly, 
-      // we filter by the system_id and interfaces, or rely on logical_path linkage if available.
-      // For this UI, we will simulate it or use what's available.
-      system_id: connection?.system_id ?? '',
-      // In a real scenario with the new schema, we'd join via logical_fiber_paths
-    },
-    enabled: !!connection,
+  // 2. Fetch the parent system record (Required for Allocation Modal and Fallback Display)
+  const {
+    data: parentSystem
+  } = useTableRecord(supabase, 'v_systems_complete', connection?.system_id || null, {
+    enabled: !!connection?.system_id
   });
 
-  // 3. Update Mutation for Cell Editing
+  // 3. Fetch OFC details related to this connection
+  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
+    filters: {
+      system_id: connection?.system_id ?? '',
+    },
+    enabled: !!connection,
+    limit: 20
+  });
+
+  // 4. Update Mutation for Cell Editing
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
-      toast.success("Field updated successfully");
+      toast.success('Field updated successfully');
       refetch();
     },
     onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
 
+  const handleOpenAllocationModal = useCallback(() => {
+    if (connection) {
+      setConnectionToAllocate(connection);
+      setIsAllocationModalOpen(true);
+    }
+  }, [connection]);
+
+  const handleAllocationSave = useCallback(() => {
+    refetch();
+    setIsAllocationModalOpen(false);
+    toast.success("Allocation updated successfully");
+  }, [refetch]);
+
   // --- SECTION 1: CIRCUIT INFORMATION ---
-  const circuitColumns = useMemo((): Column<Row<'v_system_connections_complete'>>[] => [
-    { key: 'id', title: 'ID', dataIndex: 'id', width: 100, render: (val) => <span className="font-mono text-xs">{String(val).slice(0, 8)}</span> },
-    { key: 'customer_name', title: 'Service Name', dataIndex: 'customer_name', editable: true, width: 200 },
-    { key: 'media_type_name', title: 'Category', dataIndex: 'connected_link_type_name', width: 120 },
-    { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
-    { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
-    { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
-    { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
-    { key: 'status', title: 'State', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
-  ], []);
+  const circuitColumns = useMemo(
+    (): Column<Row<'v_system_connections_complete'>>[] => [
+      {
+        key: 'customer_name',
+        title: 'Service Name',
+        dataIndex: 'customer_name',
+        editable: true,
+        width: 200,
+      },
+      {
+        key: 'media_type_name',
+        title: 'Category',
+        dataIndex: 'connected_link_type_name',
+        width: 120,
+      },
+      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
+      {
+        key: 'bandwidth_allocated',
+        title: 'Allocated',
+        dataIndex: 'bandwidth_allocated',
+        editable: true,
+        width: 100,
+      },
+      { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
+      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
+      {
+        key: 'status',
+        title: 'State',
+        dataIndex: 'status',
+        render: (val) => <StatusBadge status={val as boolean} />,
+      },
+    ],
+    []
+  );
 
   // --- SECTION 2: END A & END B DETAILS (Transformation) ---
-  // We transform the single row into two rows for display
   const endPointData = useMemo(() => {
     if (!connection) return [];
+    
+    // Determine if we have a specific Start Node defined.
+    const hasStartNode = !!connection.sn_name;
+    
     return [
       {
         id: `${connection.id}-A`, // Virtual ID
         end: 'End A',
-        node_ip: connection.sn_ip,
-        system_name: connection.sn_name || '',
-        interface: connection.sn_interface,
-        capacity: connection.bandwidth, // Assuming port capacity matches
+        
+        // Fallback Logic: Use explicit SN IP, or if local connection, fallback to System IP
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        node_ip: hasStartNode ? connection.sn_ip : (connection.sn_ip || (connection as any).services_ip || parentSystem?.ip_address),
+        
+        // Fallback Logic: If no SN Name, display Parent System Name
+        system_name: hasStartNode ? connection.sn_name : (connection.system_name || 'Unknown System'),
+        
+        // Fallback Logic: If no SN Interface, display System Working Interface
+        interface: hasStartNode ? connection.sn_interface : (connection.system_working_interface || connection.sn_interface),
+        
+        capacity: connection.bandwidth, 
         vlan: connection.vlan,
-        // For editing mapping
         realId: connection.id,
         fieldMap: {
-           interface: 'sn_interface'
-        }
+          interface: hasStartNode ? 'sn_interface' : 'system_working_interface',
+        },
       },
       {
         id: `${connection.id}-B`, // Virtual ID
@@ -106,40 +170,51 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         vlan: connection.vlan,
         realId: connection.id,
         fieldMap: {
-           interface: 'en_interface'
-        }
-      }
+          interface: 'en_interface',
+        },
+      },
     ];
-  }, [connection]);
+  }, [connection, parentSystem]);
 
-  // We need a specific column definition for this virtual table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endPointColumns: Column<any>[] = [
-    { key: 'end', title: 'End Info', dataIndex: 'end', width: 80, render: (val) => <span className="font-bold text-blue-600">{val as string}</span> },
+    {
+      key: 'end',
+      title: 'End Info',
+      dataIndex: 'end',
+      width: 80,
+      render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
+    },
     { key: 'node_ip', title: 'Node IP', dataIndex: 'node_ip', width: 120 },
-    { key: 'system_name', title: 'System Name', dataIndex: 'system_name', width: 250, render: (val) => <TruncateTooltip text={val as string} /> },
-    { key: 'interface', title: 'Interface/Port', dataIndex: 'interface', editable: true, width: 150 }, // Editable!
-    { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', width: 80 },
+    {
+      key: 'system_name',
+      title: 'System Name',
+      dataIndex: 'system_name',
+      width: 250,
+      render: (val) => <TruncateTooltip text={val as string} />,
+    },
+    {
+      key: 'interface',
+      title: 'Interface/Port',
+      dataIndex: 'interface',
+      editable: true,
+      width: 150,
+    },
   ];
-
-  // --- HANDLERS ---
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCellEdit = (record: any, column: Column<any>, newValue: string) => {
-    // 1. Circuit Info Edit
     if (record.id === connection?.id) {
-        const updateData = { [column.dataIndex]: newValue };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateConnection({ id: record.id, data: updateData as any });
-    } 
-    // 2. End Point Edit (Virtual Rows)
+      const updateData = { [column.dataIndex]: newValue };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      updateConnection({ id: record.id, data: updateData as any });
+    }
     else if (record.realId) {
-        // Map the virtual column to the real DB column
-        const realColumn = record.fieldMap[column.dataIndex];
-        if (realColumn) {
-             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-             updateConnection({ id: record.realId, data: { [realColumn]: newValue } as any });
-        }
+      const realColumn = record.fieldMap[column.dataIndex];
+      if (realColumn) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateConnection({ id: record.realId, data: { [realColumn]: newValue } as any });
+      }
     }
   };
 
@@ -149,7 +224,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="" // Custom header
+      title={connection?.system_name + ' Port: ' + (connection?.system_working_interface || 'N/A')} 
       size="full"
       className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
     >
@@ -157,35 +232,29 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <PageSpinner text="Loading Circuit Details..." />
       ) : connection ? (
         <div className="space-y-8 pb-10">
-            
-          {/* SECTION 1 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
               <DataTable
                 tableName="v_system_connections_complete"
-                data={[connection]} // Single row
+                data={[connection]} 
                 columns={circuitColumns}
                 searchable={false}
                 showColumnSelector={false}
-                onCellEdit={handleCellEdit} // Enable editing
-                pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }} // Hide pagination controls usually via CSS if needed, or just pass dummy
+                onCellEdit={handleCellEdit}
+                pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
                 bordered={false}
                 density="compact"
               />
             </div>
           </div>
 
-          {/* SECTION 2 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader 
-                title="End A & End B Details" 
-            />
+            <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-               {/* We use a generic table config here since the data is virtual */}
-               <DataTable
+              <DataTable
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                tableName={'v_system_connections_complete' as any} 
+                tableName={'v_system_connections_complete' as any}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 data={endPointData as any[]}
                 columns={endPointColumns}
@@ -199,33 +268,57 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
-          {/* SECTION 3 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader 
-                title="OFC Details" 
-                action={
-                    <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm">
-                        + Map OFC
-                    </button>
-                }
+            <SectionHeader
+              title="OFC Details"
+              action={
+                <button 
+                  onClick={handleOpenAllocationModal} 
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
+                >
+                  + Map OFC
+                </button>
+              }
             />
             <div className="p-0">
-              {(!ofcData?.data || ofcData.data.length === 0) ? (
-                  <div className="p-8 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No OFC details found for this circuit.</p>
-                      <p className="text-xs text-gray-400 mt-1">Use the &quot;Allocate Fibers&quot; feature in the main dashboard to map fibers.</p>
-                  </div>
+              {!ofcData?.data || ofcData.data.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No OFC details found directly linked to this connection&apos;s system.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Use the &quot;Map OFC&quot; button to allocate fibers.
+                  </p>
+                </div>
               ) : (
-                 // Placeholder for OFC table if data exists
-                 <div className="p-4 text-sm">OFC Data Present (Implementation pending specific view requirement)</div>
+                <div className="p-4 text-sm">
+                   <p className="text-gray-600 dark:text-gray-300">OFC Data Present: {ofcData.data.length} records found.</p>
+                </div>
               )}
             </div>
           </div>
 
+          <SystemFiberTraceModal
+            isOpen={isTraceModalOpen}
+            onClose={() => setIsTraceModalOpen(false)}
+            traceData={traceModalData}
+            isLoading={isTracing}
+          />
+
+          {isAllocationModalOpen && (
+            <FiberAllocationModal 
+                isOpen={isAllocationModalOpen} 
+                onClose={() => setIsAllocationModalOpen(false)} 
+                connection={connectionToAllocate} 
+                onSave={handleAllocationSave} 
+                parentSystem={parentSystem || null} 
+            />
+          )}
+
         </div>
       ) : (
         <div className="flex items-center justify-center h-full text-red-500">
-            Connection not found
+          Connection not found
         </div>
       )}
     </Modal>

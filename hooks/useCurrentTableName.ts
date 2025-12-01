@@ -80,6 +80,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       // THE FIX: Added kml-manager mapping
       case "kml-manager":
         return "files"; 
+      case "services":
+        return "services";
       default:
         return null;
     }
