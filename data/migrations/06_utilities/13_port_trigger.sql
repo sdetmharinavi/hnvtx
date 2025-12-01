@@ -1,59 +1,71 @@
--- 1. Replace the Function
 CREATE OR REPLACE FUNCTION public.fn_update_port_utilization()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_system_id uuid;
-    v_port_name text;
-    v_service_count integer;
+    v_count integer;
 BEGIN
-    -- Determine context based on operation
-    IF (TG_OP = 'DELETE') THEN
-        v_system_id := OLD.system_id;
-        v_port_name := OLD.system_working_interface;
-    ELSE
-        v_system_id := NEW.system_id;
-        v_port_name := NEW.system_working_interface;
+    -- ========================================================================
+    -- LOGIC FOR OLD PORT (Cleanup)
+    -- Runs on DELETE, or on UPDATE if the port assignment changed
+    -- ========================================================================
+    IF (TG_OP = 'DELETE') OR (TG_OP = 'UPDATE' AND OLD.system_working_interface IS DISTINCT FROM NEW.system_working_interface) THEN
+        
+        IF OLD.system_working_interface IS NOT NULL THEN
+            -- 1. Count active services remaining on the OLD port
+            SELECT COUNT(*) INTO v_count
+            FROM public.system_connections
+            WHERE system_id = OLD.system_id
+              AND system_working_interface = OLD.system_working_interface
+              -- Optional: Filter for only 'valid' connections if needed (e.g. customer_name not null)
+              AND customer_name IS NOT NULL 
+              AND trim(customer_name) <> '';
+
+            -- 2. Update the OLD port status in ports_management
+            UPDATE public.ports_management
+            SET 
+                services_count = v_count,
+                port_utilization = (v_count > 0)
+                -- Note: We DO NOT automatically set port_admin_status to false.
+                -- A port usually remains administratively 'UP' even if the cable is unplugged.
+            WHERE system_id = OLD.system_id 
+              AND port = OLD.system_working_interface;
+        END IF;
     END IF;
 
-    -- If interface is null, we can't link to a port, so exit
-    IF v_port_name IS NULL THEN
-        RETURN NULL;
+    -- ========================================================================
+    -- LOGIC FOR NEW PORT (Allocation)
+    -- Runs on INSERT, or on UPDATE (to ensure the new target is marked used)
+    -- ========================================================================
+    IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
+        
+        IF NEW.system_working_interface IS NOT NULL THEN
+            -- 1. Count active services on the NEW port
+            SELECT COUNT(*) INTO v_count
+            FROM public.system_connections
+            WHERE system_id = NEW.system_id
+              AND system_working_interface = NEW.system_working_interface
+              AND customer_name IS NOT NULL 
+              AND trim(customer_name) <> '';
+
+            -- 2. Update the NEW port status in ports_management
+            UPDATE public.ports_management
+            SET 
+                services_count = v_count,
+                port_utilization = (v_count > 0),
+                -- Business Rule: If we plug a service into a port, force Admin Status to UP
+                port_admin_status = CASE 
+                    WHEN v_count > 0 THEN true 
+                    ELSE port_admin_status 
+                END
+            WHERE system_id = NEW.system_id 
+              AND port = NEW.system_working_interface;
+        END IF;
     END IF;
 
-    -- Calculate active services on this port
-    -- Logic: Only count if customer_name is present (NOT NULL and NOT Empty)
-    SELECT COUNT(*)
-    INTO v_service_count
-    FROM public.system_connections
-    WHERE system_id = v_system_id
-      AND system_working_interface = v_port_name
-      AND customer_name IS NOT NULL 
-      AND trim(customer_name) <> '';
-
-    -- Update the ports_management table
-    UPDATE public.ports_management
-    SET 
-        services_count = v_service_count,
-        
-        -- Mark as utilized if services exist
-        port_utilization = (v_service_count > 0),
-        
-        -- THE FIX: Automatically set Admin Status to TRUE if utilized. 
-        -- If not utilized, keep the existing admin status (don't force down).
-        port_admin_status = CASE 
-            WHEN v_service_count > 0 THEN true 
-            ELSE port_admin_status 
-        END
-    WHERE system_id = v_system_id 
-      AND port = v_port_name;
-      
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. Re-attach Trigger (Ensures it is active)
-DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
-
+-- 3. Re-attach the trigger
 CREATE TRIGGER trg_update_port_utilization
 AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
 FOR EACH ROW
