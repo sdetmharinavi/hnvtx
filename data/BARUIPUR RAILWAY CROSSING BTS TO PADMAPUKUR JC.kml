@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>BARUIPUR RAILWAY CROSSING BTS TO PADMAPUKUR JC</name>
+	<open>1</open>
+	<description>No description provided.</description>
+	<gx:balloonVisibility>1</gx:balloonVisibility>
+	<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+	<StyleMap id="default1">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#default2</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#hl0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="default2">
+	</Style>
+	<Style id="hl0">
+		<IconStyle>
+			<scale>1.2</scale>
+		</IconStyle>
+	</Style>
+	<Style id="routeLineStyle3">
+		<LineStyle>
+			<color>ff00ff00</color>
+			<width>4</width>
+		</LineStyle>
+	</Style>
+	<StyleMap id="routeLineStyle4">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#routeLineStyle3</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#routeLineStyle5</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="routeLineStyle5">
+		<LineStyle>
+			<color>ff00ff00</color>
+			<width>4</width>
+		</LineStyle>
+	</Style>
+	<Placemark>
+		<name>BARUIPUR RAILWAY CROSSING BTS TO PADMAPUKUR JC</name>
+		<styleUrl>#routeLineStyle4</styleUrl>
+		<LineString>
+			<tessellate>1</tessellate>
+			<coordinates>
+				88.4269168,22.3692362,0 88.4269238,22.3692401,0 88.42700545510591,22.36911917130895,0 88.4270356884291,22.36906948433816,0 88.42708543276783,22.36897819437685,0 88.42764478020406,22.36798304824632,0 88.42820657378317,22.36730877778781,0 88.42850188070659,22.36691337564002,0 88.42856041140385,22.36687445534361,0 88.42891370799168,22.36693934387427,0 88.42906208608153,22.36688953285739,0 88.42924503721386,22.3667450243598,0 88.42944387016814,22.36665616174955,0 88.42959462203891,22.36637886630047,0 88.43029642520182,22.36637913639948,0 88.43074283892373,22.36637199776724,0 88.43086684259472,22.3662338745702,0 88.43092680605341,22.36617885904564,0 88.43095544781447,22.36596268630326,0 88.43091427837241,22.36509076895008,0 88.43083573275163,22.36454127135615,0 88.43074804510229,22.36414761179925,0 88.43063474657093,22.36418705173396,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark>
+		<name>BJC KD HNV PADMAPUKUR</name>
+		<description><![CDATA[<b>Notes:</b> N/A<br/>
+          <b>Timestamp:</b> Nov 25, 2025 12:30 PM<br/>
+          <b>Coordinates:</b> 22.369244, 88.426925]]></description>
+		<Point>
+			<coordinates>88.4269255,22.3692439,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>BARUIPUR RAILWAY CROSSING</name>
+		<description><![CDATA[<b>Notes:</b> N/A<br/>
+          <b>Timestamp:</b> Nov 25, 2025 12:41 PM<br/>
+          <b>Coordinates:</b> 22.364171, 88.430701]]></description>
+		<styleUrl>#default1</styleUrl>
+		<Point>
+			<coordinates>88.43063183871072,22.36418811133505,0</coordinates>
+		</Point>
+	</Placemark>
+</Document>
+</kml>

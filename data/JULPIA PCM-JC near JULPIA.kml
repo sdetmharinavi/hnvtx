@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>JULPIA PCM-JC near JULPIA.kml</name>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="m_ylw-pushpin0">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin0">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl0">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Folder>
+		<name>JULPIA PCM-JC near JULPIA</name>
+		<open>1</open>
+		<Placemark>
+			<name>JC Julpia</name>
+			<LookAt>
+				<longitude>88.36183249448386</longitude>
+				<latitude>22.36589744080173</latitude>
+				<altitude>0</altitude>
+				<heading>3.416534934060909e-05</heading>
+				<tilt>30.0003061695632</tilt>
+				<range>66.64648555196274</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.36176388268282,22.36585338055264,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Julpia PCM</name>
+			<LookAt>
+				<longitude>88.36157899700591</longitude>
+				<latitude>22.36618025384139</latitude>
+				<altitude>0</altitude>
+				<heading>6.826978145817839e-05</heading>
+				<tilt>30.00033394832718</tilt>
+				<range>74.09681069851655</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.36153386120644,22.36602700321407,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Julpia lead in</name>
+			<styleUrl>#m_ylw-pushpin0</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					88.36176408887351,22.36585378617064,0 88.3617410413149,22.36587088449393,0 88.3616787289855,22.36585717563878,0 88.36170810754992,22.36589879488726,0 88.3617726358341,22.36591436145259,0 88.36173159453695,22.36593602889776,0 88.36178163970318,22.36597065086672,0 88.36172688910121,22.36597750625775,0 88.36176647259185,22.36602287142947,0 88.36171171742839,22.36600880827618,0 88.36169546866169,22.3660391409272,0 88.36166317874164,22.36600028676674,0 88.36163474777396,22.36602565147748,0 88.36159435032499,22.36600153656683,0 88.36157212134259,22.36602874980751,0 88.36151053625193,22.36600536375939,0 88.36153386120644,22.36602700321407,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+	</Folder>
+</Document>
+</kml>

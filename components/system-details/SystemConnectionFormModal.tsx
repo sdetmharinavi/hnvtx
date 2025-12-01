@@ -38,18 +38,16 @@ const formSchema = system_connectionsInsertSchema
   })
   .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape)
   .extend({
-    // Validation: Customer Name and Interface are now mandatory
     customer_name: z.string().min(1, "Customer / Link Name is required"),
-    system_working_interface: z.string().min(1, "Working Interface is required"),
+    // THE FIX: Made system_working_interface optional
+    system_working_interface: z.string().nullable().optional(),
     media_type_id: z.string().uuid("Media Type is required"),
-    // Add new fields to schema
     lc_id: z.string().nullable().optional(),
     unique_id: z.string().nullable().optional(),
   });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-// Helper to handle potential type mismatches before regeneration
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & { lc_id?: string | null; unique_id?: string | null };
 
 interface SystemConnectionFormModalProps {
@@ -120,12 +118,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-  //   columns: "id, name, code",
-  //   filters: { category: "PORT_TYPES" },
-  // });
-
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -136,7 +128,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSystemId,
   });
 
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -147,7 +138,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSnId,
   });
 
-  // THE FIX: Added 'port_admin_status: true' to filters
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -191,14 +181,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const systemOptions = useMemo(
     () =>
       (systemsResult.data || [])
-        .filter((s) => s.id !== parentSystem.id) 
+        // THE FIX: Removed the filter that hid the parent system.
+        // Now all systems, including the current one, are available for selection.
         .map((s) => {
           const loc = s.node_name ? ` @ ${s.node_name}` : "";
           const ip = s.ip_address ? ` [${s.ip_address.split('/')[0]}]` : "";
           const label = `${s.system_name}${loc}${ip}`;
           return { value: s.id!, label };
         }),
-    [systemsResult.data, parentSystem.id]
+    [systemsResult.data]
   );
 
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
@@ -230,8 +221,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           bandwidth: editingConnection.bandwidth ?? null,
           bandwidth_allocated: editingConnection.bandwidth_allocated ?? null,
           vlan: editingConnection.vlan ?? null,
-          lc_id: extConnection.lc_id ?? null,         // New field
-          unique_id: extConnection.unique_id ?? null, // New field
+          lc_id: extConnection.lc_id ?? null,
+          unique_id: extConnection.unique_id ?? null,
           connected_link_type_id: editingConnection.connected_link_type_id ?? null,
           sn_id: editingConnection.sn_id ?? null,
           en_id: editingConnection.en_id ?? null,
@@ -340,7 +331,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       error={errors.system_working_interface}
                       placeholder="Select Working Port"
                       searchPlaceholder="Search ports..."
-                      required
+                      // THE FIX: Removed `required` prop from UI component
                     />
                   </div>
                   <div className="col-span-1">
