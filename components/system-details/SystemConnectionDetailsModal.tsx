@@ -5,12 +5,10 @@ import { Modal, PageSpinner, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
-import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { formatDate } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -71,7 +69,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const circuitColumns = useMemo((): Column<Row<'v_system_connections_complete'>>[] => [
     { key: 'id', title: 'ID', dataIndex: 'id', width: 100, render: (val) => <span className="font-mono text-xs">{String(val).slice(0, 8)}</span> },
     { key: 'customer_name', title: 'Service Name', dataIndex: 'customer_name', editable: true, width: 200 },
-    { key: 'media_type_name', title: 'Category', dataIndex: 'media_type_name', width: 120 },
+    { key: 'media_type_name', title: 'Category', dataIndex: 'connected_link_type_name', width: 120 },
     { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
     { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
     { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
@@ -88,7 +86,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         id: `${connection.id}-A`, // Virtual ID
         end: 'End A',
         node_ip: connection.sn_ip,
-        system_name: connection.sn_name || 'Unknown System',
+        system_name: connection.sn_name || '',
         interface: connection.sn_interface,
         capacity: connection.bandwidth, // Assuming port capacity matches
         vlan: connection.vlan,
@@ -102,7 +100,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         id: `${connection.id}-B`, // Virtual ID
         end: 'End B',
         node_ip: connection.en_ip,
-        system_name: connection.en_name || 'Unknown System',
+        system_name: connection.en_name || '',
         interface: connection.en_interface,
         capacity: connection.bandwidth,
         vlan: connection.vlan,
