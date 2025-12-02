@@ -1,64 +1,75 @@
 // hooks/data/useServicesData.ts
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
-import { ServicesRowSchema } from '@/schemas/zod-schemas'; 
+import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 export const useServicesData = (
   params: DataQueryHookParams
-): DataQueryHookReturn<ServicesRowSchema> => {
+): DataQueryHookReturn<V_servicesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
 
+  // 1. Online Fetcher (RPC)
+  const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_services',
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+
+    if (error) throw error;
+    
+    // Safe unwrapping of the RPC response
+    let resultList: V_servicesRowSchema[] = [];
+    
+    if (Array.isArray(data)) {
+      if (data.length > 0 && 'data' in data[0]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resultList = (data[0] as any).data as V_servicesRowSchema[];
+      } else {
+            resultList = data as V_servicesRowSchema[];
+      }
+    } else if (data && typeof data === 'object' && 'data' in data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resultList = (data as any).data as V_servicesRowSchema[];
+    }
+
+    return resultList || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher (Dexie)
+  const localQueryFn = useCallback(() => {
+    return localDb.v_services.toArray();
+  }, []);
+
+  // 3. Use Local First Query
   const {
     data: allServices = [],
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ['services-data', searchQuery, filters],
-    queryFn: async (): Promise<ServicesRowSchema[]> => {
-      const rpcFilters = buildRpcFilters({
-        ...filters,
-        or: searchQuery
-          ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,services_ip::text.ilike.%${searchQuery}%)`
-          : undefined,
-      });
-      
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'services', 
-        p_limit: 5000,
-        p_offset: 0,
-        p_filters: rpcFilters,
-        p_order_by: 'name',
-      });
-
-      if (error) throw error;
-      
-      // ROBUST UNWRAPPING LOGIC
-      // Check if data is an array wrapping the result object
-      let resultObject = data;
-
-      if (Array.isArray(data) && data.length > 0) {
-          // If the RPC returns [ { data: [...], count: ... } ]
-          resultObject = data[0];
-      } else if (Array.isArray(data) && data.length === 0) {
-          // Empty array return
-          return [];
-      }
-
-      // Safe casting and access to the inner 'data' property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (resultObject as any)?.data as ServicesRowSchema[] || [];
-    },
-    staleTime: 1000 * 60, 
-    gcTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false
+  } = useLocalFirstQuery<'v_services'>({
+    // Key includes 'v_services' for cache invalidation matching
+    queryKey: ['v_services-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_services,
   });
 
+  // 4. Client-side Processing
   const processedData = useMemo(() => {
     if (!allServices) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -70,7 +81,8 @@ export const useServicesData = (
         const lower = searchQuery.toLowerCase();
         filtered = filtered.filter(s => 
             s.name?.toLowerCase().includes(lower) ||
-            s.services_ip?.toLowerCase().includes(lower)
+            s.node_name?.toLowerCase().includes(lower) ||
+            s.description?.toLowerCase().includes(lower)
         );
     }
     

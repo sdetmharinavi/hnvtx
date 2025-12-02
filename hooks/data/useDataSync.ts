@@ -34,6 +34,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ofc_connections_complete',
   'v_system_connections_complete',
   'v_ports_management_complete',
+  'v_services',
 ];
 
 export async function syncEntity(

@@ -31,8 +31,10 @@ import {
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
   V_audit_logsRowSchema,
-  V_ports_management_completeRowSchema, // Imported
-  Ports_managementRowSchema, // Imported for the base table if needed, though we use the view for offline lists
+  V_ports_management_completeRowSchema,
+  Ports_managementRowSchema,
+  ServicesRowSchema,
+  V_servicesRowSchema, // IMPORT THIS
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -86,7 +88,8 @@ export class HNVTMDatabase extends Dexie {
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
-  ports_management!: Table<Ports_managementRowSchema, string>; // Base table for mutations
+  ports_management!: Table<Ports_managementRowSchema, string>;
+  services!: Table<ServicesRowSchema , string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -101,17 +104,16 @@ export class HNVTMDatabase extends Dexie {
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
-  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>; // ADDED THIS LINE
-  
-  // THE FIX: Update type to number for auto-incrementing ID tables
+  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>;
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
+  v_services!: Table<V_servicesRowSchema, string>; // ADDED
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    this.version(17).stores({
+    this.version(18).stores({ // Incremented version
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -128,7 +130,8 @@ export class HNVTMDatabase extends Dexie {
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
-      ports_management: '&id, [system_id+port], system_id', // Added base table store
+      ports_management: '&id, [system_id+port], system_id',
+      services: '&id, name',
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -143,9 +146,10 @@ export class HNVTMDatabase extends Dexie {
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, connected_system_name',
-      v_ports_management_complete: '&id, system_id, port', // Added view store
+      v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
-      
+      v_services: '&id, name, node_name', // ADDED
+
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
     });
@@ -154,7 +158,6 @@ export class HNVTMDatabase extends Dexie {
 
 export const localDb = new HNVTMDatabase();
 
-// THE FIX: Widen the return type to include 'number' for tables with integer primary keys
 export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | number | [string, string]> {
     const table = localDb.table(tableName);
     if (!table) {

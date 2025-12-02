@@ -10,26 +10,29 @@ import { ServicesTableColumns } from "@/config/table-columns/ServicesTableColumn
 import { createStandardActions } from "@/components/table/action-helpers";
 import { ServiceFormModal } from "@/components/services/ServiceFormModal";
 import { toast } from "sonner";
-import { Database } from "lucide-react";
+import { Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { ConfirmModal } from "@/components/common/ui";
-import { ServicesRowSchema } from "@/schemas/zod-schemas";
+import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { V_servicesRowSchema } from "@/schemas/zod-schemas"; // Ensure correct import
+import { Row } from "@/hooks/database";
 
 export default function ServicesPage() {
   const supabase = createClient();
+  
+  // 1. Setup Crud Manager with View Schema
   const {
-    data, totalCount, isLoading, isFetching, refetch,
+    data, totalCount, isLoading, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
-  } = useCrudManager<'services', ServicesRowSchema>({
-    tableName: 'services',
+  } = useCrudManager<'services', V_servicesRowSchema>({
+    tableName: 'services', // Mutations target the table
+    localTableName: 'v_services', // Queries read from the view/cache
     dataQueryHook: useServicesData,
     displayNameField: 'name',
   });
 
-  // ... rest of the component code ...
-  // (No other changes needed if the logic is the same)
-  
+  // 2. Generate Columns using the data from CrudManager
+  // Since we updated ServicesTableColumns to accept V_servicesRowSchema[], this will now work.
   const columns = ServicesTableColumns(data);
 
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
@@ -42,11 +45,18 @@ export default function ServicesPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSave = (formData: any) => {
-      if (editModal.record) {
+      if (editModal.record?.id) {
           updateService({ id: editModal.record.id, data: formData });
       } else {
           insertService(formData);
       }
+  };
+  
+  // Helper to safe-cast the view row for the form
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getEditingService = (record: V_servicesRowSchema | null): any | null => {
+      if (!record) return null;
+      return record;
   };
 
   const tableActions = useMemo(() => createStandardActions({
@@ -57,24 +67,30 @@ export default function ServicesPage() {
   const headerActions = useStandardHeaderActions({
       onRefresh: refetch,
       onAddNew: editModal.openAdd,
-      isLoading
+      isLoading,
+      data: data as Row<'v_services'>[],
+      exportConfig: {
+          tableName: 'v_services',
+          fileName: `All_Services`
+      }
   });
 
-  console.log(data);
-  
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader 
         title="Service Management" 
         description="Manage logical services, customers, and link definitions."
-        icon={<Database />}
+        icon={<DatabaseIcon />}
         stats={[{ value: totalCount, label: "Total Services" }]}
         actions={headerActions}
+        isLoading={isLoading}
+        isFetching={isFetching}
       />
 
       <DataTable
-        tableName="services" // Pass as string literal
+        tableName="v_services"
         data={data}
         columns={columns}
         loading={isLoading}
@@ -94,7 +110,7 @@ export default function ServicesPage() {
         <ServiceFormModal 
             isOpen={editModal.isOpen} 
             onClose={editModal.close} 
-            editingService={editModal.record} 
+            editingService={getEditingService(editModal.record)} 
             onSubmit={handleSave}
             isLoading={isInserting || isUpdating}
         />
