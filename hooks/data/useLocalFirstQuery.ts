@@ -32,7 +32,7 @@ export function useLocalFirstQuery<
   localQueryFn,
   localQueryDeps = [],
   dexieTable,
-  // enabled = true,
+  enabled = true,
   staleTime = 5 * 60 * 1000,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   // const isOnline = useOnlineStatus();
@@ -50,7 +50,7 @@ export function useLocalFirstQuery<
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: onlineQueryFn,
-    enabled: false,
+    enabled: enabled, 
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,

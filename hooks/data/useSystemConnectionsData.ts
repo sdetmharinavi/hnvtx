@@ -59,7 +59,7 @@ export const useSystemConnectionsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>({
-      queryKey: ['system-connections-data', systemId, searchQuery, filters],
+      queryKey: ['system_connections-data', systemId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_system_connections_complete,

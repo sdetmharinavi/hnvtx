@@ -45,7 +45,7 @@ export const useLookupTypesData = (
     error,
     refetch,
   } = useLocalFirstQuery<'lookup_types'>({
-    queryKey: ['lookup-types-data', searchQuery, filters],
+    queryKey: ['lookup_types-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.lookup_types,
