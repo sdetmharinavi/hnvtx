@@ -68,6 +68,11 @@ SELECT
   sc.system_id,
   s.system_name,
   lt_system.name AS system_type_name,
+  
+  -- Connection Specifics
+  sc.services_ip,         -- From system_connections
+  sc.services_interface,  -- From system_connections
+  
   sc.sn_id,
   sc.en_id,
   na.id AS sn_node_id,
@@ -87,7 +92,7 @@ SELECT
   sc.en_interface,
   
   lt_media.name AS media_type_name,
-  sc.bandwidth, -- Physical link capacity
+  sc.bandwidth, 
   COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
   lt_sn_type.name AS sn_system_type_name,
   lt_en_type.name AS en_system_type_name,
@@ -99,15 +104,15 @@ SELECT
   sc.created_at,
   sc.updated_at,
   
-  -- SERVICE DATA JOINED HERE
+  -- SERVICE DATA (Logical)
   svc.id AS service_id,
-  svc.name AS service_name, -- Replaces customer_name
+  svc.name AS service_name, 
+  svc.node_id AS service_node_id,
+  svc_node.name AS service_node_name,
   svc.bandwidth_allocated,
   svc.vlan,
   svc.lc_id,
   svc.unique_id,
-  svc.services_ip,
-  svc.services_interface,
   svc.link_type_id AS connected_link_type_id,
   lt_link_type.name as connected_link_type_name,
   
@@ -132,11 +137,9 @@ SELECT
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
-  
-  -- Join the new Services table
   LEFT JOIN public.services svc ON sc.service_id = svc.id
+  LEFT JOIN public.nodes svc_node ON svc.node_id = svc_node.id
   LEFT JOIN public.lookup_types lt_link_type ON svc.link_type_id = lt_link_type.id
-  
   LEFT JOIN public.systems s_sn ON sc.sn_id = s_sn.id
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id

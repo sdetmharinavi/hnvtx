@@ -1,3 +1,4 @@
+// components/system-details/SystemConnectionFormModal.tsx
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
@@ -16,6 +17,8 @@ import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
+  FormSwitch,
+  FormTextarea,
 } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -31,7 +34,7 @@ const formSchema = z.object({
   commissioned_on: z.string().nullable().optional(),
   remark: z.string().nullable().optional(),
   
-  // Service Keys (Merged from Services Table)
+  // Service Keys (Logical)
   service_name: z.string().min(1, "Service Name / Customer is required"),
   link_type_id: z.string().uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
@@ -39,9 +42,17 @@ const formSchema = z.object({
   lc_id: z.string().nullable().optional(),
   unique_id: z.string().nullable().optional(),
   
-  // Connectivity
-  system_working_interface: z.string().nullable().optional(),
+  // UI Helper
+  existing_service_id: z.string().nullable().optional(),
+  
+  // Connectivity (Physical Configuration on the Connection)
+  services_ip: z.string().nullable().optional(), 
+  services_interface: z.string().nullable().optional(),
+
+  system_working_interface: z.string().min(1, "Working Interface is required"),
   system_protection_interface: z.string().nullable().optional(),
+  
+  // Explicit Endpoints (Topology)
   sn_id: z.string().nullable().optional(),
   en_id: z.string().nullable().optional(),
   sn_ip: z.string().nullable().optional(),
@@ -57,23 +68,15 @@ const formSchema = z.object({
   a_customer: z.string().nullable().optional(),
   b_slot: z.string().nullable().optional(),
   b_customer: z.string().nullable().optional(),
-  
-  // UI Helper
-  existing_service_id: z.string().nullable().optional(),
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-// --- 2. Extended Types for Legacy/Migration Support ---
-// Use Omit to remove the property if it exists in the base type, then re-add it as optional
-// This prevents conflicts if V_system_connections_completeRowSchema changes
-type ExtendedConnectionRow = Omit<V_system_connections_completeRowSchema, 'customer_name'> & { 
-    lc_id?: string | null; 
-    unique_id?: string | null;
-    service_id?: string | null; 
-    // Explicitly define both possible name fields
-    service_name?: string | null;
-    customer_name?: string | null;
+// Extended Type for View Rows that might have extra joined fields not yet in Zod schema
+type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
+    services_ip?: unknown; 
+    services_interface?: string | null;
+    customer_name?: string | null; // Legacy fallback
 };
 
 // Helper Type for the RPC Payload
@@ -126,8 +129,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
   const watchEnId = watch("en_id");
-  // const watchWorkingInterface = watch("system_working_interface");
-  // const watchProtectionInterface = watch("system_protection_interface");
+  const watchWorkingInterface = watch("system_working_interface");
+  const watchProtectionInterface = watch("system_protection_interface");
   const watchSnInterface = watch("sn_interface");
   const watchEnInterface = watch("en_interface");
   const watchSnId = watch("sn_id");
@@ -151,18 +154,14 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // Fetch Services
   const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "services" as PublicTableName, {
-      columns: "id, name, link_type_id, services_ip, services_interface, bandwidth_allocated, vlan, lc_id, unique_id",
+      columns: "id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id",
       filters: { status: true }, 
       orderBy: [{ column: "name", ascending: true }],
       limit: 2000
   });
   
-  const servicesData = useMemo(
-    () => ((servicesResult?.data || []) as unknown as ServicesRowSchema[]),
-    [servicesResult?.data]
-  );
+  const servicesData = (servicesResult?.data || []) as unknown as ServicesRowSchema[];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -261,16 +260,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
           if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
           if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
-
-          // Logic to auto-fill End B if currently empty
-          if (selectedService.services_ip) {
-             const ip = selectedService.services_ip.split('/')[0];
-             setValue("en_ip", ip, { shouldDirty: true }); 
-          }
-          
-          if (selectedService.services_interface) {
-             setValue("en_interface", selectedService.services_interface, { shouldDirty: true });
-          }
       }
   }, [watchExistingServiceId, servicesData, setValue, watch]);
 
@@ -282,8 +271,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // --- Computed Values for Display ---
   
-  // const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
-  // const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
+  const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
+  const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
@@ -293,7 +282,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       setActiveTab("general");
       if (isEditMode && editingConnection) {
         // Safe cast to our extended type which handles potentially missing fields
-        const extConnection = editingConnection as unknown as ExtendedConnectionRow;
+        const extConnection = editingConnection as ExtendedConnectionRow;
         
         const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
@@ -316,6 +305,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           // Connection Fields
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
+          
+          services_ip: safeValue(String(extConnection.services_ip || "")),
+          services_interface: safeValue(extConnection.services_interface),
+          
           system_working_interface: safeValue(extConnection.system_working_interface),
           system_protection_interface: safeNull(extConnection.system_protection_interface),
           commissioned_on: safeNull(extConnection.commissioned_on),
@@ -353,14 +346,19 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       const payload: UpsertPayload = {
           p_id: isEditMode && editingConnection?.id ? editingConnection.id : undefined,
           p_system_id: formData.system_id,
+          
+          // Service
           p_service_name: formData.service_name,
           p_link_type_id: formData.link_type_id || undefined,
           p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
           p_vlan: formData.vlan || undefined,
           p_lc_id: formData.lc_id || undefined,
           p_unique_id: formData.unique_id || undefined,
-          p_services_ip: formData.en_ip || undefined, 
-          p_services_interface: formData.en_interface || undefined,
+          
+          // Connection Physicals
+          p_services_ip: formData.services_ip || undefined, 
+          p_services_interface: formData.services_interface || undefined,
+
           p_media_type_id: formData.media_type_id,
           p_status: formData.status,
           p_bandwidth: formData.bandwidth || undefined,
@@ -399,6 +397,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
         subtitle={`System: ${parentSystem.system_name}`}
         standalone
+        widthClass="w-full max-w-full"
+        heightClass="h-auto max-h-[90vh]"
       >
          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-4">
@@ -493,6 +493,28 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                 
                 {/* TAB 2: CONNECTIVITY */}
                 <TabsContent value="connectivity" className="space-y-6">
+                    
+                    {/* New Service Specific Network Fields */}
+                    <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
+                        <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <FormInput 
+                                name="services_ip" 
+                                label="Service IP" 
+                                register={register} 
+                                error={errors.services_ip} 
+                                placeholder="x.x.x.x"
+                            />
+                             <FormInput 
+                                name="services_interface" 
+                                label="Service Interface / Port" 
+                                register={register} 
+                                error={errors.services_interface} 
+                                placeholder="e.g. Vlan100"
+                            />
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Start Node Panel */}
                         <div className="p-4 border rounded dark:border-gray-700">
@@ -524,7 +546,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         <div className="p-4 border rounded dark:border-gray-700">
                             <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
                                 <h3 className="font-semibold">End Node (Side B)</h3>
-                                {watchExistingServiceId && <span className="text-xs text-blue-600 bg-blue-50 px-2 rounded">Auto-filled from Service</span>}
                             </div>
                             <FormSearchableSelect name="en_id" label="End System (If internal)" control={control} options={systemOptions} error={errors.en_id} />
                             
@@ -544,7 +565,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                             name="en_interface" 
                                             label="Interface / Port" 
                                             register={register} 
-                                            placeholder={watchExistingServiceId ? "Auto-filled" : "e.g. Port 1"} 
+                                            placeholder="e.g. Port 1" 
                                         />
                                     )}
                                 </div>

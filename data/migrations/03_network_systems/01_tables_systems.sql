@@ -50,14 +50,11 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
 
 CREATE TABLE IF NOT EXISTS public.services (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    system_id UUID NOT NULL REFERENCES public.systems (id) ON DELETE CASCADE,
-    node_id UUID NOT NULL REFERENCES public.nodes (id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    link_type_id UUID REFERENCES public.lookup_types(id),
+    node_id UUID NOT NULL REFERENCES public.nodes (id), -- The LOCATION of the customer/service
+    name TEXT NOT NULL, -- Customer/Link Name
+    link_type_id UUID REFERENCES public.lookup_types(id), -- e.g., MPLS, ILL
     description TEXT,
-    services_ip INET,
-    services_interface TEXT,
-    bandwidth_allocated TEXT,
+    bandwidth_allocated TEXT, -- e.g. "100 Mbps"
     vlan TEXT,
     lc_id TEXT,
     unique_id TEXT,
@@ -69,29 +66,38 @@ CREATE TABLE IF NOT EXISTS public.services (
 -- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- The System providing the connection
   system_id UUID REFERENCES public.systems (id) NOT NULL,
+  
+  -- Link to the Logical Service
   service_id UUID REFERENCES public.services(id) ON DELETE SET NULL,
-  system_working_interface TEXT,
-  system_protection_interface TEXT,
-  sn_id UUID REFERENCES public.systems (id),
+  
+  -- Physical Configuration (IPs moved here)
+  services_ip INET,            -- The IP assigned to this specific connection leg
+  services_interface TEXT,     -- The interface on the system (e.g., Gi0/0/1)
+  
+  -- Topology / Path logic
+  sn_id UUID REFERENCES public.systems (id), -- Start System (usually same as system_id)
   sn_ip INET,
   sn_interface TEXT,
-  en_id UUID REFERENCES public.systems (id),
+  
+  en_id UUID REFERENCES public.systems (id), -- End System (Destination)
   en_ip INET,
   en_interface TEXT,
-  -- connected_link_type_id UUID REFERENCES public.lookup_types (id),
+  
   media_type_id UUID REFERENCES public.lookup_types (id),
-  bandwidth TEXT,
-  -- vlan TEXT,
-  -- lc_id TEXT,
-  -- unique_id TEXT,
-  -- store arrays of fiber IDs
+  bandwidth TEXT, -- Physical Port Bandwidth (e.g., 1G)
+  
+  -- Fiber Path References
   working_fiber_in_ids UUID[],
   working_fiber_out_ids UUID[],
   protection_fiber_in_ids UUID[],
   protection_fiber_out_ids UUID[],
-  -- customer_name TEXT,
-  -- bandwidth_allocated TEXT,
+  
+  system_working_interface TEXT,
+  system_protection_interface TEXT,
+  
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,
