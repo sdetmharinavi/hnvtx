@@ -1637,10 +1637,7 @@ export const servicesRowSchema = z.object({
   link_type_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   node_id: z.uuid(),
-  services_interface: z.string().nullable(),
-  services_ip: z.any(),
   status: z.boolean().nullable(),
-  system_id: z.uuid(),
   unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
@@ -1655,10 +1652,7 @@ export const servicesInsertSchema = z.object({
   link_type_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   node_id: z.uuid(),
-  services_interface: z.string().nullable().optional(),
-  services_ip: z.any().optional(),
   status: z.boolean().nullable().optional(),
-  system_id: z.uuid(),
   unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -1673,10 +1667,7 @@ export const servicesUpdateSchema = z.object({
   link_type_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   node_id: z.uuid().optional(),
-  services_interface: z.string().nullable().optional(),
-  services_ip: z.any().optional(),
   status: z.boolean().nullable().optional(),
-  system_id: z.uuid().optional(),
   unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -1695,6 +1686,8 @@ export const system_connectionsRowSchema = z.object({
   protection_fiber_out_ids: z.array(z.string()).nullable(),
   remark: z.string().nullable(),
   service_id: z.uuid().nullable(),
+  services_interface: z.string().nullable(),
+  services_ip: z.any(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -1720,6 +1713,8 @@ export const system_connectionsInsertSchema = z.object({
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
   service_id: z.uuid().nullable().optional(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -1745,6 +1740,8 @@ export const system_connectionsUpdateSchema = z.object({
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
   service_id: z.uuid().nullable().optional(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -2180,6 +2177,24 @@ export const v_ringsRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
+export const v_servicesRowSchema = z.object({
+  bandwidth_allocated: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  id: z.uuid().nullable(),
+  lc_id: z.uuid().nullable(),
+  link_type_id: z.uuid().nullable(),
+  link_type_name: z.url().nullable(),
+  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_id: z.uuid().nullable(),
+  node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  status: z.boolean().nullable(),
+  unique_id: z.uuid().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vlan: z.string().nullable(),
+});
+
 export const v_system_connections_completeRowSchema = z.object({
   bandwidth: z.string().nullable(),
   bandwidth_allocated: z.string().nullable(),
@@ -2211,6 +2226,8 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_stm_no: z.string().nullable(),
   service_id: z.uuid().nullable(),
   service_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  service_node_id: z.uuid().nullable(),
+  service_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   services_interface: z.string().nullable(),
   services_ip: z.any(),
   sn_id: z.uuid().nullable(),
@@ -2464,6 +2481,7 @@ export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connectio
 export type V_ports_management_completeRowSchema = z.infer<typeof v_ports_management_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
 export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
+export type V_servicesRowSchema = z.infer<typeof v_servicesRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
 export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;

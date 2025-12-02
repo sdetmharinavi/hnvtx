@@ -61,6 +61,30 @@ FROM public.systems s
   ) r_agg ON true;
 
 
+-- 2. View for Services (Logical Entity)
+CREATE OR REPLACE VIEW public.v_services WITH (security_invoker = true) AS
+SELECT
+    s.id,
+    s.name,
+    s.node_id,
+    n.name AS node_name,
+    ma.name AS maintenance_area_name, -- Useful for regional filtering
+    s.link_type_id,
+    lt.name AS link_type_name,
+    s.description,
+    s.bandwidth_allocated,
+    s.vlan,
+    s.lc_id,
+    s.unique_id,
+    s.status,
+    s.created_at,
+    s.updated_at
+FROM public.services s
+LEFT JOIN public.nodes n ON s.node_id = n.id
+LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
+LEFT JOIN public.lookup_types lt ON s.link_type_id = lt.id;
+
+
 -- View for a complete picture of a system connection and its specific details.
 CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT

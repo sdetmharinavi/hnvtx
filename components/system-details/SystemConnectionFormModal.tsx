@@ -1,4 +1,4 @@
-// components/system-details/SystemConnectionFormModal.tsx
+// path: components/system-details/SystemConnectionFormModal.tsx
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
@@ -17,8 +17,6 @@ import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
-  FormSwitch,
-  FormTextarea,
 } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -72,11 +70,11 @@ const formSchema = z.object({
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-// Extended Type for View Rows that might have extra joined fields not yet in Zod schema
+// Extended Type for View Rows
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
     services_ip?: unknown; 
     services_interface?: string | null;
-    customer_name?: string | null; // Legacy fallback
+    customer_name?: string | null;
 };
 
 // Helper Type for the RPC Payload
@@ -160,8 +158,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       limit: 2000
   });
   
-  const servicesData = (servicesResult?.data || []) as unknown as ServicesRowSchema[];
+  const servicesData = useMemo(
+    () => (servicesResult.data || []) as unknown as ServicesRowSchema[],
+    [servicesResult.data]
+  );
 
+  // Fetch ports for the main system (for General Tab)
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -172,6 +174,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSystemId,
   });
 
+  // Fetch ports for Start Node (for Connectivity Tab)
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -182,6 +185,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSnId,
   });
 
+  // Fetch ports for End Node (for Connectivity Tab)
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -213,6 +217,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     return options;
   };
 
+  // Generic helper to find port type display
   const getPortTypeDisplay = useCallback((portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
     if (!portsList?.data || !portInterface) return "";
     const port = portsList.data.find(p => p.port === portInterface);
@@ -237,7 +242,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
   const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
 
-  // Filter services based on selected Link Type
   const serviceOptions = useMemo(() => {
       let filteredServices = servicesData;
       if (watchLinkTypeId) {
@@ -248,7 +252,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // --- Effects: Service Logic ---
   
-  // Auto-fill when an existing service is selected
   useEffect(() => {
       if (!watchExistingServiceId) return;
       
@@ -261,7 +264,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
           if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
       }
-  }, [watchExistingServiceId, servicesData, setValue, watch]);
+  }, [watchExistingServiceId, servicesData, setValue]);
 
   useEffect(() => {
     if (serviceMode === 'manual') {
@@ -270,7 +273,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   }, [serviceMode, setValue]);
 
   // --- Computed Values for Display ---
-  
+  // These are used to show the small "Type" box next to the port dropdowns
   const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
   const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
@@ -281,7 +284,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     if (isOpen) {
       setActiveTab("general");
       if (isEditMode && editingConnection) {
-        // Safe cast to our extended type which handles potentially missing fields
         const extConnection = editingConnection as ExtendedConnectionRow;
         
         const safeValue = (val: string | null | undefined) => val ?? "";
@@ -292,7 +294,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         reset({
           system_id: extConnection.system_id ?? parentSystem.id ?? "",
           
-          // Handle name change: prefer service_name, fallback to customer_name
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name), 
           
           link_type_id: safeValue(extConnection.connected_link_type_id),
@@ -302,7 +303,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           unique_id: safeValue(extConnection.unique_id),
           existing_service_id: safeNull(extConnection.service_id),
 
-          // Connection Fields
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
           
@@ -459,7 +459,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                         placeholder="Search services..."
                                         clearable
                                     />
-                                    {/* Hidden input to actually submit the name populated by effect */}
                                     <input type="hidden" {...register("service_name")} />
                                     {errors.service_name && (
                                         <p className="text-xs text-red-500">{errors.service_name.message}</p>
@@ -487,14 +486,52 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         <FormSearchableSelect name="media_type_id" label="Media Type" control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
                         <FormInput name="bandwidth" label="Physical Port Capacity" register={register} error={errors.bandwidth} placeholder="e.g. 1G" />
                         <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} />
-                        <FormInput name="system_working_interface" label="Local Interface" register={register} error={errors.system_working_interface} placeholder="e.g. Gi0/0/1" />
+                        
+                        {/* Working Port Selection with Type Display */}
+                        <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                          <div className="col-span-2">
+                            <FormSearchableSelect
+                              name="system_working_interface"
+                              label="Working Port"
+                              control={control}
+                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
+                              error={errors.system_working_interface}
+                              placeholder="Select Working Port"
+                              required
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Label disabled className="mb-1">Type</Label>
+                            <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                          </div>
+                        </div>
+                        
+                         {/* Protection Port Selection with Type Display */}
+                         <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                          <div className="col-span-2">
+                            <FormSearchableSelect
+                              name="system_protection_interface"
+                              label="Protection Port"
+                              control={control}
+                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
+                              error={errors.system_protection_interface}
+                              placeholder="Select Protection Port"
+                              clearable
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Label disabled className="mb-1">Type</Label>
+                            <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                          </div>
+                        </div>
+
                     </div>
                 </TabsContent>
                 
                 {/* TAB 2: CONNECTIVITY */}
                 <TabsContent value="connectivity" className="space-y-6">
                     
-                    {/* New Service Specific Network Fields */}
+                    {/* Service Specific Network Fields */}
                     <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
                         <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
