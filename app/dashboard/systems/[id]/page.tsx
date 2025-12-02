@@ -1,342 +1,335 @@
-// components/system-details/SystemConnectionDetailsModal.tsx
-'use client';
+// app/dashboard/systems/[id]/page.tsx
+"use client";
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, PageSpinner, StatusBadge } from '@/components/common/ui';
-import { DataTable } from '@/components/table';
-import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
+import { useMemo, useState, useRef, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { Row } from '@/hooks/database';
-import TruncateTooltip from '@/components/common/TruncateTooltip';
-import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-import { TraceRoutes, useTracePath } from '@/hooks/database/trace-hooks';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
+import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { DEFAULTS } from '@/constants/constants';
+import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
+import { ZapOff, Eye, Monitor } from 'lucide-react'; 
+import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
+import { toPgBoolean, toPgDate } from '@/config/helper-functions';
+import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
+import { SystemConnectionFormModal } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { useQueryClient } from '@tanstack/react-query';
+import { StatProps } from '@/components/common/page-header/StatCard';
+import { usePortsData } from '@/hooks/data/usePortsData';
 
-interface SystemConnectionDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  connectionId: string | null;
-}
+// Define the payload type expected by the RPC
+type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
-// Define a header component for the blue bars
-const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
-  <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0">
-    <div className="flex items-center gap-3">
-      <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
-    </div>
-    {action}
-  </div>
-);
-
-export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModalProps> = ({
-  isOpen,
-  onClose,
-  connectionId,
-}) => {
+export default function SystemConnectionsPage() {
+  const params = useParams();
+  const systemId = params.id as string;
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isTracing, setIsTracing] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const tracePath = useTracePath(supabase);
-  
+  const queryClient = useQueryClient();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
+  
+  const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
+  const [connectionToDeprovision, setConnectionToDeprovision] = useState<V_system_connections_completeRowSchema | null>(null);
+  
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
+  const tracePath = useTracePath(supabase);
 
-  // 1. Fetch the main connection record
-  const {
-    data: connection,
-    isLoading,
-    refetch,
-  } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-  // 2. Fetch the parent system record (Required for Allocation Modal and Fallback Display)
-  const {
-    data: parentSystem
-  } = useTableRecord(supabase, 'v_systems_complete', connection?.system_id || null, {
-    enabled: !!connection?.system_id
-  });
+  // --- Fetch System Details ---
+  const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
+  const parentSystem = systemData?.data?.[0];
 
-  // 3. Fetch OFC details related to this connection
-  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
-    filters: {
-      system_id: connection?.system_id ?? '',
-    },
-    enabled: !!connection,
-    limit: 20
-  });
-
-  // 4. Update Mutation for Cell Editing
-  const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
-    onSuccess: () => {
-      toast.success('Field updated successfully');
-      refetch();
-    },
-    onError: (err) => toast.error(`Update failed: ${err.message}`),
-  });
-
-  const handleOpenAllocationModal = useCallback(() => {
-    if (connection) {
-      setConnectionToAllocate(connection);
-      setIsAllocationModalOpen(true);
+  // --- Fetch Connections ---
+  const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
+    supabase, 'v_system_connections_complete', {
+      filters: {
+        system_id: systemId,
+        ...(searchQuery ? { or: `(customer_name.ilike.%${searchQuery}%,connected_system_name.ilike.%${searchQuery}%)` } : {}),
+      },
+      limit: pageLimit,
+      offset: (currentPage - 1) * pageLimit,
     }
-  }, [connection]);
+  );
+  const connections = connectionsData?.data || [];
+  const totalConnections = connectionsData?.total_count || 0;
 
+  // --- Fetch Port Stats (Local-First) ---
+  const { data: ports = [] } = usePortsData(systemId)({
+      currentPage: 1, 
+      pageLimit: 5000, 
+      searchQuery: '',
+      filters: {} 
+  });
+
+  const headerStats: StatProps[] = useMemo(() => {
+    if (!ports || ports.length === 0) {
+        return [{ label: 'Total Connections', value: totalConnections }];
+    }
+
+    const totalPorts = ports.length;
+    const usedPorts = ports.filter(p => p.port_utilization).length;
+    const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
+    const portsDown = ports.filter(p => !p.port_admin_status).length;
+    const utilPercent = totalPorts > 0 ? Math.round((usedPorts / totalPorts) * 100) : 0;
+
+    return [
+        { label: 'Connections', value: totalConnections, color: 'default' },
+        { label: 'Total Ports', value: totalPorts, color: 'default' },
+        { label: 'Ports Used', value: usedPorts, color: 'primary' },
+        { label: 'Ports Available', value: availablePorts, color: 'success' },
+        { label: 'Ports Down', value: portsDown, color: 'danger' },
+        { label: 'Utilization', value: `${utilPercent}%`, color: utilPercent > 80 ? 'warning' : 'default' },
+    ];
+  }, [ports, totalConnections]);
+
+  // --- Mutations ---
+  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
+    onSuccess: () => { 
+      refetch(); 
+      closeModal(); 
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+    } 
+  });
+  
+  const deprovisionMutation = useDeprovisionServicePath();
+  const deleteManager = useDeleteManager({ 
+    tableName: 'system_connections', 
+    onSuccess: () => { 
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+    } 
+  });
+  
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { 
+    onSuccess: (result) => { 
+      if (result.successCount > 0) {
+        refetch();
+      }
+    } 
+  });
+
+  const columns = SystemConnectionsTableColumns(connections);
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+
+  const openEditModal = useCallback((record: V_system_connections_completeRowSchema) => { setEditingRecord(record); setIsEditModalOpen(true); }, []);
+  const openAddModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(true); }, []);
+  const closeModal = useCallback(() => { setEditingRecord(null); setIsEditModalOpen(false); }, []);
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && parentSystem?.id) {
+      const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+        { excelHeader: 'Id', dbKey: 'id' },
+        { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
+        { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
+        { excelHeader: 'Sn Id', dbKey: 'sn_id' },
+        { excelHeader: 'En Id', dbKey: 'en_id' },
+        { excelHeader: 'Sn Ip', dbKey: 'sn_ip' },
+        { excelHeader: 'Sn Interface', dbKey: 'sn_interface' },
+        { excelHeader: 'En Ip', dbKey: 'en_ip' },
+        { excelHeader: 'En Interface', dbKey: 'en_interface' },
+        { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
+        { excelHeader: 'Vlan', dbKey: 'vlan' },
+        { excelHeader: 'LC ID', dbKey: 'lc_id' },      
+        { excelHeader: 'Unique ID', dbKey: 'unique_id' },
+        { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
+        { excelHeader: 'Remark', dbKey: 'remark' },
+        { excelHeader: 'Customer Name', dbKey: 'service_name' },
+        { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
+        { excelHeader: 'Working Fiber In Ids', dbKey: 'working_fiber_in_ids' },
+        { excelHeader: 'Working Fiber Out Ids', dbKey: 'working_fiber_out_ids' },
+        { excelHeader: 'Protection Fiber In Ids', dbKey: 'protection_fiber_in_ids' },
+        { excelHeader: 'Protection Fiber Out Ids', dbKey: 'protection_fiber_out_ids' },
+        { excelHeader: 'System Working Interface', dbKey: 'system_working_interface' },
+        { excelHeader: 'System Protection Interface', dbKey: 'system_protection_interface' },
+        { excelHeader: 'Connected Link Type', dbKey: 'connected_link_type_name' },
+        { excelHeader: 'Sdh Stm No', dbKey: 'sdh_stm_no' },
+        { excelHeader: 'Sdh Carrier', dbKey: 'sdh_carrier' },
+        { excelHeader: 'Sdh A Slot', dbKey: 'sdh_a_slot' },
+        { excelHeader: 'Sdh A Customer', dbKey: 'sdh_a_customer' },
+        { excelHeader: 'Sdh B Slot', dbKey: 'sdh_b_slot' },
+        { excelHeader: 'Sdh B Customer', dbKey: 'sdh_b_customer' },
+      ];
+
+      uploadConnections({ file, columns: columnMapping, parentSystemId: parentSystem.id });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [uploadConnections, parentSystem]);
+  
+  const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
+  
+  const handleDeprovisionClick = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); }, []);
+
+  const handleConfirmDeprovision = () => {
+    if (!connectionToDeprovision?.id) return;
+    deprovisionMutation.mutate(connectionToDeprovision.id, {
+      onSuccess: () => {
+        setDeprovisionModalOpen(false);
+        setConnectionToDeprovision(null);
+        refetch();
+      }
+    });
+  };
+  
   const handleAllocationSave = useCallback(() => {
     refetch();
     setIsAllocationModalOpen(false);
-    toast.success("Allocation updated successfully");
   }, [refetch]);
+  
+ const handleTracePath = useCallback(async (record: V_system_connections_completeRowSchema) => {
+    setIsTracing(true);
+    setIsTraceModalOpen(true);
+    setTraceModalData(null);
+    try {
+      const traceData = await tracePath(record);
+      setTraceModalData(traceData);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to trace path");
+      setIsTraceModalOpen(false);
+    } finally {
+      setIsTracing(false);
+    }
+  }, [tracePath]);
 
-  // --- SECTION 1: CIRCUIT INFORMATION ---
-  const circuitColumns = useMemo(
-    (): Column<Row<'v_system_connections_complete'>>[] => [
-      {
-        key: 'service_name',
-        title: 'Service Name',
-        // Use 'service_name' as the dataIndex now
-        dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
-        editable: true,
-        width: 200,
-        render: (val, record) => {
-           // Fallback to customer_name if service_name is empty (legacy support)
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-           return <span className="font-medium text-gray-900 dark:text-white">{(val as string) || (record as any).customer_name || 'N/A'}</span>
-        }
-      },
-      {
-        key: 'media_type_name',
-        title: 'Category',
-        dataIndex: 'connected_link_type_name',
-        width: 120,
-      },
-      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
-      {
-        key: 'bandwidth_allocated',
-        title: 'Allocated',
-        dataIndex: 'bandwidth_allocated',
-        editable: true,
-        width: 100,
-      },
-      { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
-      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
-      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
-      {
-        key: 'status',
-        title: 'State',
-        dataIndex: 'status',
-        render: (val) => <StatusBadge status={val as boolean} />,
-      },
-    ],
-    []
-  );
+  const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
+      setDetailsConnectionId(record.id);
+      setIsDetailsModalOpen(true);
+  }, []);
 
-  // --- SECTION 2: END A & END B DETAILS (Transformation) ---
-  const endPointData = useMemo(() => {
-    if (!connection) return [];
+  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
+    const standard = createStandardActions<V_system_connections_completeRowSchema>({
+      onEdit: openEditModal,
+      onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }),
+    });
     
-    // Determine if we have a specific Start Node defined.
-    // If sn_name exists, use it. Otherwise, fall back to the Source System itself.
-    const hasStartNode = !!connection.sn_name;
+    const isProvisioned = (record: V_system_connections_completeRowSchema) => 
+      Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
     
     return [
-      {
-        id: `${connection.id}-A`, // Virtual ID
-        end: 'End A',
-        
-        // Fallback Logic: Use explicit SN IP, or if local connection, fallback to System IP
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        node_ip: hasStartNode ? connection.sn_ip : (connection.sn_ip || (connection as any).services_ip || parentSystem?.ip_address),
-        
-        // Fallback Logic: If no SN Name, display Parent System Name
-        system_name: hasStartNode ? connection.sn_name : (connection.system_name || 'Unknown System'),
-        
-        // Fallback Logic: If no SN Interface, display System Working Interface
-        interface: hasStartNode ? connection.sn_interface : (connection.system_working_interface || connection.sn_interface),
-        
-        capacity: connection.bandwidth, 
-        vlan: connection.vlan,
-        // For editing mapping
-        realId: connection.id,
-        fieldMap: {
-          // If we are falling back to the System, update system_working_interface
-          interface: hasStartNode ? 'sn_interface' : 'system_working_interface',
-        },
-      },
-      {
-        id: `${connection.id}-B`, // Virtual ID
-        end: 'End B',
-        node_ip: connection.en_ip,
-        system_name: connection.en_name || '',
-        interface: connection.en_interface,
-        capacity: connection.bandwidth,
-        vlan: connection.vlan,
-        realId: connection.id,
-        fieldMap: {
-          interface: 'en_interface',
-        },
-      },
+      { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
+      { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
+      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
+      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
+      ...standard,
     ];
-  }, [connection, parentSystem]);
+  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal, handleViewDetails]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const endPointColumns: Column<any>[] = [
-    {
-      key: 'end',
-      title: 'End Info',
-      dataIndex: 'end',
-      width: 80,
-      render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
-    },
-    { key: 'node_ip', title: 'Node IP', dataIndex: 'node_ip', width: 120 },
-    {
-      key: 'system_name',
-      title: 'System Name',
-      dataIndex: 'system_name',
-      width: 250,
-      render: (val) => <TruncateTooltip text={val as string} />,
-    },
-    {
-      key: 'interface',
-      title: 'Interface/Port',
-      dataIndex: 'interface',
-      editable: true,
-      width: 150,
-    },
-  ];
+  const headerActions = useStandardHeaderActions({
+    onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
+    onAddNew: openAddModal,
+    isLoading: isLoadingConnections,
+    exportConfig: { tableName: 'v_system_connections_complete', fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`, filters: { system_id: systemId } }
+  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCellEdit = (record: any, column: Column<any>, newValue: string) => {
-    // 1. Circuit Info Edit
-    if (record.id === connection?.id) {
-      const updateData = { [column.dataIndex]: newValue };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      updateConnection({ id: record.id, data: updateData as any });
-    }
-    // 2. End Point Edit (Virtual Rows)
-    else if (record.realId) {
-      const realColumn = record.fieldMap[column.dataIndex];
-      if (realColumn) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateConnection({ id: record.realId, data: { [realColumn]: newValue } as any });
-      }
-    }
+  headerActions.splice(1, 0, {
+    label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
+    variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
+  });
+
+  if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
+  if (!parentSystem) return <ErrorDisplay error="System not found." />;
+  
+  // THE FIX: Simplified handleSave. The modal now constructs the full RPC payload.
+  // We just need to cast it to the correct type for the mutation hook.
+  const handleSave = (payload: UpsertConnectionPayload) => {
+    upsertMutation.mutate(payload, { 
+      onSuccess: () => { 
+        refetch(); 
+        closeModal();
+        queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
+      } 
+    });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={connection?.system_name + ' Port: ' + (connection?.system_working_interface || 'N/A')} 
-      size="full"
-      className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
-    >
-      {isLoading ? (
-        <PageSpinner text="Loading Circuit Details..." />
-      ) : connection ? (
-        <div className="space-y-8 pb-10">
-          {/* SECTION 1 */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader title="Circuit Information" />
-            <div className="p-0">
-              <DataTable
-                tableName="v_system_connections_complete"
-                data={[connection]} 
-                columns={circuitColumns}
-                searchable={false}
-                showColumnSelector={false}
-                onCellEdit={handleCellEdit}
-                pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
-                bordered={false}
-                density="compact"
-              />
-            </div>
-          </div>
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title={`${parentSystem.system_name} (${parentSystem.ip_address?.split("/")[0]})` || 'System Details'}
+        description={`Manage connections for ${parentSystem.system_type_code} at ${parentSystem.node_name}`}
+        icon={<FiDatabase />}
+        actions={headerActions}
+        stats={headerStats}
+      />
 
-          {/* SECTION 2 */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader title="End A & End B Details" />
-            <div className="p-0">
-              <DataTable
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                tableName={'v_system_connections_complete' as any}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                data={endPointData as any[]}
-                columns={endPointColumns}
-                searchable={false}
-                showColumnSelector={false}
-                onCellEdit={handleCellEdit}
-                pagination={{ current: 1, pageSize: 2, total: 2, onChange: () => {} }}
-                bordered={false}
-                density="compact"
-              />
-            </div>
-          </div>
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
 
-          {/* SECTION 3 */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader
-              title="OFC Details"
-              action={
-                <button 
-                  onClick={handleOpenAllocationModal} 
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
-                >
-                  + Map OFC
-                </button>
-              }
-            />
-            <div className="p-0">
-              {!ofcData?.data || ofcData.data.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No OFC details found directly linked to this connection&apos;s system.
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Use the &quot;Map OFC&quot; button to allocate fibers.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 text-sm">
-                   <p className="text-gray-600 dark:text-gray-300">OFC Data Present: {ofcData.data.length} records found.</p>
-                </div>
-              )}
-            </div>
-          </div>
+      <DataTable
+        tableName="v_system_connections_complete"
+        data={connections}
+        columns={orderedColumns}
+        loading={isLoadingConnections}
+        isFetching={isLoadingConnections}
+        actions={tableActions}
+        pagination={{
+          current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
+          onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
+        }}
+        searchable
+        onSearchChange={setSearchQuery}
+      />
 
-          <SystemFiberTraceModal
-            isOpen={isTraceModalOpen}
-            onClose={() => setIsTraceModalOpen(false)}
-            traceData={traceModalData}
-            isLoading={isTracing}
-          />
-
-          {/* Render the Allocation Modal */}
-          {isAllocationModalOpen && (
-            <FiberAllocationModal 
-                isOpen={isAllocationModalOpen} 
-                onClose={() => setIsAllocationModalOpen(false)} 
-                connection={connectionToAllocate} 
-                onSave={handleAllocationSave} 
-                parentSystem={parentSystem || null} 
-            />
-          )}
-
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-full text-red-500">
-          Connection not found
-        </div>
+      {isEditModalOpen && (
+        <SystemConnectionFormModal 
+            isOpen={isEditModalOpen} 
+            onClose={closeModal} 
+            parentSystem={parentSystem} 
+            editingConnection={editingRecord} 
+            onSubmit={handleSave} 
+            isLoading={upsertMutation.isPending} 
+        />
       )}
-    </Modal>
+      
+      <ConfirmModal isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel} title="Confirm Delete" message={deleteManager.confirmationMessage} loading={deleteManager.isPending} type="danger" />
+      
+      {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={handleAllocationSave} parentSystem={parentSystem} />}
+
+      <ConfirmModal
+        isOpen={isDeprovisionModalOpen}
+        onConfirm={handleConfirmDeprovision}
+        onCancel={() => setDeprovisionModalOpen(false)}
+        title="Confirm Deprovisioning"
+        message={`Are you sure you want to deprovision this connection? This action will remove the logical path and release all associated fibers.`}
+        loading={deprovisionMutation.isPending}
+        type="danger"
+      />
+
+      <SystemFiberTraceModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        traceData={traceModalData}
+        isLoading={isTracing}
+      />
+
+      <SystemConnectionDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        connectionId={detailsConnectionId}
+      />
+    </div>
   );
-};
+}

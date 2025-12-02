@@ -250,7 +250,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         
         provisionMutation.mutate({
             p_system_connection_id: connection.id,
-            p_path_name: connection.customer_name || `Path for ${connection.system_name}`,
+            p_path_name: connection.service_name || `Path for ${connection.system_name}`,
             p_working_tx_fiber_ids: data.working_path_in.map(s => s.fiber_id!), 
             p_working_rx_fiber_ids: data.working_path_out.map(s => s.fiber_id!),
             p_protection_tx_fiber_ids: data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!),
@@ -266,7 +266,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     if (!connection) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.customer_name || connection.system_name}`} size="full" visible={false} className="h-0 w-0 bg-transparent">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.service_name || connection.system_name}`} size="full" visible={false} className="h-0 w-0 bg-transparent">
             <FormCard
                 onSubmit={handleSubmit(onValidSubmit)}
                 onCancel={onClose}

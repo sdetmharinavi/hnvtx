@@ -1,7 +1,5 @@
 // path: components/doc/types/featureTypes.ts
 
-import { LucideIcon } from "lucide-react";
-
 export interface FeatureItem {
   id: string; // The slug (e.g., 'offline-first')
   title: string;
