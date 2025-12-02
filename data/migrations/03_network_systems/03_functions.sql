@@ -83,6 +83,7 @@ $$;
 -- Grant execute on the modified function signature
 GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
 
+
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_id UUID,
     p_media_type_id UUID,
@@ -99,9 +100,10 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_service_node_id UUID DEFAULT NULL,
     
     -- Connection Params (Physical)
-    p_services_ip INET DEFAULT NULL,      -- NOW MAPPED TO system_connections
-    p_services_interface TEXT DEFAULT NULL, -- NOW MAPPED TO system_connections
+    p_services_ip INET DEFAULT NULL,      
+    p_services_interface TEXT DEFAULT NULL,
     
+    -- Topology Params
     p_sn_id UUID DEFAULT NULL,
     p_en_id UUID DEFAULT NULL,
     p_sn_ip INET DEFAULT NULL,
@@ -120,6 +122,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_system_working_interface TEXT DEFAULT NULL,
     p_system_protection_interface TEXT DEFAULT NULL,
     
+    -- SDH Params
     p_stm_no TEXT DEFAULT NULL,
     p_carrier TEXT DEFAULT NULL,
     p_a_slot TEXT DEFAULT NULL,
@@ -137,7 +140,6 @@ DECLARE
     v_system_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
-    -- Get the node_id of the system where this connection is physically happening
     SELECT s.node_id INTO v_system_node_id 
     FROM public.systems s 
     WHERE s.id = p_system_id;
@@ -149,7 +151,7 @@ BEGIN
     JOIN public.lookup_types lt ON s.system_type_id = lt.id 
     WHERE s.id = p_system_id;
 
-    -- 1. Upsert Service (Logical Definition)
+    -- Upsert Service
     IF p_service_name IS NOT NULL THEN
         IF p_id IS NOT NULL THEN
             SELECT service_id INTO v_service_id FROM public.system_connections WHERE id = p_id;
@@ -159,7 +161,6 @@ BEGIN
             UPDATE public.services SET
                 name = p_service_name,
                 link_type_id = p_link_type_id,
-                -- Use provided service node ID, or fallback to the System's node ID
                 node_id = COALESCE(p_service_node_id, v_system_node_id),
                 bandwidth_allocated = p_bandwidth_allocated,
                 vlan = p_vlan,
@@ -182,10 +183,10 @@ BEGIN
         END IF;
     END IF;
 
-    -- 2. Upsert Connection (Physical Implementation)
+    -- Upsert Connection
     INSERT INTO public.system_connections (
         id, system_id, service_id, media_type_id, status, 
-        services_ip, services_interface, -- Saved here now
+        services_ip, services_interface,
         sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
         bandwidth, commissioned_on, remark, 
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
@@ -223,7 +224,6 @@ BEGIN
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
     
-    -- 3. Handle SDH Details (if applicable)
     IF v_system_type_record.name IN ('Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
@@ -238,14 +238,15 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission with UPDATED signature
+-- Grant execute permission with the EXACT signature (34 args)
 GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
     UUID, UUID, BOOLEAN, UUID, 
-    TEXT, UUID, INET, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, 
-    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, 
-    UUID[], UUID[], UUID[], UUID[], 
-    TEXT, TEXT, 
-    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, -- Service args
+    INET, TEXT, -- New Physical args (services_ip, services_interface)
+    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, -- Topology args
+    UUID[], UUID[], UUID[], UUID[], -- Fiber args
+    TEXT, TEXT, -- Interface args
+    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT -- SDH args
 ) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring

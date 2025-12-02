@@ -8,7 +8,6 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
   FOREACH tbl IN ARRAY ARRAY[
     'systems', 'system_connections', 'ports_management',
     'ring_based_systems',
@@ -33,7 +32,6 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
   FOREACH tbl IN ARRAY ARRAY[
     'ports_management', 'ring_based_systems',
     'sdh_connections', 'services'
@@ -54,7 +52,6 @@ $$;
 -- =================================================================
 -- PART 3: RLS POLICIES FOR GENERIC TABLES (systems, system_connections)
 -- =================================================================
--- (This part remains unchanged)
 DO $$
 BEGIN
   -- Policies for 'systems' table
@@ -138,22 +135,10 @@ BEGIN
     public.v_ring_nodes,
     public.v_rings,
     public.v_ofc_connections_complete,
-    -- --- THE FIX: Grant permissions on the new view ---
-    public.v_ports_management_complete
+    public.v_ports_management_complete,
+    public.v_services -- ADDED
   TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';
-END;
-$$;
-
--- =================================================================
--- PART 6: GRANTS FOR SERVICES TABLE
--- =================================================================
-DO $$
-BEGIN
-  GRANT SELECT, INSERT, UPDATE, DELETE ON public.services TO admin, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.services TO viewer, authenticated;
-
-  RAISE NOTICE 'Applied SELECT, INSERT, UPDATE, DELETE grants on services table.';
 END;
 $$;

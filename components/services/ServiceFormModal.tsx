@@ -9,18 +9,15 @@ import { Modal } from "@/components/common/ui";
 import { FormCard, FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { ServicesRowSchema } from "@/schemas/zod-schemas";
+import { V_servicesRowSchema } from "@/schemas/zod-schemas";
 
-// Corrected Zod Schema
+// --- Corrected Schema ---
+// Represents the logical service definition only.
 const serviceFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  // Fixed: z.uuid is not a function, use z.string().uuid()
-  system_id: z.string().uuid("Parent System is required"),
-  node_id: z.string().uuid("Node is required"),
-  // Allow empty string literal for Select inputs that might return ""
+  // Service is now tied to a Location (Node), not a specific System
+  node_id: z.uuid("Location (Node) is required"), 
   link_type_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
-  services_ip: z.string().nullable().optional(),
-  services_interface: z.string().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
   lc_id: z.string().nullable().optional(),
@@ -34,7 +31,8 @@ export type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 interface ServiceFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingService: ServicesRowSchema | null;
+  // Accepts the view schema which contains the fields we need
+  editingService: V_servicesRowSchema | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
   isLoading: boolean;
@@ -46,40 +44,37 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   const supabase = createClient();
   const isEdit = !!editingService;
 
-  const { register, handleSubmit, control, reset, formState: { errors }, watch, setValue } = useForm<ServiceFormValues>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: { status: true }
   });
 
-  // Fetch Dropdown Data
-  const { data: systems } = useTableQuery(supabase, "v_systems_complete", { columns: "id, system_name, node_id", limit: 5000 });
-  const { data: nodes } = useTableQuery(supabase, "nodes", { columns: "id, name", limit: 5000 });
-  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", { filters: { category: "LINK_TYPES" } });
+  // --- Data Fetching ---
+  // Only fetch Nodes and Link Types. Systems are no longer relevant here.
+  
+  const { data: nodes } = useTableQuery(supabase, "nodes", { 
+    columns: "id, name", 
+    filters: { status: true },
+    orderBy: [{ column: 'name', ascending: true }],
+    limit: 5000 
+  });
+  
+  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", { 
+    filters: { category: "LINK_TYPES" },
+    orderBy: [{ column: 'name', ascending: true }]
+  });
 
-  const systemOptions = useMemo(() => systems?.data.map(s => ({ value: s.id!, label: s.system_name! })) || [], [systems]);
   const nodeOptions = useMemo(() => nodes?.data.map(n => ({ value: n.id!, label: n.name! })) || [], [nodes]);
   const linkTypeOptions = useMemo(() => linkTypes?.data.map(l => ({ value: l.id!, label: l.name! })) || [], [linkTypes]);
 
-  const watchedSystemId = watch("system_id");
-
-  // Auto-set Node ID when System is selected
-  useEffect(() => {
-    if (watchedSystemId && systems?.data) {
-        const sys = systems.data.find(s => s.id === watchedSystemId);
-        if (sys?.node_id) setValue("node_id", sys.node_id);
-    }
-  }, [watchedSystemId, systems, setValue]);
-
+  // --- Reset Logic ---
   useEffect(() => {
     if (isOpen) {
         if (editingService) {
             reset({
-                name: editingService.name,
-                system_id: editingService.system_id,
-                node_id: editingService.node_id,
+                name: editingService.name || "",
+                node_id: editingService.node_id || "", // Location is required
                 link_type_id: editingService.link_type_id || "",
-                services_ip: editingService.services_ip || "",
-                services_interface: editingService.services_interface || "",
                 bandwidth_allocated: editingService.bandwidth_allocated || "",
                 vlan: editingService.vlan || "",
                 lc_id: editingService.lc_id || "",
@@ -88,21 +83,28 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
                 status: editingService.status ?? true,
             });
         } else {
-            reset({ name: "", status: true });
+            reset({ 
+              name: "", 
+              status: true,
+              node_id: "",
+              link_type_id: "",
+              bandwidth_allocated: "",
+              vlan: "",
+              lc_id: "",
+              unique_id: "",
+              description: ""
+            });
         }
     }
   }, [isOpen, editingService, reset]);
 
-  // Wrapper to sanitize data before submitting
   const onValidSubmit: SubmitHandler<ServiceFormValues> = (data) => {
-    // Helper to convert empty strings to null (Fixes "invalid input syntax for type inet")
+    // Helper to convert empty strings to null
     const toNull = (val: string | null | undefined) => (!val || val.trim() === "") ? null : val.trim();
 
     const sanitizedData = {
       ...data,
       link_type_id: toNull(data.link_type_id),
-      services_ip: toNull(data.services_ip),
-      services_interface: toNull(data.services_interface),
       bandwidth_allocated: toNull(data.bandwidth_allocated),
       vlan: toNull(data.vlan),
       lc_id: toNull(data.lc_id),
@@ -116,31 +118,84 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Service" : "Add Service"} size="lg">
         <FormCard
-            title={isEdit ? "Edit Service" : "Add Service"}
+            title={isEdit ? "Edit Service" : "Add New Service"}
+            subtitle="Define the logical service details. Physical connection mapping is handled separately."
             onSubmit={handleSubmit(onValidSubmit)}
             onCancel={onClose}
             isLoading={isLoading}
             standalone
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput name="name" label="Service Name" register={register} error={errors.name} required placeholder="e.g. Customer-Link-A" />
-                <FormSearchableSelect<ServiceFormValues> name="link_type_id" label="Link Type" control={control} options={linkTypeOptions} error={errors.link_type_id} />
+                <FormInput 
+                  name="name" 
+                  label="Service / Customer Name" 
+                  register={register} 
+                  error={errors.name} 
+                  required 
+                  placeholder="e.g. SBI-Kolkata-Main" 
+                />
                 
-                <FormSearchableSelect<ServiceFormValues> name="system_id" label="Host System" control={control} options={systemOptions} error={errors.system_id} required />
-                <FormSearchableSelect<ServiceFormValues> name="node_id" label="Location (Node)" control={control} options={nodeOptions} error={errors.node_id} required />
+                <FormSearchableSelect<ServiceFormValues> 
+                  name="node_id" 
+                  label="Location (End-Point Node)" 
+                  control={control} 
+                  options={nodeOptions} 
+                  error={errors.node_id} 
+                  required 
+                  placeholder="Select where this service is delivered"
+                />
 
-                <FormInput name="services_ip" label="Service IP" register={register} error={errors.services_ip} placeholder="x.x.x.x" />
-                <FormInput name="services_interface" label="Default Interface" register={register} error={errors.services_interface} />
+                <FormSearchableSelect<ServiceFormValues> 
+                  name="link_type_id" 
+                  label="Link Type" 
+                  control={control} 
+                  options={linkTypeOptions} 
+                  error={errors.link_type_id} 
+                  placeholder="e.g. MPLS, ILL"
+                />
                 
-                <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
-                <FormInput name="bandwidth_allocated" label="Bandwidth" register={register} error={errors.bandwidth_allocated} />
+                <FormInput 
+                  name="bandwidth_allocated" 
+                  label="Bandwidth" 
+                  register={register} 
+                  error={errors.bandwidth_allocated} 
+                  placeholder="e.g. 100 Mbps"
+                />
+
+                <FormInput 
+                  name="vlan" 
+                  label="VLAN" 
+                  register={register} 
+                  error={errors.vlan} 
+                />
                 
-                <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
-                <FormInput name="unique_id" label="Unique ID" register={register} error={errors.unique_id} />
+                <FormInput 
+                  name="lc_id" 
+                  label="LC ID / Circuit ID" 
+                  register={register} 
+                  error={errors.lc_id} 
+                />
+                
+                <FormInput 
+                  name="unique_id" 
+                  label="Unique ID" 
+                  register={register} 
+                  error={errors.unique_id} 
+                />
             </div>
             <div className="mt-4">
-                <FormTextarea<ServiceFormValues> name="description" label="Description" control={control} error={errors.description} />
-                <FormSwitch<ServiceFormValues> name="status" label="Active Status" control={control} className="mt-4" />
+                <FormTextarea<ServiceFormValues> 
+                  name="description" 
+                  label="Description / Notes" 
+                  control={control} 
+                  error={errors.description} 
+                />
+                <FormSwitch<ServiceFormValues> 
+                  name="status" 
+                  label="Active Status" 
+                  control={control} 
+                  className="mt-4" 
+                />
             </div>
         </FormCard>
     </Modal>

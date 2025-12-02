@@ -2754,10 +2754,7 @@ export type Database = {
           link_type_id: string | null
           name: string
           node_id: string
-          services_interface: string | null
-          services_ip: unknown
           status: boolean | null
-          system_id: string
           unique_id: string | null
           updated_at: string | null
           vlan: string | null
@@ -2771,10 +2768,7 @@ export type Database = {
           link_type_id?: string | null
           name: string
           node_id: string
-          services_interface?: string | null
-          services_ip?: unknown
           status?: boolean | null
-          system_id: string
           unique_id?: string | null
           updated_at?: string | null
           vlan?: string | null
@@ -2788,10 +2782,7 @@ export type Database = {
           link_type_id?: string | null
           name?: string
           node_id?: string
-          services_interface?: string | null
-          services_ip?: unknown
           status?: boolean | null
-          system_id?: string
           unique_id?: string | null
           updated_at?: string | null
           vlan?: string | null
@@ -2846,20 +2837,6 @@ export type Database = {
             referencedRelation: "v_system_connections_complete"
             referencedColumns: ["sn_node_id"]
           },
-          {
-            foreignKeyName: "services_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "services_system_id_fkey"
-            columns: ["system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
         ]
       }
       system_connections: {
@@ -2876,6 +2853,8 @@ export type Database = {
           protection_fiber_out_ids: string[] | null
           remark: string | null
           service_id: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -2900,6 +2879,8 @@ export type Database = {
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
           service_id?: string | null
+          services_interface?: string | null
+          services_ip?: unknown
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -2924,6 +2905,8 @@ export type Database = {
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
           service_id?: string | null
+          services_interface?: string | null
+          services_ip?: unknown
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -2969,6 +2952,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_services"
             referencedColumns: ["id"]
           },
           {
@@ -4328,6 +4318,76 @@ export type Database = {
           },
         ]
       }
+      v_services: {
+        Row: {
+          bandwidth_allocated: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          lc_id: string | null
+          link_type_id: string | null
+          link_type_name: string | null
+          maintenance_area_name: string | null
+          name: string | null
+          node_id: string | null
+          node_name: string | null
+          status: boolean | null
+          unique_id: string | null
+          updated_at: string | null
+          vlan: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+        ]
+      }
       v_system_connections_complete: {
         Row: {
           bandwidth: string | null
@@ -4360,6 +4420,8 @@ export type Database = {
           sdh_stm_no: string | null
           service_id: string | null
           service_name: string | null
+          service_node_id: string | null
+          service_node_name: string | null
           services_interface: string | null
           services_ip: unknown
           sn_id: string | null
@@ -4395,6 +4457,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
           },
           {
             foreignKeyName: "system_connections_en_id_fkey"
@@ -5272,6 +5369,8 @@ export type Database = {
           protection_fiber_out_ids: string[] | null
           remark: string | null
           service_id: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown

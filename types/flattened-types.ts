@@ -1615,10 +1615,7 @@ export type ServicesRow = {
     link_type_id: string | null;
     name: string;
     node_id: string;
-    services_interface: string | null;
-    services_ip: unknown;
     status: boolean | null;
-    system_id: string;
     unique_id: string | null;
     updated_at: string | null;
     vlan: string | null;
@@ -1633,10 +1630,7 @@ export type ServicesInsert = {
     link_type_id?: string | null;
     name: string;
     node_id: string;
-    services_interface?: string | null;
-    services_ip?: unknown;
     status?: boolean | null;
-    system_id: string;
     unique_id?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
@@ -1651,10 +1645,7 @@ export type ServicesUpdate = {
     link_type_id?: string | null;
     name?: string;
     node_id?: string;
-    services_interface?: string | null;
-    services_ip?: unknown;
     status?: boolean | null;
-    system_id?: string;
     unique_id?: string | null;
     updated_at?: string | null;
     vlan?: string | null;
@@ -1673,6 +1664,8 @@ export type System_connectionsRow = {
     protection_fiber_out_ids: string[] | null;
     remark: string | null;
     service_id: string | null;
+    services_interface: string | null;
+    services_ip: unknown;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown;
@@ -1698,6 +1691,8 @@ export type System_connectionsInsert = {
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
     service_id?: string | null;
+    services_interface?: string | null;
+    services_ip?: unknown;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -1723,6 +1718,8 @@ export type System_connectionsUpdate = {
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
     service_id?: string | null;
+    services_interface?: string | null;
+    services_ip?: unknown;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -2160,6 +2157,24 @@ export type V_ringsRow = {
     updated_at: string | null;
 };
 
+export type V_servicesRow = {
+    bandwidth_allocated: string | null;
+    created_at: string | null;
+    description: string | null;
+    id: string | null;
+    lc_id: string | null;
+    link_type_id: string | null;
+    link_type_name: string | null;
+    maintenance_area_name: string | null;
+    name: string | null;
+    node_id: string | null;
+    node_name: string | null;
+    status: boolean | null;
+    unique_id: string | null;
+    updated_at: string | null;
+    vlan: string | null;
+};
+
 export type V_system_connections_completeRow = {
     bandwidth: string | null;
     bandwidth_allocated: string | null;
@@ -2191,6 +2206,8 @@ export type V_system_connections_completeRow = {
     sdh_stm_no: string | null;
     service_id: string | null;
     service_name: string | null;
+    service_node_id: string | null;
+    service_node_name: string | null;
     services_interface: string | null;
     services_ip: unknown;
     sn_id: string | null;
@@ -2378,6 +2395,7 @@ export const viewNames = [
   "v_ports_management_complete",
   "v_ring_nodes",
   "v_rings",
+  "v_services",
   "v_system_connections_complete",
   "v_system_ring_paths_detailed",
   "v_systems_complete",
