@@ -84,24 +84,24 @@ $$;
 GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
-    -- Connection Params
     p_system_id UUID,
     p_media_type_id UUID,
     p_status BOOLEAN,
-    p_id UUID DEFAULT NULL, -- Connection ID
+    p_id UUID DEFAULT NULL,
     
-    -- Service Params (New/Updated)
+    -- Service Params (Logical)
     p_service_name TEXT DEFAULT NULL,
     p_link_type_id UUID DEFAULT NULL,
-    p_services_ip INET DEFAULT NULL,
-    p_services_interface TEXT DEFAULT NULL,
     p_bandwidth_allocated TEXT DEFAULT NULL,
     p_vlan TEXT DEFAULT NULL,
     p_lc_id TEXT DEFAULT NULL,
     p_unique_id TEXT DEFAULT NULL,
     p_service_node_id UUID DEFAULT NULL,
     
-    -- Physical Params
+    -- Connection Params (Physical)
+    p_services_ip INET DEFAULT NULL,      -- NOW MAPPED TO system_connections
+    p_services_interface TEXT DEFAULT NULL, -- NOW MAPPED TO system_connections
+    
     p_sn_id UUID DEFAULT NULL,
     p_en_id UUID DEFAULT NULL,
     p_sn_ip INET DEFAULT NULL,
@@ -112,17 +112,14 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
     
-    -- Fiber Arrays
     p_working_fiber_in_ids UUID[] DEFAULT NULL,
     p_working_fiber_out_ids UUID[] DEFAULT NULL,
     p_protection_fiber_in_ids UUID[] DEFAULT NULL,
     p_protection_fiber_out_ids UUID[] DEFAULT NULL,
     
-    -- Interfaces
     p_system_working_interface TEXT DEFAULT NULL,
     p_system_protection_interface TEXT DEFAULT NULL,
     
-    -- SDH Params
     p_stm_no TEXT DEFAULT NULL,
     p_carrier TEXT DEFAULT NULL,
     p_a_slot TEXT DEFAULT NULL,
@@ -140,20 +137,19 @@ DECLARE
     v_system_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
-    -- 1. Get System Node ID (Separate query to avoid INTO list error)
+    -- Get the node_id of the system where this connection is physically happening
     SELECT s.node_id INTO v_system_node_id 
     FROM public.systems s 
     WHERE s.id = p_system_id;
 
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
-    -- 2. Get System Type Record (Separate query)
     SELECT lt.* INTO v_system_type_record 
     FROM public.systems s 
     JOIN public.lookup_types lt ON s.system_type_id = lt.id 
     WHERE s.id = p_system_id;
 
-    -- 3. Upsert Service (if name provided)
+    -- 1. Upsert Service (Logical Definition)
     IF p_service_name IS NOT NULL THEN
         IF p_id IS NOT NULL THEN
             SELECT service_id INTO v_service_id FROM public.system_connections WHERE id = p_id;
@@ -163,9 +159,8 @@ BEGIN
             UPDATE public.services SET
                 name = p_service_name,
                 link_type_id = p_link_type_id,
+                -- Use provided service node ID, or fallback to the System's node ID
                 node_id = COALESCE(p_service_node_id, v_system_node_id),
-                services_ip = p_services_ip,
-                services_interface = p_services_interface,
                 bandwidth_allocated = p_bandwidth_allocated,
                 vlan = p_vlan,
                 lc_id = p_lc_id,
@@ -174,15 +169,11 @@ BEGIN
             WHERE id = v_service_id;
         ELSE
             INSERT INTO public.services (
-                system_id, node_id, name, link_type_id, 
-                services_ip, services_interface, bandwidth_allocated, vlan, lc_id, unique_id
+                node_id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id
             ) VALUES (
-                p_system_id,
                 COALESCE(p_service_node_id, v_system_node_id),
                 p_service_name,
                 p_link_type_id,
-                p_services_ip,
-                p_services_interface,
                 p_bandwidth_allocated,
                 p_vlan,
                 p_lc_id,
@@ -191,9 +182,10 @@ BEGIN
         END IF;
     END IF;
 
-    -- 4. Upsert Connection
+    -- 2. Upsert Connection (Physical Implementation)
     INSERT INTO public.system_connections (
         id, system_id, service_id, media_type_id, status, 
+        services_ip, services_interface, -- Saved here now
         sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
         bandwidth, commissioned_on, remark, 
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
@@ -201,6 +193,7 @@ BEGIN
         updated_at
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_id, v_service_id, p_media_type_id, p_status,
+        p_services_ip, p_services_interface,
         p_sn_id, p_en_id, p_sn_ip, p_sn_interface, p_en_ip, p_en_interface,
         p_bandwidth, p_commissioned_on, p_remark,
         p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
@@ -209,7 +202,9 @@ BEGIN
     ) ON CONFLICT (id) DO UPDATE SET
         media_type_id = EXCLUDED.media_type_id, 
         service_id = EXCLUDED.service_id,
-        status = EXCLUDED.status, 
+        status = EXCLUDED.status,
+        services_ip = EXCLUDED.services_ip,
+        services_interface = EXCLUDED.services_interface,
         sn_id = EXCLUDED.sn_id,
         en_id = EXCLUDED.en_id, 
         sn_ip = EXCLUDED.sn_ip,
@@ -228,7 +223,7 @@ BEGIN
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
     
-    -- 5. Handle SDH
+    -- 3. Handle SDH Details (if applicable)
     IF v_system_type_record.name IN ('Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
@@ -243,7 +238,7 @@ BEGIN
 END;
 $$;
 
--- Grant execution permission with CORRECTED signature (31 args)
+-- Grant execute permission with UPDATED signature
 GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
     UUID, UUID, BOOLEAN, UUID, 
     TEXT, UUID, INET, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, 
