@@ -126,8 +126,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
   const watchEnId = watch("en_id");
-  const watchWorkingInterface = watch("system_working_interface");
-  const watchProtectionInterface = watch("system_protection_interface");
+  // const watchWorkingInterface = watch("system_working_interface");
+  // const watchProtectionInterface = watch("system_protection_interface");
   const watchSnInterface = watch("sn_interface");
   const watchEnInterface = watch("en_interface");
   const watchSnId = watch("sn_id");
@@ -157,8 +157,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       limit: 2000
   });
   
-  const servicesData = (servicesResult?.data || []) as unknown as ServicesRowSchema[];
+  const servicesData = useMemo(
+    () => ((servicesResult?.data || []) as unknown as ServicesRowSchema[]),
+    [servicesResult?.data]
+  );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 

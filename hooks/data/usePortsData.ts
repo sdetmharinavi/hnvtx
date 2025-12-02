@@ -58,7 +58,7 @@ export const usePortsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_ports_management_complete', V_ports_management_completeRowSchema>({
-      queryKey: ['ports-data', systemId, searchQuery, filters],
+      queryKey: ['ports_management-data', systemId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_ports_management_complete,

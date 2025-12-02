@@ -49,7 +49,7 @@ export const useInventoryData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_inventory_items'>({
-    queryKey: ['inventory-data', searchQuery, filters],
+    queryKey: ['inventory_items-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_inventory_items,

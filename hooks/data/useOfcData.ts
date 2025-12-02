@@ -45,7 +45,7 @@ export const useOfcData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_ofc_cables_complete'>({
-    queryKey: ['ofc-cables-data', searchQuery, filters],
+    queryKey: ['ofc_cables-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_ofc_cables_complete,

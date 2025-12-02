@@ -48,7 +48,8 @@ export const useDesignationsData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_employee_designations'>({
-    queryKey: ['designations-data', searchQuery, filters],
+    // THE FIX: Key must contain 'employee_designations' for uploader invalidation to work
+    queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     // THE FIX: Point to the new, correctly typed Dexie table.

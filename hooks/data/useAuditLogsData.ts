@@ -42,7 +42,7 @@ export const useAuditLogsData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_audit_logs', V_audit_logsRowSchema>({
-    queryKey: ['audit-logs-data', searchQuery, filters],
+    queryKey: ['user_activity_logs-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_audit_logs,

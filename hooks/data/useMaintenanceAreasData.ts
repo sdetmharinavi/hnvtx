@@ -49,7 +49,7 @@ export const useMaintenanceAreasData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_maintenance_areas'>({
-    queryKey: ['maintenance-areas-data', searchQuery, filters],
+    queryKey: ['maintenance_areas-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_maintenance_areas,

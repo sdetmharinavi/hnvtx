@@ -48,7 +48,7 @@ export const useDiaryData = (currentDate: Date) => {
   }, [startOfMonth, endOfMonth]);
 
   const { data: notes, isLoading, isFetching, error, refetch } = useLocalFirstQuery<'diary_notes'>({
-    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
+    queryKey: ['diary_data-for-month', startOfMonth, endOfMonth],
     onlineQueryFn,
     localQueryFn,
     localQueryDeps: [startOfMonth, endOfMonth],

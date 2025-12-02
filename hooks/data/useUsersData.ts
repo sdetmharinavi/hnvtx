@@ -38,7 +38,7 @@ export const useUsersData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
-    queryKey: ['admin-users-data', searchQuery, filters],
+    queryKey: ['user_profiles-data', searchQuery, filters],
     onlineQueryFn, 
     localQueryFn,
     // THE FIX: Point to the new, correctly typed Dexie table.
