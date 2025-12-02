@@ -4,6 +4,7 @@ import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  ServicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from "@/schemas/zod-schemas";
@@ -15,26 +16,23 @@ import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
-  FormSwitch,
-  FormTextarea,
 } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Network, Settings, Activity, Database, Plus } from "lucide-react";
-import { ServicesRow } from "@/schemas/service-schemas";
+import { Network, Settings, Activity } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 
+// --- 1. Strict Zod Schema ---
 const formSchema = z.object({
+  // Connection Keys
   system_id: z.string().uuid(),
   media_type_id: z.string().uuid("Media Type is required"),
   status: z.boolean(),
   commissioned_on: z.string().nullable().optional(),
   remark: z.string().nullable().optional(),
   
-  // Service Keys
-  service_name: z.string().min(1, "Service Name is required"),
-  existing_service_id: z.string().nullable().optional(),
-  
+  // Service Keys (Merged from Services Table)
+  service_name: z.string().min(1, "Service Name / Customer is required"),
   link_type_id: z.string().uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -59,16 +57,26 @@ const formSchema = z.object({
   a_customer: z.string().nullable().optional(),
   b_slot: z.string().nullable().optional(),
   b_customer: z.string().nullable().optional(),
+  
+  // UI Helper
+  existing_service_id: z.string().nullable().optional(),
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
+// --- 2. Extended Types for Legacy/Migration Support ---
+// Use Omit to remove the property if it exists in the base type, then re-add it as optional
+// This prevents conflicts if V_system_connections_completeRowSchema changes
+type ExtendedConnectionRow = Omit<V_system_connections_completeRowSchema, 'customer_name'> & { 
     lc_id?: string | null; 
     unique_id?: string | null;
     service_id?: string | null; 
+    // Explicitly define both possible name fields
+    service_name?: string | null;
+    customer_name?: string | null;
 };
 
+// Helper Type for the RPC Payload
 type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 interface SystemConnectionFormModalProps {
@@ -91,9 +99,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const supabase = createClient();
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
-  // New State for Service Mode
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
 
+  // --- Form Setup ---
   const {
     control,
     handleSubmit,
@@ -113,6 +121,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     },
   });
 
+  // Watchers
   const watchLinkTypeId = watch("link_type_id");
   const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
@@ -147,7 +156,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       orderBy: [{ column: "name", ascending: true }],
       limit: 2000
   });
-  const servicesData = (servicesResult?.data || []) as unknown as ServicesRow[];
+  
+  const servicesData = (servicesResult?.data || []) as unknown as ServicesRowSchema[];
 
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
@@ -235,12 +245,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   // --- Effects: Service Logic ---
   
+  // Auto-fill when an existing service is selected
   useEffect(() => {
-      if (serviceMode !== 'existing' || !watchExistingServiceId) return;
+      if (!watchExistingServiceId) return;
       
       const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
       if (selectedService) {
-          // Auto-fill from selected service
           setValue("service_name", selectedService.name);
           if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
           if(selectedService.vlan) setValue("vlan", selectedService.vlan);
@@ -248,31 +258,28 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
           if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
 
-          // Auto-fill End B
-          const currentEnIp = watch("en_ip");
-          if (!currentEnIp && selectedService.services_ip) {
+          // Logic to auto-fill End B if currently empty
+          if (selectedService.services_ip) {
              const ip = selectedService.services_ip.split('/')[0];
              setValue("en_ip", ip, { shouldDirty: true }); 
           }
           
-          const currentEnInt = watch("en_interface");
-          if (!currentEnInt && selectedService.services_interface) {
+          if (selectedService.services_interface) {
              setValue("en_interface", selectedService.services_interface, { shouldDirty: true });
           }
       }
-  }, [watchExistingServiceId, servicesData, setValue, watch, serviceMode]);
+  }, [watchExistingServiceId, servicesData, setValue, watch]);
 
-  // Clear logic when switching to manual
   useEffect(() => {
     if (serviceMode === 'manual') {
       setValue("existing_service_id", null);
-      // We don't clear other fields to allow user to "clone" data if they switch back and forth, 
-      // or just let them type fresh.
     }
   }, [serviceMode, setValue]);
 
-  const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
-  const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
+  // --- Computed Values for Display ---
+  
+  // const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
+  // const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
@@ -281,7 +288,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     if (isOpen) {
       setActiveTab("general");
       if (isEditMode && editingConnection) {
-        const extConnection = editingConnection as ExtendedConnectionRow;
+        // Safe cast to our extended type which handles potentially missing fields
+        const extConnection = editingConnection as unknown as ExtendedConnectionRow;
+        
         const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
 
@@ -290,14 +299,17 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         reset({
           system_id: extConnection.system_id ?? parentSystem.id ?? "",
           
-          service_name: safeValue(extConnection.customer_name), 
-          existing_service_id: safeNull(extConnection.service_id),
+          // Handle name change: prefer service_name, fallback to customer_name
+          service_name: safeValue(extConnection.service_name ?? extConnection.customer_name), 
+          
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
           bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
           lc_id: safeValue(extConnection.lc_id),
           unique_id: safeValue(extConnection.unique_id),
-          
+          existing_service_id: safeNull(extConnection.service_id),
+
+          // Connection Fields
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
           system_working_interface: safeValue(extConnection.system_working_interface),
@@ -443,14 +455,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                         placeholder="Search services..."
                                         clearable
                                     />
-                                    {/* Read-only name display to confirm selection */}
-                                    {watchExistingServiceId && (
-                                        <div className="text-xs text-gray-500 bg-white dark:bg-gray-700 p-2 rounded border">
-                                            Selected: <strong>{watch("service_name")}</strong>
-                                        </div>
-                                    )}
-                                    {/* Hidden input to actually submit the name */}
+                                    {/* Hidden input to actually submit the name populated by effect */}
                                     <input type="hidden" {...register("service_name")} />
+                                    {errors.service_name && (
+                                        <p className="text-xs text-red-500">{errors.service_name.message}</p>
+                                    )}
                                 </div>
                             ) : (
                                 <FormInput 

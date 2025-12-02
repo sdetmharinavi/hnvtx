@@ -77,7 +77,7 @@ export const useSystemConnectionsData = (
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
-          conn.customer_name?.toLowerCase().includes(lowerQuery) ||
+          conn.service_name?.toLowerCase().includes(lowerQuery) ||
           conn.connected_system_name?.toLowerCase().includes(lowerQuery)
         );
       }

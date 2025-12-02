@@ -38,6 +38,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   connectionId,
 }) => {
   const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
@@ -98,11 +99,17 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const circuitColumns = useMemo(
     (): Column<Row<'v_system_connections_complete'>>[] => [
       {
-        key: 'customer_name',
+        key: 'service_name',
         title: 'Service Name',
-        dataIndex: 'customer_name',
+        // Use 'service_name' as the dataIndex now
+        dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
         editable: true,
         width: 200,
+        render: (val, record) => {
+           // Fallback to customer_name if service_name is empty (legacy support)
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           return <span className="font-medium text-gray-900 dark:text-white">{(val as string) || (record as any).customer_name || 'N/A'}</span>
+        }
       },
       {
         key: 'media_type_name',
@@ -118,7 +125,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         editable: true,
         width: 100,
       },
-      { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', editable: true, width: 100 },
       { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
       { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
       {
@@ -136,6 +143,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     if (!connection) return [];
     
     // Determine if we have a specific Start Node defined.
+    // If sn_name exists, use it. Otherwise, fall back to the Source System itself.
     const hasStartNode = !!connection.sn_name;
     
     return [
@@ -155,8 +163,10 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         
         capacity: connection.bandwidth, 
         vlan: connection.vlan,
+        // For editing mapping
         realId: connection.id,
         fieldMap: {
+          // If we are falling back to the System, update system_working_interface
           interface: hasStartNode ? 'sn_interface' : 'system_working_interface',
         },
       },
@@ -204,11 +214,13 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCellEdit = (record: any, column: Column<any>, newValue: string) => {
+    // 1. Circuit Info Edit
     if (record.id === connection?.id) {
       const updateData = { [column.dataIndex]: newValue };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateConnection({ id: record.id, data: updateData as any });
     }
+    // 2. End Point Edit (Virtual Rows)
     else if (record.realId) {
       const realColumn = record.fieldMap[column.dataIndex];
       if (realColumn) {
@@ -232,6 +244,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <PageSpinner text="Loading Circuit Details..." />
       ) : connection ? (
         <div className="space-y-8 pb-10">
+          {/* SECTION 1 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
@@ -249,6 +262,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
+          {/* SECTION 2 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="End A & End B Details" />
             <div className="p-0">
@@ -268,6 +282,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
+          {/* SECTION 3 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader
               title="OFC Details"
@@ -305,6 +320,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             isLoading={isTracing}
           />
 
+          {/* Render the Allocation Modal */}
           {isAllocationModalOpen && (
             <FiberAllocationModal 
                 isOpen={isAllocationModalOpen} 
