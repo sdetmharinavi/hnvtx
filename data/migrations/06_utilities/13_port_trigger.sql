@@ -15,17 +15,14 @@ BEGIN
             FROM public.system_connections
             WHERE system_id = OLD.system_id
               AND system_working_interface = OLD.system_working_interface
-              -- Optional: Filter for only 'valid' connections if needed (e.g. customer_name not null)
-              AND customer_name IS NOT NULL 
-              AND trim(customer_name) <> '';
+              -- FIX: Use service_id instead of removed customer_name
+              AND service_id IS NOT NULL;
 
             -- 2. Update the OLD port status in ports_management
             UPDATE public.ports_management
             SET 
                 services_count = v_count,
                 port_utilization = (v_count > 0)
-                -- Note: We DO NOT automatically set port_admin_status to false.
-                -- A port usually remains administratively 'UP' even if the cable is unplugged.
             WHERE system_id = OLD.system_id 
               AND port = OLD.system_working_interface;
         END IF;
@@ -43,8 +40,8 @@ BEGIN
             FROM public.system_connections
             WHERE system_id = NEW.system_id
               AND system_working_interface = NEW.system_working_interface
-              AND customer_name IS NOT NULL 
-              AND trim(customer_name) <> '';
+              -- FIX: Use service_id instead of removed customer_name
+              AND service_id IS NOT NULL;
 
             -- 2. Update the NEW port status in ports_management
             UPDATE public.ports_management
@@ -66,6 +63,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. Re-attach the trigger
+DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
 CREATE TRIGGER trg_update_port_utilization
 AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
 FOR EACH ROW
