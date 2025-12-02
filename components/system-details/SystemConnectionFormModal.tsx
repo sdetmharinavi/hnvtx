@@ -17,11 +17,14 @@ import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
+  FormSwitch,
+  FormTextarea,
 } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Network, Settings, Activity } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
+import { formatIP } from "@/utils/formatters";
 
 // --- 1. Strict Zod Schema ---
 const formSchema = z.object({
@@ -159,11 +162,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   });
   
   const servicesData = useMemo(
-    () => (servicesResult.data || []) as unknown as ServicesRowSchema[],
+    () => (servicesResult?.data ? (servicesResult.data as unknown as ServicesRowSchema[]) : []),
     [servicesResult.data]
   );
 
-  // Fetch ports for the main system (for General Tab)
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -174,7 +176,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSystemId,
   });
 
-  // Fetch ports for Start Node (for Connectivity Tab)
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -185,7 +186,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     enabled: !!watchSnId,
   });
 
-  // Fetch ports for End Node (for Connectivity Tab)
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
     filters: { 
@@ -200,10 +200,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const mapPortsToOptions = (
     portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
-    currentValue?: string | null
+    currentValue?: string | null,
+    excludePort?: string | null // ADDED: support filtering
   ) => {
     const options = (portsData || [])
       .filter(p => p.port)
+      .filter(p => p.port !== excludePort) // Filter out the excluded port
       .map(p => ({
         value: p.port!,
         label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
@@ -217,7 +219,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     return options;
   };
 
-  // Generic helper to find port type display
   const getPortTypeDisplay = useCallback((portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
     if (!portsList?.data || !portInterface) return "";
     const port = portsList.data.find(p => p.port === portInterface);
@@ -232,7 +233,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       (systemsResult.data || [])
         .map((s) => {
           const loc = s.node_name ? ` @ ${s.node_name}` : "";
-          const ip = s.ip_address ? ` [${s.ip_address.split('/')[0]}]` : "";
+          const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
           const label = `${s.system_name}${loc}${ip}`;
           return { value: s.id!, label };
         }),
@@ -250,6 +251,32 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       return filteredServices.map(s => ({ value: s.id, label: s.name }));
   }, [servicesData, watchLinkTypeId]);
 
+  // --- Effects: Auto-Populate IP ---
+  
+  // Auto-populate SN IP
+  useEffect(() => {
+    if (watchSnId && systemsResult.data) {
+      const sys = systemsResult.data.find(s => s.id === watchSnId);
+      if (sys && sys.ip_address) {
+        setValue("sn_ip", formatIP(sys.ip_address));
+      } else {
+        setValue("sn_ip", "");
+      }
+    }
+  }, [watchSnId, systemsResult.data, setValue]);
+
+  // Auto-populate EN IP
+  useEffect(() => {
+    if (watchEnId && systemsResult.data) {
+      const sys = systemsResult.data.find(s => s.id === watchEnId);
+      if (sys && sys.ip_address) {
+        setValue("en_ip", formatIP(sys.ip_address));
+      } else {
+        setValue("en_ip", "");
+      }
+    }
+  }, [watchEnId, systemsResult.data, setValue]);
+
   // --- Effects: Service Logic ---
   
   useEffect(() => {
@@ -264,7 +291,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
           if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
       }
-  }, [watchExistingServiceId, servicesData, setValue]);
+  }, [watchExistingServiceId, servicesData, setValue, watch]);
 
   useEffect(() => {
     if (serviceMode === 'manual') {
@@ -273,7 +300,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   }, [serviceMode, setValue]);
 
   // --- Computed Values for Display ---
-  // These are used to show the small "Type" box next to the port dropdowns
   const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
   const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
@@ -487,7 +513,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         <FormInput name="bandwidth" label="Physical Port Capacity" register={register} error={errors.bandwidth} placeholder="e.g. 1G" />
                         <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} />
                         
-                        {/* Working Port Selection with Type Display */}
+                        {/* Working Port Selection with Type Display and Filtering */}
                         <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
                           <div className="col-span-2">
                             <FormSearchableSelect
@@ -506,14 +532,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                           </div>
                         </div>
                         
-                         {/* Protection Port Selection with Type Display */}
+                         {/* Protection Port Selection with Type Display and Filtering */}
                          <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
                           <div className="col-span-2">
                             <FormSearchableSelect
                               name="system_protection_interface"
                               label="Protection Port"
                               control={control}
-                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
+                              // THE FIX: Filter out the selected working port
+                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface, watchWorkingInterface)}
                               error={errors.system_protection_interface}
                               placeholder="Select Protection Port"
                               clearable
@@ -576,7 +603,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                 </div>
                             </div>
 
-                            <FormInput name="sn_ip" label="IP Address" register={register} error={errors.sn_ip} className="mt-2" />
+                            <FormInput
+                              name="sn_ip"
+                              label="IP Address"
+                              register={register}
+                              error={errors.sn_ip}
+                              className="mt-2"
+                            />
                         </div>
 
                         {/* End Node Panel */}
@@ -612,7 +645,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                 </div>
                             </div>
                             
-                            <FormInput name="en_ip" label="IP Address" register={register} error={errors.en_ip} className="mt-2" />
+                            <FormInput
+                              name="en_ip"
+                              label="IP Address"
+                              register={register}
+                              error={errors.en_ip}
+                              className="mt-2"
+                            />
                         </div>
                     </div>
                 </TabsContent>
