@@ -18,6 +18,7 @@ interface PathStep {
   cable_id: string | null;
   fiber_id: string | null;
 }
+
 interface FiberAllocationForm {
   working_path_in: PathStep[];
   working_path_out: PathStep[];
@@ -33,7 +34,21 @@ interface FiberAllocationModalProps {
   onSave: () => void;
 }
 
-// --- SUB-COMPONENT FOR A SINGLE CASCADE ROW (Simplex version) ---
+// --- HELPER: Reconstruct Path Steps ---
+// Fetches fiber details (specifically ofc_id) given a list of fiber IDs
+const useReconstructPath = (fiberIds: string[] | null | undefined) => {
+  const supabase = createClient();
+  
+  return useTableQuery(supabase, 'v_ofc_connections_complete', {
+      columns: 'id, ofc_id',
+      filters: {
+          id: { operator: 'in', value: fiberIds || [] }
+      },
+      enabled: !!fiberIds && fiberIds.length > 0
+  });
+};
+
+// --- SUB-COMPONENT: Single Row in the Cascade ---
 const PathCascadeRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
@@ -46,16 +61,28 @@ const PathCascadeRow: FC<{
 }> = ({ index, pathType, control, watch, cascadeInfo, onRemove, allAllocatedFiberIds, currentFiberId }) => {
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
 
+  // Fetch available fibers for the selected cable
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
       columns: 'id, fiber_no_sn',
-      filters: { ofc_id: cableIdForThisRow || '', system_id: { operator: 'is', value: null } },
+      // Show fibers that are NOT assigned to a system, OR the fiber currently selected in this row
+      filters: { 
+        ofc_id: cableIdForThisRow || '', 
+        // We rely on client-side filtering for the "available" logic mixed with "current selection" logic
+        // to handle the re-edit case gracefully
+      },
       enabled: !!cableIdForThisRow,
+      limit: 1000
   });
 
   const fiberOptions = useMemo(() => 
     (availableFibersResult?.data || [])
-      .filter(f => !allAllocatedFiberIds.has(f.id) || f.id === currentFiberId)
-      .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` })), 
+      .filter(f => 
+        // Show if fiber has no system_id (is free) AND is not picked elsewhere in current form
+        // OR if it is the fiber currently selected in this specific dropdown
+        ((!f.system_id) && !allAllocatedFiberIds.has(f.id)) || f.id === currentFiberId
+      )
+      .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })), 
     [availableFibersResult, allAllocatedFiberIds, currentFiberId]
   );
 
@@ -81,7 +108,7 @@ const PathCascadeRow: FC<{
   );
 };
 
-// --- SUB-COMPONENT FOR BUILDING A PATH (Simplex version) ---
+// --- SUB-COMPONENT: Path Builder (Manages the list of rows) ---
 const PathBuilder: FC<{
     pathType: keyof FiberAllocationForm;
     control: Control<FiberAllocationForm>;
@@ -94,22 +121,22 @@ const PathBuilder: FC<{
     const { fields, append, remove } = useFieldArray({ control, name: pathType });
     const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
-    // FIX: Watch the array values directly to get reactive updates for fiber_id
+    // Watch the array values directly to get reactive updates
     const pathValues = watch(pathType);
 
+    // Calculate the node we are currently at (end of the chain)
     const lastNode = useMemo(() => {
         let currentNode = startNode;
-        // Use pathValues if available, falling back to fields if empty (though useFieldArray initializes from defaultValues)
         const currentSteps = pathValues || fields;
 
         currentSteps.forEach((step) => {
             if (!currentNode) return;
-            // We need to cast step because pathValues elements don't have 'id' from useFieldArray, 
-            // but fields do. We just need data properties here.
             const cableId = (step as PathStep).cable_id;
             
             const cable = cables.find(c => c.id === cableId);
             if (!cable) return;
+            
+            // Traverse: If start matches current, go to end. If end matches current, go to start.
             const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
             const nextNode = nodes.find(n => n.id === nextNodeId);
             currentNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
@@ -137,9 +164,9 @@ const PathBuilder: FC<{
         <div className="space-y-3">
             {fields.map((field, index) => {
                 let currentStartNode = startNode;
-                // Use pathValues for node calculation history to keep in sync
                 const currentSteps = pathValues || fields;
                 
+                // Re-calculate position for this specific row
                 for (let i = 0; i < index; i++) {
                     const prevCableId = (currentSteps[i] as PathStep).cable_id;
                     const prevCable = cables.find(c => c.id === prevCableId);
@@ -150,7 +177,6 @@ const PathBuilder: FC<{
                     }
                 }
                 
-                // FIX: Get the live value from watch(), not the stable field object
                 const currentStepValue = currentSteps[index] as PathStep;
                 const cableId = currentStepValue?.cable_id;
                 const liveFiberId = currentStepValue?.fiber_id;
@@ -161,7 +187,7 @@ const PathBuilder: FC<{
 
                 return (
                     <PathCascadeRow
-                        key={field.id} // Key must come from field.id
+                        key={field.id}
                         index={index}
                         pathType={pathType}
                         control={control}
@@ -173,7 +199,7 @@ const PathBuilder: FC<{
                         }}
                         onRemove={() => remove(index)}
                         allAllocatedFiberIds={allAllocatedFiberIds}
-                        currentFiberId={liveFiberId} // FIX: Pass the live ID
+                        currentFiberId={liveFiberId}
                     />
                 );
             })}
@@ -205,20 +231,64 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
 
+    // 1. Watch all form values to track selected fibers across tabs
     const allPaths = watch();
     const allAllocatedFiberIds = useMemo(() => {
       const ids = new Set<string>();
       Object.values(allPaths).forEach((pathArray: PathStep[]) => {
-        pathArray.forEach((step: PathStep) => {
-          if (step.fiber_id) ids.add(step.fiber_id);
-        });
+        if(Array.isArray(pathArray)) {
+            pathArray.forEach((step: PathStep) => {
+            if (step.fiber_id) ids.add(step.fiber_id);
+            });
+        }
       });
       return ids;
     }, [allPaths]);
 
+    // 2. Fetch Network Context
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
     const { data: allNodesResult, isLoading: isLoadingNodes } = useTableQuery(createClient(), 'v_nodes_complete');
     
+    // 3. Fetch Existing Allocation Data (for Hydration)
+    const { data: workingInFibers, isLoading: load1 } = useReconstructPath(connection?.working_fiber_in_ids);
+    const { data: workingOutFibers, isLoading: load2 } = useReconstructPath(connection?.working_fiber_out_ids);
+    const { data: protectInFibers, isLoading: load3 } = useReconstructPath(connection?.protection_fiber_in_ids);
+    const { data: protectOutFibers, isLoading: load4 } = useReconstructPath(connection?.protection_fiber_out_ids);
+
+    const isHydrating = load1 || load2 || load3 || load4;
+
+    // 4. Re-hydrate form when data is loaded
+    useEffect(() => {
+        if (isOpen && connection && !isHydrating) {
+            
+            const mapToSteps = (
+                // THE FIX: Updated type to allow nullable ID to match the view schema
+                fibersData: { data: { id: string | null, ofc_id: string | null }[] } | undefined,
+                originalIds: string[] | null | undefined
+            ): PathStep[] => {
+                if (!fibersData?.data || !originalIds || originalIds.length === 0) return [];
+                
+                // Filter out null IDs just in case, although view shouldn't have them for this use case
+                const validFibers = fibersData.data.filter(f => f.id !== null);
+                const fiberMap = new Map(validFibers.map(f => [f.id!, f]));
+                
+                // Map using originalIds to preserve sequence order
+                return originalIds
+                   .map(id => fiberMap.get(id!))
+                   .filter(Boolean)
+                   .map(f => ({ cable_id: f!.ofc_id, fiber_id: f!.id }));
+            };
+
+            // Only reset if we actually have data, or if it's meant to be empty
+            reset({
+                working_path_in: mapToSteps(workingInFibers, connection.working_fiber_in_ids),
+                working_path_out: mapToSteps(workingOutFibers, connection.working_fiber_out_ids),
+                protection_path_in: mapToSteps(protectInFibers, connection.protection_fiber_in_ids),
+                protection_path_out: mapToSteps(protectOutFibers, connection.protection_fiber_out_ids),
+            });
+        }
+    }, [isOpen, connection, isHydrating, workingInFibers, workingOutFibers, protectInFibers, protectOutFibers, reset]);
+
     const provisionMutation = useProvisionServicePath();
 
     const startNode = useMemo(() => {
@@ -229,13 +299,11 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     
     const endNode = useMemo(() => {
         if (!connection || !allNodesResult?.data) return null;
+        // The end node ID is usually stored on the connection row from the View
         const node = allNodesResult.data.find(n => n.id === connection.en_node_id);
         return node ? { id: node.id!, name: node.name! } : null;
     }, [connection, allNodesResult]);
 
-    useEffect(() => {
-        reset({ working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] });
-    }, [isOpen, reset]);
 
     const onValidSubmit = (data: FiberAllocationForm) => {
         if (!connection?.id) return;
@@ -283,7 +351,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
                 widthClass="w-full max-w-7xl"
                 heightClass="h-full max-h-[95vh]"
             >
-                {(isLoadingCables || isLoadingNodes) ? <PageSpinner text="Loading network data..." /> : (
+                {(isLoadingCables || isLoadingNodes || isHydrating) ? <PageSpinner text="Loading network configuration..." /> : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
                         <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                             <h3 className="font-semibold text-lg flex items-center gap-2"><GitBranch className="text-blue-500" /> Working Path</h3>
