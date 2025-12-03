@@ -1177,10 +1177,14 @@ export const logical_path_segmentsUpdateSchema = z.object({
 
 export const logical_pathsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
+  destination_port: z.string().nullable(),
+  destination_system_id: z.uuid().nullable(),
   end_node_id: z.uuid().nullable(),
   id: z.uuid(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_id: z.uuid().nullable(),
+  source_port: z.string().nullable(),
+  source_system_id: z.uuid().nullable(),
   start_node_id: z.uuid().nullable(),
   status: z.string().min(1, "Status cannot be empty").nullable(),
   updated_at: z.iso.datetime().nullable(),
@@ -1188,10 +1192,14 @@ export const logical_pathsRowSchema = z.object({
 
 export const logical_pathsInsertSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
+  destination_port: z.string().nullable().optional(),
+  destination_system_id: z.uuid().nullable().optional(),
   end_node_id: z.uuid().nullable().optional(),
   id: z.uuid().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   ring_id: z.uuid().nullable().optional(),
+  source_port: z.string().nullable().optional(),
+  source_system_id: z.uuid().nullable().optional(),
   start_node_id: z.uuid().nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -1199,10 +1207,14 @@ export const logical_pathsInsertSchema = z.object({
 
 export const logical_pathsUpdateSchema = z.object({
   created_at: z.iso.datetime().nullable().optional(),
+  destination_port: z.string().nullable().optional(),
+  destination_system_id: z.uuid().nullable().optional(),
   end_node_id: z.uuid().nullable().optional(),
   id: z.uuid().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   ring_id: z.uuid().nullable().optional(),
+  source_port: z.string().nullable().optional(),
+  source_system_id: z.uuid().nullable().optional(),
   start_node_id: z.uuid().nullable().optional(),
   status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
@@ -2250,21 +2262,6 @@ export const v_system_connections_completeRowSchema = z.object({
   working_fiber_out_ids: z.array(z.string()).nullable(),
 });
 
-export const v_system_ring_paths_detailedRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  end_node_id: z.uuid().nullable(),
-  end_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  id: z.uuid().nullable(),
-  logical_path_id: z.uuid().nullable(),
-  ofc_cable_id: z.uuid().nullable(),
-  path_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  path_order: z.number().nullable(),
-  route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  source_system_id: z.uuid().nullable(),
-  start_node_id: z.uuid().nullable(),
-  start_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-});
-
 export const v_systems_completeRowSchema = z.object({
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -2483,6 +2480,5 @@ export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
 export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
 export type V_servicesRowSchema = z.infer<typeof v_servicesRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
-export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;
 export type V_user_profiles_extendedRowSchema = z.infer<typeof v_user_profiles_extendedRowSchema>;

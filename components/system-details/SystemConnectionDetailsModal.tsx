@@ -40,8 +40,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 }) => {
   const supabase = createClient();
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTracing, setIsTracing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tracePath = useTracePath(supabase);
   
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);

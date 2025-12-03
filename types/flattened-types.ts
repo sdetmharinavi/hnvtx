@@ -1155,10 +1155,14 @@ export type Logical_path_segmentsUpdate = {
 
 export type Logical_pathsRow = {
     created_at: string | null;
+    destination_port: string | null;
+    destination_system_id: string | null;
     end_node_id: string | null;
     id: string;
     name: string;
     ring_id: string | null;
+    source_port: string | null;
+    source_system_id: string | null;
     start_node_id: string | null;
     status: string | null;
     updated_at: string | null;
@@ -1166,10 +1170,14 @@ export type Logical_pathsRow = {
 
 export type Logical_pathsInsert = {
     created_at?: string | null;
+    destination_port?: string | null;
+    destination_system_id?: string | null;
     end_node_id?: string | null;
     id?: string;
     name: string;
     ring_id?: string | null;
+    source_port?: string | null;
+    source_system_id?: string | null;
     start_node_id?: string | null;
     status?: string | null;
     updated_at?: string | null;
@@ -1177,10 +1185,14 @@ export type Logical_pathsInsert = {
 
 export type Logical_pathsUpdate = {
     created_at?: string | null;
+    destination_port?: string | null;
+    destination_system_id?: string | null;
     end_node_id?: string | null;
     id?: string;
     name?: string;
     ring_id?: string | null;
+    source_port?: string | null;
+    source_system_id?: string | null;
     start_node_id?: string | null;
     status?: string | null;
     updated_at?: string | null;
@@ -2230,21 +2242,6 @@ export type V_system_connections_completeRow = {
     working_fiber_out_ids: string[] | null;
 };
 
-export type V_system_ring_paths_detailedRow = {
-    created_at: string | null;
-    end_node_id: string | null;
-    end_node_name: string | null;
-    id: string | null;
-    logical_path_id: string | null;
-    ofc_cable_id: string | null;
-    path_name: string | null;
-    path_order: number | null;
-    route_name: string | null;
-    source_system_id: string | null;
-    start_node_id: string | null;
-    start_node_name: string | null;
-};
-
 export type V_systems_completeRow = {
     commissioned_on: string | null;
     created_at: string | null;
@@ -2397,7 +2394,6 @@ export const viewNames = [
   "v_rings",
   "v_services",
   "v_system_connections_complete",
-  "v_system_ring_paths_detailed",
   "v_systems_complete",
   "v_user_profiles_extended"
 ] as const;

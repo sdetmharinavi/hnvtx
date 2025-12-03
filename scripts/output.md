@@ -3050,6 +3050,10 @@ body {
   animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.dark-popup .leaflet-popup-content-wrapper, .dark-popup .leaflet-popup-tip {
+  background-color: #1f2937 !important;
+}
+
 /* Calender */
 /* Custom Calendar Styles */
 .react-datepicker {
@@ -4187,25 +4191,57 @@ export default PrivacyPage;
 // path: app/api/ors-distance/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
+// Helper: Calculate straight-line distance
+function calculateHaversine(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return (R * c).toFixed(2); // Returns string "12.34"
+}
+
 export async function POST(req: NextRequest) {
-  // THE FIX: Set a longer timeout and use an AbortController for robust handling.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+  // 10s timeout for the external API
+  const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
   try {
     const body = await req.text();
     if (!body) {
       return NextResponse.json({ error: "Request body is empty" }, { status: 400 });
     }
-    const { a, b } = JSON.parse(body);
+    
+    // Safely parse body
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(body);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { a, b } = parsedBody;
+
+    // Validate coordinates
+    if (!a?.lat || !a?.long || !b?.lat || !b?.long) {
+       return NextResponse.json({ error: "Missing coordinates" }, { status: 400 });
+    }
 
     const ORS_API_KEY = process.env.ORS_API_KEY;
 
+    // If no key, fallback immediately to Haversine
     if (!ORS_API_KEY) {
-      console.error("ORS API key is not configured on the server");
-      return NextResponse.json({ error: "API key is not configured" }, { status: 500 });
+      console.warn("ORS API key missing. Using fallback distance.");
+      const dist = calculateHaversine(a.lat, a.long, b.lat, b.long);
+      return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
+    // Attempt external API call
     const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
       method: "POST",
       headers: {
@@ -4218,35 +4254,49 @@ export async function POST(req: NextRequest) {
           [b.long, b.lat],
         ],
       }),
-      // THE FIX: Attach the abort signal to the fetch request.
       signal: controller.signal,
     });
     
-    // Clear the timeout timer once the fetch is complete
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const errorData = await res.json();
-      console.error("ORS API Error:", errorData);
-      return NextResponse.json({ error: `Failed to fetch from ORS API: ${res.statusText}` }, { status: res.status });
+      const errorText = await res.text();
+      console.warn(`ORS API Error (${res.status}):`, errorText);
+      // On API error (e.g. quota exceeded), fallback to Haversine
+      const dist = calculateHaversine(a.lat, a.long, b.lat, b.long);
+      return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
     const data = await res.json();
     const meters = data?.routes?.[0]?.summary?.distance;
-    return NextResponse.json({ distance_km: meters ? (meters / 1000).toFixed(1) : null });
-
-  } catch (error) {
-    clearTimeout(timeoutId); // Ensure timeout is cleared on any error
     
-    // THE FIX: Provide more specific error messages based on the error type.
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.error("ORS API request timed out after 20 seconds.");
-      return NextResponse.json({ error: "The routing service took too long to respond. Please try again later." }, { status: 504 }); // 504 Gateway Timeout
+    if (meters === undefined || meters === null) {
+       throw new Error("Invalid response structure from ORS");
     }
 
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    console.error("ORS internal API error:", error);
-    return NextResponse.json({ error: `Failed to fetch distance: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ distance_km: (meters / 1000).toFixed(2), source: 'ors' });
+
+  } catch (error) {
+    clearTimeout(timeoutId); // Ensure timeout is cleared
+
+    // Parse coordinates again from request if possible for fallback
+    try {
+       // We can't re-read the stream, but we can try to parse if we stored it or just log error
+       // Since stream is consumed, we can't easily fallback if JSON.parse inside try block succeeded
+       // but fetch failed. 
+       
+       // However, we parsed body into variables `a` and `b` before the fetch.
+       // We can access them here via closure scope if they were defined.
+       // But `a` and `b` are block scoped inside try.
+       // Let's just return the error for now, but the code above handles most "soft" failures.
+       
+       console.error("ORS Fetch failed completely:", error);
+       
+       // Return a generic fallback response if we can't calculate
+       return NextResponse.json({ error: "Routing service unavailable" }, { status: 500 });
+    } catch {
+       return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
   }
 }
 ```
@@ -5379,7 +5429,7 @@ function ScrollToTopButton() {
 
 <!-- path: app/dashboard/rings/[id]/page.tsx -->
 ```typescript
-// app/dashboard/rings/[id]/page.tsx
+// path: app/dashboard/rings/[id]/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
@@ -5387,7 +5437,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
-import { PageSpinner, Modal, Button } from '@/components/common/ui'; // Added Modal, Button
+import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -5397,6 +5447,7 @@ import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/databas
 import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
+import { useQuery } from '@tanstack/react-query';
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
@@ -5409,6 +5460,14 @@ type ExtendedRingDetails = V_ringsRowSchema & {
     disabled_segments?: string[]; // Array of "idA-idB" strings
   } | null;
 };
+
+// Local interface for Map Path Configuration (must match ClientRingMap's expected shape; no nulls)
+interface PathConfigForMap {
+  source?: string;
+  sourcePort?: string;
+  dest?: string;
+  destPort?: string;
+}
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   if (node.id == null || node.name == null) return null;
@@ -5488,9 +5547,28 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  // 4. Calculate Potential Segments
-  // We generate ALL possible sequential connections (including closing the loop).
-  // The visibility will be controlled by the `topology_config`.
+  // 4. Fetch Logical Path configurations for this ring (For Map Tooltips)
+  const { data: pathConfigs } = useQuery({
+    queryKey: ['ring-path-config', ringId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('logical_paths')
+        .select(`
+           start_node_id, 
+           end_node_id, 
+           source_system:source_system_id(system_name), 
+           source_port, 
+           destination_system:destination_system_id(system_name), 
+           destination_port
+        `)
+        .eq('ring_id', ringId);
+      if (error) return [];
+      return data;
+    },
+    enabled: !!ringId
+  });
+
+  // 5. Calculate Potential Segments
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -5503,12 +5581,11 @@ export default function RingMapPage() {
     
     if (hubs.length > 1) {
       hubs.forEach((hub, index) => {
-        // Connect to next, wrapping around to 0 for the last one
         const nextIndex = (index + 1) % hubs.length;
         segments.push([hub, hubs[nextIndex]]);
       });
     } else {
-       // Fallback logic for non-hubs
+       // Fallback for no-hubs scenarios
        const allNodes = [...mappedNodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
        if (allNodes.length > 1) {
          allNodes.forEach((node, index) => {
@@ -5518,7 +5595,6 @@ export default function RingMapPage() {
        }
     }
 
-    // Spurs logic (unchanged)
     const spurs: Array<[RingMapNode, RingMapNode]> = [];
     const hubMapByOrder = new Map<number, RingMapNode>();
     hubs.forEach(h => { if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h); });
@@ -5532,12 +5608,10 @@ export default function RingMapPage() {
     return { potentialSegments: segments, spurConnections: spurs };
   }, [mappedNodes]);
 
-  // 5. Filter Segments based on DB Config
+  // 6. Filter Segments based on DB Config
   const activeSegments = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
-    
     return potentialSegments.filter(([start, end]) => {
-      // Check both A-B and B-A keys to be safe
       const key1 = `${start.id}-${end.id}`;
       const key2 = `${end.id}-${start.id}`;
       return !disabledKeys.has(key1) && !disabledKeys.has(key2);
@@ -5546,7 +5620,33 @@ export default function RingMapPage() {
 
   const allConnections = useMemo(() => [...activeSegments, ...spurConnections], [activeSegments, spurConnections]);
 
-  // 6. Configuration Handlers
+  // 7. Transform path configs into a lookup map for ClientRingMap
+  const segmentConfigMap = useMemo(() => {
+     const map: Record<string, PathConfigForMap> = {};
+     pathConfigs?.forEach(p => {
+         // Create bidirectional keys
+         const key1 = `${p.start_node_id}-${p.end_node_id}`;
+         const key2 = `${p.end_node_id}-${p.start_node_id}`;
+         
+         // Fix TS Error: Handle array return from Supabase join
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const sourceSys = p.source_system as any;
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const destSys = p.destination_system as any;
+
+         const config: PathConfigForMap = {
+            source: (Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name) ?? undefined,
+            sourcePort: p.source_port ?? undefined,
+            dest: (Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name) ?? undefined,
+            destPort: p.destination_port ?? undefined,
+        };
+       map[key1] = config;
+       map[key2] = config;
+     });
+     return map;
+  }, [pathConfigs]);
+
+  // 8. Handlers
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
     const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
@@ -5554,10 +5654,8 @@ export default function RingMapPage() {
 
     let newDisabled = [...currentDisabled];
     if (isCurrentlyDisabled) {
-      // Re-enable: Remove both permutations
       newDisabled = newDisabled.filter(k => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`);
     } else {
-      // Disable: Add key
       newDisabled.push(key);
     }
 
@@ -5600,6 +5698,7 @@ export default function RingMapPage() {
         dashedLines={spurConnections}
         onBack={handleBack}
         showControls={true}
+        segmentConfigs={segmentConfigMap}
       />
     );
   };
@@ -5639,7 +5738,6 @@ export default function RingMapPage() {
         {renderContent()}
       </div>
 
-      {/* Topology Configuration Modal */}
       <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
         <div className="p-4 space-y-4 z-50">
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
@@ -6624,165 +6722,6 @@ export default function LookupTypesPage() {
         message={deleteModal.message}
         type='danger'
         loading={deleteModal.loading}
-      />
-    </div>
-  );
-}
-```
-
-<!-- path: app/dashboard/system-paths/page.tsx -->
-```typescript
-// path: app/dashboard/systems/[id]/page.tsx
-
-"use client";
-
-import { useState, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { useTableRecord } from '@/hooks/database';
-import { PageSpinner, Button, SearchableSelect, ConfirmModal } from '@/components/common/ui';
-import { PageHeader } from '@/components/common/page-header';
-import { GitBranch, ChevronsRight, RefreshCw, ZapOff } from 'lucide-react';
-import { useRingsForSelection, useRingConnectionPaths, useGenerateRingPaths, useDeprovisionPath } from '@/hooks/database/ring-provisioning-hooks';
-import { RingProvisioningModal } from '@/components/systems/RingProvisioningModal';
-import { toast } from 'sonner';
-import { Logical_pathsRowSchema } from '@/schemas/zod-schemas';
-
-type PathWithNodes = Logical_pathsRowSchema & { start_node: { name: string } | null, end_node: { name: string } | null };
-
-export default function SystemConnectionsPage() {
-  const params = useParams();
-  const router = useRouter();
-  const systemId = params.id as string;
-  const [selectedRingId, setSelectedRingId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPath, setSelectedPath] = useState<PathWithNodes | null>(null);
-
-  // State for the deprovision confirmation modal
-  const [isDeprovisionModalOpen, setDeprovisionModalOpen] = useState(false);
-  const [pathToDeprovision, setPathToDeprovision] = useState<PathWithNodes | null>(null);
-
-  const { data: system, isLoading: isLoadingSystem } = useTableRecord(createClient(), 'systems', systemId);
-  const { data: rings = [], isLoading: isLoadingRings } = useRingsForSelection();
-  const { data: paths = [], refetch: refetchPaths, isLoading: isLoadingPaths } = useRingConnectionPaths(selectedRingId);
-  const generatePathsMutation = useGenerateRingPaths();
-  const deprovisionMutation = useDeprovisionPath();
-
-  const ringOptions = useMemo(() => rings.map(r => ({ value: r.id, label: r.name })), [rings]);
-
-  const handleGeneratePaths = useCallback(() => {
-    if (!selectedRingId) {
-      toast.error("Please select a ring first.");
-      return;
-    }
-    generatePathsMutation.mutate(selectedRingId);
-  }, [selectedRingId, generatePathsMutation]);
-
-  const handleProvisionClick = useCallback((path: PathWithNodes) => {
-    setSelectedPath(path);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleDeprovisionClick = useCallback((path: PathWithNodes) => {
-    setPathToDeprovision(path);
-    setDeprovisionModalOpen(true);
-  }, []);
-
-  const handleConfirmDeprovision = useCallback(() => {
-    if (!pathToDeprovision) return;
-    // THE FIX: The payload now correctly passes only the logical path ID.
-    deprovisionMutation.mutate({ logicalPathId: pathToDeprovision.id }, {
-      onSuccess: () => {
-        setDeprovisionModalOpen(false);
-        setPathToDeprovision(null);
-        refetchPaths();
-      }
-    });
-  }, [pathToDeprovision, deprovisionMutation, refetchPaths]);
-
-  const isLoading = isLoadingSystem || isLoadingRings;
-  if (isLoading) return <PageSpinner text="Loading provisioning details..." />;
-
-  return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        title="Ring Path Provisioning"
-        description={`Configure fiber paths for system: ${system?.system_name || '...'}`}
-        icon={<GitBranch />}
-        actions={[
-          { label: "Back to Systems", onClick: () => router.push('/dashboard/systems'), variant: 'outline' }
-        ]}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-4 p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm">
-          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">1. Select Ring</h3>
-          <SearchableSelect
-            options={ringOptions}
-            value={selectedRingId}
-            onChange={setSelectedRingId}
-            placeholder="Select a ring..."
-            clearable
-          />
-          <Button onClick={handleGeneratePaths} disabled={!selectedRingId || generatePathsMutation.isPending} className="w-full">
-            {generatePathsMutation.isPending ? 'Generating...' : 'Generate/Refresh Paths'}
-          </Button>
-        </div>
-
-        <div className="md:col-span-2 space-y-4 p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">2. Provision Paths</h3>
-            <Button onClick={() => refetchPaths()} variant="ghost" size="sm" disabled={!selectedRingId || isLoadingPaths}>
-              <RefreshCw className={`w-4 h-4 ${isLoadingPaths ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
-          <div className="border rounded-lg max-h-[60vh] overflow-y-auto">
-            {isLoadingPaths ? <PageSpinner text="Loading paths..."/> : paths.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <p>{selectedRingId ? "No paths found or generated. Click the button to generate." : "Select a ring to see connection paths."}</p>
-              </div>
-            ) : (
-              (paths as PathWithNodes[]).map(path => (
-                <div key={path.id} className="flex items-center justify-between p-4 border-b dark:border-gray-700 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{path.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                      {path.start_node?.name} <ChevronsRight className="inline mx-2 h-4 w-4" /> {path.end_node?.name}
-                    </p>
-                  </div>
-                  {path.status === 'provisioned' ? (
-                    <Button variant="danger" onClick={() => handleDeprovisionClick(path)} leftIcon={<ZapOff className="w-4 h-4" />}>
-                        Deprovision
-                    </Button>
-                  ) : (
-                    <Button variant="primary" onClick={() => handleProvisionClick(path)}>
-                        Provision
-                    </Button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {systemId && (
-        <RingProvisioningModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          logicalPath={selectedPath}
-          systemId={systemId}
-        />
-      )}
-
-      <ConfirmModal
-        isOpen={isDeprovisionModalOpen}
-        onConfirm={handleConfirmDeprovision}
-        onCancel={() => setDeprovisionModalOpen(false)}
-        title="Confirm De-provisioning"
-        message={`Are you sure you want to de-provision the system from path "${pathToDeprovision?.name}"? All fibers assigned to this system will be released.`}
-        type="danger"
-        loading={deprovisionMutation.isPending}
       />
     </div>
   );
@@ -8750,7 +8689,7 @@ import { useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
-import { FaNetworkWired } from 'react-icons/fa';
+import { FaNetworkWired, FaRoute } from 'react-icons/fa';
 import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
@@ -9333,6 +9272,24 @@ export default function RingManagerPage() {
     }),
     detailFields: [
       ...ringConfig.detailFields,
+      {
+        key: 'id',
+        label: 'Path Management', // New Section
+        type: 'custom' as const,
+        render: (_value: unknown, entity: RingEntity) => {
+            return (
+                <Button 
+                    size="sm" 
+                    variant="primary" 
+                    className="w-full mb-4"
+                    leftIcon={<FaRoute />}
+                    onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}
+                >
+                    Manage Logical Paths
+                </Button>
+            );
+        }
+      },
       {
         key: 'id',
         label: 'Associated Systems',
@@ -10217,6 +10174,366 @@ export default function DesignationManagerPage() {
         showIcon
         loading={deleteManager.isPending}
       />
+    </div>
+  );
+}
+```
+
+<!-- path: app/dashboard/ring-paths/[ringId]/page.tsx -->
+```typescript
+// path: app/dashboard/rings/[id]/page.tsx
+'use client';
+
+import { useMemo, useCallback, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
+import dynamic from 'next/dynamic';
+import { localDb } from '@/hooks/data/localDb';
+import { PageSpinner, Modal, Button } from '@/components/common/ui';
+import { PageHeader } from '@/components/common/page-header';
+import { RingMapNode } from '@/components/map/types/node';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { createClient } from '@/utils/supabase/client';
+import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
+import MeshDiagram from '@/components/map/MeshDiagram';
+import { toast } from 'sonner';
+import { Json } from '@/types/supabase-types';
+import { useQuery } from '@tanstack/react-query';
+
+const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
+  ssr: false,
+  loading: () => <PageSpinner text="Loading Map..." />,
+});
+
+// Extended type for the new column
+type ExtendedRingDetails = V_ringsRowSchema & {
+  topology_config?: {
+    disabled_segments?: string[]; // Array of "idA-idB" strings
+  } | null;
+};
+
+// Local interface for Map Path Configuration
+// FIX: Removed '| null' to match ClientRingMap's expected type (string | undefined)
+interface PathConfig {
+  source?: string;
+  sourcePort?: string;
+  dest?: string;
+  destPort?: string;
+}
+
+const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
+  if (node.id == null || node.name == null) return null;
+  return {
+    id: node.id,
+    ring_id: node.ring_id,
+    name: node.name,
+    lat: node.lat,
+    long: node.long,
+    order_in_ring: node.order_in_ring,
+    type: node.type!,
+    system_type: node.system_type,
+    ring_status: node.ring_status,
+    system_status: node.system_status,
+    ring_name: node.ring_name,
+    ip: node.ip,
+    remark: node.remark,
+    is_hub: node.is_hub,
+    system_type_code: node.system_type_code,
+    system_node_name: node.system_node_name,
+  };
+};
+
+export default function RingMapPage() {
+  const params = useParams();
+  const router = useRouter();
+  const ringId = params.id as string;
+  const supabase = createClient();
+  
+  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+  // 1. Fetch Ring Details
+  const { data: ringDetailsData, isLoading: isLoadingRingDetails, refetch: refetchRing } = useTableRecord(
+    supabase,
+    'v_rings',
+    ringId
+  );
+  const ringDetails = ringDetailsData as ExtendedRingDetails | null;
+
+  // 2. Mutation
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
+    onSuccess: () => {
+      toast.success("Topology configuration saved");
+      refetchRing();
+      setIsConfigModalOpen(false);
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`)
+  });
+
+  // 3. Fetch Nodes
+  const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
+    ['ring-nodes-detail', ringId],
+    async () => {
+      if (!ringId) return [];
+      const rpcFilters = buildRpcFilters({ ring_id: ringId });
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ring_nodes',
+        p_limit: 1000,
+        p_offset: 0,
+        p_filters: rpcFilters,
+        p_order_by: 'order_in_ring',
+        p_order_dir: 'asc',
+      });
+      if (error) throw error;
+      return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
+    },
+    async () => {
+      if (!ringId) return [];
+      return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
+    },
+    { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
+  );
+  
+  const mappedNodes = useMemo((): RingMapNode[] => {
+    if (!rawNodes) return [];
+    return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
+  }, [rawNodes]);
+
+  // 4. Fetch Logical Path configurations for this ring (For Map Tooltips)
+  const { data: pathConfigs } = useQuery({
+    queryKey: ['ring-path-config', ringId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('logical_paths')
+        .select(`
+           start_node_id, 
+           end_node_id, 
+           source_system:source_system_id(system_name), 
+           source_port, 
+           destination_system:destination_system_id(system_name), 
+           destination_port
+        `)
+        .eq('ring_id', ringId);
+      if (error) return [];
+      return data;
+    },
+    enabled: !!ringId
+  });
+
+  // 5. Calculate Potential Segments
+  const { potentialSegments, spurConnections } = useMemo(() => {
+    if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
+
+    const hubs = mappedNodes
+      .filter((node) => node.is_hub)
+      .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+    
+    const spokes = mappedNodes.filter((node) => !node.is_hub);
+    const segments: Array<[RingMapNode, RingMapNode]> = [];
+    
+    if (hubs.length > 1) {
+      hubs.forEach((hub, index) => {
+        const nextIndex = (index + 1) % hubs.length;
+        segments.push([hub, hubs[nextIndex]]);
+      });
+    } else {
+       // Fallback for no-hubs scenarios
+       const allNodes = [...mappedNodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+       if (allNodes.length > 1) {
+         allNodes.forEach((node, index) => {
+            const nextIndex = (index + 1) % allNodes.length;
+            segments.push([node, allNodes[nextIndex]]);
+         });
+       }
+    }
+
+    const spurs: Array<[RingMapNode, RingMapNode]> = [];
+    const hubMapByOrder = new Map<number, RingMapNode>();
+    hubs.forEach(h => { if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h); });
+
+    spokes.forEach((spoke) => {
+      const parentOrder = Math.floor(spoke.order_in_ring || 0);
+      const parentHub = hubMapByOrder.get(parentOrder);
+      if (parentHub) spurs.push([parentHub, spoke]);
+    });
+
+    return { potentialSegments: segments, spurConnections: spurs };
+  }, [mappedNodes]);
+
+  // 6. Filter Segments based on DB Config
+  const activeSegments = useMemo(() => {
+    const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
+    return potentialSegments.filter(([start, end]) => {
+      const key1 = `${start.id}-${end.id}`;
+      const key2 = `${end.id}-${start.id}`;
+      return !disabledKeys.has(key1) && !disabledKeys.has(key2);
+    });
+  }, [potentialSegments, ringDetails]);
+
+  const allConnections = useMemo(() => [...activeSegments, ...spurConnections], [activeSegments, spurConnections]);
+
+  // 7. Transform path configs into a lookup map for ClientRingMap
+  const segmentConfigMap = useMemo(() => {
+     const map: Record<string, PathConfig> = {};
+     pathConfigs?.forEach(p => {
+         // Create bidirectional keys
+         const key1 = `${p.start_node_id}-${p.end_node_id}`;
+         const key2 = `${p.end_node_id}-${p.start_node_id}`;
+         
+         // Handle potential array response for joined relations
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const sourceSys = p.source_system as any;
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const destSys = p.destination_system as any;
+
+         const sourceName = Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name;
+         const destName = Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name;
+
+         // FIX: Convert nulls to undefined
+         const config: PathConfig = {
+             source: sourceName || undefined,
+             sourcePort: p.source_port || undefined,
+             dest: destName || undefined,
+             destPort: p.destination_port || undefined
+         };
+         map[key1] = config;
+         map[key2] = config;
+     });
+     return map;
+  }, [pathConfigs]);
+
+  // 8. Handlers
+  const handleToggleSegment = (startId: string, endId: string) => {
+    const key = `${startId}-${endId}`;
+    const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
+    const isCurrentlyDisabled = currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
+
+    let newDisabled = [...currentDisabled];
+    if (isCurrentlyDisabled) {
+      newDisabled = newDisabled.filter(k => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`);
+    } else {
+      newDisabled.push(key);
+    }
+
+    const newConfig = { 
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}), 
+      disabled_segments: newDisabled 
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
+  };
+
+  const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  const renderContent = () => {
+    const isLoading = isLoadingNodes || isLoadingRingDetails;
+    if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
+    
+    if (mappedNodes.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No nodes found.</p>
+        </div>
+      );
+    }
+    
+    if (viewMode === 'schematic') {
+      return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
+    }
+
+    const mapNodes = mappedNodes.filter(n => n.lat != null && n.long != null);
+    if (mapNodes.length === 0) {
+       return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
+    }
+
+    return (
+      <ClientRingMap
+        nodes={mapNodes}
+        solidLines={activeSegments}
+        dashedLines={spurConnections}
+        onBack={handleBack}
+        showControls={true}
+        segmentConfigs={segmentConfigMap}
+      />
+    );
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
+      <div className="flex-shrink-0">
+        <PageHeader
+          title={ringName}
+          description="Visualize and configure topology."
+          icon={<FiMap />}
+          actions={[
+            {
+              label: 'Configure Topology',
+              onClick: () => setIsConfigModalOpen(true),
+              variant: 'primary',
+              leftIcon: <FiSettings />,
+              disabled: isLoadingRingDetails || isUpdating
+            },
+            {
+              label: viewMode === 'map' ? 'Schematic View' : 'Map View',
+              onClick: () => setViewMode(prev => prev === 'map' ? 'schematic' : 'map'),
+              variant: 'secondary',
+              leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
+            },
+            {
+              label: 'Back',
+              onClick: handleBack,
+              variant: 'outline',
+              leftIcon: <FiArrowLeft />,
+            },
+          ]}
+        />
+      </div>
+      
+      <div className="flex-grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
+        {renderContent()}
+      </div>
+
+      <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
+        <div className="p-4 space-y-4 z-50">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Toggle the switches below to enable or disable specific connections between hubs.
+          </p>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {potentialSegments.map(([start, end], idx) => {
+               const key = `${start.id}-${end.id}`;
+               const reverseKey = `${end.id}-${start.id}`;
+               const disabledList = ringDetails?.topology_config?.disabled_segments || [];
+               const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
+
+               return (
+                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
+                        {start.name} ↔ {end.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                         Order: {start.order_in_ring} ↔ {end.order_in_ring}
+                      </span>
+                    </div>
+                    <Button
+                        size="xs"
+                        variant={isActive ? 'success' : 'secondary'}
+                        onClick={() => handleToggleSegment(start.id!, end.id!)}
+                        disabled={isUpdating}
+                    >
+                        {isActive ? 'Connected' : 'Disconnected'}
+                    </Button>
+                 </div>
+               );
+            })}
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setIsConfigModalOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -23472,20 +23789,20 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_terminal_id: "maintenance_terminal_id",
     ring_type_id: "ring_type_id",
   },
-  v_system_ring_paths_detailed: {
-    created_at: "created_at",
-    end_node_id: "end_node_id",
-    end_node_name: "end_node_name",
-    id: "id",
-    logical_path_id: "logical_path_id",
-    ofc_cable_id: "ofc_cable_id",
-    path_name: "path_name",
-    path_order: "path_order",
-    route_name: "route_name",
-    source_system_id: "source_system_id",
-    start_node_id: "start_node_id",
-    start_node_name: "start_node_name",
-  },
+  // v_system_ring_paths_detailed: {
+  //   created_at: "created_at",
+  //   end_node_id: "end_node_id",
+  //   end_node_name: "end_node_name",
+  //   id: "id",
+  //   logical_path_id: "logical_path_id",
+  //   ofc_cable_id: "ofc_cable_id",
+  //   path_name: "path_name",
+  //   path_order: "path_order",
+  //   route_name: "route_name",
+  //   source_system_id: "source_system_id",
+  //   start_node_id: "start_node_id",
+  //   start_node_name: "start_node_name",
+  // },
   v_cable_segments_at_jc: {
     end_node_id: "end_node_id",
     fiber_count: "fiber_count",
@@ -23646,7 +23963,7 @@ export const VIEWS = {
   v_maintenance_areas: "v_maintenance_areas",
   v_employees: "v_employees",
   v_rings: "v_rings",
-  v_system_ring_paths_detailed: "v_system_ring_paths_detailed",
+  // v_system_ring_paths_detailed: "v_system_ring_paths_detailed",
   v_cable_segments_at_jc: "v_cable_segments_at_jc",
   v_junction_closures_complete: "v_junction_closures_complete",
   v_ring_nodes: "v_ring_nodes",
@@ -23976,28 +24293,28 @@ GROUP BY
 
 
 -- View showing detailed segments for a given logical path.
-CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_invoker = true) AS
-SELECT
-  srp.id,
-  srp.logical_path_id,
-  lp.path_name,
-  lp.source_system_id,
-  srp.ofc_cable_id,
-  srp.path_order,
-  oc.route_name,
-  oc.sn_id AS start_node_id,
-  sn.name AS start_node_name,
-  oc.en_id AS end_node_id,
-  en.name AS end_node_name,
-  srp.created_at
-FROM public.logical_path_segments srp
-JOIN public.logical_fiber_paths lp ON srp.logical_path_id = lp.id
-JOIN public.ofc_cables oc ON srp.ofc_cable_id = oc.id
-LEFT JOIN public.nodes sn ON oc.sn_id = sn.id
-LEFT JOIN public.nodes en ON oc.en_id = en.id
-ORDER BY
-  srp.logical_path_id,
-  srp.path_order;
+-- CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_invoker = true) AS
+-- SELECT
+--   srp.id,
+--   srp.logical_path_id,
+--   lp.path_name,
+--   lp.source_system_id,
+--   srp.ofc_cable_id,
+--   srp.path_order,
+--   oc.route_name,
+--   oc.sn_id AS start_node_id,
+--   sn.name AS start_node_name,
+--   oc.en_id AS end_node_id,
+--   en.name AS end_node_name,
+--   srp.created_at
+-- FROM public.logical_path_segments srp
+-- JOIN public.logical_fiber_paths lp ON srp.logical_path_id = lp.id
+-- JOIN public.ofc_cables oc ON srp.ofc_cable_id = oc.id
+-- LEFT JOIN public.nodes sn ON oc.sn_id = sn.id
+-- LEFT JOIN public.nodes en ON oc.en_id = en.id
+-- ORDER BY
+--   srp.logical_path_id,
+--   srp.path_order;
 
 
 -- View for calculating fiber utilization per cable.
@@ -24895,7 +25212,7 @@ BEGIN
   -- CORRECTED: Added grants for specific admin roles to all relevant views in this module.
   GRANT SELECT ON public.v_junction_closures_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
+  -- GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   
@@ -26103,15 +26420,15 @@ GRANT EXECUTE ON FUNCTION public.disassociate_system_from_ring(UUID, UUID) TO au
 -- Section 3: Specialized Utility Functions (No Pagination)
 -- =================================================================
 
-CREATE OR REPLACE FUNCTION public.get_system_path_details(p_path_id UUID)
-RETURNS SETOF public.v_system_ring_paths_detailed LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM public.logical_fiber_paths lfp WHERE lfp.id = p_path_id AND EXISTS (SELECT 1 FROM public.systems s WHERE s.id = lfp.source_system_id)) THEN
-        RETURN;
-    END IF;
-    RETURN QUERY SELECT * FROM public.v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC;
-END; $$;
-GRANT EXECUTE ON FUNCTION public.get_system_path_details(UUID) TO authenticated;
+-- CREATE OR REPLACE FUNCTION public.get_system_path_details(p_path_id UUID)
+-- RETURNS SETOF public.v_system_ring_paths_detailed LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--     IF NOT EXISTS (SELECT 1 FROM public.logical_fiber_paths lfp WHERE lfp.id = p_path_id AND EXISTS (SELECT 1 FROM public.systems s WHERE s.id = lfp.source_system_id)) THEN
+--         RETURN;
+--     END IF;
+--     RETURN QUERY SELECT * FROM public.v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC;
+-- END; $$;
+-- GRANT EXECUTE ON FUNCTION public.get_system_path_details(UUID) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_continuous_available_fibers(p_path_id UUID)
 RETURNS TABLE(fiber_no INT) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -26145,54 +26462,54 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.find_cable_between_nodes(UUID, UUID) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.validate_ring_path(p_path_id UUID)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_segment_count INT;
-    v_first_segment RECORD;
-    v_last_segment RECORD;
-    v_is_continuous BOOLEAN;
-    v_is_closed_loop BOOLEAN;
-BEGIN
-    -- Count segments in the path
-    SELECT COUNT(*) INTO v_segment_count FROM logical_path_segments WHERE logical_path_id = p_path_id;
+-- CREATE OR REPLACE FUNCTION public.validate_ring_path(p_path_id UUID)
+-- RETURNS JSONB
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- SET search_path = public
+-- AS $$
+-- DECLARE
+--     v_segment_count INT;
+--     v_first_segment RECORD;
+--     v_last_segment RECORD;
+--     v_is_continuous BOOLEAN;
+--     v_is_closed_loop BOOLEAN;
+-- BEGIN
+--     -- Count segments in the path
+--     SELECT COUNT(*) INTO v_segment_count FROM logical_path_segments WHERE logical_path_id = p_path_id;
 
-    IF v_segment_count = 0 THEN
-        RETURN jsonb_build_object('status', 'empty', 'message', 'Path has no segments.');
-    END IF;
+--     IF v_segment_count = 0 THEN
+--         RETURN jsonb_build_object('status', 'empty', 'message', 'Path has no segments.');
+--     END IF;
 
-    -- Get first and last segments using the detailed view
-    SELECT * INTO v_first_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC LIMIT 1;
-    SELECT * INTO v_last_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order DESC LIMIT 1;
+--     -- Get first and last segments using the detailed view
+--     SELECT * INTO v_first_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC LIMIT 1;
+--     SELECT * INTO v_last_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order DESC LIMIT 1;
 
-    -- Check for continuity (every segment's start node matches the previous segment's end node)
-    SELECT NOT EXISTS (
-        SELECT 1
-        FROM v_system_ring_paths_detailed s1
-        LEFT JOIN v_system_ring_paths_detailed s2 ON s1.logical_path_id = s2.logical_path_id AND s2.path_order = s1.path_order + 1
-        WHERE s1.logical_path_id = p_path_id AND s2.id IS NOT NULL AND s1.end_node_id <> s2.start_node_id
-    ) INTO v_is_continuous;
+--     -- Check for continuity (every segment's start node matches the previous segment's end node)
+--     SELECT NOT EXISTS (
+--         SELECT 1
+--         FROM v_system_ring_paths_detailed s1
+--         LEFT JOIN v_system_ring_paths_detailed s2 ON s1.logical_path_id = s2.logical_path_id AND s2.path_order = s1.path_order + 1
+--         WHERE s1.logical_path_id = p_path_id AND s2.id IS NOT NULL AND s1.end_node_id <> s2.start_node_id
+--     ) INTO v_is_continuous;
 
-    IF NOT v_is_continuous THEN
-        RETURN jsonb_build_object('status', 'broken', 'message', 'Path is not continuous. A segment connection is mismatched.');
-    END IF;
+--     IF NOT v_is_continuous THEN
+--         RETURN jsonb_build_object('status', 'broken', 'message', 'Path is not continuous. A segment connection is mismatched.');
+--     END IF;
 
-    -- Check if the path forms a closed loop
-    v_is_closed_loop := v_first_segment.start_node_id = v_last_segment.end_node_id;
+--     -- Check if the path forms a closed loop
+--     v_is_closed_loop := v_first_segment.start_node_id = v_last_segment.end_node_id;
 
-    IF v_is_closed_loop THEN
-        RETURN jsonb_build_object('status', 'valid_ring', 'message', 'Path forms a valid closed-loop ring.');
-    ELSE
-        RETURN jsonb_build_object('status', 'open_path', 'message', 'Path is a valid point-to-point route but not a closed ring.');
-    END IF;
-END;
-$$;
+--     IF v_is_closed_loop THEN
+--         RETURN jsonb_build_object('status', 'valid_ring', 'message', 'Path forms a valid closed-loop ring.');
+--     ELSE
+--         RETURN jsonb_build_object('status', 'open_path', 'message', 'Path is a valid point-to-point route but not a closed ring.');
+--     END IF;
+-- END;
+-- $$;
 
-GRANT EXECUTE ON FUNCTION public.validate_ring_path(UUID) TO authenticated;
+-- GRANT EXECUTE ON FUNCTION public.validate_ring_path(UUID) TO authenticated;
 
 
 CREATE OR REPLACE FUNCTION public.deprovision_logical_path(p_path_id UUID)
@@ -28142,6 +28459,10 @@ CREATE TABLE IF NOT EXISTS public.logical_paths (
     ring_id UUID REFERENCES public.rings(id) ON DELETE CASCADE,
     start_node_id UUID REFERENCES public.nodes(id) ON DELETE SET NULL,
     end_node_id UUID REFERENCES public.nodes(id) ON DELETE SET NULL,
+    source_system_id UUID REFERENCES public.systems(id) ON DELETE SET NULL,
+    source_port TEXT,
+    destination_system_id UUID REFERENCES public.systems(id) ON DELETE SET NULL,
+    destination_port TEXT,
     status TEXT DEFAULT 'unprovisioned', -- e.g., unprovisioned, partially, provisioned
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -31439,6 +31760,216 @@ export function RingModal({
     </Modal>
   );
 }
+```
+
+<!-- path: components/rings/RingPathManagerModal.tsx -->
+```typescript
+// path: components/rings/RingPathManagerModal.tsx
+"use client";
+
+import React, { useMemo, useState, useEffect } from "react";
+import { Modal, Button, SearchableSelect } from "@/components/common/ui";
+import { createClient } from "@/utils/supabase/client";
+import { useTableQuery } from "@/hooks/database";
+import { useUpdateLogicalPathDetails } from "@/hooks/database/ring-provisioning-hooks";
+import { Logical_pathsRowSchema } from "@/schemas/zod-schemas";
+import { ArrowRight, Server, Cable } from "lucide-react";
+
+// Extended type to include joined data
+type ExtendedLogicalPath = Logical_pathsRowSchema & { 
+    start_node?: { name: string } | null; 
+    end_node?: { name: string } | null;
+    // New columns from migration
+    source_system_id?: string | null;
+    source_port?: string | null;
+    destination_system_id?: string | null;
+    destination_port?: string | null;
+};
+
+interface RingPathManagerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  path: ExtendedLogicalPath | null;
+}
+
+export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
+  isOpen,
+  onClose,
+  path,
+}) => {
+  const supabase = createClient();
+  const updatePathMutation = useUpdateLogicalPathDetails();
+
+  const [sourceSystemId, setSourceSystemId] = useState<string | null>(null);
+  const [sourcePort, setSourcePort] = useState<string | null>(null);
+  const [destSystemId, setDestSystemId] = useState<string | null>(null);
+  const [destPort, setDestPort] = useState<string | null>(null);
+
+  // --- FIX: Pre-fill data when modal opens ---
+  useEffect(() => {
+    if (isOpen && path) {
+      setSourceSystemId(path.source_system_id || null);
+      setSourcePort(path.source_port || null);
+      setDestSystemId(path.destination_system_id || null);
+      setDestPort(path.destination_port || null);
+    } else if (!isOpen) {
+        // Reset on close
+        setSourceSystemId(null);
+        setSourcePort(null);
+        setDestSystemId(null);
+        setDestPort(null);
+    }
+  }, [isOpen, path]);
+
+  // --- Fetch Systems for Start Node ---
+  const { data: sourceSystemsData } = useTableQuery(supabase, 'systems', {
+    columns: 'id, system_name, ip_address',
+    filters: { node_id: path?.start_node_id || '' },
+    enabled: !!path?.start_node_id
+  });
+
+  // --- Fetch Ports for Selected Source System ---
+  const { data: sourcePortsData } = useTableQuery(supabase, 'ports_management', {
+    columns: 'port, port_type_id',
+    filters: { system_id: sourceSystemId || '' },
+    enabled: !!sourceSystemId
+  });
+
+  // --- Fetch Systems for End Node ---
+  const { data: destSystemsData } = useTableQuery(supabase, 'systems', {
+    columns: 'id, system_name, ip_address',
+    filters: { node_id: path?.end_node_id || '' },
+    enabled: !!path?.end_node_id
+  });
+
+  // --- Fetch Ports for Selected Dest System ---
+  const { data: destPortsData } = useTableQuery(supabase, 'ports_management', {
+    columns: 'port, port_type_id',
+    filters: { system_id: destSystemId || '' },
+    enabled: !!destSystemId
+  });
+
+  const sourceSystemOptions = useMemo(() => 
+    (sourceSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })), 
+  [sourceSystemsData]);
+
+  const sourcePortOptions = useMemo(() => 
+    (sourcePortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })), 
+  [sourcePortsData]);
+
+  const destSystemOptions = useMemo(() => 
+    (destSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })), 
+  [destSystemsData]);
+
+  const destPortOptions = useMemo(() => 
+    (destPortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })), 
+  [destPortsData]);
+
+  const handleSave = () => {
+    if (!path?.id || !sourceSystemId || !sourcePort || !destSystemId || !destPort) return;
+
+    updatePathMutation.mutate({
+        pathId: path.id,
+        sourceSystemId,
+        sourcePort,
+        destinationSystemId: destSystemId,
+        destinationPort: destPort
+    }, {
+        onSuccess: () => onClose()
+    });
+  };
+
+  if (!isOpen || !path) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Configure Path Endpoints" size="lg">
+      <div className="space-y-6 p-4">
+        
+        {/* Visual Header */}
+        <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+            <div className="text-center flex-1">
+                <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 mb-2">
+                    <Server size={16} />
+                </div>
+                <p className="text-xs text-gray-500 uppercase font-bold">Start Node</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{path.start_node?.name}</p>
+            </div>
+            <div className="flex flex-col items-center px-4 text-gray-400">
+                 <span className="text-xs font-mono mb-1">Linked via</span>
+                 <Cable size={24} className="text-blue-500" />
+                 <ArrowRight size={16} className="mt-1" />
+            </div>
+            <div className="text-center flex-1">
+                <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-600 mb-2">
+                    <Server size={16} />
+                </div>
+                <p className="text-xs text-gray-500 uppercase font-bold">End Node</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{path.end_node?.name}</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Source Configuration */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300">Source Configuration</h4>
+                </div>
+                <SearchableSelect 
+                    label="System"
+                    options={sourceSystemOptions}
+                    value={sourceSystemId}
+                    onChange={setSourceSystemId}
+                    placeholder="Select System..."
+                />
+                <SearchableSelect 
+                    label="Interface / Port"
+                    options={sourcePortOptions}
+                    value={sourcePort}
+                    onChange={setSourcePort}
+                    placeholder="Select Port..."
+                    disabled={!sourceSystemId}
+                />
+            </div>
+
+            {/* Destination Configuration */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300">Destination Configuration</h4>
+                </div>
+                <SearchableSelect 
+                    label="System"
+                    options={destSystemOptions}
+                    value={destSystemId}
+                    onChange={setDestSystemId}
+                    placeholder="Select System..."
+                />
+                <SearchableSelect 
+                    label="Interface / Port"
+                    options={destPortOptions}
+                    value={destPort}
+                    onChange={setDestPort}
+                    placeholder="Select Port..."
+                    disabled={!destSystemId}
+                />
+            </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button 
+                onClick={handleSave} 
+                disabled={!sourceSystemId || !sourcePort || !destSystemId || !destPort || updatePathMutation.isPending}
+                variant="primary"
+            >
+                {updatePathMutation.isPending ? "Saving..." : "Save Configuration"}
+            </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 ```
 
 <!-- path: components/rings/RingSystemsModal.tsx -->
@@ -38006,10 +38537,18 @@ import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 
+// --- Interfaces ---
+
+interface PathConfig {
+  source?: string;
+  sourcePort?: string;
+  dest?: string;
+  destPort?: string;
+}
+
 // --- Rate Limiter for ORS API ---
-// Simple singleton queue to prevent 429s
 let fetchChain: Promise<void> = Promise.resolve();
-const requestDelay = 1600; 
+const requestDelay = 1600;
 
 const rateLimitedFetchDistance = async (start: MapNode, end: MapNode) => {
   const makeRequest = async () => {
@@ -38022,13 +38561,11 @@ const rateLimitedFetchDistance = async (start: MapNode, end: MapNode) => {
     return response.json();
   };
 
-  // Chain requests
   const resultPromise = fetchChain.then(makeRequest);
-  
-  // Add delay for the next request in the chain
+
   fetchChain = resultPromise
-    .then(() => new Promise<void>(res => setTimeout(res, requestDelay)))
-    .catch(() => new Promise<void>(res => setTimeout(res, requestDelay)));
+    .then(() => new Promise<void>((res) => setTimeout(res, requestDelay)))
+    .catch(() => new Promise<void>((res) => setTimeout(res, requestDelay)));
 
   return resultPromise;
 };
@@ -38039,35 +38576,50 @@ interface ConnectionLineProps {
   end: MapNode;
   type: 'solid' | 'dashed';
   theme: string;
-  showPopup: boolean; // Controlled by parent "Show All"
+  showPopup: boolean;
   setPolylineRef: (key: string, el: L.Polyline | null) => void;
+  config?: PathConfig; // Added config prop
 }
 
-const ConnectionLine = ({ start, end, type, theme, showPopup, setPolylineRef }: ConnectionLineProps) => {
-  // We track if the popup has been opened by the user OR by the "Show All" toggle
+const ConnectionLine = ({
+  start,
+  end,
+  type,
+  theme,
+  showPopup,
+  setPolylineRef,
+  config,
+}: ConnectionLineProps) => {
   const [isInteracted, setIsInteracted] = useState(false);
-
-  // Trigger fetch if explicitly shown or user interacted
   const shouldFetch = showPopup || isInteracted;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => rateLimitedFetchDistance(start, end),
-    enabled: shouldFetch, // Lazy load!
+    enabled: shouldFetch,
     staleTime: Infinity,
   });
 
-  const color = type === 'solid' 
-    ? (theme === 'dark' ? '#3b82f6' : '#2563eb') 
-    : (theme === 'dark' ? '#ef4444' : '#dc2626');
-    
-  const distanceText = isLoading 
-    ? <span className="flex items-center gap-2 text-gray-500"><ButtonSpinner size="xs"/> Calculating...</span> 
-    : isError 
-      ? <span className="text-red-500">Calculation failed</span> 
-      : data?.distance_km 
-        ? <span className="font-bold">{data.distance_km} km</span> 
-        : 'N/A';
+  const color =
+    type === 'solid'
+      ? theme === 'dark'
+        ? '#3b82f6'
+        : '#2563eb'
+      : theme === 'dark'
+      ? '#ef4444'
+      : '#dc2626';
+
+  const distanceText = isLoading ? (
+    <span className="flex items-center gap-2 text-gray-500 text-xs">
+      <ButtonSpinner size="xs" /> Calc...
+    </span>
+  ) : isError ? (
+    <span className="text-red-500 text-xs">Failed</span>
+  ) : data?.distance_km ? (
+    <span className="font-bold">{data.distance_km} km</span>
+  ) : (
+    'N/A'
+  );
 
   return (
     <Polyline
@@ -38078,9 +38630,8 @@ const ConnectionLine = ({ start, end, type, theme, showPopup, setPolylineRef }: 
       color={color}
       weight={type === 'solid' ? 3 : 2.5}
       opacity={type === 'solid' ? 1 : 0.7}
-      dashArray={type === 'dashed' ? "6" : undefined}
+      dashArray={type === 'dashed' ? '6' : undefined}
       eventHandlers={{
-        // When user clicks, we flag interaction to trigger fetch
         click: () => setIsInteracted(true),
         popupopen: () => setIsInteracted(true),
       }}
@@ -38091,22 +38642,55 @@ const ConnectionLine = ({ start, end, type, theme, showPopup, setPolylineRef }: 
         closeOnClick={false}
         className={theme === 'dark' ? 'dark-popup' : ''}
       >
-        <div className="text-sm min-w-[150px]">
-          <div className="font-semibold mb-1 border-b border-gray-200 dark:border-gray-700 pb-1">
-             {type === 'solid' ? 'Main Route' : 'Spur Connection'}
+        <div className="text-sm min-w-[200px]">
+          <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300">
+            {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
           </div>
-          <div className="flex flex-col gap-1">
+
+          {/* Provisioned Info Block */}
+          {config && (config.source || config.dest) ? (
+            <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800">
+              <div className="text-[10px] font-bold text-blue-600 dark:text-blue-300 uppercase mb-1 tracking-wider">
+                Logical Path
+              </div>
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                <span className="text-gray-500 dark:text-gray-400 text-right font-medium">A:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {config.source}{' '}
+                  <span className="text-blue-600 dark:text-blue-400 font-bold">
+                    ::{config.sourcePort}
+                  </span>
+                </span>
+
+                <span className="text-gray-500 dark:text-gray-400 text-right font-medium">B:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {config.dest}{' '}
+                  <span className="text-blue-600 dark:text-blue-400 font-bold">
+                    ::{config.destPort}
+                  </span>
+                </span>
+              </div>
+            </div>
+          ) : (
+            type === 'solid' && (
+              <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-1 rounded text-center">
+                Not provisioned
+              </div>
+            )
+          )}
+
+          <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
             <div className="flex justify-between">
-              <span className="text-gray-500">From:</span>
-              <span>{start.name}</span>
+              <span>From:</span>
+              <span className="font-medium text-gray-900 dark:text-white">{start.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">To:</span>
-              <span>{end.name}</span>
+              <span>To:</span>
+              <span className="font-medium text-gray-900 dark:text-white">{end.name}</span>
             </div>
             <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-               <span className="text-gray-500">Road Dist:</span>
-               {distanceText}
+              <span>Road Dist:</span>
+              <span className="font-medium text-gray-900 dark:text-white">{distanceText}</span>
             </div>
           </div>
         </div>
@@ -38115,20 +38699,19 @@ const ConnectionLine = ({ start, end, type, theme, showPopup, setPolylineRef }: 
   );
 };
 
-// --- Main Component Props ---
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
   dashedLines?: Array<[RingMapNode, RingMapNode]>;
-  // distances prop REMOVED
   highlightedNodeIds?: string[];
   onNodeClick?: (nodeId: string) => void;
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
+  segmentConfigs?: Record<string, PathConfig>; // Added prop
 }
 
-// ... MapController, FullscreenControl, MapFlyToController remain the same ...
+// ... MapController, FullscreenControl, MapFlyToController remain identical ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -38138,12 +38721,21 @@ const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   return null;
 };
 
-const FullscreenControl = ({ isFullScreen, setIsFullScreen }: { isFullScreen: boolean; setIsFullScreen: (fs: boolean) => void; }) => {
+const FullscreenControl = ({
+  isFullScreen,
+  setIsFullScreen,
+}: {
+  isFullScreen: boolean;
+  setIsFullScreen: (fs: boolean) => void;
+}) => {
   const map = useMap();
   useEffect(() => {
     const Fullscreen = L.Control.extend({
       onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        const container = L.DomUtil.create(
+          'div',
+          'leaflet-bar leaflet-control leaflet-control-custom'
+        );
         container.style.backgroundColor = 'white';
         container.style.color = 'black';
         container.style.width = '34px';
@@ -38165,9 +38757,13 @@ const FullscreenControl = ({ isFullScreen, setIsFullScreen }: { isFullScreen: bo
         return container;
       },
     });
-    const control = new Fullscreen({ position: "topleft" });
-    map.whenReady(() => { control.addTo(map); });
-    return () => { control.remove(); };
+    const control = new Fullscreen({ position: 'topleft' });
+    map.whenReady(() => {
+      control.addTo(map);
+    });
+    return () => {
+      control.remove();
+    };
   }, [map, isFullScreen, setIsFullScreen]);
   return null;
 };
@@ -38191,6 +38787,7 @@ export default function ClientRingMap({
   onNodeClick,
   flyToCoordinates = null,
   showControls = false,
+  segmentConfigs = {},
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -38201,18 +38798,15 @@ export default function ClientRingMap({
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
-  // Helper to register refs from the sub-component
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
-      if (el) {
-          polylineRefs.current[key] = el;
-          // If "Show All" is active, open popup immediately on mount
-          if (showAllLinePopups) el.openPopup();
-      } else {
-          delete polylineRefs.current[key];
-      }
+    if (el) {
+      polylineRefs.current[key] = el;
+      if (showAllLinePopups) el.openPopup();
+    } else {
+      delete polylineRefs.current[key];
+    }
   };
 
-  // ... (popupOffsets and nodeLabelDirections useMemos remain unchanged) ...
   const popupOffsets = useMemo(() => {
     const groups: Record<string, string[]> = {};
     nodes.forEach((node) => {
@@ -38240,11 +38834,11 @@ export default function ClientRingMap({
   const nodeLabelDirections = useMemo(() => {
     const directions = new Map<string, 'left' | 'right'>();
     if (nodes.length < 2) return directions;
-    const validNodes = nodes.filter(n => n.long != null && isFinite(n.long as number));
+    const validNodes = nodes.filter((n) => n.long != null && isFinite(n.long as number));
     if (validNodes.length === 0) return directions;
-    const lngs = validNodes.map(n => n.long as number);
+    const lngs = validNodes.map((n) => n.long as number);
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-    validNodes.forEach(node => {
+    validNodes.forEach((node) => {
       if (node.id) {
         const direction = (node.long as number) < centerLng ? 'left' : 'right';
         directions.set(node.id, direction);
@@ -38254,7 +38848,9 @@ export default function ClientRingMap({
   }, [nodes]);
 
   useEffect(() => {
-    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: () => string; };
+    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
+      _getIconUrl?: () => string;
+    };
     delete iconPrototype._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -38277,18 +38873,26 @@ export default function ClientRingMap({
 
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
-    const validNodes = nodes.filter((n) => n.lat !== null && n.long !== null && typeof n.lat === 'number' && typeof n.long === 'number');
+    const validNodes = nodes.filter(
+      (n) =>
+        n.lat !== null && n.long !== null && typeof n.lat === 'number' && typeof n.long === 'number'
+    );
     if (validNodes.length === 0) return null;
     const lats = validNodes.map((n) => n.lat as number);
     const lngs = validNodes.map((n) => n.long as number);
-    return new LatLngBounds([Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]);
+    return new LatLngBounds(
+      [Math.min(...lats), Math.min(...lngs)],
+      [Math.max(...lats), Math.max(...lngs)]
+    );
   }, [nodes]);
 
   if (nodes.length === 0) return <div className="py-10 text-center">No nodes to display</div>;
 
   const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const mapAttribution = '&copy; OpenStreetMap contributors &copy; CARTO';
-  const mapContainerClass = isFullScreen ? 'fixed inset-0 z-[100]' : 'relative h-full w-full rounded-lg overflow-hidden';
+  const mapContainerClass = isFullScreen
+    ? 'fixed inset-0 z-[100]'
+    : 'relative h-full w-full rounded-lg overflow-hidden';
 
   return (
     <div className={mapContainerClass}>
@@ -38296,15 +38900,24 @@ export default function ClientRingMap({
       {showControls && (
         <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
           {onBack && (
-            <button onClick={onBack} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
+            <button
+              onClick={onBack}
+              className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+            >
               ← Back
             </button>
           )}
-          <button onClick={() => setShowAllNodePopups(!showAllNodePopups)} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
+          <button
+            onClick={() => setShowAllNodePopups(!showAllNodePopups)}
+            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+          >
             <span className={showAllNodePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
             {showAllNodePopups ? 'Hide' : 'Show'} Node Info
           </button>
-          <button onClick={() => setShowAllLinePopups(!showAllLinePopups)} className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors">
+          <button
+            onClick={() => setShowAllLinePopups(!showAllLinePopups)}
+            className="px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors"
+          >
             <span className={showAllLinePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
             {showAllLinePopups ? 'Hide' : 'Show'} Line Info
           </button>
@@ -38325,21 +38938,38 @@ export default function ClientRingMap({
         <TileLayer url={mapUrl} attribution={mapAttribution} />
 
         {solidLines
-          .filter(([start, end]) => start.lat !== null && start.long !== null && end.lat !== null && end.long !== null)
-          .map(([start, end], i) => (
-            <ConnectionLine
-              key={`solid-${start.id}-${end.id}-${i}`}
-              start={start}
-              end={end}
-              type="solid"
-              theme={theme}
-              showPopup={showAllLinePopups}
-              setPolylineRef={setPolylineRef}
-            />
-          ))}
+          .filter(
+            ([start, end]) =>
+              start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
+          )
+          .map(([start, end], i) => {
+            // Match key by sorting IDs so A-B matches B-A
+            const key1 = `${start.id}-${end.id}`;
+            const key2 = `${end.id}-${start.id}`;
+            const config = segmentConfigs[key1] || segmentConfigs[key2];
+
+            return (
+              <ConnectionLine
+                key={`solid-${start.id}-${end.id}-${i}`}
+                start={start}
+                end={end}
+                type="solid"
+                theme={theme}
+                showPopup={showAllLinePopups}
+                setPolylineRef={setPolylineRef}
+                config={config}
+              />
+            );
+          })}
 
         {dashedLines
-          .filter(([source, target]) => source.lat !== null && source.long !== null && target.lat !== null && target.long !== null)
+          .filter(
+            ([source, target]) =>
+              source.lat !== null &&
+              source.long !== null &&
+              target.lat !== null &&
+              target.long !== null
+          )
           .map(([source, target], i) => (
             <ConnectionLine
               key={`dashed-${source.id}-${target.id}-${i}`}
@@ -38358,8 +38988,9 @@ export default function ClientRingMap({
             const isHighlighted = highlightedNodeIds.includes(node.id!);
             const displayIp = formatIP(node.ip);
             const direction = nodeLabelDirections.get(node.id!) || 'auto';
-            const offset = direction === 'left' ? [-20, 0] as [number, number] : [20, 0] as [number, number];
-            
+            const offset =
+              direction === 'left' ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
+
             return (
               <Marker
                 key={node.id! + i}
@@ -38370,14 +39001,24 @@ export default function ClientRingMap({
                   if (el) markerRefs.current[node.id!] = el;
                 }}
               >
-                <Popup autoClose={false} closeOnClick={false} className={theme === 'dark' ? 'dark-popup' : ''} offset={popupOffsets[node.id!] || [0, 0]}>
+                <Popup
+                  autoClose={false}
+                  closeOnClick={false}
+                  className={theme === 'dark' ? 'dark-popup' : ''}
+                  offset={popupOffsets[node.id!] || [0, 0]}
+                >
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
                     {node.remark && <p>Remark: {node.remark}</p>}
                     {node.ip && <p>IP: {displayIp}</p>}
                   </div>
                 </Popup>
-                <Tooltip permanent direction={direction} offset={offset} className="permanent-label">
+                <Tooltip
+                  permanent
+                  direction={direction}
+                  offset={offset}
+                  className="permanent-label"
+                >
                   {node.system_node_name}
                 </Tooltip>
               </Marker>
@@ -38387,6 +39028,7 @@ export default function ClientRingMap({
     </div>
   );
 }
+
 ```
 
 <!-- path: components/categories/CategorySearch.tsx -->
@@ -44887,9 +45529,9 @@ export function EntityDetailsPanel<T extends BaseEntity>({
         </span>
       </div>
 
-      {config.detailFields.map((field) => (
+      {config.detailFields.map((field, index) => (
         <DetailItem
-          key={String(field.key)}
+          key={`${String(field.key)}-${index}`}
           label={field.label}
           value={entity[field.key]}
           type={field.type}
@@ -56280,118 +56922,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 };
 ```
 
-<!-- path: components/dashboard/ColumnManagementProvider.tsx -->
-```typescript
-"use client";
-
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
-import { toast } from "sonner";
-
-interface ColumnOption {
-  label: string;
-  value: string;
-}
-
-interface ColumnManagementContextType {
-  visibleColumns: string[];
-  setVisibleColumns: (columns: string[]) => void;
-  isDeleteVisible: boolean;
-  setIsDeleteVisible: (visible: boolean) => void;
-  columnOptions: ColumnOption[];
-  toggleDelete: () => void;
-  resetColumnsToDefault: () => void;
-}
-
-const ColumnManagementContext =
-  createContext<ColumnManagementContextType | null>(null);
-
-export function useColumnManagement() {
-  const context = useContext(ColumnManagementContext);
-  if (!context) {
-    throw new Error(
-      "useColumnManagement must be used within a ColumnManagementProvider"
-    );
-  }
-  return context;
-}
-
-interface ColumnManagementProviderProps {
-  children: ReactNode;
-  data: ReactNode | ReactNode[] | Record<string, unknown>[] | null; // The data to generate column options from
-  excludeColumns?: string[];
-}
-
-export default function ColumnManagementProvider({
-  children,
-  data,
-  excludeColumns = ["password_hash", "internal_id"],
-}: ColumnManagementProviderProps) {
-  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
-  const [isDeleteVisible, setIsDeleteVisible] = useState(false);
-
-  // Generate column options from data
-  const columnOptions = useMemo(() => {
-    if (!data || (data as Record<string, unknown>[]).length === 0) return [];
-
-    // Get keys from first item in data array
-    const firstItem = data as Record<string, unknown>[];
-    if (!firstItem || typeof firstItem !== "object") return [];
-
-    const keys = Object.keys(firstItem);
-
-    return keys
-      .filter((key) => !excludeColumns.includes(key))
-      .map((key) => ({
-        label: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-        value: key,
-      }));
-  }, [data, excludeColumns]);
-
-  // Initialize visible columns when column options change
-  useEffect(() => {
-    if (columnOptions.length > 0 && visibleColumns.length === 0) {
-      setVisibleColumns(columnOptions.map((col) => col.value));
-    }
-  }, [columnOptions, visibleColumns.length]);
-
-  // Toggle delete visibility
-  const toggleDelete = () => {
-    setIsDeleteVisible((prev) => {
-      const newState = !prev;
-      toast.info(newState ? "Delete options shown" : "Delete options hidden");
-      return newState;
-    });
-  };
-
-  // Reset columns to default
-  const resetColumnsToDefault = () => {
-    if (columnOptions.length > 0) {
-      setVisibleColumns(columnOptions.map((col) => col.value));
-      toast.success("Columns reset to default");
-    } else {
-      toast.warning("No columns available to reset");
-    }
-  };
-
-  const contextValue: ColumnManagementContextType = {
-    visibleColumns,
-    setVisibleColumns,
-    isDeleteVisible,
-    setIsDeleteVisible,
-    columnOptions,
-    toggleDelete,
-    resetColumnsToDefault,
-  };
-
-  return (
-    <ColumnManagementContext.Provider value={contextValue}>
-      {children}
-    </ColumnManagementContext.Provider>
-  );
-}
-
-```
-
 <!-- path: components/dashboard/MenuButton.tsx -->
 ```typescript
 "use client";
@@ -61150,106 +61680,6 @@ import { toast } from "sonner";
 
 const supabase = createClient();
 
-/**
- * Hook to call the RPC function for deleting a path segment and reordering the rest.
- */
-export function useDeletePathSegment() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ segmentId, pathId }: { segmentId: string, pathId: string }) => {
-      const { error } = await supabase.rpc('delete_path_segment_and_reorder', {
-        p_segment_id: segmentId,
-        p_path_id: pathId,
-      });
-      if (error) throw error;
-    },
-    onSuccess: (_, { pathId }) => {
-      toast.success("Path segment deleted.");
-      queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
-    },
-    onError: (err) => toast.error(`Failed to delete segment: ${err.message}`),
-  });
-}
-
-/**
- * Hook to call the RPC function for reordering path segments via drag-and-drop.
- */
-export function useReorderPathSegments() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ pathId, segmentIds }: { pathId: string, segmentIds: string[] }) => {
-      const { error } = await supabase.rpc('reorder_path_segments', {
-        p_path_id: pathId,
-        p_segment_ids: segmentIds,
-      });
-      if (error) throw error;
-    },
-    onSuccess: (_, { pathId }) => {
-      toast.success("Path reordered successfully.");
-      queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
-    },
-    onError: (err) => toast.error(`Failed to reorder path: ${err.message}`),
-  });
-}
-
-// ... (keep existing hooks)
-
-/**
- * Hook to call the RPC function for provisioning a fiber onto a path.
- */
-export function useProvisionFiber() {
-  const queryClient = useQueryClient();
-  return useMutation({
-      mutationFn: async ({ pathId, fiberNo }: { pathId: string, fiberNo: number }) => {
-          const { error } = await supabase.rpc('provision_fiber_on_path', {
-              p_path_id: pathId,
-              p_fiber_no: fiberNo
-          });
-          if (error) throw error;
-      },
-      onSuccess: (_, { pathId }) => {
-          toast.success("Fiber provisioned successfully!");
-          // Refetch everything related to paths and connections to update the UI state
-          queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
-          queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] }); 
-          queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
-      },
-      onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
-  });
-}
-
-export function useProvisionRingPath() {
-  const queryClient = useQueryClient();
-  return useMutation({
-      mutationFn: async (variables: { 
-          systemId: string;
-          pathName: string;
-          workingFiber: number;
-          protectionFiber: number;
-          physicalPathId: string; 
-      }) => {
-          const { error } = await supabase.rpc('provision_logical_path', {
-              p_system_id: variables.systemId,
-              p_path_name: variables.pathName,
-              p_working_fiber_no: variables.workingFiber,
-              p_protection_fiber_no: variables.protectionFiber,
-              p_physical_path_id: variables.physicalPathId
-          });
-          if (error) throw error;
-      },
-      onSuccess: (_, variables) => {
-          toast.success("Ring path provisioned successfully!");
-          // Invalidate all related queries to refresh the UI state completely
-          queryClient.invalidateQueries({ queryKey: ['system-path', variables.physicalPathId] });
-          queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.physicalPathId] }); 
-          queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
-          queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
-          queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
-      },
-      onError: (err) => toast.error(`Provisioning failed: ${err.message}`),
-  });
-}
-
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -61581,18 +62011,6 @@ import { fiberTraceSegmentSchema, FiberTraceSegment } from "@/schemas/custom-sch
 const supabase = createClient();
 
 /**
- * Fetches the detailed, ordered path segments for a given logical path.
- */
-export function useSystemPath(logicalPathId: string | null) {
-  return useRpcQuery(
-    supabase,
-    'get_system_path_details',
-    { p_path_id: logicalPathId! },
-    { enabled: !!logicalPathId }
-  );
-}
-
-/**
  * Fetches the list of continuously available fiber numbers for a given path.
  */
 export function useAvailableFibers(pathId: string | null) {
@@ -61602,33 +62020,6 @@ export function useAvailableFibers(pathId: string | null) {
     { p_path_id: pathId! },
     { enabled: !!pathId }
   );
-}
-
-/**
- * Fetches the working and protection fiber numbers for a given path.
- */
-
-export function useProvisionedFibers(pathId: string | null) {
-  return useQuery({
-      queryKey: ['provisioned-fibers', pathId],
-      queryFn: async () => {
-          if (!pathId) return null;
-
-          const { data, error } = await supabase
-              .from('ofc_connections')
-              .select('fiber_no_sn, fiber_role')
-              .eq('logical_path_id', pathId)
-              .in('fiber_role', ['working', 'protection']);
-
-          if (error) throw error;
-          
-          const working = data.find(f => f.fiber_role === 'working')?.fiber_no_sn || null;
-          const protection = data.find(f => f.fiber_role === 'protection')?.fiber_no_sn || null;
-
-          return { working, protection };
-      },
-      enabled: !!pathId,
-  });
 }
 
 /**
@@ -64914,44 +65305,6 @@ export type DashboardOverviewData = {
 };
 ```
 
-<!-- path: hooks/database/ring-map-queries.ts -->
-```typescript
-// path: hooks/database/ring-map-queries.ts
-"use client";
-
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
-import { V_ring_nodesRowSchema } from '@/schemas/zod-schemas';
-
-export function useRingNodes(ringId: string | null) {
-  const supabase = createClient();
-
-  return useQuery({
-    queryKey: ['ring-nodes', ringId],
-    queryFn: async (): Promise<V_ring_nodesRowSchema[]> => {
-      if (!ringId) return [];
-
-      const { data, error } = await supabase
-        .from('v_ring_nodes')
-        .select('*')
-        .eq('ring_id', ringId)
-        // Added ordering by the 'order_in_ring' column.
-        .order('order_in_ring', { ascending: true });
-
-      console.log(data);
-
-      if (error) {
-        console.error("Error fetching ring nodes:", error);
-        throw new Error(error.message);
-      }
-      return data || [];
-    },
-    enabled: !!ringId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-```
-
 <!-- path: hooks/database/trace-hooks.ts -->
 ```typescript
 import { useCallback } from "react";
@@ -65243,7 +65596,7 @@ export function usePagedData<T>(
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { ofc_cablesRowSchema, Ofc_cablesRowSchema } from "@/schemas/zod-schemas";
+import { ofc_cablesRowSchema } from "@/schemas/zod-schemas";
 import { z } from "zod";
 
 const supabase = createClient();
@@ -65271,7 +65624,13 @@ export function useRingConnectionPaths(ringId: string | null) {
       if (!ringId) return [];
       const { data, error } = await supabase
         .from('logical_paths')
-        .select('*, start_node:start_node_id(name), end_node:end_node_id(name)')
+        .select(`
+            *,
+            start_node:start_node_id(name),
+            end_node:end_node_id(name),
+            source_system:source_system_id(system_name),
+            destination_system:destination_system_id(system_name)
+        `)
         .eq('ring_id', ringId)
         .order('name');
       if (error) throw error;
@@ -65392,6 +65751,42 @@ export function useDeprovisionPath() {
       toast.error(`Deprovisioning failed: ${err.message}`);
     }
   });
+}
+
+// --- NEW HOOK: Update Logical Path Provisioning Details ---
+export function useUpdateLogicalPathDetails() {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: async (variables: {
+        pathId: string;
+        sourceSystemId: string;
+        sourcePort: string;
+        destinationSystemId: string;
+        destinationPort: string;
+      }) => {
+        const { error } = await supabase
+          .from('logical_paths')
+          .update({
+            source_system_id: variables.sourceSystemId,
+            source_port: variables.sourcePort,
+            destination_system_id: variables.destinationSystemId,
+            destination_port: variables.destinationPort,
+            status: 'configured'
+          })
+          .eq('id', variables.pathId);
+        if (error) throw error;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onSuccess: (_, variables) => {
+        toast.success("Path configuration saved.");
+        queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
+        // Also invalidate the ring map data so the map updates immediately
+        queryClient.invalidateQueries({ queryKey: ['ring-path-config'] }); 
+      },
+      onError: (err) => {
+        toast.error(`Failed to save configuration: ${err.message}`);
+      }
+    });
 }
 ```
 
