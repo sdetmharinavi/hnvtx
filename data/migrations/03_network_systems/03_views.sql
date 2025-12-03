@@ -224,7 +224,7 @@ SELECT
   oc.logical_path_id::uuid,
   oc.fiber_role::text,
   oc.path_segment_order::integer,
-  oc.path_direction::text, -- NEW
+  oc.path_direction::text,
   oc.source_port::text,
   oc.destination_port::text,
   oc.connection_category::text,
@@ -239,10 +239,20 @@ SELECT
   ofc.en_id::uuid,
   ofc_type.name AS ofc_type_name,
   na.name AS sn_name,
-  s.system_name AS system_name,
   nb.name AS en_name,
   updated_na.name AS updated_sn_name,
-  updated_nb.name AS updated_en_name
+  updated_nb.name AS updated_en_name,
+  
+  -- UPDATED SYSTEM NAME LOGIC: System / Interface / Service
+  CONCAT_WS(' / ', 
+    s.system_name, 
+    CASE 
+      WHEN oc.fiber_role = 'protection' THEN sc.system_protection_interface 
+      ELSE sc.system_working_interface 
+    END, 
+    svc.name
+  ) AS system_name
+
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
@@ -251,7 +261,11 @@ FROM public.ofc_connections oc
   LEFT JOIN public.systems s ON oc.system_id = s.id
   LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
   LEFT JOIN public.nodes updated_na ON oc.updated_sn_id = updated_na.id
-  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id;
+  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id
+  -- New Joins for Context
+  LEFT JOIN public.logical_fiber_paths lfp ON oc.logical_path_id = lfp.id
+  LEFT JOIN public.system_connections sc ON lfp.system_connection_id = sc.id
+  LEFT JOIN public.services svc ON sc.service_id = svc.id;
 
 
 -- View for Ring Map Node Data
