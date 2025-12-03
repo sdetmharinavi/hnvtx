@@ -26,7 +26,7 @@ export default function ServicesPage() {
   const [showFilters, setShowFilters] = useState(false);
   
   const {
-    data, totalCount, isLoading, isMutating, isFetching, error, refetch,
+    data, totalCount, isLoading, isFetching, error, refetch,
     pagination, search, filters, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'services', V_servicesRowSchema>({
     tableName: 'services', 
@@ -161,7 +161,6 @@ export default function ServicesPage() {
         <ServiceFormModal 
             isOpen={editModal.isOpen} 
             onClose={editModal.close} 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             editingService={getEditingService(editModal.record)} 
             onSubmit={handleSave}
             isLoading={isInserting || isUpdating}

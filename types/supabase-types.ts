@@ -1753,35 +1753,61 @@ export type Database = {
       logical_paths: {
         Row: {
           created_at: string | null
+          destination_port: string | null
+          destination_system_id: string | null
           end_node_id: string | null
           id: string
           name: string
           ring_id: string | null
+          source_port: string | null
+          source_system_id: string | null
           start_node_id: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          destination_port?: string | null
+          destination_system_id?: string | null
           end_node_id?: string | null
           id?: string
           name: string
           ring_id?: string | null
+          source_port?: string | null
+          source_system_id?: string | null
           start_node_id?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          destination_port?: string | null
+          destination_system_id?: string | null
           end_node_id?: string | null
           id?: string
           name?: string
           ring_id?: string | null
+          source_port?: string | null
+          source_system_id?: string | null
           start_node_id?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "logical_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "logical_paths_end_node_id_fkey"
             columns: ["end_node_id"]
@@ -1836,6 +1862,20 @@ export type Database = {
             columns: ["ring_id"]
             isOneToOne: false
             referencedRelation: "v_rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
           {
@@ -4551,143 +4591,6 @@ export type Database = {
           },
         ]
       }
-      v_system_ring_paths_detailed: {
-        Row: {
-          created_at: string | null
-          end_node_id: string | null
-          end_node_name: string | null
-          id: string | null
-          logical_path_id: string | null
-          ofc_cable_id: string | null
-          path_name: string | null
-          path_order: number | null
-          route_name: string | null
-          source_system_id: string | null
-          start_node_id: string | null
-          start_node_name: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_lfp_source_system"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "systems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_lfp_source_system"
-            columns: ["source_system_id"]
-            isOneToOne: false
-            referencedRelation: "v_systems_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
-            columns: ["logical_path_id"]
-            isOneToOne: false
-            referencedRelation: "logical_fiber_paths"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_path_segments_logical_path_id_fkey"
-            columns: ["logical_path_id"]
-            isOneToOne: false
-            referencedRelation: "v_end_to_end_paths"
-            referencedColumns: ["path_id"]
-          },
-          {
-            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
-            columns: ["ofc_cable_id"]
-            isOneToOne: false
-            referencedRelation: "ofc_cables"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
-            columns: ["ofc_cable_id"]
-            isOneToOne: false
-            referencedRelation: "v_cable_utilization"
-            referencedColumns: ["cable_id"]
-          },
-          {
-            foreignKeyName: "logical_path_segments_ofc_cable_id_fkey"
-            columns: ["ofc_cable_id"]
-            isOneToOne: false
-            referencedRelation: "v_ofc_cables_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_en_id_fkey"
-            columns: ["end_node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_en_id_fkey"
-            columns: ["end_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_en_id_fkey"
-            columns: ["end_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_en_id_fkey"
-            columns: ["end_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["en_node_id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_en_id_fkey"
-            columns: ["end_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["sn_node_id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_sn_id_fkey"
-            columns: ["start_node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_sn_id_fkey"
-            columns: ["start_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_nodes_complete"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_sn_id_fkey"
-            columns: ["start_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_sn_id_fkey"
-            columns: ["start_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["en_node_id"]
-          },
-          {
-            foreignKeyName: "ofc_cables_sn_id_fkey"
-            columns: ["start_node_id"]
-            isOneToOne: false
-            referencedRelation: "v_system_connections_complete"
-            referencedColumns: ["sn_node_id"]
-          },
-        ]
-      }
       v_systems_complete: {
         Row: {
           commissioned_on: string | null
@@ -4995,10 +4898,14 @@ export type Database = {
         Args: { p_ring_id: string }
         Returns: {
           created_at: string | null
+          destination_port: string | null
+          destination_system_id: string | null
           end_node_id: string | null
           id: string
           name: string
           ring_id: string | null
+          source_port: string | null
+          source_system_id: string | null
           start_node_id: string | null
           status: string | null
           updated_at: string | null
@@ -5180,29 +5087,6 @@ export type Database = {
       get_service_path_display: {
         Args: { p_system_connection_id: string }
         Returns: Json
-      }
-      get_system_path_details: {
-        Args: { p_path_id: string }
-        Returns: {
-          created_at: string | null
-          end_node_id: string | null
-          end_node_name: string | null
-          id: string | null
-          logical_path_id: string | null
-          ofc_cable_id: string | null
-          path_name: string | null
-          path_order: number | null
-          route_name: string | null
-          source_system_id: string | null
-          start_node_id: string | null
-          start_node_name: string | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "v_system_ring_paths_detailed"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_unique_values: {
         Args: {
@@ -5432,7 +5316,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      validate_ring_path: { Args: { p_path_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
