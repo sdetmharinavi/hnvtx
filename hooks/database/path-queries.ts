@@ -11,18 +11,6 @@ import { fiberTraceSegmentSchema, FiberTraceSegment } from "@/schemas/custom-sch
 const supabase = createClient();
 
 /**
- * Fetches the detailed, ordered path segments for a given logical path.
- */
-export function useSystemPath(logicalPathId: string | null) {
-  return useRpcQuery(
-    supabase,
-    'get_system_path_details',
-    { p_path_id: logicalPathId! },
-    { enabled: !!logicalPathId }
-  );
-}
-
-/**
  * Fetches the list of continuously available fiber numbers for a given path.
  */
 export function useAvailableFibers(pathId: string | null) {
@@ -32,33 +20,6 @@ export function useAvailableFibers(pathId: string | null) {
     { p_path_id: pathId! },
     { enabled: !!pathId }
   );
-}
-
-/**
- * Fetches the working and protection fiber numbers for a given path.
- */
-
-export function useProvisionedFibers(pathId: string | null) {
-  return useQuery({
-      queryKey: ['provisioned-fibers', pathId],
-      queryFn: async () => {
-          if (!pathId) return null;
-
-          const { data, error } = await supabase
-              .from('ofc_connections')
-              .select('fiber_no_sn, fiber_role')
-              .eq('logical_path_id', pathId)
-              .in('fiber_role', ['working', 'protection']);
-
-          if (error) throw error;
-          
-          const working = data.find(f => f.fiber_role === 'working')?.fiber_no_sn || null;
-          const protection = data.find(f => f.fiber_role === 'protection')?.fiber_no_sn || null;
-
-          return { working, protection };
-      },
-      enabled: !!pathId,
-  });
 }
 
 /**

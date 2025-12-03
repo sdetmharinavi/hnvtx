@@ -4,7 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { ofc_cablesRowSchema, Ofc_cablesRowSchema } from "@/schemas/zod-schemas";
+import { ofc_cablesRowSchema } from "@/schemas/zod-schemas";
 import { z } from "zod";
 
 const supabase = createClient();
@@ -32,7 +32,13 @@ export function useRingConnectionPaths(ringId: string | null) {
       if (!ringId) return [];
       const { data, error } = await supabase
         .from('logical_paths')
-        .select('*, start_node:start_node_id(name), end_node:end_node_id(name)')
+        .select(`
+            *,
+            start_node:start_node_id(name),
+            end_node:end_node_id(name),
+            source_system:source_system_id(system_name),
+            destination_system:destination_system_id(system_name)
+        `)
         .eq('ring_id', ringId)
         .order('name');
       if (error) throw error;
@@ -153,4 +159,40 @@ export function useDeprovisionPath() {
       toast.error(`Deprovisioning failed: ${err.message}`);
     }
   });
+}
+
+// --- NEW HOOK: Update Logical Path Provisioning Details ---
+export function useUpdateLogicalPathDetails() {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: async (variables: {
+        pathId: string;
+        sourceSystemId: string;
+        sourcePort: string;
+        destinationSystemId: string;
+        destinationPort: string;
+      }) => {
+        const { error } = await supabase
+          .from('logical_paths')
+          .update({
+            source_system_id: variables.sourceSystemId,
+            source_port: variables.sourcePort,
+            destination_system_id: variables.destinationSystemId,
+            destination_port: variables.destinationPort,
+            status: 'configured'
+          })
+          .eq('id', variables.pathId);
+        if (error) throw error;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onSuccess: (_, variables) => {
+        toast.success("Path configuration saved.");
+        queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
+        // Also invalidate the ring map data so the map updates immediately
+        queryClient.invalidateQueries({ queryKey: ['ring-path-config'] }); 
+      },
+      onError: (err) => {
+        toast.error(`Failed to save configuration: ${err.message}`);
+      }
+    });
 }

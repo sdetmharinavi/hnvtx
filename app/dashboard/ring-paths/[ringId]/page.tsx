@@ -30,8 +30,9 @@ type ExtendedRingDetails = V_ringsRowSchema & {
   } | null;
 };
 
-// Local interface for Map Path Configuration (must match ClientRingMap's expected shape; no nulls)
-interface PathConfigForMap {
+// Local interface for Map Path Configuration
+// FIX: Removed '| null' to match ClientRingMap's expected type (string | undefined)
+interface PathConfig {
   source?: string;
   sourcePort?: string;
   dest?: string;
@@ -191,26 +192,30 @@ export default function RingMapPage() {
 
   // 7. Transform path configs into a lookup map for ClientRingMap
   const segmentConfigMap = useMemo(() => {
-     const map: Record<string, PathConfigForMap> = {};
+     const map: Record<string, PathConfig> = {};
      pathConfigs?.forEach(p => {
          // Create bidirectional keys
          const key1 = `${p.start_node_id}-${p.end_node_id}`;
          const key2 = `${p.end_node_id}-${p.start_node_id}`;
          
-         // Fix TS Error: Handle array return from Supabase join
+         // Handle potential array response for joined relations
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const sourceSys = p.source_system as any;
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const destSys = p.destination_system as any;
 
-         const config: PathConfigForMap = {
-            source: (Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name) ?? undefined,
-            sourcePort: p.source_port ?? undefined,
-            dest: (Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name) ?? undefined,
-            destPort: p.destination_port ?? undefined,
-        };
-       map[key1] = config;
-       map[key2] = config;
+         const sourceName = Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name;
+         const destName = Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name;
+
+         // FIX: Convert nulls to undefined
+         const config: PathConfig = {
+             source: sourceName || undefined,
+             sourcePort: p.source_port || undefined,
+             dest: destName || undefined,
+             destPort: p.destination_port || undefined
+         };
+         map[key1] = config;
+         map[key2] = config;
      });
      return map;
   }, [pathConfigs]);
@@ -236,7 +241,7 @@ export default function RingMapPage() {
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
   };
 
-  const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
+  const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
   const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {

@@ -5,7 +5,7 @@ import { useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
-import { FaNetworkWired } from 'react-icons/fa';
+import { FaNetworkWired, FaRoute } from 'react-icons/fa';
 import { FiUpload, FiEdit, FiDownload, FiRefreshCw, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
@@ -588,6 +588,24 @@ export default function RingManagerPage() {
     }),
     detailFields: [
       ...ringConfig.detailFields,
+      {
+        key: 'id',
+        label: 'Path Management', // New Section
+        type: 'custom' as const,
+        render: (_value: unknown, entity: RingEntity) => {
+            return (
+                <Button 
+                    size="sm" 
+                    variant="primary" 
+                    className="w-full mb-4"
+                    leftIcon={<FaRoute />}
+                    onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}
+                >
+                    Manage Logical Paths
+                </Button>
+            );
+        }
+      },
       {
         key: 'id',
         label: 'Associated Systems',

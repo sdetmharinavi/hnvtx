@@ -1,10 +1,49 @@
 -- path: data/migrations/06_utilities/12_service_path_provisioning.sql
--- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths. (Corrected FK Logic)
+-- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths.
+
+-- FUNCTION 1: Deprovision an existing service path
+-- (Moved to top to ensure availability if called internally, though we inline logic for safety)
+CREATE OR REPLACE FUNCTION public.deprovision_service_path(
+    p_system_connection_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_path_ids UUID[];
+BEGIN
+    -- Find all logical paths associated with this system connection
+    SELECT array_agg(id) INTO v_path_ids
+    FROM public.logical_fiber_paths
+    WHERE system_connection_id = p_system_connection_id;
+
+    IF v_path_ids IS NULL OR array_length(v_path_ids, 1) = 0 THEN
+        -- Just clear the connection table references to be safe
+        UPDATE public.system_connections
+        SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
+        WHERE id = p_system_connection_id;
+        RETURN;
+    END IF;
+
+    -- Clear references on all associated fibers
+    UPDATE public.ofc_connections
+    SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_segment_order = NULL, path_direction = NULL
+    WHERE logical_path_id = ANY(v_path_ids);
+
+    -- Clear references on the system_connection itself
+    UPDATE public.system_connections
+    SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
+    WHERE id = p_system_connection_id;
+
+    -- Delete the logical path records
+    DELETE FROM public.logical_fiber_paths WHERE id = ANY(v_path_ids);
+END;
+$$;
 
 
-
--- FUNCTION 1: REWRITTEN - Provision a new service path
-DROP FUNCTION IF EXISTS public.provision_service_path(uuid,text,uuid[],uuid[],uuid[],uuid[]);
+-- FUNCTION 2: Provision a new service path (with Upsert/Overwrite capability)
 CREATE OR REPLACE FUNCTION public.provision_service_path(
     p_system_connection_id UUID,
     p_path_name TEXT,
@@ -24,25 +63,64 @@ DECLARE
     v_working_path_id UUID;
     v_protection_path_id UUID;
     v_all_fiber_ids UUID[];
+    
+    -- Variables for Error Reporting
+    v_err_fiber_no INT;
+    v_err_cable_name TEXT;
+    v_err_path_name TEXT;
+    v_old_path_id UUID;
 BEGIN
-    -- Validation and Setup
+    -- 1. Validation and Setup
     SELECT system_id INTO v_system_id FROM public.system_connections WHERE id = p_system_connection_id;
     IF NOT FOUND THEN RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id; END IF;
 
     SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN RAISE EXCEPTION 'Operational status "active" not found in lookup_types.'; END IF;
+    IF v_active_status_id IS NULL THEN 
+        -- Fallback if 'active' status missing, though lookup should exist
+        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.'; 
+    END IF;
     
     v_all_fiber_ids := p_working_tx_fiber_ids || p_working_rx_fiber_ids || p_protection_tx_fiber_ids || p_protection_rx_fiber_ids;
 
-    IF EXISTS (SELECT 1 FROM public.ofc_connections WHERE id = ANY(v_all_fiber_ids) AND logical_path_id IS NOT NULL) THEN
-        RAISE EXCEPTION 'One or more selected fibers are already part of another logical path.';
+    -- 2. SMART CONFLICT CHECK
+    -- Check if any selected fiber is used by a logical path that belongs to a DIFFERENT connection
+    SELECT 
+        oc.fiber_no_sn,
+        c.route_name,
+        COALESCE(lp.path_name, 'Unknown Path')
+    INTO v_err_fiber_no, v_err_cable_name, v_err_path_name
+    FROM public.ofc_connections oc
+    JOIN public.ofc_cables c ON oc.ofc_id = c.id
+    LEFT JOIN public.logical_fiber_paths lp ON oc.logical_path_id = lp.id
+    WHERE oc.id = ANY(v_all_fiber_ids)
+      AND oc.logical_path_id IS NOT NULL
+      -- Crucial: Only consider it a conflict if the path belongs to someone else
+      AND (lp.system_connection_id IS NULL OR lp.system_connection_id != p_system_connection_id)
+    LIMIT 1;
+
+    IF v_err_fiber_no IS NOT NULL THEN
+        RAISE EXCEPTION 'Provisioning failed: Fiber #% on "%" is already allocated to "%".', v_err_fiber_no, v_err_cable_name, v_err_path_name;
     END IF;
 
-    -- Create "working" logical_fiber_path record, linking it to the system connection
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
-    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) RETURNING id INTO v_working_path_id;
+    -- 3. AUTO-CLEANUP (Overwrite existing provisioning for this connection)
+    -- Before applying new paths, clear any existing logical paths for this connection ID.
+    -- This allows "Updating" the allocation (e.g. adding protection fibers) without manual de-provisioning.
+    FOR v_old_path_id IN SELECT id FROM public.logical_fiber_paths WHERE system_connection_id = p_system_connection_id LOOP
+        -- Release fibers associated with old paths of this connection
+        UPDATE public.ofc_connections 
+        SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_direction = NULL
+        WHERE logical_path_id = v_old_path_id;
+        
+        -- Delete the old logical path record
+        DELETE FROM public.logical_fiber_paths WHERE id = v_old_path_id;
+    END LOOP;
 
-    -- Update working fibers with the correct logical_path_id, role, and direction
+    -- 4. Create "Working" Logical Path
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
+    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) 
+    RETURNING id INTO v_working_path_id;
+
+    -- 5. Assign Fibers to Working Path
     UPDATE public.ofc_connections 
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx'
     WHERE id = ANY(p_working_tx_fiber_ids);
@@ -51,15 +129,11 @@ BEGIN
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx'
     WHERE id = ANY(p_working_rx_fiber_ids);
 
-    -- Store the full arrays of fiber IDs in the system_connections table
-    UPDATE public.system_connections 
-    SET working_fiber_in_ids = p_working_tx_fiber_ids, working_fiber_out_ids = p_working_rx_fiber_ids 
-    WHERE id = p_system_connection_id;
-
-    -- Handle protection path if provided
+    -- 6. Handle Protection Path (if provided)
     IF array_length(p_protection_tx_fiber_ids, 1) > 0 THEN
         INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id, system_connection_id)
-        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) RETURNING id INTO v_protection_path_id;
+        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) 
+        RETURNING id INTO v_protection_path_id;
         
         UPDATE public.ofc_connections 
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx'
@@ -68,61 +142,24 @@ BEGIN
         UPDATE public.ofc_connections 
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx'
         WHERE id = ANY(p_protection_rx_fiber_ids);
-
-        UPDATE public.system_connections 
-        SET protection_fiber_in_ids = p_protection_tx_fiber_ids, protection_fiber_out_ids = p_protection_rx_fiber_ids 
-        WHERE id = p_system_connection_id;
     END IF;
+
+    -- 7. Update Connection Record with Fiber IDs Cache
+    UPDATE public.system_connections 
+    SET 
+        working_fiber_in_ids = p_working_tx_fiber_ids, 
+        working_fiber_out_ids = p_working_rx_fiber_ids,
+        protection_fiber_in_ids = p_protection_tx_fiber_ids, 
+        protection_fiber_out_ids = p_protection_rx_fiber_ids,
+        updated_at = NOW()
+    WHERE id = p_system_connection_id;
 
     RETURN v_working_path_id;
 END;
 $$;
 
 
--- FUNCTION 2: REWRITTEN - Deprovision an existing service path
-DROP FUNCTION IF EXISTS public.deprovision_service_path(uuid);
-CREATE OR REPLACE FUNCTION public.deprovision_service_path(
-    p_system_connection_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_path_ids UUID[];
-BEGIN
-    -- Find all logical paths associated with this system connection
-    SELECT array_agg(id) INTO v_path_ids
-    FROM public.logical_fiber_paths
-    WHERE system_connection_id = p_system_connection_id;
-
-    IF v_path_ids IS NULL OR array_length(v_path_ids, 1) = 0 THEN
-        RAISE NOTICE 'No logical paths found for system connection % to deprovision.', p_system_connection_id;
-        -- Still clear the system_connections table just in case of inconsistent data
-        UPDATE public.system_connections
-        SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-        WHERE id = p_system_connection_id;
-        RETURN;
-    END IF;
-
-    -- Clear references on all associated fibers by querying for the logical path IDs
-    UPDATE public.ofc_connections
-    SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_segment_order = NULL, path_direction = NULL
-    WHERE logical_path_id = ANY(v_path_ids);
-
-    -- Clear references on the system_connection itself
-    UPDATE public.system_connections
-    SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-    WHERE id = p_system_connection_id;
-
-    -- Delete the logical path records
-    DELETE FROM public.logical_fiber_paths WHERE id = ANY(v_path_ids);
-END;
-$$;
-
-
--- FUNCTION 3: NEW - Get structured path details for display
+-- FUNCTION 3: Get structured path details for display
 CREATE OR REPLACE FUNCTION public.get_service_path_display(p_system_connection_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -156,12 +193,19 @@ aggregated_paths AS (
   GROUP BY path_role, path_direction
 )
 SELECT jsonb_object_agg(
-  path_role || '_' || path_direction,
+  CASE 
+      WHEN path_role = 'working' AND path_direction = 'tx' THEN 'working_tx'
+      WHEN path_role = 'working' AND path_direction = 'rx' THEN 'working_rx'
+      WHEN path_role = 'protection' AND path_direction = 'tx' THEN 'protection_tx'
+      WHEN path_role = 'protection' AND path_direction = 'rx' THEN 'protection_rx'
+      ELSE path_role || '_' || path_direction 
+  END,
   path_string
 )
 FROM aggregated_paths;
 $$;
 
+-- Grants
 GRANT EXECUTE ON FUNCTION public.provision_service_path(UUID, TEXT, UUID[], UUID[], UUID[], UUID[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.deprovision_service_path(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_service_path_display(UUID) TO authenticated;

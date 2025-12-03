@@ -67,6 +67,10 @@ body {
   animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.dark-popup .leaflet-popup-content-wrapper, .dark-popup .leaflet-popup-tip {
+  background-color: #1f2937 !important;
+}
+
 /* Calender */
 /* Custom Calendar Styles */
 .react-datepicker {
