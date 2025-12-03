@@ -10,7 +10,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[]) => {
   return useDynamicColumnConfig("v_services", {
     data: data,
     // Omit internal IDs and timestamps
-    omit: ["id", "created_at", "updated_at", "node_id", "link_type_id", "maintenance_area_name"],
+    omit: ["created_at", "updated_at", "node_id", "link_type_id", "maintenance_area_name"],
     overrides: {
       name: {
         title: "Service Name",
