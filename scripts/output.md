@@ -1801,22 +1801,66 @@ export const sdh_connectionsUpdateSchema = z.object({
   system_connection_id: z.uuid().optional(),
 });
 
+export const servicesRowSchema = z.object({
+  bandwidth_allocated: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  id: z.uuid(),
+  lc_id: z.uuid().nullable(),
+  link_type_id: z.uuid().nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  node_id: z.uuid(),
+  status: z.boolean().nullable(),
+  unique_id: z.uuid().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vlan: z.string().nullable(),
+});
+
+export const servicesInsertSchema = z.object({
+  bandwidth_allocated: z.string().nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
+  link_type_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  node_id: z.uuid(),
+  status: z.boolean().nullable().optional(),
+  unique_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+});
+
+export const servicesUpdateSchema = z.object({
+  bandwidth_allocated: z.string().nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+  lc_id: z.uuid().nullable().optional(),
+  link_type_id: z.uuid().nullable().optional(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  node_id: z.uuid().optional(),
+  status: z.boolean().nullable().optional(),
+  unique_id: z.uuid().nullable().optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+});
+
 export const system_connectionsRowSchema = z.object({
   bandwidth: z.string().nullable(),
-  bandwidth_allocated: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
-  connected_link_type_id: z.uuid().nullable(),
   created_at: z.iso.datetime().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
   id: z.uuid(),
-  lc_id: z.uuid().nullable(),
   media_type_id: z.uuid().nullable(),
   protection_fiber_in_ids: z.array(z.string()).nullable(),
   protection_fiber_out_ids: z.array(z.string()).nullable(),
   remark: z.string().nullable(),
+  service_id: z.uuid().nullable(),
+  services_interface: z.string().nullable(),
+  services_ip: z.any(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -1824,29 +1868,26 @@ export const system_connectionsRowSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable(),
   system_working_interface: z.string().nullable(),
-  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
-  vlan: z.string().nullable(),
   working_fiber_in_ids: z.array(z.string()).nullable(),
   working_fiber_out_ids: z.array(z.string()).nullable(),
 });
 
 export const system_connectionsInsertSchema = z.object({
   bandwidth: z.string().nullable().optional(),
-  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
-  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
+  service_id: z.uuid().nullable().optional(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -1854,29 +1895,26 @@ export const system_connectionsInsertSchema = z.object({
   system_id: z.uuid(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
-  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-  vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
   working_fiber_out_ids: z.array(z.string()).nullable().optional(),
 });
 
 export const system_connectionsUpdateSchema = z.object({
   bandwidth: z.string().nullable().optional(),
-  bandwidth_allocated: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
-  connected_link_type_id: z.uuid().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
   id: z.uuid().optional(),
-  lc_id: z.uuid().nullable().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
   protection_fiber_out_ids: z.array(z.string()).nullable().optional(),
   remark: z.string().nullable().optional(),
+  service_id: z.uuid().nullable().optional(),
+  services_interface: z.string().nullable().optional(),
+  services_ip: z.any().optional(),
   sn_id: z.uuid().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   sn_ip: z.any().optional(),
@@ -1884,9 +1922,7 @@ export const system_connectionsUpdateSchema = z.object({
   system_id: z.uuid().optional(),
   system_protection_interface: z.string().nullable().optional(),
   system_working_interface: z.string().nullable().optional(),
-  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-  vlan: z.string().nullable().optional(),
   working_fiber_in_ids: z.array(z.string()).nullable().optional(),
   working_fiber_out_ids: z.array(z.string()).nullable().optional(),
 });
@@ -2314,6 +2350,24 @@ export const v_ringsRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
+export const v_servicesRowSchema = z.object({
+  bandwidth_allocated: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  id: z.uuid().nullable(),
+  lc_id: z.uuid().nullable(),
+  link_type_id: z.uuid().nullable(),
+  link_type_name: z.url().nullable(),
+  maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_id: z.uuid().nullable(),
+  node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  status: z.boolean().nullable(),
+  unique_id: z.uuid().nullable(),
+  updated_at: z.iso.datetime().nullable(),
+  vlan: z.string().nullable(),
+});
+
 export const v_system_connections_completeRowSchema = z.object({
   bandwidth: z.string().nullable(),
   bandwidth_allocated: z.string().nullable(),
@@ -2323,7 +2377,6 @@ export const v_system_connections_completeRowSchema = z.object({
   connected_system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   connected_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
-  customer_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
@@ -2344,6 +2397,12 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_b_slot: z.string().nullable(),
   sdh_carrier: z.string().nullable(),
   sdh_stm_no: z.string().nullable(),
+  service_id: z.uuid().nullable(),
+  service_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  service_node_id: z.uuid().nullable(),
+  service_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  services_interface: z.string().nullable(),
+  services_ip: z.any(),
   sn_id: z.uuid().nullable(),
   sn_interface: z.string().nullable(),
   sn_ip: z.any(),
@@ -2564,6 +2623,9 @@ export type RingsUpdateSchema = z.infer<typeof ringsUpdateSchema>;
 export type Sdh_connectionsRowSchema = z.infer<typeof sdh_connectionsRowSchema>;
 export type Sdh_connectionsInsertSchema = z.infer<typeof sdh_connectionsInsertSchema>;
 export type Sdh_connectionsUpdateSchema = z.infer<typeof sdh_connectionsUpdateSchema>;
+export type ServicesRowSchema = z.infer<typeof servicesRowSchema>;
+export type ServicesInsertSchema = z.infer<typeof servicesInsertSchema>;
+export type ServicesUpdateSchema = z.infer<typeof servicesUpdateSchema>;
 export type System_connectionsRowSchema = z.infer<typeof system_connectionsRowSchema>;
 export type System_connectionsInsertSchema = z.infer<typeof system_connectionsInsertSchema>;
 export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUpdateSchema>;
@@ -2592,6 +2654,7 @@ export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connectio
 export type V_ports_management_completeRowSchema = z.infer<typeof v_ports_management_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
 export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
+export type V_servicesRowSchema = z.infer<typeof v_servicesRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
 export type V_system_ring_paths_detailedRowSchema = z.infer<typeof v_system_ring_paths_detailedRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;
@@ -6726,6 +6789,192 @@ export default function SystemConnectionsPage() {
 }
 ```
 
+<!-- path: app/dashboard/services/page.tsx -->
+```typescript
+// app/dashboard/services/page.tsx
+"use client";
+
+import { useMemo, useState } from "react";
+import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
+import { DataTable } from "@/components/table";
+import { useCrudManager } from "@/hooks/useCrudManager";
+import { useServicesData } from "@/hooks/data/useServicesData";
+import { ServicesTableColumns } from "@/config/table-columns/ServicesTableColumns";
+import { createStandardActions } from "@/components/table/action-helpers";
+import { ServiceFormModal } from "@/components/services/ServiceFormModal";
+import { toast } from "sonner";
+import { Database as DatabaseIcon } from "lucide-react";
+import { useTableInsert, useTableUpdate } from "@/hooks/database";
+import { createClient } from "@/utils/supabase/client";
+import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
+import { Row } from "@/hooks/database";
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { localDb } from "@/hooks/data/localDb";
+import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
+import { SelectFilter } from "@/components/common/filters/FilterInputs";
+
+export default function ServicesPage() {
+  const supabase = createClient();
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const {
+    data, totalCount, isLoading, isMutating, isFetching, error, refetch,
+    pagination, search, filters, editModal, deleteModal, actions: crudActions
+  } = useCrudManager<'services', V_servicesRowSchema>({
+    tableName: 'services', 
+    localTableName: 'v_services',
+    dataQueryHook: useServicesData, 
+    displayNameField: 'name',
+  });
+
+  // Fetch Link Types for Filtering
+  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['link-types-for-filter'],
+    async () => 
+      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () => 
+      await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
+  );
+  
+  const linkTypeOptions = useMemo(() => {
+    return (linkTypesData || [])
+      .filter(lt => lt.name !== 'DEFAULT')
+      .map(lt => ({ value: lt.id, label: lt.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [linkTypesData]);
+
+  const columns = ServicesTableColumns(data);
+
+  const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
+     onSuccess: () => { refetch(); editModal.close(); toast.success("Service created."); }
+  });
+  
+  const { mutate: updateService, isPending: isUpdating } = useTableUpdate(supabase, 'services', {
+     onSuccess: () => { refetch(); editModal.close(); toast.success("Service updated."); }
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSave = (formData: any) => {
+      if (editModal.record?.id) {
+          updateService({ id: editModal.record.id, data: formData });
+      } else {
+          insertService(formData);
+      }
+  };
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getEditingService = (record: V_servicesRowSchema | null): any | null => {
+      if (!record) return null;
+      return record;
+  };
+
+  const tableActions = useMemo(() => createStandardActions({
+      onEdit: editModal.openEdit,
+      onDelete: crudActions.handleDelete,
+  }), [editModal.openEdit, crudActions.handleDelete]);
+
+  const headerActions = useStandardHeaderActions({
+      onRefresh: refetch,
+      onAddNew: editModal.openAdd,
+      isLoading,
+      data: data as Row<'v_services'>[],
+      exportConfig: {
+          tableName: 'v_services',
+          fileName: `All_Services`,
+          // Include filters in export if present
+          filters: filters.filters
+      }
+  });
+
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+
+  return (
+    <div className="p-6 space-y-6">
+      <PageHeader 
+        title="Service Management" 
+        description="Manage logical services, customers, and link definitions."
+        icon={<DatabaseIcon />}
+        stats={[{ value: totalCount, label: "Total Services" }]}
+        actions={headerActions}
+        isLoading={isLoading}
+        isFetching={isFetching}
+      />
+
+      <DataTable
+        tableName="v_services"
+        data={data}
+        columns={columns}
+        loading={isLoading}
+        isFetching={isFetching}
+        actions={tableActions}
+        pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
+        }}
+        searchable={false} // We use custom toolbar for search
+        customToolbar={
+            <SearchAndFilters
+                searchTerm={search.searchQuery}
+                onSearchChange={search.setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onClearFilters={() => {
+                    search.setSearchQuery('');
+                    filters.setFilters({});
+                }}
+                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+                activeFilterCount={Object.keys(filters.filters).length}
+                searchPlaceholder="Search by Service Name, Node, or Description..."
+            >
+                <SelectFilter
+                    label="Link Type"
+                    filterKey="link_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={linkTypeOptions}
+                />
+                <SelectFilter
+                    label="Status"
+                    filterKey="status"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: "true", label: "Active" },
+                        { value: "false", label: "Inactive" }
+                    ]}
+                />
+            </SearchAndFilters>
+        }
+      />
+
+      {editModal.isOpen && (
+        <ServiceFormModal 
+            isOpen={editModal.isOpen} 
+            onClose={editModal.close} 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            editingService={getEditingService(editModal.record)} 
+            onSubmit={handleSave}
+            isLoading={isInserting || isUpdating}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Delete"
+        message="Are you sure? This will remove the service and unlink it from any connections."
+        type="danger"
+        loading={deleteModal.loading}
+      />
+    </div>
+  );
+}
+```
+
 <!-- path: app/dashboard/logical-paths/page.tsx -->
 ```typescript
 'use client';
@@ -7645,7 +7894,7 @@ import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { FiDatabase, FiUpload, FiGitBranch } from 'react-icons/fi';
-import { SystemConnectionFormModal, SystemConnectionFormValues } from '@/components/system-details/SystemConnectionFormModal';
+import { SystemConnectionFormModal } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
@@ -7653,7 +7902,10 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
-import { usePortsData } from '@/hooks/data/usePortsData'; // New Import
+import { usePortsData } from '@/hooks/data/usePortsData';
+
+// Define the payload type expected by the RPC
+type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 export default function SystemConnectionsPage() {
   const params = useParams();
@@ -7700,10 +7952,9 @@ export default function SystemConnectionsPage() {
   const totalConnections = connectionsData?.total_count || 0;
 
   // --- Fetch Port Stats (Local-First) ---
-  // Initialize the hook with default parameters to get all ports for this system
   const { data: ports = [] } = usePortsData(systemId)({
       currentPage: 1, 
-      pageLimit: 5000, // Fetch enough to calculate accurate stats
+      pageLimit: 5000, 
       searchQuery: '',
       filters: {} 
   });
@@ -7715,7 +7966,6 @@ export default function SystemConnectionsPage() {
 
     const totalPorts = ports.length;
     const usedPorts = ports.filter(p => p.port_utilization).length;
-    // Available = Not utilized AND Admin Status is UP
     const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
     const portsDown = ports.filter(p => !p.port_admin_status).length;
     const utilPercent = totalPorts > 0 ? Math.round((usedPorts / totalPorts) * 100) : 0;
@@ -7783,7 +8033,7 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Unique ID', dbKey: 'unique_id' },
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
-        { excelHeader: 'Customer Name', dbKey: 'customer_name' },
+        { excelHeader: 'Customer Name', dbKey: 'service_name' },
         { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
         { excelHeader: 'Working Fiber In Ids', dbKey: 'working_fiber_in_ids' },
         { excelHeader: 'Working Fiber Out Ids', dbKey: 'working_fiber_out_ids' },
@@ -7848,7 +8098,7 @@ export default function SystemConnectionsPage() {
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
       onEdit: openEditModal,
-      onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.customer_name || record.connected_system_name || 'Connection' }),
+      onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }),
     });
     
     const isProvisioned = (record: V_system_connections_completeRowSchema) => 
@@ -7878,37 +8128,9 @@ export default function SystemConnectionsPage() {
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
   
-  const handleSave = (formData: SystemConnectionFormValues) => {
-    const payload: RpcFunctionArgs<'upsert_system_connection_with_details'> = {
-      p_id: editingRecord?.id ?? undefined,
-      p_system_id: parentSystem.id!,
-      p_media_type_id: formData.media_type_id!,
-      p_status: formData.status ?? true,
-      p_sn_id: formData.sn_id || undefined,
-      p_en_id: formData.en_id || undefined,
-      p_sn_ip: formData.sn_ip || undefined,
-      p_sn_interface: formData.sn_interface || undefined,
-      p_en_ip: formData.en_ip || undefined,
-      p_en_interface: formData.en_interface || undefined,
-      p_bandwidth: formData.bandwidth || undefined,
-      p_vlan: formData.vlan || undefined,
-      p_lc_id: formData.lc_id || undefined,
-      p_unique_id: formData.unique_id || undefined,
-      p_commissioned_on: formData.commissioned_on || undefined,
-      p_remark: formData.remark || undefined,
-      p_customer_name: formData.customer_name || undefined,
-      p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
-      p_system_working_interface: formData.system_working_interface || undefined,
-      p_system_protection_interface: formData.system_protection_interface || undefined,
-      p_connected_link_type_id: formData.connected_link_type_id || undefined,
-      p_stm_no: formData.stm_no || undefined,
-      p_carrier: formData.carrier || undefined,
-      p_a_slot: formData.a_slot || undefined,
-      p_a_customer: formData.a_customer || undefined,
-      p_b_slot: formData.b_slot || undefined,
-      p_b_customer: formData.b_customer || undefined,
-    };
-    
+  // THE FIX: Simplified handleSave. The modal now constructs the full RPC payload.
+  // We just need to cast it to the correct type for the mutation hook.
+  const handleSave = (payload: UpsertConnectionPayload) => {
     upsertMutation.mutate(payload, { 
       onSuccess: () => { 
         refetch(); 
@@ -7945,7 +8167,16 @@ export default function SystemConnectionsPage() {
         onSearchChange={setSearchQuery}
       />
 
-      {isEditModalOpen && <SystemConnectionFormModal isOpen={isEditModalOpen} onClose={closeModal} parentSystem={parentSystem} editingConnection={editingRecord} onSubmit={handleSave} isLoading={upsertMutation.isPending} />}
+      {isEditModalOpen && (
+        <SystemConnectionFormModal 
+            isOpen={isEditModalOpen} 
+            onClose={closeModal} 
+            parentSystem={parentSystem} 
+            editingConnection={editingRecord} 
+            onSubmit={handleSave} 
+            isLoading={upsertMutation.isPending} 
+        />
+      )}
       
       <ConfirmModal isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel} title="Confirm Delete" message={deleteManager.confirmationMessage} loading={deleteManager.isPending} type="danger" />
       
@@ -12927,82 +13158,99 @@ export function inferDynamicColumnWidth<T extends Record<string, unknown>>(
 
 <!-- path: config/table-columns/OfcDetailsTableColumns.tsx -->
 ```typescript
-// path: components/ofc-details/OfcDetailsTableColumns.tsx
+// config/table-columns/OfcDetailsTableColumns.tsx
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { formatDate } from '@/utils/formatters';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 export const OfcDetailsTableColumns = (
   data: Row<'v_ofc_connections_complete'>[]
 ) => {
   return useDynamicColumnConfig('v_ofc_connections_complete', {
     data: data,
-    // THE FIX: Removed the problematic columns from the omit list so their overrides can be applied.
     omit: [
       'id', 'ofc_id', 'created_at', 'updated_at', 'sn_id', 'en_id', 'connection_category',
       'destination_port', 'en_name', 'path_segment_order', 'sn_name', 'source_port',
-      'system_id', 'system_name', 'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
+      'system_id', 
+      // REMOVED 'system_name' from here so it shows up
+      'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
       'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name'
     ],
     overrides: {
+      system_name: {
+        title: 'Connected Service',
+        sortable: true,
+        searchable: true,
+        width: 300, // Give it plenty of space
+        render: (value) => (
+          <div className="flex flex-col justify-center">
+             {value ? (
+                <TruncateTooltip 
+                  text={value as string} 
+                  className="font-medium text-gray-900 dark:text-gray-100 text-sm" 
+                />
+             ) : (
+                <span className="text-gray-400 text-xs italic">Unassigned</span>
+             )}
+          </div>
+        ),
+      },
       updated_fiber_no_sn: {
         title: 'End A Fiber',
         sortable: true,
         searchable: true,
-        excelFormat: 'integer', // Explicitly format as integer
+        excelFormat: 'integer',
       },
       updated_fiber_no_en: {
         title: 'End B Fiber',
         sortable: true,
         searchable: true,
-        excelFormat: 'integer', // Explicitly format as integer
+        excelFormat: 'integer',
       },
       otdr_distance_sn_km: {
-        title: 'End A OTDR Distance (km)',
+        title: 'End A OTDR (km)',
         sortable: true,
         searchable: true,
       },
       otdr_distance_en_km: {
-        title: 'End B OTDR Distance (km)',
+        title: 'End B OTDR (km)',
         sortable: true,
         searchable: true,
       },
       updated_sn_id: {
-        title: 'End A ID',
-        excelFormat: 'text', // Explicitly format as text to prevent conversion to number
+        title: 'End A Node',
+        excelFormat: 'text',
         render(value, record) {
-          return record.updated_sn_name || (value as string);
+          return <TruncateTooltip text={record.updated_sn_name || (value as string) || '—'} />;
         },
       },
       updated_en_id: {
-        title: 'End B ID',
-        excelFormat: 'text', // Explicitly format as text
+        title: 'End B Node',
+        excelFormat: 'text',
         render(value, record) {
-          return record.updated_en_name || (value as string);
+          return <TruncateTooltip text={record.updated_en_name || (value as string) || '—'} />;
         },
       },
-      en_dom: { title: 'End B D.O.M.', sortable: true, width: '150px', searchable: true, render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) },
-      en_power_dbm: {
-        title: 'End B Power (dBm)',
-        sortable: true,
-        searchable: true,
+      en_dom: { 
+        title: 'End B D.O.M.', 
+        sortable: true, 
+        width: 120, 
+        searchable: true, 
+        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
       },
-      sn_dom: { title: 'End A D.O.M.', sortable: true, width: '150px', searchable: true, render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) },
-      sn_power_dbm: {
-        title: 'End A Power (dBm)',
-        sortable: true,
-        searchable: true,
+      sn_dom: { 
+        title: 'End A D.O.M.', 
+        sortable: true, 
+        width: 120, 
+        searchable: true, 
+        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
       },
-      route_loss_db: {
-        title: 'Route Loss (dB)',
-        sortable: true,
-        searchable: true,
-      },
-      connection_type: {
-        title: 'Connection Type',
-        sortable: true,
-        searchable: true,
-      },
+      // Simplify headers to save space
+      sn_power_dbm: { title: 'End A (dBm)', sortable: true },
+      en_power_dbm: { title: 'End B (dBm)', sortable: true },
+      route_loss_db: { title: 'Loss (dB)', sortable: true },
+      connection_type: { title: 'Type', sortable: true },
     },
   });
 };
@@ -13552,100 +13800,46 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
 
 <!-- path: config/table-columns/SystemConnectionsTableColumns.tsx -->
 ```typescript
+// config/table-columns/SystemConnectionsTableColumns.tsx
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { FiMapPin } from "react-icons/fi";
 import { formatDate } from "@/utils/formatters";
 import { Row } from "@/hooks/database";
-import { useServicePathDisplay } from "@/hooks/database/system-connection-hooks";
-import TruncateTooltip from "@/components/common/TruncateTooltip";
+import { PathDisplay } from "@/components/system-details/PathDisplay"; // Updated Import
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-
-// Sub-component to display path details for a single connection
-const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string | null }) => {
-  const { data: pathData, isLoading } = useServicePathDisplay(systemConnectionId);
-
-  if (isLoading) {
-    return <div className='text-xs text-gray-400'>Loading path...</div>;
-  }
-
-  if (!pathData) {
-    return <div className='text-xs text-gray-400 italic'>Not Provisioned</div>;
-  }
-
-  const renderPath = (label: string, path: string | undefined) => {
-    if (!path) return null;
-    return (
-      <div>
-        <span className='font-semibold text-gray-600 dark:text-gray-400'>{label}:</span>
-        <TruncateTooltip text={path} className='ml-1 text-gray-800 dark:text-gray-200' />
-      </div>
-    );
-  };
-
-  return (
-    <div className='text-xs space-y-1 max-w-sm'>
-      {renderPath("W-Tx", pathData.working_tx)}
-      {renderPath("W-Rx", pathData.working_rx)}
-      {renderPath("P-Tx", pathData.protection_tx)}
-      {renderPath("P-Rx", pathData.protection_rx)}
-    </div>
-  );
-};
 
 export const SystemConnectionsTableColumns = (
   data: Row<"v_system_connections_complete">[]
 ): Column<Row<"v_system_connections_complete">>[] => {
-  // 1. Generate the base columns from the view schema
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
     omit: [
-      "id",
-      "system_id",
-      "system_name",
-      "system_type_name",
-      "media_type_id",
-      "created_at",
-      "updated_at",
-      "en_interface",
-      "sn_interface",
-      "en_ip",
-      "sn_ip",
-      "sn_id",
-      "en_id",
-      "sn_node_id",
-      "en_node_id",
-      "sdh_a_customer",
-      "sdh_a_slot",
-      "sdh_b_customer",
-      "sdh_b_slot",
-      "sdh_carrier",
-      "sdh_stm_no",
-      "vlan",
-      "en_node_name",
-      "sn_node_name",
-      "media_type_name",
-      "remark",
-      // Omit the new array columns from direct display
-      "working_fiber_in_ids",
-      "working_fiber_out_ids",
-      "protection_fiber_in_ids",
-      "protection_fiber_out_ids",
+      "id", "system_id", "system_name", "system_type_name", "media_type_id",
+      "created_at", "updated_at", "en_interface", "sn_interface", "en_ip",
+      "sn_ip", "sn_id", "en_id", "sn_node_id", "en_node_id", "sdh_a_customer",
+      "sdh_a_slot", "sdh_b_customer", "sdh_b_slot", "sdh_carrier", "sdh_stm_no",
+      "vlan", "en_node_name", "sn_node_name", "media_type_name", "remark",
+      "working_fiber_in_ids", "working_fiber_out_ids", "protection_fiber_in_ids",
+      "protection_fiber_out_ids", "service_id", "connected_link_type_id",
     ],
     overrides: {
-      customer_name: {
-        title: "Customer / Link",
+      service_name: {
+        title: "Service / Customer",
         sortable: true,
         searchable: true,
-        width: 200,
+        width: 250,
         render: (value, record) => (
           <div className='flex flex-col'>
             <span className='font-medium text-gray-900 dark:text-white'>
-              {(value as string) || record.connected_system_name}
+              {(value as string) || record.connected_system_name || "N/A"}
             </span>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              {record.en_system_type_name}
-            </span>
+            <div className='text-xs text-gray-500 dark:text-gray-400 flex gap-2'>
+              <span>{record.connected_link_type_name || record.en_system_type_name || ""}</span>
+              {record.bandwidth_allocated && (
+                 <span className="bg-blue-50 text-blue-700 px-1 rounded">{record.bandwidth_allocated}</span>
+              )}
+            </div>
           </div>
         ),
       },
@@ -13660,9 +13854,9 @@ export const SystemConnectionsTableColumns = (
         naturalSort: true
       },
       bandwidth: {
-        title: "Bandwidth (Mbps)",
+        title: "Capacity (Mbps)",
         sortable: true,
-        width: 150,
+        width: 120,
         render: (value) => <span className='font-mono text-sm'>{value ? `${value}` : "N/A"}</span>,
       },
       en_name: {
@@ -13712,27 +13906,25 @@ export const SystemConnectionsTableColumns = (
     },
   });
 
-  // 2. Create the new synthetic column object
   const provisionedPathColumn: Column<Row<"v_system_connections_complete">> = {
     key: "provisioned_path",
     title: "Provisioned Path",
-    dataIndex: "id", // Use 'id' to pass the connection ID to the PathDisplay component
+    dataIndex: "id",
     width: 350,
     render: (value) => <PathDisplay systemConnectionId={value as string | null} />,
   };
 
-  // 3. Insert the new column into the array at the desired position
-  const customerNameIndex = baseColumns.findIndex((c) => c.key === "customer_name");
+  const serviceNameIndex = baseColumns.findIndex((c) => c.key === "service_name");
   const finalColumns = [...baseColumns];
-  if (customerNameIndex !== -1) {
-    finalColumns.splice(customerNameIndex + 1, 0, provisionedPathColumn);
+  
+  if (serviceNameIndex !== -1) {
+    finalColumns.splice(serviceNameIndex + 1, 0, provisionedPathColumn);
   } else {
-    finalColumns.unshift(provisionedPathColumn); // Fallback to add at the beginning
+    finalColumns.unshift(provisionedPathColumn);
   }
 
   return finalColumns;
 };
-
 ```
 
 <!-- path: config/table-columns/InventoryTableColumns.tsx -->
@@ -13885,6 +14077,63 @@ export const PortsManagementTableColumns = (data: V_ports_management_completeRow
         title: 'Services',
         render: (value) => <span className="font-mono font-semibold">{value as number}</span>,
       },
+    },
+  });
+};
+```
+
+<!-- path: config/table-columns/ServicesTableColumns.tsx -->
+```typescript
+// config/table-columns/ServicesTableColumns.tsx
+import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
+import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
+import { V_servicesRowSchema } from "@/schemas/zod-schemas";
+import TruncateTooltip from "@/components/common/TruncateTooltip";
+
+// THE FIX: Changed the input type from ServicesRowSchema[] to V_servicesRowSchema[]
+// This matches the data returned by the useServicesData hook (which queries the view).
+export const ServicesTableColumns = (data: V_servicesRowSchema[]) => {
+  return useDynamicColumnConfig("v_services", {
+    data: data,
+    // Omit internal IDs and timestamps
+    omit: ["created_at", "updated_at", "node_id", "link_type_id", "maintenance_area_name"],
+    overrides: {
+      name: {
+        title: "Service Name",
+        sortable: true,
+        searchable: true,
+        width: 250,
+        render: (value) => <TruncateTooltip text={value as string} className="font-semibold" />
+      },
+      node_name: {
+        title: "Node Location",
+        sortable: true,
+        searchable: true,
+        width: 200,
+      },
+      link_type_name: {
+        title: "Link Type",
+        sortable: true,
+        width: 150,
+      },
+      bandwidth_allocated: {
+        title: "Bandwidth",
+        width: 120,
+      },
+      vlan: {
+        title: "VLAN",
+        width: 100,
+      },
+      status: {
+        title: "Status",
+        width: 120,
+        render: (value) => <StatusBadge status={value as boolean} />,
+      },
+      description: {
+        title: "Description",
+        width: 250,
+        render: (value) => <TruncateTooltip text={value as string} />
+      }
     },
   });
 };
@@ -16991,23 +17240,117 @@ export type Database = {
           },
         ]
       }
+      services: {
+        Row: {
+          bandwidth_allocated: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          lc_id: string | null
+          link_type_id: string | null
+          name: string
+          node_id: string
+          status: boolean | null
+          unique_id: string | null
+          updated_at: string | null
+          vlan: string | null
+        }
+        Insert: {
+          bandwidth_allocated?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lc_id?: string | null
+          link_type_id?: string | null
+          name: string
+          node_id: string
+          status?: boolean | null
+          unique_id?: string | null
+          updated_at?: string | null
+          vlan?: string | null
+        }
+        Update: {
+          bandwidth_allocated?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lc_id?: string | null
+          link_type_id?: string | null
+          name?: string
+          node_id?: string
+          status?: boolean | null
+          unique_id?: string | null
+          updated_at?: string | null
+          vlan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+        ]
+      }
       system_connections: {
         Row: {
           bandwidth: string | null
-          bandwidth_allocated: string | null
           commissioned_on: string | null
-          connected_link_type_id: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
-          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
           remark: string | null
+          service_id: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -17015,28 +17358,25 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
-          unique_id: string | null
           updated_at: string | null
-          vlan: string | null
           working_fiber_in_ids: string[] | null
           working_fiber_out_ids: string[] | null
         }
         Insert: {
           bandwidth?: string | null
-          bandwidth_allocated?: string | null
           commissioned_on?: string | null
-          connected_link_type_id?: string | null
           created_at?: string | null
-          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
-          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
+          service_id?: string | null
+          services_interface?: string | null
+          services_ip?: unknown
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -17044,28 +17384,25 @@ export type Database = {
           system_id: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
-          unique_id?: string | null
           updated_at?: string | null
-          vlan?: string | null
           working_fiber_in_ids?: string[] | null
           working_fiber_out_ids?: string[] | null
         }
         Update: {
           bandwidth?: string | null
-          bandwidth_allocated?: string | null
           commissioned_on?: string | null
-          connected_link_type_id?: string | null
           created_at?: string | null
-          customer_name?: string | null
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
           id?: string
-          lc_id?: string | null
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
           protection_fiber_out_ids?: string[] | null
           remark?: string | null
+          service_id?: string | null
+          services_interface?: string | null
+          services_ip?: unknown
           sn_id?: string | null
           sn_interface?: string | null
           sn_ip?: unknown
@@ -17073,27 +17410,11 @@ export type Database = {
           system_id?: string
           system_protection_interface?: string | null
           system_working_interface?: string | null
-          unique_id?: string | null
           updated_at?: string | null
-          vlan?: string | null
           working_fiber_in_ids?: string[] | null
           working_fiber_out_ids?: string[] | null
         }
         Relationships: [
-          {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
-            columns: ["connected_link_type_id"]
-            isOneToOne: false
-            referencedRelation: "lookup_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
-            columns: ["connected_link_type_id"]
-            isOneToOne: false
-            referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "system_connections_en_id_fkey"
             columns: ["en_id"]
@@ -17121,6 +17442,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "system_connections_sn_id_fkey"
@@ -18472,6 +18814,76 @@ export type Database = {
           },
         ]
       }
+      v_services: {
+        Row: {
+          bandwidth_allocated: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          lc_id: string | null
+          link_type_id: string | null
+          link_type_name: string | null
+          maintenance_area_name: string | null
+          name: string | null
+          node_id: string | null
+          node_name: string | null
+          status: boolean | null
+          unique_id: string | null
+          updated_at: string | null
+          vlan: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_link_type_id_fkey"
+            columns: ["link_type_id"]
+            isOneToOne: false
+            referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
+        ]
+      }
       v_system_connections_complete: {
         Row: {
           bandwidth: string | null
@@ -18482,7 +18894,6 @@ export type Database = {
           connected_system_name: string | null
           connected_system_type_name: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
@@ -18503,6 +18914,12 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
+          service_id: string | null
+          service_name: string | null
+          service_node_id: string | null
+          service_node_name: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -18524,18 +18941,53 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            foreignKeyName: "services_link_type_id_fkey"
             columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "lookup_types"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "system_connections_connected_link_type_id_fkey"
+            foreignKeyName: "services_link_type_id_fkey"
             columns: ["connected_link_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_node_id_fkey"
+            columns: ["service_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
           },
           {
             foreignKeyName: "system_connections_en_id_fkey"
@@ -19373,17 +19825,20 @@ export type Database = {
           p_bandwidth_allocated?: string
           p_carrier?: string
           p_commissioned_on?: string
-          p_connected_link_type_id?: string
-          p_customer_name?: string
           p_en_id?: string
           p_en_interface?: string
           p_en_ip?: unknown
           p_id?: string
           p_lc_id?: string
+          p_link_type_id?: string
           p_media_type_id: string
           p_protection_fiber_in_ids?: string[]
           p_protection_fiber_out_ids?: string[]
           p_remark?: string
+          p_service_name?: string
+          p_service_node_id?: string
+          p_services_interface?: string
+          p_services_ip?: unknown
           p_sn_id?: string
           p_sn_interface?: string
           p_sn_ip?: unknown
@@ -19399,20 +19854,19 @@ export type Database = {
         }
         Returns: {
           bandwidth: string | null
-          bandwidth_allocated: string | null
           commissioned_on: string | null
-          connected_link_type_id: string | null
           created_at: string | null
-          customer_name: string | null
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
           id: string
-          lc_id: string | null
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
           protection_fiber_out_ids: string[] | null
           remark: string | null
+          service_id: string | null
+          services_interface: string | null
+          services_ip: unknown
           sn_id: string | null
           sn_interface: string | null
           sn_ip: unknown
@@ -19420,9 +19874,7 @@ export type Database = {
           system_id: string
           system_protection_interface: string | null
           system_working_interface: string | null
-          unique_id: string | null
           updated_at: string | null
-          vlan: string | null
           working_fiber_in_ids: string[] | null
           working_fiber_out_ids: string[] | null
         }[]
@@ -21273,22 +21725,66 @@ export type Sdh_connectionsUpdate = {
     system_connection_id?: string;
 };
 
+export type ServicesRow = {
+    bandwidth_allocated: string | null;
+    created_at: string | null;
+    description: string | null;
+    id: string;
+    lc_id: string | null;
+    link_type_id: string | null;
+    name: string;
+    node_id: string;
+    status: boolean | null;
+    unique_id: string | null;
+    updated_at: string | null;
+    vlan: string | null;
+};
+
+export type ServicesInsert = {
+    bandwidth_allocated?: string | null;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+    lc_id?: string | null;
+    link_type_id?: string | null;
+    name: string;
+    node_id: string;
+    status?: boolean | null;
+    unique_id?: string | null;
+    updated_at?: string | null;
+    vlan?: string | null;
+};
+
+export type ServicesUpdate = {
+    bandwidth_allocated?: string | null;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+    lc_id?: string | null;
+    link_type_id?: string | null;
+    name?: string;
+    node_id?: string;
+    status?: boolean | null;
+    unique_id?: string | null;
+    updated_at?: string | null;
+    vlan?: string | null;
+};
+
 export type System_connectionsRow = {
     bandwidth: string | null;
-    bandwidth_allocated: string | null;
     commissioned_on: string | null;
-    connected_link_type_id: string | null;
     created_at: string | null;
-    customer_name: string | null;
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
     id: string;
-    lc_id: string | null;
     media_type_id: string | null;
     protection_fiber_in_ids: string[] | null;
     protection_fiber_out_ids: string[] | null;
     remark: string | null;
+    service_id: string | null;
+    services_interface: string | null;
+    services_ip: unknown;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown;
@@ -21296,29 +21792,26 @@ export type System_connectionsRow = {
     system_id: string;
     system_protection_interface: string | null;
     system_working_interface: string | null;
-    unique_id: string | null;
     updated_at: string | null;
-    vlan: string | null;
     working_fiber_in_ids: string[] | null;
     working_fiber_out_ids: string[] | null;
 };
 
 export type System_connectionsInsert = {
     bandwidth?: string | null;
-    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
-    connected_link_type_id?: string | null;
     created_at?: string | null;
-    customer_name?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
     id?: string;
-    lc_id?: string | null;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
+    service_id?: string | null;
+    services_interface?: string | null;
+    services_ip?: unknown;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -21326,29 +21819,26 @@ export type System_connectionsInsert = {
     system_id: string;
     system_protection_interface?: string | null;
     system_working_interface?: string | null;
-    unique_id?: string | null;
     updated_at?: string | null;
-    vlan?: string | null;
     working_fiber_in_ids?: string[] | null;
     working_fiber_out_ids?: string[] | null;
 };
 
 export type System_connectionsUpdate = {
     bandwidth?: string | null;
-    bandwidth_allocated?: string | null;
     commissioned_on?: string | null;
-    connected_link_type_id?: string | null;
     created_at?: string | null;
-    customer_name?: string | null;
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
     id?: string;
-    lc_id?: string | null;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
     protection_fiber_out_ids?: string[] | null;
     remark?: string | null;
+    service_id?: string | null;
+    services_interface?: string | null;
+    services_ip?: unknown;
     sn_id?: string | null;
     sn_interface?: string | null;
     sn_ip?: unknown;
@@ -21356,9 +21846,7 @@ export type System_connectionsUpdate = {
     system_id?: string;
     system_protection_interface?: string | null;
     system_working_interface?: string | null;
-    unique_id?: string | null;
     updated_at?: string | null;
-    vlan?: string | null;
     working_fiber_in_ids?: string[] | null;
     working_fiber_out_ids?: string[] | null;
 };
@@ -21788,6 +22276,24 @@ export type V_ringsRow = {
     updated_at: string | null;
 };
 
+export type V_servicesRow = {
+    bandwidth_allocated: string | null;
+    created_at: string | null;
+    description: string | null;
+    id: string | null;
+    lc_id: string | null;
+    link_type_id: string | null;
+    link_type_name: string | null;
+    maintenance_area_name: string | null;
+    name: string | null;
+    node_id: string | null;
+    node_name: string | null;
+    status: boolean | null;
+    unique_id: string | null;
+    updated_at: string | null;
+    vlan: string | null;
+};
+
 export type V_system_connections_completeRow = {
     bandwidth: string | null;
     bandwidth_allocated: string | null;
@@ -21797,7 +22303,6 @@ export type V_system_connections_completeRow = {
     connected_system_name: string | null;
     connected_system_type_name: string | null;
     created_at: string | null;
-    customer_name: string | null;
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
@@ -21818,6 +22323,12 @@ export type V_system_connections_completeRow = {
     sdh_b_slot: string | null;
     sdh_carrier: string | null;
     sdh_stm_no: string | null;
+    service_id: string | null;
+    service_name: string | null;
+    service_node_id: string | null;
+    service_node_name: string | null;
+    services_interface: string | null;
+    services_ip: unknown;
     sn_id: string | null;
     sn_interface: string | null;
     sn_ip: unknown;
@@ -21979,6 +22490,7 @@ export const tableNames = [
   "ring_based_systems",
   "rings",
   "sdh_connections",
+  "services",
   "system_connections",
   "systems",
   "user_activity_logs",
@@ -22002,6 +22514,7 @@ export const viewNames = [
   "v_ports_management_complete",
   "v_ring_nodes",
   "v_rings",
+  "v_services",
   "v_system_connections_complete",
   "v_system_ring_paths_detailed",
   "v_systems_complete",
@@ -22139,6 +22652,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: "id",
     isUploadEnabled: true,
   },
+  services: {
+    uploadType: "upsert",
+    conflictColumn: "id",
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -22219,6 +22737,16 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   folders: {
     created_at: { transform: toPgDate, excelFormat: "date" },
     name: { title: "Folder Name" }
+  },
+  services: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    status: { transform: toPgBoolean },
+  },
+  v_services: {
+    created_at: { transform: toPgDate, excelFormat: "date" },
+    status: { transform: toPgBoolean },
+    node_name: { title: "Node Location" },
+    link_type_name: { title: "Link Type" },
   }
 };
 
@@ -22455,33 +22983,44 @@ const TABLE_COLUMN_OBJECTS = {
     system_capacity_id: "system_capacity_id",
   },
   system_connections: {
-    id: "id",
-    system_id: "system_id",
-    sn_id: "sn_id",
-    en_id: "en_id",
-    media_type_id: "media_type_id",
-    sn_interface: "sn_interface",
-    en_interface: "en_interface",
-    sn_ip: "sn_ip",
-    en_ip: "en_ip",
-    vlan: "vlan",
     bandwidth: "bandwidth",
     commissioned_on: "commissioned_on",
-    status: "status",
-    remark: "remark",
     created_at: "created_at",
-    updated_at: "updated_at",
-    lc_id: "lc_id",
-    unique_id: "unique_id",
-    system_working_interface: "system_working_interface",
-    system_protection_interface: "system_protection_interface",
-    connected_link_type_id: "connected_link_type_id",
-    working_fiber_in_ids: "working_fiber_in_ids",
-    working_fiber_out_ids: "working_fiber_out_ids",
+    en_id: "en_id",
+    en_interface: "en_interface",
+    en_ip: "en_ip",
+    id: "id",
+    media_type_id: "media_type_id",
     protection_fiber_in_ids: "protection_fiber_in_ids",
     protection_fiber_out_ids: "protection_fiber_out_ids",
-    customer_name: "customer_name",
+    remark: "remark",
+    service_id: "service_id",
+    services_interface: "services_interface",
+    services_ip: "services_ip",
+    sn_id: "sn_id",
+    sn_interface: "sn_interface",
+    sn_ip: "sn_ip",
+    status: "status",
+    system_id: "system_id",
+    system_protection_interface: "system_protection_interface",
+    system_working_interface: "system_working_interface",
+    updated_at: "updated_at",
+    working_fiber_in_ids: "working_fiber_in_ids",
+    working_fiber_out_ids: "working_fiber_out_ids",
+  },
+  services: {
     bandwidth_allocated: "bandwidth_allocated",
+    created_at: "created_at",
+    description: "description",
+    id: "id",
+    lc_id: "lc_id",
+    link_type_id: "link_type_id",
+    name: "name",
+    node_id: "node_id",
+    status: "status",
+    unique_id: "unique_id",
+    updated_at: "updated_at",
+    vlan: "vlan",
   },
   ports_management: {
     id: "id", // Added primary key
@@ -22751,7 +23290,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_name: "system_name",
     system_type_name: "system_type_name",
     system_working_interface: "system_working_interface",
-    customer_name: "customer_name",
+    service_name: "service_name",
     system_protection_interface: "system_protection_interface",
     vlan: "vlan",
     bandwidth_allocated: "bandwidth_allocated",
@@ -22767,6 +23306,8 @@ const TABLE_COLUMN_OBJECTS = {
     sn_name: "sn_name",
     en_name: "en_name",
     en_interface: "en_interface",
+    service_node_id: "service_node_id",
+    service_node_name: "service_node_name",
     connected_system_name: "connected_system_name",
     connected_system_type_name: "connected_system_type_name",
     sn_system_type_name: "sn_system_type_name",
@@ -22775,6 +23316,9 @@ const TABLE_COLUMN_OBJECTS = {
     en_node_name: "en_node_name",
     lc_id: "lc_id",
     unique_id: "unique_id",
+    service_id: "service_id",
+    services_interface: "services_interface",
+    services_ip: "services_ip",
     sn_node_id: "sn_node_id",
     en_node_id: "en_node_id",
     media_type_id: "media_type_id",
@@ -23029,6 +23573,23 @@ const TABLE_COLUMN_OBJECTS = {
     performed_by_email: "performed_by_email",
     performed_by_avatar: "performed_by_avatar",
   },
+  v_services: {
+    name: "name",
+    node_name: "node_name",
+    link_type_name: "link_type_name",
+    bandwidth_allocated: "bandwidth_allocated",
+    vlan: "vlan",
+    lc_id: "lc_id",
+    unique_id: "unique_id",
+    description: "description",
+    maintenance_area_name: "maintenance_area_name",
+    status: "status",
+    created_at: "created_at",
+    updated_at: "updated_at",
+    id: "id",
+    node_id: "node_id",
+    link_type_id: "link_type_id",
+  },
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
@@ -23068,6 +23629,7 @@ export const TABLES = {
   logical_paths: "logical_paths",
   diary_notes: "diary_notes",
   inventory_items: "inventory_items",
+  services: "services",
 } as const;
 
 export const VIEWS = {
@@ -23090,6 +23652,7 @@ export const VIEWS = {
   v_ring_nodes: "v_ring_nodes",
   v_inventory_items: "v_inventory_items",
   v_audit_logs: "v_audit_logs",
+  v_services: "v_services",
 } as const;
 
 export const TABLE_NAMES = {
@@ -25454,17 +26017,14 @@ BEGIN
             FROM public.system_connections
             WHERE system_id = OLD.system_id
               AND system_working_interface = OLD.system_working_interface
-              -- Optional: Filter for only 'valid' connections if needed (e.g. customer_name not null)
-              AND customer_name IS NOT NULL 
-              AND trim(customer_name) <> '';
+              -- FIX: Use service_id instead of removed customer_name
+              AND service_id IS NOT NULL;
 
             -- 2. Update the OLD port status in ports_management
             UPDATE public.ports_management
             SET 
                 services_count = v_count,
                 port_utilization = (v_count > 0)
-                -- Note: We DO NOT automatically set port_admin_status to false.
-                -- A port usually remains administratively 'UP' even if the cable is unplugged.
             WHERE system_id = OLD.system_id 
               AND port = OLD.system_working_interface;
         END IF;
@@ -25482,8 +26042,8 @@ BEGIN
             FROM public.system_connections
             WHERE system_id = NEW.system_id
               AND system_working_interface = NEW.system_working_interface
-              AND customer_name IS NOT NULL 
-              AND trim(customer_name) <> '';
+              -- FIX: Use service_id instead of removed customer_name
+              AND service_id IS NOT NULL;
 
             -- 2. Update the NEW port status in ports_management
             UPDATE public.ports_management
@@ -25505,6 +26065,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. Re-attach the trigger
+DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
 CREATE TRIGGER trg_update_port_utilization
 AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
 FOR EACH ROW
@@ -25989,12 +26550,51 @@ GRANT EXECUTE ON FUNCTION public.upsert_ring_associations_from_json(UUID, JSONB)
 <!-- path: data/migrations/06_utilities/12_service_path_provisioning.sql -->
 ```sql
 -- path: data/migrations/06_utilities/12_service_path_provisioning.sql
--- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths. (Corrected FK Logic)
+-- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths.
+
+-- FUNCTION 1: Deprovision an existing service path
+-- (Moved to top to ensure availability if called internally, though we inline logic for safety)
+CREATE OR REPLACE FUNCTION public.deprovision_service_path(
+    p_system_connection_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_path_ids UUID[];
+BEGIN
+    -- Find all logical paths associated with this system connection
+    SELECT array_agg(id) INTO v_path_ids
+    FROM public.logical_fiber_paths
+    WHERE system_connection_id = p_system_connection_id;
+
+    IF v_path_ids IS NULL OR array_length(v_path_ids, 1) = 0 THEN
+        -- Just clear the connection table references to be safe
+        UPDATE public.system_connections
+        SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
+        WHERE id = p_system_connection_id;
+        RETURN;
+    END IF;
+
+    -- Clear references on all associated fibers
+    UPDATE public.ofc_connections
+    SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_segment_order = NULL, path_direction = NULL
+    WHERE logical_path_id = ANY(v_path_ids);
+
+    -- Clear references on the system_connection itself
+    UPDATE public.system_connections
+    SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
+    WHERE id = p_system_connection_id;
+
+    -- Delete the logical path records
+    DELETE FROM public.logical_fiber_paths WHERE id = ANY(v_path_ids);
+END;
+$$;
 
 
-
--- FUNCTION 1: REWRITTEN - Provision a new service path
-DROP FUNCTION IF EXISTS public.provision_service_path(uuid,text,uuid[],uuid[],uuid[],uuid[]);
+-- FUNCTION 2: Provision a new service path (with Upsert/Overwrite capability)
 CREATE OR REPLACE FUNCTION public.provision_service_path(
     p_system_connection_id UUID,
     p_path_name TEXT,
@@ -26014,25 +26614,64 @@ DECLARE
     v_working_path_id UUID;
     v_protection_path_id UUID;
     v_all_fiber_ids UUID[];
+    
+    -- Variables for Error Reporting
+    v_err_fiber_no INT;
+    v_err_cable_name TEXT;
+    v_err_path_name TEXT;
+    v_old_path_id UUID;
 BEGIN
-    -- Validation and Setup
+    -- 1. Validation and Setup
     SELECT system_id INTO v_system_id FROM public.system_connections WHERE id = p_system_connection_id;
     IF NOT FOUND THEN RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id; END IF;
 
     SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN RAISE EXCEPTION 'Operational status "active" not found in lookup_types.'; END IF;
+    IF v_active_status_id IS NULL THEN 
+        -- Fallback if 'active' status missing, though lookup should exist
+        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.'; 
+    END IF;
     
     v_all_fiber_ids := p_working_tx_fiber_ids || p_working_rx_fiber_ids || p_protection_tx_fiber_ids || p_protection_rx_fiber_ids;
 
-    IF EXISTS (SELECT 1 FROM public.ofc_connections WHERE id = ANY(v_all_fiber_ids) AND logical_path_id IS NOT NULL) THEN
-        RAISE EXCEPTION 'One or more selected fibers are already part of another logical path.';
+    -- 2. SMART CONFLICT CHECK
+    -- Check if any selected fiber is used by a logical path that belongs to a DIFFERENT connection
+    SELECT 
+        oc.fiber_no_sn,
+        c.route_name,
+        COALESCE(lp.path_name, 'Unknown Path')
+    INTO v_err_fiber_no, v_err_cable_name, v_err_path_name
+    FROM public.ofc_connections oc
+    JOIN public.ofc_cables c ON oc.ofc_id = c.id
+    LEFT JOIN public.logical_fiber_paths lp ON oc.logical_path_id = lp.id
+    WHERE oc.id = ANY(v_all_fiber_ids)
+      AND oc.logical_path_id IS NOT NULL
+      -- Crucial: Only consider it a conflict if the path belongs to someone else
+      AND (lp.system_connection_id IS NULL OR lp.system_connection_id != p_system_connection_id)
+    LIMIT 1;
+
+    IF v_err_fiber_no IS NOT NULL THEN
+        RAISE EXCEPTION 'Provisioning failed: Fiber #% on "%" is already allocated to "%".', v_err_fiber_no, v_err_cable_name, v_err_path_name;
     END IF;
 
-    -- Create "working" logical_fiber_path record, linking it to the system connection
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
-    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) RETURNING id INTO v_working_path_id;
+    -- 3. AUTO-CLEANUP (Overwrite existing provisioning for this connection)
+    -- Before applying new paths, clear any existing logical paths for this connection ID.
+    -- This allows "Updating" the allocation (e.g. adding protection fibers) without manual de-provisioning.
+    FOR v_old_path_id IN SELECT id FROM public.logical_fiber_paths WHERE system_connection_id = p_system_connection_id LOOP
+        -- Release fibers associated with old paths of this connection
+        UPDATE public.ofc_connections 
+        SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_direction = NULL
+        WHERE logical_path_id = v_old_path_id;
+        
+        -- Delete the old logical path record
+        DELETE FROM public.logical_fiber_paths WHERE id = v_old_path_id;
+    END LOOP;
 
-    -- Update working fibers with the correct logical_path_id, role, and direction
+    -- 4. Create "Working" Logical Path
+    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
+    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) 
+    RETURNING id INTO v_working_path_id;
+
+    -- 5. Assign Fibers to Working Path
     UPDATE public.ofc_connections 
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx'
     WHERE id = ANY(p_working_tx_fiber_ids);
@@ -26041,15 +26680,11 @@ BEGIN
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx'
     WHERE id = ANY(p_working_rx_fiber_ids);
 
-    -- Store the full arrays of fiber IDs in the system_connections table
-    UPDATE public.system_connections 
-    SET working_fiber_in_ids = p_working_tx_fiber_ids, working_fiber_out_ids = p_working_rx_fiber_ids 
-    WHERE id = p_system_connection_id;
-
-    -- Handle protection path if provided
+    -- 6. Handle Protection Path (if provided)
     IF array_length(p_protection_tx_fiber_ids, 1) > 0 THEN
         INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id, system_connection_id)
-        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) RETURNING id INTO v_protection_path_id;
+        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) 
+        RETURNING id INTO v_protection_path_id;
         
         UPDATE public.ofc_connections 
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx'
@@ -26058,61 +26693,24 @@ BEGIN
         UPDATE public.ofc_connections 
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx'
         WHERE id = ANY(p_protection_rx_fiber_ids);
-
-        UPDATE public.system_connections 
-        SET protection_fiber_in_ids = p_protection_tx_fiber_ids, protection_fiber_out_ids = p_protection_rx_fiber_ids 
-        WHERE id = p_system_connection_id;
     END IF;
+
+    -- 7. Update Connection Record with Fiber IDs Cache
+    UPDATE public.system_connections 
+    SET 
+        working_fiber_in_ids = p_working_tx_fiber_ids, 
+        working_fiber_out_ids = p_working_rx_fiber_ids,
+        protection_fiber_in_ids = p_protection_tx_fiber_ids, 
+        protection_fiber_out_ids = p_protection_rx_fiber_ids,
+        updated_at = NOW()
+    WHERE id = p_system_connection_id;
 
     RETURN v_working_path_id;
 END;
 $$;
 
 
--- FUNCTION 2: REWRITTEN - Deprovision an existing service path
-DROP FUNCTION IF EXISTS public.deprovision_service_path(uuid);
-CREATE OR REPLACE FUNCTION public.deprovision_service_path(
-    p_system_connection_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_path_ids UUID[];
-BEGIN
-    -- Find all logical paths associated with this system connection
-    SELECT array_agg(id) INTO v_path_ids
-    FROM public.logical_fiber_paths
-    WHERE system_connection_id = p_system_connection_id;
-
-    IF v_path_ids IS NULL OR array_length(v_path_ids, 1) = 0 THEN
-        RAISE NOTICE 'No logical paths found for system connection % to deprovision.', p_system_connection_id;
-        -- Still clear the system_connections table just in case of inconsistent data
-        UPDATE public.system_connections
-        SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-        WHERE id = p_system_connection_id;
-        RETURN;
-    END IF;
-
-    -- Clear references on all associated fibers by querying for the logical path IDs
-    UPDATE public.ofc_connections
-    SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_segment_order = NULL, path_direction = NULL
-    WHERE logical_path_id = ANY(v_path_ids);
-
-    -- Clear references on the system_connection itself
-    UPDATE public.system_connections
-    SET working_fiber_in_ids = NULL, working_fiber_out_ids = NULL, protection_fiber_in_ids = NULL, protection_fiber_out_ids = NULL, updated_at = NOW()
-    WHERE id = p_system_connection_id;
-
-    -- Delete the logical path records
-    DELETE FROM public.logical_fiber_paths WHERE id = ANY(v_path_ids);
-END;
-$$;
-
-
--- FUNCTION 3: NEW - Get structured path details for display
+-- FUNCTION 3: Get structured path details for display
 CREATE OR REPLACE FUNCTION public.get_service_path_display(p_system_connection_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -26146,12 +26744,19 @@ aggregated_paths AS (
   GROUP BY path_role, path_direction
 )
 SELECT jsonb_object_agg(
-  path_role || '_' || path_direction,
+  CASE 
+      WHEN path_role = 'working' AND path_direction = 'tx' THEN 'working_tx'
+      WHEN path_role = 'working' AND path_direction = 'rx' THEN 'working_rx'
+      WHEN path_role = 'protection' AND path_direction = 'tx' THEN 'protection_tx'
+      WHEN path_role = 'protection' AND path_direction = 'rx' THEN 'protection_rx'
+      ELSE path_role || '_' || path_direction 
+  END,
   path_string
 )
 FROM aggregated_paths;
 $$;
 
+-- Grants
 GRANT EXECUTE ON FUNCTION public.provision_service_path(UUID, TEXT, UUID[], UUID[], UUID[], UUID[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.deprovision_service_path(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_service_path_display(UUID) TO authenticated;
@@ -26454,40 +27059,109 @@ FROM public.systems s
   ) r_agg ON true;
 
 
+-- 2. View for Services (Logical Entity)
+CREATE OR REPLACE VIEW public.v_services WITH (security_invoker = true) AS
+SELECT
+    s.id,
+    s.name,
+    s.node_id,
+    n.name AS node_name,
+    ma.name AS maintenance_area_name, -- Useful for regional filtering
+    s.link_type_id,
+    lt.name AS link_type_name,
+    s.description,
+    s.bandwidth_allocated,
+    s.vlan,
+    s.lc_id,
+    s.unique_id,
+    s.status,
+    s.created_at,
+    s.updated_at
+FROM public.services s
+LEFT JOIN public.nodes n ON s.node_id = n.id
+LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
+LEFT JOIN public.lookup_types lt ON s.link_type_id = lt.id;
+
+
 -- View for a complete picture of a system connection and its specific details.
 CREATE OR REPLACE VIEW public.v_system_connections_complete WITH (security_invoker = true) AS
 SELECT
-  sc.id, sc.system_id, s.system_name, lt_system.name AS system_type_name,
+  sc.id,
+  sc.system_id,
+  s.system_name,
+  lt_system.name AS system_type_name,
+  
+  -- Connection Specifics
+  sc.services_ip,         -- From system_connections
+  sc.services_interface,  -- From system_connections
+  
   sc.sn_id,
   sc.en_id,
   na.id AS sn_node_id,
   nb.id AS en_node_id,
   sc.media_type_id,
-  s_sn.system_name AS sn_name, na.name AS sn_node_name, sc.sn_ip, sc.sn_interface,
-  s_en.system_name AS en_name, nb.name AS en_node_name, sc.en_ip, sc.en_interface,
-  lt_media.name AS media_type_name, sc.bandwidth, COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
+  
+  -- End A details
+  s_sn.system_name AS sn_name, 
+  na.name AS sn_node_name, 
+  sc.sn_ip, 
+  sc.sn_interface,
+  
+  -- End B details
+  s_en.system_name AS en_name, 
+  nb.name AS en_node_name, 
+  sc.en_ip, 
+  sc.en_interface,
+  
+  lt_media.name AS media_type_name,
+  sc.bandwidth, 
+  COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
   lt_sn_type.name AS sn_system_type_name,
   lt_en_type.name AS en_system_type_name,
   COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, 
-  sc.vlan, sc.commissioned_on,
-  sc.remark, sc.status, sc.created_at, sc.updated_at,
-  sc.customer_name,
-  sc.bandwidth_allocated,
-  sc.lc_id,
-  sc.unique_id,
+  
+  sc.commissioned_on,
+  sc.remark,
+  sc.status,
+  sc.created_at,
+  sc.updated_at,
+  
+  -- SERVICE DATA (Logical)
+  svc.id AS service_id,
+  svc.name AS service_name, 
+  svc.node_id AS service_node_id,
+  svc_node.name AS service_node_name,
+  svc.bandwidth_allocated,
+  svc.vlan,
+  svc.lc_id,
+  svc.unique_id,
+  svc.link_type_id AS connected_link_type_id,
+  lt_link_type.name as connected_link_type_name,
+  
+  -- Fiber Arrays
   sc.working_fiber_in_ids,
   sc.working_fiber_out_ids,
   sc.protection_fiber_in_ids,
   sc.protection_fiber_out_ids,
+  
+  -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
-  sc.connected_link_type_id,
-  lt_link_type.name as connected_link_type_name,
-  scs.stm_no AS sdh_stm_no, scs.carrier AS sdh_carrier, scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, scs.b_slot AS sdh_b_slot, scs.b_customer AS sdh_b_customer
+  
+  -- SDH Details
+  scs.stm_no AS sdh_stm_no, 
+  scs.carrier AS sdh_carrier, 
+  scs.a_slot AS sdh_a_slot,
+  scs.a_customer AS sdh_a_customer, 
+  scs.b_slot AS sdh_b_slot, 
+  scs.b_customer AS sdh_b_customer
+
 FROM public.system_connections sc
   JOIN public.systems s ON sc.system_id = s.id
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
+  LEFT JOIN public.services svc ON sc.service_id = svc.id
+  LEFT JOIN public.nodes svc_node ON svc.node_id = svc_node.id
+  LEFT JOIN public.lookup_types lt_link_type ON svc.link_type_id = lt_link_type.id
   LEFT JOIN public.systems s_sn ON sc.sn_id = s_sn.id
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
   LEFT JOIN public.systems s_en ON sc.en_id = s_en.id
@@ -26495,8 +27169,8 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_sn_type ON s_sn.system_type_id = lt_sn_type.id
   LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
-  LEFT JOIN public.lookup_types lt_link_type ON sc.connected_link_type_id = lt_link_type.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
+
 
 
 -- --- View for ports_management ---
@@ -26548,7 +27222,7 @@ SELECT
   oc.logical_path_id::uuid,
   oc.fiber_role::text,
   oc.path_segment_order::integer,
-  oc.path_direction::text, -- NEW
+  oc.path_direction::text,
   oc.source_port::text,
   oc.destination_port::text,
   oc.connection_category::text,
@@ -26563,10 +27237,20 @@ SELECT
   ofc.en_id::uuid,
   ofc_type.name AS ofc_type_name,
   na.name AS sn_name,
-  s.system_name AS system_name,
   nb.name AS en_name,
   updated_na.name AS updated_sn_name,
-  updated_nb.name AS updated_en_name
+  updated_nb.name AS updated_en_name,
+  
+  -- UPDATED SYSTEM NAME LOGIC: System / Interface / Service
+  CONCAT_WS(' / ', 
+    s.system_name, 
+    CASE 
+      WHEN oc.fiber_role = 'protection' THEN sc.system_protection_interface 
+      ELSE sc.system_working_interface 
+    END, 
+    svc.name
+  ) AS system_name
+
 FROM public.ofc_connections oc
   JOIN public.ofc_cables ofc ON oc.ofc_id = ofc.id
   JOIN public.lookup_types ofc_type ON ofc.ofc_type_id = ofc_type.id
@@ -26575,7 +27259,11 @@ FROM public.ofc_connections oc
   LEFT JOIN public.systems s ON oc.system_id = s.id
   LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
   LEFT JOIN public.nodes updated_na ON oc.updated_sn_id = updated_na.id
-  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id;
+  LEFT JOIN public.nodes updated_nb ON oc.updated_en_id = updated_nb.id
+  -- New Joins for Context
+  LEFT JOIN public.logical_fiber_paths lfp ON oc.logical_path_id = lfp.id
+  LEFT JOIN public.system_connections sc ON lfp.system_connection_id = sc.id
+  LEFT JOIN public.services svc ON sc.service_id = svc.id;
 
 
 -- View for Ring Map Node Data
@@ -26794,62 +27482,148 @@ $$;
 -- Grant execute on the modified function signature
 GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
 
+
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
-    p_system_id UUID, p_media_type_id UUID, p_status BOOLEAN, p_id UUID DEFAULT NULL, p_sn_id UUID DEFAULT NULL,
-    p_en_id UUID DEFAULT NULL, p_sn_ip INET DEFAULT NULL,
-    p_sn_interface TEXT DEFAULT NULL, p_en_ip INET DEFAULT NULL, p_en_interface TEXT DEFAULT NULL,
-    p_bandwidth TEXT DEFAULT NULL, p_vlan TEXT DEFAULT NULL, 
+    p_system_id UUID,
+    p_media_type_id UUID,
+    p_status BOOLEAN,
+    p_id UUID DEFAULT NULL,
+    
+    -- Service Params (Logical)
+    p_service_name TEXT DEFAULT NULL,
+    p_link_type_id UUID DEFAULT NULL,
+    p_bandwidth_allocated TEXT DEFAULT NULL,
+    p_vlan TEXT DEFAULT NULL,
     p_lc_id TEXT DEFAULT NULL,
     p_unique_id TEXT DEFAULT NULL,
+    p_service_node_id UUID DEFAULT NULL,
+    
+    -- Connection Params (Physical)
+    p_services_ip INET DEFAULT NULL,      
+    p_services_interface TEXT DEFAULT NULL,
+    
+    -- Topology Params
+    p_sn_id UUID DEFAULT NULL,
+    p_en_id UUID DEFAULT NULL,
+    p_sn_ip INET DEFAULT NULL,
+    p_sn_interface TEXT DEFAULT NULL,
+    p_en_ip INET DEFAULT NULL,
+    p_en_interface TEXT DEFAULT NULL,
+    p_bandwidth TEXT DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
-    p_customer_name TEXT DEFAULT NULL, p_bandwidth_allocated TEXT DEFAULT NULL,
-    p_working_fiber_in_ids UUID[] DEFAULT NULL, p_working_fiber_out_ids UUID[] DEFAULT NULL,
-    p_protection_fiber_in_ids UUID[] DEFAULT NULL, p_protection_fiber_out_ids UUID[] DEFAULT NULL,
+    
+    p_working_fiber_in_ids UUID[] DEFAULT NULL,
+    p_working_fiber_out_ids UUID[] DEFAULT NULL,
+    p_protection_fiber_in_ids UUID[] DEFAULT NULL,
+    p_protection_fiber_out_ids UUID[] DEFAULT NULL,
+    
     p_system_working_interface TEXT DEFAULT NULL,
     p_system_protection_interface TEXT DEFAULT NULL,
-    p_connected_link_type_id UUID DEFAULT NULL,
-    p_stm_no TEXT DEFAULT NULL, p_carrier TEXT DEFAULT NULL, p_a_slot TEXT DEFAULT NULL,
-    p_a_customer TEXT DEFAULT NULL, p_b_slot TEXT DEFAULT NULL, p_b_customer TEXT DEFAULT NULL
+    
+    -- SDH Params
+    p_stm_no TEXT DEFAULT NULL,
+    p_carrier TEXT DEFAULT NULL,
+    p_a_slot TEXT DEFAULT NULL,
+    p_a_customer TEXT DEFAULT NULL,
+    p_b_slot TEXT DEFAULT NULL,
+    p_b_customer TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_connection_id UUID;
+    v_service_id UUID;
+    v_system_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
-    SELECT lt.* INTO v_system_type_record FROM public.systems s JOIN public.lookup_types lt ON s.system_type_id = lt.id WHERE s.id = p_system_id;
+    SELECT s.node_id INTO v_system_node_id 
+    FROM public.systems s 
+    WHERE s.id = p_system_id;
+
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
+    SELECT lt.* INTO v_system_type_record 
+    FROM public.systems s 
+    JOIN public.lookup_types lt ON s.system_type_id = lt.id 
+    WHERE s.id = p_system_id;
+
+    -- Upsert Service
+    IF p_service_name IS NOT NULL THEN
+        IF p_id IS NOT NULL THEN
+            SELECT service_id INTO v_service_id FROM public.system_connections WHERE id = p_id;
+        END IF;
+
+        IF v_service_id IS NOT NULL THEN
+            UPDATE public.services SET
+                name = p_service_name,
+                link_type_id = p_link_type_id,
+                node_id = COALESCE(p_service_node_id, v_system_node_id),
+                bandwidth_allocated = p_bandwidth_allocated,
+                vlan = p_vlan,
+                lc_id = p_lc_id,
+                unique_id = p_unique_id,
+                updated_at = NOW()
+            WHERE id = v_service_id;
+        ELSE
+            INSERT INTO public.services (
+                node_id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id
+            ) VALUES (
+                COALESCE(p_service_node_id, v_system_node_id),
+                p_service_name,
+                p_link_type_id,
+                p_bandwidth_allocated,
+                p_vlan,
+                p_lc_id,
+                p_unique_id
+            ) RETURNING id INTO v_service_id;
+        END IF;
+    END IF;
+
+    -- Upsert Connection
     INSERT INTO public.system_connections (
-        id, system_id, media_type_id, status, sn_id, en_id, sn_ip, sn_interface,
-        en_ip, en_interface, bandwidth, vlan, lc_id, unique_id, commissioned_on, remark, customer_name, bandwidth_allocated,
+        id, system_id, service_id, media_type_id, status, 
+        services_ip, services_interface,
+        sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
+        bandwidth, commissioned_on, remark, 
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
-        system_working_interface, system_protection_interface, connected_link_type_id,
+        system_working_interface, system_protection_interface,
         updated_at
     ) VALUES (
-        COALESCE(p_id, gen_random_uuid()), p_system_id, p_media_type_id, p_status, p_sn_id, p_en_id,
-        p_sn_ip, p_sn_interface, p_en_ip, p_en_interface, p_bandwidth, p_vlan, p_lc_id, p_unique_id, p_commissioned_on, p_remark, p_customer_name,
-        p_bandwidth_allocated, p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
-        p_system_working_interface, p_system_protection_interface, p_connected_link_type_id,
+        COALESCE(p_id, gen_random_uuid()), p_system_id, v_service_id, p_media_type_id, p_status,
+        p_services_ip, p_services_interface,
+        p_sn_id, p_en_id, p_sn_ip, p_sn_interface, p_en_ip, p_en_interface,
+        p_bandwidth, p_commissioned_on, p_remark,
+        p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
+        p_system_working_interface, p_system_protection_interface,
         NOW()
     ) ON CONFLICT (id) DO UPDATE SET
-        media_type_id = EXCLUDED.media_type_id, status = EXCLUDED.status, sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, sn_ip = EXCLUDED.sn_ip,
-        sn_interface = EXCLUDED.sn_interface, en_ip = EXCLUDED.en_ip, en_interface = EXCLUDED.en_interface,
-        bandwidth = EXCLUDED.bandwidth, vlan = EXCLUDED.vlan, lc_id = EXCLUDED.lc_id, unique_id = EXCLUDED.unique_id,
+        media_type_id = EXCLUDED.media_type_id, 
+        service_id = EXCLUDED.service_id,
+        status = EXCLUDED.status,
+        services_ip = EXCLUDED.services_ip,
+        services_interface = EXCLUDED.services_interface,
+        sn_id = EXCLUDED.sn_id,
+        en_id = EXCLUDED.en_id, 
+        sn_ip = EXCLUDED.sn_ip,
+        sn_interface = EXCLUDED.sn_interface, 
+        en_ip = EXCLUDED.en_ip, 
+        en_interface = EXCLUDED.en_interface,
+        bandwidth = EXCLUDED.bandwidth, 
         commissioned_on = EXCLUDED.commissioned_on,
-        remark = EXCLUDED.remark, customer_name = EXCLUDED.customer_name, bandwidth_allocated = EXCLUDED.bandwidth_allocated,
-        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
-        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
+        remark = EXCLUDED.remark, 
+        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, 
+        working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
+        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, 
+        protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
         system_working_interface = EXCLUDED.system_working_interface,
         system_protection_interface = EXCLUDED.system_protection_interface,
-        connected_link_type_id = EXCLUDED.connected_link_type_id,
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
     
-    IF v_system_type_record.name = 'Plesiochronous Digital Hierarchy' OR v_system_type_record.name = 'Synchronous Digital Hierarchy' OR v_system_type_record.name = 'Next Generation SDH' THEN
+    IF v_system_type_record.name IN ('Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
         ) VALUES (
@@ -26862,7 +27636,18 @@ BEGIN
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(UUID, UUID, BOOLEAN, UUID, UUID, UUID, INET, TEXT, INET, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, UUID[], UUID[], UUID[], UUID[], TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+-- Grant execute permission with the EXACT signature (34 args)
+GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
+    UUID, UUID, BOOLEAN, UUID, 
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, -- Service args
+    INET, TEXT, -- New Physical args (services_ip, services_interface)
+    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, -- Topology args
+    UUID[], UUID[], UUID[], UUID[], -- Fiber args
+    TEXT, TEXT, -- Interface args
+    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT -- SDH args
+) TO authenticated;
+
 -- NEW FUNCTION: To manage system associations for a ring
 CREATE OR REPLACE FUNCTION public.update_ring_system_associations(
     p_ring_id UUID,
@@ -27105,31 +27890,56 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
   CONSTRAINT uq_system_port UNIQUE (system_id, port)
 );
 
+CREATE TABLE IF NOT EXISTS public.services (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    node_id UUID NOT NULL REFERENCES public.nodes (id), -- The LOCATION of the customer/service
+    name TEXT NOT NULL, -- Customer/Link Name
+    link_type_id UUID REFERENCES public.lookup_types(id), -- e.g., MPLS, ILL
+    description TEXT,
+    bandwidth_allocated TEXT, -- e.g. "100 Mbps"
+    vlan TEXT,
+    lc_id TEXT,
+    unique_id TEXT,
+    status BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- The System providing the connection
   system_id UUID REFERENCES public.systems (id) NOT NULL,
-  system_working_interface TEXT,
-  system_protection_interface TEXT,
-  sn_id UUID REFERENCES public.systems (id),
+  
+  -- Link to the Logical Service
+  service_id UUID REFERENCES public.services(id) ON DELETE SET NULL,
+  
+  -- Physical Configuration (IPs moved here)
+  services_ip INET,            -- The IP assigned to this specific connection leg
+  services_interface TEXT,     -- The interface on the system (e.g., Gi0/0/1)
+  
+  -- Topology / Path logic
+  sn_id UUID REFERENCES public.systems (id), -- Start System (usually same as system_id)
   sn_ip INET,
   sn_interface TEXT,
-  en_id UUID REFERENCES public.systems (id),
+  
+  en_id UUID REFERENCES public.systems (id), -- End System (Destination)
   en_ip INET,
   en_interface TEXT,
-  connected_link_type_id UUID REFERENCES public.lookup_types (id),
+  
   media_type_id UUID REFERENCES public.lookup_types (id),
-  bandwidth TEXT,
-  vlan TEXT,
-  lc_id TEXT,
-  unique_id TEXT,
-  -- store arrays of fiber IDs
+  bandwidth TEXT, -- Physical Port Bandwidth (e.g., 1G)
+  
+  -- Fiber Path References
   working_fiber_in_ids UUID[],
   working_fiber_out_ids UUID[],
   protection_fiber_in_ids UUID[],
   protection_fiber_out_ids UUID[],
-  customer_name TEXT,
-  bandwidth_allocated TEXT,
+  
+  system_working_interface TEXT,
+  system_protection_interface TEXT,
+  
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,
@@ -27161,11 +27971,10 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
   FOREACH tbl IN ARRAY ARRAY[
     'systems', 'system_connections', 'ports_management',
     'ring_based_systems',
-    'sdh_connections', 'logical_paths'
+    'sdh_connections', 'logical_paths', 'services'
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
@@ -27186,10 +27995,9 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  -- --- THE FIX: Added 'ports_management' to this list ---
   FOREACH tbl IN ARRAY ARRAY[
     'ports_management', 'ring_based_systems',
-    'sdh_connections'
+    'sdh_connections', 'services'
   ]
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Allow admin full access" ON public.%I;', tbl);
@@ -27207,7 +28015,6 @@ $$;
 -- =================================================================
 -- PART 3: RLS POLICIES FOR GENERIC TABLES (systems, system_connections)
 -- =================================================================
--- (This part remains unchanged)
 DO $$
 BEGIN
   -- Policies for 'systems' table
@@ -27291,13 +28098,14 @@ BEGIN
     public.v_ring_nodes,
     public.v_rings,
     public.v_ofc_connections_complete,
-    -- --- THE FIX: Grant permissions on the new view ---
-    public.v_ports_management_complete
+    public.v_ports_management_complete,
+    public.v_services -- ADDED
   TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
   RAISE NOTICE 'Applied SELECT grants on network system views.';
 END;
 $$;
+
 ```
 
 <!-- path: data/migrations/03_network_systems/04_indexes.sql -->
@@ -31120,6 +31928,7 @@ import {
   FiGlobe,
   FiShield,
   FiAirplay,
+  FiDatabase,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -31150,7 +31959,7 @@ function NavItems() {
       },
       {
         id: 'diary',
-        label: 'Diary',
+        label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
         roles: [
@@ -31279,6 +32088,13 @@ function NavItems() {
             roles: [UserRole.ADMIN],
           },
         ],
+      },
+      {
+        id: 'services',
+        label: 'Services & Customers',
+        href: '/dashboard/services',
+        icon: <FiDatabase className="h-5 w-5" />,
+        roles: [UserRole.ADMIN],
       },
       {
         id: 'systems',
@@ -36036,6 +36852,213 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
 export default EmployeeDetailsModal;
 ```
 
+<!-- path: components/services/ServiceFormModal.tsx -->
+```typescript
+// components/services/ServiceFormModal.tsx
+"use client";
+
+import { FC, useEffect, useMemo } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Modal } from "@/components/common/ui";
+import { FormCard, FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form";
+import { useTableQuery } from "@/hooks/database";
+import { createClient } from "@/utils/supabase/client";
+import { V_servicesRowSchema } from "@/schemas/zod-schemas";
+
+// --- Corrected Schema ---
+// Represents the logical service definition only.
+const serviceFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  // Service is now tied to a Location (Node), not a specific System
+  node_id: z.uuid("Location (Node) is required"), 
+  link_type_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
+  bandwidth_allocated: z.string().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+  lc_id: z.string().nullable().optional(),
+  unique_id: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  status: z.boolean(),
+});
+
+export type ServiceFormValues = z.infer<typeof serviceFormSchema>;
+
+interface ServiceFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // Accepts the view schema which contains the fields we need
+  editingService: V_servicesRowSchema | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSubmit: (data: any) => void;
+  isLoading: boolean;
+}
+
+export const ServiceFormModal: FC<ServiceFormModalProps> = ({
+  isOpen, onClose, editingService, onSubmit, isLoading
+}) => {
+  const supabase = createClient();
+  const isEdit = !!editingService;
+
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceFormSchema),
+    defaultValues: { status: true }
+  });
+
+  // --- Data Fetching ---
+  // Only fetch Nodes and Link Types. Systems are no longer relevant here.
+  
+  const { data: nodes } = useTableQuery(supabase, "nodes", { 
+    columns: "id, name", 
+    filters: { status: true },
+    orderBy: [{ column: 'name', ascending: true }],
+    limit: 5000 
+  });
+  
+  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", { 
+    filters: { category: "LINK_TYPES" },
+    orderBy: [{ column: 'name', ascending: true }]
+  });
+
+  const nodeOptions = useMemo(() => nodes?.data.map(n => ({ value: n.id!, label: n.name! })) || [], [nodes]);
+  const linkTypeOptions = useMemo(() => linkTypes?.data.map(l => ({ value: l.id!, label: l.name! })) || [], [linkTypes]);
+
+  // --- Reset Logic ---
+  useEffect(() => {
+    if (isOpen) {
+        if (editingService) {
+            reset({
+                name: editingService.name || "",
+                node_id: editingService.node_id || "", // Location is required
+                link_type_id: editingService.link_type_id || "",
+                bandwidth_allocated: editingService.bandwidth_allocated || "",
+                vlan: editingService.vlan || "",
+                lc_id: editingService.lc_id || "",
+                unique_id: editingService.unique_id || "",
+                description: editingService.description || "",
+                status: editingService.status ?? true,
+            });
+        } else {
+            reset({ 
+              name: "", 
+              status: true,
+              node_id: "",
+              link_type_id: "",
+              bandwidth_allocated: "",
+              vlan: "",
+              lc_id: "",
+              unique_id: "",
+              description: ""
+            });
+        }
+    }
+  }, [isOpen, editingService, reset]);
+
+  const onValidSubmit: SubmitHandler<ServiceFormValues> = (data) => {
+    // Helper to convert empty strings to null
+    const toNull = (val: string | null | undefined) => (!val || val.trim() === "") ? null : val.trim();
+
+    const sanitizedData = {
+      ...data,
+      link_type_id: toNull(data.link_type_id),
+      bandwidth_allocated: toNull(data.bandwidth_allocated),
+      vlan: toNull(data.vlan),
+      lc_id: toNull(data.lc_id),
+      unique_id: toNull(data.unique_id),
+      description: toNull(data.description),
+    };
+
+    onSubmit(sanitizedData);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Service" : "Add Service"} size="lg">
+        <FormCard
+            title={isEdit ? "Edit Service" : "Add New Service"}
+            subtitle="Define the logical service details. Physical connection mapping is handled separately."
+            onSubmit={handleSubmit(onValidSubmit)}
+            onCancel={onClose}
+            isLoading={isLoading}
+            standalone
+        >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput 
+                  name="name" 
+                  label="Service / Customer Name" 
+                  register={register} 
+                  error={errors.name} 
+                  required 
+                  placeholder="e.g. SBI-Kolkata-Main" 
+                />
+                
+                <FormSearchableSelect<ServiceFormValues> 
+                  name="node_id" 
+                  label="Location (End-Point Node)" 
+                  control={control} 
+                  options={nodeOptions} 
+                  error={errors.node_id} 
+                  required 
+                  placeholder="Select where this service is delivered"
+                />
+
+                <FormSearchableSelect<ServiceFormValues> 
+                  name="link_type_id" 
+                  label="Link Type" 
+                  control={control} 
+                  options={linkTypeOptions} 
+                  error={errors.link_type_id} 
+                  placeholder="e.g. MPLS, ILL"
+                />
+                
+                <FormInput 
+                  name="bandwidth_allocated" 
+                  label="Bandwidth" 
+                  register={register} 
+                  error={errors.bandwidth_allocated} 
+                  placeholder="e.g. 100 Mbps"
+                />
+
+                <FormInput 
+                  name="vlan" 
+                  label="VLAN" 
+                  register={register} 
+                  error={errors.vlan} 
+                />
+                
+                <FormInput 
+                  name="lc_id" 
+                  label="LC ID / Circuit ID" 
+                  register={register} 
+                  error={errors.lc_id} 
+                />
+                
+                <FormInput 
+                  name="unique_id" 
+                  label="Unique ID" 
+                  register={register} 
+                  error={errors.unique_id} 
+                />
+            </div>
+            <div className="mt-4">
+                <FormTextarea<ServiceFormValues> 
+                  name="description" 
+                  label="Description / Notes" 
+                  control={control} 
+                  error={errors.description} 
+                />
+                <FormSwitch<ServiceFormValues> 
+                  name="status" 
+                  label="Active Status" 
+                  control={control} 
+                  className="mt-4" 
+                />
+            </div>
+        </FormCard>
+    </Modal>
+  );
+};
+```
+
 <!-- path: components/home/AnimatedBackground.tsx -->
 ```typescript
 "use client"
@@ -40617,8 +41640,6 @@ export interface WorkflowSectionProps {
 ```typescript
 // path: components/doc/types/featureTypes.ts
 
-import { LucideIcon } from "lucide-react";
-
 export interface FeatureItem {
   id: string; // The slug (e.g., 'offline-first')
   title: string;
@@ -41987,24 +43008,6 @@ export const workflowSections: WorkflowSection[] = [
           "**Context:** `UserProvider` fetches `v_user_profiles_extended` to check `preferences->needsOnboarding`.",
         ],
       },
-      // {
-      //   title: "2. Admin User Management",
-      //   userSteps: [
-      //     "Admin navigates to `/dashboard/users`.",
-      //     "Uses the 'Filter by Role' dropdown to find specific users.",
-      //     "Clicks 'Edit' (Pencil Icon) on a user row.",
-      //     "Changes Role (e.g., to `MAAN_ADMIN`) or Status (e.g., `Suspended`).",
-      //     "Clicks 'Update'.",
-      //   ],
-      //   uiSteps: [
-      //     "The `DataTable` refreshes immediately.",
-      //     "The user's permissions update instantly due to RLS policy re-evaluation.",
-      //   ],
-      //   techSteps: [
-      //     "**RPC:** `admin_update_user_profile` handles the update securely.",
-      //     "**Trigger:** `sync_user_role_to_auth` ensures the `auth.users` JWT claim matches the `user_profiles` role.",
-      //   ],
-      // },
     ],
   },
 
@@ -42175,7 +43178,7 @@ export const workflowSections: WorkflowSection[] = [
     iconColor: "text-blue-400",
     bgGlow: "bg-blue-500/10",
     color: "blue",
-    purpose: "To model active equipment (Systems) and organize them into logical Rings for redundancy.",
+    purpose: "To manage the physical and logical network equipment (Systems), their capacities, and their organization into Rings.",
     workflows: [
       {
         title: "1. Creating Systems",
@@ -42252,6 +43255,7 @@ export const workflowSections: WorkflowSection[] = [
         ],
         uiSteps: [
           "Dropdowns filter ports to show only those available.",
+          "UI Note: If no 'Start Node' is selected, the source system defaults as 'End A' automatically.",
         ],
         techSteps: [
           "**RPC:** `upsert_system_connection_with_details`.",
@@ -42285,6 +43289,21 @@ export const workflowSections: WorkflowSection[] = [
         ],
         techSteps: [
           "**RPC:** `trace_fiber_path` uses a recursive SQL query (CTE) to traverse `fiber_splices` and `cable_segments`.",
+        ],
+      },
+      {
+        title: "4. Viewing Connection Details",
+        userSteps: [
+          "In the Systems list or Connections table, click 'Full Details' (Monitor Icon).",
+          "A comprehensive modal opens showing Circuit Info, End A/B details, and mapped OFC data.",
+        ],
+        uiSteps: [
+          "The 'End A & End B Details' table dynamically displays connection points.",
+          "If End A (Start Node) is not explicitly defined in the database, the UI intelligently falls back to display the Parent System's Name and IP Address.",
+        ],
+        techSteps: [
+          "**Component:** `SystemConnectionDetailsModal`.",
+          "**Logic:** Uses `useTableRecord` to fetch the parent system and populate missing `sn_ip` or `sn_name` fields on the fly.",
         ],
       },
     ],
@@ -44216,34 +45235,20 @@ interface ViewModeToggleProps {
 
 <!-- path: components/common/TruncateTooltip.tsx -->
 ```typescript
-// @/components/common/TruncateTooltip.tsx
-import React, { useEffect, useRef, useState } from 'react';
+// components/common/TruncateTooltip.tsx
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { FiCopy, FiX, FiCheck } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 export interface TruncateTooltipProps {
-  /**
-   * Accepts plain text or HTML content as string.
-   */
-  text: string;
+  text: string | null | undefined;
   className?: string;
-  /**
-   * Optional id suffix for ARIA. If omitted, a random id will be generated.
-   */
   id?: string;
-  /**
-   * Optional: control max width of tooltip in px. Default 320.
-   */
   maxWidth?: number;
-  /**
-   * Whether to render text as HTML.
-   * If true, content will use dangerouslySetInnerHTML.
-   */
   renderAsHtml?: boolean;
 }
 
-/**
- * Renders truncated single-line text and shows a custom tooltip on hover/focus
- * only when the content is visually truncated.
- */
 export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   text,
   className,
@@ -44251,83 +45256,243 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   maxWidth = 320,
   renderAsHtml = false,
 }) => {
+  const displayText = text ?? '';
+  
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // New state for "Click to Lock"
+  const [justCopied, setJustCopied] = useState(false);
+  
+  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  
   const textRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  
   const tooltipId = `tt-${id ?? Math.random().toString(36).slice(2)}`;
 
-  const checkOverflow = () => {
-    const el = textRef.current;
-    if (!el) return false;
-    const overflow = el.scrollWidth > el.clientWidth;
-    setIsOverflowing(overflow);
-    return overflow;
-  };
-
-  useEffect(() => {
+  // --- Overflow Detection ---
+  const checkOverflow = useCallback(() => {
     const el = textRef.current;
     if (!el) return;
-    checkOverflow();
-    // FIX: Check if ResizeObserver exists before using it
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => checkOverflow());
-      ro.observe(el);
-    }
-    const onWin = () => checkOverflow();
-    window.addEventListener('resize', onWin);
-
-    return () => {
-      if (ro) ro.disconnect();
-      window.removeEventListener('resize', onWin);
-    };
+    const hasOverflow = el.scrollWidth > el.clientWidth;
+    setIsOverflowing(hasOverflow);
   }, []);
 
-  const show = () => {
-    if (checkOverflow()) {
-      const el = textRef.current!;
-      const rect = el.getBoundingClientRect();
-      const left = Math.min(Math.max(8, rect.left), window.innerWidth - maxWidth - 8);
-      setPos({ top: rect.bottom + 8, left });
-      setShowTooltip(true);
+  useEffect(() => {
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [checkOverflow, displayText]);
+
+  // --- Positioning Logic ---
+  const updatePosition = useCallback(() => {
+    if (textRef.current) {
+      const rect = textRef.current.getBoundingClientRect();
+      
+      // Calculate available space
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Default: Bottom Left aligned
+      let top = rect.bottom + 8;
+      let left = rect.left;
+
+      // Flip to top if not enough space below
+      if (top + 100 > viewportHeight) {
+        top = rect.top - 8; // We'll handle the 'bottom-0' class logic via CSS or calculation if needed, but simple fixed top works usually
+        // Actually, for fixed positioning, we might need to render *above*. 
+        // For simplicity in this snippet, we stick to bottom unless strictly needed, 
+        // or we can use a library like floating-ui for perfection. 
+        // Let's keep it simple: ensure it doesn't go off right edge.
+      }
+
+      // Prevent going off right edge
+      if (left + maxWidth > viewportWidth) {
+        left = viewportWidth - maxWidth - 16;
+      }
+      
+      // Prevent going off left edge
+      if (left < 16) {
+        left = 16;
+      }
+
+      setCoords({ top, left });
+    }
+  }, [maxWidth]);
+
+  // --- Event Handlers ---
+
+  const handleMouseEnter = () => {
+    if (!isLocked) {
+      updatePosition();
+      setIsHovered(true);
     }
   };
-  const hide = () => setShowTooltip(false);
+
+  const handleMouseLeave = () => {
+    if (!isLocked) {
+      setIsHovered(false);
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only toggle lock if content is actually truncated
+    if (isOverflowing) {
+      e.stopPropagation(); // Prevent triggering row clicks in tables
+      updatePosition();
+      setIsLocked((prev) => !prev);
+      setIsHovered(false); // Clear hover state so it doesn't flicker when unlocking
+    }
+  };
+
+  const handleClose = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsLocked(false);
+    setIsHovered(false);
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Strip HTML tags if copying from HTML content
+      const textToCopy = renderAsHtml 
+        ? displayText.replace(/<[^>]*>?/gm, '') 
+        : displayText;
+        
+      await navigator.clipboard.writeText(textToCopy);
+      setJustCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error("Failed to copy");
+    }
+  };
+
+  // --- Click Outside & Escape Listener ---
+  useEffect(() => {
+    if (!isLocked) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        tooltipRef.current && 
+        !tooltipRef.current.contains(e.target as Node) && 
+        textRef.current && 
+        !textRef.current.contains(e.target as Node)
+      ) {
+        setIsLocked(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsLocked(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    
+    // Handle scrolling parents closing the tooltip
+    document.addEventListener('scroll', updatePosition, true); 
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isLocked, updatePosition]);
+
+  // --- Render ---
+
+  const showTooltip = (isHovered || isLocked) && isOverflowing;
 
   return (
     <>
       <span
         ref={textRef}
-        className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 ${className ?? ''}`}
-        onMouseEnter={show}
-        onMouseLeave={hide}
-        onFocus={show}
-        onBlur={hide}
+        className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 cursor-default ${
+          isLocked ? 'text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/30 px-1 rounded -ml-1' : ''
+        } ${className ?? ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
         tabIndex={isOverflowing ? 0 : -1}
-        aria-describedby={showTooltip && isOverflowing ? tooltipId : undefined}
-        {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
+        aria-describedby={showTooltip ? tooltipId : undefined}
+        title={undefined} // Remove native tooltip
+        {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: displayText } } : {})}
       >
-        {!renderAsHtml ? text : null}
+        {!renderAsHtml ? displayText : null}
       </span>
 
-      {showTooltip && isOverflowing && (
-        <div
-          id={tooltipId}
-          role="tooltip"
-          className="fixed px-3 py-2 text-sm text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-300 whitespace-normal break-words pointer-events-none z-[9999]"
-          style={{ top: pos.top, left: pos.left, maxWidth }}
-          {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
-        >
-          {!renderAsHtml ? text : null}
-        </div>
+      {showTooltip && (
+        <Portal>
+          <div
+            ref={tooltipRef}
+            id={tooltipId}
+            role="tooltip"
+            className={`
+              fixed z-[9999] flex flex-col gap-2 rounded-lg shadow-xl border
+              text-sm break-words whitespace-normal
+              transition-all duration-200 ease-in-out
+              ${isLocked 
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto' 
+                : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-transparent pointer-events-none px-3 py-2'
+              }
+            `}
+            style={{ 
+              top: coords.top, 
+              left: coords.left, 
+              maxWidth: maxWidth,
+              minWidth: '200px'
+            }}
+          >
+            {/* Content Area */}
+            <div className={`${isLocked ? 'p-3 max-h-[300px] overflow-y-auto custom-scrollbar' : ''} select-text`}>
+              {renderAsHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: displayText }} />
+              ) : (
+                displayText
+              )}
+            </div>
+
+            {/* Action Bar (Only visible when locked) */}
+            {isLocked && (
+              <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
+                <div className="text-xs text-gray-400 italic">
+                  Select text to copy
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleCopy}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
+                    title="Copy content"
+                  >
+                    {justCopied ? <FiCheck className="text-green-500" /> : <FiCopy />}
+                  </button>
+                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+                  <button
+                    onClick={handleClose}
+                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 rounded text-gray-500 transition-colors"
+                    title="Close tooltip"
+                  >
+                    <FiX />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Portal>
       )}
     </>
   );
 };
 
-export default TruncateTooltip;
+// Helper Portal to ensure it breaks out of overflow:hidden parents (like tables)
+const Portal = ({ children }: { children: React.ReactNode }) => {
+  if (typeof window === 'undefined') return null;
+  return createPortal(children, document.body);
+};
 
+export default TruncateTooltip;
 ```
 
 <!-- path: components/common/BulkActions.tsx -->
@@ -50470,7 +51635,7 @@ interface FormTextareaProps<T extends FieldValues>
       'name' | 'value' | 'onChange'
     > {
   register?: UseFormRegister<T>;
-  control?: Control<T>;
+  control?: Control<T, any, any>;
 }
 
 export function FormTextarea<T extends FieldValues>({
@@ -50527,7 +51692,7 @@ export function FormTextarea<T extends FieldValues>({
 
 interface FormSearchableSelectProps<T extends FieldValues>
   extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -50585,7 +51750,7 @@ export function FormSearchableSelect<T extends FieldValues>({
 // --- FORM SELECT COMPONENT ---
 
 interface FormSelectProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -50656,7 +51821,7 @@ export interface FormDateInputProps<T extends FieldValues>
       React.InputHTMLAttributes<HTMLInputElement>,
       'name' | 'type' | 'size'
     > {
-  control: Control<T>;
+  control: Control<T, any, any>;
   // Optional passthrough for DatePicker props (minDate, maxDate, showTimeSelect, etc.)
   pickerProps?: Partial<
     Omit<
@@ -50809,7 +51974,7 @@ export function FormDateInput<T extends FieldValues>({
 // --- FORM SWITCH COMPONENT ---
 
 interface FormSwitchProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   description?: string;
 }
 
@@ -50854,7 +52019,7 @@ export function FormSwitch<T extends FieldValues>({
 // --- FORM IP ADDRESS COMPONENT ---
 
 interface FormIPAddressInputProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T>;
+  control: Control<T, any, any>;
   placeholder?: string;
   allowIPv4?: boolean;
   allowIPv6?: boolean;
@@ -53663,10 +54828,11 @@ export default SystemFiberTraceModal;
 
 <!-- path: components/system-details/SystemConnectionDetailsModal.tsx -->
 ```typescript
+// components/system-details/SystemConnectionDetailsModal.tsx
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, PageSpinner, StatusBadge } from '@/components/common/ui';
+import { Modal, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
@@ -53677,6 +54843,9 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { TraceRoutes, useTracePath } from '@/hooks/database/trace-hooks';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
+import { PathDisplay } from '@/components/system-details/PathDisplay';
+import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -53684,7 +54853,6 @@ interface SystemConnectionDetailsModalProps {
   connectionId: string | null;
 }
 
-// Define a header component for the blue bars
 const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
   <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0">
     <div className="flex items-center gap-3">
@@ -53701,14 +54869,13 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   connectionId,
 }) => {
   const supabase = createClient();
- const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
+  
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
-
-  const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
 
   // 1. Fetch the main connection record
   const {
@@ -53717,22 +54884,34 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     refetch,
   } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
 
-  // 2. Fetch OFC details related to this connection (via logical paths)
-  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
-    // Assuming the connection ID links to logical paths, we find fibers where the system connection matches
-    // Note: This relies on the relationship established in previous migrations
-    filters: {
-      // We need a way to filter OFC connections by the system connection.
-      // Since v_ofc_connections doesn't have system_connection_id directly,
-      // we filter by the system_id and interfaces, or rely on logical_path linkage if available.
-      // For this UI, we will simulate it or use what's available.
-      system_id: connection?.system_id ?? '',
-      // In a real scenario with the new schema, we'd join via logical_fiber_paths
-    },
-    enabled: !!connection,
+  // 2. Fetch the parent system record (Required for Allocation Modal and Fallback Display)
+  const {
+    data: parentSystem
+  } = useTableRecord(supabase, 'v_systems_complete', connection?.system_id || null, {
+    enabled: !!connection?.system_id
   });
 
-  // 3. Update Mutation for Cell Editing
+  // 3. Fetch OFC details related to this connection
+  // Filter specifically for fibers that are part of this connection's ID arrays
+  const allocatedFiberIds = useMemo(() => {
+     if(!connection) return [];
+     return [
+         ...(connection.working_fiber_in_ids || []),
+         ...(connection.working_fiber_out_ids || []),
+         ...(connection.protection_fiber_in_ids || []),
+         ...(connection.protection_fiber_out_ids || [])
+     ].filter(Boolean);
+  }, [connection]);
+
+  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
+    filters: {
+      id: { operator: 'in', value: allocatedFiberIds }
+    },
+    enabled: allocatedFiberIds.length > 0,
+    limit: 100 // Should be plenty for one connection
+  });
+
+  // 4. Update Mutation for Cell Editing
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
       toast.success('Field updated successfully');
@@ -53741,15 +54920,33 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
 
-  // --- SECTION 1: CIRCUIT INFORMATION ---
+  const handleOpenAllocationModal = useCallback(() => {
+    if (connection) {
+      setConnectionToAllocate(connection);
+      setIsAllocationModalOpen(true);
+    }
+  }, [connection]);
+
+  const handleAllocationSave = useCallback(() => {
+    refetch();
+    setIsAllocationModalOpen(false);
+    toast.success("Allocation updated successfully");
+  }, [refetch]);
+
+  // --- COLUMNS ---
+
   const circuitColumns = useMemo(
     (): Column<Row<'v_system_connections_complete'>>[] => [
       {
-        key: 'customer_name',
+        key: 'service_name',
         title: 'Service Name',
-        dataIndex: 'customer_name',
+        dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
         editable: true,
         width: 200,
+        render: (val, record) => {
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           return <span className="font-medium text-gray-900 dark:text-white">{(val as string) || (record as any).customer_name || 'N/A'}</span>
+        }
       },
       {
         key: 'media_type_name',
@@ -53765,37 +54962,28 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         editable: true,
         width: 100,
       },
-      { key: 'lc_id', title: 'LCID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', editable: true, width: 100 },
       { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
       { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
-      {
-        key: 'status',
-        title: 'State',
-        dataIndex: 'status',
-        render: (val) => <StatusBadge status={val as boolean} />,
-      },
     ],
     []
   );
 
-  // --- SECTION 2: END A & END B DETAILS (Transformation) ---
-  // We transform the single row into two rows for display
+  // --- END POINT DATA TRANSFORMATION ---
   const endPointData = useMemo(() => {
     if (!connection) return [];
+    const hasStartNode = !!connection.sn_name;
+    
     return [
       {
         id: `${connection.id}-A`, // Virtual ID
         end: 'End A',
-        node_ip: connection.sn_ip,
-        system_name: connection.sn_name || '',
-        interface: connection.sn_interface,
-        capacity: connection.bandwidth, // Assuming port capacity matches
-        vlan: connection.vlan,
-        // For editing mapping
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        node_ip: hasStartNode ? connection.sn_ip : (connection.sn_ip || (connection as any).services_ip || parentSystem?.ip_address),
+        system_name: hasStartNode ? connection.sn_name : (connection.system_name || 'Unknown System'),
+        interface: hasStartNode ? connection.sn_interface : (connection.system_working_interface || connection.sn_interface),
         realId: connection.id,
-        fieldMap: {
-          interface: 'sn_interface',
-        },
+        fieldMap: { interface: hasStartNode ? 'sn_interface' : 'system_working_interface' },
       },
       {
         id: `${connection.id}-B`, // Virtual ID
@@ -53803,17 +54991,12 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         node_ip: connection.en_ip,
         system_name: connection.en_name || '',
         interface: connection.en_interface,
-        capacity: connection.bandwidth,
-        vlan: connection.vlan,
         realId: connection.id,
-        fieldMap: {
-          interface: 'en_interface',
-        },
+        fieldMap: { interface: 'en_interface' },
       },
     ];
-  }, [connection]);
+  }, [connection, parentSystem]);
 
-  // We need a specific column definition for this virtual table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endPointColumns: Column<any>[] = [
     {
@@ -53837,22 +55020,20 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       dataIndex: 'interface',
       editable: true,
       width: 150,
-    }, // Editable!
+    },
   ];
 
-  // --- HANDLERS ---
+  // Generate columns for the physical fiber table using the shared config
+  const ofcColumns = OfcDetailsTableColumns(ofcData?.data || []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCellEdit = (record: any, column: Column<any>, newValue: string) => {
-    // 1. Circuit Info Edit
     if (record.id === connection?.id) {
       const updateData = { [column.dataIndex]: newValue };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateConnection({ id: record.id, data: updateData as any });
     }
-    // 2. End Point Edit (Virtual Rows)
     else if (record.realId) {
-      // Map the virtual column to the real DB column
       const realColumn = record.fieldMap[column.dataIndex];
       if (realColumn) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53867,7 +55048,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={connection?.system_name + ' Port: ' + connection?.system_working_interface || ''} // Custom header
+      title={connection?.service_name || connection?.system_name || "Connection Details"} 
       size="full"
       className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
     >
@@ -53875,29 +55056,28 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <PageSpinner text="Loading Circuit Details..." />
       ) : connection ? (
         <div className="space-y-8 pb-10">
-          {/* SECTION 1 */}
+          {/* SECTION 1: CIRCUIT INFO */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
               <DataTable
                 tableName="v_system_connections_complete"
-                data={[connection]} // Single row
+                data={[connection]} 
                 columns={circuitColumns}
                 searchable={false}
                 showColumnSelector={false}
-                onCellEdit={handleCellEdit} // Enable editing
-                pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }} // Hide pagination controls usually via CSS if needed, or just pass dummy
+                onCellEdit={handleCellEdit}
+                pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
                 bordered={false}
                 density="compact"
               />
             </div>
           </div>
 
-          {/* SECTION 2 */}
+          {/* SECTION 2: END POINTS */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-              {/* We use a generic table config here since the data is virtual */}
               <DataTable
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 tableName={'v_system_connections_complete' as any}
@@ -53914,40 +55094,66 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
-          {/* SECTION 3 */}
+          {/* SECTION 3: OFC DETAILS */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader
-              title="OFC Details"
+              title="Optical Fiber Path"
               action={
-                <button onClick={() => handleOpenAllocationModal} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm">
-                  + Map OFC
+                <button 
+                  onClick={handleOpenAllocationModal} 
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
+                >
+                  {allocatedFiberIds.length > 0 ? "Modify Allocation" : "Map OFC"}
                 </button>
               }
             />
-            <div className="p-0">
-              {!ofcData?.data || ofcData.data.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No OFC details found for this circuit.
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Use the &quot;Allocate Fibers&quot; feature in the main dashboard to map fibers.
-                  </p>
-                </div>
-              ) : (
-                // Placeholder for OFC table if data exists
-                <div className="p-4 text-sm">
-                  OFC Data Present (Implementation pending specific view requirement)
-                </div>
-              )}
+            <div className="p-4 space-y-6">
+               {/* 3.1 Path Text Summary */}
+               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Logical Route</h4>
+                  <PathDisplay systemConnectionId={connection.id} />
+               </div>
+
+               {/* 3.2 Physical Fiber Table */}
+               <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Physical Fiber Segments</h4>
+                  {!ofcData?.data || ofcData.data.length === 0 ? (
+                    <div className="p-6 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No fibers allocated yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <DataTable 
+                        tableName="v_ofc_connections_complete"
+                        data={ofcData.data}
+                        columns={ofcColumns}
+                        pagination={{ current: 1, pageSize: 10, total: ofcData.data.length, onChange: () => {} }}
+                        density="compact"
+                    />
+                  )}
+               </div>
             </div>
           </div>
+
           <SystemFiberTraceModal
             isOpen={isTraceModalOpen}
             onClose={() => setIsTraceModalOpen(false)}
             traceData={traceModalData}
             isLoading={isTracing}
           />
+
+          {/* Render the Allocation Modal */}
+          {isAllocationModalOpen && (
+            <FiberAllocationModal 
+                isOpen={isAllocationModalOpen} 
+                onClose={() => setIsAllocationModalOpen(false)} 
+                connection={connectionToAllocate} 
+                onSave={handleAllocationSave} 
+                parentSystem={parentSystem || null} 
+            />
+          )}
+
         </div>
       ) : (
         <div className="flex items-center justify-center h-full text-red-500">
@@ -53957,7 +55163,44 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     </Modal>
   );
 };
+```
 
+<!-- path: components/system-details/PathDisplay.tsx -->
+```typescript
+import { useServicePathDisplay } from "@/hooks/database/system-connection-hooks";
+import TruncateTooltip from "@/components/common/TruncateTooltip";
+import { LoadingSpinner } from "@/components/common/ui/LoadingSpinner";
+
+export const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string | null }) => {
+  const { data: pathData, isLoading } = useServicePathDisplay(systemConnectionId);
+
+  if (isLoading) {
+    return <div className='flex items-center gap-2 text-xs text-gray-400'><LoadingSpinner size="xs" /> Loading path...</div>;
+  }
+
+  if (!pathData || Object.keys(pathData).length === 0) {
+    return <div className='text-xs text-gray-400 italic'>Not Provisioned</div>;
+  }
+
+  const renderPath = (label: string, path: string | undefined, colorClass: string) => {
+    if (!path) return null;
+    return (
+      <div className="flex items-start gap-2 text-xs">
+        <span className={`font-bold whitespace-nowrap min-w-[40px] ${colorClass}`}>{label}:</span>
+        <TruncateTooltip text={path} className='text-gray-700 dark:text-gray-300 font-mono' />
+      </div>
+    );
+  };
+
+  return (
+    <div className='space-y-1.5 w-full max-w-md p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-100 dark:border-gray-800'>
+      {renderPath("W-Tx", pathData.working_tx, "text-blue-600 dark:text-blue-400")}
+      {renderPath("W-Rx", pathData.working_rx, "text-green-600 dark:text-green-400")}
+      {renderPath("P-Tx", pathData.protection_tx, "text-purple-600 dark:text-purple-400")}
+      {renderPath("P-Rx", pathData.protection_rx, "text-orange-600 dark:text-orange-400")}
+    </div>
+  );
+};
 ```
 
 <!-- path: components/system-details/FiberAllocationModal.tsx -->
@@ -53982,6 +55225,7 @@ interface PathStep {
   cable_id: string | null;
   fiber_id: string | null;
 }
+
 interface FiberAllocationForm {
   working_path_in: PathStep[];
   working_path_out: PathStep[];
@@ -53997,7 +55241,21 @@ interface FiberAllocationModalProps {
   onSave: () => void;
 }
 
-// --- SUB-COMPONENT FOR A SINGLE CASCADE ROW (Simplex version) ---
+// --- HELPER: Reconstruct Path Steps ---
+// Fetches fiber details (specifically ofc_id) given a list of fiber IDs
+const useReconstructPath = (fiberIds: string[] | null | undefined) => {
+  const supabase = createClient();
+  
+  return useTableQuery(supabase, 'v_ofc_connections_complete', {
+      columns: 'id, ofc_id',
+      filters: {
+          id: { operator: 'in', value: fiberIds || [] }
+      },
+      enabled: !!fiberIds && fiberIds.length > 0
+  });
+};
+
+// --- SUB-COMPONENT: Single Row in the Cascade ---
 const PathCascadeRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
@@ -54010,16 +55268,28 @@ const PathCascadeRow: FC<{
 }> = ({ index, pathType, control, watch, cascadeInfo, onRemove, allAllocatedFiberIds, currentFiberId }) => {
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
 
+  // Fetch available fibers for the selected cable
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
       columns: 'id, fiber_no_sn',
-      filters: { ofc_id: cableIdForThisRow || '', system_id: { operator: 'is', value: null } },
+      // Show fibers that are NOT assigned to a system, OR the fiber currently selected in this row
+      filters: { 
+        ofc_id: cableIdForThisRow || '', 
+        // We rely on client-side filtering for the "available" logic mixed with "current selection" logic
+        // to handle the re-edit case gracefully
+      },
       enabled: !!cableIdForThisRow,
+      limit: 1000
   });
 
   const fiberOptions = useMemo(() => 
     (availableFibersResult?.data || [])
-      .filter(f => !allAllocatedFiberIds.has(f.id) || f.id === currentFiberId)
-      .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` })), 
+      .filter(f => 
+        // Show if fiber has no system_id (is free) AND is not picked elsewhere in current form
+        // OR if it is the fiber currently selected in this specific dropdown
+        ((!f.system_id) && !allAllocatedFiberIds.has(f.id)) || f.id === currentFiberId
+      )
+      .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })), 
     [availableFibersResult, allAllocatedFiberIds, currentFiberId]
   );
 
@@ -54045,7 +55315,7 @@ const PathCascadeRow: FC<{
   );
 };
 
-// --- SUB-COMPONENT FOR BUILDING A PATH (Simplex version) ---
+// --- SUB-COMPONENT: Path Builder (Manages the list of rows) ---
 const PathBuilder: FC<{
     pathType: keyof FiberAllocationForm;
     control: Control<FiberAllocationForm>;
@@ -54058,22 +55328,22 @@ const PathBuilder: FC<{
     const { fields, append, remove } = useFieldArray({ control, name: pathType });
     const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
-    // FIX: Watch the array values directly to get reactive updates for fiber_id
+    // Watch the array values directly to get reactive updates
     const pathValues = watch(pathType);
 
+    // Calculate the node we are currently at (end of the chain)
     const lastNode = useMemo(() => {
         let currentNode = startNode;
-        // Use pathValues if available, falling back to fields if empty (though useFieldArray initializes from defaultValues)
         const currentSteps = pathValues || fields;
 
         currentSteps.forEach((step) => {
             if (!currentNode) return;
-            // We need to cast step because pathValues elements don't have 'id' from useFieldArray, 
-            // but fields do. We just need data properties here.
             const cableId = (step as PathStep).cable_id;
             
             const cable = cables.find(c => c.id === cableId);
             if (!cable) return;
+            
+            // Traverse: If start matches current, go to end. If end matches current, go to start.
             const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
             const nextNode = nodes.find(n => n.id === nextNodeId);
             currentNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
@@ -54101,9 +55371,9 @@ const PathBuilder: FC<{
         <div className="space-y-3">
             {fields.map((field, index) => {
                 let currentStartNode = startNode;
-                // Use pathValues for node calculation history to keep in sync
                 const currentSteps = pathValues || fields;
                 
+                // Re-calculate position for this specific row
                 for (let i = 0; i < index; i++) {
                     const prevCableId = (currentSteps[i] as PathStep).cable_id;
                     const prevCable = cables.find(c => c.id === prevCableId);
@@ -54114,7 +55384,6 @@ const PathBuilder: FC<{
                     }
                 }
                 
-                // FIX: Get the live value from watch(), not the stable field object
                 const currentStepValue = currentSteps[index] as PathStep;
                 const cableId = currentStepValue?.cable_id;
                 const liveFiberId = currentStepValue?.fiber_id;
@@ -54125,7 +55394,7 @@ const PathBuilder: FC<{
 
                 return (
                     <PathCascadeRow
-                        key={field.id} // Key must come from field.id
+                        key={field.id}
                         index={index}
                         pathType={pathType}
                         control={control}
@@ -54137,7 +55406,7 @@ const PathBuilder: FC<{
                         }}
                         onRemove={() => remove(index)}
                         allAllocatedFiberIds={allAllocatedFiberIds}
-                        currentFiberId={liveFiberId} // FIX: Pass the live ID
+                        currentFiberId={liveFiberId}
                     />
                 );
             })}
@@ -54169,20 +55438,64 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         defaultValues: { working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] }
     });
 
+    // 1. Watch all form values to track selected fibers across tabs
     const allPaths = watch();
     const allAllocatedFiberIds = useMemo(() => {
       const ids = new Set<string>();
       Object.values(allPaths).forEach((pathArray: PathStep[]) => {
-        pathArray.forEach((step: PathStep) => {
-          if (step.fiber_id) ids.add(step.fiber_id);
-        });
+        if(Array.isArray(pathArray)) {
+            pathArray.forEach((step: PathStep) => {
+            if (step.fiber_id) ids.add(step.fiber_id);
+            });
+        }
       });
       return ids;
     }, [allPaths]);
 
+    // 2. Fetch Network Context
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
     const { data: allNodesResult, isLoading: isLoadingNodes } = useTableQuery(createClient(), 'v_nodes_complete');
     
+    // 3. Fetch Existing Allocation Data (for Hydration)
+    const { data: workingInFibers, isLoading: load1 } = useReconstructPath(connection?.working_fiber_in_ids);
+    const { data: workingOutFibers, isLoading: load2 } = useReconstructPath(connection?.working_fiber_out_ids);
+    const { data: protectInFibers, isLoading: load3 } = useReconstructPath(connection?.protection_fiber_in_ids);
+    const { data: protectOutFibers, isLoading: load4 } = useReconstructPath(connection?.protection_fiber_out_ids);
+
+    const isHydrating = load1 || load2 || load3 || load4;
+
+    // 4. Re-hydrate form when data is loaded
+    useEffect(() => {
+        if (isOpen && connection && !isHydrating) {
+            
+            const mapToSteps = (
+                // THE FIX: Updated type to allow nullable ID to match the view schema
+                fibersData: { data: { id: string | null, ofc_id: string | null }[] } | undefined,
+                originalIds: string[] | null | undefined
+            ): PathStep[] => {
+                if (!fibersData?.data || !originalIds || originalIds.length === 0) return [];
+                
+                // Filter out null IDs just in case, although view shouldn't have them for this use case
+                const validFibers = fibersData.data.filter(f => f.id !== null);
+                const fiberMap = new Map(validFibers.map(f => [f.id!, f]));
+                
+                // Map using originalIds to preserve sequence order
+                return originalIds
+                   .map(id => fiberMap.get(id!))
+                   .filter(Boolean)
+                   .map(f => ({ cable_id: f!.ofc_id, fiber_id: f!.id }));
+            };
+
+            // Only reset if we actually have data, or if it's meant to be empty
+            reset({
+                working_path_in: mapToSteps(workingInFibers, connection.working_fiber_in_ids),
+                working_path_out: mapToSteps(workingOutFibers, connection.working_fiber_out_ids),
+                protection_path_in: mapToSteps(protectInFibers, connection.protection_fiber_in_ids),
+                protection_path_out: mapToSteps(protectOutFibers, connection.protection_fiber_out_ids),
+            });
+        }
+    }, [isOpen, connection, isHydrating, workingInFibers, workingOutFibers, protectInFibers, protectOutFibers, reset]);
+
     const provisionMutation = useProvisionServicePath();
 
     const startNode = useMemo(() => {
@@ -54193,13 +55506,11 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     
     const endNode = useMemo(() => {
         if (!connection || !allNodesResult?.data) return null;
+        // The end node ID is usually stored on the connection row from the View
         const node = allNodesResult.data.find(n => n.id === connection.en_node_id);
         return node ? { id: node.id!, name: node.name! } : null;
     }, [connection, allNodesResult]);
 
-    useEffect(() => {
-        reset({ working_path_in: [], working_path_out: [], protection_path_in: [], protection_path_out: [] });
-    }, [isOpen, reset]);
 
     const onValidSubmit = (data: FiberAllocationForm) => {
         if (!connection?.id) return;
@@ -54214,7 +55525,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         
         provisionMutation.mutate({
             p_system_connection_id: connection.id,
-            p_path_name: connection.customer_name || `Path for ${connection.system_name}`,
+            p_path_name: connection.service_name || `Path for ${connection.system_name}`,
             p_working_tx_fiber_ids: data.working_path_in.map(s => s.fiber_id!), 
             p_working_rx_fiber_ids: data.working_path_out.map(s => s.fiber_id!),
             p_protection_tx_fiber_ids: data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!),
@@ -54230,7 +55541,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     if (!connection) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.customer_name || connection.system_name}`} size="full" visible={false} className="h-0 w-0 bg-transparent">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Allocate Fibers for ${connection.service_name || connection.system_name}`} size="full" visible={false} className="h-0 w-0 bg-transparent">
             <FormCard
                 onSubmit={handleSubmit(onValidSubmit)}
                 onCancel={onClose}
@@ -54247,7 +55558,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
                 widthClass="w-full max-w-7xl"
                 heightClass="h-full max-h-[95vh]"
             >
-                {(isLoadingCables || isLoadingNodes) ? <PageSpinner text="Loading network data..." /> : (
+                {(isLoadingCables || isLoadingNodes || isHydrating) ? <PageSpinner text="Loading network configuration..." /> : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
                         <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                             <h3 className="font-semibold text-lg flex items-center gap-2"><GitBranch className="text-blue-500" /> Working Path</h3>
@@ -54288,12 +55599,11 @@ import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  system_connectionsInsertSchema,
-  sdh_connectionsInsertSchema,
+  ServicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from "@/schemas/zod-schemas";
-import { useTableQuery } from "@/hooks/database";
+import { useTableQuery, PublicTableName } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
 import {
@@ -54307,38 +55617,72 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 import { Network, Settings, Activity } from "lucide-react";
+import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
+import { formatIP } from "@/utils/formatters";
 
-// --- Custom Schema: Enforce Requirements ---
-const formSchema = system_connectionsInsertSchema
-  .omit({
-    working_fiber_in_ids: true,
-    working_fiber_out_ids: true,
-    protection_fiber_in_ids: true,
-    protection_fiber_out_ids: true,
-    created_at: true,
-    updated_at: true,
-    id: true
-  })
-  .extend(sdh_connectionsInsertSchema.omit({ system_connection_id: true }).shape)
-  .extend({
-    customer_name: z.string().min(1, "Customer / Link Name is required"),
-    // THE FIX: Made system_working_interface optional
-    system_working_interface: z.string().nullable().optional(),
-    media_type_id: z.string().uuid("Media Type is required"),
-    lc_id: z.string().nullable().optional(),
-    unique_id: z.string().nullable().optional(),
-  });
+// --- 1. Strict Zod Schema ---
+const formSchema = z.object({
+  // Connection Keys
+  system_id: z.string().uuid(),
+  media_type_id: z.string().uuid("Media Type is required"),
+  status: z.boolean(),
+  commissioned_on: z.string().nullable().optional(),
+  remark: z.string().nullable().optional(),
+  
+  // Service Keys (Logical)
+  service_name: z.string().min(1, "Service Name / Customer is required"),
+  link_type_id: z.string().uuid().nullable().optional(),
+  bandwidth_allocated: z.string().nullable().optional(),
+  vlan: z.string().nullable().optional(),
+  lc_id: z.string().nullable().optional(),
+  unique_id: z.string().nullable().optional(),
+  
+  // UI Helper
+  existing_service_id: z.string().nullable().optional(),
+  
+  // Connectivity (Physical Configuration on the Connection)
+  services_ip: z.string().nullable().optional(), 
+  services_interface: z.string().nullable().optional(),
+
+  system_working_interface: z.string().min(1, "Working Interface is required"),
+  system_protection_interface: z.string().nullable().optional(),
+  
+  // Explicit Endpoints (Topology)
+  sn_id: z.string().nullable().optional(),
+  en_id: z.string().nullable().optional(),
+  sn_ip: z.string().nullable().optional(),
+  en_ip: z.string().nullable().optional(),
+  sn_interface: z.string().nullable().optional(),
+  en_interface: z.string().nullable().optional(),
+  bandwidth: z.string().nullable().optional(),
+  
+  // SDH
+  stm_no: z.string().nullable().optional(),
+  carrier: z.string().nullable().optional(),
+  a_slot: z.string().nullable().optional(),
+  a_customer: z.string().nullable().optional(),
+  b_slot: z.string().nullable().optional(),
+  b_customer: z.string().nullable().optional(),
+});
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
 
-type ExtendedConnectionRow = V_system_connections_completeRowSchema & { lc_id?: string | null; unique_id?: string | null };
+// Extended Type for View Rows
+type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
+    services_ip?: unknown; 
+    services_interface?: string | null;
+    customer_name?: string | null;
+};
+
+// Helper Type for the RPC Payload
+type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   parentSystem: V_systems_completeRowSchema;
   editingConnection: V_system_connections_completeRowSchema | null;
-  onSubmit: (data: SystemConnectionFormValues) => void;
+  onSubmit: (data: UpsertPayload) => void; 
   isLoading: boolean;
 }
 
@@ -54353,6 +55697,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const supabase = createClient();
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
+  const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
 
   // --- Form Setup ---
   const {
@@ -54362,33 +55707,34 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<SystemConnectionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       system_id: parentSystem.id ?? "",
       status: true,
       media_type_id: "",
-      system_working_interface: "",
-      customer_name: "",
-      lc_id: "",
-      unique_id: "",
+      service_name: "",
+      link_type_id: "",
     },
   });
 
+  // Watchers
+  const watchLinkTypeId = watch("link_type_id");
+  const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
-  const watchSnId = watch("sn_id");
   const watchEnId = watch("en_id");
   const watchWorkingInterface = watch("system_working_interface");
   const watchProtectionInterface = watch("system_protection_interface");
   const watchSnInterface = watch("sn_interface");
   const watchEnInterface = watch("en_interface");
-
+  const watchSnId = watch("sn_id");
+  
   // --- Data Fetching ---
   
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
     columns: "id, system_name, ip_address, node_name",
     limit: 5000,
-    orderBy: [{ column: "system_name", ascending: true }]
   });
   
   const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
@@ -54400,6 +55746,19 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     columns: "id, name",
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
+
+  // Fetch Services
+  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "services" as PublicTableName, {
+      columns: "id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id",
+      filters: { status: true }, 
+      orderBy: [{ column: "name", ascending: true }],
+      limit: 2000
+  });
+  
+  const servicesData = useMemo(
+    () => (servicesResult?.data ? (servicesResult.data as unknown as ServicesRowSchema[]) : []),
+    [servicesResult.data]
+  );
 
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
@@ -54435,10 +55794,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const mapPortsToOptions = (
     portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
-    currentValue?: string | null
+    currentValue?: string | null,
+    excludePort?: string | null // ADDED: support filtering
   ) => {
     const options = (portsData || [])
       .filter(p => p.port)
+      .filter(p => p.port !== excludePort) // Filter out the excluded port
       .map(p => ({
         value: p.port!,
         label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
@@ -54464,25 +55825,77 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const systemOptions = useMemo(
     () =>
       (systemsResult.data || [])
-        // THE FIX: Removed the filter that hid the parent system.
-        // Now all systems, including the current one, are available for selection.
         .map((s) => {
           const loc = s.node_name ? ` @ ${s.node_name}` : "";
-          const ip = s.ip_address ? ` [${s.ip_address.split('/')[0]}]` : "";
+          const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
           const label = `${s.system_name}${loc}${ip}`;
           return { value: s.id!, label };
         }),
     [systemsResult.data]
   );
 
-  const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes]);
-  const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes]);
+  const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
+  const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
+
+  const serviceOptions = useMemo(() => {
+      let filteredServices = servicesData;
+      if (watchLinkTypeId) {
+          filteredServices = filteredServices.filter(s => s.link_type_id === watchLinkTypeId);
+      }
+      return filteredServices.map(s => ({ value: s.id, label: s.name }));
+  }, [servicesData, watchLinkTypeId]);
+
+  // --- Effects: Auto-Populate IP ---
+  
+  // Auto-populate SN IP
+  useEffect(() => {
+    if (watchSnId && systemsResult.data) {
+      const sys = systemsResult.data.find(s => s.id === watchSnId);
+      if (sys && sys.ip_address) {
+        setValue("sn_ip", formatIP(sys.ip_address));
+      } else {
+        setValue("sn_ip", "");
+      }
+    }
+  }, [watchSnId, systemsResult.data, setValue]);
+
+  // Auto-populate EN IP
+  useEffect(() => {
+    if (watchEnId && systemsResult.data) {
+      const sys = systemsResult.data.find(s => s.id === watchEnId);
+      if (sys && sys.ip_address) {
+        setValue("en_ip", formatIP(sys.ip_address));
+      } else {
+        setValue("en_ip", "");
+      }
+    }
+  }, [watchEnId, systemsResult.data, setValue]);
+
+  // --- Effects: Service Logic ---
+  
+  useEffect(() => {
+      if (!watchExistingServiceId) return;
+      
+      const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
+      if (selectedService) {
+          setValue("service_name", selectedService.name);
+          if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
+          if(selectedService.vlan) setValue("vlan", selectedService.vlan);
+          if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
+          if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
+          if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
+      }
+  }, [watchExistingServiceId, servicesData, setValue, watch]);
+
+  useEffect(() => {
+    if (serviceMode === 'manual') {
+      setValue("existing_service_id", null);
+    }
+  }, [serviceMode, setValue]);
 
   // --- Computed Values for Display ---
-  
   const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
   const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
-  
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
@@ -54492,328 +55905,374 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       setActiveTab("general");
       if (isEditMode && editingConnection) {
         const extConnection = editingConnection as ExtendedConnectionRow;
+        
+        const safeValue = (val: string | null | undefined) => val ?? "";
+        const safeNull = (val: string | null | undefined) => val ?? null;
+
+        setServiceMode(extConnection.service_id ? 'existing' : 'manual');
+
         reset({
-          system_id: editingConnection.system_id ?? parentSystem.id ?? "",
-          customer_name: editingConnection.customer_name ?? "",
-          media_type_id: editingConnection.media_type_id ?? "",
-          system_working_interface: editingConnection.system_working_interface ?? "",
-          system_protection_interface: editingConnection.system_protection_interface ?? null,
-          status: editingConnection.status ?? true,
-          commissioned_on: editingConnection.commissioned_on ?? null,
-          remark: editingConnection.remark ?? null,
-          bandwidth: editingConnection.bandwidth ?? null,
-          bandwidth_allocated: editingConnection.bandwidth_allocated ?? null,
-          vlan: editingConnection.vlan ?? null,
-          lc_id: extConnection.lc_id ?? null,
-          unique_id: extConnection.unique_id ?? null,
-          connected_link_type_id: editingConnection.connected_link_type_id ?? null,
-          sn_id: editingConnection.sn_id ?? null,
-          en_id: editingConnection.en_id ?? null,
-          sn_interface: editingConnection.sn_interface ?? null,
-          en_interface: editingConnection.en_interface ?? null,
-          sn_ip: (editingConnection.sn_ip as string) ?? null,
-          en_ip: (editingConnection.en_ip as string) ?? null,
-          stm_no: editingConnection.sdh_stm_no ?? null,
-          carrier: editingConnection.sdh_carrier ?? null,
-          a_slot: editingConnection.sdh_a_slot ?? null,
-          a_customer: editingConnection.sdh_a_customer ?? null,
-          b_slot: editingConnection.sdh_b_slot ?? null,
-          b_customer: editingConnection.sdh_b_customer ?? null,
+          system_id: extConnection.system_id ?? parentSystem.id ?? "",
+          
+          service_name: safeValue(extConnection.service_name ?? extConnection.customer_name), 
+          
+          link_type_id: safeValue(extConnection.connected_link_type_id),
+          vlan: safeValue(extConnection.vlan),
+          bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
+          lc_id: safeValue(extConnection.lc_id),
+          unique_id: safeValue(extConnection.unique_id),
+          existing_service_id: safeNull(extConnection.service_id),
+
+          status: extConnection.status ?? true,
+          media_type_id: safeValue(extConnection.media_type_id),
+          
+          services_ip: safeValue(String(extConnection.services_ip || "")),
+          services_interface: safeValue(extConnection.services_interface),
+          
+          system_working_interface: safeValue(extConnection.system_working_interface),
+          system_protection_interface: safeNull(extConnection.system_protection_interface),
+          commissioned_on: safeNull(extConnection.commissioned_on),
+          remark: safeNull(extConnection.remark),
+          bandwidth: safeNull(extConnection.bandwidth),
+          
+          sn_id: safeNull(extConnection.sn_id),
+          en_id: safeNull(extConnection.en_id),
+          sn_interface: safeNull(extConnection.sn_interface),
+          en_interface: safeNull(extConnection.en_interface),
+          sn_ip: safeNull(extConnection.sn_ip as string),
+          en_ip: safeNull(extConnection.en_ip as string),
+          
+          stm_no: safeNull(extConnection.sdh_stm_no),
+          carrier: safeNull(extConnection.sdh_carrier),
+          a_slot: safeNull(extConnection.sdh_a_slot),
+          a_customer: safeNull(extConnection.sdh_a_customer),
+          b_slot: safeNull(extConnection.sdh_b_slot),
+          b_customer: safeNull(extConnection.sdh_b_customer),
         });
       } else {
         reset({
           system_id: parentSystem.id!,
           status: true,
           media_type_id: "",
-          system_working_interface: "",
-          customer_name: "",
-          lc_id: "",
-          unique_id: "",
+          service_name: "",
+          link_type_id: "",
         });
+        setServiceMode('existing');
       }
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
 
-  const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => onSubmit(formData), [onSubmit]);
+  const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
+      const payload: UpsertPayload = {
+          p_id: isEditMode && editingConnection?.id ? editingConnection.id : undefined,
+          p_system_id: formData.system_id,
+          
+          // Service
+          p_service_name: formData.service_name,
+          p_link_type_id: formData.link_type_id || undefined,
+          p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
+          p_vlan: formData.vlan || undefined,
+          p_lc_id: formData.lc_id || undefined,
+          p_unique_id: formData.unique_id || undefined,
+          
+          // Connection Physicals
+          p_services_ip: formData.services_ip || undefined, 
+          p_services_interface: formData.services_interface || undefined,
+
+          p_media_type_id: formData.media_type_id,
+          p_status: formData.status,
+          p_bandwidth: formData.bandwidth || undefined,
+          p_commissioned_on: formData.commissioned_on || undefined,
+          p_remark: formData.remark || undefined,
+          p_sn_id: formData.sn_id || undefined,
+          p_en_id: formData.en_id || undefined,
+          p_sn_ip: formData.sn_ip || undefined,
+          p_en_ip: formData.en_ip || undefined,
+          p_sn_interface: formData.sn_interface || undefined,
+          p_en_interface: formData.en_interface || undefined,
+          p_system_working_interface: formData.system_working_interface || undefined,
+          p_system_protection_interface: formData.system_protection_interface || undefined,
+          p_stm_no: formData.stm_no || undefined,
+          p_carrier: formData.carrier || undefined,
+          p_a_slot: formData.a_slot || undefined,
+          p_a_customer: formData.a_customer || undefined,
+          p_b_slot: formData.b_slot || undefined,
+          p_b_customer: formData.b_customer || undefined,
+      };
+      
+      onSubmit(payload);
+  }, [onSubmit, isEditMode, editingConnection]);
+
   const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = (errors) => {
     console.error("Form Errors:", errors);
-    toast.error("Please fill in all required fields (marked with *).");
+    toast.error("Please check the form for errors.");
   };
 
-  const modalTitle = isEditMode ? "Edit Connection" : "New Connection";
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={modalTitle}
-      size="full"
-      className="w-0 h-0 transparent"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Service Connection" : "New Service Connection"} size="full">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
         isLoading={isLoading}
-        title={modalTitle}
-        subtitle={`For System: ${parentSystem.system_name}`}
+        title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
+        subtitle={`System: ${parentSystem.system_name}`}
         standalone
         widthClass="w-full max-w-full"
         heightClass="h-auto max-h-[90vh]"
       >
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" /> General
-            </TabsTrigger>
-            <TabsTrigger value="connectivity" className="flex items-center gap-2">
-              <Network className="w-4 h-4" /> Connectivity
-            </TabsTrigger>
-            <TabsTrigger value="sdh" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" /> SDH / Legacy
-            </TabsTrigger>
-          </TabsList>
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="general" className="flex items-center gap-2">
+                    <Activity className="w-4 h-4" /> General
+                </TabsTrigger>
+                <TabsTrigger value="connectivity" className="flex items-center gap-2">
+                    <Network className="w-4 h-4" /> Connectivity
+                </TabsTrigger>
+                <TabsTrigger value="sdh" className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" /> SDH / Legacy
+                </TabsTrigger>
+            </TabsList>
+            
+            <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
+                {/* TAB 1: GENERAL */}
+                <TabsContent value="general" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormSearchableSelect
+                            name="link_type_id"
+                            label="Link Type"
+                            control={control}
+                            options={linkTypeOptions}
+                            error={errors.link_type_id}
+                            placeholder="Select Type (e.g. MPLS)"
+                        />
+                        
+                        <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-4 mb-2">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        checked={serviceMode === 'existing'} 
+                                        onChange={() => setServiceMode('existing')}
+                                        className="text-blue-600"
+                                    />
+                                    <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        checked={serviceMode === 'manual'} 
+                                        onChange={() => setServiceMode('manual')}
+                                        className="text-blue-600"
+                                    />
+                                    <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
+                                </label>
+                            </div>
 
-          <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
-            {/* --- TAB 1: GENERAL --- */}
-            <TabsContent value="general" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="col-span-full md:col-span-1">
-                   <FormInput
-                    name="customer_name"
-                    label="Customer / Link Name"
-                    placeholder="e.g. SBI-Link-01"
-                    register={register}
-                    error={errors.customer_name}
-                    required
-                  />
-                </div>
-                
-                {/* New fields */}
-                <FormInput
-                  name="lc_id"
-                  label="LC ID / Circuit ID"
-                  placeholder="e.g. 12345"
-                  register={register}
-                  error={errors.lc_id}
-                />
-                <FormInput
-                  name="unique_id"
-                  label="Unique ID"
-                  placeholder="e.g. UID-001"
-                  register={register}
-                  error={errors.unique_id}
-                />
+                            {serviceMode === 'existing' ? (
+                                <div className="space-y-2">
+                                    <FormSearchableSelect
+                                        name="existing_service_id"
+                                        label="Select Service"
+                                        control={control}
+                                        options={serviceOptions}
+                                        error={errors.existing_service_id}
+                                        placeholder="Search services..."
+                                        clearable
+                                    />
+                                    <input type="hidden" {...register("service_name")} />
+                                    {errors.service_name && (
+                                        <p className="text-xs text-red-500">{errors.service_name.message}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <FormInput 
+                                    name="service_name"
+                                    label="New Service Name / Customer"
+                                    register={register}
+                                    error={errors.service_name}
+                                    placeholder="e.g. SBI-Kolkata-Main"
+                                    required
+                                />
+                            )}
+                        </div>
 
-                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-2">
-                   <div className="col-span-2">
-                     <FormSearchableSelect
-                      name="system_working_interface"
-                      label="Working Port (Interface)"
-                      control={control}
-                      options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
-                      error={errors.system_working_interface}
-                      placeholder="Select Working Port"
-                      searchPlaceholder="Search ports..."
-                      // THE FIX: Removed `required` prop from UI component
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <Label disabled className="mb-1">Type</Label>
-                    <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-2">
-                  <div className="col-span-2">
-                    <FormSearchableSelect
-                      name="system_protection_interface"
-                      label="Protection Port (Optional)"
-                      control={control}
-                      options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface)}
-                      error={errors.system_protection_interface}
-                      placeholder="Select Protection Port"
-                      searchPlaceholder="Search ports..."
-                      clearable
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <Label disabled className="mb-1">Type</Label>
-                    <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
-                  </div>
-                </div>
-
-                <FormSearchableSelect
-                  name="media_type_id"
-                  label="Media Type"
-                  control={control}
-                  options={mediaTypeOptions}
-                  error={errors.media_type_id}
-                  placeholder="Select Media"
-                  required
-                />
-                
-                <FormSearchableSelect
-                  name="connected_link_type_id"
-                  label="Link Type"
-                  control={control}
-                  options={linkTypeOptions}
-                  error={errors.connected_link_type_id}
-                  placeholder="e.g. MPLS, ILL"
-                />
-
-                <FormInput
-                  name="bandwidth"
-                  label="Bandwidth Capacity"
-                  register={register}
-                  placeholder="e.g. 1000"
-                  error={errors.bandwidth}
-                />
-                
-                <FormInput
-                  name="bandwidth_allocated"
-                  label="Allocated Bandwidth"
-                  register={register}
-                  error={errors.bandwidth_allocated}
-                />
-
-                <FormInput
-                  name="vlan"
-                  label="VLAN ID"
-                  register={register}
-                  error={errors.vlan}
-                  placeholder="e.g. 100"
-                />
-                
-                <FormDateInput
-                  name="commissioned_on"
-                  label="Commissioned Date"
-                  control={control}
-                  error={errors.commissioned_on}
-                />
-              </div>
-              
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center border-t pt-4 dark:border-gray-700">
-                 <FormSwitch 
-                    name="status" 
-                    label="Connection Status" 
-                    description="Toggle to activate/deactivate this service."
-                    control={control} 
-                    error={errors.status} 
-                 />
-                 <FormTextarea 
-                    name="remark" 
-                    label="Remarks" 
-                    control={control} 
-                    error={errors.remark} 
-                    rows={1}
-                 />
-               </div>
-            </TabsContent>
-
-            {/* --- TAB 2: CONNECTIVITY --- */}
-            <TabsContent value="connectivity" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Start Node Panel */}
-                <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b pb-2 dark:border-gray-600">Start Node (Side A)</h3>
-                  <FormSearchableSelect
-                    name="sn_id"
-                    label="Start System"
-                    control={control}
-                    options={systemOptions}
-                    error={errors.sn_id}
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <FormSearchableSelect
-                        name="sn_interface"
-                        label="Interface"
-                        control={control}
-                        options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
-                        error={errors.sn_interface}
-                        placeholder={watchSnId ? "Select Start Port" : "Select System First"}
-                        disabled={!watchSnId}
-                      />
+                        <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
+                        <FormInput name="bandwidth_allocated" label="Allocated BW" register={register} error={errors.bandwidth_allocated} />
+                        <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
+                        <FormInput name="unique_id" label="Unique ID" register={register} error={errors.unique_id} />
                     </div>
-                    <div className="col-span-1">
-                      <Label disabled className="mb-1">Type</Label>
-                      <Input disabled value={snPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
-                    </div>
-                  </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700">
+                        <FormSearchableSelect name="media_type_id" label="Media Type" control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
+                        <FormInput name="bandwidth" label="Physical Port Capacity" register={register} error={errors.bandwidth} placeholder="e.g. 1G" />
+                        <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} />
+                        
+                        {/* Working Port Selection with Type Display and Filtering */}
+                        <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                          <div className="col-span-2">
+                            <FormSearchableSelect
+                              name="system_working_interface"
+                              label="Working Port"
+                              control={control}
+                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
+                              error={errors.system_working_interface}
+                              placeholder="Select Working Port"
+                              required
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Label disabled className="mb-1">Type</Label>
+                            <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                          </div>
+                        </div>
+                        
+                         {/* Protection Port Selection with Type Display and Filtering */}
+                         <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                          <div className="col-span-2">
+                            <FormSearchableSelect
+                              name="system_protection_interface"
+                              label="Protection Port"
+                              control={control}
+                              // THE FIX: Filter out the selected working port
+                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface, watchWorkingInterface)}
+                              error={errors.system_protection_interface}
+                              placeholder="Select Protection Port"
+                              clearable
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Label disabled className="mb-1">Type</Label>
+                            <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
+                          </div>
+                        </div>
 
-                  <FormInput
-                    name="sn_ip"
-                    label="IP Address"
-                    register={register}
-                    error={errors.sn_ip}
-                  />
+                    </div>
+                </TabsContent>
+                
+                {/* TAB 2: CONNECTIVITY */}
+                <TabsContent value="connectivity" className="space-y-6">
+                    
+                    {/* Service Specific Network Fields */}
+                    <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
+                        <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <FormInput 
+                                name="services_ip" 
+                                label="Service IP" 
+                                register={register} 
+                                error={errors.services_ip} 
+                                placeholder="x.x.x.x"
+                            />
+                             <FormInput 
+                                name="services_interface" 
+                                label="Service Interface / Port" 
+                                register={register} 
+                                error={errors.services_interface} 
+                                placeholder="e.g. Vlan100"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Start Node Panel */}
+                        <div className="p-4 border rounded dark:border-gray-700">
+                            <h3 className="font-semibold mb-3">Start Node (Side A)</h3>
+                            <FormSearchableSelect name="sn_id" label="Start System" control={control} options={systemOptions} error={errors.sn_id} />
+                            
+                            <div className="grid grid-cols-3 gap-3 mt-2">
+                                <div className="col-span-2">
+                                    <FormSearchableSelect
+                                        name="sn_interface"
+                                        label="Interface"
+                                        control={control}
+                                        options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
+                                        error={errors.sn_interface}
+                                        placeholder={watchSnId ? "Select Start Port" : "Select System First"}
+                                        disabled={!watchSnId}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <Label disabled className="mb-1">Type</Label>
+                                    <Input disabled value={snPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
+                                </div>
+                            </div>
+
+                            <FormInput
+                              name="sn_ip"
+                              label="IP Address"
+                              register={register}
+                              error={errors.sn_ip}
+                              className="mt-2"
+                            />
+                        </div>
+
+                        {/* End Node Panel */}
+                        <div className="p-4 border rounded dark:border-gray-700">
+                            <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
+                                <h3 className="font-semibold">End Node (Side B)</h3>
+                            </div>
+                            <FormSearchableSelect name="en_id" label="End System (If internal)" control={control} options={systemOptions} error={errors.en_id} />
+                            
+                            <div className="grid grid-cols-3 gap-3 mt-2">
+                                <div className="col-span-2">
+                                    {watchEnId ? (
+                                        <FormSearchableSelect
+                                            name="en_interface"
+                                            label="Interface"
+                                            control={control}
+                                            options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
+                                            error={errors.en_interface}
+                                            placeholder="Select End Port"
+                                        />
+                                    ) : (
+                                        <FormInput 
+                                            name="en_interface" 
+                                            label="Interface / Port" 
+                                            register={register} 
+                                            placeholder="e.g. Port 1" 
+                                        />
+                                    )}
+                                </div>
+                                <div className="col-span-1">
+                                    <Label disabled className="mb-1">Type</Label>
+                                    <Input disabled value={enPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
+                                </div>
+                            </div>
+                            
+                            <FormInput
+                              name="en_ip"
+                              label="IP Address"
+                              register={register}
+                              error={errors.en_ip}
+                              className="mt-2"
+                            />
+                        </div>
+                    </div>
+                </TabsContent>
+                
+                {/* TAB 3: SDH */}
+                <TabsContent value="sdh" className="space-y-6">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
+                    </p>
                 </div>
-
-                {/* End Node Panel */}
-                <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b pb-2 dark:border-gray-600">End Node (Side B)</h3>
-                  <FormSearchableSelect
-                    name="en_id"
-                    label="End System"
-                    control={control}
-                    options={systemOptions}
-                    error={errors.en_id}
-                  />
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <FormSearchableSelect
-                        name="en_interface"
-                        label="Interface"
-                        control={control}
-                        options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
-                        error={errors.en_interface}
-                        placeholder={watchEnId ? "Select End Port" : "Select System First"}
-                        disabled={!watchEnId}
-                      />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormInput name="stm_no" label="STM Number / Hierarchy" register={register} error={errors.stm_no} placeholder="e.g. STM-16" />
+                    <FormInput name="carrier" label="Carrier / Operator" register={register} error={errors.carrier} />
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
+                        <FormInput name="a_slot" label="Slot/Port" register={register} error={errors.a_slot} />
+                        <FormInput name="a_customer" label="Customer/Location" register={register} error={errors.a_customer} />
                     </div>
-                    <div className="col-span-1">
-                       <Label disabled className="mb-1">Type</Label>
-                       <Input disabled value={enPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
+                        <FormInput name="b_slot" label="Slot/Port" register={register} error={errors.b_slot} />
+                        <FormInput name="b_customer" label="Customer/Location" register={register} error={errors.b_customer} />
                     </div>
-                  </div>
-
-                   <FormInput
-                    name="en_ip"
-                    label="IP Address"
-                    register={register}
-                    error={errors.en_ip}
-                  />
                 </div>
-              </div>
-            </TabsContent>
-
-            {/* --- TAB 3: SDH DETAILS --- */}
-            <TabsContent value="sdh" className="space-y-6">
-               <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
-                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                   Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
-                 </p>
-               </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormInput name="stm_no" label="STM Number / Hierarchy" register={register} error={errors.stm_no} placeholder="e.g. STM-16" />
-                  <FormInput name="carrier" label="Carrier / Operator" register={register} error={errors.carrier} />
-                  
-                  <div className="space-y-3">
-                     <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
-                     <FormInput name="a_slot" label="Slot/Port" register={register} error={errors.a_slot} />
-                     <FormInput name="a_customer" label="Customer/Location" register={register} error={errors.a_customer} />
-                  </div>
-
-                  <div className="space-y-3">
-                     <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
-                     <FormInput name="b_slot" label="Slot/Port" register={register} error={errors.b_slot} />
-                     <FormInput name="b_customer" label="Customer/Location" register={register} error={errors.b_customer} />
-                  </div>
-               </div>
-            </TabsContent>
-          </div>
+                </TabsContent>
+            </div>
         </Tabs>
       </FormCard>
     </Modal>
@@ -62094,58 +63553,64 @@ export function useExcelUpload<T extends PublicTableName>(
           const { error } = await query;
 
           if (error) {
-            if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
-              type RecordWithSnId = { sn_id?: unknown };
-              const getSnId = (record: unknown): string | undefined => {
-                if (record && typeof record === 'object' && 'sn_id' in record) {
-                  const value = (record as RecordWithSnId).sn_id;
-                  return value !== null && value !== undefined ? String(value) : undefined;
-                }
-                return undefined;
-              };
+            // --- ENHANCED DEBUGGING FOR FOREIGN KEY ERRORS (23503) ---
+            // This block attempts to pinpoint exactly which column and value caused the failure.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const errorDetails: any = {
+                rawError: error
+            };
 
-              const invalidSnIds = [
-                ...new Set(
-                  batch.map((record) => getSnId(record)).filter((id): id is string => Boolean(id))
-                ),
-              ];
-
-              batch.forEach((record, index) => {
-                const snId = getSnId(record);
-                if (snId) {
-                  uploadResult.validationErrors.push({
-                    rowIndex: i + index,
-                    column: 'sn_id',
-                    value: snId,
-                    error: `Foreign key violation: sn_id '${snId}' does not exist in the nodes table`,
-                    data: { column: 'sn_id', value: snId, constraint: 'ofc_cables_sn_id_fkey' },
-                  });
-                }
-              });
-
-              const errorMessage =
-                `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found in batch. ` +
-                `Invalid values: ${invalidSnIds.join(', ')}`;
-              uploadResult.errorCount += batch.length;
-              uploadResult.errors.push({
-                rowIndex: i,
-                data: batch,
-                error: errorMessage,
-              });
-
-              if (showToasts) {
-                toast.error(
-                  `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found. ` +
-                    'Check the console for details.',
-                  { duration: 10000 }
-                );
-              }
-            } else {
-            const errorDetails: Record<string, unknown> = {};
             if (error.code === '23503') {
-                errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
-                errorDetails.detail = error.message;
-            }
+              const constraintMatch = error.message.match(/constraint "(.*?)"/);
+              const constraintName = constraintMatch ? constraintMatch[1] : null;
+              errorDetails.constraint = constraintName;
+              errorDetails.detail = error.details;
+
+              console.group("🚨 Foreign Key Violation Debugger");
+              console.error("Error Message:", error.message);
+              console.error("Constraint Name:", constraintName);
+              console.error("Raw Details:", error.details);
+
+              let suspectedColumn = null;
+              let missingValue = null;
+
+              // 1. Try to parse from 'details' (e.g., 'Key (node_id)=(abc) is not present...')
+              const detailMatch = error.details?.match(/Key \((.*?)\)=\((.*?)\)/);
+              if (detailMatch) {
+                suspectedColumn = detailMatch[1];
+                missingValue = detailMatch[2];
+                console.error(`❌ Specific Failure Identified: Value "${missingValue}" in column "${suspectedColumn}" does not exist in the referenced table.`);
+              } 
+              // 2. Fallback: Guess based on constraint name (e.g. services_node_id_fkey -> node_id)
+              else if (constraintName) {
+                 // Try to find a key in the batch data that is part of the constraint string
+                 const batchKeys = Object.keys(batch[0] || {});
+                 suspectedColumn = batchKeys.find(key => constraintName.includes(key));
+                 if (suspectedColumn) {
+                    console.warn(`⚠️ Could not parse specific value from error, but constraint "${constraintName}" likely relates to column "${suspectedColumn}".`);
+                 }
+              }
+
+              if (suspectedColumn) {
+                // Log all unique values for this column in the failed batch
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const uniqueValues = [...new Set(batch.map((r: any) => r[suspectedColumn]))];
+                console.log(`Unique values submitted for column '${suspectedColumn}' in this batch:`, uniqueValues);
+                
+                if (missingValue) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const rowsWithBadValue = batch.filter((r: any) => String(r[suspectedColumn]) === missingValue);
+                    console.log("Rows containing the invalid value:", rowsWithBadValue);
+                }
+              } else {
+                 console.warn("Could not identify the specific column. Dumping full batch data for manual inspection:");
+                 console.table(batch);
+              }
+              
+              console.groupEnd();
+            } 
+            // --- END ENHANCED DEBUGGING ---
+
             uploadResult.errorCount += batch.length;
             uploadResult.errors.push({
                 rowIndex: i,
@@ -62155,8 +63620,8 @@ export function useExcelUpload<T extends PublicTableName>(
             });
 
             if (showToasts) {
-                toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
-                        }            }
+                toast.error(`Error in batch (check console for details): ${error.message}`);
+            }
           } else {
             uploadResult.successCount += batch.length;
           }
@@ -62439,9 +63904,7 @@ export interface SystemConnectionUploadOptions {
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
-// ... (parseExcelFile function remains the same) ...
 const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // DYNAMIC IMPORT HERE
   const XLSX = await import('xlsx');
 
   return new Promise((resolve, reject) => {
@@ -62476,8 +63939,6 @@ export function useSystemConnectionExcelUpload(
     mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
       const { file, columns, parentSystemId } = uploadOptions;
 
-      // Helper: Convert empty strings to undefined so they become NULL in DB
-      // This is crucial for the port utilization trigger
       const toUndefined = (val: unknown): string | undefined => {
         if (val === null || val === undefined) return undefined;
         const str = String(val).trim();
@@ -62504,6 +63965,7 @@ export function useSystemConnectionExcelUpload(
       const recordsToProcess: RpcPayload[] = [];
       const allValidationErrors: ValidationError[] = [];
       
+      // Fetch Link Types for lookup
       const linkTypesResp = await supabase.from('lookup_types').select('id, name').eq('category', 'LINK_TYPES');
       const linkTypeNameToId = new Map<string, string>();
       if (!linkTypesResp.error && linkTypesResp.data) {
@@ -62557,10 +64019,16 @@ export function useSystemConnectionExcelUpload(
           p_system_id: parentSystemId,
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
-          p_customer_name: toUndefined(processedData.customer_name),
-          p_system_working_interface: toUndefined(processedData.system_working_interface),
+          
+          // Map Excel columns to new Service params
+          p_service_name: toUndefined(processedData.customer_name),
+          p_link_type_id: resolvedLinkTypeId,
+          p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
+          p_vlan: toUndefined(processedData.vlan),
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
+          
+          // Connection Params
           p_sn_id: toUndefined(processedData.sn_id),
           p_en_id: toUndefined(processedData.en_id),
           p_sn_ip: processedData.sn_ip || undefined,
@@ -62568,16 +64036,18 @@ export function useSystemConnectionExcelUpload(
           p_en_ip: processedData.en_ip || undefined,
           p_en_interface: toUndefined(processedData.en_interface),
           p_bandwidth: (processedData.bandwidth as string) || undefined,
-          p_vlan: toUndefined(processedData.vlan),
           p_commissioned_on: toUndefined(processedData.commissioned_on),
           p_remark: toUndefined(processedData.remark),
-          p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
+          
           p_working_fiber_in_ids: toUuidArray(processedData.working_fiber_in_ids),
           p_working_fiber_out_ids: toUuidArray(processedData.working_fiber_out_ids),
           p_protection_fiber_in_ids: toUuidArray(processedData.protection_fiber_in_ids),
           p_protection_fiber_out_ids: toUuidArray(processedData.protection_fiber_out_ids),
+          
+          p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
-          p_connected_link_type_id: resolvedLinkTypeId,
+          
+          // SDH
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
           p_a_slot: toUndefined(processedData.sdh_a_slot),
@@ -65062,7 +66532,7 @@ export const useMaintenanceAreasData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_maintenance_areas'>({
-    queryKey: ['maintenance-areas-data', searchQuery, filters],
+    queryKey: ['maintenance_areas-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_maintenance_areas,
@@ -65293,7 +66763,7 @@ export const useOfcData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_ofc_cables_complete'>({
-    queryKey: ['ofc-cables-data', searchQuery, filters],
+    queryKey: ['ofc_cables-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_ofc_cables_complete,
@@ -65392,7 +66862,7 @@ export const useAuditLogsData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_audit_logs', V_audit_logsRowSchema>({
-    queryKey: ['audit-logs-data', searchQuery, filters],
+    queryKey: ['user_activity_logs-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_audit_logs,
@@ -65760,7 +67230,7 @@ export const useUsersData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
-    queryKey: ['admin-users-data', searchQuery, filters],
+    queryKey: ['user_profiles-data', searchQuery, filters],
     onlineQueryFn, 
     localQueryFn,
     // THE FIX: Point to the new, correctly typed Dexie table.
@@ -65859,7 +67329,8 @@ export const useDesignationsData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_employee_designations'>({
-    queryKey: ['designations-data', searchQuery, filters],
+    // THE FIX: Key must contain 'employee_designations' for uploader invalidation to work
+    queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     // THE FIX: Point to the new, correctly typed Dexie table.
@@ -65986,7 +67457,7 @@ export const useInventoryData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_inventory_items'>({
-    queryKey: ['inventory-data', searchQuery, filters],
+    queryKey: ['inventory_items-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_inventory_items,
@@ -66030,6 +67501,133 @@ export const useInventoryData = (
 };
 ```
 
+<!-- path: hooks/data/useServicesData.ts -->
+```typescript
+// hooks/data/useServicesData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_servicesRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+
+export const useServicesData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_servicesRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+  const supabase = createClient();
+
+  // 1. Online Fetcher (RPC)
+  const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchQuery
+        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%)`
+        : undefined,
+    });
+    
+    const { data, error } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_services',
+      p_limit: 5000,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'name',
+    });
+
+    if (error) throw error;
+    
+    // Safe unwrapping of the RPC response
+    let resultList: V_servicesRowSchema[] = [];
+    
+    if (Array.isArray(data)) {
+      if (data.length > 0 && 'data' in data[0]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resultList = (data[0] as any).data as V_servicesRowSchema[];
+      } else {
+            resultList = data as V_servicesRowSchema[];
+      }
+    } else if (data && typeof data === 'object' && 'data' in data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resultList = (data as any).data as V_servicesRowSchema[];
+    }
+
+    return resultList || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher (Dexie)
+  const localQueryFn = useCallback(() => {
+    return localDb.v_services.toArray();
+  }, []);
+
+  // 3. Use Local First Query
+  const {
+    data: allServices = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_services'>({
+    queryKey: ['v_services-data', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_services,
+  });
+
+  // 4. Client-side Processing
+  const processedData = useMemo(() => {
+    if (!allServices) {
+        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+
+    let filtered = allServices;
+    
+    // Search Filter
+    if (searchQuery) {
+        const lower = searchQuery.toLowerCase();
+        filtered = filtered.filter(s => 
+            s.name?.toLowerCase().includes(lower) ||
+            s.node_name?.toLowerCase().includes(lower) ||
+            s.description?.toLowerCase().includes(lower)
+        );
+    }
+    
+    // Link Type Filter
+    if (filters.link_type_id) {
+        filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
+    }
+
+    // Status Filter
+    if (filters.status) {
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter(s => s.status === statusBool);
+    }
+    
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter(s => s.status === true).length;
+    
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+    
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount: totalCount - activeCount,
+    };
+  }, [allServices, searchQuery, filters, currentPage, pageLimit]);
+
+  return { 
+    ...processedData, 
+    isLoading, 
+    isFetching, 
+    error: error as Error | null, 
+    refetch 
+  };
+};
+```
+
 <!-- path: hooks/data/useDataSync.ts -->
 ```typescript
 // hooks/data/useDataSync.ts
@@ -66068,6 +67666,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ofc_connections_complete',
   'v_system_connections_complete',
   'v_ports_management_complete',
+  'v_services',
 ];
 
 export async function syncEntity(
@@ -66318,7 +67917,7 @@ interface UseLocalFirstQueryOptions<
 > {
   queryKey: QueryKey;
   onlineQueryFn: () => Promise<TRow[]>;
-  localQueryFn: () => PromiseExtended<TLocal[]>;
+  localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
   localQueryDeps?: unknown[];
   // THE FIX: Allow any key type (string, number, compound) for the Dexie table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66337,7 +67936,7 @@ export function useLocalFirstQuery<
   localQueryFn,
   localQueryDeps = [],
   dexieTable,
-  // enabled = true,
+  enabled = true,
   staleTime = 5 * 60 * 1000,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   // const isOnline = useOnlineStatus();
@@ -66355,7 +67954,7 @@ export function useLocalFirstQuery<
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: onlineQueryFn,
-    enabled: false,
+    enabled: enabled, 
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -66628,7 +68227,7 @@ export const useDiaryData = (currentDate: Date) => {
   }, [startOfMonth, endOfMonth]);
 
   const { data: notes, isLoading, isFetching, error, refetch } = useLocalFirstQuery<'diary_notes'>({
-    queryKey: ['diary-data-for-month', startOfMonth, endOfMonth],
+    queryKey: ['diary_data-for-month', startOfMonth, endOfMonth],
     onlineQueryFn,
     localQueryFn,
     localQueryDeps: [startOfMonth, endOfMonth],
@@ -66723,7 +68322,7 @@ export const useOfcConnectionsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_ofc_connections_complete', V_ofc_connections_completeRowSchema>({
-      queryKey: ['ofc-connections-data', cableId, searchQuery, filters],
+      queryKey: ['ofc_connections-data', cableId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_ofc_connections_complete,
@@ -66805,8 +68404,10 @@ import {
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
   V_audit_logsRowSchema,
-  V_ports_management_completeRowSchema, // Imported
-  Ports_managementRowSchema, // Imported for the base table if needed, though we use the view for offline lists
+  V_ports_management_completeRowSchema,
+  Ports_managementRowSchema,
+  ServicesRowSchema,
+  V_servicesRowSchema, // IMPORT THIS
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -66860,7 +68461,8 @@ export class HNVTMDatabase extends Dexie {
   diary_notes!: Table<Diary_notesRowSchema, string>;
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
-  ports_management!: Table<Ports_managementRowSchema, string>; // Base table for mutations
+  ports_management!: Table<Ports_managementRowSchema, string>;
+  services!: Table<ServicesRowSchema , string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -66875,17 +68477,16 @@ export class HNVTMDatabase extends Dexie {
   v_user_profiles_extended!: Table<StoredVUserProfilesExtended, string>;
   v_ofc_connections_complete!: Table<V_ofc_connections_completeRowSchema, string>;
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
-  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>; // ADDED THIS LINE
-  
-  // THE FIX: Update type to number for auto-incrementing ID tables
+  v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>;
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
+  v_services!: Table<V_servicesRowSchema, string>; // ADDED
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    this.version(17).stores({
+    this.version(18).stores({ // Incremented version
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -66902,7 +68503,8 @@ export class HNVTMDatabase extends Dexie {
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
-      ports_management: '&id, [system_id+port], system_id', // Added base table store
+      ports_management: '&id, [system_id+port], system_id',
+      services: '&id, name',
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -66917,9 +68519,10 @@ export class HNVTMDatabase extends Dexie {
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, connected_system_name',
-      v_ports_management_complete: '&id, system_id, port', // Added view store
+      v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
-      
+      v_services: '&id, name, node_name', // ADDED
+
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
     });
@@ -66928,7 +68531,6 @@ export class HNVTMDatabase extends Dexie {
 
 export const localDb = new HNVTMDatabase();
 
-// THE FIX: Widen the return type to include 'number' for tables with integer primary keys
 export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | number | [string, string]> {
     const table = localDb.table(tableName);
     if (!table) {
@@ -67001,7 +68603,7 @@ export const useSystemConnectionsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>({
-      queryKey: ['system-connections-data', systemId, searchQuery, filters],
+      queryKey: ['system_connections-data', systemId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_system_connections_complete,
@@ -67019,7 +68621,7 @@ export const useSystemConnectionsData = (
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
-          conn.customer_name?.toLowerCase().includes(lowerQuery) ||
+          conn.service_name?.toLowerCase().includes(lowerQuery) ||
           conn.connected_system_name?.toLowerCase().includes(lowerQuery)
         );
       }
@@ -67096,7 +68698,7 @@ export const useLookupTypesData = (
     error,
     refetch,
   } = useLocalFirstQuery<'lookup_types'>({
-    queryKey: ['lookup-types-data', searchQuery, filters],
+    queryKey: ['lookup_types-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.lookup_types,
@@ -67312,7 +68914,7 @@ export const usePortsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_ports_management_complete', V_ports_management_completeRowSchema>({
-      queryKey: ['ports-data', systemId, searchQuery, filters],
+      queryKey: ['ports_management-data', systemId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_ports_management_complete,
@@ -68399,6 +70001,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       // THE FIX: Added kml-manager mapping
       case "kml-manager":
         return "files"; 
+      case "services":
+        return "services";
       default:
         return null;
     }

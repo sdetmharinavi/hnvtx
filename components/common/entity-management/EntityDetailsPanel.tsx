@@ -45,9 +45,9 @@ export function EntityDetailsPanel<T extends BaseEntity>({
         </span>
       </div>
 
-      {config.detailFields.map((field) => (
+      {config.detailFields.map((field, index) => (
         <DetailItem
-          key={String(field.key)}
+          key={`${String(field.key)}-${index}`}
           label={field.label}
           value={entity[field.key]}
           type={field.type}
