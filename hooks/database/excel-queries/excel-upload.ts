@@ -442,58 +442,64 @@ export function useExcelUpload<T extends PublicTableName>(
           const { error } = await query;
 
           if (error) {
-            if (error.code === '23503' && error.message.includes('ofc_cables_sn_id_fkey')) {
-              type RecordWithSnId = { sn_id?: unknown };
-              const getSnId = (record: unknown): string | undefined => {
-                if (record && typeof record === 'object' && 'sn_id' in record) {
-                  const value = (record as RecordWithSnId).sn_id;
-                  return value !== null && value !== undefined ? String(value) : undefined;
-                }
-                return undefined;
-              };
+            // --- ENHANCED DEBUGGING FOR FOREIGN KEY ERRORS (23503) ---
+            // This block attempts to pinpoint exactly which column and value caused the failure.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const errorDetails: any = {
+                rawError: error
+            };
 
-              const invalidSnIds = [
-                ...new Set(
-                  batch.map((record) => getSnId(record)).filter((id): id is string => Boolean(id))
-                ),
-              ];
-
-              batch.forEach((record, index) => {
-                const snId = getSnId(record);
-                if (snId) {
-                  uploadResult.validationErrors.push({
-                    rowIndex: i + index,
-                    column: 'sn_id',
-                    value: snId,
-                    error: `Foreign key violation: sn_id '${snId}' does not exist in the nodes table`,
-                    data: { column: 'sn_id', value: snId, constraint: 'ofc_cables_sn_id_fkey' },
-                  });
-                }
-              });
-
-              const errorMessage =
-                `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found in batch. ` +
-                `Invalid values: ${invalidSnIds.join(', ')}`;
-              uploadResult.errorCount += batch.length;
-              uploadResult.errors.push({
-                rowIndex: i,
-                data: batch,
-                error: errorMessage,
-              });
-
-              if (showToasts) {
-                toast.error(
-                  `Foreign key violation: ${invalidSnIds.length} invalid sn_id value(s) found. ` +
-                    'Check the console for details.',
-                  { duration: 10000 }
-                );
-              }
-            } else {
-            const errorDetails: Record<string, unknown> = {};
             if (error.code === '23503') {
-                errorDetails.constraint = error.message.match(/constraint "(.*?)"/)?.[1];
-                errorDetails.detail = error.message;
-            }
+              const constraintMatch = error.message.match(/constraint "(.*?)"/);
+              const constraintName = constraintMatch ? constraintMatch[1] : null;
+              errorDetails.constraint = constraintName;
+              errorDetails.detail = error.details;
+
+              console.group("🚨 Foreign Key Violation Debugger");
+              console.error("Error Message:", error.message);
+              console.error("Constraint Name:", constraintName);
+              console.error("Raw Details:", error.details);
+
+              let suspectedColumn = null;
+              let missingValue = null;
+
+              // 1. Try to parse from 'details' (e.g., 'Key (node_id)=(abc) is not present...')
+              const detailMatch = error.details?.match(/Key \((.*?)\)=\((.*?)\)/);
+              if (detailMatch) {
+                suspectedColumn = detailMatch[1];
+                missingValue = detailMatch[2];
+                console.error(`❌ Specific Failure Identified: Value "${missingValue}" in column "${suspectedColumn}" does not exist in the referenced table.`);
+              } 
+              // 2. Fallback: Guess based on constraint name (e.g. services_node_id_fkey -> node_id)
+              else if (constraintName) {
+                 // Try to find a key in the batch data that is part of the constraint string
+                 const batchKeys = Object.keys(batch[0] || {});
+                 suspectedColumn = batchKeys.find(key => constraintName.includes(key));
+                 if (suspectedColumn) {
+                    console.warn(`⚠️ Could not parse specific value from error, but constraint "${constraintName}" likely relates to column "${suspectedColumn}".`);
+                 }
+              }
+
+              if (suspectedColumn) {
+                // Log all unique values for this column in the failed batch
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const uniqueValues = [...new Set(batch.map((r: any) => r[suspectedColumn]))];
+                console.log(`Unique values submitted for column '${suspectedColumn}' in this batch:`, uniqueValues);
+                
+                if (missingValue) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const rowsWithBadValue = batch.filter((r: any) => String(r[suspectedColumn]) === missingValue);
+                    console.log("Rows containing the invalid value:", rowsWithBadValue);
+                }
+              } else {
+                 console.warn("Could not identify the specific column. Dumping full batch data for manual inspection:");
+                 console.table(batch);
+              }
+              
+              console.groupEnd();
+            } 
+            // --- END ENHANCED DEBUGGING ---
+
             uploadResult.errorCount += batch.length;
             uploadResult.errors.push({
                 rowIndex: i,
@@ -503,8 +509,8 @@ export function useExcelUpload<T extends PublicTableName>(
             });
 
             if (showToasts) {
-                toast.error(`Error in batch starting at record ${i + 1}: ${error.message}`);
-                        }            }
+                toast.error(`Error in batch (check console for details): ${error.message}`);
+            }
           } else {
             uploadResult.successCount += batch.length;
           }
