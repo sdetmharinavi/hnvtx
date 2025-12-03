@@ -46,7 +46,7 @@ function NavItems() {
       },
       {
         id: 'diary',
-        label: 'Diary',
+        label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
         roles: [

@@ -1,7 +1,7 @@
 // app/dashboard/services/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { DataTable } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
@@ -14,25 +14,43 @@ import { Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { V_servicesRowSchema } from "@/schemas/zod-schemas"; // Ensure correct import
+import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { Row } from "@/hooks/database";
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { localDb } from "@/hooks/data/localDb";
+import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
+import { SelectFilter } from "@/components/common/filters/FilterInputs";
 
 export default function ServicesPage() {
   const supabase = createClient();
+  const [showFilters, setShowFilters] = useState(false);
   
-  // 1. Setup Crud Manager with View Schema
   const {
-    data, totalCount, isLoading, isFetching, error, refetch,
-    pagination, search, editModal, deleteModal, actions: crudActions
+    data, totalCount, isLoading, isMutating, isFetching, error, refetch,
+    pagination, search, filters, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'services', V_servicesRowSchema>({
-    tableName: 'services', // Mutations target the table
-    localTableName: 'v_services', // Queries read from the view/cache
-    dataQueryHook: useServicesData,
+    tableName: 'services', 
+    localTableName: 'v_services',
+    dataQueryHook: useServicesData, 
     displayNameField: 'name',
   });
 
-  // 2. Generate Columns using the data from CrudManager
-  // Since we updated ServicesTableColumns to accept V_servicesRowSchema[], this will now work.
+  // Fetch Link Types for Filtering
+  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['link-types-for-filter'],
+    async () => 
+      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () => 
+      await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
+  );
+  
+  const linkTypeOptions = useMemo(() => {
+    return (linkTypesData || [])
+      .filter(lt => lt.name !== 'DEFAULT')
+      .map(lt => ({ value: lt.id, label: lt.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [linkTypesData]);
+
   const columns = ServicesTableColumns(data);
 
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
@@ -52,7 +70,6 @@ export default function ServicesPage() {
       }
   };
   
-  // Helper to safe-cast the view row for the form
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getEditingService = (record: V_servicesRowSchema | null): any | null => {
       if (!record) return null;
@@ -71,7 +88,9 @@ export default function ServicesPage() {
       data: data as Row<'v_services'>[],
       exportConfig: {
           tableName: 'v_services',
-          fileName: `All_Services`
+          fileName: `All_Services`,
+          // Include filters in export if present
+          filters: filters.filters
       }
   });
 
@@ -102,14 +121,47 @@ export default function ServicesPage() {
             total: totalCount,
             onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
         }}
-        searchable
-        onSearchChange={search.setSearchQuery}
+        searchable={false} // We use custom toolbar for search
+        customToolbar={
+            <SearchAndFilters
+                searchTerm={search.searchQuery}
+                onSearchChange={search.setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onClearFilters={() => {
+                    search.setSearchQuery('');
+                    filters.setFilters({});
+                }}
+                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+                activeFilterCount={Object.keys(filters.filters).length}
+                searchPlaceholder="Search by Service Name, Node, or Description..."
+            >
+                <SelectFilter
+                    label="Link Type"
+                    filterKey="link_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={linkTypeOptions}
+                />
+                <SelectFilter
+                    label="Status"
+                    filterKey="status"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: "true", label: "Active" },
+                        { value: "false", label: "Inactive" }
+                    ]}
+                />
+            </SearchAndFilters>
+        }
       />
 
       {editModal.isOpen && (
         <ServiceFormModal 
             isOpen={editModal.isOpen} 
             onClose={editModal.close} 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             editingService={getEditingService(editModal.record)} 
             onSubmit={handleSave}
             isLoading={isInserting || isUpdating}

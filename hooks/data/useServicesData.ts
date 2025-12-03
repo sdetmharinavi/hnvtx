@@ -11,6 +11,7 @@ export const useServicesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_servicesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
+  const supabase = createClient();
 
   // 1. Online Fetcher (RPC)
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
@@ -21,7 +22,7 @@ export const useServicesData = (
         : undefined,
     });
     
-    const { data, error } = await createClient().rpc('get_paged_data', {
+    const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
       p_limit: 5000,
       p_offset: 0,
@@ -62,7 +63,6 @@ export const useServicesData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_services'>({
-    // Key includes 'v_services' for cache invalidation matching
     queryKey: ['v_services-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
@@ -77,6 +77,7 @@ export const useServicesData = (
 
     let filtered = allServices;
     
+    // Search Filter
     if (searchQuery) {
         const lower = searchQuery.toLowerCase();
         filtered = filtered.filter(s => 
@@ -84,6 +85,17 @@ export const useServicesData = (
             s.node_name?.toLowerCase().includes(lower) ||
             s.description?.toLowerCase().includes(lower)
         );
+    }
+    
+    // Link Type Filter
+    if (filters.link_type_id) {
+        filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
+    }
+
+    // Status Filter
+    if (filters.status) {
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter(s => s.status === statusBool);
     }
     
     const totalCount = filtered.length;
@@ -99,7 +111,7 @@ export const useServicesData = (
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
-  }, [allServices, searchQuery, currentPage, pageLimit]);
+  }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 
   return { 
     ...processedData, 
