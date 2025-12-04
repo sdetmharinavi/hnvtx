@@ -69,3 +69,55 @@ GRANT EXECUTE ON FUNCTION public.provision_fibers_to_connection(UUID, UUID[], UU
 
 -- (The old function can be removed or left, but we will no longer use it)
 DROP FUNCTION IF EXISTS public.assign_system_to_fibers(UUID, UUID, INT, INT, UUID);
+
+CREATE OR REPLACE FUNCTION public.get_ring_manager_stats()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_total_rings INT;
+    v_spec_issued INT;
+    v_spec_pending INT;
+    v_ofc_ready INT;
+    v_ofc_pending INT;
+    v_on_air_nodes INT;
+BEGIN
+    -- Basic Ring Counts
+    SELECT COUNT(*) INTO v_total_rings FROM public.rings WHERE status = true;
+    
+    SELECT COUNT(*) INTO v_spec_issued FROM public.rings WHERE status = true AND spec_status = 'Issued';
+    SELECT COUNT(*) INTO v_spec_pending FROM public.rings WHERE status = true AND (spec_status = 'Pending' OR spec_status IS NULL);
+    
+    SELECT COUNT(*) INTO v_ofc_ready FROM public.rings WHERE status = true AND ofc_status = 'Ready';
+    SELECT COUNT(*) INTO v_ofc_pending FROM public.rings WHERE status = true AND (ofc_status = 'Pending' OR ofc_status IS NULL);
+
+    -- Complex Count: Nodes (BTS/BTS-RL) that are in Rings marked as 'On-Air'
+    -- We join Rings -> Ring_Systems -> Systems -> Nodes -> Node_Types
+    SELECT COUNT(DISTINCT n.id)
+    INTO v_on_air_nodes
+    FROM public.nodes n
+    JOIN public.lookup_types lt ON n.node_type_id = lt.id
+    JOIN public.systems s ON s.node_id = n.id
+    JOIN public.ring_based_systems rbs ON rbs.system_id = s.id
+    JOIN public.rings r ON r.id = rbs.ring_id
+    WHERE 
+        r.status = true 
+        AND r.bts_status = 'On-Air'
+        AND lt.category = 'NODE_TYPES'
+        AND (lt.code = 'BTS' OR lt.code = 'BTS-RL');
+
+    RETURN jsonb_build_object(
+        'total_rings', v_total_rings,
+        'spec_issued', v_spec_issued,
+        'spec_pending', v_spec_pending,
+        'ofc_ready', v_ofc_ready,
+        'ofc_pending', v_ofc_pending,
+        'on_air_nodes', v_on_air_nodes
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_ring_manager_stats() TO authenticated;
+GRANT SELECT ON public.v_rings TO authenticated;

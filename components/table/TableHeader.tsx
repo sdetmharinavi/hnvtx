@@ -121,7 +121,7 @@ function TableHeaderBase<
               </div>
 
               {column.sortable && sortable && (
-                <div className="flex flex-col flex-shrink-0" aria-hidden="true">
+                <div className="flex flex-col shrink-0" aria-hidden="true">
                   <FiArrowUp
                     size={10}
                     className={`sm:size-3 ${

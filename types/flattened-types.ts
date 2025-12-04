@@ -1625,13 +1625,16 @@ export type Ring_based_systemsUpdate = {
 };
 
 export type RingsRow = {
+    bts_status: string | null;
     created_at: string | null;
     description: string | null;
     id: string;
     is_closed_loop: boolean | null;
     maintenance_terminal_id: string | null;
     name: string;
+    ofc_status: string | null;
     ring_type_id: string | null;
+    spec_status: string | null;
     status: boolean | null;
     topology_config: Json | null;
     total_nodes: number | null;
@@ -1639,13 +1642,16 @@ export type RingsRow = {
 };
 
 export type RingsInsert = {
+    bts_status?: string | null;
     created_at?: string | null;
     description?: string | null;
     id?: string;
     is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name: string;
+    ofc_status?: string | null;
     ring_type_id?: string | null;
+    spec_status?: string | null;
     status?: boolean | null;
     topology_config?: Json | null;
     total_nodes?: number | null;
@@ -1653,13 +1659,16 @@ export type RingsInsert = {
 };
 
 export type RingsUpdate = {
+    bts_status?: string | null;
     created_at?: string | null;
     description?: string | null;
     id?: string;
     is_closed_loop?: boolean | null;
     maintenance_terminal_id?: string | null;
     name?: string;
+    ofc_status?: string | null;
     ring_type_id?: string | null;
+    spec_status?: string | null;
     status?: boolean | null;
     topology_config?: Json | null;
     total_nodes?: number | null;
@@ -2268,6 +2277,7 @@ export type V_ring_nodesRow = {
 };
 
 export type V_ringsRow = {
+    bts_status: string | null;
     created_at: string | null;
     description: string | null;
     id: string | null;
@@ -2275,9 +2285,11 @@ export type V_ringsRow = {
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
     name: string | null;
+    ofc_status: string | null;
     ring_type_code: string | null;
     ring_type_id: string | null;
     ring_type_name: string | null;
+    spec_status: string | null;
     status: boolean | null;
     topology_config: Json | null;
     total_nodes: number | null;

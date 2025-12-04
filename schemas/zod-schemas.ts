@@ -1647,13 +1647,16 @@ export const ring_based_systemsUpdateSchema = z.object({
 });
 
 export const ringsRowSchema = z.object({
+  bts_status: z.string().min(1, "Status cannot be empty").nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid(),
   is_closed_loop: z.boolean().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ofc_status: z.string().min(1, "Status cannot be empty").nullable(),
   ring_type_id: z.uuid().nullable(),
+  spec_status: z.string().min(1, "Status cannot be empty").nullable(),
   status: z.boolean().nullable(),
   topology_config: JsonSchema.nullable(),
   total_nodes: z.number().nullable(),
@@ -1661,13 +1664,16 @@ export const ringsRowSchema = z.object({
 });
 
 export const ringsInsertSchema = z.object({
+  bts_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   description: z.string().max(10000, "Text is too long").nullable().optional(),
   id: z.uuid().optional(),
   is_closed_loop: z.boolean().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  ofc_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   ring_type_id: z.uuid().nullable().optional(),
+  spec_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   status: z.boolean().nullable().optional(),
   topology_config: JsonSchema.nullable().optional(),
   total_nodes: z.number().nullable().optional(),
@@ -1675,13 +1681,16 @@ export const ringsInsertSchema = z.object({
 });
 
 export const ringsUpdateSchema = z.object({
+  bts_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   description: z.string().max(10000, "Text is too long").nullable().optional(),
   id: z.uuid().optional(),
   is_closed_loop: z.boolean().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  ofc_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   ring_type_id: z.uuid().nullable().optional(),
+  spec_status: z.string().min(1, "Status cannot be empty").nullable().optional(),
   status: z.boolean().nullable().optional(),
   topology_config: JsonSchema.nullable().optional(),
   total_nodes: z.number().nullable().optional(),
@@ -2288,6 +2297,7 @@ export const v_ring_nodesRowSchema = z.object({
 });
 
 export const v_ringsRowSchema = z.object({
+  bts_status: z.string().min(1, "Status cannot be empty").nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),
   id: z.uuid().nullable(),
@@ -2295,9 +2305,11 @@ export const v_ringsRowSchema = z.object({
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  ofc_status: z.string().min(1, "Status cannot be empty").nullable(),
   ring_type_code: z.string().nullable(),
   ring_type_id: z.uuid().nullable(),
   ring_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  spec_status: z.string().min(1, "Status cannot be empty").nullable(),
   status: z.boolean().nullable(),
   topology_config: JsonSchema.nullable(),
   total_nodes: z.number().nullable(),

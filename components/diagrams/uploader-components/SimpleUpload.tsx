@@ -69,7 +69,7 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
                 className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <div className="flex min-w-0 flex-1 items-center space-x-3">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {file.type?.startsWith("image/") ? (
                       <div className="flex h-8 w-8 items-center justify-center rounded bg-green-100 text-xs">🖼️</div>
                     ) : file.type?.includes("pdf") ? (
