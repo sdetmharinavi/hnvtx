@@ -1,7 +1,7 @@
 // path: components/map/ClientRingMap.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip, LayersControl } from 'react-leaflet';
 import L, { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -364,8 +364,6 @@ export default function ClientRingMap({
 
   if (nodes.length === 0) return <div className="py-10 text-center">No nodes to display</div>;
 
-  const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const mapAttribution = '&copy; OpenStreetMap contributors &copy; CARTO';
   const mapContainerClass = isFullScreen
     ? 'fixed inset-0 z-[100]'
     : 'relative h-full w-full rounded-lg overflow-hidden';
@@ -374,7 +372,7 @@ export default function ClientRingMap({
     <div className={mapContainerClass}>
       <MapLegend />
       {showControls && (
-        <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
+        <div className="absolute top-4 right-4 z-1000 flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
           {onBack && (
             <button
               onClick={onBack}
@@ -411,7 +409,22 @@ export default function ClientRingMap({
         <MapController isFullScreen={isFullScreen} />
         <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
         <MapFlyToController coords={flyToCoordinates} />
-        <TileLayer url={mapUrl} attribution={mapAttribution} />
+
+        {/* THE FIX: Use LayersControl to toggle between Street and Satellite views */}
+        <LayersControl position="bottomright">
+          <LayersControl.BaseLayer checked name="Street View">
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Satellite View">
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
 
         {solidLines
           .filter(

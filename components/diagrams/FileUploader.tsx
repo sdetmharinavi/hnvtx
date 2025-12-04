@@ -111,7 +111,7 @@ export default function FileUploader() {
       {showUploadSection && (
         <div className="space-y-6 p-6 border border-gray-200 rounded-xl bg-white shadow-sm dark:bg-gray-800 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-             Upload OFC Diagrams
+             Upload Diagrams / Specs
           </h2>
 
           {/* Folder Management */}
