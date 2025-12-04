@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Dashboard } from "@uppy/react";
+import Dashboard from "@uppy/react/dashboard";
 import { Camera as CameraIcon, SwitchCamera } from "lucide-react";
 import type { AppUppy } from "@/components/diagrams/hooks/useUppyUploader";
 

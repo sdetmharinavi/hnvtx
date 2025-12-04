@@ -5,20 +5,18 @@ import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/table";
 import { useEFiles } from "@/hooks/data/useEFilesData";
 import { InitiateFileModal, ForwardFileModal, EditFileModal } from "@/components/efile/ActionModals";
-import { StatusBadge } from "@/components/common/ui";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Plus, Download, Upload, Send, Edit } from "lucide-react";
+import { FileText, Eye, Plus, Send, Edit } from "lucide-react";
 import { EFileRow } from "@/schemas/efile-schemas";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { formatDate } from "@/utils/formatters";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
 import { useEFilesExcelUpload } from "@/hooks/database/excel-queries/useEFilesExcelUpload";
-// THE FIX: Import the RPC version of the download hook
 import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { createClient } from "@/utils/supabase/client";
 import { buildColumnConfig } from "@/constants/table-column-keys";
-import { Row, buildRpcFilters } from "@/hooks/database"; // Added buildRpcFilters
 import { V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
+import { FiDownload, FiUpload } from "react-icons/fi";
 
 export default function EFilesPage() {
   const router = useRouter();
@@ -48,12 +46,12 @@ export default function EFilesPage() {
 
   const handleExport = () => {
       // Construct filters for the RPC
-      const filters: Record<string, unknown> = { status: 'active' };
+      // const filters = { status: 'active' };
       
       exportFiles({
-          fileName: `e-files_active_${formatDate(new Date(), { format: 'dd-mm-yyyy' })}.xlsx`,
+          fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_e-files_all.xlsx`,
           sheetName: 'E-Files',
-          columns: buildColumnConfig("v_e_files_extended") as Column<Row<'v_e_files_extended'>>[],
+          columns: buildColumnConfig("v_e_files_extended"),
           // Using RPC Config instead of direct filters
           rpcConfig: {
               functionName: 'get_paged_data',
@@ -61,7 +59,7 @@ export default function EFilesPage() {
                   p_view_name: 'v_e_files_extended',
                   p_limit: 10000, // Reasonable limit for export
                   p_offset: 0,
-                  p_filters: buildRpcFilters(filters),
+                  // p_filters: buildRpcFilters(filters),
                   p_order_by: 'updated_at',
                   p_order_dir: 'desc'
               }
@@ -143,14 +141,14 @@ export default function EFilesPage() {
                 label: isExporting ? 'Exporting...' : 'Export',
                 onClick: handleExport,
                 variant: 'outline',
-                leftIcon: <Download />,
+                leftIcon: <FiDownload />,
                 disabled: isExporting || isLoading
             },
             {
                 label: isUploading ? 'Uploading...' : 'Import',
                 onClick: () => fileInputRef.current?.click(),
                 variant: 'outline',
-                leftIcon: <Upload />,
+                leftIcon: <FiUpload />,
                 disabled: isUploading || isLoading
             },
             { 
