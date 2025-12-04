@@ -167,7 +167,11 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     status: { transform: toPgBoolean },
     node_name: { title: "Node Location" },
     link_type_name: { title: "Link Type" },
-  }
+  },
+  v_e_files_extended: {
+     created_at: { transform: toPgDate, excelFormat: "date" },
+     updated_at: { transform: toPgDate, excelFormat: "date" },
+  },
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {
@@ -381,6 +385,21 @@ const TABLE_COLUMN_OBJECTS = {
     user_id: "user_id",
     user_role: "user_role",
   },
+  e_files: {
+    category: "category",
+    created_at: "created_at",
+    current_holder_employee_id: "current_holder_employee_id",
+    description: "description",
+    file_number: "file_number",
+    initiator_employee_id: "initiator_employee_id",
+    priority: "priority",
+    recorded_by_user_id: "recorded_by_user_id",
+    status: "status",
+    subject: "subject",
+    updated_at: "updated_at",
+    id: "id",
+  },
+  
 
   // ==================== System Tables ====================
   systems: {
@@ -896,20 +915,16 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_terminal_id: "maintenance_terminal_id",
     ring_type_id: "ring_type_id",
   },
-  // v_system_ring_paths_detailed: {
-  //   created_at: "created_at",
-  //   end_node_id: "end_node_id",
-  //   end_node_name: "end_node_name",
-  //   id: "id",
-  //   logical_path_id: "logical_path_id",
-  //   ofc_cable_id: "ofc_cable_id",
-  //   path_name: "path_name",
-  //   path_order: "path_order",
-  //   route_name: "route_name",
-  //   source_system_id: "source_system_id",
-  //   start_node_id: "start_node_id",
-  //   start_node_name: "start_node_name",
-  // },
+  file_movements: {
+    action_type: "action_type",
+    created_at: "created_at",
+    file_id: "file_id",
+    from_employee_id: "from_employee_id",
+    performed_by_user_id: "performed_by_user_id",
+    remarks: "remarks",
+    to_employee_id: "to_employee_id",
+    id: "id",
+  },
   v_cable_segments_at_jc: {
     end_node_id: "end_node_id",
     fiber_count: "fiber_count",
@@ -1014,6 +1029,42 @@ const TABLE_COLUMN_OBJECTS = {
     node_id: "node_id",
     link_type_id: "link_type_id",
   },
+  v_e_files_extended: {
+    category: "category",
+    created_at: "created_at",
+    current_holder_area: "current_holder_area",
+    current_holder_designation: "current_holder_designation",
+    current_holder_employee_id: "current_holder_employee_id",
+    current_holder_name: "current_holder_name",
+    description: "description",
+    file_number: "file_number",
+    initiator_designation: "initiator_designation",
+    initiator_employee_id: "initiator_employee_id",
+    initiator_name: "initiator_name",
+    priority: "priority",
+    recorded_by_name: "recorded_by_name",
+    recorded_by_user_id: "recorded_by_user_id",
+    status: "status",
+    subject: "subject",
+    updated_at: "updated_at",
+    id: "id",
+  },
+  v_file_movements_extended: {
+    action_type: "action_type",
+    created_at: "created_at",
+    file_id: "file_id",
+    from_employee_designation: "from_employee_designation",
+    from_employee_id: "from_employee_id",
+    from_employee_name: "from_employee_name",
+    performed_by_name: "performed_by_name",
+    performed_by_user_id: "performed_by_user_id",
+    remarks: "remarks",
+    to_employee_designation: "to_employee_designation",
+    to_employee_id: "to_employee_id",
+    to_employee_name: "to_employee_name",
+    id: "id",
+  }
+
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
@@ -1054,6 +1105,8 @@ export const TABLES = {
   diary_notes: "diary_notes",
   inventory_items: "inventory_items",
   services: "services",
+  e_files: "e_files",
+  file_movements: "file_movements",
 } as const;
 
 export const VIEWS = {
@@ -1077,6 +1130,8 @@ export const VIEWS = {
   v_inventory_items: "v_inventory_items",
   v_audit_logs: "v_audit_logs",
   v_services: "v_services",
+  v_e_files_extended: "v_e_files_extended",
+  v_file_movements_extended: "v_file_movements_extended",
 } as const;
 
 export const TABLE_NAMES = {

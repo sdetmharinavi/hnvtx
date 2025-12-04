@@ -129,6 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, check which files / functions are unused in the project.
+Let's begin! First of all, lets fix the e-file section. Our requirement: The system tracks the movement of physical files between Employees (employees table which is having employee_name ,employee_pers_no, employee_contact), while the App User is merely the data entry operator. We need to fix sqls as lot of sql files for that is created and related react files and other files.
 
 

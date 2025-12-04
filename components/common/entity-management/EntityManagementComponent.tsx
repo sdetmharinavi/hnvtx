@@ -169,7 +169,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
       
       {/* LEFT PANEL: LIST/TREE */}
       {/* Added min-w-0 to prevent flex child overflow issues */}
-      <div className={`flex-1 flex flex-col min-w-0 ${showDetailsPanel ? "hidden lg:flex" : "flex"}`}>
+      <div className={`flex-1 flex flex-col min-w-64 ${showDetailsPanel ? "hidden lg:flex" : "flex"}`}>
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <SearchAndFilters
             searchTerm={internalSearchTerm} onSearchChange={setInternalSearchTerm}
