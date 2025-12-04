@@ -45,7 +45,7 @@ export default function Home() {
   return (
     <div className="p-4">
       <h1 className="mb-4 text-2xl font-bold">
-        Upload OFC Diagrams
+        Upload Diagrams / Specs
       </h1>
       {!user ? <p>Please log in to upload files.</p> : <FileUploader />}
     </div>
