@@ -179,3 +179,24 @@ export function usePagedData<T>(
     ...queryOptions,
   });
 }
+
+export interface RingManagerStats {
+    total_rings: number;
+    spec_issued: number;
+    spec_pending: number;
+    ofc_ready: number;
+    ofc_pending: number;
+    on_air_nodes: number;
+}
+
+export function useRingManagerStats(supabase: SupabaseClient<Database>) {
+    return useQuery({
+        queryKey: ['ring-manager-stats'],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_ring_manager_stats' as any);
+            if (error) throw error;
+            return data as unknown as RingManagerStats;
+        },
+        staleTime: 5 * 60 * 1000 // Cache for 5 minutes
+    });
+}

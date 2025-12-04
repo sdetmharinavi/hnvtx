@@ -512,13 +512,13 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
                 >
                   <div className="flex items-center justify-between min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-lg flex-shrink-0">📁</span>
-                      <span className="font-medium text-sm leading-tight break-words line-clamp-2 min-w-0">
+                      <span className="text-lg shrink-0">📁</span>
+                      <span className="font-medium text-sm leading-tight wrap-break-words line-clamp-2 min-w-0">
                         {folder.name}
                       </span>
                     </div>
                     {selectedFolder === folder.id && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded flex-shrink-0 ml-2">
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded shrink-0 ml-2">
                         Selected
                       </span>
                     )}

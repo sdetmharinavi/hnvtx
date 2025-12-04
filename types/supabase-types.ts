@@ -2834,39 +2834,48 @@ export type Database = {
       }
       rings: {
         Row: {
+          bts_status: string | null
           created_at: string | null
           description: string | null
           id: string
           is_closed_loop: boolean | null
           maintenance_terminal_id: string | null
           name: string
+          ofc_status: string | null
           ring_type_id: string | null
+          spec_status: string | null
           status: boolean | null
           topology_config: Json | null
           total_nodes: number | null
           updated_at: string | null
         }
         Insert: {
+          bts_status?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           is_closed_loop?: boolean | null
           maintenance_terminal_id?: string | null
           name: string
+          ofc_status?: string | null
           ring_type_id?: string | null
+          spec_status?: string | null
           status?: boolean | null
           topology_config?: Json | null
           total_nodes?: number | null
           updated_at?: string | null
         }
         Update: {
+          bts_status?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           is_closed_loop?: boolean | null
           maintenance_terminal_id?: string | null
           name?: string
+          ofc_status?: string | null
           ring_type_id?: string | null
+          spec_status?: string | null
           status?: boolean | null
           topology_config?: Json | null
           total_nodes?: number | null
@@ -4603,6 +4612,7 @@ export type Database = {
       }
       v_rings: {
         Row: {
+          bts_status: string | null
           created_at: string | null
           description: string | null
           id: string | null
@@ -4610,9 +4620,11 @@ export type Database = {
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null
           name: string | null
+          ofc_status: string | null
           ring_type_code: string | null
           ring_type_id: string | null
           ring_type_name: string | null
+          spec_status: string | null
           status: boolean | null
           topology_config: Json | null
           total_nodes: number | null
@@ -5363,6 +5375,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_ring_manager_stats: { Args: never; Returns: Json }
       get_rings_for_export: {
         Args: { order_by?: string; row_limit?: number }
         Returns: {
@@ -5502,6 +5515,16 @@ export type Database = {
           start_node_id: string
           step_order: number
         }[]
+      }
+      update_e_file_details: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_file_id: string
+          p_priority: string
+          p_subject: string
+        }
+        Returns: undefined
       }
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }

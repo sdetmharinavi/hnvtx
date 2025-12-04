@@ -313,6 +313,11 @@ SELECT
   r.status,
   r.created_at,
   r.updated_at,
+  -- New Columns
+  r.ofc_status,
+  r.spec_status,
+  r.bts_status,
+  -- Aggregates/Joins
   (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
   lt_ring.name AS ring_type_name,
   lt_ring.code AS ring_type_code,

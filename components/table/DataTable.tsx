@@ -396,7 +396,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md",
         className
       )}>
-      <div className='flex-shrink-0'>
+      <div className='shrink-0'>
         <TableToolbar
           title={title}
           searchable={searchable}
@@ -485,7 +485,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         </table>
       </div>
 
-      <div className='flex-shrink-0'>
+      <div className='shrink-0'>
         <TablePagination pagination={pagination} bordered={bordered} />
       </div>
     </div>

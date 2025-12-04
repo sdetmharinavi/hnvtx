@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS public.rings (
   total_nodes INTEGER DEFAULT 0,
   is_closed_loop BOOLEAN DEFAULT true,
   topology_config JSONB DEFAULT '{}'::jsonb,
+  ofc_status TEXT DEFAULT 'Pending',
+  spec_status TEXT DEFAULT 'Pending',
+  bts_status TEXT DEFAULT 'Pending',
   status BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -135,7 +135,7 @@ export function TableToolbar<T extends TableOrViewName>({
                 <button
                   onClick={onRefresh}
                   disabled={loading}
-                  className='p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0'
+                  className='p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 shrink-0'
                   aria-label='Refresh data'>
                   <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
                 </button>

@@ -1,58 +1,26 @@
+// path: config/table-columns/RingsTableColumns.tsx
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { useDynamicColumnConfig } from "@/hooks/useColumnConfig";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { V_ringsRowSchema } from "@/schemas/zod-schemas";
 
-// Helper to safely parse and render topology config
-const TopologyConfigCell = ({ value }: { value: unknown }) => {
-  if (!value) {
-    return (
-      <span className="text-gray-400 dark:text-gray-500 italic text-sm">
-        Standard
-      </span>
-    );
-  }
+// Helper to render phase status badges
+const PhaseBadge = ({ value, type }: { value: unknown, type: 'spec' | 'ofc' | 'bts' }) => {
+    const status = value as string || 'Pending';
+    let color = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
 
-  try {
-    const config = typeof value === 'string' ? JSON.parse(value) : value;
-    
-    if (typeof config === 'object' && config !== null) {
-      // Check for disabled segments array
-      if (Array.isArray(config.disabled_segments) && config.disabled_segments.length > 0) {
-        const count = config.disabled_segments.length;
-        return (
-          <div className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-md text-xs font-medium border border-amber-200 dark:border-amber-800/40 shadow-sm">
-            <span>
-              {count} Segment{count !== 1 ? 's' : ''} Disabled
-            </span>
-          </div>
-        );
-      }
+    if (status === 'Ready' || status === 'Issued' || status === 'On-Air') {
+        color = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    } else if (status === 'Blowing' || status === 'Splicing' || status === 'Survey' || status === 'Integrated') {
+        color = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
     }
-    
-    // If object exists but empty or no specific keys found
-    if (Object.keys(config).length === 0) {
-      return (
-        <span className="text-gray-400 dark:text-gray-500 italic text-sm">
-          Standard
+
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
+            {status}
         </span>
-      );
-    }
-
-    // Fallback for other config types
-    return (
-      <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
-        Custom Config
-      </span>
     );
-  } catch {
-    return (
-      <span className="text-gray-400 dark:text-gray-500 italic text-sm">
-        Standard
-      </span>
-    );
-  }
-};
+}
 
 export const RingsColumns = (data: V_ringsRowSchema[]) => {
   return useDynamicColumnConfig("v_rings", {
@@ -65,51 +33,58 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
       "ring_type_id",
       "ring_type_code",
       "ring_type_name",
-      "is_closed_loop"
+      "is_closed_loop",
+      "description", // Hide description in main table to save space, viewable in modal or tooltip
+      "topology_config" // Hide technical config
     ],
     overrides: {
       name: {
+        width: 200,
         render: (value: unknown) => {
           return <TruncateTooltip text={(value as string) ?? ""} className='font-semibold' />;
         },
       },
-      description: {
-        title: "Description",
-        render: (value: unknown) => {
-          return <TruncateTooltip renderAsHtml text={(value as string) ?? ""} className='font-semibold' />;
-        },
-      },
       total_nodes: {
-        title: "Total Nodes",
+        title: "Nodes",
+        width: 80,
         render: (value: unknown) => {
-          return <span className='font-semibold'>{value as string}</span>;
+          return <span className='font-mono text-center block'>{value as string}</span>;
         },
       },
       ring_type_code: {
-        title: "Ring Type",
+        title: "Type",
+        width: 100,
         render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.ring_type_code;
-          return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
+          return <span className="text-xs font-medium bg-gray-50 px-2 py-1 rounded">{rel ?? "N/A"}</span>;
         },
       },
       maintenance_area_name: {
-        title: "Maintenance Area",
+        title: "Area",
+        width: 150,
         render: (_value: unknown, record: V_ringsRowSchema) => {
           const rel = record.maintenance_area_name;
-          return <TruncateTooltip text={rel ?? "N/A"} className='font-semibold' />;
+          return <TruncateTooltip text={rel ?? "N/A"} />;
         },
       },
-      topology_config: {
-        title: "Topology",
-        render: (value: unknown) => <TopologyConfigCell value={value} />
+      // New Columns
+      spec_status: {
+          title: "SPEC",
+          width: 100,
+          render: (val) => <PhaseBadge value={val} type="spec" />
+      },
+      ofc_status: {
+          title: "OFC",
+          width: 100,
+          render: (val) => <PhaseBadge value={val} type="ofc" />
+      },
+      bts_status: {
+          title: "BTS",
+          width: 100,
+          render: (val) => <PhaseBadge value={val} type="bts" />
       },
       status: {
-        render: (value: unknown) => {
-          return <StatusBadge status={value as string} />;
-        },
-      },
-      is_closed_loop: {
-        title: "Closed Loop",
+        width: 100,
         render: (value: unknown) => {
           return <StatusBadge status={value as string} />;
         },
