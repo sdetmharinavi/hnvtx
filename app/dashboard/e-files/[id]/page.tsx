@@ -13,7 +13,6 @@ import { useUser } from "@/providers/UserProvider";
 export default function EFileDetailsPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { isSuperAdmin, role } = useUser();
     const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
     

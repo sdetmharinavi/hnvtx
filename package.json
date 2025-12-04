@@ -68,6 +68,7 @@
     "@uppy/core": "^5.0.1",
     "@uppy/dashboard": "^5.0.1",
     "@uppy/drag-drop": "^5.0.1",
+    "@uppy/image-editor": "^4.1.0",
     "@uppy/react": "^5.0.2",
     "@uppy/webcam": "^5.0.0",
     "@uppy/xhr-upload": "^5.0.0",
