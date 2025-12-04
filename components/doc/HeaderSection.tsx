@@ -243,7 +243,7 @@ export default function HeaderSection() {
             >
               {/* Icon Bubble */}
               <div className={`
-                relative z-10 flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full 
+                relative z-10 shrink-0 flex items-center justify-center w-16 h-16 rounded-full 
                 border-4 border-white dark:border-gray-950 shadow-lg 
                 ${step.color} text-white transition-transform duration-300 group-hover:scale-110
               `}>

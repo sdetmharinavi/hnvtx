@@ -46,7 +46,7 @@ export function EntityTreeItem<T extends BaseEntity>({
             ) : (
               <div className="w-6" />
             )}
-            <IconComponent className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+            <IconComponent className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
             <div className="flex-1 truncate">
               <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">{entity.name}</h3>
             </div>

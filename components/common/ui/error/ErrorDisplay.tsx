@@ -167,7 +167,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
       aria-live="polite"
     >
       {showIcon && variant !== "inline" && (
-        <div className={`flex-shrink-0 ${currentIcon.colorClass}`}>
+        <div className={`shrink-0 ${currentIcon.colorClass}`}>
           <div className={currentSize.iconSize}>{currentIcon.icon}</div>
         </div>
       )}
@@ -187,7 +187,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
           }`}
         >
           {variant === "inline" && showIcon && (
-            <div className={`flex-shrink-0 ${currentIcon.colorClass}`}>
+            <div className={`shrink-0 ${currentIcon.colorClass}`}>
               <div className={currentSize.iconSize}>{currentIcon.icon}</div>
             </div>
           )}

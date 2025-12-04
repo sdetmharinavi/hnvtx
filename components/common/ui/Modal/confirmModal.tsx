@@ -300,7 +300,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {showIcon && (
-                <div className="flex-shrink-0" aria-hidden="true">
+                <div className="shrink-0" aria-hidden="true">
                   {getIcon()}
                 </div>
               )}
@@ -314,7 +314,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <button
               onClick={onCancel}
               disabled={loading}
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close modal"
               type="button"
             >

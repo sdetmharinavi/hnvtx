@@ -131,7 +131,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
-          <FiLayout className="h-4 w-4 flex-shrink-0" />
+          <FiLayout className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span>{showHeader ? 'Hide' : 'Show'} Header</span>}
         </button>
         
@@ -143,7 +143,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
-          <FiTool className="h-4 w-4 flex-shrink-0" />
+          <FiTool className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>}
         </button>
       </div>

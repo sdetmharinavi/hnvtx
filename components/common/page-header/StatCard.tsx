@@ -49,7 +49,7 @@ export const StatCard: React.FC<StatProps> = ({
       )}
     >
       {icon && (
-        <div className={`flex-shrink-0 text-2xl ${statColors[color]}`}>
+        <div className={`shrink-0 text-2xl ${statColors[color]}`}>
           {icon}
         </div>
       )}

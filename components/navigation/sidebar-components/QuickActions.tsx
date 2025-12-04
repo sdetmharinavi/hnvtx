@@ -94,7 +94,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
         className="flex cursor-pointer items-center justify-between py-2 px-4 mx-2 rounded-lg text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
       >
         <div className="flex items-center space-x-3">
-          <FiSettings className="h-5 w-5 flex-shrink-0" />
+          <FiSettings className="h-5 w-5 shrink-0" />
           <span>Quick Actions</span>
         </div>
         <motion.div

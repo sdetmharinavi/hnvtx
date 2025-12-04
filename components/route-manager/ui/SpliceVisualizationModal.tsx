@@ -215,7 +215,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                 <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm font-medium text-gray-800 dark:text-gray-200 break-words">{fiber.segment_name}</div>
                 </div>
-                <div className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                <div className="shrink-0 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                   #{fiber.fiber_no}
                 </div>
               </div>

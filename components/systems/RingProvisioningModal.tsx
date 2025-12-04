@@ -65,7 +65,7 @@ const ProvisioningStepView: FC<{
   return (
     <div className={`p-4 border rounded-lg transition-all ${isActive ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-lg' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'}`}>
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-white font-bold ${step.isComplete ? 'bg-green-500' : 'bg-blue-500'}`}>
+        <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-white font-bold ${step.isComplete ? 'bg-green-500' : 'bg-blue-500'}`}>
           {step.isComplete ? <Check size={18} /> : step.stepIndex + 1}
         </div>
         <div>

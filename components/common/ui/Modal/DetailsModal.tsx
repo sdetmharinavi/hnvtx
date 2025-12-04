@@ -267,7 +267,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
         </label>
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-600 transition-colors">
           <div className="flex items-center gap-3">
-            {field.icon && <div className="text-gray-400 flex-shrink-0">{field.icon}</div>}
+            {field.icon && <div className="text-gray-400 shrink-0">{field.icon}</div>}
             <div className="flex-1">
               {isPrimitive ? (
                 <p className="text-gray-900 dark:text-white font-medium">{formattedValue}</p>
@@ -322,7 +322,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
           <motion.div className="flex items-center gap-4" variants={fieldVariants}>
             {header.avatar && (
               <motion.div
-                className="flex-shrink-0 relative"
+                className="shrink-0 relative"
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >

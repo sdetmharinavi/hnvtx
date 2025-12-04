@@ -75,7 +75,7 @@ export const NavItem = ({
   const renderContent = () => (
     <>
       <div className="flex items-center space-x-3">
-        <span className="flex-shrink-0">
+        <span className="shrink-0">
           {isLoading && pathname !== item.href ? <ButtonSpinner size="xs" /> : item.icon}
         </span>
         {!isCollapsed && (

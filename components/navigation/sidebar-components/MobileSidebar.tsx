@@ -53,7 +53,7 @@ export const MobileSidebar = ({
         exit="hidden"
         variants={mobileSidebarVariants}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed top-0 left-0 z-[9999] flex h-full w-64 flex-col border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+        className="fixed top-0 left-0 z-9999 flex h-full w-64 flex-col border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:text-white"
       >
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -97,7 +97,7 @@ export const MobileSidebar = ({
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
-            <FiLayout className="h-4 w-4 flex-shrink-0" />
+            <FiLayout className="h-4 w-4 shrink-0" />
             <span>{showHeader ? 'Hide' : 'Show'} Header</span>
           </button>
           
@@ -109,7 +109,7 @@ export const MobileSidebar = ({
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
-            <FiTool className="h-4 w-4 flex-shrink-0" />
+            <FiTool className="h-4 w-4 shrink-0" />
             <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>
           </button>
         </div>

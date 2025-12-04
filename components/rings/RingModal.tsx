@@ -29,8 +29,7 @@ interface RingModalProps {
 const STATUS_OPTIONS = {
     OFC: [
         { value: 'Pending', label: 'Pending' },
-        { value: 'Blowing', label: 'Blowing' },
-        { value: 'Splicing', label: 'Splicing' },
+        { value: 'Partial Ready', label: 'Partial Ready' },
         { value: 'Ready', label: 'Ready' }
     ],
     SPEC: [
@@ -40,7 +39,7 @@ const STATUS_OPTIONS = {
     ],
     BTS: [
         { value: 'Pending', label: 'Pending' },
-        { value: 'Integrated', label: 'Integrated' },
+        { value: 'Configured', label: 'Configured' },
         { value: 'On-Air', label: 'On-Air' }
     ]
 };
