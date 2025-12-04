@@ -62,7 +62,7 @@ export function PageHeader({
             </div>
 
             {/* Desktop Action Buttons */}
-            <div className='hidden lg:flex items-center gap-2 flex-shrink-0 ml-4'>
+            <div className='hidden lg:flex items-center gap-2 shrink-0 ml-4'>
               {actions.map((action, index) =>
                 action["data-dropdown"] ? (
                   <div key={`desktop-dropdown-${index}`} data-dropdown='true'>
@@ -91,7 +91,7 @@ export function PageHeader({
             </div>
 
             {/* Mobile/Tablet Action Buttons */}
-            <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0'>
+            <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:shrink-0'>
               {actions.map((action, index) =>
                 action["data-dropdown"] ? (
                   <DropdownButton

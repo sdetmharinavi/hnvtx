@@ -47,7 +47,7 @@ export const FormCard: React.FC<FormCardProps> = ({
     >
       {/* Header */}
       <div 
-        className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+        className="shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
         style={{
           animation: "slideDown 0.5s ease-out 0.1s both"
         }}
@@ -130,7 +130,7 @@ export const FormCard: React.FC<FormCardProps> = ({
 
         {/* Footer */}
         <div 
-          className="flex-shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
+          className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
           style={{
             animation: "slideUp 0.5s ease-out 0.4s both"
           }}

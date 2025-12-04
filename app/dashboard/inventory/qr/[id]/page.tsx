@@ -14,7 +14,7 @@ const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: stri
   if (!value) return null;
   return (
     <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-      <div className="flex-shrink-0 text-gray-500 mt-1">{icon}</div>
+      <div className="shrink-0 text-gray-500 mt-1">{icon}</div>
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
         <p className="text-base text-gray-800 font-medium">{value}</p>

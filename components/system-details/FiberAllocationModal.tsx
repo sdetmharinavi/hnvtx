@@ -93,7 +93,7 @@ const PathCascadeRow: FC<{
         <TruncateTooltip text={cascadeInfo.cableName} className="font-medium" />
         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`${cascadeInfo.startNodeName} → ${cascadeInfo.endNodeName}`}</p>
       </div>
-      <div className="w-48 flex-shrink-0">
+      <div className="w-48 shrink-0">
         <Controller name={`${pathType}.${index}.fiber_id`} control={control} render={({ field }) => (
           <SearchableSelect
             options={fiberOptions}
@@ -216,7 +216,7 @@ const PathBuilder: FC<{
                           clearable
                       />
                     </div>
-                    <Button variant="outline" size="md" onClick={handleAddCascade} disabled={!selectedCableId} className="flex-shrink-0">
+                    <Button variant="outline" size="md" onClick={handleAddCascade} disabled={!selectedCableId} className="shrink-0">
                         <Plus size={16} />
                     </Button>
                 </div>

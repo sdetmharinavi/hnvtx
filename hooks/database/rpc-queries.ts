@@ -185,15 +185,17 @@ export interface RingManagerStats {
     spec_issued: number;
     spec_pending: number;
     ofc_ready: number;
+    ofc_partial_ready: number;
     ofc_pending: number;
     on_air_nodes: number;
+    configured_in_maan: number;
 }
 
 export function useRingManagerStats(supabase: SupabaseClient<Database>) {
     return useQuery({
         queryKey: ['ring-manager-stats'],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_ring_manager_stats' as any);
+            const { data, error } = await supabase.rpc('get_ring_manager_stats');
             if (error) throw error;
             return data as unknown as RingManagerStats;
         },

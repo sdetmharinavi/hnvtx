@@ -42,7 +42,7 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="fixed left-16 z-[60] min-w-48 overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
+          className="fixed left-16 z-60 min-w-48 overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
           style={{
             top: `${Math.max(80, Math.min(window.innerHeight - 200, 160))}px`,
           }}
@@ -63,7 +63,7 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
                   }
                 `}
               >
-                <span className="flex-shrink-0">{child.icon}</span>
+                <span className="shrink-0">{child.icon}</span>
                 <span className="truncate">{child.label}</span>
               </button>
             ))}

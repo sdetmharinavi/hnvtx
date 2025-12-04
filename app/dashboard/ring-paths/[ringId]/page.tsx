@@ -279,7 +279,7 @@ export default function RingMapPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <PageHeader
           title={ringName}
           description="Visualize and configure topology."

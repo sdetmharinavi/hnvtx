@@ -78,7 +78,7 @@ export function UserFilters({
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 flex-shrink-0"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 shrink-0"
             >
               <FiX className="w-4 h-4" />
               <span className="hidden sm:inline">Clear All</span>

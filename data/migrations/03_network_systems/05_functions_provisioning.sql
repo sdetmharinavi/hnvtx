@@ -81,8 +81,10 @@ DECLARE
     v_spec_issued INT;
     v_spec_pending INT;
     v_ofc_ready INT;
+    v_ofc_partial_ready INT;
     v_ofc_pending INT;
     v_on_air_nodes INT;
+    v_configured_in_maan INT;
 BEGIN
     -- Basic Ring Counts
     SELECT COUNT(*) INTO v_total_rings FROM public.rings WHERE status = true;
@@ -91,7 +93,10 @@ BEGIN
     SELECT COUNT(*) INTO v_spec_pending FROM public.rings WHERE status = true AND (spec_status = 'Pending' OR spec_status IS NULL);
     
     SELECT COUNT(*) INTO v_ofc_ready FROM public.rings WHERE status = true AND ofc_status = 'Ready';
+    SELECT COUNT(*) INTO v_ofc_partial_ready FROM public.rings WHERE status = true AND ofc_status = 'Partial Ready';
     SELECT COUNT(*) INTO v_ofc_pending FROM public.rings WHERE status = true AND (ofc_status = 'Pending' OR ofc_status IS NULL);
+
+    SELECT COUNT(*) INTO v_configured_in_maan FROM public.rings WHERE status = true AND (bts_status = 'Configured');
 
     -- Complex Count: Nodes (BTS/BTS-RL) that are in Rings marked as 'On-Air'
     -- We join Rings -> Ring_Systems -> Systems -> Nodes -> Node_Types
@@ -113,8 +118,10 @@ BEGIN
         'spec_issued', v_spec_issued,
         'spec_pending', v_spec_pending,
         'ofc_ready', v_ofc_ready,
+        'ofc_partial_ready', v_ofc_partial_ready,
         'ofc_pending', v_ofc_pending,
-        'on_air_nodes', v_on_air_nodes
+        'on_air_nodes', v_on_air_nodes,
+        'configured_in_maan', v_configured_in_maan
     );
 END;
 $$;

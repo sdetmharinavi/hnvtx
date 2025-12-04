@@ -25861,7 +25861,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
-          <FiLayout className="h-4 w-4 flex-shrink-0" />
+          <FiLayout className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span>{showHeader ? 'Hide' : 'Show'} Header</span>}
         </button>
         
@@ -25873,7 +25873,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
-          <FiTool className="h-4 w-4 flex-shrink-0" />
+          <FiTool className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>}
         </button>
       </div>
@@ -25980,7 +25980,7 @@ export const NavItem = ({
   const renderContent = () => (
     <>
       <div className="flex items-center space-x-3">
-        <span className="flex-shrink-0">
+        <span className="shrink-0">
           {isLoading && pathname !== item.href ? <ButtonSpinner size="xs" /> : item.icon}
         </span>
         {!isCollapsed && (
@@ -26266,7 +26266,7 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
                   }
                 `}
               >
-                <span className="flex-shrink-0">{child.icon}</span>
+                <span className="shrink-0">{child.icon}</span>
                 <span className="truncate">{child.label}</span>
               </button>
             ))}
@@ -26687,7 +26687,7 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
         className="flex cursor-pointer items-center justify-between py-2 px-4 mx-2 rounded-lg text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
       >
         <div className="flex items-center space-x-3">
-          <FiSettings className="h-5 w-5 flex-shrink-0" />
+          <FiSettings className="h-5 w-5 shrink-0" />
           <span>Quick Actions</span>
         </div>
         <motion.div
@@ -26850,7 +26850,7 @@ export const MobileSidebar = ({
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
-            <FiLayout className="h-4 w-4 flex-shrink-0" />
+            <FiLayout className="h-4 w-4 shrink-0" />
             <span>{showHeader ? 'Hide' : 'Show'} Header</span>
           </button>
           
@@ -26862,7 +26862,7 @@ export const MobileSidebar = ({
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
-            <FiTool className="h-4 w-4 flex-shrink-0" />
+            <FiTool className="h-4 w-4 shrink-0" />
             <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>
           </button>
         </div>
@@ -27233,7 +27233,7 @@ const CableNotFound = ({
         animate="visible"
       >
         <div className="flex">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <motion.svg
               className="h-5 w-5 text-red-400"
               viewBox="0 0 20 20"
@@ -28821,7 +28821,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                 <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm font-medium text-gray-800 dark:text-gray-200 break-words">{fiber.segment_name}</div>
                 </div>
-                <div className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                <div className="shrink-0 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                   #{fiber.fiber_no}
                 </div>
               </div>
@@ -29419,7 +29419,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             >
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-xs font-bold w-6 text-center">{fiber.fiber_no}</span>
-                    {fiber.status !== 'available' && <FiLink className="w-3 h-3 flex-shrink-0" />}
+                    {fiber.status !== 'available' && <FiLink className="w-3 h-3 shrink-0" />}
                     <span className="text-xs truncate" title={titleText}>
                         {titleText}
                     </span>
@@ -31340,13 +31340,13 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
                 >
                   <div className="flex items-center justify-between min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-lg flex-shrink-0">📁</span>
+                      <span className="text-lg shrink-0">📁</span>
                       <span className="font-medium text-sm leading-tight break-words line-clamp-2 min-w-0">
                         {folder.name}
                       </span>
                     </div>
                     {selectedFolder === folder.id && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded flex-shrink-0 ml-2">
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded shrink-0 ml-2">
                         Selected
                       </span>
                     )}
@@ -31608,7 +31608,7 @@ const SimpleUpload: React.FC<SimpleUploadProps> = ({
                 className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <div className="flex min-w-0 flex-1 items-center space-x-3">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {file.type?.startsWith("image/") ? (
                       <div className="flex h-8 w-8 items-center justify-center rounded bg-green-100 text-xs">🖼️</div>
                     ) : file.type?.includes("pdf") ? (
@@ -32999,7 +32999,7 @@ export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
         className="relative w-full max-w-sm p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl"
       >
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+          <div className="shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
             <FiUserCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex-1">
@@ -33446,7 +33446,7 @@ export default function AuthButton() {
         {/* User Info Header */}
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               {user.user_metadata?.avatar_url ? (
                 <Image
                   src={user.user_metadata.avatar_url}
@@ -35690,7 +35690,7 @@ export default function HeaderSection() {
             >
               {/* Icon Bubble */}
               <div className={`
-                relative z-10 flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full 
+                relative z-10 shrink-0 flex items-center justify-center w-16 h-16 rounded-full 
                 border-4 border-white dark:border-gray-950 shadow-lg 
                 ${step.color} text-white transition-transform duration-300 group-hover:scale-110
               `}>
@@ -37675,7 +37675,7 @@ export function EntityTreeItem<T extends BaseEntity>({
             ) : (
               <div className="w-6" />
             )}
-            <IconComponent className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+            <IconComponent className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
             <div className="flex-1 truncate">
               <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">{entity.name}</h3>
             </div>
@@ -37969,7 +37969,7 @@ export function PageHeader({
             </div>
 
             {/* Desktop Action Buttons */}
-            <div className='hidden lg:flex items-center gap-2 flex-shrink-0 ml-4'>
+            <div className='hidden lg:flex items-center gap-2 shrink-0 ml-4'>
               {actions.map((action, index) =>
                 action["data-dropdown"] ? (
                   <div key={`desktop-dropdown-${index}`} data-dropdown='true'>
@@ -37998,7 +37998,7 @@ export function PageHeader({
             </div>
 
             {/* Mobile/Tablet Action Buttons */}
-            <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:flex-shrink-0'>
+            <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:shrink-0'>
               {actions.map((action, index) =>
                 action["data-dropdown"] ? (
                   <DropdownButton
@@ -38361,7 +38361,7 @@ export const StatCard: React.FC<StatProps> = ({
       )}
     >
       {icon && (
-        <div className={`flex-shrink-0 text-2xl ${statColors[color]}`}>
+        <div className={`shrink-0 text-2xl ${statColors[color]}`}>
           {icon}
         </div>
       )}
@@ -39464,7 +39464,7 @@ export const FormCard: React.FC<FormCardProps> = ({
     >
       {/* Header */}
       <div 
-        className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+        className="shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
         style={{
           animation: "slideDown 0.5s ease-out 0.1s both"
         }}
@@ -39547,7 +39547,7 @@ export const FormCard: React.FC<FormCardProps> = ({
 
         {/* Footer */}
         <div 
-          className="flex-shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
+          className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
           style={{
             animation: "slideUp 0.5s ease-out 0.4s both"
           }}
@@ -40136,7 +40136,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
       aria-live="polite"
     >
       {showIcon && variant !== "inline" && (
-        <div className={`flex-shrink-0 ${currentIcon.colorClass}`}>
+        <div className={`shrink-0 ${currentIcon.colorClass}`}>
           <div className={currentSize.iconSize}>{currentIcon.icon}</div>
         </div>
       )}
@@ -40156,7 +40156,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
           }`}
         >
           {variant === "inline" && showIcon && (
-            <div className={`flex-shrink-0 ${currentIcon.colorClass}`}>
+            <div className={`shrink-0 ${currentIcon.colorClass}`}>
               <div className={currentSize.iconSize}>{currentIcon.icon}</div>
             </div>
           )}
@@ -40522,7 +40522,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
         </label>
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-600 transition-colors">
           <div className="flex items-center gap-3">
-            {field.icon && <div className="text-gray-400 flex-shrink-0">{field.icon}</div>}
+            {field.icon && <div className="text-gray-400 shrink-0">{field.icon}</div>}
             <div className="flex-1">
               {isPrimitive ? (
                 <p className="text-gray-900 dark:text-white font-medium">{formattedValue}</p>
@@ -40577,7 +40577,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
           <motion.div className="flex items-center gap-4" variants={fieldVariants}>
             {header.avatar && (
               <motion.div
-                className="flex-shrink-0 relative"
+                className="shrink-0 relative"
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
@@ -41110,7 +41110,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {showIcon && (
-                <div className="flex-shrink-0" aria-hidden="true">
+                <div className="shrink-0" aria-hidden="true">
                   {getIcon()}
                 </div>
               )}
@@ -41124,7 +41124,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <button
               onClick={onCancel}
               disabled={loading}
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close modal"
               type="button"
             >
@@ -44764,7 +44764,7 @@ export function SearchAndFilters({
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 flex-shrink-0"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 shrink-0"
             >
               <FiX className="w-4 h-4" />
               <span className="hidden sm:inline">Clear All</span>
@@ -46051,7 +46051,7 @@ const ExistingRoutesAlert: React.FC<ExistingRoutesAlertProps> = ({ routes }) => 
   return (
     <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
       <div className="flex items-start space-x-3">
-        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
         <div className="flex-1">
           <h4 className="text-sm font-medium text-amber-800 dark:text-amber-200">
             Existing Routes Found
@@ -46065,7 +46065,7 @@ const ExistingRoutesAlert: React.FC<ExistingRoutesAlertProps> = ({ routes }) => 
                 key={index}
                 className="text-sm text-amber-700 dark:text-amber-300 flex items-center space-x-2"
               >
-                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0" />
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full shrink-0" />
                 <span className="font-mono truncate">{route}</span>
               </li>
             ))}
@@ -46154,7 +46154,7 @@ const SystemFiberTraceModal: React.FC<{
                     </span>
                   </div>
                   {idx < segments.length - 1 && (
-                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
                   )}
                 </React.Fragment>
               ))}
@@ -46162,7 +46162,7 @@ const SystemFiberTraceModal: React.FC<{
           </div>
         ) : (
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
             <span className="text-sm text-amber-700 dark:text-amber-300">{route}</span>
           </div>
         )}
@@ -47085,7 +47085,7 @@ const PathCascadeRow: FC<{
         <TruncateTooltip text={cascadeInfo.cableName} className="font-medium" />
         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{`${cascadeInfo.startNodeName} → ${cascadeInfo.endNodeName}`}</p>
       </div>
-      <div className="w-48 flex-shrink-0">
+      <div className="w-48 shrink-0">
         <Controller name={`${pathType}.${index}.fiber_id`} control={control} render={({ field }) => (
           <SearchableSelect
             options={fiberOptions}
@@ -47208,7 +47208,7 @@ const PathBuilder: FC<{
                           clearable
                       />
                     </div>
-                    <Button variant="outline" size="md" onClick={handleAddCascade} disabled={!selectedCableId} className="flex-shrink-0">
+                    <Button variant="outline" size="md" onClick={handleAddCascade} disabled={!selectedCableId} className="shrink-0">
                         <Plus size={16} />
                     </Button>
                 </div>
@@ -48454,7 +48454,7 @@ function TableHeaderBase<
               </div>
 
               {column.sortable && sortable && (
-                <div className="flex flex-col flex-shrink-0" aria-hidden="true">
+                <div className="flex flex-col shrink-0" aria-hidden="true">
                   <FiArrowUp
                     size={10}
                     className={`sm:size-3 ${
@@ -48884,7 +48884,7 @@ export function TableToolbar<T extends TableOrViewName>({
                 <button
                   onClick={onRefresh}
                   disabled={loading}
-                  className='p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 flex-shrink-0'
+                  className='p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 shrink-0'
                   aria-label='Refresh data'>
                   <FiRefreshCw size={14} className={`${loading ? "animate-spin" : ""}`} />
                 </button>
@@ -49323,7 +49323,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         bordered ? "border border-gray-200 dark:border-gray-700" : "shadow-md",
         className
       )}>
-      <div className='flex-shrink-0'>
+      <div className='shrink-0'>
         <TableToolbar
           title={title}
           searchable={searchable}
@@ -49412,7 +49412,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         </table>
       </div>
 
-      <div className='flex-shrink-0'>
+      <div className='shrink-0'>
         <TablePagination pagination={pagination} bordered={bordered} />
       </div>
     </div>
@@ -51362,7 +51362,7 @@ const ProvisioningStepView: FC<{
   return (
     <div className={`p-4 border rounded-lg transition-all ${isActive ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-lg' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'}`}>
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-white font-bold ${step.isComplete ? 'bg-green-500' : 'bg-blue-500'}`}>
+        <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-white font-bold ${step.isComplete ? 'bg-green-500' : 'bg-blue-500'}`}>
           {step.isComplete ? <Check size={18} /> : step.stepIndex + 1}
         </div>
         <div>
@@ -52557,7 +52557,7 @@ export function UserFilters({
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 flex-shrink-0"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium border border-transparent hover:border-red-200 shrink-0"
             >
               <FiX className="w-4 h-4" />
               <span className="hidden sm:inline">Clear All</span>
@@ -65401,7 +65401,7 @@ const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: stri
   if (!value) return null;
   return (
     <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-      <div className="flex-shrink-0 text-gray-500 mt-1">{icon}</div>
+      <div className="shrink-0 text-gray-500 mt-1">{icon}</div>
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
         <p className="text-base text-gray-800 font-medium">{value}</p>
@@ -65981,7 +65981,7 @@ export default function RingMapPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <PageHeader
           title={ringName}
           description="Visualize and configure topology."
@@ -68250,7 +68250,7 @@ export default function RingMapPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <PageHeader
           title={ringName}
           description="Visualize and configure topology."

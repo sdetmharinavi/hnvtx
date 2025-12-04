@@ -252,7 +252,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             >
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-xs font-bold w-6 text-center">{fiber.fiber_no}</span>
-                    {fiber.status !== 'available' && <FiLink className="w-3 h-3 flex-shrink-0" />}
+                    {fiber.status !== 'available' && <FiLink className="w-3 h-3 shrink-0" />}
                     <span className="text-xs truncate" title={titleText}>
                         {titleText}
                     </span>

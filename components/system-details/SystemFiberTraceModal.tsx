@@ -44,7 +44,7 @@ const SystemFiberTraceModal: React.FC<{
                     </span>
                   </div>
                   {idx < segments.length - 1 && (
-                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
                   )}
                 </React.Fragment>
               ))}
@@ -52,7 +52,7 @@ const SystemFiberTraceModal: React.FC<{
           </div>
         ) : (
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
             <span className="text-sm text-amber-700 dark:text-amber-300">{route}</span>
           </div>
         )}
