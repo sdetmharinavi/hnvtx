@@ -4,7 +4,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { StaleWhileRevalidate, CacheFirst } from "@serwist/strategies"; // Removed NetworkFirst
+import { NetworkFirst, CacheFirst } from "@serwist/strategies";
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -15,11 +15,13 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-// --- FIX: Use StaleWhileRevalidate for Navigation ---
-// This serves the cached HTML immediately (instant nav) and updates in background.
+// --- Navigation Strategy: NetworkFirst ---
+// 1. Try Network: Get the latest HTML from the server.
+// 2. Fallback to Cache: If offline, serve the previously cached HTML for this route.
+// This fixes the "This site can't be reached" error on reload.
 const navigationCache: RuntimeCaching = {
   matcher: ({ request }) => request.mode === 'navigate',
-  handler: new StaleWhileRevalidate({
+  handler: new NetworkFirst({
     cacheName: 'pages-cache',
     plugins: [
       new ExpirationPlugin({
@@ -31,9 +33,13 @@ const navigationCache: RuntimeCaching = {
 };
 
 const customCache: RuntimeCaching[] = [
+  // --- API Strategy: NetworkFirst with Timeout ---
+  // 1. Try Network: Get fresh data.
+  // 2. Timeout (10s): If slow, fall back to cache immediately.
+  // 3. Offline: Serve cache immediately.
   {
     matcher: /^https?:\/\/.*\/(api|rest|rpc)\/.*/i,
-    handler: new StaleWhileRevalidate({
+    handler: new NetworkFirst({
       cacheName: "api-cache",
       plugins: [
         new ExpirationPlugin({
@@ -41,8 +47,11 @@ const customCache: RuntimeCaching[] = [
           maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
         }),
       ],
+      networkTimeoutSeconds: 10, 
     }),
   },
+  // --- Static Assets: CacheFirst ---
+  // Images change rarely, so serve from cache for speed.
   {
     matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
     handler: new CacheFirst({
