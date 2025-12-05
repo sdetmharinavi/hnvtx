@@ -16,12 +16,13 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useMemo } from 'react';
-import { FiCpu } from 'react-icons/fi';
+import { FiCpu, FiCopy } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
+import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string } | null;
@@ -49,8 +50,12 @@ const NodesPage = () => {
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
     tableName: 'nodes',
     dataQueryHook: useNodesData,
+    displayNameField: 'name'
   });
   const { isSuperAdmin } = useUser();
+
+  // --- DUPLICATE DETECTION ---
+  const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
   const { data: nodeTypeOptionsData } = useOfflineQuery(
     ['node-types-for-filter'],
@@ -81,8 +86,12 @@ const NodesPage = () => {
   }, [nodeTypeOptionsData]);
 
   const isInitialLoad = isLoading && nodes.length === 0;
-  const columns = NodesTableColumns(nodes);
+  
+  // THE FIX: Pass duplicateSet to the columns generator
+  const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
+  
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
+  
   const tableActions = useMemo(
     () =>
       createStandardActions<V_nodes_completeRowSchema>({
@@ -92,6 +101,7 @@ const NodesPage = () => {
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete, isSuperAdmin]
   );
+  
   const headerActions = useStandardHeaderActions({
     data: nodes as NodesRowSchema[],
     onAddNew: editModal.openAdd,
@@ -102,6 +112,15 @@ const NodesPage = () => {
     isLoading: isLoading,
     exportConfig: { tableName: 'nodes' },
   });
+
+  // Add Duplicate Toggle Button
+  headerActions.splice(headerActions.length - 1, 0, {
+    label: showDuplicates ? "Hide Duplicates" : "Find Duplicates",
+    onClick: toggleDuplicates,
+    variant: showDuplicates ? "secondary" : "outline",
+    leftIcon: <FiCopy />,
+  });
+
   const headerStats = [
     { value: totalCount, label: 'Total Nodes' },
     { value: activeCount, label: 'Active', color: 'success' as const },

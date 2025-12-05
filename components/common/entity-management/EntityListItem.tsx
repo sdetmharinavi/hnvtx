@@ -1,6 +1,7 @@
 import React from 'react';
 import { BiToggleLeft, BiToggleRight } from 'react-icons/bi';
 import { BaseEntity, EntityConfig, HierarchicalEntity, isHierarchicalEntity } from '@/components/common/entity-management/types';
+import { DuplicateAwareCell } from '@/components/table/DuplicateAwareCell';
 
 interface EntityListItemProps<T extends BaseEntity> {
   entity: T;
@@ -9,6 +10,7 @@ interface EntityListItemProps<T extends BaseEntity> {
   onSelect: (id: string) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   isLoading: boolean;
+  isDuplicate?: boolean;
 }
 
 export function EntityListItem<T extends BaseEntity>({
@@ -18,6 +20,7 @@ export function EntityListItem<T extends BaseEntity>({
   onSelect,
   onToggleStatus,
   isLoading,
+  isDuplicate,
 }: EntityListItemProps<T>) {
   const IconComponent = config.icon;
 
@@ -48,7 +51,7 @@ export function EntityListItem<T extends BaseEntity>({
         <div className="flex-1">
           <div className="mb-2 flex items-center gap-2">
             <IconComponent className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-            <h3 className="font-medium text-gray-900 dark:text-gray-100">{entity.name}</h3>
+            <DuplicateAwareCell text={entity.name} isDuplicate={isDuplicate} />
           </div>
           {config.isHierarchical && isHierarchicalEntity(entity) && parentName && (
             <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
