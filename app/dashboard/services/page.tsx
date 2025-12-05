@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
+import { PageHeader, useStandardHeaderActions, type ActionButton } from "@/components/common/page-header";
 import { DataTable } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
 import { useServicesData } from "@/hooks/data/useServicesData";
@@ -10,7 +10,7 @@ import { ServicesTableColumns } from "@/config/table-columns/ServicesTableColumn
 import { createStandardActions } from "@/components/table/action-helpers";
 import { ServiceFormModal } from "@/components/services/ServiceFormModal";
 import { toast } from "sonner";
-import { Database as DatabaseIcon } from "lucide-react";
+import { Copy, Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
@@ -20,6 +20,7 @@ import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { localDb } from "@/hooks/data/localDb";
 import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SelectFilter } from "@/components/common/filters/FilterInputs";
+import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -34,6 +35,16 @@ export default function ServicesPage() {
     dataQueryHook: useServicesData, 
     displayNameField: 'name',
   });
+
+  // --- REUSABLE DUPLICATE LOGIC ---
+  const { 
+    showDuplicates, 
+    toggleDuplicates, 
+    duplicateSet 
+  } = useDuplicateFinder(data, 'name', 'Service Names');
+
+  // Pass duplicateSet to columns
+  const columns = ServicesTableColumns(data, duplicateSet);
 
   // Fetch Link Types for Filtering
   const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -50,8 +61,6 @@ export default function ServicesPage() {
       .map(lt => ({ value: lt.id, label: lt.name }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [linkTypesData]);
-
-  const columns = ServicesTableColumns(data);
 
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
      onSuccess: () => { refetch(); editModal.close(); toast.success("Service created."); }
@@ -94,16 +103,31 @@ export default function ServicesPage() {
       }
   });
 
+ // --- Add "Find Duplicates" button ---
+  const enhancedHeaderActions: ActionButton[] = [
+      ...headerActions,
+      {
+        label: showDuplicates ? "Hide Duplicates" : "Find Duplicates",
+        onClick: toggleDuplicates,
+        variant: showDuplicates ? "secondary" : "outline",
+        leftIcon: <Copy className="w-4 h-4" />,
+      }
+  ];
+  // Reorder to put Add New last
+  const addNewAction = enhancedHeaderActions.pop(); 
+  enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction!);
+
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader 
+       <PageHeader 
         title="Service Management" 
         description="Manage logical services, customers, and link definitions."
         icon={<DatabaseIcon />}
         stats={[{ value: totalCount, label: "Total Services" }]}
-        actions={headerActions}
+        // Use the new actions array
+        actions={enhancedHeaderActions} 
         isLoading={isLoading}
         isFetching={isFetching}
       />

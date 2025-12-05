@@ -26,26 +26,42 @@ import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { UseQueryResult } from '@tanstack/react-query';
 import { useDesignationsData } from '@/hooks/data/useDesignationsData';
+import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
+import { Copy } from 'lucide-react';
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
 
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
-  const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(null);
+  const [editingDesignation, setEditingDesignation] = useState<DesignationWithRelations | null>(
+    null
+  );
 
   const {
     data: allDesignations,
-    totalCount, activeCount, inactiveCount,
-    isLoading, isMutating, isFetching,
-    error, refetch,
-    search, filters,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isMutating,
+    isFetching,
+    error,
+    refetch,
+    search,
+    filters,
   } = useCrudManager<'employee_designations', DesignationWithRelations>({
     tableName: 'employee_designations',
     dataQueryHook: useDesignationsData,
     displayNameField: 'name',
     searchColumn: 'name',
   });
+
+  const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
+    allDesignations,
+    'name',
+    'Designations'
+  );
 
   // const selectedEntity = useMemo(() => allDesignations.find(d => d.id === selectedDesignationId) || null, [allDesignations, selectedDesignationId]);
   const isInitialLoad = isLoading && allDesignations.length === 0;
@@ -56,12 +72,22 @@ export default function DesignationManagerPage() {
     setEditingDesignation(null);
   };
 
-  const createDesignationMutation = useTableInsert(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
-  const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', { onSuccess: onMutationSuccess });
-  
+  const createDesignationMutation = useTableInsert(supabase, 'employee_designations', {
+    onSuccess: onMutationSuccess,
+  });
+  const updateDesignationMutation = useTableUpdate(supabase, 'employee_designations', {
+    onSuccess: onMutationSuccess,
+  });
+
   // Explicitly type the mutation hook
-  const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', { onSuccess: onMutationSuccess }) as unknown as {
-    mutate: (variables: { id: string; status: boolean; nameField?: keyof DesignationWithRelations }) => void;
+  const toggleStatusMutation = useToggleStatus(supabase, 'employee_designations', {
+    onSuccess: onMutationSuccess,
+  }) as unknown as {
+    mutate: (variables: {
+      id: string;
+      status: boolean;
+      nameField?: keyof DesignationWithRelations;
+    }) => void;
     isPending: boolean;
   };
 
@@ -98,10 +124,20 @@ export default function DesignationManagerPage() {
 
   const headerActions = useStandardHeaderActions({
     data: allDesignations as Row<'employee_designations'>[],
-    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
+    },
     onAddNew: handleOpenCreateForm,
     isLoading: isLoading,
     exportConfig: { tableName: 'employee_designations' },
+  });
+
+  headerActions.splice(headerActions.length - 1, 0, {
+    label: showDuplicates ? 'Hide Duplicates' : 'Find Duplicates',
+    onClick: toggleDuplicates,
+    variant: showDuplicates ? 'secondary' : 'outline',
+    leftIcon: <Copy className="w-4 h-4" />,
   });
 
   const headerStats = [
@@ -111,14 +147,23 @@ export default function DesignationManagerPage() {
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
   }
-  
+
   const designationsQuery: UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error> = {
     data: { data: allDesignations, count: totalCount },
-    isLoading, isFetching, error, isError: !!error, refetch,
+    isLoading,
+    isFetching,
+    error,
+    isError: !!error,
+    refetch,
   } as UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error>;
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -145,7 +190,11 @@ export default function DesignationManagerPage() {
         onSearchChange={search.setSearchQuery}
         filters={filters.filters as Record<string, string>}
         onFilterChange={(f) => filters.setFilters(f as Filters)}
-        onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+        onClearFilters={() => {
+          search.setSearchQuery('');
+          filters.setFilters({});
+        }}
+        duplicateSet={duplicateSet}
       />
 
       {isFormOpen && (
@@ -155,8 +204,12 @@ export default function DesignationManagerPage() {
           onSubmit={handleFormSubmit}
           designation={editingDesignation}
           allDesignations={allDesignations.map((d) => ({
-            id: d.id ?? '', name: d.name, created_at: d.created_at ?? null, updated_at: d.updated_at ?? null,
-            parent_id: d.parent_id ?? null, status: d.status ?? null,
+            id: d.id ?? '',
+            name: d.name,
+            created_at: d.created_at ?? null,
+            updated_at: d.updated_at ?? null,
+            parent_id: d.parent_id ?? null,
+            status: d.status ?? null,
           }))}
           isLoading={createDesignationMutation.isPending || updateDesignationMutation.isPending}
         />

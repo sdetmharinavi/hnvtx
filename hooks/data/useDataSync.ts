@@ -49,7 +49,6 @@ export async function syncEntity(
     let offset = 0;
     let hasMore = true;
     
-    // CHANGED: Fetch ALL data into memory first to prevent partial state
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allFetchedData: any[] = [];
 
@@ -80,8 +79,7 @@ export async function syncEntity(
         }
     }
 
-    // CHANGED: Safe transactional update
-    // Only clear and put if we successfully fetched everything
+    // Safe transactional update
     await db.transaction('rw', table, async () => {
         await table.clear();
         if (allFetchedData.length > 0) {
@@ -112,39 +110,41 @@ export function useDataSync() {
   const { isLoading, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
-      // Use toast.promise to show progress/success/error UI
-      return toast.promise(
-        async () => {
-          const failures: string[] = [];
-          
-          for (const entity of entitiesToSync) {
-            try {
-                await syncEntity(supabase, localDb, entity);
-            } catch (e) {
-                failures.push(`${entity} (${(e as Error).message})`);
-            }
+      // REMOVED: toast.promise wrapper. 
+      // The UI will rely on the 'isLoading' state to animate the button.
+      try {
+        const failures: string[] = [];
+        
+        for (const entity of entitiesToSync) {
+          try {
+              await syncEntity(supabase, localDb, entity);
+          } catch (e) {
+              failures.push(`${entity} (${(e as Error).message})`);
           }
-    
-          if (failures.length > 0) {
-            throw new Error(`Failed entities: ${failures.join(', ')}`);
-          }
-          
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
-          }
-          
-          await queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey[0] !== 'data-sync-all'
-          });
-          
-          return { lastSynced: new Date().toISOString() };
-        },
-        {
-          loading: 'Syncing data with server...',
-          success: 'Local data is up to date.',
-          error: (err: Error) => `Data sync failed: ${err.message}`,
         }
-      );
+  
+        if (failures.length > 0) {
+          throw new Error(`Failed entities: ${failures.join(', ')}`);
+        }
+        
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
+        }
+        
+        await queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey[0] !== 'data-sync-all'
+        });
+        
+        // Success Feedback
+        toast.success('Local data is up to date.');
+        
+        return { lastSynced: new Date().toISOString() };
+      } catch (err) {
+        // Error Feedback
+        const message = (err as Error).message;
+        toast.error(`Data sync failed: ${message}`);
+        throw err;
+      }
     },
     staleTime: Infinity,          
     gcTime: 1000 * 60 * 60 * 24,  
