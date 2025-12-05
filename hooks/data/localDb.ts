@@ -30,11 +30,13 @@ import {
   Ring_based_systemsRowSchema,
   V_ofc_connections_completeRowSchema,
   V_system_connections_completeRowSchema,
-  V_audit_logsRowSchema,
   V_ports_management_completeRowSchema,
   Ports_managementRowSchema,
   ServicesRowSchema,
   V_servicesRowSchema,
+  Logical_fiber_pathsRowSchema, // Import
+  V_end_to_end_pathsRowSchema, // Import
+  V_audit_logsRowSchema,
   V_inventory_transactions_extendedRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
@@ -92,6 +94,8 @@ export class HNVTMDatabase extends Dexie {
   ports_management!: Table<Ports_managementRowSchema, string>;
   services!: Table<ServicesRowSchema , string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
+  // Added Missing Tables
+  logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -109,14 +113,17 @@ export class HNVTMDatabase extends Dexie {
   v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>;
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
   v_services!: Table<V_servicesRowSchema, string>;
-  v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
+  
+  // Added Missing Views
+  v_end_to_end_paths!: Table<V_end_to_end_pathsRowSchema, string>;
+  v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>; // Using any to avoid circular deps or just generic for now
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    this.version(18).stores({ // Incremented version
+    this.version(19).stores({ 
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -135,8 +142,9 @@ export class HNVTMDatabase extends Dexie {
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
-      inventory_transactions: '&id, inventory_item_id',
-
+      logical_fiber_paths: '&id, path_name, system_connection_id', // Added
+       inventory_transactions: '&id, inventory_item_id',
+      
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
       v_systems_complete: '&id, system_name',
@@ -153,7 +161,8 @@ export class HNVTMDatabase extends Dexie {
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',
-      v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
+      v_end_to_end_paths: '&path_id, path_name', // Added
+      v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at', // From previous step
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
