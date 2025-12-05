@@ -34,7 +34,8 @@ import {
   V_ports_management_completeRowSchema,
   Ports_managementRowSchema,
   ServicesRowSchema,
-  V_servicesRowSchema, // IMPORT THIS
+  V_servicesRowSchema,
+  V_inventory_transactions_extendedRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -90,6 +91,7 @@ export class HNVTMDatabase extends Dexie {
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
   ports_management!: Table<Ports_managementRowSchema, string>;
   services!: Table<ServicesRowSchema , string>;
+  inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -106,7 +108,8 @@ export class HNVTMDatabase extends Dexie {
   v_system_connections_complete!: Table<V_system_connections_completeRowSchema, string>;
   v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>;
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
-  v_services!: Table<V_servicesRowSchema, string>; // ADDED
+  v_services!: Table<V_servicesRowSchema, string>;
+  v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
@@ -132,7 +135,8 @@ export class HNVTMDatabase extends Dexie {
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
-      
+      inventory_transactions: '&id, inventory_item_id',
+
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
       v_systems_complete: '&id, system_name',
@@ -148,7 +152,8 @@ export class HNVTMDatabase extends Dexie {
       v_system_connections_complete: '&id, system_id, connected_system_name',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
-      v_services: '&id, name, node_name', // ADDED
+      v_services: '&id, name, node_name',
+      v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
