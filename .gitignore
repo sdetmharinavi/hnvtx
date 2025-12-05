@@ -19,6 +19,7 @@
 
 # production
 /build
+/scripts/output.md
 
 # misc
 .DS_Store
@@ -35,6 +36,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# AI
+/data/ai_prompt.txt
 
 # typescript
 *.tsbuildinfo
