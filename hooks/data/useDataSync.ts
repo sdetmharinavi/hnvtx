@@ -20,6 +20,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'systems',
   'ring_based_systems',
   'ports_management',
+  'logical_fiber_paths', // Added
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -34,6 +35,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ofc_connections_complete',
   'v_system_connections_complete',
   'v_ports_management_complete',
+  'v_end_to_end_paths', // Added
   'v_services',
 ];
 
@@ -110,8 +112,6 @@ export function useDataSync() {
   const { isLoading, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
-      // REMOVED: toast.promise wrapper. 
-      // The UI will rely on the 'isLoading' state to animate the button.
       try {
         const failures: string[] = [];
         
