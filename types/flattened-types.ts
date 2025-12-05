@@ -1108,6 +1108,48 @@ export type Inventory_itemsUpdate = {
     vendor?: string | null;
 };
 
+export type Inventory_transactionsRow = {
+    created_at: string | null;
+    id: string;
+    inventory_item_id: string;
+    issue_reason: string | null;
+    issued_date: string | null;
+    issued_to: string | null;
+    performed_by_user_id: string | null;
+    quantity: number;
+    total_cost_calculated: number | null;
+    transaction_type: string;
+    unit_cost_at_time: number | null;
+};
+
+export type Inventory_transactionsInsert = {
+    created_at?: string | null;
+    id?: string;
+    inventory_item_id: string;
+    issue_reason?: string | null;
+    issued_date?: string | null;
+    issued_to?: string | null;
+    performed_by_user_id?: string | null;
+    quantity: number;
+    total_cost_calculated?: number | null;
+    transaction_type: string;
+    unit_cost_at_time?: number | null;
+};
+
+export type Inventory_transactionsUpdate = {
+    created_at?: string | null;
+    id?: string;
+    inventory_item_id?: string;
+    issue_reason?: string | null;
+    issued_date?: string | null;
+    issued_to?: string | null;
+    performed_by_user_id?: string | null;
+    quantity?: number;
+    total_cost_calculated?: number | null;
+    transaction_type?: string;
+    unit_cost_at_time?: number | null;
+};
+
 export type Junction_closuresRow = {
     created_at: string | null;
     id: string;
@@ -2099,6 +2141,9 @@ export type V_inventory_itemsRow = {
     functional_location: string | null;
     functional_location_id: string | null;
     id: string | null;
+    last_issue_reason: string | null;
+    last_issued_date: string | null;
+    last_issued_to: string | null;
     location_id: string | null;
     name: string | null;
     purchase_date: string | null;
@@ -2106,8 +2151,27 @@ export type V_inventory_itemsRow = {
     status_id: string | null;
     status_name: string | null;
     store_location: string | null;
+    total_value: number | null;
     updated_at: string | null;
     vendor: string | null;
+};
+
+export type V_inventory_transactions_extendedRow = {
+    asset_no: string | null;
+    created_at: string | null;
+    id: string | null;
+    inventory_item_id: string | null;
+    issue_reason: string | null;
+    issued_date: string | null;
+    issued_to: string | null;
+    item_name: string | null;
+    performed_by_email: string | null;
+    performed_by_name: string | null;
+    performed_by_user_id: string | null;
+    quantity: number | null;
+    total_cost_calculated: number | null;
+    transaction_type: string | null;
+    unit_cost_at_time: number | null;
 };
 
 export type V_junction_closures_completeRow = {
@@ -2484,6 +2548,7 @@ export const tableNames = [
   "files",
   "folders",
   "inventory_items",
+  "inventory_transactions",
   "junction_closures",
   "logical_fiber_paths",
   "logical_path_segments",
@@ -2514,6 +2579,7 @@ export const viewNames = [
   "v_end_to_end_paths",
   "v_file_movements_extended",
   "v_inventory_items",
+  "v_inventory_transactions_extended",
   "v_junction_closures_complete",
   "v_lookup_types",
   "v_maintenance_areas",

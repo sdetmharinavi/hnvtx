@@ -51,7 +51,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     supabase,
     exportConfig?.tableName as T,
     {
-      onSuccess: () => toast.success('Export successful!'),
       onError: (err) => toast.error(`Export failed: ${err.message}`),
     }
   );
