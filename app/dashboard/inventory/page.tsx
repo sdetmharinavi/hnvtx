@@ -1,12 +1,12 @@
 // app/dashboard/inventory/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive} from "react-icons/fi";
+import { FiArchive, FiMinusCircle, FiClock } from "react-icons/fi"; // Added Clock Icon
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
@@ -17,10 +17,23 @@ import { getInventoryTableColumns } from "@/config/table-columns/InventoryTableC
 import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 import { useInventoryData } from "@/hooks/data/useInventoryData";
+import { IssueItemModal } from "@/components/inventory/IssueItemModal";
+import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal"; // Import new modal
+import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-actions";
 
 export default function InventoryPage() {
   const router = useRouter();
   const { role, isSuperAdmin } = useUser();
+  
+  // State for Issue Modal
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [itemToIssue, setItemToIssue] = useState<V_inventory_itemsRowSchema | null>(null);
+
+  // State for History Modal
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyItem, setHistoryItem] = useState<{id: string, name: string} | null>(null);
+
+  // Data Hook
   const {
     data: inventory, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
@@ -31,9 +44,33 @@ export default function InventoryPage() {
     searchColumn: ['name', 'description', 'asset_no'],
   });
 
+  // Action Hook
+  const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
+
   const columns = getInventoryTableColumns();
-  
   const canPerformActions = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
+
+  // Handlers
+  const handleOpenIssueModal = (record: V_inventory_itemsRowSchema) => {
+    setItemToIssue(record);
+    setIsIssueModalOpen(true);
+  };
+  
+  const handleOpenHistory = (record: V_inventory_itemsRowSchema) => {
+      if (!record.id) return;
+      setHistoryItem({ id: record.id, name: record.name || 'Item' });
+      setIsHistoryModalOpen(true);
+  };
+
+  const handleIssueSubmit = (data: IssueItemFormData) => {
+    issueItem(data, {
+      onSuccess: () => {
+        refetch(); 
+        setIsIssueModalOpen(false);
+        setItemToIssue(null);
+      }
+    });
+  };
 
   const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
     const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
@@ -41,6 +78,27 @@ export default function InventoryPage() {
       onDelete: canPerformActions ? crudActions.handleDelete : undefined,
     });
     
+    // History Action (Available to everyone)
+    standardActions.unshift({
+        key: 'history',
+        label: 'View History',
+        icon: <FiClock />,
+        onClick: (record) => handleOpenHistory(record),
+        variant: 'secondary'
+    });
+
+    // Issue Action (Only if quantity > 0)
+    if (canPerformActions) {
+        standardActions.unshift({
+          key: 'issue',
+          label: 'Issue Stock',
+          icon: <FiMinusCircle className="text-orange-600" />,
+          onClick: (record) => handleOpenIssueModal(record),
+          variant: 'secondary',
+          disabled: (record) => (record.quantity || 0) <= 0,
+        });
+    }
+
     standardActions.unshift({
       key: 'qr-code',
       label: 'View QR Code',
@@ -53,8 +111,6 @@ export default function InventoryPage() {
   }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
 
   const headerActions = useStandardHeaderActions<'v_inventory_items'>({
-    // THE FIX: The `data` prop is now correctly cast to the view's row type,
-    // and the exportConfig also correctly references the view name.
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
     onAddNew: canPerformActions ? editModal.openAdd : undefined,
@@ -75,6 +131,7 @@ export default function InventoryPage() {
         isLoading={isLoading}
         isFetching={isFetching}
       />
+      
       <DataTable
         tableName="v_inventory_items"
         data={inventory}
@@ -95,6 +152,7 @@ export default function InventoryPage() {
         searchable
         onSearchChange={search.setSearchQuery}
       />
+
       <InventoryFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -102,6 +160,27 @@ export default function InventoryPage() {
         onSubmit={crudActions.handleSave as (data: Inventory_itemsInsertSchema) => void}
         isLoading={isMutating}
       />
+
+      {isIssueModalOpen && (
+        <IssueItemModal 
+            isOpen={isIssueModalOpen}
+            onClose={() => setIsIssueModalOpen(false)}
+            item={itemToIssue}
+            onSubmit={handleIssueSubmit}
+            isLoading={isIssuing}
+        />
+      )}
+
+      {/* NEW: History Modal */}
+      {isHistoryModalOpen && historyItem && (
+          <InventoryHistoryModal 
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            itemId={historyItem.id}
+            itemName={historyItem.name}
+          />
+      )}
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}

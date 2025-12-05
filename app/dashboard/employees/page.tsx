@@ -27,9 +27,11 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
+import { useUser } from '@/providers/UserProvider';
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
+  const { isSuperAdmin } = useUser()
   // Removed: createClient and useTableUpdate manually. 
   // useCrudManager now handles updates via handleCellEdit.
 
@@ -81,10 +83,10 @@ const EmployeesPage = () => {
       createStandardActions<V_employeesRowSchema>({
         onView: viewModal.open,
         onEdit: editModal.openEdit,
-        onToggleStatus: crudActions.handleToggleStatus,
-        onDelete: crudActions.handleDelete,
+        onToggleStatus: isSuperAdmin ? crudActions.handleToggleStatus : undefined,
+        onDelete:  isSuperAdmin ? crudActions.handleDelete : undefined,
       }) as TableAction<'v_employees'>[],
-    [viewModal.open, editModal.openEdit, crudActions.handleToggleStatus, crudActions.handleDelete]
+    [viewModal.open, editModal.openEdit, isSuperAdmin, crudActions.handleToggleStatus, crudActions.handleDelete]
   );
   
   const headerActions = useStandardHeaderActions<'employees'>({
@@ -139,7 +141,7 @@ const EmployeesPage = () => {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
-        selectable
+        selectable={isSuperAdmin ? true : false}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_employeesRowSchema & { id: string } => row.id != null

@@ -138,7 +138,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         size={size}
         className={cn(
-          'aspect-square !p-0',
+          'aspect-square p-0!',
           className
         )}
         aria-label={label}
@@ -173,8 +173,8 @@ export const ButtonGroup: React.FC<ButtonGroupProps> = ({
       className={cn(
         'inline-flex',
         orientation === 'horizontal' ? 'flex-row' : 'flex-col',
-        attached && orientation === 'horizontal' && '[&>*:not(:first-child)]:ml-0 [&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none [&>*]:border-r-0 [&>*:last-child]:border-r',
-        attached && orientation === 'vertical' && '[&>*:not(:first-child)]:mt-0 [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none [&>*]:border-b-0 [&>*:last-child]:border-b',
+        attached && orientation === 'horizontal' && '[&>*:not(:first-child)]:ml-0 [&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none *:border-r-0 [&>*:last-child]:border-r',
+        attached && orientation === 'vertical' && '[&>*:not(:first-child)]:mt-0 [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none *:border-b-0 [&>*:last-child]:border-b',
         !attached && orientation === 'horizontal' && 'space-x-2',
         !attached && orientation === 'vertical' && 'space-y-2',
         className
@@ -219,7 +219,7 @@ export const FloatingActionButton: React.FC<FABProps> = ({
       className={cn(
         positions[position],
         fabSizes[size],
-        'shadow-lg hover:shadow-xl z-50 !p-0',
+        'shadow-lg hover:shadow-xl z-50 p-0!',
         className
       )}
       {...props}

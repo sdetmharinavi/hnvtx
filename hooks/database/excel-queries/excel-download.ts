@@ -360,7 +360,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
         const exportColumns = columns.filter((col) => !col.excludeFromExport);
         if (exportColumns.length === 0) throw new Error('All columns are excluded from export');
 
-        toast.info('Fetching data for download...');
+        // toast.info('Fetching data for download...');
 
         const selectFields = exportColumns.map((col) => col.dataIndex).join(',');
 

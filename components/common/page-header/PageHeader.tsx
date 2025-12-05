@@ -83,7 +83,7 @@ export function PageHeader({
           {/* Stats and Mobile Actions Row */}
           <div className='flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
             {/* Stats Grid */}
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 grow'>
               {stats?.map((stat) => (
                 // THE FIX: Pass the isFetching prop down to StatCard
                 <StatCard key={stat.label} {...stat} isLoading={isFetching} />

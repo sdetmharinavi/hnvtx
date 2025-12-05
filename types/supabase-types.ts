@@ -1613,6 +1613,70 @@ export type Database = {
           },
         ]
       }
+      inventory_transactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          inventory_item_id: string
+          issue_reason: string | null
+          issued_date: string | null
+          issued_to: string | null
+          performed_by_user_id: string | null
+          quantity: number
+          total_cost_calculated: number | null
+          transaction_type: string
+          unit_cost_at_time: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id: string
+          issue_reason?: string | null
+          issued_date?: string | null
+          issued_to?: string | null
+          performed_by_user_id?: string | null
+          quantity: number
+          total_cost_calculated?: number | null
+          transaction_type: string
+          unit_cost_at_time?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string
+          issue_reason?: string | null
+          issued_date?: string | null
+          issued_to?: string | null
+          performed_by_user_id?: string | null
+          quantity?: number
+          total_cost_calculated?: number | null
+          transaction_type?: string
+          unit_cost_at_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_performed_by_user_id_fkey"
+            columns: ["performed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junction_closures: {
         Row: {
           created_at: string | null
@@ -3830,6 +3894,9 @@ export type Database = {
           functional_location: string | null
           functional_location_id: string | null
           id: string | null
+          last_issue_reason: string | null
+          last_issued_date: string | null
+          last_issued_to: string | null
           location_id: string | null
           name: string | null
           purchase_date: string | null
@@ -3837,6 +3904,7 @@ export type Database = {
           status_id: string | null
           status_name: string | null
           store_location: string | null
+          total_value: number | null
           updated_at: string | null
           vendor: string | null
         }
@@ -3916,6 +3984,48 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_inventory_transactions_extended: {
+        Row: {
+          asset_no: string | null
+          created_at: string | null
+          id: string | null
+          inventory_item_id: string | null
+          issue_reason: string | null
+          issued_date: string | null
+          issued_to: string | null
+          item_name: string | null
+          performed_by_email: string | null
+          performed_by_name: string | null
+          performed_by_user_id: string | null
+          quantity: number | null
+          total_cost_calculated: number | null
+          transaction_type: string | null
+          unit_cost_at_time: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_performed_by_user_id_fkey"
+            columns: ["performed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
             referencedColumns: ["id"]
           },
         ]
@@ -5431,6 +5541,16 @@ export type Database = {
         Returns: string
       }
       is_super_admin: { Args: never; Returns: boolean }
+      issue_inventory_item: {
+        Args: {
+          p_issue_reason: string
+          p_issued_date?: string
+          p_issued_to: string
+          p_item_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
       log_user_activity: {
         Args: {
           p_action_type: string

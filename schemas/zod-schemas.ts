@@ -1130,6 +1130,48 @@ export const inventory_itemsUpdateSchema = z.object({
   vendor: z.string().nullable().optional(),
 });
 
+export const inventory_transactionsRowSchema = z.object({
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
+  inventory_item_id: z.uuid(),
+  issue_reason: z.string().nullable(),
+  issued_date: z.iso.datetime().nullable(),
+  issued_to: z.string().nullable(),
+  performed_by_user_id: z.uuid().nullable(),
+  quantity: z.number().int().min(0),
+  total_cost_calculated: z.number().min(0).nullable(),
+  transaction_type: z.string(),
+  unit_cost_at_time: z.number().min(0).nullable(),
+});
+
+export const inventory_transactionsInsertSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  inventory_item_id: z.uuid(),
+  issue_reason: z.string().nullable().optional(),
+  issued_date: z.iso.datetime().nullable().optional(),
+  issued_to: z.string().nullable().optional(),
+  performed_by_user_id: z.uuid().nullable().optional(),
+  quantity: z.number().int().min(0),
+  total_cost_calculated: z.number().min(0).nullable().optional(),
+  transaction_type: z.string(),
+  unit_cost_at_time: z.number().min(0).nullable().optional(),
+});
+
+export const inventory_transactionsUpdateSchema = z.object({
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  inventory_item_id: z.uuid().optional(),
+  issue_reason: z.string().nullable().optional(),
+  issued_date: z.iso.datetime().nullable().optional(),
+  issued_to: z.string().nullable().optional(),
+  performed_by_user_id: z.uuid().nullable().optional(),
+  quantity: z.number().int().min(0).optional(),
+  total_cost_calculated: z.number().min(0).nullable().optional(),
+  transaction_type: z.string().optional(),
+  unit_cost_at_time: z.number().min(0).nullable().optional(),
+});
+
 export const junction_closuresRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -2119,6 +2161,9 @@ export const v_inventory_itemsRowSchema = z.object({
   functional_location: z.string().nullable(),
   functional_location_id: z.uuid().nullable(),
   id: z.uuid().nullable(),
+  last_issue_reason: z.string().nullable(),
+  last_issued_date: z.iso.datetime().nullable(),
+  last_issued_to: z.string().nullable(),
   location_id: z.uuid().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   purchase_date: z.iso.date().nullable(),
@@ -2126,8 +2171,27 @@ export const v_inventory_itemsRowSchema = z.object({
   status_id: z.uuid().nullable(),
   status_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   store_location: z.string().nullable(),
+  total_value: z.number().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vendor: z.string().nullable(),
+});
+
+export const v_inventory_transactions_extendedRowSchema = z.object({
+  asset_no: z.string().nullable(),
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid().nullable(),
+  inventory_item_id: z.uuid().nullable(),
+  issue_reason: z.string().nullable(),
+  issued_date: z.iso.datetime().nullable(),
+  issued_to: z.string().nullable(),
+  item_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  performed_by_email: z.email().nullable(),
+  performed_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  performed_by_user_id: z.uuid().nullable(),
+  quantity: z.number().int().min(0).nullable(),
+  total_cost_calculated: z.number().min(0).nullable(),
+  transaction_type: z.string().nullable(),
+  unit_cost_at_time: z.number().min(0).nullable(),
 });
 
 export const v_junction_closures_completeRowSchema = z.object({
@@ -2541,6 +2605,9 @@ export type FoldersUpdateSchema = z.infer<typeof foldersUpdateSchema>;
 export type Inventory_itemsRowSchema = z.infer<typeof inventory_itemsRowSchema>;
 export type Inventory_itemsInsertSchema = z.infer<typeof inventory_itemsInsertSchema>;
 export type Inventory_itemsUpdateSchema = z.infer<typeof inventory_itemsUpdateSchema>;
+export type Inventory_transactionsRowSchema = z.infer<typeof inventory_transactionsRowSchema>;
+export type Inventory_transactionsInsertSchema = z.infer<typeof inventory_transactionsInsertSchema>;
+export type Inventory_transactionsUpdateSchema = z.infer<typeof inventory_transactionsUpdateSchema>;
 export type Junction_closuresRowSchema = z.infer<typeof junction_closuresRowSchema>;
 export type Junction_closuresInsertSchema = z.infer<typeof junction_closuresInsertSchema>;
 export type Junction_closuresUpdateSchema = z.infer<typeof junction_closuresUpdateSchema>;
@@ -2604,6 +2671,7 @@ export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
 export type V_file_movements_extendedRowSchema = z.infer<typeof v_file_movements_extendedRowSchema>;
 export type V_inventory_itemsRowSchema = z.infer<typeof v_inventory_itemsRowSchema>;
+export type V_inventory_transactions_extendedRowSchema = z.infer<typeof v_inventory_transactions_extendedRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;
 export type V_lookup_typesRowSchema = z.infer<typeof v_lookup_typesRowSchema>;
 export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRowSchema>;
