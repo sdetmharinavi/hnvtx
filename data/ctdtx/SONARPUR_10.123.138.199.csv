@@ -1,0 +1,67 @@
+Channel,Port Type,Service,Type
+3.1,10 GE(O),-,Unbound
+4.1,10 GE(O),CTD_HNV_SONARPUR_10.123.138.199/4.1-CTD_HNV_KAMALGAJI_10.123.29.196/5.1,CPAN DL
+3.10,1GE(E),-,Unbound
+3.11,1GE(E),-,Unbound
+3.12,1GE(E),-,Unbound
+3.7,1GE(E),CTD_HNV_SONARPUR_10.123.138.199/3.7-CTD_HNV_SONARPUR EX_10.123.138.221/1.3,CPAN DL
+3.8,1GE(E),CTD_HNV_SONARPUR-ROU-A1_10.123.138.227/1.3-CTD_HNV_SONARPUR_10.123.138.199/3.8,CPAN DL
+3.9,1GE(E),-,Unbound
+4.10,1GE(E),-,Unbound
+4.11,1GE(E),-,Unbound
+4.12,1GE(E),-,Unbound
+4.7,1GE(E),-,Unbound
+4.8,1GE(E),1000537506_CSR_SONARPUR_138.199/3.5_141.173/1.4_412,LEASED CKT
+4.9,1GE(E),-,Unbound
+1.10,E1,-,Unbound
+1.11,E1,-,Unbound
+1.12,E1,-,Unbound
+1.13,E1,-,Unbound
+1.14,E1,-,Unbound
+1.15,E1,-,Unbound
+1.16,E1,-,Unbound
+1.17,E1,-,Unbound
+1.18,E1,-,Unbound
+1.19,E1,-,Unbound
+1.2,E1,-,Unbound
+1.5,E1,-,Unbound
+1.6,E1,-,Unbound
+1.7,E1,-,Unbound
+1.8,E1,-,Unbound
+1.9,E1,-,Unbound
+2.10,E1,-,Unbound
+2.11,E1,-,Unbound
+2.12,E1,-,Unbound
+2.13,E1,-,Unbound
+2.14,E1,-,Unbound
+2.15,E1,-,Unbound
+2.16,E1,-,Unbound
+2.17,E1,-,Unbound
+2.18,E1,-,Unbound
+2.19,E1,-,Unbound
+2.2,E1,-,Unbound
+2.5,E1,-,Unbound
+2.6,E1,-,Unbound
+2.7,E1,-,Unbound
+2.8,E1,-,Unbound
+2.9,E1,-,Unbound
+3.2,GE(O),CTD_HNV_SONARPUR_10.123.138.199/3.2-CTD_HNV_NATUN PALLY BTS A1_10.123.138.237/1.5,CPAN DL
+3.3,GE(O),CTD_HNV_SONARPUR_10.123.138.199/3.3-CTD_HNV_HARINAVI_10.123.138.193_GNE/5.4,CPAN DL
+3.4,GE(O),-,Unbound
+3.5,GE(O),-,Unbound
+3.6,GE(O),-,Unbound
+4.2,GE(O),CTD_HNV_AP NAGAR_10.123.138.198/3.4-CTD_HNV_SONARPUR_10.123.138.199/4.2,CPAN DL
+4.3,GE(O),-,Unbound
+4.4,GE(O),-,Unbound
+4.5,GE(O),-,Unbound
+4.6,GE(O),-,Unbound
+7.1,POWER PORT,-,Unbound
+8.1,POWER PORT,-,Unbound
+1.1,STM1,-,Unbound
+1.2,STM1,-,Unbound
+1.3,STM1,-,Unbound
+1.4,STM1,-,Unbound
+2.1,STM1,-,Unbound
+2.2,STM1,-,Unbound
+2.3,STM1,-,Unbound
+2.4,STM1,-,Unbound
