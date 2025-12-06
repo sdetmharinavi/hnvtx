@@ -5271,6 +5271,7 @@ export type Database = {
         Args: { p_alias?: string; p_filters: Json; p_view_name: string }
         Returns: string
       }
+      bulk_import_inventory_smart: { Args: { p_items: Json }; Returns: Json }
       bulk_initiate_e_files: { Args: { p_files: Json }; Returns: Json }
       bulk_update: {
         Args: { p_table_name: string; p_updates: Json }
@@ -5288,6 +5289,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      delete_e_file_record: { Args: { p_file_id: string }; Returns: undefined }
       deprovision_fibers_from_connection: {
         Args: { p_system_connection_id: string }
         Returns: undefined
@@ -5414,6 +5416,7 @@ export type Database = {
         }[]
       }
       get_dashboard_overview: { Args: never; Returns: Json }
+      get_diagrams_backup: { Args: never; Returns: Json }
       get_diary_notes_for_range: {
         Args: { end_date: string; start_date: string }
         Returns: {
@@ -5427,6 +5430,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_efile_system_backup: { Args: never; Returns: Json }
       get_entity_counts: {
         Args: { p_entity_name: string; p_filters?: Json }
         Returns: {
@@ -5611,6 +5615,14 @@ export type Database = {
       recalculate_segments_for_cable: {
         Args: { p_cable_id: string }
         Returns: undefined
+      }
+      restore_diagrams_backup: {
+        Args: { p_files: Json; p_folders: Json }
+        Returns: Json
+      }
+      restore_efile_system_backup: {
+        Args: { p_files: Json; p_movements: Json }
+        Returns: Json
       }
       search_nodes_for_select: {
         Args: { p_limit?: number; p_search_term?: string }
