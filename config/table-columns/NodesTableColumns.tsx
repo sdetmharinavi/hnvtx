@@ -65,7 +65,7 @@ export const NodesTableColumns = (data: V_nodes_completeRowSchema[], duplicateSe
         render: (value: unknown) => {
           return (
             <div className="flex flex-col">
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-full whitespace-normal wrap-break-words">
+              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-full whitespace-normal wrap-wrap-break-word">
                 {(value as string) ?? ''}
               </p>
             </div>

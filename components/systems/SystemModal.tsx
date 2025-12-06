@@ -126,7 +126,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty }, // Added isDirty
     reset,
     control,
     watch,
@@ -155,13 +155,19 @@ export const SystemModal: FC<SystemModalProps> = ({
   
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
+  // SAFE CLOSE HANDLER
   const handleClose = useCallback(() => {
+    if (isDirty) {
+      const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      if (!confirmClose) return;
+    }
+    
     onClose();
     setTimeout(() => {
       reset(createDefaultFormValues());
       setStep(1);
     }, 200);
-  }, [onClose, reset]);
+  }, [onClose, reset, isDirty]);
 
   useEffect(() => {
     if (isOpen) {
@@ -403,7 +409,10 @@ export const SystemModal: FC<SystemModalProps> = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={modalTitle}
-      className='h-0 w-0 bg-transparent'>
+      className='h-0 w-0 bg-transparent'
+      closeOnOverlayClick={false} // PREVENT ACCIDENTAL CLOSING
+      closeOnEscape={!isDirty}    // ALLOW ESCAPE ONLY IF FORM IS CLEAN
+    >
       <FormCard
         standalone
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}

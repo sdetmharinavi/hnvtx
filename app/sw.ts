@@ -15,53 +15,56 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-// --- Navigation Strategy: NetworkFirst ---
-// 1. Try Network: Get the latest HTML from the server.
-// 2. Fallback to Cache: If offline, serve the previously cached HTML for this route.
-// This fixes the "This site can't be reached" error on reload.
-const navigationCache: RuntimeCaching = {
-  matcher: ({ request }) => request.mode === 'navigate',
-  handler: new NetworkFirst({
-    cacheName: 'pages-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 24 * 60 * 60, // 24 Hours
-      }),
-    ],
-  }),
-};
+// --- CUSTOM CACHING STRATEGIES ---
 
 const customCache: RuntimeCaching[] = [
-  // --- API Strategy: NetworkFirst with Timeout ---
-  // 1. Try Network: Get fresh data.
-  // 2. Timeout (10s): If slow, fall back to cache immediately.
-  // 3. Offline: Serve cache immediately.
+  // 1. API/RPC Calls: NetworkFirst with Timeout
+  // Try network for 5 seconds (to get fresh data), if slow/offline, use cache.
+  // This ensures "freshness" when online but "speed/availability" when network is spotty.
   {
-    matcher: /^https?:\/\/.*\/(api|rest|rpc)\/.*/i,
+    matcher: ({ url }) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'),
     handler: new NetworkFirst({
       cacheName: "api-cache",
       plugins: [
         new ExpirationPlugin({
-          maxEntries: 200,
-          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
+          maxEntries: 500,
+          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 7)
         }),
       ],
-      networkTimeoutSeconds: 10, 
+      networkTimeoutSeconds: 5, // Wait 5s for network, then fall back to cache
     }),
   },
-  // --- Static Assets: CacheFirst ---
-  // Images change rarely, so serve from cache for speed.
+  
+  // 2. Static Assets (Images, Fonts): CacheFirst
+  // These rarely change. Serve immediately from cache.
   {
-    matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
+    matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|avif|ico|woff2?)$/i,
     handler: new CacheFirst({
-      cacheName: "image-cache",
+      cacheName: "static-assets-cache",
       plugins: [
         new ExpirationPlugin({
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+          maxEntries: 200,
+          maxAgeSeconds: 60 * 60 * 24 * 60, // 60 Days
         }),
       ],
+    }),
+  },
+
+  // 3. Navigation (HTML Pages): NetworkFirst with Short Timeout
+  // CRITICAL FIX: This makes navigation fast. 
+  // It tries network for 3 seconds. If slow, it serves the cached HTML immediately.
+  // The previous setting of 24h expiration caused the "not working after many days" issue.
+  {
+    matcher: ({ request }) => request.mode === 'navigate',
+    handler: new NetworkFirst({
+      cacheName: 'pages-cache',
+      plugins: [
+        new ExpirationPlugin({
+          maxEntries: 100, // Keep last 100 visited pages
+          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 24 hours)
+        }),
+      ],
+      networkTimeoutSeconds: 3, // If network takes > 3s, use cache
     }),
   },
 ];
@@ -71,20 +74,24 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [navigationCache, ...defaultCache, ...customCache],
+  // Merge custom strategies BEFORE defaultCache to ensure they take precedence
+  runtimeCaching: [...customCache, ...defaultCache],
+  disableDevLogs: true, // Cleaner console in production
 });
 
+// Push Notification Listeners
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: data.icon || '/icon.png',
-      badge: '/badge.png',
+      icon: data.icon || '/icon-192x192.png',
+      badge: '/icon-192x192.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
-        primaryKey: '2',
+        primaryKey: '1',
+        url: data.url || 'https://hnvtm.vercel.app'
       },
     };
     event.waitUntil(self.registration.showNotification(data.title, options));
@@ -93,7 +100,20 @@ self.addEventListener('push', (event) => {
  
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow('https://hnvtm.vercel.app'));
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) {
+            client = clientList[i];
+          }
+        }
+        return client.focus();
+      }
+      return self.clients.openWindow(event.notification.data.url);
+    })
+  );
 });
 
 serwist.addEventListeners();

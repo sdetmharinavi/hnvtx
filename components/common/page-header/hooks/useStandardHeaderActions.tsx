@@ -3,12 +3,12 @@
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { useTableExcelDownload } from '@/hooks/database/excel-queries';
+import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries'; // Imported RPC hook
 import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
-import { Filters, Row, PublicTableOrViewName } from '@/hooks/database';
+import { Filters, Row, PublicTableOrViewName, buildRpcFilters } from '@/hooks/database'; // Imported buildRpcFilters
 import { FiDownload, FiPlus, FiRefreshCw } from 'react-icons/fi';
 
 interface ExportFilterOption {
@@ -20,11 +20,11 @@ interface ExportFilterOption {
 interface ExportConfig<T extends PublicTableOrViewName> {
   tableName: T;
   maxRows?: number;
-  columns?: (keyof Row<T> & string)[]; // Allow specifying a subset of columns for export
-  filterOptions?: ExportFilterOption[]; // New: array of filter options
-  // Deprecated: keeping for backward compatibility
+  columns?: (keyof Row<T> & string)[];
+  filterOptions?: ExportFilterOption[];
   filters?: Filters;
   fileName?: string;
+  useRpc?: boolean; // NEW: Flag to force RPC usage
 }
 
 interface StandardActionsConfig<T extends PublicTableOrViewName> {
@@ -47,9 +47,19 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     data: data,
   });
 
+  // 1. Setup Direct Table Download
   const tableExcelDownload = useTableExcelDownload(
     supabase,
     exportConfig?.tableName as T,
+    {
+      onError: (err) => toast.error(`Export failed: ${err.message}`),
+    }
+  );
+
+  // 2. Setup RPC Download (Fallback/Alternative)
+  // We pass the table name generics so types align
+  const rpcExcelDownload = useRPCExcelDownload<T>(
+    supabase,
     {
       onError: (err) => toast.error(`Export failed: ${err.message}`),
     }
@@ -62,50 +72,71 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         return;
       }
 
-      // Use filterOption filters if provided, otherwise fall back to exportConfig filters
       const filters = filterOption?.filters || exportConfig.filters;
 
-      // Determine the file and sheet name
+      // Determine File Name
       let fileName: string;
       let sheetName: string;
 
       if (filterOption) {
-        // If it's a filter option, use custom fileName or append label to table name
         if (filterOption.fileName) {
           fileName = filterOption.fileName;
           sheetName = filterOption.fileName;
         } else {
-          // Append filter label to table name
           fileName = `${exportConfig.tableName}-${filterOption.label
             .toLowerCase()
             .replace(/\s+/g, '-')}`;
           sheetName = `${exportConfig.tableName}-${filterOption.label}`;
         }
       } else {
-        // No filter option - use default table name or custom fileName
         fileName = exportConfig.fileName || exportConfig.tableName;
         sheetName = exportConfig.fileName || exportConfig.tableName;
       }
 
-      tableExcelDownload.mutate({
-        fileName: `${formatDate(new Date(), {
-          format: 'dd-mm-yyyy',
-        })}-${fileName}.xlsx`,
-        sheetName: sheetName,
-        filters: filters,
-        columns: columns.filter((c) =>
-          exportConfig.columns
-            ? exportConfig.columns.includes(c.key as keyof Row<T> & string)
-            : true
-        ),
-        maxRows: exportConfig.maxRows,
-      });
+      const finalFileName = `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${fileName}.xlsx`;
+      const columnsToExport = columns.filter((c) =>
+        exportConfig.columns
+          ? exportConfig.columns.includes(c.key as keyof Row<T> & string)
+          : true
+      );
+
+      // --- BRANCH LOGIC: RPC VS DIRECT ---
+      if (exportConfig.useRpc) {
+        // Use the standard pagination RPC which handles filters and sorts
+        rpcExcelDownload.mutate({
+          fileName: finalFileName,
+          sheetName: sheetName,
+          columns: columnsToExport,
+          rpcConfig: {
+            functionName: 'get_paged_data',
+            parameters: {
+              p_view_name: exportConfig.tableName,
+              p_limit: exportConfig.maxRows || 50000, // Default high limit for export
+              p_offset: 0,
+              // Ensure filters are converted to the JSON format expected by the RPC
+              p_filters: buildRpcFilters(filters || {}),
+              p_order_by: 'created_at', // Default sort, could be parameterized if needed
+              p_order_dir: 'desc'
+            }
+          }
+        });
+      } else {
+        // Use Direct Table/View Select
+        tableExcelDownload.mutate({
+          fileName: finalFileName,
+          sheetName: sheetName,
+          filters: filters,
+          columns: columnsToExport,
+          maxRows: exportConfig.maxRows,
+        });
+      }
     },
-    [exportConfig, columns, tableExcelDownload]
+    [exportConfig, columns, tableExcelDownload, rpcExcelDownload]
   );
 
   return useMemo(() => {
     const actions: ActionButton[] = [];
+    const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
     if (onRefresh) {
       actions.push({
@@ -118,9 +149,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     }
 
     if (exportConfig) {
-      // Check if we have multiple filter options
       if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
-        // Create dropdown with filter options
         const dropdownoptions = [
           {
             label: 'Export All (No Filters)',
@@ -130,14 +159,14 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
                 filters: undefined,
                 fileName: undefined,
               }),
-            disabled: tableExcelDownload.isPending,
+            disabled: isExporting,
           },
         ];
         exportConfig.filterOptions.forEach((option) => {
           dropdownoptions.push({
             label: `Export ${option.label}`,
             onClick: () => handleExport(option),
-            disabled: tableExcelDownload.isPending,
+            disabled: isExporting,
           });
         });
 
@@ -145,18 +174,17 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           label: 'Export',
           variant: 'outline',
           leftIcon: <FiDownload />,
-          disabled: tableExcelDownload.isPending,
+          disabled: isExporting,
           'data-dropdown': true,
           dropdownoptions,
         });
       } else {
-        // Single export button (backward compatibility)
         actions.push({
-          label: tableExcelDownload.isPending ? 'Exporting...' : 'Export',
+          label: isExporting ? 'Exporting...' : 'Export',
           onClick: () => handleExport(),
           variant: 'outline',
           leftIcon: <FiDownload />,
-          disabled: isLoading || tableExcelDownload.isPending,
+          disabled: isLoading || isExporting,
         });
       }
     }
@@ -179,5 +207,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     isLoading,
     handleExport,
     tableExcelDownload.isPending,
+    rpcExcelDownload.isPending
   ]);
 }

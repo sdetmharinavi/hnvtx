@@ -186,10 +186,10 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {changes.map((diff) => (
                                 <tr key={diff.key} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 break-words align-top">
+                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 wrap-break-word align-top">
                                         {diff.key}
                                     </td>
-                                    <td className={`px-4 py-3 break-words align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'removed' ? 'bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-300' : 'text-gray-500'}`}>
+                                    <td className={`px-4 py-3 wrap-break-word align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'removed' ? 'bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-300' : 'text-gray-500'}`}>
                                         {diff.type === 'added' ? (
                                             <span className="text-gray-300 select-none">—</span>
                                         ) : (
@@ -199,7 +199,7 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
                                     <td className="px-2 py-3 text-center align-top text-gray-400">
                                         <ArrowRight className="w-4 h-4 mx-auto mt-0.5" />
                                     </td>
-                                    <td className={`px-4 py-3 break-words align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'added' ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-300' : 'text-gray-500'}`}>
+                                    <td className={`px-4 py-3 wrap-break-word align-top font-mono text-xs ${diff.type === 'modified' || diff.type === 'added' ? 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-300' : 'text-gray-500'}`}>
                                         {diff.type === 'removed' ? (
                                              <span className="text-gray-300 select-none">—</span>
                                         ) : (

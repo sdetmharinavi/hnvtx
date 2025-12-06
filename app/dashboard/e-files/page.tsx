@@ -3,63 +3,73 @@
 import { useState, useRef } from "react";
 import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/table";
-import { useEFiles } from "@/hooks/data/useEFilesData";
+import { useEFiles, useDeleteFile } from "@/hooks/data/useEFilesData"; 
 import { InitiateFileModal, ForwardFileModal, EditFileModal } from "@/components/efile/ActionModals";
+import { ConfirmModal } from "@/components/common/ui";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Plus, Send, Edit } from "lucide-react";
+import { FileText, Eye, Plus, Send, Edit, Trash2, Database } from "lucide-react"; 
 import { EFileRow } from "@/schemas/efile-schemas";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { formatDate } from "@/utils/formatters";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
-import { useEFilesExcelUpload } from "@/hooks/database/excel-queries/useEFilesExcelUpload";
-import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { createClient } from "@/utils/supabase/client";
 import { buildColumnConfig } from "@/constants/table-column-keys";
 import { V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
-import { FiDownload, FiUpload } from "react-icons/fi";
+import { useUser } from "@/providers/UserProvider";
+
+// Import the new Backup Hooks
+import { useExportEFileSystem, useImportEFileSystem } from "@/hooks/database/excel-queries/useEFileSystemBackup";
+import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
 
 export default function EFilesPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { isSuperAdmin, role } = useUser();
   
   // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [forwardModal, setForwardModal] = useState<{isOpen: boolean, fileId: string | null}>({isOpen: false, fileId: null});
   const [editModal, setEditModal] = useState<{isOpen: boolean, file: V_e_files_extendedRowSchema | null}>({isOpen: false, file: null});
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, fileId: string | null}>({isOpen: false, fileId: null});
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Input Refs
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
-  // Data
+  // Data & Mutations
   const { data: files = [], isLoading, refetch } = useEFiles({ status: 'active' });
+  const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
+  const { mutate: exportList, isPending: isExportingList } = useRPCExcelDownload(supabase);
   
-  // Upload Hook
-  const { mutate: uploadFiles, isPending: isUploading } = useEFilesExcelUpload();
+  // Backup Hooks
+  const { mutate: exportBackup, isPending: isBackingUp } = useExportEFileSystem();
+  const { mutate: importBackup, isPending: isRestoring } = useImportEFileSystem();
 
-  // THE FIX: Switched to RPC Download to bypass View RLS issues
-  const { mutate: exportFiles, isPending: isExporting } = useRPCExcelDownload(supabase);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handlers
+  const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) uploadFiles({ file });
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (file) importBackup(file);
+    if (backupInputRef.current) backupInputRef.current.value = "";
   };
 
-  const handleExport = () => {
-      // Construct filters for the RPC
-      // const filters = { status: 'active' };
-      
-      exportFiles({
-          fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_e-files_all.xlsx`,
-          sheetName: 'E-Files',
+  const handleConfirmDelete = () => {
+    if (deleteModal.fileId) {
+      deleteFile(deleteModal.fileId, {
+        onSuccess: () => setDeleteModal({ isOpen: false, fileId: null })
+      });
+    }
+  };
+
+  const handleExportList = () => {
+      exportList({
+          fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_e-files_list.xlsx`,
+          sheetName: 'Active Files',
           columns: buildColumnConfig("v_e_files_extended"),
-          // Using RPC Config instead of direct filters
           rpcConfig: {
               functionName: 'get_paged_data',
               parameters: {
                   p_view_name: 'v_e_files_extended',
-                  p_limit: 10000, // Reasonable limit for export
+                  p_limit: 10000,
                   p_offset: 0,
-                  // p_filters: buildRpcFilters(filters),
                   p_order_by: 'updated_at',
                   p_order_dir: 'desc'
               }
@@ -118,13 +128,12 @@ export default function EFilesPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Hidden File Input */}
       <input 
          type="file" 
-         ref={fileInputRef} 
-         onChange={handleFileChange} 
+         ref={backupInputRef} 
+         onChange={handleBackupRestore} 
          className="hidden" 
-         accept=".xlsx, .xls" 
+         accept=".xlsx" 
       />
 
       <PageHeader 
@@ -138,18 +147,28 @@ export default function EFilesPage() {
                 variant: 'outline' 
             },
             {
-                label: isExporting ? 'Exporting...' : 'Export',
-                onClick: handleExport,
+                label: 'System Backup/Restore',
                 variant: 'outline',
-                leftIcon: <FiDownload />,
-                disabled: isExporting || isLoading
-            },
-            {
-                label: isUploading ? 'Uploading...' : 'Import',
-                onClick: () => fileInputRef.current?.click(),
-                variant: 'outline',
-                leftIcon: <FiUpload />,
-                disabled: isUploading || isLoading
+                leftIcon: <Database className="h-4 w-4" />,
+                disabled: isLoading || isRestoring || isBackingUp,
+                'data-dropdown': true,
+                dropdownoptions: [
+                  { 
+                    label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup (Files + History)', 
+                    onClick: () => exportBackup(),
+                    disabled: isBackingUp 
+                  },
+                  { 
+                    label: isRestoring ? 'Restoring...' : 'Restore from Backup', 
+                    onClick: () => backupInputRef.current?.click(),
+                    disabled: isRestoring 
+                  },
+                  {
+                    label: isExportingList ? 'Exporting List...' : 'Export Current View Only',
+                    onClick: handleExportList,
+                    disabled: isExportingList
+                  }
+                ]
             },
             { 
                 label: 'Initiate File', 
@@ -189,6 +208,15 @@ export default function EFilesPage() {
                 onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
                 variant: 'secondary',
                 hidden: (rec) => rec.status !== 'active'
+            },
+            {
+                key: 'delete',
+                label: 'Delete',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }),
+                variant: 'danger',
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                disabled: (rec) => !isSuperAdmin && role !== 'admin'
             }
         ]}
       />
@@ -211,6 +239,17 @@ export default function EFilesPage() {
             file={editModal.file} 
          />
       )}
+
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onCancel={() => setDeleteModal({isOpen: false, fileId: null})}
+        onConfirm={handleConfirmDelete}
+        title="Delete File Record"
+        message="Are you sure you want to delete this file record? This will also remove its entire movement history. This action cannot be undone."
+        type="danger"
+        confirmText="Delete Permanently"
+        loading={isDeleting}
+      />
 
     </div>
   );

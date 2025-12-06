@@ -7,14 +7,14 @@ import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { initiateFileSchema, forwardFileSchema, InitiateFilePayload, ForwardFilePayload } from "@/schemas/efile-schemas";
-import { useInitiateFile, useForwardFile, useEmployeeOptions, useUpdateFileDetails, UpdateFilePayload } from "@/hooks/data/useEFilesData";
+import { useInitiateFile, useForwardFile, useEmployeeOptions, useUpdateFileDetails } from "@/hooks/data/useEFilesData";
 import { V_employeesRowSchema, V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
 
 // Helper
 const getEmployeeOptions = (employees: V_employeesRowSchema[] | undefined) => {
     return (employees || []).map(e => ({
         value: e.id!,
-        label: `${e.employee_name} (${e.employee_designation_name || 'No Desig'}) - ${e.maintenance_area_name || 'No Area'}`
+        label: `${e.employee_name} ${e.employee_designation_name ? `(${e.employee_designation_name})` : ''} ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ''}`
     }));
 };
 
@@ -53,7 +53,16 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormInput name="category" label="Category *" register={register} error={errors.category} placeholder="e.g. Administrative" required />
+                 <FormSelect 
+                    name="category" 
+                    label="Category *" 
+                    control={control} 
+                    options={[
+                        { value: 'administrative', label: 'Administrative' },
+                        { value: 'technical', label: 'Technical' },
+                        { value: 'other', label: 'Other' }
+                    ]} 
+                />
                  <FormSearchableSelect 
                     name="initiator_employee_id" 
                     label="Initiator (Employee) *" 

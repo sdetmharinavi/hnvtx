@@ -1,8 +1,8 @@
--- path: data/migrations/10_efiles/02_bulk_upload_employee.sql
--- Description: Re-implements bulk upload for the Employee-centric E-File system.
+-- path: data/migrations/10_efiles/02_bulk_upload.sql
+-- Description: Enhanced bulk upload that restores "Current Holder" state.
 
 CREATE OR REPLACE FUNCTION public.bulk_initiate_e_files(
-    p_files JSONB -- Array of objects: { file_number, subject, description, category, priority, remarks, initiator_name }
+    p_files JSONB -- Array: { file_number, subject, description, category, priority, remarks, initiator_name, current_holder_name? }
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -12,40 +12,57 @@ DECLARE
     file_item JSONB;
     v_file_id UUID;
     v_initiator_id UUID;
+    v_current_holder_id UUID;
     v_success_count INT := 0;
     v_error_count INT := 0;
     v_errors JSONB := '[]'::JSONB;
     v_app_user_id UUID := auth.uid();
+    v_remarks TEXT;
 BEGIN
     FOR file_item IN SELECT * FROM jsonb_array_elements(p_files)
     LOOP
         BEGIN
-            -- 1. Resolve Initiator Employee ID
-            -- We try to find an employee matching the 'initiator_name' provided in Excel.
-            -- It checks against 'employee_name' OR 'employee_pers_no'.
-            IF file_item->>'initiator_name' IS NOT NULL AND file_item->>'initiator_name' != '' THEN
-                SELECT id INTO v_initiator_id 
-                FROM public.employees 
-                WHERE employee_name ILIKE (file_item->>'initiator_name') 
-                   OR employee_pers_no = (file_item->>'initiator_name')
-                LIMIT 1;
-            END IF;
+            -- 1. Find Initiator
+            SELECT id INTO v_initiator_id 
+            FROM public.employees 
+            WHERE employee_name ILIKE (file_item->>'initiator_name') 
+               OR employee_pers_no = (file_item->>'initiator_name')
+            LIMIT 1;
 
-            -- Validation: If we can't find the employee, we can't create the file.
             IF v_initiator_id IS NULL THEN
-                 RAISE EXCEPTION 'Employee "%" not found. Please ensure the Initiator exists in the Employee database first.', (file_item->>'initiator_name');
+                 RAISE EXCEPTION 'Initiator "%" not found.', (file_item->>'initiator_name');
             END IF;
 
-            -- 2. Insert File (Employee is both initiator and current holder)
+            -- 2. Find Current Holder (Optional)
+            v_current_holder_id := v_initiator_id; -- Default to initiator
+            
+            IF file_item->>'current_holder_name' IS NOT NULL AND (file_item->>'current_holder_name') != '' THEN
+                SELECT id INTO v_current_holder_id 
+                FROM public.employees 
+                WHERE employee_name ILIKE (file_item->>'current_holder_name') 
+                   OR employee_pers_no = (file_item->>'current_holder_name')
+                LIMIT 1;
+
+                IF v_current_holder_id IS NULL THEN
+                     -- Warning: fallback to initiator if holder not found, but log it? 
+                     -- For now, fail safe to initiator or raise error? Let's raise error to ensure data integrity.
+                     RAISE EXCEPTION 'Current Holder "%" not found.', (file_item->>'current_holder_name');
+                END IF;
+            END IF;
+
+            v_remarks := COALESCE(file_item->>'remarks', 'Bulk Uploaded');
+
+            -- 3. Insert File Record
+            -- Note: We set current_holder_employee_id to the FINAL destination immediately
             INSERT INTO public.e_files (
                 file_number, 
                 subject, 
                 description, 
                 category, 
                 priority, 
-                recorded_by_user_id, -- The logged-in App User entering data
+                recorded_by_user_id,
                 initiator_employee_id, 
-                current_holder_employee_id, 
+                current_holder_employee_id, -- Set directly to final holder
                 status
             ) VALUES (
                 file_item->>'file_number',
@@ -55,26 +72,25 @@ BEGIN
                 COALESCE(file_item->>'priority', 'normal'),
                 v_app_user_id,
                 v_initiator_id,
-                v_initiator_id, 
+                v_current_holder_id, 
                 'active'
             ) RETURNING id INTO v_file_id;
 
-            -- 3. Log Initial Movement
+            -- 4. Log Initial Movement (Initiated by A)
             INSERT INTO public.file_movements (
-                file_id, 
-                from_employee_id, 
-                to_employee_id, 
-                performed_by_user_id,
-                action_type, 
-                remarks
+                file_id, from_employee_id, to_employee_id, performed_by_user_id, action_type, remarks
             ) VALUES (
-                v_file_id, 
-                NULL, 
-                v_initiator_id, 
-                v_app_user_id,
-                'initiated', 
-                COALESCE(file_item->>'remarks', 'Bulk Uploaded')
+                v_file_id, NULL, v_initiator_id, v_app_user_id, 'initiated', 'File Created (Bulk Import)'
             );
+
+            -- 5. If Holder != Initiator, Log a Forwarding Movement (A -> B)
+            IF v_current_holder_id != v_initiator_id THEN
+                INSERT INTO public.file_movements (
+                    file_id, from_employee_id, to_employee_id, performed_by_user_id, action_type, remarks
+                ) VALUES (
+                    v_file_id, v_initiator_id, v_current_holder_id, v_app_user_id, 'forwarded', v_remarks
+                );
+            END IF;
 
             v_success_count := v_success_count + 1;
 
@@ -94,5 +110,3 @@ BEGIN
     );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.bulk_initiate_e_files(JSONB) TO authenticated;

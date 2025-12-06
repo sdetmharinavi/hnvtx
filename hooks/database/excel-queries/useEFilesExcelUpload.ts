@@ -51,18 +51,29 @@ export function useEFilesExcelUpload() {
       const headers = (jsonData[0] as string[]).map(h => String(h).trim().toLowerCase());
       const dataRows = jsonData.slice(1);
       
-      // Define allowed columns and mapping
+      // Update Column Mapping to detect Current Holder
       const columnMap: Record<string, string> = {
           'file number': 'file_number',
           'file no': 'file_number',
+          'file no.': 'file_number',
           'subject': 'subject',
           'description': 'description',
+          'subject / description': 'subject', // Handle combined column header from exports
           'category': 'category',
           'priority': 'priority',
           'remarks': 'remarks',
-          'initiator': 'initiator_name', // Maps 'Initiator' or 'Initiator Name' column
+          
+          // Initiator mappings
+          'initiator': 'initiator_name',
           'initiator name': 'initiator_name',
-          'employee': 'initiator_name'
+          'started by': 'initiator_name',
+          
+          // Current Holder mappings
+          'current holder': 'current_holder_name',
+          'currently with': 'current_holder_name',
+          'holder': 'current_holder_name',
+          'current location': 'current_holder_name',
+          'current holder name': 'current_holder_name' // Added specific match for auto-generated title
       };
 
       const validPayloads = [];
@@ -77,7 +88,7 @@ export function useEFilesExcelUpload() {
           headers.forEach((header, idx) => {
               if(row[idx]) isEmpty = false;
               const key = columnMap[header] || header; 
-              if (['file_number', 'subject', 'description', 'category', 'priority', 'remarks', 'initiator_name'].includes(key)) {
+              if (['file_number', 'subject', 'description', 'category', 'priority', 'remarks', 'initiator_name', 'current_holder_name'].includes(key)) {
                   rowData[key] = row[idx];
               }
           });
@@ -91,7 +102,7 @@ export function useEFilesExcelUpload() {
           if (!rowData.file_number) rowErrors.push({ rowIndex: i, column: 'file_number', value: '', error: 'Required' });
           if (!rowData.subject) rowErrors.push({ rowIndex: i, column: 'subject', value: '', error: 'Required' });
           if (!rowData.category) rowErrors.push({ rowIndex: i, column: 'category', value: '', error: 'Required' });
-          if (!rowData.initiator_name) rowErrors.push({ rowIndex: i, column: 'initiator_name', value: '', error: 'Required (Must match an existing Employee Name or ID)' });
+          if (!rowData.initiator_name) rowErrors.push({ rowIndex: i, column: 'initiator_name', value: '', error: 'Required (Must match an Employee Name)' });
 
           if (rowErrors.length > 0) {
               allValidationErrors.push(...rowErrors);
@@ -114,7 +125,6 @@ export function useEFilesExcelUpload() {
 
           if (error) throw error;
           
-          // Result structure: { success_count, error_count, errors: [] }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const res = result as any;
           uploadResult.successCount = res.success_count;
@@ -129,7 +139,7 @@ export function useEFilesExcelUpload() {
       }
 
       if (uploadResult.errorCount > 0) {
-          toast.warning(`${uploadResult.successCount} uploaded, ${uploadResult.errorCount} failed. Check errors for missing Employees.`);
+          toast.warning(`${uploadResult.successCount} uploaded, ${uploadResult.errorCount} failed. Check for missing Employees.`);
       } else {
           toast.success(`Successfully uploaded ${uploadResult.successCount} files.`);
       }

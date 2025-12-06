@@ -163,13 +163,13 @@ export function LookupTypesTable({
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
           {displayedLookups.map((lookup) => (
             <tr key={lookup.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-              <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 max-w-[150px] break-words">
+              <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 max-w-[150px] wrap-break-word">
                 {lookup.name ?? '-'}
               </td>
               <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                 {lookup.code || '-'}
               </td>
-              <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs break-words">
+              <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs wrap-break-word">
                 {lookup.description || '-'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
