@@ -11,7 +11,7 @@ import {
 } from '@/components/common/form/FormControls';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import {
   Employee_designationsRowSchema,
   employeesInsertSchema,
@@ -44,7 +44,7 @@ const EmployeeForm = ({
     control,
     handleSubmit,
     register,
-    formState: { errors },
+    formState: { errors, isDirty }, // Added isDirty
     reset,
   } = useForm<EmployeesInsertSchema>({
     resolver: zodResolver(employeesInsertSchema),
@@ -107,24 +107,33 @@ const EmployeeForm = ({
     label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
   }));
 
-  // ** THE FIX: This function now simply calls the onSubmit prop passed from the page **
   const onValidFormSubmit = (data: EmployeesInsertSchema) => {
     onSubmit(data);
   };
 
+  // Safe close
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+       if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={employee ? 'Edit Employee' : 'Add New Employee'}
       size="full"
       visible={false}
       className="transparent h-0 w-0"
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}
     >
       <FormCard
         title={employee ? 'Edit Employee' : 'Add New Employee'}
         onSubmit={handleSubmit(onValidFormSubmit)}
-        onCancel={onClose}
+        onCancel={handleClose}
         isLoading={isLoading}
         disableSubmit={isLoading}
         standalone

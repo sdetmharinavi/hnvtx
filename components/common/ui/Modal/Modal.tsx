@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { cn } from "@/utils/classNames";
 
@@ -28,6 +28,9 @@ export const Modal = ({
   className,
   visible = true,
 }: ModalProps) => {
+  // Use a ref to track where the click started
+  const mouseDownTarget = useRef<EventTarget | null>(null);
+
   // Handle escape key
   useEffect(() => {
     if (!closeOnEscape || !isOpen) return;
@@ -63,10 +66,23 @@ export const Modal = ({
     full: "max-w-[95vw] max-h-[95vh]",
   };
 
+  // 1. Track where the mouse was pressed down
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseDownTarget.current = e.target;
+  };
+
+  // 2. Only close if mouse was pressed AND released on the overlay
+  // This prevents closing when selecting text and dragging mouse out of the box
   const handleOverlayClick = (e: React.MouseEvent) => {
-    if (closeOnOverlayClick && e.target === e.currentTarget) {
+    if (
+      closeOnOverlayClick && 
+      e.target === e.currentTarget && 
+      mouseDownTarget.current === e.currentTarget
+    ) {
       onClose();
     }
+    // Reset tracker
+    mouseDownTarget.current = null;
   };
 
   return (
@@ -79,6 +95,7 @@ export const Modal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onMouseDown={handleMouseDown}
             onClick={handleOverlayClick}
           />
 

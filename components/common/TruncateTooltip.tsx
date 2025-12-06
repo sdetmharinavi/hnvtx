@@ -194,7 +194,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
             role="tooltip"
             className={`
               fixed z-9999 flex flex-col gap-2 rounded-lg shadow-xl border
-              text-sm wrap-break-words whitespace-normal
+              text-sm wrap-wrap-break-word whitespace-normal
               transition-all duration-200 ease-in-out
               ${isLocked 
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto' 

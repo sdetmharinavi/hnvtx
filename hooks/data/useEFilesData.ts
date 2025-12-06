@@ -189,6 +189,23 @@ export function useCloseFile() {
   });
 }
 
+// THE FIX: Use RPC for deletion to bypass RLS/Table permission issues
+export function useDeleteFile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (fileId: string) => {
+      const { error } = await supabase.rpc('delete_e_file_record', { p_file_id: fileId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("File deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ['e-files'] });
+    },
+    onError: (err) => toast.error(`Failed to delete file: ${err.message}`)
+  });
+}
+
 // Helper hook for dropdowns
 export function useEmployeeOptions() {
   const supabase = createClient();

@@ -6,7 +6,7 @@ import { PageHeader, useStandardHeaderActions } from "@/components/common/page-h
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive, FiMinusCircle, FiClock } from "react-icons/fi"; // Added Clock Icon
+import { FiArchive, FiMinusCircle, FiClock } from "react-icons/fi"; 
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
@@ -18,22 +18,19 @@ import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 import { useInventoryData } from "@/hooks/data/useInventoryData";
 import { IssueItemModal } from "@/components/inventory/IssueItemModal";
-import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal"; // Import new modal
+import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal"; 
 import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-actions";
 
 export default function InventoryPage() {
   const router = useRouter();
   const { role, isSuperAdmin } = useUser();
   
-  // State for Issue Modal
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [itemToIssue, setItemToIssue] = useState<V_inventory_itemsRowSchema | null>(null);
 
-  // State for History Modal
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState<{id: string, name: string} | null>(null);
 
-  // Data Hook
   const {
     data: inventory, totalCount, isLoading, isMutating, isFetching, error, refetch,
     pagination, search, editModal, deleteModal, actions: crudActions
@@ -44,13 +41,11 @@ export default function InventoryPage() {
     searchColumn: ['name', 'description', 'asset_no'],
   });
 
-  // Action Hook
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
 
   const columns = getInventoryTableColumns();
   const canPerformActions = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
 
-  // Handlers
   const handleOpenIssueModal = (record: V_inventory_itemsRowSchema) => {
     setItemToIssue(record);
     setIsIssueModalOpen(true);
@@ -78,7 +73,6 @@ export default function InventoryPage() {
       onDelete: canPerformActions ? crudActions.handleDelete : undefined,
     });
     
-    // History Action (Available to everyone)
     standardActions.unshift({
         key: 'history',
         label: 'View History',
@@ -87,7 +81,6 @@ export default function InventoryPage() {
         variant: 'secondary'
     });
 
-    // Issue Action (Only if quantity > 0)
     if (canPerformActions) {
         standardActions.unshift({
           key: 'issue',
@@ -110,12 +103,16 @@ export default function InventoryPage() {
     return standardActions;
   }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
 
+  // THE FIX: Added useRpc: true to exportConfig
   const headerActions = useStandardHeaderActions<'v_inventory_items'>({
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
     onAddNew: canPerformActions ? editModal.openAdd : undefined,
     isLoading,
-    exportConfig: { tableName: 'v_inventory_items' }
+    exportConfig: { 
+        tableName: 'v_inventory_items',
+        useRpc: true // <--- This forces the export to use the SECURITY DEFINER RPC
+    }
   });
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
@@ -171,7 +168,6 @@ export default function InventoryPage() {
         />
       )}
 
-      {/* NEW: History Modal */}
       {isHistoryModalOpen && historyItem && (
           <InventoryHistoryModal 
             isOpen={isHistoryModalOpen}

@@ -46,7 +46,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
     register,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty }, // Added isDirty
   } = form;
 
   // Watch critical form values
@@ -191,12 +191,23 @@ const OfcForm: React.FC<OfcFormProps> = ({
     console.log('Invalid form submission', errors, "Invalid form submission", data);
   };
 
+  // SAFE CLOSE HANDLER
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      if (!confirmClose) return;
+    }
+    onClose();
+  }, [onClose, isDirty]);
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       visible={false}
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+      closeOnOverlayClick={false} // Prevent overlay close
+      closeOnEscape={!isDirty}    // Prevent escape if dirty
     >
       <FormCard
         key={isEdit ? ofcCable?.id ?? 'edit' : 'new'}
@@ -207,7 +218,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
             : 'Fill in the Optical Fiber Cable details below'
         }
         isLoading={isLoading}
-        onCancel={onClose}
+        onCancel={handleClose}
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         submitText={
           isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'

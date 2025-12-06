@@ -129,6 +129,6 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, lets check the inventory history functionality will work correctly or not. Also as we are using offline first approach, how users auth will handle when internet will go down?
+Let's begin! First of all, tell me is all the pages being cached at the time of first load of home page and if I close the browser disconnect internet and open without internet after many days, will all the pages work. Also why navigation taking lots of time when project is offline first
 
 

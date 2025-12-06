@@ -143,17 +143,17 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                 <div className="space-y-2">
                   <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Incoming</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words"><TruncateTooltip text={splice.incoming_segment} /></div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 wrap-break-word"><TruncateTooltip text={splice.incoming_segment} /></div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Fiber #{splice.incoming_fiber}</div>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Outgoing</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words"><TruncateTooltip text={splice.outgoing_segment || 'Terminated'} /></div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 wrap-break-word"><TruncateTooltip text={splice.outgoing_segment || 'Terminated'} /></div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Loss (dB)</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{splice.loss_db}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 wrap-break-word">{splice.loss_db}</div>
                   </div>
                 </div>
                 <Button 
@@ -195,7 +195,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
               <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-700">
                 {availableFibers.map((fiber) => (
                   <tr key={`${fiber.segment_id}-${fiber.fiber_no}`}>
-                    <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 break-words">{fiber.segment_name}</td>
+                    <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 wrap-break-word">{fiber.segment_name}</td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{fiber.fiber_no}</td>
                   </tr>
                 ))}
@@ -213,7 +213,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
             {availableFibers.map((fiber) => (
               <div key={`${fiber.segment_id}-${fiber.fiber_no}`} className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center justify-between">
                 <div className="flex-1 min-w-0 mr-3">
-                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200 break-words">{fiber.segment_name}</div>
+                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200 wrap-break-word">{fiber.segment_name}</div>
                 </div>
                 <div className="shrink-0 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                   #{fiber.fiber_no}

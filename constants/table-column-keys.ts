@@ -169,8 +169,20 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     link_type_name: { title: "Link Type" },
   },
   v_e_files_extended: {
-     created_at: { transform: toPgDate, excelFormat: "date" },
-     updated_at: { transform: toPgDate, excelFormat: "date" },
+     created_at: { title: "Created At", transform: toPgDate, excelFormat: "date" },
+     updated_at: { title: "Last Updated", transform: toPgDate, excelFormat: "date" },
+     file_number: { title: "File Number" },
+     subject: { title: "Subject" },
+     description: { title: "Description" },
+     category: { title: "Category" },
+     priority: { title: "Priority" },
+     initiator_name: { title: "Initiator" },
+     current_holder_name: { title: "Current Holder" }, // Matches the import mapping key
+     status: { title: "Status" },
+     // Hide ID columns to clean up the export
+     id: { excelFormat: "text" }, 
+     initiator_employee_id: { title: "Initiator ID" },
+     current_holder_employee_id: { title: "Holder ID" },
   },
 };
 
