@@ -188,6 +188,18 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'Transnet ID is a nullable string',
     },
     {
+      fieldName: 'lc_id',
+      tableName: 'services',
+      validation: 'z.string()',
+      description: 'LC ID is a nullable string',
+    },
+    {
+      fieldName: 'unique_id',
+      tableName: 'services',
+      validation: 'z.string()',
+      description: 'BTS ID is a nullable string',
+    },
+    {
       fieldName: 'updated_sn_name',
       tableName: 'v_ofc_connections_complete',
       validation: 'z.string()',
