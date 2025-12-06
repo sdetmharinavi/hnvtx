@@ -147,7 +147,7 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
                    height={32}
                  />
                ) : (
-                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 ring-2 ring-white dark:ring-gray-800 shadow-sm">
+                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 ring-2 ring-white dark:ring-gray-800 shadow-sm">
                    <span className="text-xs font-bold text-white">
                      {userInitials}
                    </span>

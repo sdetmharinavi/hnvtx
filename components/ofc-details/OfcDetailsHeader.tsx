@@ -94,10 +94,10 @@ interface OfcDetailsHeaderProps {
           className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
         >
           {/* Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
+          <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
           
           {/* Decorative Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/20 to-transparent dark:from-blue-800/10 rounded-bl-full" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-blue-100/20 to-transparent dark:from-blue-800/10 rounded-bl-full" />
           
           <div className="relative p-6">
             <motion.div 
@@ -106,7 +106,7 @@ interface OfcDetailsHeaderProps {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
+              <div className="p-2.5 rounded-xl bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
                 <Cable size={20} />
               </div>
               {/* FIX: Replaced gradient text with solid colors */}
@@ -157,10 +157,10 @@ interface OfcDetailsHeaderProps {
           className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
         >
           {/* Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
+          <div className="absolute inset-0 bg-linear-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
           
           {/* Decorative Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-100/20 to-transparent dark:from-emerald-800/10 rounded-bl-full" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-emerald-100/20 to-transparent dark:from-emerald-800/10 rounded-bl-full" />
           
           <div className="relative p-6">
             <motion.div 
@@ -169,7 +169,7 @@ interface OfcDetailsHeaderProps {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg">
+              <div className="p-2.5 rounded-xl bg-linear-to-r from-emerald-500 to-teal-600 text-white shadow-lg">
                 <Settings size={20} />
               </div>
               {/* FIX: Replaced gradient text with solid colors */}

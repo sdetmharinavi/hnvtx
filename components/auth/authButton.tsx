@@ -34,7 +34,7 @@ export default function AuthButton() {
                   height={32}
                 />
               ) : (
-                <div className="h-8 w-8 rounded-full bg-blue-500 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full bg-blue-500 bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                   <BiUser className="h-4 w-4 text-white" />
                 </div>
               )}
@@ -83,7 +83,7 @@ export default function AuthButton() {
       <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
       <Link
         href="/signup"
-        className="inline-flex items-center px-3 py-1.5 bg-blue-500 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
+        className="inline-flex items-center px-3 py-1.5 bg-blue-500 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
       >
         Get Started
       </Link>

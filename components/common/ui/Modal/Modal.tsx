@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { IoClose } from "react-icons/io5";
 import { cn } from "@/utils/classNames";
 
@@ -88,7 +88,7 @@ export const Modal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

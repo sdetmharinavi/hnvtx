@@ -184,6 +184,18 @@ export const TABLE_COLUMN_META: TableMetaMap = {
      initiator_employee_id: { title: "Initiator ID" },
      current_holder_employee_id: { title: "Holder ID" },
   },
+  v_inventory_items: {
+      last_issued_to: { title: "Last Issued To (History)" },
+      last_issue_reason: { title: "Last Issue Reason (History)" },
+      last_issued_date: { title: "Last Issue Date (History)", transform: toPgDate, excelFormat: "date" },
+      cost: { title: "Unit Cost" },
+      total_value: { title: "Total Value (Calculated)" },
+      
+      // ADDED: Virtual columns for Import Mapping
+      // These keys don't exist in the view, but we add them here so the importer can recognize them
+      // if the user adds them to the Excel file manually for bulk actions.
+      // Note: The useInventoryExcelUpload hook handles the mapping manually, but this helps consistency.
+  }
 };
 
 export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T) {

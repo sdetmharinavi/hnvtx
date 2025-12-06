@@ -64,7 +64,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
         <div className="overflow-x-auto pb-4">
           <div className="relative min-w-[800px] h-64 py-8">
             <div 
-              className="absolute top-1/2 h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg" 
+              className="absolute top-1/2 h-2 bg-linear-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg" 
               style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }} 
             />
             
@@ -172,7 +172,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
               return (
                 <motion.div 
                   key={seg.id} 
-                  className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/30 dark:to-gray-700/50 p-4 rounded-xl border dark:border-gray-600/50 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-700/50 dark:hover:to-gray-700/70 transition-all duration-300 hover:shadow-md"
+                  className="bg-linear-to-r from-gray-50 to-gray-100 dark:from-gray-700/30 dark:to-gray-700/50 p-4 rounded-xl border dark:border-gray-600/50 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-700/50 dark:hover:to-gray-700/70 transition-all duration-300 hover:shadow-md"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}

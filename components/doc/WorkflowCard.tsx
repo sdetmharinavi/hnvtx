@@ -167,7 +167,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
           <motion.div variants={itemVariants} className='flex items-start gap-3'>
             <div
               className={`
-              p-2.5 bg-white dark:bg-gray-800 bg-gradient-to-br border rounded-xl shadow-sm
+              p-2.5 bg-white dark:bg-gray-800 bg-linear-to-br border rounded-xl shadow-sm
               ${colors.gradient}
               ${colors.border}
             `}>
@@ -220,7 +220,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                     transition={{ delay: workflows.length * 0.1 + 0.3 }}
                     className='flex items-center justify-center pt-4 pb-2'>
                     <div className='flex items-center gap-3 text-gray-400 dark:text-gray-500'>
-                      <div className='h-px w-16 bg-gradient-to-r from-transparent to-gray-300 dark:to-gray-700' />
+                      <div className='h-px w-16 bg-linear-to-r from-transparent to-gray-300 dark:to-gray-700' />
                       <CheckCircle2 className='w-4 h-4' />
                       <span className='text-xs font-medium'>End of documentation</span>
                       <div className='h-px w-16 bg-gradient-to-l from-transparent to-gray-300 dark:to-gray-700' />

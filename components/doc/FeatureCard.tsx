@@ -62,7 +62,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
       </div>
 
       {/* Hero Header with Solid Fallback + Gradient */}
-      <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${headerBgClasses} p-8 md:p-12 shadow-2xl`}>
+      <div className={`relative overflow-hidden rounded-3xl bg-linear-to-br ${headerBgClasses} p-8 md:p-12 shadow-2xl`}>
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
           <div className="p-4 bg-white/20 backdrop-blur-md rounded-2xl shadow-inner border border-white/30">
             <Icon className="w-12 h-12 text-white" />

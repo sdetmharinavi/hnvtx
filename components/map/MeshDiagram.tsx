@@ -222,7 +222,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               {/* Popup Details */}
               <Popup className="custom-popup">
                 <div className="text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
+                  <div className="bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
                     <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">
                       {node.name}
                     </h3>

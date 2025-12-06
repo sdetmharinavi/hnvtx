@@ -45,7 +45,7 @@ export default function HeroContent({
       <motion.div
         variants={variants.ctaVariants}
         animate={floatingAnimation}
-        className="mb-6 rounded-full border border-red-400/40 bg-red-900/50 bg-gradient-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
+        className="mb-6 rounded-full border border-red-400/40 bg-red-900/50 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
       >
         <span className="text-xs font-semibold tracking-wide sm:text-sm">
           🚀 Advanced Database Management
