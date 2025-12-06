@@ -6,7 +6,7 @@ import { TableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
- 
+import { FancyEmptyState } from "@/components/common/ui/FancyEmptyState"; // IMPORTED
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
@@ -212,17 +212,16 @@ function TableBodyBase<T extends TableOrViewName>({
     );
   }
 
-  
-
   if (processedData.length === 0) {
     return (
       <tbody>
         <tr>
           <td colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)} className={rest.bordered ? "border-b border-gray-200 dark:border-gray-700" : ""}>
-            <div className='text-center py-12'>
-              <div className='text-gray-400 dark:text-gray-500 text-lg mb-2'>📄</div>
-              <p className='text-gray-500 dark:text-gray-400'>{emptyText}</p>
-            </div>
+             {/* THE FIX: Use FancyEmptyState */}
+             <FancyEmptyState 
+                title="No Data Found" 
+                description={emptyText || "Try adjusting your search or filters."} 
+             />
           </td>
         </tr>
       </tbody>

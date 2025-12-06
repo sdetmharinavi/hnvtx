@@ -13,12 +13,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div className='min-h-screen bg-blue-50 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'>
+    <div className='min-h-screen bg-blue-50 bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'>
       <div className='flex min-h-screen'>
         {/* Left side - Branding */}
         <div className='relative hidden overflow-hidden lg:flex lg:flex-1'>
           {/* FIX: Added top-0 left-0 w-full h-full and bg-blue-600 fallback */}
-          <div className='absolute top-0 left-0 w-full h-full bg-blue-600 bg-gradient-to-br from-blue-600 to-purple-700 opacity-90 dark:from-gray-800 dark:to-gray-900' />
+          <div className='absolute top-0 left-0 w-full h-full bg-blue-600 bg-linear-to-br from-blue-600 to-purple-700 opacity-90 dark:from-gray-800 dark:to-gray-900' />
           {/* <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5" /> */}
           <div className='relative z-10 flex flex-col justify-center px-12 text-white'>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>

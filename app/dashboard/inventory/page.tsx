@@ -1,12 +1,12 @@
 // app/dashboard/inventory/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive, FiMinusCircle, FiClock } from "react-icons/fi"; 
+import { FiArchive, FiMinusCircle, FiClock, FiUpload } from "react-icons/fi"; 
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
@@ -21,9 +21,13 @@ import { IssueItemModal } from "@/components/inventory/IssueItemModal";
 import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal"; 
 import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-actions";
 
+// Use the new Transactional Import hook
+import { useInventoryExcelUpload } from "@/hooks/database/excel-queries/useInventoryExcelUpload";
+
 export default function InventoryPage() {
   const router = useRouter();
   const { role, isSuperAdmin } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [itemToIssue, setItemToIssue] = useState<V_inventory_itemsRowSchema | null>(null);
@@ -42,6 +46,9 @@ export default function InventoryPage() {
   });
 
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
+  
+  // NEW: Transactional Upload Hook
+  const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
 
   const columns = getInventoryTableColumns();
   const canPerformActions = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
@@ -65,6 +72,12 @@ export default function InventoryPage() {
         setItemToIssue(null);
       }
     });
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) uploadInventory({ file });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
@@ -103,7 +116,6 @@ export default function InventoryPage() {
     return standardActions;
   }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
 
-  // THE FIX: Added useRpc: true to exportConfig
   const headerActions = useStandardHeaderActions<'v_inventory_items'>({
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
@@ -111,14 +123,33 @@ export default function InventoryPage() {
     isLoading,
     exportConfig: { 
         tableName: 'v_inventory_items',
-        useRpc: true // <--- This forces the export to use the SECURITY DEFINER RPC
+        useRpc: true 
     }
   });
+
+  // Inject Upload Button
+  if (canPerformActions) {
+    headerActions.splice(1, 0, {
+        label: isUploading ? 'Importing...' : 'Import Stock',
+        variant: 'outline',
+        leftIcon: <FiUpload />,
+        disabled: isUploading || isLoading,
+        onClick: () => fileInputRef.current?.click()
+    });
+  }
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <input 
+         type="file" 
+         ref={fileInputRef} 
+         onChange={handleFileChange} 
+         className="hidden" 
+         accept=".xlsx, .xls" 
+      />
+
       <PageHeader
         title="Inventory Management"
         description="Track and manage all physical assets like equipment, furniture, and consumables."

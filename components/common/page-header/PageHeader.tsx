@@ -7,6 +7,7 @@ import { CardSkeleton } from "@/components/common/ui/table/TableSkeleton";
 import { StatCard, StatProps } from "@/components/common/page-header/StatCard";
 import { ActionButton, DropdownButton } from "@/components/common/page-header/DropdownButton";
 import { Button } from "@/components/common/ui";
+import { Breadcrumbs } from "@/components/common/ui/Breadcrumbs"; // IMPORTED
 
 export interface PageHeaderProps {
   title: string;
@@ -26,13 +27,11 @@ export function PageHeader({
   stats,
   actions = [],
   isLoading = false,
-  isFetching = false, // THE FIX: Destructure isFetching
+  isFetching = false,
   className,
 }: PageHeaderProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { showHeader, setShowHeader } = useViewSettings();
+  const { showHeader } = useViewSettings();
 
-  // Only show full skeleton on initial load.
   if (isLoading) {
     return <CardSkeleton showImage={false} lines={2} />;
   }
@@ -41,6 +40,10 @@ export function PageHeader({
     <>
       {showHeader && (
         <div className={cn("space-y-4 sm:space-y-6", className)}>
+          
+          {/* ADDED: Breadcrumbs at the very top */}
+          <Breadcrumbs />
+
           {/* Header Section */}
           <div className='flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-start lg:justify-between'>
             <div className='flex-1 space-y-2 sm:space-y-3 min-w-0'>
@@ -85,7 +88,6 @@ export function PageHeader({
             {/* Stats Grid */}
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 grow'>
               {stats?.map((stat) => (
-                // THE FIX: Pass the isFetching prop down to StatCard
                 <StatCard key={stat.label} {...stat} isLoading={isFetching} />
               ))}
             </div>

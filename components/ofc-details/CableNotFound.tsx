@@ -78,7 +78,7 @@ const CableNotFound = ({
       animate="visible"
     >
       <motion.div
-        className="bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-400 p-4 rounded-lg shadow-lg"
+        className="bg-linear-to-r from-red-50 to-red-100 border-l-4 border-red-400 p-4 rounded-lg shadow-lg"
         variants={bannerVariants}
         initial="hidden"
         animate="visible"

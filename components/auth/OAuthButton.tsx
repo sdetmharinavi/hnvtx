@@ -197,7 +197,7 @@ export function OAuthButton({
       </span>
 
       {!isButtonDisabled && !isLoading && (
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 rounded-xl bg-linear-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       )}
     </button>
   );

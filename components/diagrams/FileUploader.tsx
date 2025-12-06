@@ -1,10 +1,11 @@
 // components/diagrams/FileUploader.tsx
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThemeStore } from '@/stores/themeStore';
+import { Database, Download, Upload } from 'lucide-react'; // Added icons
 
 import { FileTable } from './FileTable';
 import { useUppyUploader } from './hooks/useUppyUploader';
@@ -18,20 +19,30 @@ import SimpleUpload from "./uploader-components/SimpleUpload";
 import AdvancedUpload from "./uploader-components/AdvancedUpload";
 import RecentlyUploaded from "./uploader-components/RecentlyUploaded";
 import ErrorDisplay from "./uploader-components/ErrorDisplay";
+import { PageHeader } from '@/components/common/page-header'; // Import PageHeader
+import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup'; // Import Hooks
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(false);
   
-  // Default to true so user sees upload controls immediately
   const [showUploadSection, setShowUploadSection] = useState(true);
   const [showDashboard, setShowDashboard] = useState(false);
   
   const { theme } = useThemeStore();
-
-  // Determine the string theme for Uppy (it supports 'light', 'dark', 'auto')
   const uppyTheme = theme === 'system' ? 'auto' : theme;
+  
+  // Backup refs
+  const backupInputRef = useRef<HTMLInputElement>(null);
+  const { mutate: exportBackup, isPending: isBackingUp } = useExportDiagramsBackup();
+  const { mutate: importBackup, isPending: isRestoring } = useImportDiagramsBackup();
+
+  const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) importBackup(file);
+    if (backupInputRef.current) backupInputRef.current.value = "";
+  };
 
   const {
     folders,
@@ -40,22 +51,18 @@ export default function FileUploader() {
     setFolderId,
     setNewFolderName,
     handleCreateFolder,
-    handleDeleteFolder, // Changed: Destructure delete handler
-    isDeletingFolder,   // Changed: Destructure delete state
+    handleDeleteFolder,
+    isDeletingFolder,
     isLoading: isLoadingFolders,
   } = useFolders({
     onError: (err) => setError(err),
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['files'] });
-        // We also want to show a success toast specifically for folder actions if handled here
-        // But useFolders handles specific success callbacks generally
     },
   });
   
-  // Helper to wrap delete with specific success message if needed
   const onDeleteFolderWrapper = (id: string) => {
       handleDeleteFolder(id);
-      // The hook handles the toast on success/error, or we can chain here if useMutation promise was returned
   };
 
   const {
@@ -91,29 +98,57 @@ export default function FileUploader() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <Toaster position="top-right" duration={4000} />
+      
+      {/* Hidden input for backup restore */}
+      <input 
+         type="file" 
+         ref={backupInputRef} 
+         onChange={handleBackupRestore} 
+         className="hidden" 
+         accept=".xlsx" 
+      />
 
-      {/* Error Banner */}
+      {/* Header with Backup Actions */}
+      <PageHeader
+        title="Diagrams & Files"
+        description="Manage network diagrams, specifications, and other documents."
+        icon={<Database className="h-6 w-6" />}
+        actions={[
+            {
+                label: 'Backup / Restore',
+                variant: 'outline',
+                leftIcon: <Download className="h-4 w-4" />,
+                disabled: isBackingUp || isRestoring || isLoadingFolders,
+                'data-dropdown': true,
+                dropdownoptions: [
+                    {
+                        label: isBackingUp ? "Exporting..." : "Export Full Backup (Excel)",
+                        onClick: () => exportBackup(),
+                        disabled: isBackingUp
+                    },
+                    {
+                        label: isRestoring ? "Restoring..." : "Restore from Backup",
+                        onClick: () => backupInputRef.current?.click(),
+                        disabled: isRestoring
+                    }
+                ]
+            },
+            {
+                label: showUploadSection ? 'Hide Upload' : 'Show Upload',
+                onClick: () => setShowUploadSection(!showUploadSection),
+                variant: showUploadSection ? 'secondary' : 'primary',
+                leftIcon: <Upload className="h-4 w-4" />
+            }
+        ]}
+      />
+
       {(error || cameraError) && (
          <ErrorDisplay error={error} cameraError={cameraError} />
       )}
 
-      {/* Visibility Toggle */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowUploadSection(!showUploadSection)}
-          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
-        >
-          {showUploadSection ? 'Hide Upload Controls' : 'Show Upload Controls'}
-        </button>
-      </div>
-
       {/* Upload Area */}
       {showUploadSection && (
         <div className="space-y-6 p-6 border border-gray-200 rounded-xl bg-white shadow-sm dark:bg-gray-800 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-             Upload Diagrams / Specs
-          </h2>
-
           {/* Folder Management */}
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-100 dark:bg-gray-700/30 dark:border-gray-700">
             <FolderManagement
@@ -123,8 +158,8 @@ export default function FileUploader() {
               folders={folders}
               folderId={folderId}
               setFolderId={setFolderId}
-              onDeleteFolder={onDeleteFolderWrapper} // Passed down
-              isDeleting={isDeletingFolder}          // Passed down
+              onDeleteFolder={onDeleteFolderWrapper}
+              isDeleting={isDeletingFolder}
             />
           </div>
 
