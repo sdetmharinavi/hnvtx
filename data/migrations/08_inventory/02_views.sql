@@ -48,5 +48,29 @@ LEFT JOIN latest_issues li ON i.id = li.inventory_item_id;
 
 GRANT SELECT ON public.v_inventory_items TO authenticated;
 
+CREATE OR REPLACE VIEW public.v_inventory_transactions_extended WITH (security_invoker = true) AS
+SELECT
+    t.id,
+    t.inventory_item_id,
+    t.transaction_type, -- 'ISSUE', 'RESTOCK', 'ADJUSTMENT'
+    t.quantity,
+    t.unit_cost_at_time,
+    t.total_cost_calculated,
+    t.issued_to,
+    t.issue_reason,
+    t.issued_date,
+    t.created_at,
+    t.performed_by_user_id,
+    p.full_name as performed_by_name,
+    p.email as performed_by_email,
+    i.name as item_name,
+    i.asset_no
+FROM
+    public.inventory_transactions t
+LEFT JOIN public.v_user_profiles_extended p ON t.performed_by_user_id = p.id
+LEFT JOIN public.inventory_items i ON t.inventory_item_id = i.id;
+
+GRANT SELECT ON public.v_inventory_transactions_extended TO authenticated;
+
 
 
