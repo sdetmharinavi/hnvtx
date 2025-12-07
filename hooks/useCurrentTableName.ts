@@ -75,8 +75,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       case "user-activity-logs":
         return null;
        // THE FIX: Map diagrams route to files table
-      case "diagrams":
-        return "files";
+      // case "diagrams":
+      //   return "files";
       // THE FIX: Added kml-manager mapping
       case "kml-manager":
         return "files"; 

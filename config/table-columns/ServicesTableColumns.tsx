@@ -25,9 +25,17 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 250,
-        render: (value) => {
-          const strValue = String(value);
-          const isDuplicate = duplicates?.has(strValue);
+        // UPDATED RENDERER
+        render: (value, record) => {
+          const strValue = String(value ?? '');
+          
+          // Generate composite key: Name + Link Type (normalized)
+          // Must match the logic in the Page component
+          const namePart = strValue.trim().toLowerCase();
+          const typePart = (record.link_type_name || '').trim().toLowerCase();
+          const compositeKey = `${namePart}|${typePart}`;
+
+          const isDuplicate = duplicates?.has(compositeKey);
 
           return (
             <div className="flex items-center gap-2 max-w-full">
@@ -38,12 +46,11 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
                 }`}
               />
               {isDuplicate && (
-                <div className="shrink-0 group relative">
-                  <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
-                  {/* Simple Tooltip for Duplicate */}
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                    Duplicate Entry
-                  </span>
+                <div 
+                   className="shrink-0 cursor-help" 
+                   title={`Duplicate Entry: Another service exists with name "${strValue}" and type "${record.link_type_name}".`}
+                >
+                   <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
                 </div>
               )}
             </div>

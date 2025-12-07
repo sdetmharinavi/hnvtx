@@ -619,7 +619,7 @@ export default function RingManagerPage() {
 
     return [
       { value: stats.total_rings, label: 'Total Rings' },
-      { value: `${stats.on_air_nodes} / ${stats.configured_in_maan}`, label: 'Nodes On-Air/ Configured in MAAN but Not On-Air', color: 'success' as const },
+      { value: `${stats.on_air_nodes} / ${stats.configured_in_maan}`, label: 'Nodes On-Air/ Rings configured in MAAN but Not On-Air', color: 'success' as const },
       {
         value: `${stats.spec_issued} / ${stats.spec_pending}`,
         label: 'SPEC (Issued/Pend)',

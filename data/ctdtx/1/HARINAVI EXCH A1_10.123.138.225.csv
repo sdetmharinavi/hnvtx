@@ -1,0 +1,14 @@
+Channel, Port Type, Service                                                                            , Type
+1.1    , E1       , -                                                                                  , Unbound
+1.2    , E1       , -                                                                                  , Unbound
+2.1    , E1       , -                                                                                  , Unbound
+2.2    , E1       , -                                                                                  , Unbound
+1.3    , FE/GE(E) , CTD_HNV_HARINAVI EXCH A1_10.123.138.225/1.3-CTD_HNV_HARINAVI_10.123.138.193_GNE/3.7, CPAN DL
+1.4    , FE/GE(E) , -                                                                                  , Unbound
+2.3    , FE/GE(E) , CTD_HNV_HARINAVI EXCH A1_10.123.138.225/2.3-CTD_HNV_HARINAVI_10.123.138.193_GNE/6.7, CPAN DL
+2.4    , FE/GE(E) , -                                                                                  , Unbound
+1.5    , GE(O)    , -                                                                                  , Unbound
+1.6    , GE(O)    , -                                                                                  , Unbound
+2.5    , GE(O)    , -                                                                                  , Unbound
+2.6    , GE(O)    , BORAL MAJHERPARA                                                                   , BTS 3G
+2.6    , GE(O)    , BORAL MAJHERPARA                                                                   , BTS 4G

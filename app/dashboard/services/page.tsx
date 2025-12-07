@@ -1,7 +1,7 @@
 // app/dashboard/services/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { PageHeader, useStandardHeaderActions, type ActionButton } from "@/components/common/page-header";
 import { DataTable } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
@@ -36,12 +36,20 @@ export default function ServicesPage() {
     displayNameField: 'name',
   });
 
-  // --- REUSABLE DUPLICATE LOGIC ---
+  // --- UPDATED DUPLICATE LOGIC ---
+  // Define composite identity function
+  const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
+    const name = item.name?.trim().toLowerCase() || '';
+    const linkType = item.link_type_name?.trim().toLowerCase() || '';
+    // Returns e.g., "sbi-kolkata-main|mpls"
+    return `${name}|${linkType}`;
+  }, []);
+
   const { 
     showDuplicates, 
     toggleDuplicates, 
     duplicateSet 
-  } = useDuplicateFinder(data, 'name', 'Service Names');
+  } = useDuplicateFinder(data, duplicateIdentity, 'Services');
 
   // Pass duplicateSet to columns
   const columns = ServicesTableColumns(data, duplicateSet);

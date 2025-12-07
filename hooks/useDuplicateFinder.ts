@@ -11,7 +11,8 @@ interface UseDuplicateFinderReturn {
 
 export function useDuplicateFinder<T>(
   data: T[],
-  fieldKey: keyof T,
+  // CHANGED: Accept either a key string OR a function to generate the unique key
+  identity: keyof T | ((item: T) => string),
   entityName: string = 'records'
 ): UseDuplicateFinderReturn {
   const [showDuplicates, setShowDuplicates] = useState(false);
@@ -29,9 +30,21 @@ export function useDuplicateFinder<T>(
     
     // Count occurrences
     data.forEach((item) => {
-      const value = item[fieldKey];
-      if (typeof value === 'string' && value.trim() !== '') {
-        const normalizedKey = value.trim(); // Case-sensitive (exact match)
+      let key = "";
+      
+      // Determine the key based on the identity prop type
+      if (typeof identity === 'function') {
+        key = identity(item);
+      } else {
+        const val = item[identity];
+        // Ensure we only process valid strings/numbers
+        if (val !== null && val !== undefined) {
+           key = String(val);
+        }
+      }
+
+      if (key && key.trim() !== '') {
+        const normalizedKey = key.trim(); // Case-sensitive check usually preferred for IDs, but logic depends on input
         counts.set(normalizedKey, (counts.get(normalizedKey) || 0) + 1);
       }
     });
@@ -43,11 +56,10 @@ export function useDuplicateFinder<T>(
     });
 
     return { duplicateSet: duplicates, duplicateCount: duplicates.size };
-  }, [data, showDuplicates, fieldKey]);
+  }, [data, showDuplicates, identity]);
 
   // 2. Side Effect: Handle Toasts safely
   useEffect(() => {
-    // Unique ID ensures we update the existing toast instead of creating new ones
     const toastId = `duplicate-finder-${entityName.replace(/\s+/g, '-').toLowerCase()}`;
 
     if (showDuplicates) {
@@ -57,7 +69,6 @@ export function useDuplicateFinder<T>(
         toast.warning(`Found ${duplicateCount} duplicate ${entityName}.`, { id: toastId });
       }
     } else {
-      // Clean up the toast when user toggles the feature off
       toast.dismiss(toastId);
     }
   }, [showDuplicates, duplicateCount, entityName]);

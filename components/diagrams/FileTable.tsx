@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw, FileSpreadsheet, Folder } from "lucide-react";
+import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
 import "../../app/customuppy.css"; 
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/client";
-import { useTableExcelDownload } from "@/hooks/database/excel-queries";
+// import { createClient } from "@/utils/supabase/client";
+// import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
-import { formatDate } from "@/utils/formatters";
-import { buildColumnConfig } from "@/constants/table-column-keys";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { Row, TableOrViewName } from "@/hooks/database";
+// import { formatDate } from "@/utils/formatters";
+// import { buildColumnConfig } from "@/constants/table-column-keys";
+// import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+// import { Row, TableOrViewName } from "@/hooks/database";
 import { Button } from "@/components/common/ui";
 
 interface FileType {
@@ -32,7 +32,7 @@ interface FileTableProps {
 }
 
 export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
-  const supabase = createClient();
+  // const supabase = createClient();
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folderId || null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
@@ -48,36 +48,36 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
   const loading = isLoading;
   const { mutate: deleteFile } = useDeleteFile();
 
-  // Configure Excel Download for Files
-  const { mutate: exportFiles, isPending: isExportingFiles } = useTableExcelDownload(supabase, "files");
+  // // Configure Excel Download for Files
+  // const { mutate: exportFiles, isPending: isExportingFiles } = useTableExcelDownload(supabase, "files");
   
-  // ADDED: Configure Excel Download for Folders
-  const { mutate: exportFolders, isPending: isExportingFolders } = useTableExcelDownload(supabase, "folders");
+  // // ADDED: Configure Excel Download for Folders
+  // const { mutate: exportFolders, isPending: isExportingFolders } = useTableExcelDownload(supabase, "folders");
 
-  const handleExportFiles = () => {
-    const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name || "all_files";
-    const fileName = `diagrams_${selectedFolderName}_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
-    const columns = buildColumnConfig("files") as Column<Row<TableOrViewName>>[];
+  // const handleExportFiles = () => {
+  //   const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name || "all_files";
+  //   const fileName = `diagrams_${selectedFolderName}_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+  //   const columns = buildColumnConfig("files") as Column<Row<TableOrViewName>>[];
 
-    exportFiles({
-      fileName,
-      sheetName: "Diagrams",
-      columns,
-      filters: selectedFolder ? { folder_id: selectedFolder } : {},
-    });
-  };
+  //   exportFiles({
+  //     fileName,
+  //     sheetName: "Diagrams",
+  //     columns,
+  //     filters: selectedFolder ? { folder_id: selectedFolder } : {},
+  //   });
+  // };
 
-  // ADDED: Export Folders Handler
-  const handleExportFolders = () => {
-    const fileName = `folders_structure_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
-    const columns = buildColumnConfig("folders") as Column<Row<TableOrViewName>>[];
+  // // ADDED: Export Folders Handler
+  // const handleExportFolders = () => {
+  //   const fileName = `folders_structure_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
+  //   const columns = buildColumnConfig("folders") as Column<Row<TableOrViewName>>[];
     
-    exportFolders({
-      fileName,
-      sheetName: "Folders",
-      columns,
-    });
-  };
+  //   exportFolders({
+  //     fileName,
+  //     sheetName: "Folders",
+  //     columns,
+  //   });
+  // };
 
   const filteredFolders = useMemo(() => 
     folders
@@ -196,7 +196,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
           UPLOADED DIAGRAMS
         </h2>
         {/* ADDED: Export Folders Button */}
-        <Button 
+        {/* <Button 
             variant="outline" 
             size="sm" 
             onClick={handleExportFolders}
@@ -204,7 +204,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
             leftIcon={<Folder className="w-4 h-4" />}
         >
             {isExportingFolders ? "Exporting..." : "Export Folders"}
-        </Button>
+        </Button> */}
       </div>
       
       {selectedFolder && (
@@ -225,7 +225,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
                 Refresh
               </Button>
               
-              <Button 
+              {/* <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleExportFiles}
@@ -233,7 +233,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
                 leftIcon={<FileSpreadsheet />}
               >
                 {isExportingFiles ? "Exporting..." : "Export Files"}
-              </Button>
+              </Button> */}
             </div>
           </div>
 
