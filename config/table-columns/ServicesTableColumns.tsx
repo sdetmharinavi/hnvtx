@@ -3,7 +3,7 @@ import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowRight } from 'lucide-react';
 
 export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: Set<string>) => {
   return useDynamicColumnConfig('v_services', {
@@ -12,12 +12,11 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
       'created_at',
       'updated_at',
       'node_id',
-      'link_type_id',
-      'maintenance_area_name',
-      'node_id',
+      'end_node_id', // Omit raw IDs
       'link_type_id',
       'maintenance_area_name',
       'id',
+      'end_node_name' // Omit standalone column, we combine it below
     ],
     overrides: {
       name: {
@@ -25,12 +24,9 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 250,
-        // UPDATED RENDERER
         render: (value, record) => {
           const strValue = String(value ?? '');
           
-          // Generate composite key: Name + Link Type (normalized)
-          // Must match the logic in the Page component
           const namePart = strValue.trim().toLowerCase();
           const typePart = (record.link_type_name || '').trim().toLowerCase();
           const compositeKey = `${namePart}|${typePart}`;
@@ -58,10 +54,26 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         },
       },
       node_name: {
-        title: 'Node Location',
+        title: 'Route / Location',
         sortable: true,
         searchable: true,
-        width: 200,
+        width: 280,
+        // NEW RENDERER: Shows "Start -> End"
+        render: (value, record) => {
+           const start = value as string;
+           const end = record.end_node_name;
+           
+           if (start && end) {
+               return (
+                   <div className="flex items-center gap-2 text-sm">
+                       <span className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={start}>{start}</span>
+                       <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
+                       <span className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={end}>{end}</span>
+                   </div>
+               )
+           }
+           return <span className="text-gray-600 dark:text-gray-400">{start || 'Unknown Location'}</span>;
+        }
       },
       link_type_name: {
         title: 'Link Type',

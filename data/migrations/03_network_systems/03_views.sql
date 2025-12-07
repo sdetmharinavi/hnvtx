@@ -68,6 +68,8 @@ SELECT
     s.name,
     s.node_id,
     n.name AS node_name,
+    s.end_node_id,                  -- NEW
+    n2.name AS end_node_name,       -- NEW
     ma.name AS maintenance_area_name, -- Useful for regional filtering
     s.link_type_id,
     lt.name AS link_type_name,
@@ -81,6 +83,7 @@ SELECT
     s.updated_at
 FROM public.services s
 LEFT JOIN public.nodes n ON s.node_id = n.id
+LEFT JOIN public.nodes n2 ON s.end_node_id = n2.id
 LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt ON s.link_type_id = lt.id;
 

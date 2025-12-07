@@ -12,11 +12,12 @@ import { createClient } from "@/utils/supabase/client";
 import { V_servicesRowSchema } from "@/schemas/zod-schemas";
 
 // --- Corrected Schema ---
-// Represents the logical service definition only.
 const serviceFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  // Service is now tied to a Location (Node), not a specific System
-  node_id: z.uuid("Location (Node) is required"), 
+  node_id: z.uuid("Start Location is required"), 
+  // NEW: Optional End Node
+  end_node_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
+  
   link_type_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -31,7 +32,6 @@ export type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 interface ServiceFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Accepts the view schema which contains the fields we need
   editingService: V_servicesRowSchema | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
@@ -44,14 +44,14 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   const supabase = createClient();
   const isEdit = !!editingService;
 
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<ServiceFormValues>({
+  const { register, handleSubmit, control, reset, watch, formState: { errors } } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: { status: true }
   });
+  
+  const startNodeId = watch('node_id');
 
   // --- Data Fetching ---
-  // Only fetch Nodes and Link Types. Systems are no longer relevant here.
-  
   const { data: nodes } = useTableQuery(supabase, "nodes", { 
     columns: "id, name", 
     filters: { status: true },
@@ -65,6 +65,12 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   });
 
   const nodeOptions = useMemo(() => nodes?.data.map(n => ({ value: n.id!, label: n.name! })) || [], [nodes]);
+  
+  // Filter end node options to prevent selecting same node as start
+  const endNodeOptions = useMemo(() => {
+     return nodeOptions.filter(n => n.value !== startNodeId);
+  }, [nodeOptions, startNodeId]);
+  
   const linkTypeOptions = useMemo(() => linkTypes?.data.map(l => ({ value: l.id!, label: l.name! })) || [], [linkTypes]);
 
   // --- Reset Logic ---
@@ -73,7 +79,8 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
         if (editingService) {
             reset({
                 name: editingService.name || "",
-                node_id: editingService.node_id || "", // Location is required
+                node_id: editingService.node_id || "", 
+                end_node_id: editingService.end_node_id || "", // NEW
                 link_type_id: editingService.link_type_id || "",
                 bandwidth_allocated: editingService.bandwidth_allocated || "",
                 vlan: editingService.vlan || "",
@@ -87,6 +94,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
               name: "", 
               status: true,
               node_id: "",
+              end_node_id: "", // NEW
               link_type_id: "",
               bandwidth_allocated: "",
               vlan: "",
@@ -99,11 +107,11 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   }, [isOpen, editingService, reset]);
 
   const onValidSubmit: SubmitHandler<ServiceFormValues> = (data) => {
-    // Helper to convert empty strings to null
     const toNull = (val: string | null | undefined) => (!val || val.trim() === "") ? null : val.trim();
 
     const sanitizedData = {
       ...data,
+      end_node_id: toNull(data.end_node_id), // NEW
       link_type_id: toNull(data.link_type_id),
       bandwidth_allocated: toNull(data.bandwidth_allocated),
       vlan: toNull(data.vlan),
@@ -119,30 +127,41 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Service" : "Add Service"} size="lg">
         <FormCard
             title={isEdit ? "Edit Service" : "Add New Service"}
-            subtitle="Define the logical service details. Physical connection mapping is handled separately."
+            subtitle="Define the logical service details."
             onSubmit={handleSubmit(onValidSubmit)}
             onCancel={onClose}
             isLoading={isLoading}
             standalone
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput 
-                  name="name" 
-                  label="Service / Customer Name" 
-                  register={register} 
-                  error={errors.name} 
-                  required 
-                  placeholder="e.g. SBI-Kolkata-Main" 
-                />
+                <div className="md:col-span-2">
+                    <FormInput 
+                    name="name" 
+                    label="Service / Customer Name" 
+                    register={register} 
+                    error={errors.name} 
+                    required 
+                    placeholder="e.g. SBI-Kolkata-Main" 
+                    />
+                </div>
                 
                 <FormSearchableSelect<ServiceFormValues> 
                   name="node_id" 
-                  label="Location (End-Point Node)" 
+                  label="Start Node / Location" 
                   control={control} 
                   options={nodeOptions} 
                   error={errors.node_id} 
                   required 
-                  placeholder="Select where this service is delivered"
+                  placeholder="Select location A"
+                />
+
+                <FormSearchableSelect<ServiceFormValues> 
+                  name="end_node_id" 
+                  label="End Node / Destination (Optional)" 
+                  control={control} 
+                  options={endNodeOptions} 
+                  error={errors.end_node_id} 
+                  placeholder="Select location B"
                 />
 
                 <FormSearchableSelect<ServiceFormValues> 

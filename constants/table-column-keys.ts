@@ -483,6 +483,7 @@ const TABLE_COLUMN_OBJECTS = {
     link_type_id: "link_type_id",
     name: "name",
     node_id: "node_id",
+    end_node_id: "end_node_id",
     status: "status",
     unique_id: "unique_id",
     updated_at: "updated_at",
@@ -1079,6 +1080,7 @@ const TABLE_COLUMN_OBJECTS = {
   v_services: {
     name: "name",
     node_name: "node_name",
+    end_node_name: "end_node_name",
     link_type_name: "link_type_name",
     bandwidth_allocated: "bandwidth_allocated",
     vlan: "vlan",
@@ -1091,6 +1093,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
     id: "id",
     node_id: "node_id",
+    end_node_id: "end_node_id",
     link_type_id: "link_type_id",
   },
   v_e_files_extended: {

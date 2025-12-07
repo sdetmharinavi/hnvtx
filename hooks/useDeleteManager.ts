@@ -21,7 +21,6 @@ interface BulkDeleteFilter {
 
 interface UseDeleteManagerProps {
   tableName: keyof Database['public']['Tables'];
-  // THE FIX: Callback now accepts the list of deleted IDs
   onSuccess?: (deletedIds: string[]) => void;
 }
 
@@ -66,7 +65,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   }, []);
 
   const handleConfirm = useCallback(async () => {
-    // Capture IDs before operation
     const idsToDelete = itemsToDelete.map(item => item.id);
 
     const mutationOptions = {
@@ -77,17 +75,33 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
             ? `Successfully deleted ${itemsToDelete.length} items.`
             : `Successfully performed bulk delete.`;
         toast.success(successMessage);
-        // THE FIX: Pass the IDs to the callback
         onSuccess?.(idsToDelete);
       },
       onError: (err: Error) => {
         const pgError = err as unknown as PostgrestError;
+        
+        // --- IMPROVED ERROR PARSING ---
         if (pgError.code === '23503') { 
-          const match = pgError.message.match(/on table "(.*?)"/);
-          const referencingTable = match ? match[1] : 'another table';
-          toast.error("Deletion Failed", {
-            description: `Cannot delete this item because it is still referenced by records in the '${referencingTable}' table. Please reassign or delete those records first.`,
-            duration: 10000,
+          // Regex to find 'table "table_name"' pattern
+          // PostgreSQL message format: update or delete on table "nodes" violates... on table "systems"
+          const matches = pgError.message.match(/on table "([^"]+)"/g);
+          
+          let referencingTable = 'another table';
+          
+          if (matches && matches.length >= 2) {
+             // The LAST match is usually the referencing (child) table
+             const lastMatch = matches[matches.length - 1];
+             const tableNameMatch = lastMatch.match(/"([^"]+)"/);
+             if (tableNameMatch) referencingTable = tableNameMatch[1];
+          } else if (pgError.details) {
+             // Sometimes details has: "Key (id)=... is still referenced from table "systems"."
+             const detailMatch = pgError.details.match(/from table "([^"]+)"/);
+             if (detailMatch) referencingTable = detailMatch[1];
+          }
+
+          toast.error("Deletion Blocked", {
+            description: `Cannot delete this item because it is currently used by records in the '${referencingTable}' table. Please delete or reassign those records first.`,
+            duration: 8000, // Show longer for readability
           });
         } else {
           toast.error(`Deletion failed: ${err.message}`);
@@ -109,8 +123,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       if (itemsToDelete.length > 0) {
         genericBulkDelete({ ids: idsToDelete }, mutationOptions);
       } else if (bulkFilter) {
-        // Note: For bulk filter deletes, we don't know the IDs easily, so idsToDelete will be empty.
-        // The caller should probably refetch everything in this case.
         genericBulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, mutationOptions);
       }
     }
