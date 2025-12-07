@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS public.ports_management (
 CREATE TABLE IF NOT EXISTS public.services (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     node_id UUID NOT NULL REFERENCES public.nodes (id), -- The LOCATION of the customer/service
+    end_node_id UUID REFERENCES public.nodes(id), -- The END LOCATION of DL/TL etc
     name TEXT NOT NULL, -- Customer/Link Name
     link_type_id UUID REFERENCES public.lookup_types(id), -- e.g., MPLS, ILL
     description TEXT,

@@ -21,10 +21,12 @@ import { localDb } from "@/hooks/data/localDb";
 import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
+import { useUser } from "@/providers/UserProvider";
 
 export default function ServicesPage() {
   const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
+  const isSuperAdmin = useUser();
   
   const {
     data, totalCount, isLoading, isFetching, error, refetch,
@@ -95,8 +97,8 @@ export default function ServicesPage() {
 
   const tableActions = useMemo(() => createStandardActions({
       onEdit: editModal.openEdit,
-      onDelete: crudActions.handleDelete,
-  }), [editModal.openEdit, crudActions.handleDelete]);
+      onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
+  }), [editModal.openEdit, isSuperAdmin, crudActions.handleDelete]);
 
   const headerActions = useStandardHeaderActions({
       onRefresh: refetch,

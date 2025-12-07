@@ -1751,6 +1751,7 @@ export type ServicesRow = {
     bandwidth_allocated: string | null;
     created_at: string | null;
     description: string | null;
+    end_node_id: string | null;
     id: string;
     lc_id: string | null;
     link_type_id: string | null;
@@ -1766,6 +1767,7 @@ export type ServicesInsert = {
     bandwidth_allocated?: string | null;
     created_at?: string | null;
     description?: string | null;
+    end_node_id?: string | null;
     id?: string;
     lc_id?: string | null;
     link_type_id?: string | null;
@@ -1781,6 +1783,7 @@ export type ServicesUpdate = {
     bandwidth_allocated?: string | null;
     created_at?: string | null;
     description?: string | null;
+    end_node_id?: string | null;
     id?: string;
     lc_id?: string | null;
     link_type_id?: string | null;
@@ -2364,6 +2367,8 @@ export type V_servicesRow = {
     bandwidth_allocated: string | null;
     created_at: string | null;
     description: string | null;
+    end_node_id: string | null;
+    end_node_name: string | null;
     id: string | null;
     lc_id: string | null;
     link_type_id: string | null;

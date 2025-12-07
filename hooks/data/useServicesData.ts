@@ -17,8 +17,9 @@ export const useServicesData = (
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
     const rpcFilters = buildRpcFilters({
       ...filters,
+      // UPDATED: Added link_type_name to the server-side OR filter
       or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%)`
+        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,end_node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,link_type_name.ilike.%${searchQuery}%)`
         : undefined,
     });
     
@@ -48,6 +49,7 @@ export const useServicesData = (
     }
 
     return resultList || [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, filters]);
 
   // 2. Offline Fetcher (Dexie)
@@ -83,16 +85,17 @@ export const useServicesData = (
         filtered = filtered.filter(s => 
             s.name?.toLowerCase().includes(lower) ||
             s.node_name?.toLowerCase().includes(lower) ||
-            s.description?.toLowerCase().includes(lower)
+            s.end_node_name?.toLowerCase().includes(lower) ||
+            s.description?.toLowerCase().includes(lower) ||
+            // THE FIX: Added link_type_name to client-side filter
+            s.link_type_name?.toLowerCase().includes(lower)
         );
     }
     
-    // Link Type Filter
     if (filters.link_type_id) {
         filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
     }
 
-    // Status Filter
     if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(s => s.status === statusBool);

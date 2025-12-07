@@ -3026,6 +3026,7 @@ export type Database = {
           bandwidth_allocated: string | null
           created_at: string | null
           description: string | null
+          end_node_id: string | null
           id: string
           lc_id: string | null
           link_type_id: string | null
@@ -3040,6 +3041,7 @@ export type Database = {
           bandwidth_allocated?: string | null
           created_at?: string | null
           description?: string | null
+          end_node_id?: string | null
           id?: string
           lc_id?: string | null
           link_type_id?: string | null
@@ -3054,6 +3056,7 @@ export type Database = {
           bandwidth_allocated?: string | null
           created_at?: string | null
           description?: string | null
+          end_node_id?: string | null
           id?: string
           lc_id?: string | null
           link_type_id?: string | null
@@ -3065,6 +3068,41 @@ export type Database = {
           vlan?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
           {
             foreignKeyName: "services_link_type_id_fkey"
             columns: ["link_type_id"]
@@ -4776,6 +4814,8 @@ export type Database = {
           bandwidth_allocated: string | null
           created_at: string | null
           description: string | null
+          end_node_id: string | null
+          end_node_name: string | null
           id: string | null
           lc_id: string | null
           link_type_id: string | null
@@ -4790,6 +4830,41 @@ export type Database = {
           vlan: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
           {
             foreignKeyName: "services_link_type_id_fkey"
             columns: ["link_type_id"]
