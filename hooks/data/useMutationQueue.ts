@@ -1,5 +1,5 @@
 // hooks/data/useMutationQueue.ts
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,25 +13,26 @@ export function useMutationQueue() {
   const supabase = createClient();
   const isProcessing = useRef(false);
 
-  // Separate live queries for pending and failed tasks
-  const pendingTasks = useLiveQuery(() =>
-    localDb.mutation_queue.where('status').equals('pending').toArray(),
-    []
-  );
-  const failedTasks = useLiveQuery(() =>
-    localDb.mutation_queue.where('status').equals('failed').toArray(),
+  // Fetch all tasks for the UI list
+  const allTasks = useLiveQuery(() => 
+    localDb.mutation_queue.orderBy('timestamp').reverse().toArray(),
     []
   );
 
-  const processQueue = async () => {
-    // Process only pending tasks
-    const tasksToProcess = pendingTasks;
-    if (isProcessing.current || !tasksToProcess || tasksToProcess.length === 0) {
-      return;
-    }
+  const pendingCount = allTasks?.filter(t => t.status === 'pending' || t.status === 'processing').length ?? 0;
+  const failedCount = allTasks?.filter(t => t.status === 'failed').length ?? 0;
+
+  const processQueue = useCallback(async () => {
+    if (isProcessing.current || !isOnline) return;
+
+    const tasksToProcess = await localDb.mutation_queue
+      .where('status').equals('pending')
+      .toArray();
+
+    if (tasksToProcess.length === 0) return;
 
     isProcessing.current = true;
-    toast.info(`Syncing ${tasksToProcess.length} offline change(s)...`, { id: 'mutation-sync' });
+    toast.loading(`Syncing ${tasksToProcess.length} changes...`, { id: 'mutation-sync' });
 
     for (const task of tasksToProcess) {
       try {
@@ -51,11 +52,13 @@ export function useMutationQueue() {
         }
 
         if (error) throw error;
+        
+        // Success
         await localDb.mutation_queue.delete(task.id!);
-        console.log(`✅ [Queue] Processed task #${task.id} (${task.type} on ${task.tableName})`);
+        console.log(`✅ [Queue] Processed task #${task.id}`);
 
       } catch (err) {
-        console.error(`❌ [Queue] Failed to process task #${task.id}:`, err);
+        console.error(`❌ [Queue] Failed task #${task.id}:`, err);
         await localDb.mutation_queue.update(task.id!, {
           status: 'failed',
           attempts: (task.attempts || 0) + 1,
@@ -64,23 +67,44 @@ export function useMutationQueue() {
       }
     }
     
-    toast.success("Offline changes synced successfully!", { id: 'mutation-sync' });
-    isProcessing.current = false;
+    // Check if any failed remaining to update toast state
+    const remainingFailed = await localDb.mutation_queue.where('status').equals('failed').count();
     
+    if (remainingFailed > 0) {
+      toast.error(`${remainingFailed} changes failed to sync. Click the indicator to view details.`, { id: 'mutation-sync' });
+    } else {
+      toast.success("All changes synced successfully!", { id: 'mutation-sync' });
+    }
+    
+    isProcessing.current = false;
     await queryClient.invalidateQueries();
-  };
-  
+  }, [isOnline, supabase, queryClient]);
+
+  // Trigger processing when online status changes
   useEffect(() => {
     if (isOnline) {
       processQueue();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, pendingTasks]);
+  }, [isOnline, processQueue]);
+
+  // Manual Actions for UI
+  const retryTask = async (id: number) => {
+    await localDb.mutation_queue.update(id, { status: 'pending', error: undefined });
+    processQueue(); // Try immediately
+  };
+
+  const removeTask = async (id: number) => {
+    await localDb.mutation_queue.delete(id);
+    toast.info("Change discarded from queue.");
+  };
 
   return {
-    pendingCount: pendingTasks?.length ?? 0,
-    failedCount: failedTasks?.length ?? 0,
+    tasks: allTasks || [],
+    pendingCount,
+    failedCount,
     processQueue,
+    retryTask,
+    removeTask
   };
 }
 
@@ -91,5 +115,5 @@ export const addMutationToQueue = async (task: Omit<MutationTask, 'id' | 'timest
     status: 'pending',
     attempts: 0,
   });
-  toast.info("Offline. Your change has been saved and will sync when you're back online.");
+  toast.info("Offline. Change saved to queue.");
 };

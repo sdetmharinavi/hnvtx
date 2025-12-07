@@ -15,49 +15,57 @@ import { useCallback, useState, useRef, useEffect } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
+import { SyncStatusModal } from "./SyncStatusModal"; // IMPORTED
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
   title?: string;
 }
 
-// Sync Status Indicator Component remains unchanged
-const SyncStatusIndicator = () => {
+// Sync Status Indicator Component
+const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
   const { pendingCount, failedCount } = useMutationQueue();
   const isOnline = useOnlineStatus();
 
+  // Offline State
   if (!isOnline) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600" title="You are currently offline.">
+      <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
         <CloudOff className="w-4 h-4 text-gray-500 dark:text-gray-400" />
         <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden sm:inline">Offline</span>
-      </div>
+        {(pendingCount > 0 || failedCount > 0) && (
+           <span className="bg-gray-500 text-white text-[10px] px-1.5 rounded-full">{pendingCount + failedCount}</span>
+        )}
+      </button>
     );
   }
 
+  // Failed State
   if (failedCount > 0) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700" title={`${failedCount} changes failed to sync.`}>
+      <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors animate-pulse">
         <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
         <span className="text-xs font-bold text-red-700 dark:text-red-300">{failedCount} Failed</span>
-      </div>
+      </button>
     );
   }
 
+  // Pending State
   if (pendingCount > 0) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 animate-pulse-sync" title={`Syncing ${pendingCount} changes...`}>
-        <Cloud className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+      <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
+        <Cloud className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-bounce" />
         <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{pendingCount} Pending</span>
-      </div>
+      </button>
     );
   }
 
+  // Synced State
   return (
-    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700" title="All changes are synced.">
+    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
       <Cloud className="w-4 h-4 text-green-600 dark:text-green-400" />
       <span className="text-xs font-medium text-green-700 dark:text-green-300 hidden sm:inline">Synced</span>
-    </div>
+    </button>
   );
 };
 
@@ -67,14 +75,12 @@ export default function DashboardHeader({
   title = "Dashboard",
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
-  // THE FIX: Renamed 'refetchSync' to 'sync' for clarity.
   const { isSyncing, sync } = useDataSync();
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // New State
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // THE FIX: The handler is now simpler. It just calls the sync function.
-  // The toast notifications are handled inside the useDataSync hook.
   const handleRefresh = useCallback(() => {
     sync();
   }, [sync]);
@@ -90,98 +96,106 @@ export default function DashboardHeader({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
-            <MenuButton onClick={onMenuClick} />
-            <h1 className="ml-2 md:ml-6 text-xl font-bold text-gray-900 dark:text-white md:text-2xl">
-              {title}
-            </h1>
-          </div>
+    <>
+      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center">
+              <MenuButton onClick={onMenuClick} />
+              <h1 className="ml-2 md:ml-6 text-xl font-bold text-gray-900 dark:text-white md:text-2xl">
+                {title}
+              </h1>
+            </div>
 
-          <div className="relative flex items-center space-x-2 sm:space-x-4">
-            <SyncStatusIndicator />
-            <button
-              onClick={handleRefresh}
-              disabled={isSyncing}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh all data"
-            >
-              <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="relative flex items-center space-x-2 sm:space-x-4">
+              
+              {/* Sync Indicator acts as button to open modal */}
+              <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
+              
+              <button
+                onClick={handleRefresh}
+                disabled={isSyncing}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh all data"
+              >
+                <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
 
-            {isMobile ? (
-              <div ref={menuRef}>
-                <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="block">
-                  {user?.user_metadata?.avatar_url ? (
-                    <Image
-                      src={user.user_metadata.avatar_url}
-                      alt="User Avatar"
-                      className="h-8 w-8 rounded-full ring-2 ring-gray-200 dark:ring-gray-600"
-                      width={32}
-                      height={32}
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 ring-2 ring-gray-200 dark:ring-gray-600">
-                      <BiUser className="h-4 w-4 text-white" />
-                    </div>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-2 z-50 w-64"
-                    >
-                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                        <AuthButton />
-                        <div className="p-2 border-t border-gray-100 dark:border-gray-700">
-                          <ThemeToggle />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <>
-                <div className="group">
-                  <Link
-                    href="/onboarding"
-                    className="flex items-center space-x-2 transition-colors hover:opacity-80"
-                  >
+              {isMobile ? (
+                <div ref={menuRef}>
+                  <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="block">
                     {user?.user_metadata?.avatar_url ? (
                       <Image
-                        src={user.user_metadata?.avatar_url}
+                        src={user.user_metadata.avatar_url}
                         alt="User Avatar"
-                        className="h-8 w-8 rounded-full"
+                        className="h-8 w-8 rounded-full ring-2 ring-gray-200 dark:ring-gray-600"
                         width={32}
                         height={32}
                       />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 ring-2 ring-gray-200 dark:ring-gray-600">
                         <BiUser className="h-4 w-4 text-white" />
                       </div>
                     )}
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden lg:block">
-                      {user?.user_metadata?.first_name || "User"}
-                    </span>
-                  </Link>
-                  <div className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 w-auto min-w-64">
-                      <AuthButton />
+                  </button>
+                  <AnimatePresence>
+                    {isUserMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full right-0 mt-2 z-50 w-64"
+                      >
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                          <AuthButton />
+                          <div className="p-2 border-t border-gray-100 dark:border-gray-700">
+                            <ThemeToggle />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <>
+                  <div className="group">
+                    <Link
+                      href="/onboarding"
+                      className="flex items-center space-x-2 transition-colors hover:opacity-80"
+                    >
+                      {user?.user_metadata?.avatar_url ? (
+                        <Image
+                          src={user.user_metadata?.avatar_url}
+                          alt="User Avatar"
+                          className="h-8 w-8 rounded-full"
+                          width={32}
+                          height={32}
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
+                          <BiUser className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden lg:block">
+                        {user?.user_metadata?.first_name || "User"}
+                      </span>
+                    </Link>
+                    <div className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 w-auto min-w-64">
+                        <AuthButton />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ThemeToggle />
-              </>
-            )}
+                  <ThemeToggle />
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      
+      {/* Modal is rendered here */}
+      <SyncStatusModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />
+    </>
   );
 }
