@@ -20,7 +20,8 @@ export const useNodesData = (
     const rpcFilters = buildRpcFilters({ 
       ...filters, 
       or: searchQuery 
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude::text.ilike.%${searchQuery}%,longitude::text.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%)` 
+        // ADDED: remark field to server-side search
+        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,latitude::text.ilike.%${searchQuery}%,longitude::text.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%,remark.ilike.%${searchQuery}%)` 
         : undefined 
     });
     const { data, error } = await createClient().rpc('get_paged_data', {
@@ -62,15 +63,21 @@ export const useNodesData = (
     let filtered = allNodes;
     if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
-        // THE FIX: The client-side filter now mirrors the server-side `or` filter.
-        filtered = filtered.filter((node) =>
-            node.name?.toLowerCase().includes(lowerQuery) ||
-            node.node_type_name?.toLowerCase().includes(lowerQuery) ||
-            node.maintenance_area_name?.toLowerCase().includes(lowerQuery) ||
-            String(node.latitude).toLowerCase().includes(lowerQuery) ||
-            String(node.longitude).toLowerCase().includes(lowerQuery) ||
-            node.node_type_code?.toLowerCase().includes(lowerQuery)
-        );
+        
+        filtered = filtered.filter((node) => {
+            const nameMatch = node.name?.toLowerCase().includes(lowerQuery);
+            const typeNameMatch = node.node_type_name?.toLowerCase().includes(lowerQuery);
+            const areaNameMatch = node.maintenance_area_name?.toLowerCase().includes(lowerQuery);
+            const typeCodeMatch = node.node_type_code?.toLowerCase().includes(lowerQuery);
+            // ADDED: Remark search
+            const remarkMatch = node.remark?.toLowerCase().includes(lowerQuery);
+            
+            // Safe coordinate search (excludes nulls)
+            const latMatch = node.latitude != null && String(node.latitude).toLowerCase().includes(lowerQuery);
+            const longMatch = node.longitude != null && String(node.longitude).toLowerCase().includes(lowerQuery);
+            
+            return nameMatch || typeNameMatch || areaNameMatch || typeCodeMatch || remarkMatch || latMatch || longMatch;
+        });
     }
     if (filters.node_type_id) {
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);

@@ -5564,6 +5564,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_paged_system_connections: {
+        Args: {
+          p_limit: number
+          p_offset: number
+          p_search_query?: string
+          p_system_id: string
+        }
+        Returns: Json
+      }
       get_ring_manager_stats: { Args: never; Returns: Json }
       get_rings_for_export: {
         Args: { order_by?: string; row_limit?: number }
@@ -5770,6 +5779,7 @@ export type Database = {
           p_protection_fiber_in_ids?: string[]
           p_protection_fiber_out_ids?: string[]
           p_remark?: string
+          p_service_id?: string
           p_service_name?: string
           p_service_node_id?: string
           p_services_interface?: string

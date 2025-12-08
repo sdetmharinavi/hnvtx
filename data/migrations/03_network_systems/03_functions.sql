@@ -128,7 +128,10 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_a_slot TEXT DEFAULT NULL,
     p_a_customer TEXT DEFAULT NULL,
     p_b_slot TEXT DEFAULT NULL,
-    p_b_customer TEXT DEFAULT NULL
+    p_b_customer TEXT DEFAULT NULL,
+
+    -- NEW PARAM: Explicit Service Link
+    p_service_id UUID DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
@@ -138,6 +141,7 @@ DECLARE
     v_connection_id UUID;
     v_service_id UUID;
     v_system_node_id UUID;
+    v_target_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
     SELECT s.node_id INTO v_system_node_id 
@@ -151,28 +155,63 @@ BEGIN
     JOIN public.lookup_types lt ON s.system_type_id = lt.id 
     WHERE s.id = p_system_id;
 
-    -- Upsert Service
-    IF p_service_name IS NOT NULL THEN
-        IF p_id IS NOT NULL THEN
+    -- =================================================================
+    -- SERVICE RESOLUTION & UPSERT
+    -- =================================================================
+    
+    -- Priority 1: Use Explicit Service ID if provided (Linking to existing)
+    IF p_service_id IS NOT NULL THEN
+        v_service_id := p_service_id;
+        
+        -- Optionally update that service's details if new info is provided
+        IF p_service_name IS NOT NULL THEN
+            UPDATE public.services SET
+                name = p_service_name,
+                link_type_id = COALESCE(p_link_type_id, link_type_id),
+                bandwidth_allocated = COALESCE(p_bandwidth_allocated, bandwidth_allocated),
+                vlan = COALESCE(p_vlan, vlan),
+                lc_id = COALESCE(p_lc_id, lc_id),
+                unique_id = COALESCE(p_unique_id, unique_id),
+                updated_at = NOW()
+            WHERE id = v_service_id;
+        END IF;
+
+    -- Priority 2: Logic for creating/finding by name if no explicit ID
+    ELSIF p_service_name IS NOT NULL THEN
+        
+        v_target_node_id := COALESCE(p_service_node_id, v_system_node_id);
+
+        -- 2a. Try to find existing service ID from current connection record if editing
+        IF p_id IS NOT NULL AND v_service_id IS NULL THEN
             SELECT service_id INTO v_service_id FROM public.system_connections WHERE id = p_id;
         END IF;
 
+        -- 2b. If not found, try to find by Name + Node (Prevent Duplicates at same location)
+        IF v_service_id IS NULL THEN
+            SELECT id INTO v_service_id 
+            FROM public.services 
+            WHERE name = p_service_name 
+              AND node_id = v_target_node_id
+            LIMIT 1;
+        END IF;
+
+        -- 2c. Perform Upsert
         IF v_service_id IS NOT NULL THEN
             UPDATE public.services SET
                 name = p_service_name,
-                link_type_id = p_link_type_id,
-                node_id = COALESCE(p_service_node_id, v_system_node_id),
-                bandwidth_allocated = p_bandwidth_allocated,
-                vlan = p_vlan,
-                lc_id = p_lc_id,
-                unique_id = p_unique_id,
+                link_type_id = COALESCE(p_link_type_id, link_type_id),
+                node_id = v_target_node_id,
+                bandwidth_allocated = COALESCE(p_bandwidth_allocated, bandwidth_allocated),
+                vlan = COALESCE(p_vlan, vlan),
+                lc_id = COALESCE(p_lc_id, lc_id),
+                unique_id = COALESCE(p_unique_id, unique_id),
                 updated_at = NOW()
             WHERE id = v_service_id;
         ELSE
             INSERT INTO public.services (
                 node_id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id
             ) VALUES (
-                COALESCE(p_service_node_id, v_system_node_id),
+                v_target_node_id,
                 p_service_name,
                 p_link_type_id,
                 p_bandwidth_allocated,
@@ -183,7 +222,9 @@ BEGIN
         END IF;
     END IF;
 
-    -- Upsert Connection
+    -- =================================================================
+    -- CONNECTION UPSERT
+    -- =================================================================
     INSERT INTO public.system_connections (
         id, system_id, service_id, media_type_id, status, 
         services_ip, services_interface,
@@ -238,15 +279,16 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission with the EXACT signature (34 args)
+-- Grant execute permission with the exact new signature
 GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
     UUID, UUID, BOOLEAN, UUID, 
-    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, -- Service args
-    INET, TEXT, -- New Physical args (services_ip, services_interface)
-    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, -- Topology args
-    UUID[], UUID[], UUID[], UUID[], -- Fiber args
-    TEXT, TEXT, -- Interface args
-    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT -- SDH args
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, 
+    INET, TEXT, 
+    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, 
+    UUID[], UUID[], UUID[], UUID[], 
+    TEXT, TEXT, 
+    TEXT, TEXT, TEXT, TEXT, TEXT, TEXT,
+    UUID 
 ) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring

@@ -129,6 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, tell me is all the pages being cached at the time of first load of home page and if I close the browser disconnect internet and open without internet after many days, will all the pages work. Also why navigation taking lots of time when project is offline first
-
-
+Let's begin! First of all, lets check and fix system connections issue. Exported file of systems connection dosen't contain service id, so upload is not inserting services correctly.SUPPOSE I ENTER End Node (Side B) DETAILS THEN for THAT SYSTEM, selected PORT SHOULD ACT AS WORKING PORT IN THAT SYSTEM WITH CURRENT SERVICE SELECTED AND ACCORDINGLY THAT SYSTEMS CONNECTION SHOULD AUTOMATICALLY GET FILLED WHICH IS NOT HAPPENING. Also it seems some issue with services trigger as automatically duplicate services are being created.
