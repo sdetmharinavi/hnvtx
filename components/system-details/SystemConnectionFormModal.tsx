@@ -2,15 +2,14 @@
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
-// ... (keep existing imports)
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ServicesRowSchema,
+  V_servicesRowSchema, // Changed from ServicesRowSchema
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { useTableQuery, PublicTableName } from "@/hooks/database";
+import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
 import {
@@ -142,15 +141,17 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "services" as PublicTableName, {
-      columns: "id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id",
+  // THE FIX: Switch to 'v_services' view to get 'link_type_name'
+  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
+      columns: "id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id",
       filters: { status: true }, 
       orderBy: [{ column: "name", ascending: true }],
       limit: 2000
   });
   
+  // THE FIX: Cast to V_servicesRowSchema to include link_type_name property
   const servicesData = useMemo(
-    () => (servicesResult?.data ? (servicesResult.data as unknown as ServicesRowSchema[]) : []),
+    () => (servicesResult?.data ? (servicesResult.data as unknown as V_servicesRowSchema[]) : []),
     [servicesResult.data]
   );
 
@@ -212,12 +213,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
   const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
 
+  // THE FIX: Updated label generation to include link_type_name
   const serviceOptions = useMemo(() => {
       let filteredServices = servicesData;
       if (watchLinkTypeId) {
           filteredServices = filteredServices.filter(s => s.link_type_id === watchLinkTypeId);
       }
-      return filteredServices.map(s => ({ value: s.id, label: s.name }));
+      return filteredServices.map(s => ({ 
+          value: s.id!, // V_servicesRowSchema id can be null in types, but is UUID in DB.
+          label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}` 
+      }));
   }, [servicesData, watchLinkTypeId]);
 
   useEffect(() => {
@@ -240,7 +245,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       if (serviceMode === 'existing' && watchExistingServiceId) {
           const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
           if (selectedService) {
-              setValue("service_name", selectedService.name);
+              setValue("service_name", selectedService.name!);
               if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
               if(selectedService.vlan) setValue("vlan", selectedService.vlan);
               if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
@@ -347,7 +352,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           p_a_customer: formData.a_customer || undefined,
           p_b_slot: formData.b_slot || undefined,
           p_b_customer: formData.b_customer || undefined,
-          // NEW PARAMETER: Explicitly pass service ID to link instead of relying on name lookup
           p_service_id: formData.existing_service_id || undefined
       };
       onSubmit(payload);
@@ -495,6 +499,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                 </TabsContent>
                 
+                {/* TAB 2: CONNECTIVITY (unchanged) */}
                 <TabsContent value="connectivity" className="space-y-6">
                     <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
                         <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
@@ -561,6 +566,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                 </TabsContent>
                 
+                {/* TAB 3: SDH (unchanged) */}
                 <TabsContent value="sdh" className="space-y-6">
                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
