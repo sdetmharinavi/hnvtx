@@ -29,8 +29,8 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
+import { formatIP } from '@/utils/formatters';
 
-// Define the payload type expected by the RPC
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 export default function SystemConnectionsPage() {
@@ -59,11 +59,9 @@ export default function SystemConnectionsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-  // --- Fetch System Details ---
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId }, orderBy:"system_working_interface" });
   const parentSystem = systemData?.data?.[0];
 
-  // --- Fetch Connections ---
   const { data: connectionsData, isLoading: isLoadingConnections, refetch } = usePagedData<V_system_connections_completeRowSchema>(
     supabase, 'v_system_connections_complete', {
       filters: {
@@ -77,7 +75,6 @@ export default function SystemConnectionsPage() {
   const connections = connectionsData?.data || [];
   const totalConnections = connectionsData?.total_count || 0;
 
-  // --- Fetch Port Stats (Local-First) ---
   const { data: ports = [] } = usePortsData(systemId)({
       currentPage: 1, 
       pageLimit: 5000, 
@@ -106,7 +103,6 @@ export default function SystemConnectionsPage() {
     ];
   }, [ports, totalConnections]);
 
-  // --- Mutations ---
   const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
     onSuccess: () => { 
       refetch(); 
@@ -147,12 +143,14 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
         { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
+        
         { excelHeader: 'Sn Id', dbKey: 'sn_id' },
         { excelHeader: 'En Id', dbKey: 'en_id' },
         { excelHeader: 'Sn Ip', dbKey: 'sn_ip' },
         { excelHeader: 'Sn Interface', dbKey: 'sn_interface' },
         { excelHeader: 'En Ip', dbKey: 'en_ip' },
         { excelHeader: 'En Interface', dbKey: 'en_interface' },
+        
         { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
         { excelHeader: 'Vlan', dbKey: 'vlan' },
         { excelHeader: 'LC ID', dbKey: 'lc_id' },      
@@ -160,6 +158,12 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
         { excelHeader: 'Customer Name', dbKey: 'service_name' },
+        
+        // ADDED: Keys to facilitate deduplication and linking
+        { excelHeader: 'Service Id', dbKey: 'service_id' },
+        { excelHeader: 'Service Node Id', dbKey: 'service_node_id' },
+        { excelHeader: 'Connected System Name', dbKey: 'connected_system_name' },
+
         { excelHeader: 'Bandwidth Allocated Mbps', dbKey: 'bandwidth_allocated' },
         { excelHeader: 'Working Fiber In Ids', dbKey: 'working_fiber_in_ids' },
         { excelHeader: 'Working Fiber Out Ids', dbKey: 'working_fiber_out_ids' },
@@ -168,6 +172,7 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'System Working Interface', dbKey: 'system_working_interface' },
         { excelHeader: 'System Protection Interface', dbKey: 'system_protection_interface' },
         { excelHeader: 'Connected Link Type', dbKey: 'connected_link_type_name' },
+        
         { excelHeader: 'Sdh Stm No', dbKey: 'sdh_stm_no' },
         { excelHeader: 'Sdh Carrier', dbKey: 'sdh_carrier' },
         { excelHeader: 'Sdh A Slot', dbKey: 'sdh_a_slot' },
@@ -254,8 +259,6 @@ export default function SystemConnectionsPage() {
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
   
-  // THE FIX: Simplified handleSave. The modal now constructs the full RPC payload.
-  // We just need to cast it to the correct type for the mutation hook.
   const handleSave = (payload: UpsertConnectionPayload) => {
     upsertMutation.mutate(payload, { 
       onSuccess: () => { 

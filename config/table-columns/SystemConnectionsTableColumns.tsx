@@ -6,6 +6,7 @@ import { formatDate } from "@/utils/formatters";
 import { Row } from "@/hooks/database";
 import { PathDisplay } from "@/components/system-details/PathDisplay"; // Updated Import
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
+import TruncateTooltip from "@/components/common/TruncateTooltip";
 
 export const SystemConnectionsTableColumns = (
   data: Row<"v_system_connections_complete">[]
@@ -28,10 +29,8 @@ export const SystemConnectionsTableColumns = (
         searchable: true,
         width: 250,
         render: (value, record) => (
-          <div className='flex flex-col'>
-            <span className='font-medium text-gray-900 dark:text-white'>
-              {(value as string) || record.connected_system_name || "N/A"}
-            </span>
+          <div className="grid ">
+            <TruncateTooltip text={(value as string) || record.connected_system_name || "N/A"} className='font-medium text-gray-900 dark:text-white' />
             <div className='text-xs text-gray-500 dark:text-gray-400 flex gap-2'>
               <span>{record.connected_link_type_name || record.en_system_type_name || ""}</span>
               {record.bandwidth_allocated && (

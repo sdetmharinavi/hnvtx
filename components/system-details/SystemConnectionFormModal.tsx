@@ -2,13 +2,14 @@
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
+// ... (keep existing imports)
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ServicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
-} from "@/schemas/zod-schemas";
+} from '@/schemas/zod-schemas';
 import { useTableQuery, PublicTableName } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
@@ -24,7 +25,6 @@ import { Network, Settings, Activity } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 import { formatIP } from "@/utils/formatters";
 
-// --- 1. Strict Zod Schema ---
 const formSchema = z.object({
   // Connection Keys
   system_id: z.string().uuid(),
@@ -44,14 +44,13 @@ const formSchema = z.object({
   // UI Helper
   existing_service_id: z.string().nullable().optional(),
   
-  // Connectivity (Physical Configuration on the Connection)
+  // Connectivity
   services_ip: z.string().nullable().optional(), 
   services_interface: z.string().nullable().optional(),
-
   system_working_interface: z.string().min(1, "Working Interface is required"),
   system_protection_interface: z.string().nullable().optional(),
   
-  // Explicit Endpoints (Topology)
+  // Topology
   sn_id: z.string().nullable().optional(),
   en_id: z.string().nullable().optional(),
   sn_ip: z.string().nullable().optional(),
@@ -70,15 +69,11 @@ const formSchema = z.object({
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
-
-// Extended Type for View Rows
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
     services_ip?: unknown; 
     services_interface?: string | null;
     customer_name?: string | null;
 };
-
-// Helper Type for the RPC Payload
 type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 interface SystemConnectionFormModalProps {
@@ -103,7 +98,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const [activeTab, setActiveTab] = useState("general");
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
 
-  // --- Form Setup ---
   const {
     control,
     handleSubmit,
@@ -123,7 +117,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     },
   });
 
-  // Watchers
   const watchLinkTypeId = watch("link_type_id");
   const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
@@ -133,9 +126,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchSnInterface = watch("sn_interface");
   const watchEnInterface = watch("en_interface");
   const watchSnId = watch("sn_id");
-  
-  // --- Data Fetching ---
-  
+
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
     columns: "id, system_name, ip_address, node_name",
     limit: 5000,
@@ -151,7 +142,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // Fetch Services
   const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "services" as PublicTableName, {
       columns: "id, name, link_type_id, bandwidth_allocated, vlan, lc_id, unique_id",
       filters: { status: true }, 
@@ -166,44 +156,33 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { 
-      system_id: watchSystemId || '',
-      port_admin_status: true 
-    },
+    filters: { system_id: watchSystemId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchSystemId,
   });
 
   const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { 
-      system_id: watchSnId || '',
-      port_admin_status: true 
-    },
+    filters: { system_id: watchSnId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchSnId,
   });
 
   const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
     columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { 
-      system_id: watchEnId || '',
-      port_admin_status: true
-    },
+    filters: { system_id: watchEnId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchEnId,
   });
 
-  // --- Helper Functions ---
-
   const mapPortsToOptions = (
     portsData: { port: string | null, port_utilization: boolean | null }[] | undefined, 
     currentValue?: string | null,
-    excludePort?: string | null // ADDED: support filtering
+    excludePort?: string | null
   ) => {
     const options = (portsData || [])
       .filter(p => p.port)
-      .filter(p => p.port !== excludePort) // Filter out the excluded port
+      .filter(p => p.port !== excludePort) 
       .map(p => ({
         value: p.port!,
         label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
@@ -224,19 +203,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     return port.port_type_code || port.port_type_name || "Unknown";
   }, []);
 
-  // --- Options Processing ---
-
-  const systemOptions = useMemo(
-    () =>
-      (systemsResult.data || [])
-        .map((s) => {
-          const loc = s.node_name ? ` @ ${s.node_name}` : "";
-          const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
-          const label = `${s.system_name}${loc}${ip}`;
-          return { value: s.id!, label };
-        }),
-    [systemsResult.data]
-  );
+  const systemOptions = useMemo(() => (systemsResult.data || []).map((s) => {
+      const loc = s.node_name ? ` @ ${s.node_name}` : "";
+      const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
+      return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
+    }), [systemsResult.data]);
 
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
   const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
@@ -249,47 +220,35 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       return filteredServices.map(s => ({ value: s.id, label: s.name }));
   }, [servicesData, watchLinkTypeId]);
 
-  // --- Effects: Auto-Populate IP ---
-  
-  // Auto-populate SN IP
   useEffect(() => {
     if (watchSnId && systemsResult.data) {
       const sys = systemsResult.data.find(s => s.id === watchSnId);
-      if (sys && sys.ip_address) {
-        setValue("sn_ip", formatIP(sys.ip_address));
-      } else {
-        setValue("sn_ip", "");
-      }
+      if (sys && sys.ip_address) setValue("sn_ip", formatIP(sys.ip_address));
+      else setValue("sn_ip", "");
     }
   }, [watchSnId, systemsResult.data, setValue]);
 
-  // Auto-populate EN IP
   useEffect(() => {
     if (watchEnId && systemsResult.data) {
       const sys = systemsResult.data.find(s => s.id === watchEnId);
-      if (sys && sys.ip_address) {
-        setValue("en_ip", formatIP(sys.ip_address));
-      } else {
-        setValue("en_ip", "");
-      }
+      if (sys && sys.ip_address) setValue("en_ip", formatIP(sys.ip_address));
+      else setValue("en_ip", "");
     }
   }, [watchEnId, systemsResult.data, setValue]);
 
-  // --- Effects: Service Logic ---
-  
   useEffect(() => {
-      if (!watchExistingServiceId) return;
-      
-      const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
-      if (selectedService) {
-          setValue("service_name", selectedService.name);
-          if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
-          if(selectedService.vlan) setValue("vlan", selectedService.vlan);
-          if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
-          if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
-          if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
+      if (serviceMode === 'existing' && watchExistingServiceId) {
+          const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
+          if (selectedService) {
+              setValue("service_name", selectedService.name);
+              if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
+              if(selectedService.vlan) setValue("vlan", selectedService.vlan);
+              if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
+              if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
+              if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
+          }
       }
-  }, [watchExistingServiceId, servicesData, setValue, watch]);
+  }, [watchExistingServiceId, serviceMode, servicesData, setValue]);
 
   useEffect(() => {
     if (serviceMode === 'manual') {
@@ -297,19 +256,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
   }, [serviceMode, setValue]);
 
-  // --- Computed Values for Display ---
   const workingPortType = getPortTypeDisplay(watchWorkingInterface, mainSystemPorts);
   const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
-  // --- Reset Logic ---
   useEffect(() => {
     if (isOpen) {
       setActiveTab("general");
       if (isEditMode && editingConnection) {
         const extConnection = editingConnection as ExtendedConnectionRow;
-        
         const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
 
@@ -317,35 +273,29 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
         reset({
           system_id: extConnection.system_id ?? parentSystem.id ?? "",
-          
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name), 
-          
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
           bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
           lc_id: safeValue(extConnection.lc_id),
           unique_id: safeValue(extConnection.unique_id),
           existing_service_id: safeNull(extConnection.service_id),
-
+          
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
-          
           services_ip: safeValue(String(extConnection.services_ip || "")),
           services_interface: safeValue(extConnection.services_interface),
-          
           system_working_interface: safeValue(extConnection.system_working_interface),
           system_protection_interface: safeNull(extConnection.system_protection_interface),
           commissioned_on: safeNull(extConnection.commissioned_on),
           remark: safeNull(extConnection.remark),
           bandwidth: safeNull(extConnection.bandwidth),
-          
           sn_id: safeNull(extConnection.sn_id),
           en_id: safeNull(extConnection.en_id),
           sn_interface: safeNull(extConnection.sn_interface),
           en_interface: safeNull(extConnection.en_interface),
           sn_ip: safeNull(extConnection.sn_ip as string),
           en_ip: safeNull(extConnection.en_ip as string),
-          
           stm_no: safeNull(extConnection.sdh_stm_no),
           carrier: safeNull(extConnection.sdh_carrier),
           a_slot: safeNull(extConnection.sdh_a_slot),
@@ -366,23 +316,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
   }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
 
-  const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
+    const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
       const payload: UpsertPayload = {
           p_id: isEditMode && editingConnection?.id ? editingConnection.id : undefined,
           p_system_id: formData.system_id,
-          
-          // Service
           p_service_name: formData.service_name,
           p_link_type_id: formData.link_type_id || undefined,
           p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
           p_vlan: formData.vlan || undefined,
           p_lc_id: formData.lc_id || undefined,
           p_unique_id: formData.unique_id || undefined,
-          
-          // Connection Physicals
           p_services_ip: formData.services_ip || undefined, 
           p_services_interface: formData.services_interface || undefined,
-
           p_media_type_id: formData.media_type_id,
           p_status: formData.status,
           p_bandwidth: formData.bandwidth || undefined,
@@ -402,8 +347,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           p_a_customer: formData.a_customer || undefined,
           p_b_slot: formData.b_slot || undefined,
           p_b_customer: formData.b_customer || undefined,
+          // NEW PARAMETER: Explicitly pass service ID to link instead of relying on name lookup
+          p_service_id: formData.existing_service_id || undefined
       };
-      
       onSubmit(payload);
   }, [onSubmit, isEditMode, editingConnection]);
 
@@ -426,15 +372,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       >
          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="general" className="flex items-center gap-2">
-                    <Activity className="w-4 h-4" /> General
-                </TabsTrigger>
-                <TabsTrigger value="connectivity" className="flex items-center gap-2">
-                    <Network className="w-4 h-4" /> Connectivity
-                </TabsTrigger>
-                <TabsTrigger value="sdh" className="flex items-center gap-2">
-                    <Settings className="w-4 h-4" /> SDH / Legacy
-                </TabsTrigger>
+                <TabsTrigger value="general" className="flex items-center gap-2"><Activity className="w-4 h-4" /> General</TabsTrigger>
+                <TabsTrigger value="connectivity" className="flex items-center gap-2"><Network className="w-4 h-4" /> Connectivity</TabsTrigger>
+                <TabsTrigger value="sdh" className="flex items-center gap-2"><Settings className="w-4 h-4" /> SDH / Legacy</TabsTrigger>
             </TabsList>
             
             <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
@@ -451,25 +391,32 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         />
                         
                         <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center gap-4 mb-2">
-                                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                    <input 
-                                        type="radio" 
-                                        checked={serviceMode === 'existing'} 
-                                        onChange={() => setServiceMode('existing')}
-                                        className="text-blue-600"
-                                    />
-                                    <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
-                                </label>
-                                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                    <input 
-                                        type="radio" 
-                                        checked={serviceMode === 'manual'} 
-                                        onChange={() => setServiceMode('manual')}
-                                        className="text-blue-600"
-                                    />
-                                    <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
-                                </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-4">
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            checked={serviceMode === 'existing'} 
+                                            onChange={() => setServiceMode('existing')}
+                                            className="text-blue-600"
+                                        />
+                                        <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            checked={serviceMode === 'manual'} 
+                                            onChange={() => setServiceMode('manual')}
+                                            className="text-blue-600"
+                                        />
+                                        <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
+                                    </label>
+                                </div>
+                                {isEditMode && serviceMode === 'manual' && (
+                                   <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200">
+                                      ⚠️ Service unlinked or deleted
+                                   </span>
+                                )}
                             </div>
 
                             {serviceMode === 'existing' ? (
@@ -483,10 +430,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                         placeholder="Search services..."
                                         clearable
                                     />
+                                    {/* Hidden input to hold the name for submission */}
                                     <input type="hidden" {...register("service_name")} />
-                                    {errors.service_name && (
-                                        <p className="text-xs text-red-500">{errors.service_name.message}</p>
-                                    )}
                                 </div>
                             ) : (
                                 <FormInput 
@@ -511,7 +456,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         <FormInput name="bandwidth" label="Physical Port Capacity" register={register} error={errors.bandwidth} placeholder="e.g. 1G" />
                         <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} />
                         
-                        {/* Working Port Selection with Type Display and Filtering */}
                         <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
                           <div className="col-span-2">
                             <FormSearchableSelect
@@ -530,14 +474,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                           </div>
                         </div>
                         
-                         {/* Protection Port Selection with Type Display and Filtering */}
                          <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
                           <div className="col-span-2">
                             <FormSearchableSelect
                               name="system_protection_interface"
                               label="Protection Port"
                               control={control}
-                              // THE FIX: Filter out the selected working port
                               options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface, watchWorkingInterface)}
                               error={errors.system_protection_interface}
                               placeholder="Select Protection Port"
@@ -553,32 +495,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                 </TabsContent>
                 
-                {/* TAB 2: CONNECTIVITY */}
                 <TabsContent value="connectivity" className="space-y-6">
-                    
-                    {/* Service Specific Network Fields */}
                     <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
                         <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <FormInput 
-                                name="services_ip" 
-                                label="Service IP" 
-                                register={register} 
-                                error={errors.services_ip} 
-                                placeholder="x.x.x.x"
-                            />
-                             <FormInput 
-                                name="services_interface" 
-                                label="Service Interface / Port" 
-                                register={register} 
-                                error={errors.services_interface} 
-                                placeholder="e.g. Vlan100"
-                            />
+                             <FormInput name="services_ip" label="Service IP" register={register} error={errors.services_ip} placeholder="x.x.x.x" />
+                             <FormInput name="services_interface" label="Service Interface / Port" register={register} error={errors.services_interface} placeholder="e.g. Vlan100" />
                         </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Start Node Panel */}
                         <div className="p-4 border rounded dark:border-gray-700">
                             <h3 className="font-semibold mb-3">Start Node (Side A)</h3>
                             <FormSearchableSelect name="sn_id" label="Start System" control={control} options={systemOptions} error={errors.sn_id} />
@@ -601,16 +526,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                 </div>
                             </div>
 
-                            <FormInput
-                              name="sn_ip"
-                              label="IP Address"
-                              register={register}
-                              error={errors.sn_ip}
-                              className="mt-2"
-                            />
+                            <FormInput name="sn_ip" label="IP Address" register={register} error={errors.sn_ip} className="mt-2" />
                         </div>
 
-                        {/* End Node Panel */}
                         <div className="p-4 border rounded dark:border-gray-700">
                             <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
                                 <h3 className="font-semibold">End Node (Side B)</h3>
@@ -629,12 +547,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                             placeholder="Select End Port"
                                         />
                                     ) : (
-                                        <FormInput 
-                                            name="en_interface" 
-                                            label="Interface / Port" 
-                                            register={register} 
-                                            placeholder="e.g. Port 1" 
-                                        />
+                                        <FormInput name="en_interface" label="Interface / Port" register={register} placeholder="e.g. Port 1" />
                                     )}
                                 </div>
                                 <div className="col-span-1">
@@ -643,38 +556,31 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                 </div>
                             </div>
                             
-                            <FormInput
-                              name="en_ip"
-                              label="IP Address"
-                              register={register}
-                              error={errors.en_ip}
-                              className="mt-2"
-                            />
+                            <FormInput name="en_ip" label="IP Address" register={register} error={errors.en_ip} className="mt-2" />
                         </div>
                     </div>
                 </TabsContent>
                 
-                {/* TAB 3: SDH */}
                 <TabsContent value="sdh" className="space-y-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
-                    </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormInput name="stm_no" label="STM Number / Hierarchy" register={register} error={errors.stm_no} placeholder="e.g. STM-16" />
-                    <FormInput name="carrier" label="Carrier / Operator" register={register} error={errors.carrier} />
-                    <div className="space-y-3">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
-                        <FormInput name="a_slot" label="Slot/Port" register={register} error={errors.a_slot} />
-                        <FormInput name="a_customer" label="Customer/Location" register={register} error={errors.a_customer} />
+                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
+                        </p>
                     </div>
-                    <div className="space-y-3">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
-                        <FormInput name="b_slot" label="Slot/Port" register={register} error={errors.b_slot} />
-                        <FormInput name="b_customer" label="Customer/Location" register={register} error={errors.b_customer} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormInput name="stm_no" label="STM Number / Hierarchy" register={register} error={errors.stm_no} placeholder="e.g. STM-16" />
+                        <FormInput name="carrier" label="Carrier / Operator" register={register} error={errors.carrier} />
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
+                            <FormInput name="a_slot" label="Slot/Port" register={register} error={errors.a_slot} />
+                            <FormInput name="a_customer" label="Customer/Location" register={register} error={errors.a_customer} />
+                        </div>
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
+                            <FormInput name="b_slot" label="Slot/Port" register={register} error={errors.b_slot} />
+                            <FormInput name="b_customer" label="Customer/Location" register={register} error={errors.b_customer} />
+                        </div>
                     </div>
-                </div>
                 </TabsContent>
             </div>
         </Tabs>
