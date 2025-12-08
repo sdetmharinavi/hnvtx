@@ -23,7 +23,7 @@ import {
   V_maintenance_areasRowSchema,
   V_cable_utilizationRowSchema,
   V_ring_nodesRowSchema,
-  Diary_notesRowSchema,
+
   V_employee_designationsRowSchema,
   V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
@@ -34,13 +34,14 @@ import {
   Ports_managementRowSchema,
   ServicesRowSchema,
   V_servicesRowSchema,
-  Logical_fiber_pathsRowSchema, // Import
-  V_end_to_end_pathsRowSchema, // Import
+  Logical_fiber_pathsRowSchema,
+  V_end_to_end_pathsRowSchema,
   V_audit_logsRowSchema,
   V_inventory_transactions_extendedRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
+import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 
 export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
@@ -94,7 +95,6 @@ export class HNVTMDatabase extends Dexie {
   ports_management!: Table<Ports_managementRowSchema, string>;
   services!: Table<ServicesRowSchema , string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
-  // Added Missing Tables
   logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
@@ -113,17 +113,18 @@ export class HNVTMDatabase extends Dexie {
   v_ports_management_complete!: Table<V_ports_management_completeRowSchema, string>;
   v_audit_logs!: Table<V_audit_logsRowSchema, number>;
   v_services!: Table<V_servicesRowSchema, string>;
-  
-  // Added Missing Views
   v_end_to_end_paths!: Table<V_end_to_end_pathsRowSchema, string>;
-  v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>; // Using any to avoid circular deps or just generic for now
+  v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
   constructor() {
     super('HNVTMDatabase');
-    this.version(19).stores({ 
+    
+    // UPDATED: Version 20
+    // Changes: Added 'en_id' to v_system_connections_complete indexes
+    this.version(20).stores({ 
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -142,8 +143,8 @@ export class HNVTMDatabase extends Dexie {
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
-      logical_fiber_paths: '&id, path_name, system_connection_id', // Added
-       inventory_transactions: '&id, inventory_item_id',
+      logical_fiber_paths: '&id, path_name, system_connection_id',
+      inventory_transactions: '&id, inventory_item_id',
       
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -157,12 +158,13 @@ export class HNVTMDatabase extends Dexie {
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      v_system_connections_complete: '&id, system_id, connected_system_name',
+      // FIX HERE: Added en_id to allow querying both ends of a connection locally
+      v_system_connections_complete: '&id, system_id, en_id, connected_system_name',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',
-      v_end_to_end_paths: '&path_id, path_name', // Added
-      v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at', // From previous step
+      v_end_to_end_paths: '&path_id, path_name',
+      v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
