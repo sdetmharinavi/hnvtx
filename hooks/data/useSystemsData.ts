@@ -7,9 +7,6 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for the Systems page.
- */
 export const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
@@ -17,15 +14,31 @@ export const useSystemsData = (
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
+    
+    // FIX: Construct proper SQL string for search
+    let searchString: string | undefined;
+
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      
+      searchString = `(` +
+        `system_name ILIKE '%${term}%' OR ` +
+        `system_type_name ILIKE '%${term}%' OR ` +
+        `node_name ILIKE '%${term}%' OR ` +
+        `ip_address::text ILIKE '%${term}%' OR ` + // Cast INET to text
+        `make ILIKE '%${term}%' OR ` +
+        `s_no ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address::text.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+    
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_systems_complete',
-      p_limit: 5000, // Fetch all matching for client-side processing
+      p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'system_name',
@@ -36,7 +49,6 @@ export const useSystemsData = (
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    // THE FIX: Use orderBy to get initial sorted data from Dexie
     return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
@@ -54,12 +66,12 @@ export const useSystemsData = (
     dexieTable: localDb.v_systems_complete,
   });
 
-  // 4. Client-side processing (filtering and pagination)
+  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allSystems) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-    
+
     let filtered = allSystems;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -68,7 +80,9 @@ export const useSystemsData = (
           system.system_name?.toLowerCase().includes(lowerQuery) ||
           system.system_type_name?.toLowerCase().includes(lowerQuery) ||
           system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery)
+          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery) ||
+          system.make?.toLowerCase().includes(lowerQuery) ||
+          system.s_no?.toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.system_type_name) {
@@ -77,7 +91,6 @@ export const useSystemsData = (
           system.system_type_name === filters.system_type_name
       );
     }
-    // THE FIX: Add filtering for system capacity
     if (filters.system_capacity_name) {
       filtered = filtered.filter(
         (system) =>
@@ -90,11 +103,10 @@ export const useSystemsData = (
       );
     }
 
-    // Explicitly sort the filtered results before pagination
-    filtered.sort((a, b) => 
-      (a.system_name || '').localeCompare(b.system_name || '', undefined, { 
-        numeric: true, 
-        sensitivity: 'base' 
+    filtered.sort((a, b) =>
+      (a.system_name || '').localeCompare(b.system_name || '', undefined, {
+        numeric: true,
+        sensitivity: 'base'
       })
     );
 

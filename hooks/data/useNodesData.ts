@@ -3,9 +3,9 @@ import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { buildRpcFilters } from '@/hooks/database'; // Using the standard helper
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 /**
  * Implements the local-first data fetching strategy for the Nodes page.
@@ -17,19 +17,34 @@ export const useNodesData = (
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
-    
-    // Construct the filters. 
-    // We send a STRING for the 'or' clause, which is safer for existing backend functions.
-    const rpcFilters = buildRpcFilters({ 
-      ...filters, 
-      or: searchQuery && searchQuery.trim() !== ''
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%,remark.ilike.%${searchQuery}%)` 
-        : undefined 
+
+    // FIX: Removed 'maintenance_area_name' from search.
+    // This prevents generic terms like "Transmission" (containing "mission") from matching every node.
+    // We also construct the SQL string manually to allow casting numeric coords to text.
+    let searchString: string | undefined;
+
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''"); // Basic sanitization
+
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        // `node_type_name ILIKE '%${term}%' OR ` +
+        // maintenance_area_name ILIKE ... <-- REMOVED
+        `node_type_code ILIKE '%${term}%' OR ` +
+        `remark ILIKE '%${term}%' OR ` +
+        `latitude::text ILIKE '%${term}%' OR ` +
+        `longitude::text ILIKE '%${term}%'` +
+      `)`;
+    }
+
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchString
     });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_nodes_complete',
-      p_limit: 5000, // Fetch all matching records to ensure client sorting/filtering works on full set
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
@@ -66,9 +81,8 @@ export const useNodesData = (
     }
 
     let filtered = allNodes;
-    
+
     // Robust Client-Side Filtering
-    // We trim and lowercase once for performance
     const cleanSearch = (searchQuery || '').trim().toLowerCase();
 
     if (cleanSearch) {
@@ -76,17 +90,17 @@ export const useNodesData = (
             // Helper to safely check inclusion against multiple fields
             const valuesToCheck = [
                 node.name,
-                node.node_type_name,
-                node.maintenance_area_name,
+                // node.node_type_name,
+                // node.maintenance_area_name, <-- REMOVED here as well
                 node.node_type_code,
                 node.remark,
                 node.latitude,
                 node.longitude
             ];
 
-            return valuesToCheck.some(val => 
-                val !== null && 
-                val !== undefined && 
+            return valuesToCheck.some(val =>
+                val !== null &&
+                val !== undefined &&
                 String(val).toLowerCase().includes(cleanSearch)
             );
         });
@@ -97,6 +111,10 @@ export const useNodesData = (
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
     
+    if (filters.maintenance_terminal_id) {
+        filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+
     if (filters.status) {
          const statusBool = filters.status === 'true';
          filtered = filtered.filter((node) => node.status === statusBool);
@@ -107,17 +125,18 @@ export const useNodesData = (
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
-    
+    const inactiveCount = totalCount - activeCount;
+
     // Pagination Logic
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
 
-    return { 
-        data: paginatedData, 
-        totalCount, 
-        activeCount, 
-        inactiveCount: totalCount - activeCount 
+    return {
+        data: paginatedData,
+        totalCount,
+        activeCount,
+        inactiveCount
     };
   }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
 
