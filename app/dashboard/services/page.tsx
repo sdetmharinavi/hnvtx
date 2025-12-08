@@ -26,7 +26,7 @@ import { useUser } from "@/providers/UserProvider";
 export default function ServicesPage() {
   const supabase = createClient();
   const [showFilters, setShowFilters] = useState(false);
-  const isSuperAdmin = useUser();
+  const { isSuperAdmin } = useUser();
   
   const {
     data, totalCount, isLoading, isFetching, error, refetch,
@@ -38,12 +38,10 @@ export default function ServicesPage() {
     displayNameField: 'name',
   });
 
-  // --- UPDATED DUPLICATE LOGIC ---
-  // Define composite identity function
+  // --- DUPLICATE DETECTION LOGIC ---
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
     const name = item.name?.trim().toLowerCase() || '';
     const linkType = item.link_type_name?.trim().toLowerCase() || '';
-    // Returns e.g., "sbi-kolkata-main|mpls"
     return `${name}|${linkType}`;
   }, []);
 
@@ -53,10 +51,9 @@ export default function ServicesPage() {
     duplicateSet 
   } = useDuplicateFinder(data, duplicateIdentity, 'Services');
 
-  // Pass duplicateSet to columns
   const columns = ServicesTableColumns(data, duplicateSet);
 
-  // Fetch Link Types for Filtering
+  // --- FETCH LINK TYPES FOR FILTER ---
   const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['link-types-for-filter'],
     async () => 
@@ -72,6 +69,7 @@ export default function ServicesPage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [linkTypesData]);
 
+  // --- MUTATIONS ---
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
      onSuccess: () => { refetch(); editModal.close(); toast.success("Service created."); }
   });
@@ -108,12 +106,11 @@ export default function ServicesPage() {
       exportConfig: {
           tableName: 'v_services',
           fileName: `All_Services`,
-          // Include filters in export if present
           filters: filters.filters
       }
   });
 
- // --- Add "Find Duplicates" button ---
+  // Add "Find Duplicates" button to header actions
   const enhancedHeaderActions: ActionButton[] = [
       ...headerActions,
       {
@@ -123,7 +120,7 @@ export default function ServicesPage() {
         leftIcon: <Copy className="w-4 h-4" />,
       }
   ];
-  // Reorder to put Add New last
+  // Reorder to ensure Add New is last
   const addNewAction = enhancedHeaderActions.pop(); 
   enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction!);
 
@@ -136,7 +133,6 @@ export default function ServicesPage() {
         description="Manage logical services, customers, and link definitions."
         icon={<DatabaseIcon />}
         stats={[{ value: totalCount, label: "Total Services" }]}
-        // Use the new actions array
         actions={enhancedHeaderActions} 
         isLoading={isLoading}
         isFetching={isFetching}
@@ -155,7 +151,7 @@ export default function ServicesPage() {
             total: totalCount,
             onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
         }}
-        searchable={false} // We use custom toolbar for search
+        searchable={false} // Disable default search as we use custom toolbar
         customToolbar={
             <SearchAndFilters
                 searchTerm={search.searchQuery}
@@ -170,6 +166,7 @@ export default function ServicesPage() {
                 activeFilterCount={Object.keys(filters.filters).length}
                 searchPlaceholder="Search by Service Name, Node, or Description..."
             >
+                {/* Link Type Filter */}
                 <SelectFilter
                     label="Link Type"
                     filterKey="link_type_id"
@@ -177,6 +174,8 @@ export default function ServicesPage() {
                     setFilters={filters.setFilters}
                     options={linkTypeOptions}
                 />
+                
+                {/* Status Filter */}
                 <SelectFilter
                     label="Status"
                     filterKey="status"
