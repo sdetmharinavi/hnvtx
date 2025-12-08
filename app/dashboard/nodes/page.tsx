@@ -1,11 +1,10 @@
 // app/dashboard/nodes/page.tsx
 'use client';
 
-// ... (Imports remain same)
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
-import { NodesFilters } from '@/components/nodes/NodesFilters';
+import { NodesFilters } from '@/components/nodes/NodesFilters'; // Updated component
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
@@ -53,15 +52,15 @@ const NodesPage = () => {
     dataQueryHook: useNodesData,
     displayNameField: 'name'
   });
+  
   const { isSuperAdmin } = useUser();
-
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
+  // 1. Fetch Node Types for Filter
   const { data: nodeTypeOptionsData } = useOfflineQuery(
     ['node-types-for-filter'],
     async () =>
-      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ??
-      [],
+      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ?? [],
     async () =>
       (await localDb.v_nodes_complete.toArray()).map((n) => ({
         node_type_id: n.node_type_id,
@@ -82,15 +81,33 @@ const NodesPage = () => {
         }
       }
     );
-    return Array.from(uniqueNodeTypes.values());
+    return Array.from(uniqueNodeTypes.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [nodeTypeOptionsData]);
 
+  // 2. Fetch Maintenance Areas for Filter
+  const { data: maintenanceAreasData } = useOfflineQuery(
+    ['maintenance-areas-for-filter-nodes'],
+    async () =>
+      (await createClient().from('maintenance_areas').select('id, name').eq('status', true)).data ?? [],
+    async () =>
+      (await localDb.maintenance_areas.where('status').equals('true').toArray()).map((m) => ({
+        id: m.id,
+        name: m.name,
+      }))
+  );
+
+  const maintenanceAreas = useMemo(() => {
+    if (!maintenanceAreasData) return [];
+    return maintenanceAreasData
+      .map(m => ({ id: m.id, name: m.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [maintenanceAreasData]);
+
   const isInitialLoad = isLoading && nodes.length === 0;
-  
+
   const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
-  
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
-  
+
   const tableActions = useMemo(
     () =>
       createStandardActions<V_nodes_completeRowSchema>({
@@ -100,7 +117,7 @@ const NodesPage = () => {
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete, isSuperAdmin]
   );
-  
+
   const headerActions = useStandardHeaderActions({
     data: nodes as NodesRowSchema[],
     onAddNew: editModal.openAdd,
@@ -157,8 +174,7 @@ const NodesPage = () => {
         actions={tableActions}
         selectable={isSuperAdmin ? true : false}
         showColumnsToggle={true}
-        // IMPORTANT: Must be false so DataTable displays exactly what the hook returns
-        searchable={false} 
+        searchable={false}
         onCellEdit={crudActions.handleCellEdit}
         pagination={{
           current: pagination.currentPage,
@@ -174,10 +190,19 @@ const NodesPage = () => {
           <NodesFilters
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
+            
+            // Node Type Props
             nodeTypes={nodeTypes}
             selectedNodeType={filters.filters.node_type_id as string | undefined}
             onNodeTypeChange={(value) =>
               filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))
+            }
+            
+            // Maintenance Area Props
+            maintenanceAreas={maintenanceAreas}
+            selectedMaintenanceArea={filters.filters.maintenance_terminal_id as string | undefined}
+            onMaintenanceAreaChange={(value) => 
+               filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: value } as Filters))
             }
           />
         }

@@ -1,4 +1,4 @@
-// path: hooks/database/utility-functions.ts
+// hooks/database/utility-functions.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from "@tanstack/react-query";
 import {
@@ -15,16 +15,20 @@ export function buildRpcFilters(filters: Filters): Json {
   const rpcFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
-    // --- THIS IS THE FIX ---
-    // Pass the 'or' string value directly through to the RPC parameters.
-    // The previous implementation was only looking for an object, which was incorrect for the data hooks.
-    if (key === 'or' && typeof filters.or === 'string' && filters.or.trim() !== '') {
-      rpcFilters.or = filters.or;
-      continue; // Continue to the next key
-    }
-    // --- END FIX ---
-
     const filterValue = filters[key];
+
+    // FIX: Correctly handle 'or' filter.
+    // If it's an object (Record<string, string>), pass it as a JSON object.
+    // If it's a string, pass it as a string.
+    if (key === 'or') {
+       if (typeof filterValue === 'object' && filterValue !== null && !Array.isArray(filterValue)) {
+         rpcFilters.or = filterValue as unknown as Json;
+       } else if (typeof filterValue === 'string' && filterValue.trim() !== '') {
+          rpcFilters.or = filterValue;
+       }
+       continue;
+    }
+
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
       rpcFilters[key] = filterValue as Json;
     }
@@ -77,15 +81,12 @@ export function applyFilters(query: any, filters: Filters): any {
     if (value === undefined || value === null) return;
 
     if (key === 'or') {
-      // THE FIX: Handle both string and object formats for the 'or' filter for consistency.
       if (typeof value === 'string' && value.trim() !== '') {
-        // Handles strings like `(column1.ilike.%value%,column2.ilike.%value%)`
-        const orConditions = value.replace(/[()]/g, ''); // Remove parentheses
+        const orConditions = value.replace(/[()]/g, '');
         if (orConditions) {
           modifiedQuery = modifiedQuery.or(orConditions);
         }
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        // Handles objects like `{ column1: 'value', column2: 'value' }`
         const orConditions = Object.entries(value)
           .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
           .join(',');
