@@ -1,6 +1,7 @@
 // app/dashboard/nodes/page.tsx
 'use client';
 
+// ... (Imports remain same)
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
@@ -54,7 +55,6 @@ const NodesPage = () => {
   });
   const { isSuperAdmin } = useUser();
 
-  // --- DUPLICATE DETECTION ---
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
   const { data: nodeTypeOptionsData } = useOfflineQuery(
@@ -87,7 +87,6 @@ const NodesPage = () => {
 
   const isInitialLoad = isLoading && nodes.length === 0;
   
-  // THE FIX: Pass duplicateSet to the columns generator
   const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
   
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
@@ -113,7 +112,6 @@ const NodesPage = () => {
     exportConfig: { tableName: 'nodes' },
   });
 
-  // Add Duplicate Toggle Button
   headerActions.splice(headerActions.length - 1, 0, {
     label: showDuplicates ? "Hide Duplicates" : "Find Duplicates",
     onClick: toggleDuplicates,
@@ -159,6 +157,8 @@ const NodesPage = () => {
         actions={tableActions}
         selectable={isSuperAdmin ? true : false}
         showColumnsToggle={true}
+        // IMPORTANT: Must be false so DataTable displays exactly what the hook returns
+        searchable={false} 
         onCellEdit={crudActions.handleCellEdit}
         pagination={{
           current: pagination.currentPage,

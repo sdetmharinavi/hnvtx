@@ -207,7 +207,7 @@ const PathBuilder: FC<{
             <div className="space-y-2 pt-3 mt-3 border-t dark:border-gray-600">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Cascade from: {lastNode?.name || startNode?.name}</p>
                 <div className="flex items-center gap-2">
-                    <div className="flex-grow">
+                    <div className="grow">
                       <SearchableSelect
                           options={availableCables}
                           value={selectedCableId}
