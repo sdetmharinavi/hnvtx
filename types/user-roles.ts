@@ -1,8 +1,5 @@
 // types/user-roles.ts
 
-import { Json } from "@/types/supabase-types";
-import z from "zod";
-
 export enum UserRole {
     ADMIN = "admin",
     CPANADMIN = "cpan_admin",
