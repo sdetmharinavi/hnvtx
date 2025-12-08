@@ -169,8 +169,11 @@ export function useSystemConnectionExcelUpload(
           p_vlan: toUndefined(processedData.vlan),
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
-          p_service_node_id: toUndefined(processedData.service_node_id), // Use provided service node if exists
+          p_service_node_id: toUndefined(processedData.service_node_id), 
           
+          // THE FIX: Explicitly map the service_id from the excel import
+          p_service_id: toUndefined(processedData.service_id),
+
           p_sn_id: toUndefined(processedData.sn_id),
           p_en_id: toUndefined(processedData.en_id),
           p_sn_ip: processedData.sn_ip || undefined,
