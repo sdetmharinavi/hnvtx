@@ -13,12 +13,24 @@ export const useAuditLogsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_audit_logsRowSchema[]> => {
+    
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `action_type ILIKE '%${term}%' OR ` +
+        `table_name ILIKE '%${term}%' OR ` +
+        `performed_by_name ILIKE '%${term}%' OR ` +
+        `performed_by_email ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(action_type.ilike.%${searchQuery}%,table_name.ilike.%${searchQuery}%,performed_by_name.ilike.%${searchQuery}%,performed_by_email.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+    
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_audit_logs',
       p_limit: 5000,
@@ -50,7 +62,7 @@ export const useAuditLogsData = (
 
   const processedData = useMemo(() => {
     if (!allLogs) return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    
+
     let filtered = allLogs;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -61,7 +73,7 @@ export const useAuditLogsData = (
         log.performed_by_email?.toLowerCase().includes(lowerQuery)
       );
     }
-    
+
     if (filters.table_name) {
       filtered = filtered.filter((log) => log.table_name === filters.table_name);
     }

@@ -27,6 +27,7 @@ export const SystemConnectionsTableColumns = (
       "sn_ip",
       "sn_id",
       "en_id",
+      "service_node_id",
       "sn_node_id",
       "en_node_id",
       "sdh_a_customer",

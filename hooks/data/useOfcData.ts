@@ -8,21 +8,32 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
 
-/**
- * Implements the local-first data fetching strategy for the OFC Cables page.
- */
 export const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
+    
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `route_name ILIKE '%${term}%' OR ` +
+        `asset_no ILIKE '%${term}%' OR ` +
+        `transnet_id ILIKE '%${term}%' OR ` +
+        `sn_name ILIKE '%${term}%' OR ` +
+        `en_name ILIKE '%${term}%' OR ` +
+        `ofc_owner_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(route_name.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%,transnet_id.ilike.%${searchQuery}%,sn_name.ilike.%${searchQuery}%,en_name.ilike.%${searchQuery}%,ofc_owner_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+    
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_ofc_cables_complete",
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -56,10 +67,9 @@ export const useOfcData = (
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
     let filtered = allCables;
-    
+
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      // THE FIX: This client-side filter now mirrors the server-side search logic.
       filtered = filtered.filter(
         (cable) =>
           cable.route_name?.toLowerCase().includes(lowerQuery) ||
