@@ -23,16 +23,16 @@ const transformConnectionPerspective = (
       ...conn,
       system_id: conn.en_id,
       system_name: conn.en_name,
-      system_type_name: conn.en_system_type_name, 
-      system_working_interface: conn.en_interface, 
+      system_type_name: conn.en_system_type_name,
+      system_working_interface: conn.en_interface,
       system_protection_interface: null,
       en_id: conn.system_id,
       en_name: conn.system_name,
       en_system_type_name: conn.system_type_name,
       en_interface: conn.system_working_interface,
-      connected_system_name: conn.system_name, 
+      connected_system_name: conn.system_name,
       connected_system_type_name: conn.system_type_name,
-      sn_id: conn.en_node_id, 
+      sn_id: conn.en_node_id,
       sn_name: conn.en_node_name,
       en_node_id: conn.sn_node_id,
       en_node_name: conn.sn_node_name,
@@ -47,7 +47,7 @@ export const useSystemConnectionsData = (
 ) => {
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_system_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
-    
+
     const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
       if (!systemId) return [];
 
@@ -61,8 +61,8 @@ export const useSystemConnectionsData = (
       if (error) throw error;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rawData = (data as any)?.data || [];
-      
-      return rawData.map((row: V_system_connections_completeRowSchema) => 
+
+      return rawData.map((row: V_system_connections_completeRowSchema) =>
         transformConnectionPerspective(row, systemId)
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +94,7 @@ export const useSystemConnectionsData = (
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_system_connections_complete,
-      localQueryDeps: [systemId], 
+      localQueryDeps: [systemId],
     });
 
     const processedData = useMemo(() => {
@@ -103,7 +103,7 @@ export const useSystemConnectionsData = (
       }
 
       let filtered = allConnections;
-      
+
       // 1. Text Search
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
@@ -113,12 +113,23 @@ export const useSystemConnectionsData = (
           conn.bandwidth_allocated?.toLowerCase().includes(lowerQuery)
         );
       }
-      
+
       // 2. Client-Side Filtering
-      if (filters.connected_link_type_name) {
+      
+      // FIX 1: Add Media Type Filter
+      if (filters.media_type_id) {
+        filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
+      }
+
+      // FIX 2: Check correct property for Link Type (ID vs Name)
+      // The Page component passes IDs for the options, so we must filter by ID.
+      if (filters.connected_link_type_id) {
+        filtered = filtered.filter(c => c.connected_link_type_id === filters.connected_link_type_id);
+      } else if (filters.connected_link_type_name) {
+        // Fallback for name-based filtering if needed
         filtered = filtered.filter(c => c.connected_link_type_name === filters.connected_link_type_name);
       }
-      
+
       if (filters.bandwidth) {
         filtered = filtered.filter(c => c.bandwidth === filters.bandwidth);
       }
@@ -127,7 +138,7 @@ export const useSystemConnectionsData = (
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(c => c.status === statusBool);
       }
-      
+
       filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
       const totalCount = filtered.length;

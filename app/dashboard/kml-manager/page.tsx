@@ -194,7 +194,7 @@ export default function KmlManagerPage() {
             </div>
           ) : (
              <>
-               <div className="absolute top-4 left-14 z-[400] bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-md shadow-md border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">
+               <div className="absolute top-4 left-14 z-400 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-md shadow-md border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">
                   Previewing: {selectedKml.pathname.replace('kml-files/', '')}
                </div>
                <KmlMap kmlUrl={selectedKml.downloadUrl} />

@@ -215,7 +215,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   if (standalone) {
     return (
       <div 
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        className="fixed inset-0 z-9999 flex items-center justify-center p-4"
         style={{
           background: "rgba(0, 0, 0, 0.6)",
           animation: "fadeIn 0.3s ease-out"
