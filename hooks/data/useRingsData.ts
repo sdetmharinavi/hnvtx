@@ -16,14 +16,25 @@ export const useRingsData = (
 ): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // THE FIX: Wrap onlineQueryFn in useCallback to stabilize its reference.
   const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
+    
+    // FIX: Use standard SQL syntax for search
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `ring_type_name ILIKE '%${term}%' OR ` +
+        `maintenance_area_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_rings',
       p_limit: 5000,
@@ -33,12 +44,11 @@ export const useRingsData = (
     });
     if (error) throw error;
     return (data as { data: V_ringsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]); // Dependencies are correct.
+  }, [searchQuery, filters]);
 
-  // THE FIX: Wrap localQueryFn in useCallback to stabilize its reference.
   const localQueryFn = useCallback(() => {
     return localDb.v_rings.toArray();
-  }, []); // This function has no dependencies.
+  }, []);
 
   const {
     data: allRings = [],
@@ -62,7 +72,7 @@ export const useRingsData = (
             inactiveCount: 0,
         };
     }
-    
+
     let filtered = allRings;
 
     if (searchQuery) {

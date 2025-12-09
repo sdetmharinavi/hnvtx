@@ -7,31 +7,35 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for System Ports.
- * Filters by system ID and performs client-side search.
- */
 export const usePortsData = (
   systemId: string | null
 ) => {
-  // Wrapped in a factory function to be used by useCrudManager
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
-    
+
     const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
       if (!systemId) return [];
+
+      // FIX: Use standard SQL syntax
+      let searchString: string | undefined;
+      if (searchQuery && searchQuery.trim() !== '') {
+          const term = searchQuery.trim().replace(/'/g, "''");
+          searchString = `(` +
+            `port ILIKE '%${term}%' OR ` +
+            `port_type_name ILIKE '%${term}%' OR ` +
+            `sfp_serial_no ILIKE '%${term}%'` +
+          `)`;
+      }
 
       const rpcFilters = buildRpcFilters({
         ...filters,
         system_id: systemId,
-        or: searchQuery
-          ? `(port.ilike.%${searchQuery}%,port_type_name.ilike.%${searchQuery}%,sfp_serial_no.ilike.%${searchQuery}%)`
-          : undefined,
+        or: searchString,
       });
 
       const { data, error } = await createClient().rpc('get_paged_data', {
         p_view_name: 'v_ports_management_complete',
-        p_limit: 5000, // Fetch larger set for client-side processing
+        p_limit: 5000, 
         p_offset: 0,
         p_filters: rpcFilters,
         p_order_by: 'port',
@@ -62,7 +66,7 @@ export const usePortsData = (
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_ports_management_complete,
-      localQueryDeps: [systemId], 
+      localQueryDeps: [systemId],
     });
 
     const processedData = useMemo(() => {
@@ -71,7 +75,7 @@ export const usePortsData = (
       }
 
       let filtered = allPorts;
-      
+
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((p) =>
@@ -80,15 +84,13 @@ export const usePortsData = (
           p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
         );
       }
-      
-      // Natural sort for ports (e.g., 1.1, 1.2, 1.10)
+
       const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      // Assuming valid port means "active" in this context since there is no active status column on the view
       const activeCount = totalCount;
-      
+
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
       const paginatedData = filtered.slice(start, end);

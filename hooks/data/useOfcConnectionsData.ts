@@ -7,26 +7,31 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for OFC Connections.
- * Filters by cable ID and performs client-side search.
- */
 export const useOfcConnectionsData = (
   cableId: string | null
 ) => {
-  // Wrapped in a factory function to be used by useCrudManager
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
-    
+
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
+
+      // FIX: Use standard SQL syntax
+      let searchString: string | undefined;
+      if (searchQuery && searchQuery.trim() !== '') {
+          const term = searchQuery.trim().replace(/'/g, "''");
+          searchString = `(` +
+            `system_name ILIKE '%${term}%' OR ` +
+            `connection_type ILIKE '%${term}%' OR ` +
+            `updated_sn_name ILIKE '%${term}%' OR ` + // Added these helpful fields for user
+            `updated_en_name ILIKE '%${term}%'` +
+          `)`;
+      }
 
       const rpcFilters = buildRpcFilters({
         ...filters,
         ofc_id: cableId,
-        or: searchQuery
-          ? `(system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%,customer_name.ilike.%${searchQuery}%)`
-          : undefined,
+        or: searchString,
       });
 
       const { data, error } = await createClient().rpc('get_paged_data', {
@@ -45,14 +50,12 @@ export const useOfcConnectionsData = (
 
     const localQueryFn = useCallback(() => {
       if (!cableId) {
-        // THE FIX: Return a valid Dexie PromiseExtended that resolves to an empty array
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
       return localDb.v_ofc_connections_complete.where('ofc_id').equals(cableId).toArray();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cableId]);
 
-    // THE FIX: Explicitly pass the Row Schema type to the hook
     const {
       data: allConnections = [],
       isLoading,
@@ -64,7 +67,7 @@ export const useOfcConnectionsData = (
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_ofc_connections_complete,
-      localQueryDeps: [cableId], 
+      localQueryDeps: [cableId],
     });
 
     const processedData = useMemo(() => {
@@ -73,8 +76,7 @@ export const useOfcConnectionsData = (
       }
 
       let filtered = allConnections;
-      
-      // Client-side filtering
+
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
@@ -82,12 +84,10 @@ export const useOfcConnectionsData = (
           conn.connection_type?.toLowerCase().includes(lowerQuery)
         );
       }
-      
-      // Default sort by fiber number
+
       filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
       const totalCount = filtered.length;
-      // THE FIX: Use loose comparison or boolean conversion if status might be null/undefined
       const activeCount = filtered.filter((c) => !!c.status).length;
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;

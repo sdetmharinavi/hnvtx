@@ -8,22 +8,29 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
 
-/**
- * Implements the local-first data fetching strategy for the Inventory page.
- */
 export const useInventoryData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
+    
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `asset_no ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+    
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_inventory_items',
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -36,12 +43,10 @@ export const useInventoryData = (
     return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
     return localDb.v_inventory_items.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allItems = [],
     isLoading,
@@ -55,12 +60,11 @@ export const useInventoryData = (
     dexieTable: localDb.v_inventory_items,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allItems) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-    
+
     let filtered = allItems;
 
     if (searchQuery) {
@@ -71,12 +75,10 @@ export const useInventoryData = (
         item.asset_no?.toLowerCase().includes(lowerQuery)
       );
     }
-    // Add other client-side filters if needed from the `filters` object
-
-    const totalCount = filtered.length;
-    // This view doesn't have a standard 'status' boolean, so we count all as 'active' for stats purposes.
-    const activeCount = totalCount;
     
+    const totalCount = filtered.length;
+    const activeCount = totalCount; // No status field
+
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);

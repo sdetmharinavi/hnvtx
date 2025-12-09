@@ -15,28 +15,36 @@ export const useServicesData = (
 
   // 1. Online Fetcher (RPC)
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-    // buildRpcFilters automatically maps filter keys (like link_type_id, status) 
-    // to the JSON parameter expected by the get_paged_data RPC.
+    
+    // FIX: Use standard SQL syntax for the OR clause
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `node_name ILIKE '%${term}%' OR ` +
+        `end_node_name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `link_type_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,end_node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,link_type_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
-    
+
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
-      p_limit: 5000, // Fetch all matching records to support client-side pagination/sorting if needed
+      p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
     });
 
     if (error) throw error;
-    
-    // Safe unwrapping of the RPC response
+
     let resultList: V_servicesRowSchema[] = [];
-    
     if (Array.isArray(data)) {
       if (data.length > 0 && 'data' in data[0]) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,11 +87,11 @@ export const useServicesData = (
     }
 
     let filtered = allServices;
-    
+
     // Search Filter
     if (searchQuery) {
         const lower = searchQuery.toLowerCase();
-        filtered = filtered.filter(s => 
+        filtered = filtered.filter(s =>
             s.name?.toLowerCase().includes(lower) ||
             s.node_name?.toLowerCase().includes(lower) ||
             s.end_node_name?.toLowerCase().includes(lower) ||
@@ -91,7 +99,7 @@ export const useServicesData = (
             s.link_type_name?.toLowerCase().includes(lower)
         );
     }
-    
+
     // Link Type Filter
     if (filters.link_type_id) {
         filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
@@ -99,18 +107,17 @@ export const useServicesData = (
 
     // Status Filter
     if (filters.status) {
-        // The filter value comes as a string 'true'/'false' from the URL/Select
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(s => s.status === statusBool);
     }
-    
+
     const totalCount = filtered.length;
     const activeCount = filtered.filter(s => s.status === true).length;
-    
+
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
-    
+
     return {
       data: paginatedData,
       totalCount,
@@ -119,11 +126,11 @@ export const useServicesData = (
     };
   }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 
-  return { 
-    ...processedData, 
-    isLoading, 
-    isFetching, 
-    error: error as Error | null, 
-    refetch 
+  return {
+    ...processedData,
+    isLoading,
+    isFetching,
+    error: error as Error | null,
+    refetch
   };
 };

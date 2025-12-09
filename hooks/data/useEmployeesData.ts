@@ -6,28 +6,34 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { DEFAULTS } from '@/constants/constants';
 
-/**
- * This is the refactored data fetching hook for the Employees page.
- * It now uses the `useLocalFirstQuery` hook to implement a local-first strategy.
- */
 export const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // THE FIX: Wrap onlineQueryFn in useCallback.
   const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
+    
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `employee_name ILIKE '%${term}%' OR ` +
+        `employee_pers_no ILIKE '%${term}%' OR ` +
+        `employee_email ILIKE '%${term}%' OR ` +
+        `employee_contact ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(employee_name.ilike.%${searchQuery}%,employee_pers_no.ilike.%${searchQuery}%,employee_email.ilike.%${searchQuery}%,employee_contact.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+    
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
-      p_limit: 5000, // Fetch all for client-side filtering
+      p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
     });
@@ -35,12 +41,10 @@ export const useEmployeesData = (
     return (data as { data: V_employeesRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // THE FIX: Wrap localQueryFn in useCallback.
   const localQueryFn = useCallback(() => {
     return localDb.v_employees.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allEmployees = [],
     isLoading,
@@ -54,12 +58,11 @@ export const useEmployeesData = (
     dexieTable: localDb.v_employees,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allEmployees) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-    
+
     let filtered = allEmployees;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
