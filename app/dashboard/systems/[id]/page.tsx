@@ -14,7 +14,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye, Monitor, PieChart } from 'lucide-react';
+import { ZapOff, Eye, Monitor } from 'lucide-react';
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
@@ -33,7 +33,7 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiGitBranch, FiPieChart, FiUpload } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
@@ -312,7 +312,7 @@ export default function SystemConnectionsPage() {
     label: "Configure Stats",
     onClick: () => setIsStatsConfigOpen(true),
     variant: 'outline',
-    leftIcon: <PieChart />,
+    leftIcon: <FiPieChart />,
     disabled: isLoadingConnections || !ports.length
   });
 
