@@ -42,6 +42,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
     overrides: {
       system_name: {
         title: 'Name',
+        sortable: true,
         width: 200,
         render: (value, record) => (
           <div className="flex flex-col">
@@ -61,16 +62,19 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       system_type_code: {
         title: 'Type',
         dataIndex: 'system_type_code',
+        sortable: true,
         width: 120,
       },
       // ADDED
       system_capacity_name: {
         title: 'Capacity',
+        sortable: true,
         width: 100,
       },
       node_name: {
         title: 'Node / Location',
         width: 150,
+        sortable: true,
         render: (value) => (
           <div className="flex items-center gap-1">
             <FiMapPin className="h-3 w-3 text-gray-400" />

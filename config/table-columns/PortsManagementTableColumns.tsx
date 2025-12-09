@@ -2,11 +2,13 @@
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { formatDate } from '@/utils/formatters';
+
 
 export const PortsManagementTableColumns = (data: V_ports_management_completeRowSchema[]) => {
   return useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    omit: ['id', 'system_id', 'port_type_id'],
+    omit: ['id','system_name', 'system_id','port_type_name','port_capacity', 'port_type_id'],
     overrides: {
       system_name: {
         title: 'System',
@@ -14,12 +16,16 @@ export const PortsManagementTableColumns = (data: V_ports_management_completeRow
       },
       port: {
         title: 'Port',
-        render: (value) => <span className="font-mono font-medium">{value as string}</span>,
         sortable: true,
         naturalSort: true, // Ensure ports like 1.1, 1.2, 1.10 sort correctly
+        render: (value) => <span className="font-mono font-medium">{value as string}</span>,
       },
       port_type_name: {
         title: 'Port Type',
+      },
+      port_type_code: {
+        title: 'Port Type',
+        sortable: true,
       },
       port_capacity: {
         title: 'Capacity',
@@ -31,12 +37,13 @@ export const PortsManagementTableColumns = (data: V_ports_management_completeRow
       // ADDED: New Columns Renderers
       port_utilization: {
         title: 'Utilization',
+        sortable: true,
         render: (value) => (
           <span
             className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
               value
                 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-700 dark:text-emerald-400'
             }`}
           >
             {value ? 'In Use' : 'Free'}
@@ -45,6 +52,7 @@ export const PortsManagementTableColumns = (data: V_ports_management_completeRow
       },
       port_admin_status: {
         title: 'Admin Status',
+        sortable: true,
         render: (value) => (
           <span
             className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
@@ -59,7 +67,18 @@ export const PortsManagementTableColumns = (data: V_ports_management_completeRow
       },
       services_count: {
         title: 'Services',
+        sortable: true,
         render: (value) => <span className="font-mono font-semibold">{value as number}</span>,
+      },
+      created_at: {
+        title: 'Created At',
+        sortable: true,
+        render: (value) => formatDate(value as string),
+      },
+      updated_at: {
+        title: 'Updated At',
+        sortable: true,
+        render: (value) => formatDate(value as string),
       },
     },
   });

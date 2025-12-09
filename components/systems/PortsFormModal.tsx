@@ -85,7 +85,7 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
   const modalTitle = isEditMode ? "Edit Port" : "Add New Port";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="full">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} className="w-o h-0 bg-transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
         <div className='space-y-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
