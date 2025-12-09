@@ -47,6 +47,17 @@ export const SystemConnectionsTableColumns = (
       "protection_fiber_out_ids",
       "service_id",
       "connected_link_type_id",
+      "sn_name",
+      "en_name",
+      "connected_system_type_name",
+      "en_system_type_name",
+      "sn_system_type_name",
+      "bandwidth",
+      "connected_system_name",
+      "service_name",
+      
+
+
     ],
     overrides: {
       service_name: {
