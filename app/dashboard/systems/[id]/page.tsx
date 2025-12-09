@@ -14,7 +14,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye, Monitor } from 'lucide-react';
+import { ZapOff, Eye, Monitor, PieChart } from 'lucide-react';
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
@@ -33,8 +33,8 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiDatabase, FiGitBranch, FiPieChart, FiUpload } from 'react-icons/fi';
-import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal'; // NEW IMPORT
+import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -66,7 +66,7 @@ export default function SystemConnectionsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-  // NEW: Stats Configuration State
+  // Stats Configuration State
   const [isStatsConfigOpen, setIsStatsConfigOpen] = useState(false);
   const [statsFilters, setStatsFilters] = useState<StatsFilterState>({
     includeAdminDown: true,
@@ -135,45 +135,31 @@ export default function SystemConnectionsPage() {
       filters: {}
   });
 
-  // --- UPDATED STATS CALCULATION WITH FILTERS ---
   const headerStats: StatProps[] = useMemo(() => {
     if (!ports || ports.length === 0) {
         return [{ label: 'Total Connections', value: totalConnections }];
     }
 
-    // 1. Apply Stats Filters
     const filteredPorts = ports.filter(p => {
-        // Filter by Admin Status
         if (!statsFilters.includeAdminDown && !p.port_admin_status) return false;
-
-        // Filter by Capacity
         if (statsFilters.selectedCapacities.length > 0) {
             if (!p.port_capacity || !statsFilters.selectedCapacities.includes(p.port_capacity)) return false;
         }
-
-        // Filter by Type
         const typeLabel = p.port_type_code || p.port_type_name || "Unknown";
         if (statsFilters.selectedTypes.length > 0) {
             if (!statsFilters.selectedTypes.includes(typeLabel)) return false;
         }
-
         return true;
     });
 
     const totalPorts = filteredPorts.length;
-    
-    // Note: Available ports logic - must be Admin UP and Not Utilized
     const availablePorts = filteredPorts.filter(p => !p.port_utilization && p.port_admin_status).length;
-    
     const portsDown = filteredPorts.filter(p => !p.port_admin_status).length;
     const utilPercent = totalPorts > 0 ? Math.round((filteredPorts.filter(p => p.port_utilization).length / totalPorts) * 100) : 0;
 
-    // Group stats by Port Type Code
     const typeStats = filteredPorts.reduce((acc, port) => {
         const code = port.port_type_code || (port.port_type_name ? port.port_type_name.replace(/[^A-Z0-9]/gi, '').substring(0, 6) : 'Other');
-
         if (!acc[code]) acc[code] = { total: 0, used: 0 };
-
         acc[code].total++;
         if (port.port_utilization) {
             acc[code].used++;
@@ -181,7 +167,6 @@ export default function SystemConnectionsPage() {
         return acc;
     }, {} as Record<string, { total: number; used: number }>);
 
-    // Create cards for each type
     const typeCards: StatProps[] = Object.entries(typeStats)
         .sort((a, b) => b[1].total - a[1].total)
         .map(([code, stats]) => {
@@ -195,7 +180,6 @@ export default function SystemConnectionsPage() {
 
     return [
         { label: 'Connections', value: totalConnections, color: 'default' },
-        // Show filtered context in label if filters are active
         { 
             label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`, 
             value: `${utilPercent}%`, 
@@ -324,12 +308,11 @@ export default function SystemConnectionsPage() {
     }
   });
 
-  // Inject Custom Action for Stats Configuration
   headerActions.splice(0, 0, {
     label: "Configure Stats",
     onClick: () => setIsStatsConfigOpen(true),
     variant: 'outline',
-    leftIcon: <FiPieChart />,
+    leftIcon: <PieChart />,
     disabled: isLoadingConnections || !ports.length
   });
 
@@ -363,7 +346,6 @@ export default function SystemConnectionsPage() {
 
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
 
-      {/* Stats Configuration Modal */}
       <StatsConfigModal
         isOpen={isStatsConfigOpen}
         onClose={() => setIsStatsConfigOpen(false)}
@@ -403,8 +385,9 @@ export default function SystemConnectionsPage() {
                 options={mediaOptions}
              />
              <SelectFilter
+                // FIX: Used corrected Key
                 label="Link Type"
-                filterKey="connected_link_type_name"
+                filterKey="connected_link_type_id"
                 filters={filters}
                 setFilters={setFilters}
                 options={linkTypeOptions}

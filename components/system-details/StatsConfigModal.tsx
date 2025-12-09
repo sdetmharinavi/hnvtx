@@ -4,7 +4,7 @@
 import React, { useMemo } from 'react';
 import { Modal, Button } from '@/components/common/ui';
 import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
-import { Check, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 export interface StatsFilterState {
   includeAdminDown: boolean;
@@ -135,10 +135,6 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {options.capacities.map(cap => {
-              const isSelected = localFilters.selectedCapacities.length === 0 || localFilters.selectedCapacities.includes(cap);
-              // Visual logic: If array is empty, everything is "technically" selected logically, but for UI toggling:
-              // - If array empty: Show all as selected or show "All" badge?
-              // Standard Filter Logic: Empty = All. Clicking one switches to specific mode.
               const isActive = localFilters.selectedCapacities.includes(cap);
 
               return (
