@@ -14,13 +14,38 @@ export const SystemConnectionsTableColumns = (
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
     omit: [
-      "id", "system_id", "system_name", "system_type_name", "media_type_id",
-      "created_at", "updated_at", "en_interface", "sn_interface", "en_ip",
-      "sn_ip", "sn_id", "en_id", "sn_node_id", "en_node_id", "sdh_a_customer",
-      "sdh_a_slot", "sdh_b_customer", "sdh_b_slot", "sdh_carrier", "sdh_stm_no",
-      "vlan", "en_node_name", "sn_node_name", "media_type_name", "remark",
-      "working_fiber_in_ids", "working_fiber_out_ids", "protection_fiber_in_ids",
-      "protection_fiber_out_ids", "service_id", "connected_link_type_id",
+      "id",
+      "system_id",
+      "system_name",
+      "system_type_name",
+      "media_type_id",
+      "created_at",
+      "updated_at",
+      "en_interface",
+      "sn_interface",
+      "en_ip",
+      "sn_ip",
+      "sn_id",
+      "en_id",
+      "sn_node_id",
+      "en_node_id",
+      "sdh_a_customer",
+      "sdh_a_slot",
+      "sdh_b_customer",
+      "sdh_b_slot",
+      "sdh_carrier",
+      "sdh_stm_no",
+      "vlan",
+      "en_node_name",
+      "sn_node_name",
+      "media_type_name",
+      "remark",
+      "working_fiber_in_ids",
+      "working_fiber_out_ids",
+      "protection_fiber_in_ids",
+      "protection_fiber_out_ids",
+      "service_id",
+      "connected_link_type_id",
     ],
     overrides: {
       service_name: {
@@ -29,26 +54,39 @@ export const SystemConnectionsTableColumns = (
         searchable: true,
         width: 250,
         render: (value, record) => (
-          <div className="grid ">
-            <TruncateTooltip text={(value as string) || record.connected_system_name || "N/A"} className='font-medium text-gray-900 dark:text-white' />
+          <div className='grid '>
+            <TruncateTooltip
+              text={(value as string) || record.connected_system_name || "N/A"}
+              className='font-medium text-gray-900 dark:text-white'
+            />
             <div className='text-xs text-gray-500 dark:text-gray-400 flex gap-2'>
               <span>{record.connected_link_type_name || record.en_system_type_name || ""}</span>
               {record.bandwidth_allocated && (
-                 <span className="bg-blue-50 text-blue-700 px-1 rounded">{record.bandwidth_allocated}</span>
+                <span className='bg-blue-50 text-blue-700 px-1 rounded'>
+                  {record.bandwidth_allocated}
+                </span>
               )}
             </div>
           </div>
         ),
       },
-      system_working_interface:{
-        title: 'Working Interface',
+      connected_link_type_name: {
         sortable: true,
-        naturalSort: true
+        naturalSort: true,
       },
-      system_protection_interface:{
-        title: 'Protection Interface',
+      bandwidth_allocated: {
         sortable: true,
-        naturalSort: true
+        naturalSort: true,
+      },
+      system_working_interface: {
+        title: "Working Interface",
+        sortable: true,
+        naturalSort: true,
+      },
+      system_protection_interface: {
+        title: "Protection Interface",
+        sortable: true,
+        naturalSort: true,
       },
       bandwidth: {
         title: "Capacity (Mbps)",
@@ -81,12 +119,16 @@ export const SystemConnectionsTableColumns = (
       lc_id: {
         title: "LC ID",
         width: 100,
-        excelFormat: 'text',
+        excelFormat: "text",
+        sortable: true,
+        naturalSort: true,
       },
       unique_id: {
         title: "Unique ID",
         width: 120,
-        excelFormat: 'text',
+        excelFormat: "text",
+        sortable: true,
+        naturalSort: true,
       },
       status: {
         title: "Status",
@@ -113,7 +155,7 @@ export const SystemConnectionsTableColumns = (
 
   const serviceNameIndex = baseColumns.findIndex((c) => c.key === "service_name");
   const finalColumns = [...baseColumns];
-  
+
   if (serviceNameIndex !== -1) {
     finalColumns.splice(serviceNameIndex + 1, 0, provisionedPathColumn);
   } else {
