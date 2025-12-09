@@ -54,8 +54,8 @@ export const SystemConnectionsTableColumns = (
       "sn_system_type_name",
       "bandwidth",
       "connected_system_name",
-      "service_name",
-      
+      "service_node_name",
+
 
 
     ],
