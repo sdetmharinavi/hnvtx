@@ -14,7 +14,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import { ZapOff, Eye, Monitor } from 'lucide-react'; 
+import { ZapOff, Eye, Monitor } from 'lucide-react';
 import { useDeprovisionServicePath } from '@/hooks/database/system-connection-hooks';
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
@@ -22,7 +22,7 @@ import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { SystemConnectionFormModal } from '@/components/system-details/SystemConnectionFormModal';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal'; 
+import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
@@ -33,7 +33,8 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { FiDatabase, FiGitBranch, FiPieChart, FiUpload } from 'react-icons/fi';
+import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal'; // NEW IMPORT
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -46,7 +47,7 @@ export default function SystemConnectionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -64,6 +65,14 @@ export default function SystemConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
+
+  // NEW: Stats Configuration State
+  const [isStatsConfigOpen, setIsStatsConfigOpen] = useState(false);
+  const [statsFilters, setStatsFilters] = useState<StatsFilterState>({
+    includeAdminDown: true,
+    selectedCapacities: [],
+    selectedTypes: []
+  });
 
   const tracePath = useTracePath(supabase);
 
@@ -83,17 +92,17 @@ export default function SystemConnectionsPage() {
   const linkTypeOptions = useMemo(() => (linkTypesData || []).map(t => ({ value: t.id, label: t.name })), [linkTypesData]);
 
   const useData = useSystemConnectionsData(systemId);
-  
-  const { 
-    data: connections, 
-    totalCount: totalConnections, 
-    isLoading: isLoadingConnections, 
-    refetch 
+
+  const {
+    data: connections,
+    totalCount: totalConnections,
+    isLoading: isLoadingConnections,
+    refetch
   } = useData({
     currentPage,
     pageLimit,
     searchQuery,
-    filters 
+    filters
   });
 
   const { data: uniqueValues } = useOfflineQuery(
@@ -120,29 +129,51 @@ export default function SystemConnectionsPage() {
   const parentSystem = systemData?.data?.[0];
 
   const { data: ports = [] } = usePortsData(systemId)({
-      currentPage: 1, 
-      pageLimit: 5000, 
+      currentPage: 1,
+      pageLimit: 5000,
       searchQuery: '',
-      filters: {} 
+      filters: {}
   });
 
-  // --- UPDATED STATS CALCULATION (With Percentage in Brackets) ---
+  // --- UPDATED STATS CALCULATION WITH FILTERS ---
   const headerStats: StatProps[] = useMemo(() => {
     if (!ports || ports.length === 0) {
         return [{ label: 'Total Connections', value: totalConnections }];
     }
 
-    const totalPorts = ports.length;
-    const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
-    const portsDown = ports.filter(p => !p.port_admin_status).length;
-    const utilPercent = totalPorts > 0 ? Math.round((ports.filter(p => p.port_utilization).length / totalPorts) * 100) : 0;
+    // 1. Apply Stats Filters
+    const filteredPorts = ports.filter(p => {
+        // Filter by Admin Status
+        if (!statsFilters.includeAdminDown && !p.port_admin_status) return false;
+
+        // Filter by Capacity
+        if (statsFilters.selectedCapacities.length > 0) {
+            if (!p.port_capacity || !statsFilters.selectedCapacities.includes(p.port_capacity)) return false;
+        }
+
+        // Filter by Type
+        const typeLabel = p.port_type_code || p.port_type_name || "Unknown";
+        if (statsFilters.selectedTypes.length > 0) {
+            if (!statsFilters.selectedTypes.includes(typeLabel)) return false;
+        }
+
+        return true;
+    });
+
+    const totalPorts = filteredPorts.length;
+    
+    // Note: Available ports logic - must be Admin UP and Not Utilized
+    const availablePorts = filteredPorts.filter(p => !p.port_utilization && p.port_admin_status).length;
+    
+    const portsDown = filteredPorts.filter(p => !p.port_admin_status).length;
+    const utilPercent = totalPorts > 0 ? Math.round((filteredPorts.filter(p => p.port_utilization).length / totalPorts) * 100) : 0;
 
     // Group stats by Port Type Code
-    const typeStats = ports.reduce((acc, port) => {
+    const typeStats = filteredPorts.reduce((acc, port) => {
         const code = port.port_type_code || (port.port_type_name ? port.port_type_name.replace(/[^A-Z0-9]/gi, '').substring(0, 6) : 'Other');
-        
+
         if (!acc[code]) acc[code] = { total: 0, used: 0 };
-        
+
         acc[code].total++;
         if (port.port_utilization) {
             acc[code].used++;
@@ -152,54 +183,53 @@ export default function SystemConnectionsPage() {
 
     // Create cards for each type
     const typeCards: StatProps[] = Object.entries(typeStats)
-        .sort((a, b) => b[1].total - a[1].total) // Sort by total count descending
+        .sort((a, b) => b[1].total - a[1].total)
         .map(([code, stats]) => {
-            // Calculate specific percentage for this port type
             const percentage = Math.round((stats.used / stats.total) * 100);
-            
             return {
                 label: `${code}`,
-                // Format: "5 / 10 (50%)"
                 value: `${stats.used} / ${stats.total} (${percentage}%)`,
-                // Warning color if > 90% used
                 color: percentage > 90 ? 'warning' : 'default'
             };
         });
 
     return [
         { label: 'Connections', value: totalConnections, color: 'default' },
-        { label: 'Utilization', value: `${utilPercent}%`, color: utilPercent > 80 ? 'warning' : 'default' },
+        // Show filtered context in label if filters are active
+        { 
+            label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`, 
+            value: `${utilPercent}%`, 
+            color: utilPercent > 80 ? 'warning' : 'default' 
+        },
         { label: 'Free Ports', value: availablePorts, color: availablePorts === 0 ? 'danger' : 'success' },
-        // Only show 'Down' card if there are actually ports down
         ...(portsDown > 0 ? [{ label: 'Ports Down', value: portsDown, color: 'danger' as const }] : []),
-        // Append dynamic type cards
         ...typeCards
     ];
-  }, [ports, totalConnections]);
+  }, [ports, totalConnections, statsFilters]);
 
-  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', { 
-    onSuccess: () => { 
-      refetch(); 
-      closeModal(); 
+  const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', {
+    onSuccess: () => {
+      refetch();
+      closeModal();
       queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
-    } 
+    }
   });
-  
+
   const deprovisionMutation = useDeprovisionServicePath();
-  const deleteManager = useDeleteManager({ 
-    tableName: 'system_connections', 
-    onSuccess: () => { 
+  const deleteManager = useDeleteManager({
+    tableName: 'system_connections',
+    onSuccess: () => {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
-    } 
+    }
   });
-  
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, { 
-    onSuccess: (result) => { 
+
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
+    onSuccess: (result) => {
       if (result.successCount > 0) {
         refetch();
       }
-    } 
+    }
   });
 
   const columns = SystemConnectionsTableColumns(connections);
@@ -225,7 +255,7 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'En Interface', dbKey: 'en_interface' },
         { excelHeader: 'Bandwidth Mbps', dbKey: 'bandwidth' },
         { excelHeader: 'Vlan', dbKey: 'vlan' },
-        { excelHeader: 'LC ID', dbKey: 'lc_id' },      
+        { excelHeader: 'LC ID', dbKey: 'lc_id' },
         { excelHeader: 'Unique ID', dbKey: 'unique_id' },
         { excelHeader: 'Commissioned On', dbKey: 'commissioned_on', transform: toPgDate },
         { excelHeader: 'Remark', dbKey: 'remark' },
@@ -252,7 +282,7 @@ export default function SystemConnectionsPage() {
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [uploadConnections, parentSystem]);
-  
+
   const handleOpenAllocationModal = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToAllocate(record); setIsAllocationModalOpen(true); }, []);
   const handleDeprovisionClick = useCallback((record: V_system_connections_completeRowSchema) => { setConnectionToDeprovision(record); setDeprovisionModalOpen(true); }, []);
   const handleConfirmDeprovision = () => {
@@ -287,28 +317,37 @@ export default function SystemConnectionsPage() {
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: openAddModal,
     isLoading: isLoadingConnections,
-    exportConfig: { 
-        tableName: 'v_system_connections_complete', 
-        fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`, 
-        filters: { system_id: systemId } 
+    exportConfig: {
+        tableName: 'v_system_connections_complete',
+        fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`,
+        filters: { system_id: systemId }
     }
   });
 
-  headerActions.splice(1, 0, {
+  // Inject Custom Action for Stats Configuration
+  headerActions.splice(0, 0, {
+    label: "Configure Stats",
+    onClick: () => setIsStatsConfigOpen(true),
+    variant: 'outline',
+    leftIcon: <FiPieChart />,
+    disabled: isLoadingConnections || !ports.length
+  });
+
+  headerActions.splice(2, 0, {
     label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
     variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
   });
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
-  
+
   const handleSave = (payload: UpsertConnectionPayload) => {
-    upsertMutation.mutate(payload, { 
-      onSuccess: () => { 
-        refetch(); 
+    upsertMutation.mutate(payload, {
+      onSuccess: () => {
+        refetch();
         closeModal();
         queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ports_management_complete', { filters: { system_id: systemId } }] });
-      } 
+      }
     });
   };
 
@@ -323,6 +362,15 @@ export default function SystemConnectionsPage() {
       />
 
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+
+      {/* Stats Configuration Modal */}
+      <StatsConfigModal
+        isOpen={isStatsConfigOpen}
+        onClose={() => setIsStatsConfigOpen(false)}
+        ports={ports}
+        filters={statsFilters}
+        onApply={setStatsFilters}
+      />
 
       <DataTable
         tableName="v_system_connections_complete"
@@ -385,12 +433,12 @@ export default function SystemConnectionsPage() {
       />
 
       {isEditModalOpen && (
-        <SystemConnectionFormModal 
-             isOpen={isEditModalOpen} onClose={closeModal} parentSystem={parentSystem} 
-             editingConnection={editingRecord} onSubmit={handleSave} isLoading={upsertMutation.isPending} 
+        <SystemConnectionFormModal
+             isOpen={isEditModalOpen} onClose={closeModal} parentSystem={parentSystem}
+             editingConnection={editingRecord} onSubmit={handleSave} isLoading={upsertMutation.isPending}
         />
       )}
-      
+
       <ConfirmModal isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel} title="Confirm Delete" message={deleteManager.confirmationMessage} loading={deleteManager.isPending} type="danger" />
       {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={handleAllocationSave} parentSystem={parentSystem} />}
       <ConfirmModal isOpen={isDeprovisionModalOpen} onConfirm={handleConfirmDeprovision} onCancel={() => setDeprovisionModalOpen(false)} title="Confirm Deprovisioning" message={`Are you sure you want to deprovision this connection?`} loading={deprovisionMutation.isPending} type="danger" />
