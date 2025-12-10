@@ -60,7 +60,6 @@ export function useUppyUploader({
 
     // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions 
     // which sometimes misses 'getResponseError' in specific versions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     uppy.use(XHRUpload, {
       endpoint: endpoint,
       method: "POST",
@@ -80,10 +79,13 @@ export function useUppyUploader({
             const json = JSON.parse(responseText);
             if (json.error) return new Error(json.error);
         } catch (e) {
+          console.log(e);
+          
             // ignore JSON parse error
         }
         return new Error(response.statusText || "Upload failed due to network or server error");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     // Configure Webcam

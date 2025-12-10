@@ -32,7 +32,9 @@ const PORT_TYPES = {
   GE_OPTICAL: '4b86eede-d502-4368-85c1-8e68d9b50282',
   GE_ELECTRICAL: 'bf63f1aa-0976-401a-8309-1ede374d0c54',
   TEN_GE: '6c9460cb-22dd-4457-82e3-0ccebe0f3afc',
-  STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'
+  STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc',
+  // New Type for C1 System (Ensure this UUID exists in lookup_types or replace with existing Ethernet UUID)
+  HUNDRED_GE: '8495033c-5353-4876-b605-65476a6a9787' 
 };
 
 export const PORT_TEMPLATES: Record<string, PortTemplate> = {
@@ -125,7 +127,6 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
   },
 
   // B2 Ports (System Capacity ID: 8e4dde01-4900-4fa5-a9e5-9b89bfe2663a)
-  // Similar to B1 but potentially different specific requirements, matching the SQL logic structure
   "8e4dde01-4900-4fa5-a9e5-9b89bfe2663a": {
     name: "B2 Ports Configuration",
     description: "Configuration matching B1 layout (STM1, E1, GE, 10GE)",
@@ -169,7 +170,26 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
     ports: [
       ...Array.from({length: 12}, (_, i) => createPort(`ETH-1-1-${i+1}`, PORT_TYPES.GE_OPTICAL, 'GE(O)')),
       ...['13', '14', '15', '16'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.TEN_GE, '10GE')),
-      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')), // Note: SQL used GE(E) with GE_OPTICAL UUID, preserving that logic here
+      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')), 
+      createPort('NMS', PORT_TYPES.FE, 'FE')
+    ]
+  },
+
+  // B4 Ports (System Capacity ID: 2efeaec3-25db-4e92-bb1b-0ce370547cd6)
+  "2efeaec3-25db-4e92-bb1b-0ce370547cd6": {
+    name: "B4 Ports Configuration",
+    description: "High density hybrid configuration (100G/10G/1G)",
+    ports: [
+      // 100G Ports (1 & 2)
+      createPort('ETH-1-1-1', PORT_TYPES.HUNDRED_GE, '100G'),
+      createPort('ETH-1-1-2', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // 10G Ports (4 to 13)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-1-${i+4}`, PORT_TYPES.TEN_GE, '10G')),
+
+      // 1G Ports (14 to 31)
+      ...Array.from({length: 18}, (_, i) => createPort(`ETH-1-1-${i+14}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
       createPort('NMS', PORT_TYPES.FE, 'FE')
     ]
   },
@@ -184,6 +204,44 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
       createPort('P3', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
       createPort('P4', PORT_TYPES.TEN_GE, '10GE'),
       createPort('P5', PORT_TYPES.TEN_GE, '10GE')
+    ]
+  },
+
+  // C1 Ports (System Capacity ID: 8be22dce-38be-47d4-a1cb-59749b7c9b07)
+  "8be22dce-38be-47d4-a1cb-59749b7c9b07": {
+    name: "C1 Ports Configuration",
+    description: "High Capacity POTN System (100G, 10G, STM1)",
+    ports: [
+      // Slot 4: ETH-1-4-1 to 4 (10G), 5-6 (100G)
+      ...Array.from({length: 4}, (_, i) => createPort(`ETH-1-4-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      ...Array.from({length: 2}, (_, i) => createPort(`ETH-1-4-${i+5}`, PORT_TYPES.HUNDRED_GE, '100G')),
+
+      // Slot 5: ETH-1-5-1 to 10 (10G), 11 (100G)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-5-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      createPort('ETH-1-5-11', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // Slot 6: ETH-1-6-1 to 10 (10G), 11 (100G)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-6-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      createPort('ETH-1-6-11', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // Slot 7: ETH-1-7-1 to 8 (10G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-7-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+
+      // Slot 12: ETH-1-12-1 to 4 (1000 BaseT), STM1-1-12-5 to 8
+      ...Array.from({length: 4}, (_, i) => createPort(`ETH-1-12-${i+1}`, PORT_TYPES.GE_ELECTRICAL, '1000 BaseT')),
+      ...Array.from({length: 4}, (_, i) => createPort(`STM1-1-12-${i+5}`, PORT_TYPES.STM1, 'STM1')),
+
+      // Slot 15: ETH-1-15-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-15-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 16: ETH-1-16-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-16-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 17: ETH-1-17-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-17-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 18: ETH-1-18-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-18-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
     ]
   }
 };

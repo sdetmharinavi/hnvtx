@@ -11,6 +11,7 @@ import { UserProvider } from "@/providers/UserProvider";
 import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { CommandMenu } from "@/components/common/CommandMenu";
 
 export default function DashboardLayout({
   children,
@@ -30,6 +31,8 @@ export default function DashboardLayout({
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
+            {/* INJECT GLOBAL COMPONENTS*/}
+            <CommandMenu /> 
             {/* This div contains all the UI chrome and will be hidden during print */}
             <div className="no-print">
               <Sidebar 
