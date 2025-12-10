@@ -5,11 +5,11 @@ import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  V_servicesRowSchema, // Changed from ServicesRowSchema
+  V_servicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { useTableQuery } from "@/hooks/database";
+import { useTableQuery, useTableRecord } from "@/hooks/database"; // Added useTableRecord
 import { createClient } from "@/utils/supabase/client";
 import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Network, Settings, Activity } from "lucide-react";
+import { Network, Settings, Activity, RefreshCw } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 import { formatIP } from "@/utils/formatters";
 
@@ -68,11 +68,6 @@ const formSchema = z.object({
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
-type ExtendedConnectionRow = V_system_connections_completeRowSchema & { 
-    services_ip?: unknown; 
-    services_interface?: string | null;
-    customer_name?: string | null;
-};
 type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
 interface SystemConnectionFormModalProps {
@@ -96,6 +91,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
+
+  // --- THE FIX: Fetch True Record ---
+  // If editing, we fetch the pristine record from the DB to avoid "flipped" data from the UI hook.
+  const { data: pristineRecord, isLoading: isLoadingPristine } = useTableRecord(
+    supabase,
+    'v_system_connections_complete',
+    isEditMode ? editingConnection?.id || null : null,
+    { enabled: isOpen && isEditMode }
+  );
 
   const {
     control,
@@ -141,7 +145,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  // THE FIX: Switch to 'v_services' view to get 'link_type_name'
   const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
       columns: "id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id",
       filters: { status: true }, 
@@ -149,7 +152,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       limit: 2000
   });
   
-  // THE FIX: Cast to V_servicesRowSchema to include link_type_name property
   const servicesData = useMemo(
     () => (servicesResult?.data ? (servicesResult.data as unknown as V_servicesRowSchema[]) : []),
     [servicesResult.data]
@@ -213,14 +215,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
   const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
 
-  // THE FIX: Updated label generation to include link_type_name
   const serviceOptions = useMemo(() => {
       let filteredServices = servicesData;
       if (watchLinkTypeId) {
           filteredServices = filteredServices.filter(s => s.link_type_id === watchLinkTypeId);
       }
       return filteredServices.map(s => ({ 
-          value: s.id!, // V_servicesRowSchema id can be null in types, but is UUID in DB.
+          value: s.id!, 
           label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}` 
       }));
   }, [servicesData, watchLinkTypeId]);
@@ -266,60 +267,73 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
 
+  // --- FORM INITIALIZATION ---
   useEffect(() => {
     if (isOpen) {
       setActiveTab("general");
-      if (isEditMode && editingConnection) {
-        const extConnection = editingConnection as ExtendedConnectionRow;
+      
+      // If we are editing, wait for the pristine record to load
+      if (isEditMode && pristineRecord) {
         const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
 
-        setServiceMode(extConnection.service_id ? 'existing' : 'manual');
+        // Note: pristineRecord comes directly from DB via ID, so its system_id and system_working_interface
+        // are strictly the Source System and Source Port. No flipping has occurred.
+        
+        setServiceMode(pristineRecord.service_id ? 'existing' : 'manual');
 
         reset({
-          system_id: extConnection.system_id ?? parentSystem.id ?? "",
-          service_name: safeValue(extConnection.service_name ?? extConnection.customer_name), 
-          link_type_id: safeValue(extConnection.connected_link_type_id),
-          vlan: safeValue(extConnection.vlan),
-          bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
-          lc_id: safeValue(extConnection.lc_id),
-          unique_id: safeValue(extConnection.unique_id),
-          existing_service_id: safeNull(extConnection.service_id),
+          system_id: pristineRecord.system_id ?? "",
+          service_name: safeValue(pristineRecord.service_name), 
+          link_type_id: safeValue(pristineRecord.connected_link_type_id),
+          vlan: safeValue(pristineRecord.vlan),
+          bandwidth_allocated: safeValue(pristineRecord.bandwidth_allocated),
+          lc_id: safeValue(pristineRecord.lc_id),
+          unique_id: safeValue(pristineRecord.unique_id),
+          existing_service_id: safeNull(pristineRecord.service_id),
           
-          status: extConnection.status ?? true,
-          media_type_id: safeValue(extConnection.media_type_id),
-          services_ip: safeValue(String(extConnection.services_ip || "")),
-          services_interface: safeValue(extConnection.services_interface),
-          system_working_interface: safeValue(extConnection.system_working_interface),
-          system_protection_interface: safeNull(extConnection.system_protection_interface),
-          commissioned_on: safeNull(extConnection.commissioned_on),
-          remark: safeNull(extConnection.remark),
-          bandwidth: safeNull(extConnection.bandwidth),
-          sn_id: safeNull(extConnection.sn_id),
-          en_id: safeNull(extConnection.en_id),
-          sn_interface: safeNull(extConnection.sn_interface),
-          en_interface: safeNull(extConnection.en_interface),
-          sn_ip: safeNull(extConnection.sn_ip as string),
-          en_ip: safeNull(extConnection.en_ip as string),
-          stm_no: safeNull(extConnection.sdh_stm_no),
-          carrier: safeNull(extConnection.sdh_carrier),
-          a_slot: safeNull(extConnection.sdh_a_slot),
-          a_customer: safeNull(extConnection.sdh_a_customer),
-          b_slot: safeNull(extConnection.sdh_b_slot),
-          b_customer: safeNull(extConnection.sdh_b_customer),
+          status: pristineRecord.status ?? true,
+          media_type_id: safeValue(pristineRecord.media_type_id),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          services_ip: safeValue(String((pristineRecord as any).services_ip || "")),
+          services_interface: safeValue(pristineRecord.services_interface),
+          
+          system_working_interface: safeValue(pristineRecord.system_working_interface),
+          system_protection_interface: safeNull(pristineRecord.system_protection_interface),
+          
+          sn_id: safeNull(pristineRecord.sn_id),
+          en_id: safeNull(pristineRecord.en_id),
+          sn_interface: safeNull(pristineRecord.sn_interface),
+          en_interface: safeNull(pristineRecord.en_interface),
+          sn_ip: safeNull(String(pristineRecord.sn_ip || "")),
+          en_ip: safeNull(String(pristineRecord.en_ip || "")),
+
+          commissioned_on: safeNull(pristineRecord.commissioned_on),
+          remark: safeNull(pristineRecord.remark),
+          bandwidth: safeNull(pristineRecord.bandwidth),
+          
+          stm_no: safeNull(pristineRecord.sdh_stm_no),
+          carrier: safeNull(pristineRecord.sdh_carrier),
+          a_slot: safeNull(pristineRecord.sdh_a_slot),
+          a_customer: safeNull(pristineRecord.sdh_a_customer),
+          b_slot: safeNull(pristineRecord.sdh_b_slot),
+          b_customer: safeNull(pristineRecord.sdh_b_customer),
         });
-      } else {
+      } else if (!isEditMode) {
+        // Create Mode
         reset({
           system_id: parentSystem.id!,
           status: true,
           media_type_id: "",
           service_name: "",
           link_type_id: "",
+          sn_id: parentSystem.node_id,
+          sn_ip: formatIP(parentSystem.ip_address)
         });
         setServiceMode('existing');
       }
     }
-  }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
+  }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
 
     const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
       const payload: UpsertPayload = {
@@ -362,14 +376,26 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     toast.error("Please check the form for errors.");
   };
 
+  // Loading state handling for pristine record fetch
+  const effectiveLoading = isLoading || (isEditMode && isLoadingPristine);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Service Connection" : "New Service Connection"} size="full">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
-        isLoading={isLoading}
-        title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
-        subtitle={`System: ${parentSystem.system_name}`}
+        isLoading={effectiveLoading}
+        title={
+          <div className="flex items-center gap-2">
+             <span>{isEditMode ? "Edit Service Connection" : "New Service Connection"}</span>
+             {effectiveLoading && <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />}
+          </div>
+        }
+        subtitle={
+           isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id 
+           ? `⚠️ Editing Physical Source: ${pristineRecord.system_name}` // Alert user they are editing the remote end source
+           : `System: ${parentSystem.system_name}`
+        }
         standalone
         widthClass="w-full max-w-full"
         heightClass="h-auto max-h-[90vh]"
@@ -464,9 +490,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                           <div className="col-span-2">
                             <FormSearchableSelect
                               name="system_working_interface"
-                              label="Working Port"
+                              label="Working Port *"
                               control={control}
-                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
+                              options={mapPortsToOptions(mainSystemPorts?.data, pristineRecord?.system_working_interface)}
                               error={errors.system_working_interface}
                               placeholder="Select Working Port"
                               required
@@ -484,7 +510,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                               name="system_protection_interface"
                               label="Protection Port"
                               control={control}
-                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface, watchWorkingInterface)}
+                              options={mapPortsToOptions(mainSystemPorts?.data, pristineRecord?.system_protection_interface, watchWorkingInterface)}
                               error={errors.system_protection_interface}
                               placeholder="Select Protection Port"
                               clearable
@@ -499,7 +525,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                 </TabsContent>
                 
-                {/* TAB 2: CONNECTIVITY (unchanged) */}
+                {/* TAB 2: CONNECTIVITY */}
                 <TabsContent value="connectivity" className="space-y-6">
                     <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
                         <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
@@ -519,7 +545,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                         name="sn_interface"
                                         label="Interface"
                                         control={control}
-                                        options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
+                                        options={mapPortsToOptions(snPorts?.data, pristineRecord?.sn_interface)}
                                         error={errors.sn_interface}
                                         placeholder={watchSnId ? "Select Start Port" : "Select System First"}
                                         disabled={!watchSnId}
@@ -547,7 +573,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                                             name="en_interface"
                                             label="Interface"
                                             control={control}
-                                            options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
+                                            options={mapPortsToOptions(enPorts?.data, pristineRecord?.en_interface)}
                                             error={errors.en_interface}
                                             placeholder="Select End Port"
                                         />
@@ -566,7 +592,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                 </TabsContent>
                 
-                {/* TAB 3: SDH (unchanged) */}
+                {/* TAB 3: SDH */}
                 <TabsContent value="sdh" className="space-y-6">
                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
