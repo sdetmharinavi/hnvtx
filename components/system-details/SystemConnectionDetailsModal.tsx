@@ -16,6 +16,7 @@ import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
+import { FiActivity, FiHash, FiServer, FiTag } from 'react-icons/fi';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -215,6 +216,117 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  const renderCircuitMobile = useCallback((record: any, _actions: React.ReactNode) => {
+    return (
+        <div className="flex flex-col gap-4">
+            {/* Header: Service Name */}
+            <div>
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wide">Service Name / Customer</div>
+                <div className="font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight">
+                    {record.service_name || record.customer_name || 'N/A'}
+                </div>
+                 <div className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    {record.connected_link_type_name || 'Link'}
+                </div>
+            </div>
+
+            {/* Bandwidth Card */}
+            <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-3">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                        <FiActivity size={12} />
+                        <span className="text-[10px] uppercase font-bold">Capacity</span>
+                    </div>
+                    <div className="font-mono text-sm font-semibold">{record.bandwidth || '-'}</div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-3">
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                        <FiActivity size={12} />
+                        <span className="text-[10px] uppercase font-bold">Allocated</span>
+                    </div>
+                    <div className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        {record.bandwidth_allocated || '-'}
+                    </div>
+                </div>
+            </div>
+
+            {/* IDs Grid */}
+            <div className="grid grid-cols-3 gap-2">
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiTag size={10} />
+                        <span className="text-[10px] uppercase font-bold">VLAN</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate">{record.vlan || '-'}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiHash size={10} />
+                        <span className="text-[10px] uppercase font-bold">LC ID</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate" title={record.lc_id}>{record.lc_id || '-'}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiHash size={10} />
+                        <span className="text-[10px] uppercase font-bold">Unique</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate" title={record.unique_id}>{record.unique_id || '-'}</span>
+                </div>
+            </div>
+        </div>
+    );
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderEndpointMobile = useCallback((record: any) => {
+     return (
+        <div className="flex items-center justify-between">
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-blue-600 text-xs uppercase tracking-wide">{record.end}</span>
+                    <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300">
+                        {record.node_ip || 'No IP'}
+                    </span>
+                </div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <FiServer className="w-3.5 h-3.5 text-gray-400" />
+                    {record.system_name}
+                </div>
+            </div>
+            <div className="text-right">
+                <div className="text-[10px] text-gray-400 uppercase mb-0.5">Interface</div>
+                <div className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
+                    {record.interface || '-'}
+                </div>
+            </div>
+        </div>
+     );
+  }, []);
+
+  const renderFiberMobile = useCallback((record: Row<'v_ofc_connections_complete'>) => {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+                 <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[70%]">
+                    {record.ofc_route_name}
+                 </span>
+                 <div className="flex items-center gap-1 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                    <span>F{record.fiber_no_sn}</span>
+                    <span className="text-gray-400">→</span>
+                    <span>F{record.fiber_no_en}</span>
+                 </div>
+            </div>
+            
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
+                <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
+                <span>Loss: {record.route_loss_db || '-'} dB</span>
+            </div>
+        </div>
+    );
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -240,6 +352,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 searchable={false}
                 showColumnSelector={false}
                 onCellEdit={handleCellEdit}
+                renderMobileItem={renderCircuitMobile}
                 pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
                 bordered={false}
                 density="compact"
@@ -259,6 +372,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 columns={endPointColumns}
                 searchable={false}
                 showColumnSelector={false}
+                renderMobileItem={renderEndpointMobile}
                 onCellEdit={handleCellEdit}
                 pagination={{ current: 1, pageSize: 2, total: 2, onChange: () => {} }}
                 bordered={false}
@@ -301,6 +415,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}
+                        renderMobileItem={renderFiberMobile}
                         pagination={{ current: 1, pageSize: 10, total: ofcData.data.length, onChange: () => {} }}
                         density="compact"
                     />

@@ -2,7 +2,7 @@
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
 import { NodesFilters } from '@/components/nodes/NodesFilters'; // Updated component
 import { createStandardActions } from '@/components/table/action-helpers';
@@ -10,13 +10,13 @@ import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { Filters } from '@/hooks/database';
+import { Filters, Row } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useMemo } from 'react';
-import { FiCpu, FiCopy } from 'react-icons/fi';
+import { useCallback, useMemo } from 'react';
+import { FiCpu, FiCopy, FiMapPin, FiInfo } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
@@ -142,6 +142,42 @@ const NodesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+               {record.node_type_name || record.node_type_code || 'Unknown Type'}
+            </div>
+          </div>
+          {actions}
+        </div>
+        
+        <div className="grid grid-cols-1 gap-1 text-sm mt-1">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+             <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+             <span className="truncate">{record.maintenance_area_name || 'No Area'}</span>
+          </div>
+          {record.remark && (
+             <div className="flex items-start gap-2 text-gray-500 dark:text-gray-400 text-xs italic">
+                <FiInfo className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span className="line-clamp-2">{record.remark}</span>
+             </div>
+          )}
+        </div>
+        
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400 font-mono">
+                {record.latitude?.toFixed(4)}, {record.longitude?.toFixed(4)}
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -176,6 +212,7 @@ const NodesPage = () => {
         showColumnsToggle={true}
         searchable={false}
         onCellEdit={crudActions.handleCellEdit}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

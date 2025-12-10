@@ -28,6 +28,7 @@ import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { PortHeatmap } from '@/components/systems/PortHeatmap'; // IMPORTED
+import { Activity, Shield } from 'lucide-react';
 
 // Extended type to handle the new column before codegen updates
 type ExtendedConnection = V_system_connections_completeRowSchema & {
@@ -221,6 +222,68 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     return actions;
   }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
+  const renderMobileItem = useCallback((record: Row<'v_ports_management_complete'>, actions: React.ReactNode) => {
+    // Lookup services from the map we built earlier
+    const portName = record.port;
+    const services = portName ? portServicesMap[portName] : [];
+
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             <div className="h-10 w-10 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+                {record.port?.replace(/^(Gi|Te|Fa|Eth)/i, '') || '?'}
+             </div>
+             <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">{record.port}</h4>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex gap-2">
+                   <span>{record.port_type_name || 'Generic'}</span>
+                   {record.sfp_serial_no && <span className="font-mono">SFP: {record.sfp_serial_no}</span>}
+                </div>
+             </div>
+          </div>
+          {actions}
+        </div>
+
+        {/* Service Allocation Section */}
+        {services && services.length > 0 ? (
+           <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
+              <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
+              {services.map(svc => (
+                 <div key={svc.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
+                    {svc.system_working_interface === portName ? 
+                        <Activity className="w-3.5 h-3.5 text-blue-500" /> : 
+                        <Shield className="w-3.5 h-3.5 text-purple-500" />
+                    }
+                    <div className="min-w-0 flex-1">
+                       <div className="font-medium truncate text-gray-800 dark:text-gray-200">
+                         {svc.service_name || svc.connected_system_name}
+                       </div>
+                       <div className="text-xs text-gray-500 truncate">
+                         {svc.connected_link_type_name} {svc.bandwidth_allocated && `• ${svc.bandwidth_allocated}`}
+                       </div>
+                    </div>
+                 </div>
+              ))}
+           </div>
+        ) : (
+            <div className="text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                No services allocated
+            </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${record.port_admin_status ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                {record.port_admin_status ? 'Admin UP' : 'Admin DOWN'}
+            </span>
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${record.port_utilization ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                {record.port_utilization ? 'Utilized' : 'Free'}
+            </span>
+        </div>
+      </div>
+    );
+  }, [portServicesMap]);
+
   if (!isOpen) return null;
 
   return (
@@ -254,6 +317,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           loading={isLoading}
           isFetching={isFetching || isMutating}
           actions={tableActions}
+          renderMobileItem={renderMobileItem}
           pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
