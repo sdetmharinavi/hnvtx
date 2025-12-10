@@ -152,6 +152,7 @@ SELECT
   -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
+  sc.en_protection_interface, -- NEW COLUMN ADDED HERE
   
   -- SDH Details
   scs.stm_no AS sdh_stm_no, 

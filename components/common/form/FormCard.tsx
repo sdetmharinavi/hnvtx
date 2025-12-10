@@ -3,7 +3,7 @@ import { cn } from "@/utils/classNames";
 
 interface FormCardProps {
   title: React.ReactNode;
-  subtitle?: string;
+  subtitle?:string | React.ReactNode;
   isLoading?: boolean;
   onCancel: () => void;
   onSubmit?: React.FormEventHandler<HTMLFormElement>;

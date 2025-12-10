@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.services (
 -- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  en_protection_interface TEXT,
   
   -- The System providing the connection
   system_id UUID REFERENCES public.systems (id) NOT NULL,

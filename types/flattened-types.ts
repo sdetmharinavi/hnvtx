@@ -1802,6 +1802,7 @@ export type System_connectionsRow = {
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
+    en_protection_interface: string | null;
     id: string;
     media_type_id: string | null;
     protection_fiber_in_ids: string[] | null;
@@ -1829,6 +1830,7 @@ export type System_connectionsInsert = {
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
+    en_protection_interface?: string | null;
     id?: string;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
@@ -1856,6 +1858,7 @@ export type System_connectionsUpdate = {
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
+    en_protection_interface?: string | null;
     id?: string;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
@@ -2398,6 +2401,7 @@ export type V_system_connections_completeRow = {
     en_name: string | null;
     en_node_id: string | null;
     en_node_name: string | null;
+    en_protection_interface: string | null;
     en_system_type_name: string | null;
     id: string | null;
     lc_id: string | null;

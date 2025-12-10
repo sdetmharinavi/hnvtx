@@ -3162,6 +3162,7 @@ export type Database = {
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
+          en_protection_interface: string | null
           id: string
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
@@ -3188,6 +3189,7 @@ export type Database = {
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
+          en_protection_interface?: string | null
           id?: string
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
@@ -3214,6 +3216,7 @@ export type Database = {
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
+          en_protection_interface?: string | null
           id?: string
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
@@ -4932,6 +4935,7 @@ export type Database = {
           en_name: string | null
           en_node_id: string | null
           en_node_name: string | null
+          en_protection_interface: string | null
           en_system_type_name: string | null
           id: string | null
           lc_id: string | null
@@ -5772,6 +5776,7 @@ export type Database = {
           p_en_id?: string
           p_en_interface?: string
           p_en_ip?: unknown
+          p_en_protection_interface?: string
           p_id?: string
           p_lc_id?: string
           p_link_type_id?: string
@@ -5804,6 +5809,7 @@ export type Database = {
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
+          en_protection_interface: string | null
           id: string
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null

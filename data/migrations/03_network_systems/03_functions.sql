@@ -131,7 +131,8 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_b_customer TEXT DEFAULT NULL,
 
     -- NEW PARAM: Explicit Service Link
-    p_service_id UUID DEFAULT NULL
+    p_service_id UUID DEFAULT NULL,
+    p_en_protection_interface TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
@@ -231,7 +232,7 @@ BEGIN
         sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
         bandwidth, commissioned_on, remark, 
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
-        system_working_interface, system_protection_interface,
+        system_working_interface, system_protection_interface,en_protection_interface,
         updated_at
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_id, v_service_id, p_media_type_id, p_status,
@@ -239,7 +240,7 @@ BEGIN
         p_sn_id, p_en_id, p_sn_ip, p_sn_interface, p_en_ip, p_en_interface,
         p_bandwidth, p_commissioned_on, p_remark,
         p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
-        p_system_working_interface, p_system_protection_interface,
+        p_system_working_interface, p_system_protection_interface,p_en_protection_interface,
         NOW()
     ) ON CONFLICT (id) DO UPDATE SET
         media_type_id = EXCLUDED.media_type_id, 
@@ -262,6 +263,7 @@ BEGIN
         protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
         system_working_interface = EXCLUDED.system_working_interface,
         system_protection_interface = EXCLUDED.system_protection_interface,
+        en_protection_interface = EXCLUDED.en_protection_interface,
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
     
@@ -288,7 +290,7 @@ GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
     UUID[], UUID[], UUID[], UUID[], 
     TEXT, TEXT, 
     TEXT, TEXT, TEXT, TEXT, TEXT, TEXT,
-    UUID 
+    UUID, TEXT 
 ) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring
