@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Copy, Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { ConfirmModal, ErrorDisplay, StatusBadge } from "@/components/common/ui";
 import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { Row } from "@/hooks/database";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
@@ -22,6 +22,7 @@ import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
 import { useUser } from "@/providers/UserProvider";
+import { FiMapPin } from "react-icons/fi";
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -124,6 +125,51 @@ export default function ServicesPage() {
   const addNewAction = enhancedHeaderActions.pop(); 
   enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction!);
 
+  const renderMobileItem = useCallback((record: Row<'v_services'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="max-w-[75%]">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm wrap-break-words">
+              {record.name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+               <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                 {record.link_type_name || 'Link'}
+               </span>
+               {record.bandwidth_allocated && (
+                 <span className="text-xs text-gray-500 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
+                   {record.bandwidth_allocated}
+                 </span>
+               )}
+            </div>
+          </div>
+          {actions}
+        </div>
+        
+        <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 space-y-1">
+           <div className="flex items-start gap-1.5">
+              <FiMapPin className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
+              <span className="truncate">{record.node_name}</span>
+           </div>
+           {record.end_node_name && (
+             <div className="flex items-start gap-1.5">
+                <FiMapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                <span className="truncate">{record.end_node_name}</span>
+             </div>
+           )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400 font-mono">
+               ID: {record.unique_id || 'N/A'} {record.vlan ? `| V:${record.vlan}` : ''}
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
@@ -145,6 +191,7 @@ export default function ServicesPage() {
         loading={isLoading}
         isFetching={isFetching}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,

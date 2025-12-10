@@ -1,9 +1,9 @@
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
@@ -17,7 +17,7 @@ import {
   Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { FiUsers } from 'react-icons/fi';
+import { FiBriefcase, FiUsers } from 'react-icons/fi';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
@@ -28,6 +28,7 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
+import { Row } from '@/hooks/database';
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -106,6 +107,46 @@ const EmployeesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_employees'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold text-sm">
+                {record.employee_name?.charAt(0)}
+             </div>
+             <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.employee_name}</h3>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                   <FiBriefcase className="w-3 h-3" />
+                   <span>{record.employee_designation_name || 'No Designation'}</span>
+                </div>
+             </div>
+          </div>
+          {actions}
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <span className="block text-gray-400 text-[10px] uppercase">ID</span>
+               <span className="font-mono text-gray-700 dark:text-gray-300">{record.employee_pers_no || '-'}</span>
+            </div>
+            <div className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <span className="block text-gray-400 text-[10px] uppercase">Contact</span>
+               <span className="text-gray-700 dark:text-gray-300 truncate block">{record.employee_contact || '-'}</span>
+            </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-xs text-gray-500 truncate max-w-[150px]">
+               {record.maintenance_area_name}
+             </span>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -142,6 +183,7 @@ const EmployeesPage = () => {
         isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable={isSuperAdmin ? true : false}
+        renderMobileItem={renderMobileItem}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_employeesRowSchema & { id: string } => row.id != null

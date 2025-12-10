@@ -4,7 +4,7 @@
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, RoleBadge, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { UserFilters } from '@/components/users/UserFilters';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
@@ -23,6 +23,8 @@ import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
 import { useUser } from '@/providers/UserProvider';
 import { useUsersData } from '@/hooks/data/useUsersData';
+import Image from 'next/image';
+import { UserRole } from '@/types/user-roles';
 
 const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -141,6 +143,48 @@ const AdminUsersPage = () => {
     },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             {record.avatar_url ? (
+                <Image src={record.avatar_url} alt="avatar" width={40} height={40} className="rounded-full" />
+             ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold">
+                    {record.first_name?.charAt(0)}
+                </div>
+             )}
+             <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    {record.full_name}
+                    {record.is_super_admin && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200">SUPER</span>}
+                </h3>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{record.email}</div>
+             </div>
+          </div>
+          {actions}
+        </div>
+        
+        <div className="flex flex-wrap gap-2 items-center">
+            <RoleBadge role={record.role as UserRole} />
+            {record.designation && (
+                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+                    {record.designation}
+                </span>
+            )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400">
+                 Active: {record.last_activity_period || 'Never'}
+             </div>
+             <StatusBadge status={record.status ?? 'inactive'} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) {
     return (
       <ErrorDisplay
@@ -196,6 +240,7 @@ const AdminUsersPage = () => {
         }}
         searchable={false}
         filterable={false}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

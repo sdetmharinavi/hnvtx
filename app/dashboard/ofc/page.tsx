@@ -2,11 +2,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/common/BulkActions';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
@@ -29,6 +29,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
+import { Row } from '@/hooks/database';
+import { FiActivity, FiMap } from 'react-icons/fi';
 
 const OfcPage = () => {
   const router = useRouter();
@@ -170,6 +172,51 @@ const OfcPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_ofc_cables_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="max-w-[70%]">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
+              {record.route_name}
+            </h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
+               {record.asset_no || 'No Asset #'}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs mt-1">
+           <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+             {record.capacity}F
+           </span>
+           <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
+             {record.ofc_type_name}
+           </span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300 mt-1">
+           <div className="flex items-center gap-1.5">
+              <FiActivity className="w-3 h-3 text-gray-400" />
+              <span>{record.current_rkm} km</span>
+           </div>
+           <div className="flex items-center gap-1.5">
+              <FiMap className="w-3 h-3 text-gray-400" />
+              <span className="truncate">{record.maintenance_area_name}</span>
+           </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-[10px] text-gray-400 truncate max-w-[150px]">
+               {record.ofc_owner_name}
+             </span>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -207,6 +254,7 @@ const OfcPage = () => {
         isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable={isSuperAdmin === true}
+        renderMobileItem={renderMobileItem}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null

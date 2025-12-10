@@ -8,7 +8,7 @@ import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal } from '@/components/common/ui';
+import { ConfirmModal, StatusBadge } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { DataTable, TableAction } from '@/components/table';
@@ -22,6 +22,8 @@ import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/z
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
+import { Row } from '@/hooks/database';
+import { FiMapPin } from 'react-icons/fi';
 
 export default function RingsPage() {
   const router = useRouter();
@@ -104,6 +106,53 @@ export default function RingsPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
+            <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+               {record.ring_type_name}
+            </span>
+          </div>
+          {actions}
+        </div>
+        
+        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mt-1">
+             <div className="flex items-center gap-1.5">
+                <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                <span className="truncate max-w-[120px]">{record.maintenance_area_name}</span>
+             </div>
+             <div className="flex items-center gap-1.5">
+                <span className="font-bold text-gray-900 dark:text-white">{record.total_nodes}</span>
+                <span>Nodes</span>
+             </div>
+        </div>
+
+        {/* Phase Statuses */}
+        <div className="grid grid-cols-3 gap-1 mt-2">
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">OFC</div>
+                <div className="text-xs font-medium text-blue-600 dark:text-blue-400">{record.ofc_status || '-'}</div>
+            </div>
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">BTS</div>
+                <div className="text-xs font-medium text-green-600 dark:text-green-400">{record.bts_status || '-'}</div>
+            </div>
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">SPEC</div>
+                <div className="text-xs font-medium text-orange-600 dark:text-orange-400">{record.spec_status || '-'}</div>
+            </div>
+        </div>
+
+        <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) {
     // You should handle the error state here, e.g., show an error message
   }
@@ -126,6 +175,7 @@ export default function RingsPage() {
         loading={isLoading}
         actions={tableActions}
         isFetching={isFetching || isMutating}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

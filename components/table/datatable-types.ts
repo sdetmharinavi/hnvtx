@@ -72,6 +72,8 @@ export interface DataTableProps<T extends TableOrViewName> {
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
   } & Omit<DownloadOptions<T>, "rpcConfig">;
+  // NEW: Optional render function for mobile view
+  renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
 }
 
 export type SortDirection = "asc" | "desc";

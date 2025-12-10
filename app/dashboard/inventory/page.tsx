@@ -1,12 +1,12 @@
 // app/dashboard/inventory/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive, FiMinusCircle, FiClock, FiUpload } from "react-icons/fi"; 
+import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiBox, FiMapPin } from "react-icons/fi"; 
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
@@ -23,6 +23,7 @@ import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-acti
 
 // Use the new Transactional Import hook
 import { useInventoryExcelUpload } from "@/hooks/database/excel-queries/useInventoryExcelUpload";
+import { formatCurrency } from "@/utils/formatters";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -138,6 +139,62 @@ export default function InventoryPage() {
     });
   }
 
+  const renderMobileItem = useCallback((record: Row<'v_inventory_items'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate pr-2">
+              {record.name}
+            </h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
+               {record.asset_no || 'No Asset ID'}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-sm mt-1">
+           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <div className="text-[10px] text-gray-400 uppercase">Quantity</div>
+               <div className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                   <FiBox className="w-3 h-3" /> {record.quantity}
+               </div>
+           </div>
+           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <div className="text-[10px] text-gray-400 uppercase">Value</div>
+               <div className="font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                   {formatCurrency(record.total_value || 0)}
+               </div>
+           </div>
+        </div>
+
+        <div className="space-y-1 mt-1">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <FiMapPin className="w-3 h-3 text-blue-500" />
+                <span className="truncate">{record.store_location || 'Unknown Location'}</span>
+            </div>
+            {record.functional_location && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500 pl-5">
+                    └ {record.functional_location}
+                </div>
+            )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-[10px] text-gray-400">{record.category_name}</span>
+             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                record.status_name === 'Working' || record.status_name === 'Good' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
+                record.status_name === 'Faulty' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+             }`}>
+                {record.status_name || 'Unknown'}
+             </span>
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
@@ -167,6 +224,7 @@ export default function InventoryPage() {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

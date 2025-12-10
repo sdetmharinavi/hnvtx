@@ -7,12 +7,12 @@ import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { PublicTableOrViewName, Row, Filters } from "@/hooks/database";
 import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queries/excel-helpers";
 import { cn } from "@/lib/utils";
+import { Card } from "../common/ui";
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
-// --- State Management with useReducer ---
-
+// ... (State Management types remain the same as previous)
 type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
   sortConfig: SortConfig<Row<T>> | null;
@@ -25,7 +25,7 @@ type TableState<T extends PublicTableOrViewName> = {
   showFilters: boolean;
 };
 
-// Base action type that works with any row type
+// ... (BaseTableAction and TableAction types remain the same)
 type BaseTableAction<R> =
   | { type: "SET_SEARCH_QUERY"; payload: string }
   | { type: "SET_SELECTED_ROWS"; payload: R[] }
@@ -39,17 +39,17 @@ type BaseTableAction<R> =
   | { type: "TOGGLE_COLUMN_SELECTOR"; payload?: boolean }
   | { type: "TOGGLE_FILTERS"; payload?: boolean };
 
-// Table-specific action type that extends the base with table-aware actions
-type TableAction<T extends PublicTableOrViewName> =
+type TableActionReducer<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
   | { type: "SET_SORT_CONFIG"; payload: SortConfig<Row<T>> | null }
   | { type: "SET_FILTERS"; payload: Filters };
 
 function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
-  action: TableAction<T> | BaseTableAction<DataRow<T>>
+  action: TableActionReducer<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
-  switch (action.type) {
+  // ... (Reducer logic remains identical)
+   switch (action.type) {
     case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
     case "SET_SORT_CONFIG":
@@ -115,7 +115,9 @@ export function DataTable<T extends PublicTableOrViewName>({
   showColumnsToggle,
   exportOptions,
   onSearchChange,
+  renderMobileItem, // NEW PROP
 }: DataTableProps<T>): React.ReactElement {
+  
   const initialState: TableState<T> = {
     searchQuery: "",
     sortConfig: null,
@@ -194,7 +196,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
 
     if (sortConfig && sortable) {
-      // --- ADDED: Check for natural sort configuration on the column ---
       const sortColumn = columns.find((c) => c.key === sortConfig.key);
       const useNaturalSort = !!sortColumn?.naturalSort;
 
@@ -241,6 +242,8 @@ export function DataTable<T extends PublicTableOrViewName>({
     filterable,
     serverSearch,
   ]);
+
+  // ... (handleSort, handleRowSelect, handleSelectAll, handleCellEdit, saveCellEdit, cancelCellEdit, visibleColumnsData, setSearchQueryCb, handleExport) - Same as before
 
   const handleSort = useCallback(
     (columnKey: keyof Row<T> & string) => {
@@ -316,36 +319,35 @@ export function DataTable<T extends PublicTableOrViewName>({
   }, []);
 
   const handleExport = useCallback(async () => {
-    if (onExport) {
-      await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
-      return;
-    }
-
-    const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
-    const mergedFilters = exportOptions?.includeFilters
-      ? { ...filters, ...(exportOptions?.filters ?? {}) }
-      : exportOptions?.filters;
-
-    const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
-      fileName: exportOptions?.fileName,
-      sheetName: exportOptions?.sheetName,
-      maxRows: exportOptions?.maxRows,
-      customStyles: exportOptions?.customStyles,
-      columns: columnsToExport,
-      filters: mergedFilters,
-    };
-
-    try {
-      if (exportOptions?.rpcConfig) {
-        const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
-          ...baseOptions,
-          rpcConfig: exportOptions.rpcConfig,
-        };
-        await rpcExcelDownload.mutateAsync(rpcOptions);
-      } else {
-        await tableExcelDownload.mutateAsync(baseOptions);
-      }
-    } catch (err) {
+     if (onExport) {
+       await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
+       return;
+     }
+     const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
+     const mergedFilters = exportOptions?.includeFilters
+       ? { ...filters, ...(exportOptions?.filters ?? {}) }
+       : exportOptions?.filters;
+ 
+     const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
+       fileName: exportOptions?.fileName,
+       sheetName: exportOptions?.sheetName,
+       maxRows: exportOptions?.maxRows,
+       customStyles: exportOptions?.customStyles,
+       columns: columnsToExport,
+       filters: mergedFilters,
+     };
+ 
+     try {
+       if (exportOptions?.rpcConfig) {
+         const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
+           ...baseOptions,
+           rpcConfig: exportOptions.rpcConfig,
+         };
+         await rpcExcelDownload.mutateAsync(rpcOptions);
+       } else {
+         await tableExcelDownload.mutateAsync(baseOptions);
+       }
+     } catch (err) {
       if (exportOptions?.fallbackToCsv) {
         try {
           const headers = columnsToExport.map((c) => c.title).join(",");
@@ -376,18 +378,52 @@ export function DataTable<T extends PublicTableOrViewName>({
       } else {
         throw err;
       }
-    }
-  }, [
-    onExport,
-    processedData,
-    visibleColumnsData,
-    exportOptions,
-    filters,
-    tableExcelDownload,
-    rpcExcelDownload,
-  ]);
+     }
+   }, [
+     onExport,
+     processedData,
+     visibleColumnsData,
+     exportOptions,
+     filters,
+     tableExcelDownload,
+     rpcExcelDownload,
+   ]);
+
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
+
+  // Render Mobile Actions Dropdown or Row
+  const renderActions = (record: DataRow<T>, index: number) => {
+    if (!hasActions) return null;
+    return (
+      <div className="flex gap-1 justify-end">
+        {actions.map((action) => {
+           const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
+           if(isHidden) return null;
+           
+           const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
+           
+           return (
+             <button
+                key={action.key}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isDisabled) {
+                    action.onClick(record, index);
+                  }
+                }}
+                disabled={isDisabled}
+                className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${
+                    action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
+                }`}
+             >
+                {action.getIcon ? action.getIcon(record) : action.icon}
+             </button>
+           )
+        })}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -440,10 +476,45 @@ export function DataTable<T extends PublicTableOrViewName>({
       </div>
 
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
+        
+        {/* MOBILE VIEW (CARD LIST) */}
+        {renderMobileItem && (
+            <div className="block sm:hidden p-4 space-y-4">
+                {loading ? (
+                    <div className="space-y-3">
+                         {[1,2,3].map(i => <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg"/>)}
+                    </div>
+                ) : processedData.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">{emptyText}</div>
+                ) : (
+                    processedData.map((record, idx) => (
+                        <Card key={record.id} className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative">
+                             {/* If selectable, add checkbox overlay or header */}
+                             {selectable && (
+                                <div className="absolute top-4 left-4">
+                                     <input 
+                                        type="checkbox" 
+                                        checked={selectedRows.some(r => r.id === record.id)}
+                                        onChange={(e) => handleRowSelect(record, e.target.checked)}
+                                        className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                                     />
+                                </div>
+                             )}
+                             
+                             <div className={selectable ? "pl-8" : ""}>
+                                 {renderMobileItem(record, renderActions(record, idx))}
+                             </div>
+                        </Card>
+                    ))
+                )}
+            </div>
+        )}
+
+        {/* DESKTOP VIEW (TABLE) */}
         <table
           className={`min-w-full w-full table-auto sm:table-fixed ${
             bordered ? "border-separate border-spacing-0" : ""
-          }`}>
+          } ${renderMobileItem ? "hidden sm:table" : ""}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}

@@ -5,9 +5,9 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner, StatusBadge } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters } from '@/hooks/database';
+import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
@@ -33,7 +33,7 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiDatabase, FiGitBranch, FiPieChart, FiUpload } from 'react-icons/fi';
+import { FiAnchor, FiArrowRight, FiDatabase, FiGitBranch, FiMapPin, FiPieChart, FiUpload } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
@@ -321,6 +321,66 @@ export default function SystemConnectionsPage() {
     variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
   });
 
+  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-3">
+        {/* Header: Service Name & Actions */}
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight wrap-break-words">
+              {record.service_name || record.connected_system_name || 'Unnamed Connection'}
+            </h3>
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+               {record.connected_link_type_name || 'Link'} 
+               {record.bandwidth_allocated && <span className="text-gray-400 mx-1">•</span>}
+               {record.bandwidth_allocated}
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
+        </div>
+
+        {/* Port Mapping Card */}
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700 p-2.5">
+            <div className="flex items-center justify-between text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                <span>Local</span>
+                <span>Remote</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-sm">
+                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
+                    {record.system_working_interface || '?'}
+                </div>
+                <FiArrowRight className="text-gray-400 w-4 h-4" />
+                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
+                    {record.en_interface || '?'}
+                </div>
+            </div>
+        </div>
+
+        {/* Remote System Details */}
+        <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+             <div className="flex items-center gap-2">
+                 <FiAnchor className="w-3.5 h-3.5 text-purple-500" />
+                 <span className="truncate font-medium">{record.en_name || 'Unknown Remote System'}</span>
+             </div>
+             <div className="flex items-center gap-2">
+                 <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                 <span className="truncate">{record.en_node_name || 'Unknown Location'}</span>
+             </div>
+        </div>
+
+        {/* Footer: ID & Status */}
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="flex flex-col">
+                <span className="text-[10px] text-gray-400 uppercase">Circuit ID</span>
+                <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{record.unique_id || '-'}</span>
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
+
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
 
@@ -361,6 +421,7 @@ export default function SystemConnectionsPage() {
         loading={isLoadingConnections}
         isFetching={isLoadingConnections}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
           onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
