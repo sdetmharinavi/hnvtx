@@ -3,6 +3,24 @@ import { FeatureItem } from "../types/featureTypes";
 
 export const featuresData: FeatureItem[] = [
   {
+    id: "feat-mobile-ux",
+    title: "Mobile-First Operations",
+    subtitle: "Optimized for Field Engineers",
+    icon: "Smartphone", // Lucide icon
+    color: "violet",
+    description: "The entire application adapts intelligently to your device. Complex data tables automatically transform into rich, easy-to-read cards on mobile devices, ensuring field engineers can access and update critical data without horizontal scrolling or zooming.",
+    benefits: [
+      "Adaptive Interfaces: Tables become Cards on mobile.",
+      "Touch-friendly actions for Editing, Viewing, and Calls.",
+      "Collapsible sidebars and optimized navigation.",
+    ],
+    technicalHighlights: [
+      "Responsive React Design Patterns",
+      "Conditional Component Rendering",
+      "Tailwind CSS Breakpoints",
+    ],
+  },
+  {
     id: "feat-offline-architecture",
     title: "Offline-First Resilience",
     subtitle: "Zero downtime, anywhere access",
@@ -50,7 +68,7 @@ export const featuresData: FeatureItem[] = [
     benefits: [
       "Visual Splicing Matrix: Connect fibers with a click.",
       "End-to-End Tracing: See the full path from Source to Destination.",
-      "Automated Loss Calculation based on distance and splices.",
+      "Visual Port Heatmaps: See port utilization at a glance.",
       "Auto-provisioning for straight-through joints.",
     ],
     technicalHighlights: [

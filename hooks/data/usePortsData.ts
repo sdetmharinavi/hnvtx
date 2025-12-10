@@ -16,7 +16,6 @@ export const usePortsData = (
     const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
       if (!systemId) return [];
 
-      // FIX: Use standard SQL syntax
       let searchString: string | undefined;
       if (searchQuery && searchQuery.trim() !== '') {
           const term = searchQuery.trim().replace(/'/g, "''");
@@ -76,6 +75,7 @@ export const usePortsData = (
 
       let filtered = allPorts;
 
+      // 1. Search Filtering
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((p) =>
@@ -85,11 +85,25 @@ export const usePortsData = (
         );
       }
 
+      // 2. Explicit Field Filtering (THE FIX)
+      if (filters.port_type_name) {
+          filtered = filtered.filter(p => p.port_type_name === filters.port_type_name);
+      }
+      if (filters.port_utilization) {
+          const utilBool = filters.port_utilization === 'true';
+          filtered = filtered.filter(p => p.port_utilization === utilBool);
+      }
+      if (filters.port_admin_status) {
+          const adminBool = filters.port_admin_status === 'true';
+          filtered = filtered.filter(p => p.port_admin_status === adminBool);
+      }
+
+      // 3. Natural Sort
       const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      const activeCount = totalCount;
+      const activeCount = filtered.filter(p => p.port_admin_status).length; // "Active" here implies Admin Up
 
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
@@ -99,10 +113,10 @@ export const usePortsData = (
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: 0,
+        inactiveCount: totalCount - activeCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allPorts, searchQuery, currentPage, pageLimit, systemId]);
+    }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };
