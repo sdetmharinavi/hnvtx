@@ -1,85 +1,132 @@
 // path: config/table-columns/PortsManagementTableColumns.tsx
+import React from 'react';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
-import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_ports_management_completeRowSchema, V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { Activity, Shield } from 'lucide-react';
+import { Row } from '@/hooks/database';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { formatDate } from '@/utils/formatters';
 
+// Define the structure for our service mapping
+export type PortServiceMap = Record<string, V_system_connections_completeRowSchema[]>;
 
-export const PortsManagementTableColumns = (data: V_ports_management_completeRowSchema[]) => {
-  return useDynamicColumnConfig('v_ports_management_complete', {
+export const PortsManagementTableColumns = (
+  data: V_ports_management_completeRowSchema[],
+  portServicesMap?: PortServiceMap
+) => {
+  // 1. Generate base columns from the hook
+  const columns = useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    omit: ['id','system_name', 'system_id','port_type_name','port_capacity', 'port_type_id'],
+    // THE FIX: Added 'port_type_name' and 'port_capacity' to the omit array
+    omit: [
+      'id', 
+      'system_id', 
+      'port_type_id', 
+      'services_count', 
+      'created_at', 
+      'updated_at', 
+      'system_name',
+      'port_type_name', // Hiding Port Type
+      'port_capacity'   // Hiding Capacity
+    ], 
     overrides: {
-      system_name: {
-        title: 'System',
-        render: (value) => <TruncateTooltip text={value as string} />,
-      },
       port: {
         title: 'Port',
+        width: 140,
+        render: (value) => <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{value as string}</span>,
         sortable: true,
-        naturalSort: true, // Ensure ports like 1.1, 1.2, 1.10 sort correctly
-        render: (value) => <span className="font-mono font-medium">{value as string}</span>,
-      },
-      port_type_name: {
-        title: 'Port Type',
-      },
-      port_type_code: {
-        title: 'Port Type',
-        sortable: true,
-      },
-      port_capacity: {
-        title: 'Capacity',
+        naturalSort: true,
       },
       sfp_serial_no: {
-        title: 'SFP Serial No.',
-        render: (value) => <span className="font-mono text-xs">{value as string}</span>,
+        title: 'SFP Serial',
+        width: 150,
+        render: (value) => (
+          value ? 
+            <span className="font-mono text-xs bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded border dark:border-gray-700">{value as string}</span> 
+            : <span className="text-gray-300 text-xs">-</span>
+        ),
       },
-      // ADDED: New Columns Renderers
       port_utilization: {
-        title: 'Utilization',
-        sortable: true,
+        title: 'State',
+        width: 100,
         render: (value) => (
           <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
               value
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
-                : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-700 dark:text-emerald-400'
+                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
             }`}
           >
-            {value ? 'In Use' : 'Free'}
+            {value ? 'Used' : 'Free'}
           </span>
         ),
       },
       port_admin_status: {
-        title: 'Admin Status',
-        sortable: true,
+        title: 'Admin',
+        width: 100,
         render: (value) => (
-          <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-              value
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-            }`}
-          >
-            {value ? 'Up' : 'Down'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className={`text-xs font-medium ${value ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                {value ? 'UP' : 'DOWN'}
+            </span>
+          </div>
         ),
-      },
-      services_count: {
-        title: 'Services',
-        sortable: true,
-        render: (value) => <span className="font-mono font-semibold">{value as number}</span>,
-      },
-      created_at: {
-        title: 'Created At',
-        sortable: true,
-        render: (value) => formatDate(value as string),
-      },
-      updated_at: {
-        title: 'Updated At',
-        sortable: true,
-        render: (value) => formatDate(value as string),
       },
     },
   });
+
+  // 2. Manual Custom Column for Rich Service Display
+  const servicesColumn: Column<Row<'v_ports_management_complete'>> = {
+    key: 'services_info',
+    title: 'Allocated Services',
+    dataIndex: 'port', 
+    width: 350,
+    render: (value, _record) => {
+        const portName = value as string; 
+        if (!portName || !portServicesMap) return <span className="text-gray-400 italic text-xs">No info</span>;
+        
+        const services = portServicesMap[portName] || [];
+        
+        if (services.length === 0) {
+            return <span className="text-gray-300 dark:text-gray-600 text-xs italic">Unallocated</span>;
+        }
+
+        return (
+            <div className="flex flex-col gap-1.5 py-1">
+                {services.slice(0, 2).map((svc) => (
+                    <div key={svc.id} className="flex items-center gap-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 shadow-sm">
+                        {/* Role Indicator */}
+                        {svc.system_working_interface === portName ? (
+                            <div title="Working Path" className="p-1 bg-blue-100 dark:bg-blue-900/50 rounded-full shrink-0">
+                                <Activity size={10} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                        ) : (
+                            <div title="Protection Path" className="p-1 bg-purple-100 dark:bg-purple-900/50 rounded-full shrink-0">
+                                <Shield size={10} className="text-purple-600 dark:text-purple-400" />
+                            </div>
+                        )}
+                        
+                        <div className="flex flex-col min-w-0 flex-1">
+                            <div className="font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
+                                <TruncateTooltip text={svc.service_name || svc.connected_system_name || 'Unknown'} className='truncate' />
+                            </div>
+                            <span className="text-[10px] text-gray-500 truncate">
+                                {svc.connected_link_type_name} {svc.bandwidth_allocated ? `• ${svc.bandwidth_allocated}` : ''}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {services.length > 2 && (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium pl-1 cursor-help" title={`${services.length - 2} more services hidden`}>
+                        +{services.length - 2} more services...
+                    </span>
+                )}
+            </div>
+        );
+    }
+  };
+
+  // 3. Append the custom column
+  return [...columns, servicesColumn];
 };
