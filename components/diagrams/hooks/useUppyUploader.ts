@@ -1,6 +1,6 @@
 // components/diagrams/hooks/useUppyUploader.ts
 import { useRef, useState, useEffect } from 'react';
-import Uppy from '@uppy/core';
+import Uppy, { UppyFile } from '@uppy/core';
 import XHRUpload from '@uppy/xhr-upload';
 import Webcam from '@uppy/webcam';
 import { createClient } from "@/utils/supabase/client";
@@ -52,24 +52,42 @@ export function useUppyUploader({
     }
 
     // Initialize Uppy
-    // createOptimizedUppy expects generic Uppy options structure
-    // We force cast to AppUppy because we know the meta structure we are using
     const uppy = createOptimizedUppy({ folderId }) as unknown as AppUppy;
 
+    // THE FIX: Construct Absolute URL to prevent relative path issues
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const endpoint = `${origin}/api/upload`;
+
+    // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions 
+    // which sometimes misses 'getResponseError' in specific versions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     uppy.use(XHRUpload, {
-      endpoint: "/api/upload",
+      endpoint: endpoint,
       method: "POST",
       formData: true,
       fieldName: "file",
       bundle: false,
+      // Removed retryDelays as it is not natively supported by XHRUpload in this version
       headers: {
         "x-folder-id": folderId || "",
       },
       limit: 5,
-    });
+      // THE FIX: Robust error parsing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getResponseError(responseText: string, response: any) {
+        console.log("Raw Upload Response:", responseText); // Debugging
+        try {
+            const json = JSON.parse(responseText);
+            if (json.error) return new Error(json.error);
+        } catch (e) {
+            // ignore JSON parse error
+        }
+        return new Error(response.statusText || "Upload failed due to network or server error");
+      }
+    } as any);
 
     // Configure Webcam
-    const webcamPlugin = uppy.use(Webcam, {
+    uppy.use(Webcam, {
       onBeforeSnapshot: () => Promise.resolve(),
       countdown: false,
       modes: ["video-audio", "video-only", "audio-only", "picture"],
@@ -80,12 +98,9 @@ export function useUppyUploader({
       showVideoSourceDropdown: true,
     });
 
-    if (webcamPlugin && typeof webcamPlugin.on === "function") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      webcamPlugin.on("error", (error: any) => {
-        setCameraError(`Camera error: ${error.message || "Unknown error"}`);
-      });
-    }
+    // Removed specific webcam 'error' listener here because it was catching 
+    // general upload errors and displaying them as "Camera error".
+    // General errors are handled by 'upload-error' below.
 
     // Pre-processing logic (Compression)
     uppy.addPreProcessor(async (fileIDs) => {
@@ -117,10 +132,11 @@ export function useUppyUploader({
     uppy.on("upload", () => {
       setIsUploading(true);
       setCameraError(null);
+      setError(""); // Clear previous errors
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    uppy.on("upload-success", async (file: any, response: any) => {
+    uppy.on("upload-success", async (file: UppyFile<any, any> | undefined, response: any) => {
       if (!file || processedFiles.has(file.id)) return;
       
       setProcessedFiles(prev => new Set(prev).add(file.id));
@@ -163,14 +179,16 @@ export function useUppyUploader({
     });
 
     uppy.on("upload-error", (_file, error) => {
-        setError(`Upload failed: ${error.message}`);
+        console.error("Uppy Upload Error:", error);
+        // Use the error message returned by getResponseError
+        setError(error.message || "Upload failed");
         setIsUploading(false);
     });
 
     uppy.on("complete", (result) => {
         setIsUploading(false);
         if (result && result.successful && Array.isArray(result.successful) && result.successful.length > 0) {
-            setError(""); // Clear previous errors on success
+            setError(""); 
             setSelectedFiles([]);
             setTimeout(() => setProcessedFiles(new Set()), 1000);
         }
@@ -198,7 +216,7 @@ export function useUppyUploader({
         uppyRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId, facingMode]); // Removed dependencies that cause re-init loops
+  }, [folderId, facingMode]); 
 
   const handleStartUpload = () => {
     if (!folderId) {
@@ -216,7 +234,6 @@ export function useUppyUploader({
     const newMode = facingMode === "user" ? "environment" : "user";
     setFacingMode(newMode);
     localStorage.setItem("preferredCamera", newMode);
-    // Webcam plugin update is handled by Uppy instance recreation in useEffect
   };
 
   const toggleCameraActive = () => setIsCameraActive(!isCameraActive);
