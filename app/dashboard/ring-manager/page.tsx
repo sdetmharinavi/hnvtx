@@ -54,7 +54,6 @@ import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
-import { useRingManagerStats } from '@/hooks/database/rpc-queries'; // New stats hook
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -64,13 +63,21 @@ interface SystemToDisassociate {
   ringName: string;
 }
 
+interface DynamicStats {
+  total: number;
+  spec: { issued: number; pending: number };
+  ofc: { ready: number; partial: number; pending: number };
+  bts: { onAir: number; pending: number; nodesOnAir: number; configuredCount: number }; // Added nodesOnAir
+}
+
+// Extend V_ringsRowSchema to include the new column optionally
+type ExtendedRingRow = V_ringsRowSchema & { bts_node_count?: number };
+
 // --- Helper Hooks ---
 
-// Hook to fetch systems specifically for a ring with hierarchical sorting
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    // Explicitly fetch related system details using the foreign key relation
     columns: `
       order_in_ring, 
       ring_id, 
@@ -98,7 +105,6 @@ const useRingSystems = (ringId: string | null) => {
     select: (result: PagedQueryResult<any>) => {
       const flattened = result.data
         .map((item) => {
-          // Robustly handle nested system object which might come as 'system' or 'systems' depending on PostgREST version
           const sys = item.system || item.systems;
           if (!sys) return null;
 
@@ -109,12 +115,8 @@ const useRingSystems = (ringId: string | null) => {
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
             status: sys.status,
-
-            // Essential fields for Update/Upsert forms
             system_type_id: sys.system_type_id,
             node_id: sys.node_id,
-
-            // Optional fields to preserve data integrity during edits
             ip_address:
               typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
             s_no: sys.s_no,
@@ -136,9 +138,6 @@ const useRingSystems = (ringId: string | null) => {
   });
 };
 
-// --- Components ---
-
-// Internal component to render the list of systems inside the details panel
 const RingAssociatedSystemsView = ({
   ringId,
   onEdit,
@@ -234,8 +233,11 @@ const RingAssociatedSystemsView = ({
   );
 };
 
-// Data fetching hook for the main list
-const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
+// --- Custom Hook with Stats Calculation ---
+const useRingsDataWithStats = (
+  params: DataQueryHookParams, 
+  setDynamicStats: (stats: DynamicStats) => void
+): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -248,7 +250,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
     });
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_rings',
-      p_limit: 5000, // Fetch all for client-side processing if needed, or adjust limit
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
@@ -272,7 +274,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
   });
 
   const processedData = useMemo(() => {
-    let filtered = allRings;
+    let filtered = allRings as ExtendedRingRow[];
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -284,11 +286,8 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
       );
     }
 
-    // Apply Filters
     Object.keys(filters).forEach((key) => {
       if (filters[key] && key !== 'or') {
-        // 'or' is handled by searchQuery logic mostly
-        // Handle status booleans vs strings
         if (key === 'status') {
           filtered = filtered.filter((item) => String(item.status) === filters[key]);
         } else {
@@ -298,6 +297,37 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
         }
       }
     });
+
+    // --- CALCULATE DYNAMIC STATS (UPDATED) ---
+    const stats: DynamicStats = {
+        total: filtered.length,
+        spec: { issued: 0, pending: 0 },
+        ofc: { ready: 0, partial: 0, pending: 0 },
+        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+    };
+
+    filtered.forEach(r => {
+        if (r.spec_status === 'Issued') stats.spec.issued++;
+        else stats.spec.pending++;
+
+        if (r.ofc_status === 'Ready') stats.ofc.ready++;
+        else if (r.ofc_status === 'Partial Ready') stats.ofc.partial++;
+        else stats.ofc.pending++;
+
+        if (r.bts_status === 'On-Air') {
+          stats.bts.onAir++;
+          // Sum up the node count. Use bts_node_count if available (after SQL update), else total_nodes
+          stats.bts.nodesOnAir += (r.bts_node_count ?? r.total_nodes ?? 0);
+        } else if (r.bts_status === 'Configured') {
+          stats.bts.configuredCount++;
+        } else {
+          stats.bts.pending++;
+        }
+    });
+
+    // We use a timeout to avoid setting state during render
+    setTimeout(() => setDynamicStats(stats), 0);
+    // -----------------------------
 
     filtered.sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
@@ -314,6 +344,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
@@ -334,6 +365,19 @@ export default function RingManagerPage() {
     null
   );
 
+  // --- STATS STATE ---
+  const [dynamicStats, setDynamicStats] = useState<DynamicStats>({
+      total: 0,
+      spec: { issued: 0, pending: 0 },
+      ofc: { ready: 0, partial: 0, pending: 0 },
+      bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+  });
+
+  const useCustomDataHook = useCallback((params: DataQueryHookParams) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      return useRingsDataWithStats(params, setDynamicStats);
+  }, []);
+
   const {
     data: rings,
     isLoading,
@@ -350,14 +394,9 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',
-    dataQueryHook: useRingsData,
+    dataQueryHook: useCustomDataHook,
     displayNameField: 'name',
   });
-
-  // Fetch Statistics for Header
-  const { data: stats, refetch: refetchStats } = useRingManagerStats(supabase);
-
-  console.log(stats);
 
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
@@ -369,7 +408,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      refetchStats(); // Update stats when systems change
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
@@ -379,13 +417,13 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success('System disassociated from ring.');
       void refetch();
-      refetchStats(); // Update stats
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
+  // ... (handleSaveSystems, handleUpdateSystemInRing, filter option fetches, handleMutationSuccess, handleSave, handleViewDetails, handleUploadClick, handleFileChange, handleExportClick - KEEP AS IS)
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
@@ -472,7 +510,6 @@ export default function RingManagerPage() {
     });
   };
 
-  // Fetch filter options
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ring-types-for-modal'],
     async () =>
@@ -490,7 +527,6 @@ export default function RingManagerPage() {
     toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
     refetch();
-    refetchStats();
   };
 
   const handleSave = (data: RingsInsertSchema) => {
@@ -508,7 +544,6 @@ export default function RingManagerPage() {
     [router]
   );
 
-  // ... (Excel Handlers reuse existing logic)
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -542,7 +577,6 @@ export default function RingManagerPage() {
           dataIndex: 'maintenance_area_name',
         },
         { key: 'status', title: 'status', dataIndex: 'status' },
-        // New export columns
         { key: 'ofc_status', title: 'ofc_status', dataIndex: 'ofc_status' },
         { key: 'spec_status', title: 'spec_status', dataIndex: 'spec_status' },
         { key: 'bts_status', title: 'bts_status', dataIndex: 'bts_status' },
@@ -563,7 +597,6 @@ export default function RingManagerPage() {
         label: 'Refresh',
         onClick: () => {
           refetch();
-          refetchStats();
         },
         variant: 'outline',
         leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
@@ -603,43 +636,34 @@ export default function RingManagerPage() {
     isUploading,
     isExporting,
     refetch,
-    refetchStats,
     handleUploadClick,
     handleExportClick,
     editModal.openAdd,
   ]);
 
-  // THE FIX: Use data from the RPC hook
+  // THE FIX: Use dynamic stats from the hook
   const headerStats = useMemo(() => {
-    if (!stats)
-      return [
-        { value: 0, label: 'Total Rings' },
-        { value: 0, label: 'Nodes On-Air', color: 'success' as const },
-      ];
-
     return [
-      { value: stats.total_rings, label: 'Total Rings' },
-      { value: `${stats.on_air_nodes} / ${stats.configured_in_maan}`, label: 'Nodes On-Air/ Rings configured in MAAN but Not On-Air', color: 'success' as const },
+      { value: dynamicStats.total, label: 'Total Rings' },
+      { value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
       {
-        value: `${stats.spec_issued} / ${stats.spec_pending}`,
+        value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
         label: 'SPEC (Issued/Pend)',
         color: 'primary' as const,
       },
       {
-        value: `${stats.ofc_ready} / ${stats.ofc_partial_ready} / ${stats.ofc_pending}`,
+        value: `${dynamicStats.ofc.ready} / ${dynamicStats.ofc.partial} / ${dynamicStats.ofc.pending}`,
         label: 'OFC (Ready/Partial/Pend)',
         color: 'warning' as const,
       },
     ];
-  }, [stats]);
+  }, [dynamicStats]);
 
-  // --- Dynamic Config for Detail View ---
   const dynamicFilterConfig: EntityConfig<RingEntity> = useMemo(
     () => ({
       ...ringConfig,
-      // Add new fields to the detail view (Right Panel)
       detailFields: [
-        ...ringConfig.detailFields.filter((f) => f.key !== 'description'), // Move description to end
+        ...ringConfig.detailFields.filter((f) => f.key !== 'description'), 
         { key: 'ofc_status', label: 'OFC Status', type: 'text' },
         { key: 'spec_status', label: 'SPEC Status', type: 'text' },
         { key: 'bts_status', label: 'BTS Status', type: 'text' },
@@ -685,7 +709,6 @@ export default function RingManagerPage() {
       ],
       filterOptions: [
         ...ringConfig.filterOptions,
-        // THE FIX: Apply 'as const' to the type property
         {
           key: 'ofc_status',
           label: 'OFC Status',
@@ -693,6 +716,7 @@ export default function RingManagerPage() {
           options: [
             { value: 'Ready', label: 'Ready' },
             { value: 'Pending', label: 'Pending' },
+            { value: 'Partial Ready', label: 'Partial Ready' },
           ],
         },
         {
@@ -702,6 +726,7 @@ export default function RingManagerPage() {
           options: [
             { value: 'On-Air', label: 'On-Air' },
             { value: 'Pending', label: 'Pending' },
+            { value: 'Configured', label: 'Configured' },
           ],
         },
       ].map((opt) => {
@@ -800,6 +825,7 @@ export default function RingManagerPage() {
         />
       </div>
 
+      {/* Modals remain the same... */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

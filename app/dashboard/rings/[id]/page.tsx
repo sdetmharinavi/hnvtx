@@ -9,7 +9,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+// THE FIX: Replaced useOfflineQuery with useLocalFirstQuery for automatic persistence
+import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
@@ -30,7 +31,7 @@ type ExtendedRingDetails = V_ringsRowSchema & {
   } | null;
 };
 
-// Local interface for Map Path Configuration (must match ClientRingMap's expected shape; no nulls)
+// Local interface for Map Path Configuration
 interface PathConfigForMap {
   source?: string;
   sourcePort?: string;
@@ -87,10 +88,11 @@ export default function RingMapPage() {
     onError: (err) => toast.error(`Failed to save: ${err.message}`)
   });
 
-  // 3. Fetch Nodes
-  const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
-    ['ring-nodes-detail', ringId],
-    async () => {
+  // 3. Fetch Nodes (UPDATED to useLocalFirstQuery)
+  // This ensures that when data is fetched online, it is automatically saved to localDb.v_ring_nodes
+  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
+    queryKey: ['ring-nodes-detail', ringId],
+    onlineQueryFn: async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
       const { data, error } = await supabase.rpc('get_paged_data', {
@@ -104,12 +106,16 @@ export default function RingMapPage() {
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
     },
-    async () => {
-      if (!ringId) return [];
-      return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
+    localQueryFn: () => {
+      if (!ringId) return Promise.resolve([]);
+      // Read from local DB if offline (or for initial optimistic load)
+      return localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
-    { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
-  );
+    dexieTable: localDb.v_ring_nodes,
+    enabled: !!ringId,
+    staleTime: 5 * 60 * 1000,
+    localQueryDeps: [ringId]
+  });
   
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
@@ -236,11 +242,12 @@ export default function RingMapPage() {
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
   };
 
-  const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
+  const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
   const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {
-    const isLoading = isLoadingNodes || isLoadingRingDetails;
+    // If loading and we have no cached data yet
+    const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
     
     if (mappedNodes.length === 0) {
@@ -303,7 +310,7 @@ export default function RingMapPage() {
         />
       </div>
       
-      <div className="flex-grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
+      <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
 

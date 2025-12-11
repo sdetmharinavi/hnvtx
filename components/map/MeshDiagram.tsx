@@ -22,7 +22,7 @@ const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
 
   useEffect(() => {
     if (bounds) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, { padding: [100, 100], animate: true });
     }
   }, [map, bounds]);
 
@@ -34,78 +34,116 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const { theme } = useThemeStore();
 
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#0f172a' : '#99ccff';
+  const bgColor = isDark ? '#0f172a' : '#f8fafc'; // Slighly lighter bg for light mode
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
   const spurLineColor = isDark ? '#b4083f' : '#ff0066';
 
   const { nodePositions, bounds } = useMemo(() => {
-    const hubs = nodes.filter((n) => n.is_hub);
-    const spokes = nodes.filter((n) => !n.is_hub);
-    const spokesByHub = new Map<string, RingMapNode[]>();
     const positions = new Map<string, L.LatLng>();
+    
+    // Configuration
+    const CENTER_X = 1000;
+    const CENTER_Y = 1000;
+    const RING_RADIUS = 400;
+    const SPUR_LENGTH = 200;
 
-    connections.forEach(([nodeA, nodeB]) => {
-      if (nodeA.is_hub && !nodeB.is_hub) {
-        if (!spokesByHub.has(nodeA.id!)) spokesByHub.set(nodeA.id!, []);
-        spokesByHub.get(nodeA.id!)!.push(nodeB);
-      } else if (nodeB.is_hub && !nodeA.is_hub) {
-        if (!spokesByHub.has(nodeB.id!)) spokesByHub.set(nodeB.id!, []);
-        spokesByHub.get(nodeB.id!)!.push(nodeA);
-      }
+    // 1. Sort nodes by order
+    const sortedNodes = [...nodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+
+    // 2. Separate Backbone (Integer Orders) from Spurs (Decimal Orders)
+    const backboneNodes: RingMapNode[] = [];
+    const spurNodes: RingMapNode[] = [];
+
+    sortedNodes.forEach(node => {
+        const order = node.order_in_ring || 0;
+        // Check if it's effectively an integer (e.g., 1.0, 2.0)
+        if (Math.abs(order - Math.round(order)) < 0.01) {
+            backboneNodes.push(node);
+        } else {
+            spurNodes.push(node);
+        }
     });
 
-    const centerX = 500;
-    const centerY = 500;
-    const hubRadius = 200;
-    const spokeLayerRadius = 350;
-
-    if (hubs.length === 1) {
-      positions.set(hubs[0].id!, new L.LatLng(centerY, centerX));
-    } else {
-      hubs.forEach((hub, index) => {
-        const angle = (index / hubs.length) * 2 * Math.PI - Math.PI / 2;
-        const lng = centerX + hubRadius * Math.cos(angle);
-        const lat = centerY - hubRadius * Math.sin(angle);
-        positions.set(hub.id!, new L.LatLng(lat, lng));
-      });
+    // If no backbone detected (all nulls), treat everyone as backbone
+    if (backboneNodes.length === 0 && spurNodes.length === 0) {
+        backboneNodes.push(...nodes);
     }
 
-    hubs.forEach((hub) => {
-      const hubPos = positions.get(hub.id!);
-      const childSpokes = spokesByHub.get(hub.id!) || [];
-      if (!hubPos || childSpokes.length === 0) return;
+    // 3. Position Backbone Nodes in a Circle
+    const angleStep = (2 * Math.PI) / Math.max(1, backboneNodes.length);
+    // Start from -90deg (Top)
+    const startAngle = -Math.PI / 2;
 
-      const angleToCenter = Math.atan2(centerY - hubPos.lat, centerX - hubPos.lng);
-      const angleOutward = angleToCenter + Math.PI;
-      const spread = hubs.length === 1 ? 2 * Math.PI : Math.PI / 1.5;
-      const startAngle = hubs.length === 1 ? 0 : angleOutward - spread / 2;
-
-      childSpokes.forEach((spoke, index) => {
-        const angle = startAngle + ((index + 1) / (childSpokes.length + 1)) * spread;
-        const lng = hubPos.lng + (spokeLayerRadius - hubRadius) * Math.cos(angle);
-        const lat = hubPos.lat + (spokeLayerRadius - hubRadius) * Math.sin(angle);
-        positions.set(spoke.id!, new L.LatLng(lat, lng));
-      });
+    backboneNodes.forEach((node, index) => {
+        const angle = startAngle + (index * angleStep);
+        const lat = CENTER_Y + RING_RADIUS * Math.sin(angle); // Y corresponds to Lat
+        const lng = CENTER_X + RING_RADIUS * Math.cos(angle); // X corresponds to Lng
+        positions.set(node.id!, new L.LatLng(lat, lng));
     });
 
-    const unpositionedSpokes = spokes.filter((s) => !positions.has(s.id!));
-    if (unpositionedSpokes.length > 0) {
-      const outerRadius = 400;
-      unpositionedSpokes.forEach((spoke, index) => {
-        const angle = (index / unpositionedSpokes.length) * 2 * Math.PI;
-        const lng = centerX + outerRadius * Math.cos(angle);
-        const lat = centerY + outerRadius * Math.sin(angle);
-        positions.set(spoke.id!, new L.LatLng(lat, lng));
-      });
-    }
+    // 4. Position Spur Nodes (Radiating from parent)
+    // Group spurs by their parent integer order
+    const spursByParent = new Map<number, RingMapNode[]>();
+    spurNodes.forEach(node => {
+        const parentOrder = Math.floor(node.order_in_ring || 0);
+        if (!spursByParent.has(parentOrder)) spursByParent.set(parentOrder, []);
+        spursByParent.get(parentOrder)!.push(node);
+    });
 
+    spursByParent.forEach((children, parentOrder) => {
+        // Find parent position
+        const parentNode = backboneNodes.find(n => Math.round(n.order_in_ring || 0) === parentOrder);
+        if (!parentNode) {
+            // Orphaned spur? Just place it somewhere or treat as backbone
+            // For now, ignore or place at 0,0
+            return;
+        }
+
+        const parentPos = positions.get(parentNode.id!);
+        if (!parentPos) return;
+
+        // Calculate vector from center to parent
+        const vecX = parentPos.lng - CENTER_X;
+        const vecY = parentPos.lat - CENTER_Y;
+        const mag = Math.sqrt(vecX * vecX + vecY * vecY);
+        
+        // Normalized direction vector
+        const dirX = mag === 0 ? 1 : vecX / mag;
+        const dirY = mag === 0 ? 0 : vecY / mag;
+
+        // Fan out logic if multiple spurs on one node
+        const fanAngle = Math.PI / 4; // 45 degrees spread
+        const totalSpurs = children.length;
+        
+        children.forEach((child, idx) => {
+            // If multiple spurs, rotate the vector slightly
+            let rotation = 0;
+            if (totalSpurs > 1) {
+                // Center the fan around the main direction
+                const step = fanAngle / (totalSpurs - 1);
+                rotation = -fanAngle/2 + idx * step;
+            }
+
+            // Rotate direction vector
+            const rotatedX = dirX * Math.cos(rotation) - dirY * Math.sin(rotation);
+            const rotatedY = dirX * Math.sin(rotation) + dirY * Math.cos(rotation);
+
+            const childLng = parentPos.lng + rotatedX * SPUR_LENGTH;
+            const childLat = parentPos.lat + rotatedY * SPUR_LENGTH;
+
+            positions.set(child.id!, new L.LatLng(childLat, childLng));
+        });
+    });
+    
+    // 5. Calculate Bounds
     const lats = Array.from(positions.values()).map((p) => p.lat);
     const lngs = Array.from(positions.values()).map((p) => p.lng);
 
-    const minLat = Math.min(...lats, centerY) - 50;
-    const maxLat = Math.max(...lats, centerY) + 50;
-    const minLng = Math.min(...lngs, centerX) - 50;
-    const maxLng = Math.max(...lngs, centerX) + 50;
+    // Add padding to bounds
+    const minLat = Math.min(...lats) - 100;
+    const maxLat = Math.max(...lats) + 100;
+    const minLng = Math.min(...lngs) - 100;
+    const maxLng = Math.max(...lngs) + 100;
 
     const bounds: L.LatLngBoundsExpression = [
       [minLat, minLng],
@@ -113,7 +151,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
     ];
 
     return { nodePositions: positions, bounds };
-  }, [nodes, connections]);
+  }, [nodes]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -162,12 +200,12 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         bounds={bounds}
         crs={L.CRS.Simple}
         style={{ height: '100%', width: '100%', background: bgColor }}
-        minZoom={-2}
-        maxZoom={4}
+        minZoom={-3}
+        maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
         zoomControl={false}
-        className="dark:!bg-blue-900 shadow-lg"
+        className="dark:bg-blue-950! shadow-lg" // Darker blue background for schematics
       >
         <MeshController bounds={bounds} />
 
@@ -177,17 +215,22 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
           const posB = nodePositions.get(nodeB.id!);
           if (!posA || !posB) return null;
 
-          const isHubLink = nodeA.is_hub && nodeB.is_hub;
+          // Determine connection type based on order logic
+          const orderA = nodeA.order_in_ring || 0;
+          const orderB = nodeB.order_in_ring || 0;
+          
+          // It's a spur if either node is a decimal (e.g. 3.1)
+          const isSpur = (orderA % 1 !== 0) || (orderB % 1 !== 0);
 
           return (
             <Polyline
               key={`${nodeA.id}-${nodeB.id}-${index}`}
               positions={[posA, posB]}
               pathOptions={{
-                color: isHubLink ? hubLineColor : spurLineColor,
-                weight: isHubLink ? 3 : 1.5,
-                dashArray: isHubLink ? undefined : '5, 6',
-                opacity: isHubLink ? 0.9 : 0.9,
+                color: isSpur ? spurLineColor : hubLineColor,
+                weight: isSpur ? 2 : 4, // Backbone thicker
+                dashArray: isSpur ? '5, 5' : undefined, // Spurs dashed
+                opacity: 0.8,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
@@ -214,8 +257,16 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                 permanent
                 className="bg-transparent border-none shadow-none p-0"
               >
-                <div className="px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-600 shadow-md dark:shadow-lg backdrop-blur-md">
-                  {node.name}
+                <div className="flex flex-col items-center">
+                    <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
+                    {node.name}
+                    </div>
+                    {/* Show Order in Ring */}
+                    {/* {node.order_in_ring !== null && (
+                        <div className="mt-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px] font-mono rounded-full">
+                            #{node.order_in_ring}
+                        </div>
+                    )} */}
                 </div>
               </Tooltip>
 
@@ -230,26 +281,25 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
 
                   <div className="space-y-2 p-3 text-slate-600 dark:text-slate-300">
                     {node.ip && (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-slate-700 dark:text-slate-200">
-                            IP:
-                          </span>
-                          <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
-                            {node.ip?.split('/')[0]}
-                          </span>
-                        </div>
-                      </>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                          IP:
+                        </span>
+                        <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
+                          {node.ip?.split('/')[0]}
+                        </span>
+                      </div>
                     )}
-
-                    {node.remark && (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-600 dark:text-slate-300">
-                            {<p>Remark: {node.remark}</p>}
-                          </span>
-                        </div>
-                      </>
+                    
+                    {node.system_type && (
+                         <div className="flex items-center justify-between">
+                         <span className="font-medium text-slate-700 dark:text-slate-200">
+                           Type:
+                         </span>
+                         <span className="text-xs">
+                           {node.system_type}
+                         </span>
+                       </div>
                     )}
 
                     {node.is_hub && (
