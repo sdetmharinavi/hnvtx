@@ -197,7 +197,7 @@ export function RingModal({
                 />
                 <FormSelect 
                     name="bts_status" 
-                    label="BTS Status" 
+                    label="Status" 
                     control={control} 
                     options={STATUS_OPTIONS.BTS} 
                     error={errors.bts_status}
