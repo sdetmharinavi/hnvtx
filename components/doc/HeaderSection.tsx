@@ -230,7 +230,7 @@ export default function HeaderSection() {
 
         <div className="relative">
           {/* Vertical Connecting Line */}
-          <div className="absolute left-8 top-4 bottom-12 w-0.5 bg-gradient-to-b from-blue-500 via-violet-500 to-cyan-500 dark:from-blue-600 dark:to-cyan-600 opacity-30"></div>
+          <div className="absolute left-8 top-4 bottom-12 w-0.5 bg-linear-to-b from-blue-500 via-violet-500 to-cyan-500 dark:from-blue-600 dark:to-cyan-600 opacity-30"></div>
 
           {SETUP_FLOW.map((step, index) => (
             <motion.div

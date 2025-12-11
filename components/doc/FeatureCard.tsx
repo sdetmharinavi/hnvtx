@@ -75,7 +75,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
         
         {/* Decorative background elements */}
         <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute left-0 bottom-0 w-full h-32 bg-gradient-to-t from-black/10 to-transparent"></div>
+        <div className="absolute left-0 bottom-0 w-full h-32 bg-linear-to-t from-black/10 to-transparent"></div>
       </div>
 
       {/* Main Content Grid */}

@@ -3,8 +3,9 @@
 
 import { Button } from "@/components/common/ui";
 import { FiberTraceSegment } from "@/schemas/custom-schemas";
-import { Cable, GitBranch, MapPin, Milestone, RefreshCw, Route } from "lucide-react";
+import { Cable, GitBranch, MapPin, Milestone, Route } from "lucide-react";
 import { useMemo } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 
 // A new type for our oriented steps to add clarity
 interface OrientedStep extends FiberTraceSegment {
@@ -169,7 +170,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
         className='absolute top-0 right-10 z-10 animate-pulse' 
         onClick={onSync}
         disabled={isSyncing}
-        leftIcon={isSyncing ? <RefreshCw className="animate-spin" /> : <RefreshCw />}
+        leftIcon={isSyncing ? <FiRefreshCw className="animate-spin" /> : <FiRefreshCw />}
       >
         {isSyncing ? "Syncing..." : "Sync Path to DB"}
       </Button>

@@ -223,7 +223,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                       <div className='h-px w-16 bg-linear-to-r from-transparent to-gray-300 dark:to-gray-700' />
                       <CheckCircle2 className='w-4 h-4' />
                       <span className='text-xs font-medium'>End of documentation</span>
-                      <div className='h-px w-16 bg-gradient-to-l from-transparent to-gray-300 dark:to-gray-700' />
+                      <div className='h-px w-16 bg-linear-to-l from-transparent to-gray-300 dark:to-gray-700' />
                     </div>
                   </motion.div>
                 )}
