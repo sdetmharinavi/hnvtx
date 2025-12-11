@@ -66,7 +66,7 @@ ea5a641a-0f55-40ad-bd7d-085aa2192c05,HNV-07,18429ead-ad6a-46aa-8155-2b418cb5def5
 f16f583e-5167-4c39-9436-80555517c187,MAAN-20,18429ead-ad6a-46aa-8155-2b418cb5def5,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,6,,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2025-12-07 14:47:42.429833+00
 f2d12fde-7958-4a5f-91e8-6a7a8d9b89ce,ADM16/R-136,cc3cebe7-5419-4806-8d3a-6405cf00ecbb,,4bc2a086-b131-47e1-9c20-f10650c0196d,6,,,Pending,Pending,Pending,true,2025-08-11 00:00:00+00,2025-12-07 14:47:42.429833+00
 fb724801-3a0a-40fe-9bda-d34a8780a984,HNV-10,18429ead-ad6a-46aa-8155-2b418cb5def5,"<strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />
-<strong class=""text-green-600"">OFC STATUS:</strong> OFC READY WITH CPAN FIBRE<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,,,Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2025-12-11 11:40:28.10358+00
+<strong class=""text-green-600"">OFC STATUS:</strong> OFC READY WITH CPAN FIBRE<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,,,Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2025-12-07 14:47:42.429833+00
 fe485021-8891-4bbf-9735-b6db287c831f,VIA_HNV_CPAN,0dfc3ef0-d661-458a-b0b7-2b8b0975b6dd,"<strong class=""text-green-600"">OFC STATUS:</strong> Co-Located, Via Radio Link<br />
 <strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED Vide: TP/Inst. Prg/02_25/20_Revised DATED: 06-03-2025<br />
 <strong class=""text-green-600"">BTS STATU:</strong> On Air<br />
