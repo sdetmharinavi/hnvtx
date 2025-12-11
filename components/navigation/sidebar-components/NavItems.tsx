@@ -25,7 +25,7 @@ import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
 import { FaRoute } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
-import { FileText } from 'lucide-react';
+import { FileText, GitBranch } from 'lucide-react';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -219,6 +219,13 @@ function NavItems() {
             label: 'Systems',
             href: '/dashboard/systems',
             icon: <GoServer className="h-5 w-5" />,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            id: 'global-connections',
+            label: 'Global Connections',
+            href: '/dashboard/connections',
+            icon: <GitBranch className="h-5 w-5" />,
             roles: [UserRole.ADMIN],
           },
           {

@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, lets fix the search issue in nodes page. Its shame for us that we are making a production ready robust app and search for some words are not working. second thing to check are we using local data first approch everywhere?
+Let's begin! First of all, lets create one more page in which we will show all system connections records for easy searching and filtering instead of only systems/id records.
