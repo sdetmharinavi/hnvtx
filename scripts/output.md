@@ -2071,6 +2071,7 @@ export const system_connectionsRowSchema = z.object({
   en_id: z.uuid().nullable(),
   en_interface: z.string().nullable(),
   en_ip: z.any(),
+  en_protection_interface: z.string().nullable(),
   id: z.uuid(),
   media_type_id: z.uuid().nullable(),
   protection_fiber_in_ids: z.array(z.string()).nullable(),
@@ -2098,6 +2099,7 @@ export const system_connectionsInsertSchema = z.object({
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
+  en_protection_interface: z.string().nullable().optional(),
   id: z.uuid().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
@@ -2125,6 +2127,7 @@ export const system_connectionsUpdateSchema = z.object({
   en_id: z.uuid().nullable().optional(),
   en_interface: z.string().nullable().optional(),
   en_ip: z.any().optional(),
+  en_protection_interface: z.string().nullable().optional(),
   id: z.uuid().optional(),
   media_type_id: z.uuid().nullable().optional(),
   protection_fiber_in_ids: z.array(z.string()).nullable().optional(),
@@ -2665,6 +2668,7 @@ export const v_system_connections_completeRowSchema = z.object({
   en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_node_id: z.uuid().nullable(),
   en_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  en_protection_interface: z.string().nullable(),
   en_system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
   lc_id: z.uuid().nullable(),
@@ -3273,10 +3277,6 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-html {
-  font-size: 10px;
 }
 
 
@@ -4595,9 +4595,17 @@ export async function POST(req: NextRequest) {
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
+// Increase body size limit config for Vercel/Next.js
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+  },
+};
+
 export async function POST(request: NextRequest) {
   try {
-    // Get authentication
+    // 1. Authentication Check
     const supabase = await createClient();
     const {
       data: { user },
@@ -4607,238 +4615,122 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    // Get folder ID from headers
+    // 2. Validate Headers
     const folderId = request.headers.get("x-folder-id");
     if (!folderId) {
       return NextResponse.json(
         { error: "Folder ID is required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    // Parse form data
-    const formData = await request.formData();
+    // 3. Parse FormData safely
+    let formData: FormData;
+    try {
+        formData = await request.formData();
+    } catch (e) {
+        console.error("Error parsing form data:", e);
+        return NextResponse.json(
+            { error: "Failed to parse file data. The file might be corrupted or too large." },
+            { status: 400 }
+        );
+    }
+
     const file = formData.get("file") as File;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Check for empty files
+    // 4. File Validation
     if (file.size === 0) {
-      console.error("Empty file detected:", file.name);
       return NextResponse.json(
-        { error: "File is empty or corrupted. Please try uploading again." },
-        { status: 400 },
+        { error: "File is empty." },
+        { status: 400 }
       );
     }
 
-    // Validate file size (100MB limit)
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    // Max Size: 50MB (Matches client-side Uppy config)
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "File size too large. Maximum 100MB allowed." },
-        { status: 400 },
+        { error: "File size too large. Maximum 50MB allowed." },
+        { status: 400 }
       );
     }
 
-    // Validate file type
-    const allowedTypes = [
-      "image/",
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/",
-      "application/rtf",
-      "video/",
-      "audio/",
-    ];
-
-    const isValidType = allowedTypes.some(
-      (type) => file.type.startsWith(type) || file.type === type,
-    );
-    if (!isValidType) {
-      return NextResponse.json(
-        { error: "File type not supported" },
-        { status: 400 },
-      );
-    }
-
-    // Additional validation for images
-    if (file.type.startsWith("image/")) {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        if (arrayBuffer.byteLength === 0) {
-          return NextResponse.json(
-            { error: "Image file appears to be corrupted" },
-            { status: 400 },
-          );
-        }
-      } catch (error) {
-        console.error("Error reading file:", error);
-        return NextResponse.json(
-          { error: "Unable to process image file" },
-          { status: 400 },
-        );
-      }
-    }
-
-    // Validate Cloudinary configuration
+    // 5. Cloudinary Config Check
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
     if (!cloudName || !uploadPreset) {
-      console.error("Missing Cloudinary configuration:", {
-        cloudName: !!cloudName,
-        uploadPreset: !!uploadPreset,
-      });
+      console.error("Missing Cloudinary Config");
       return NextResponse.json(
-        { error: "Server configuration error: Missing Cloudinary keys" },
-        { status: 500 },
+        { error: "Server configuration error: Cloudinary keys missing" },
+        { status: 500 }
       );
     }
 
-    // Check if folder exists and belongs to user (Optional check, disabled for now to allow shared folders)
-    /*
-    const { data: folderData, error: folderError } = await supabase
-      .from("folders")
-      .select("id, user_id")
-      .eq("id", folderId)
-      .single();
-
-    if (folderError || !folderData) {
-      return NextResponse.json(
-        { error: "Invalid folder or access denied" },
-        { status: 403 },
-      );
-    }
-    */
-
-    // Prepare Cloudinary upload
+    // 6. Prepare Cloudinary Upload
     const cloudinaryFormData = new FormData();
     cloudinaryFormData.append("file", file);
     cloudinaryFormData.append("upload_preset", uploadPreset);
-
-    // Set resource type based on file type
-    const isPDF = file.type === "application/pdf";
-    const isVideo = file.type.startsWith("video/");
-    const isAudio = file.type.startsWith("audio/");
-    const isImage = file.type.startsWith("image/");
-
-    if (isPDF) {
-      cloudinaryFormData.append("resource_type", "raw");
-      cloudinaryFormData.append("tags", "pdf_document");
-    } else if (isVideo) {
-      cloudinaryFormData.append("resource_type", "video");
-      cloudinaryFormData.append("tags", "video_file");
-    } else if (isAudio) {
-      cloudinaryFormData.append("resource_type", "video");
-      cloudinaryFormData.append("tags", "audio_file");
-    } else if (isImage) {
-      cloudinaryFormData.append("resource_type", "image");
-      cloudinaryFormData.append("tags", "image_file");
-      cloudinaryFormData.append("quality", "auto:good");
-      cloudinaryFormData.append("fetch_format", "auto");
-    } else {
-      cloudinaryFormData.append("resource_type", "auto");
-    }
-
-    // Add folder organization in Cloudinary
     cloudinaryFormData.append("folder", `user_${user.id}/folder_${folderId}`);
 
-    // Add timestamp to avoid filename conflicts
+    // Determine resource type
+    let resourceType = "auto";
+    if (file.type === "application/pdf") {
+      resourceType = "raw";
+      cloudinaryFormData.append("resource_type", "raw");
+    } else if (file.type.startsWith("image/")) {
+       resourceType = "image";
+       cloudinaryFormData.append("resource_type", "image");
+    } else if (file.type.startsWith("video/") || file.type.startsWith("audio/")) {
+       resourceType = "video";
+       cloudinaryFormData.append("resource_type", "video");
+    }
+
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    cloudinaryFormData.append(
-      "public_id",
-      `${Date.now()}_${sanitizedFileName}`,
-    );
+    cloudinaryFormData.append("public_id", `${Date.now()}_${sanitizedFileName}`);
 
-    // Upload to Cloudinary with timeout
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
+    // 7. Upload to Cloudinary
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
-    const cloudinaryResponse = await Promise.race([
-      fetch(uploadUrl, {
+    const cloudinaryResponse = await fetch(uploadUrl, {
         method: "POST",
         body: cloudinaryFormData,
-      }),
-      new Promise<Response>((_, reject) =>
-        setTimeout(() => reject(new Error("Upload timeout")), 300000), // 5 minute timeout
-      ),
-    ]);
+    });
 
     if (!cloudinaryResponse.ok) {
       const errorText = await cloudinaryResponse.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { message: errorText };
-      }
-
-      console.error("Cloudinary upload error:", {
-        status: cloudinaryResponse.status,
-        statusText: cloudinaryResponse.statusText,
-        error: errorData,
-      });
-
+      console.error("Cloudinary Error:", errorText);
       return NextResponse.json(
-        {
-          error:
-            errorData.message ||
-            `Upload failed: ${cloudinaryResponse.statusText}`,
-        },
-        { status: 500 },
+        { error: `Cloudinary Upload Failed: ${cloudinaryResponse.statusText}` },
+        { status: cloudinaryResponse.status }
       );
     }
 
     const cloudinaryData = await cloudinaryResponse.json();
 
-    if (!cloudinaryData.secure_url) {
-      return NextResponse.json(
-        { error: "Upload succeeded but no URL returned" },
-        { status: 500 },
-      );
-    }
-
-    // IMPORTANT: Return success response for Uppy
-    // Note: We do NOT insert into the DB here. The client-side useUppyUploader hook
-    // listens for 'upload-success' and performs the DB insert. This avoids duplicates.
-
     return NextResponse.json({
       public_id: cloudinaryData.public_id,
       secure_url: cloudinaryData.secure_url,
-      // Return all data Uppy might need
-      width: cloudinaryData.width,
-      height: cloudinaryData.height,
       format: cloudinaryData.format,
       resource_type: cloudinaryData.resource_type,
       bytes: cloudinaryData.bytes,
-      success: true, // Signal success to Uppy
+      success: true,
     });
 
   } catch (error: unknown) {
-    console.error("Upload API error:", error);
-
-    if (
-      error instanceof Error &&
-      (error.name === "AbortError" || error.message.includes("timeout"))
-    ) {
-      return NextResponse.json(
-        { error: "Upload timeout. Please try again with a smaller file." },
-        { status: 408 },
-      );
-    }
-
+    console.error("Upload API Critical Error:", error);
+    const message = error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: process.env.NODE_ENV === "development" && error instanceof Error ? error.message : undefined,
-      },
-      { status: 500 },
+      { error: message },
+      { status: 500 }
     );
   }
 }
@@ -4851,23 +4743,21 @@ export async function OPTIONS(request: NextRequest) {
     "https://localhost:3000",
   ].filter(Boolean);
 
-  const corsHeaders = {
+  const headers = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-folder-id, Authorization",
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Max-Age": "86400",
-  } as Record<string, string>;
+  };
 
   if (origin && allowedOrigins.includes(origin)) {
-    corsHeaders["Access-Control-Allow-Origin"] = origin;
-  } else if (process.env.NODE_ENV === "development") {
-    corsHeaders["Access-Control-Allow-Origin"] = "*";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (headers as any)["Access-Control-Allow-Origin"] = origin;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (headers as any)["Access-Control-Allow-Origin"] = "*";
   }
 
-  return new NextResponse(null, {
-    status: 200,
-    headers: corsHeaders,
-  });
+  return new NextResponse(null, { status: 200, headers });
 }
 ```
 
@@ -5757,7 +5647,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+// THE FIX: Replaced useOfflineQuery with useLocalFirstQuery for automatic persistence
+import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
 import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
@@ -5778,7 +5669,7 @@ type ExtendedRingDetails = V_ringsRowSchema & {
   } | null;
 };
 
-// Local interface for Map Path Configuration (must match ClientRingMap's expected shape; no nulls)
+// Local interface for Map Path Configuration
 interface PathConfigForMap {
   source?: string;
   sourcePort?: string;
@@ -5835,10 +5726,11 @@ export default function RingMapPage() {
     onError: (err) => toast.error(`Failed to save: ${err.message}`)
   });
 
-  // 3. Fetch Nodes
-  const { data: rawNodes, isLoading: isLoadingNodes } = useOfflineQuery(
-    ['ring-nodes-detail', ringId],
-    async () => {
+  // 3. Fetch Nodes (UPDATED to useLocalFirstQuery)
+  // This ensures that when data is fetched online, it is automatically saved to localDb.v_ring_nodes
+  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
+    queryKey: ['ring-nodes-detail', ringId],
+    onlineQueryFn: async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
       const { data, error } = await supabase.rpc('get_paged_data', {
@@ -5852,12 +5744,16 @@ export default function RingMapPage() {
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
     },
-    async () => {
-      if (!ringId) return [];
-      return await localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
+    localQueryFn: () => {
+      if (!ringId) return Promise.resolve([]);
+      // Read from local DB if offline (or for initial optimistic load)
+      return localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
-    { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
-  );
+    dexieTable: localDb.v_ring_nodes,
+    enabled: !!ringId,
+    staleTime: 5 * 60 * 1000,
+    localQueryDeps: [ringId]
+  });
 
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
@@ -5984,11 +5880,12 @@ export default function RingMapPage() {
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
   };
 
-  const ringName = ringDetails?.name || `Ring ${ringId.slice(0, 8)}...`;
+  const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
   const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {
-    const isLoading = isLoadingNodes || isLoadingRingDetails;
+    // If loading and we have no cached data yet
+    const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
 
     if (mappedNodes.length === 0) {
@@ -6051,7 +5948,7 @@ export default function RingMapPage() {
         />
       </div>
 
-      <div className="flex-grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
+      <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
 
@@ -6111,7 +6008,7 @@ import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal } from '@/components/common/ui';
+import { ConfirmModal, StatusBadge } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
 import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { DataTable, TableAction } from '@/components/table';
@@ -6125,6 +6022,8 @@ import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/z
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
+import { Row } from '@/hooks/database';
+import { FiMapPin } from 'react-icons/fi';
 
 export default function RingsPage() {
   const router = useRouter();
@@ -6207,6 +6106,53 @@ export default function RingsPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
+            <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+               {record.ring_type_name}
+            </span>
+          </div>
+          {actions}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mt-1">
+             <div className="flex items-center gap-1.5">
+                <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                <span className="truncate max-w-[120px]">{record.maintenance_area_name}</span>
+             </div>
+             <div className="flex items-center gap-1.5">
+                <span className="font-bold text-gray-900 dark:text-white">{record.total_nodes}</span>
+                <span>Nodes</span>
+             </div>
+        </div>
+
+        {/* Phase Statuses */}
+        <div className="grid grid-cols-3 gap-1 mt-2">
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">OFC</div>
+                <div className="text-xs font-medium text-blue-600 dark:text-blue-400">{record.ofc_status || '-'}</div>
+            </div>
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">BTS</div>
+                <div className="text-xs font-medium text-green-600 dark:text-green-400">{record.bts_status || '-'}</div>
+            </div>
+            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-[10px] text-gray-400">SPEC</div>
+                <div className="text-xs font-medium text-orange-600 dark:text-orange-400">{record.spec_status || '-'}</div>
+            </div>
+        </div>
+
+        <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) {
     // You should handle the error state here, e.g., show an error message
   }
@@ -6229,6 +6175,7 @@ export default function RingsPage() {
         loading={isLoading}
         actions={tableActions}
         isFetching={isFetching || isMutating}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -6485,28 +6432,36 @@ export default function EFileDetailsPage() {
 
 <!-- path: app/dashboard/e-files/page.tsx -->
 ```typescript
-"use client";
+'use client';
 
-import { useState, useRef } from "react";
-import { PageHeader } from "@/components/common/page-header";
-import { DataTable } from "@/components/table";
-import { useEFiles, useDeleteFile } from "@/hooks/data/useEFilesData";
-import { InitiateFileModal, ForwardFileModal, EditFileModal } from "@/components/efile/ActionModals";
-import { ConfirmModal } from "@/components/common/ui";
-import { useRouter } from "next/navigation";
-import { FileText, Eye, Plus, Send, Edit, Trash2, Database } from "lucide-react";
-import { EFileRow } from "@/schemas/efile-schemas";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { formatDate } from "@/utils/formatters";
-import TruncateTooltip from "@/components/common/TruncateTooltip";
-import { createClient } from "@/utils/supabase/client";
-import { buildColumnConfig } from "@/constants/table-column-keys";
-import { V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
-import { useUser } from "@/providers/UserProvider";
+import { useState, useRef, useCallback } from 'react';
+import { PageHeader } from '@/components/common/page-header';
+import { DataTable } from '@/components/table';
+import { useEFiles, useDeleteFile } from '@/hooks/data/useEFilesData';
+import {
+  InitiateFileModal,
+  ForwardFileModal,
+  EditFileModal,
+} from '@/components/efile/ActionModals';
+import { ConfirmModal } from '@/components/common/ui';
+import { useRouter } from 'next/navigation';
+import { FileText, Eye, Plus, Send, Edit, Trash2, Database, User } from 'lucide-react';
+import { EFileRow } from '@/schemas/efile-schemas';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { formatDate } from '@/utils/formatters';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { createClient } from '@/utils/supabase/client';
+import { buildColumnConfig } from '@/constants/table-column-keys';
+import { V_e_files_extendedRowSchema } from '@/schemas/zod-schemas';
+import { useUser } from '@/providers/UserProvider';
 
 // Import the new Backup Hooks
-import { useExportEFileSystem, useImportEFileSystem } from "@/hooks/database/excel-queries/useEFileSystemBackup";
-import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
+import {
+  useExportEFileSystem,
+  useImportEFileSystem,
+} from '@/hooks/database/excel-queries/useEFileSystemBackup';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { Row } from '@/hooks/database';
 
 export default function EFilesPage() {
   const router = useRouter();
@@ -6515,9 +6470,18 @@ export default function EFilesPage() {
 
   // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [forwardModal, setForwardModal] = useState<{isOpen: boolean, fileId: string | null}>({isOpen: false, fileId: null});
-  const [editModal, setEditModal] = useState<{isOpen: boolean, file: V_e_files_extendedRowSchema | null}>({isOpen: false, file: null});
-  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, fileId: string | null}>({isOpen: false, fileId: null});
+  const [forwardModal, setForwardModal] = useState<{ isOpen: boolean; fileId: string | null }>({
+    isOpen: false,
+    fileId: null,
+  });
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    file: V_e_files_extendedRowSchema | null;
+  }>({ isOpen: false, file: null });
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; fileId: string | null }>({
+    isOpen: false,
+    fileId: null,
+  });
 
   // Input Refs
   const backupInputRef = useRef<HTMLInputElement>(null);
@@ -6535,92 +6499,198 @@ export default function EFilesPage() {
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) importBackup(file);
-    if (backupInputRef.current) backupInputRef.current.value = "";
+    if (backupInputRef.current) backupInputRef.current.value = '';
   };
 
   const handleConfirmDelete = () => {
     if (deleteModal.fileId) {
       deleteFile(deleteModal.fileId, {
-        onSuccess: () => setDeleteModal({ isOpen: false, fileId: null })
+        onSuccess: () => setDeleteModal({ isOpen: false, fileId: null }),
       });
     }
   };
 
   const handleExportList = () => {
-      exportList({
-          fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_e-files_list.xlsx`,
-          sheetName: 'Active Files',
-          columns: buildColumnConfig("v_e_files_extended"),
-          rpcConfig: {
-              functionName: 'get_paged_data',
-              parameters: {
-                  p_view_name: 'v_e_files_extended',
-                  p_limit: 10000,
-                  p_offset: 0,
-                  p_order_by: 'updated_at',
-                  p_order_dir: 'desc'
-              }
-          }
-      });
+    exportList({
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_e-files_list.xlsx`,
+      sheetName: 'Active Files',
+      columns: buildColumnConfig('v_e_files_extended'),
+      rpcConfig: {
+        functionName: 'get_paged_data',
+        parameters: {
+          p_view_name: 'v_e_files_extended',
+          p_limit: 10000,
+          p_offset: 0,
+          p_order_by: 'updated_at',
+          p_order_dir: 'desc',
+        },
+      },
+    });
   };
 
   // --- COLUMNS ---
   const columns: Column<EFileRow>[] = [
-      { key: 'file_number', title: 'File No.', dataIndex: 'file_number', sortable: true, width: 130,
-        render: (val) => <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{val as string}</span>
-      },
-      { key: 'subject', title: 'Subject / Description', dataIndex: 'subject', sortable: true, width: 220,
-        render: (val, rec) => (
-          <div className="flex flex-col">
-             <TruncateTooltip text={val as string} className="font-medium text-sm" />
-             <span className="text-xs text-gray-500 truncate">{rec.description}</span>
-          </div>
-        )
-      },
-      { key: 'priority', title: 'Priority', dataIndex: 'priority', width: 100,
-        render: (val) => {
-            const v = val as string;
-            const styles = v === 'immediate' ? 'bg-red-100 text-red-800 border-red-200' : v === 'urgent' ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-700 border-blue-100';
-            return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${styles}`}>{v}</span>
-        }
-      },
-      { key: 'initiator_name', title: 'Started By', dataIndex: 'initiator_name', width: 160,
-        render: (val, rec) => (
-          <div className="flex flex-col">
-             <span className="text-sm text-gray-900 dark:text-gray-100">{val as string}</span>
-             <span className="text-[10px] text-gray-500">{rec.initiator_designation}</span>
-          </div>
-        )
-      },
-      { key: 'current_holder_name', title: 'Currently With', dataIndex: 'current_holder_name', width: 180,
-        render: (val, rec) => (
-          <div className="flex flex-col">
-             <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="font-semibold text-sm text-gray-900 dark:text-white">{val as string}</span>
-             </div>
-             <span className="text-xs text-gray-500 pl-3.5">{rec.current_holder_designation}</span>
-             {rec.current_holder_area && <span className="text-[10px] text-gray-400 pl-3.5">{rec.current_holder_area}</span>}
-          </div>
-        )
-      },
-      { key: 'updated_at', title: 'Last Action', dataIndex: 'updated_at', width: 120,
-        render: (val) => (
-          <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
-            {formatDate(val as string, { format: 'dd-mm-yyyy' })}
+    {
+      key: 'file_number',
+      title: 'File No.',
+      dataIndex: 'file_number',
+      sortable: true,
+      width: 130,
+      render: (val) => (
+        <span className="font-mono font-bold text-blue-700 dark:text-blue-300">
+          {val as string}
+        </span>
+      ),
+    },
+    {
+      key: 'subject',
+      title: 'Subject / Description',
+      dataIndex: 'subject',
+      sortable: true,
+      width: 220,
+      render: (val, rec) => (
+        <div className="flex flex-col">
+          <TruncateTooltip text={val as string} className="font-medium text-sm" />
+          <span className="text-xs text-gray-500 truncate">{rec.description}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'priority',
+      title: 'Priority',
+      dataIndex: 'priority',
+      width: 100,
+      render: (val) => {
+        const v = val as string;
+        const styles =
+          v === 'immediate'
+            ? 'bg-red-100 text-red-800 border-red-200'
+            : v === 'urgent'
+            ? 'bg-orange-100 text-orange-800 border-orange-200'
+            : 'bg-blue-50 text-blue-700 border-blue-100';
+        return (
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${styles}`}>
+            {v}
           </span>
-        )
-      }
+        );
+      },
+    },
+    {
+      key: 'initiator_name',
+      title: 'Started By',
+      dataIndex: 'initiator_name',
+      width: 160,
+      render: (val, rec) => (
+        <div className="flex flex-col">
+          <span className="text-sm text-gray-900 dark:text-gray-100">{val as string}</span>
+          <span className="text-[10px] text-gray-500">{rec.initiator_designation}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'current_holder_name',
+      title: 'Currently With',
+      dataIndex: 'current_holder_name',
+      width: 180,
+      render: (val, rec) => (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span className="font-semibold text-sm text-gray-900 dark:text-white">
+              {val as string}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 pl-3.5">{rec.current_holder_designation}</span>
+          {rec.current_holder_area && (
+            <span className="text-[10px] text-gray-400 pl-3.5">{rec.current_holder_area}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'updated_at',
+      title: 'Last Action',
+      dataIndex: 'updated_at',
+      width: 120,
+      render: (val) => {
+        const canFormat = typeof val === 'string' || typeof val === 'number' || val instanceof Date;
+        return (
+          <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+            {canFormat && val
+              ? formatDate(val as string | number | Date, { format: 'dd-mm-yyyy' })
+              : 'N/A'}
+          </span>
+        );
+      },
+    },
   ];
+
+  const renderMobileItem = useCallback(
+    (record: Row<'v_e_files_extended'>, actions: React.ReactNode) => {
+      const priorityColors = {
+        immediate: 'bg-red-100 text-red-800 border-red-200',
+        urgent: 'bg-orange-100 text-orange-800 border-orange-200',
+        normal: 'bg-blue-50 text-blue-700 border-blue-100',
+      };
+      const pStyle =
+        priorityColors[record.priority as keyof typeof priorityColors] || priorityColors.normal;
+
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-start">
+            <div className="flex-1 pr-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${pStyle}`}
+                >
+                  {record.priority}
+                </span>
+                <span className="text-xs text-gray-400 font-mono">{record.file_number}</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-snug line-clamp-2">
+                {record.subject}
+              </h3>
+            </div>
+            {actions}
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md border border-gray-100 dark:border-gray-700 mt-1">
+            <div className="text-[10px] text-gray-400 uppercase mb-0.5">Current Holder</div>
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-100 dark:bg-blue-900/50 p-1 rounded-full">
+                <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                  {record.current_holder_name}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {record.current_holder_designation}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+            <span>{record.category}</span>
+            <span>
+              {record.updated_at ? formatDate(record.updated_at, { format: 'dd-mm-yyyy' }) : 'N/A'}
+            </span>
+          </div>
+        </div>
+      );
+    },
+    []
+  );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       <input
-         type="file"
-         ref={backupInputRef}
-         onChange={handleBackupRestore}
-         className="hidden"
-         accept=".xlsx"
+        type="file"
+        ref={backupInputRef}
+        onChange={handleBackupRestore}
+        className="hidden"
+        accept=".xlsx"
       />
 
       <PageHeader
@@ -6628,83 +6698,89 @@ export default function EFilesPage() {
         description="Track physical files, manage movement, and view history."
         icon={<FileText />}
         actions={[
-            {
-                label: 'Refresh',
-                onClick: () => refetch(),
-                variant: 'outline'
-            },
-            {
-                label: 'System Backup/Restore',
-                variant: 'outline',
-                leftIcon: <Database className="h-4 w-4" />,
-                disabled: isLoading || isRestoring || isBackingUp,
-                'data-dropdown': true,
-                dropdownoptions: [
-                  {
-                    label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup (Files + History)',
-                    onClick: () => exportBackup(),
-                    disabled: isBackingUp
-                  },
-                  {
-                    label: isRestoring ? 'Restoring...' : 'Restore from Backup',
-                    onClick: () => backupInputRef.current?.click(),
-                    disabled: isRestoring
-                  },
-                  {
-                    label: isExportingList ? 'Exporting List...' : 'Export Current View Only',
-                    onClick: handleExportList,
-                    disabled: isExportingList
-                  }
-                ]
-            },
-            {
-                label: 'Initiate File',
-                onClick: () => setIsCreateModalOpen(true),
-                variant: 'primary',
-                leftIcon: <Plus />
-            }
+          {
+            label: 'Refresh',
+            onClick: () => refetch(),
+            variant: 'outline',
+          },
+          {
+            label: 'System Backup/Restore',
+            variant: 'outline',
+            leftIcon: <Database className="h-4 w-4" />,
+            disabled: isLoading || isRestoring || isBackingUp,
+            'data-dropdown': true,
+            dropdownoptions: [
+              {
+                label: isBackingUp
+                  ? 'Generating Backup...'
+                  : 'Download Full Backup (Files + History)',
+                onClick: () => exportBackup(),
+                disabled: isBackingUp,
+              },
+              {
+                label: isRestoring ? 'Restoring...' : 'Restore from Backup',
+                onClick: () => backupInputRef.current?.click(),
+                disabled: isRestoring,
+              },
+              {
+                label: isExportingList ? 'Exporting List...' : 'Export Current View Only',
+                onClick: handleExportList,
+                disabled: isExportingList,
+              },
+            ],
+          },
+          {
+            label: 'Initiate File',
+            onClick: () => setIsCreateModalOpen(true),
+            variant: 'primary',
+            leftIcon: <Plus />,
+          },
         ]}
       />
 
       <DataTable
+        tableName="v_e_files_extended"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tableName="e_files" data={files as any} columns={columns as any}
+        data={files as any}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        columns={columns as any}
         loading={isLoading}
         searchable={true}
+        renderMobileItem={renderMobileItem}
         actions={[
-            {
-                key: 'view',
-                label: 'Details',
-                icon: <Eye className="w-4 h-4" />,
-                onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`),
-                variant: 'secondary'
-            },
-            {
-                key: 'forward',
-                label: 'Forward',
-                icon: <Send className="w-4 h-4" />,
-                onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }),
-                variant: 'primary',
-                hidden: (rec) => rec.status !== 'active'
-            },
-            {
-                key: 'edit',
-                label: 'Edit Info',
-                icon: <Edit className="w-4 h-4" />,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
-                variant: 'secondary',
-                hidden: (rec) => rec.status !== 'active'
-            },
-            {
-                key: 'delete',
-                label: 'Delete',
-                icon: <Trash2 className="w-4 h-4" />,
-                onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }),
-                variant: 'danger',
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                disabled: (rec) => !isSuperAdmin && role !== 'admin'
-            }
+          {
+            key: 'view',
+            label: 'Details',
+            icon: <Eye className="w-4 h-4" />,
+            onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`),
+            variant: 'secondary',
+          },
+          {
+            key: 'forward',
+            label: 'Forward',
+            icon: <Send className="w-4 h-4" />,
+            onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }),
+            variant: 'primary',
+            hidden: (rec) => rec.status !== 'active',
+          },
+          {
+            key: 'edit',
+            label: 'Edit Info',
+            icon: <Edit className="w-4 h-4" />,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
+            variant: 'secondary',
+            hidden: (rec) => rec.status !== 'active',
+          },
+          {
+            key: 'delete',
+            label: 'Delete',
+            icon: <Trash2 className="w-4 h-4" />,
+            onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }),
+            variant: 'danger',
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            disabled: (rec) => !isSuperAdmin && role !== 'admin',
+          },
         ]}
       />
 
@@ -6712,24 +6788,24 @@ export default function EFilesPage() {
       <InitiateFileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
 
       {forwardModal.isOpen && forwardModal.fileId && (
-         <ForwardFileModal
-            isOpen={forwardModal.isOpen}
-            onClose={() => setForwardModal({isOpen: false, fileId: null})}
-            fileId={forwardModal.fileId}
-         />
+        <ForwardFileModal
+          isOpen={forwardModal.isOpen}
+          onClose={() => setForwardModal({ isOpen: false, fileId: null })}
+          fileId={forwardModal.fileId}
+        />
       )}
 
       {editModal.isOpen && editModal.file && (
-         <EditFileModal
-            isOpen={editModal.isOpen}
-            onClose={() => setEditModal({isOpen: false, file: null})}
-            file={editModal.file}
-         />
+        <EditFileModal
+          isOpen={editModal.isOpen}
+          onClose={() => setEditModal({ isOpen: false, file: null })}
+          file={editModal.file}
+        />
       )}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
-        onCancel={() => setDeleteModal({isOpen: false, fileId: null})}
+        onCancel={() => setDeleteModal({ isOpen: false, fileId: null })}
         onConfirm={handleConfirmDelete}
         title="Delete File Record"
         message="Are you sure you want to delete this file record? This will also remove its entire movement history. This action cannot be undone."
@@ -6737,10 +6813,10 @@ export default function EFilesPage() {
         confirmText="Delete Permanently"
         loading={isDeleting}
       />
-
     </div>
   );
 }
+
 ```
 
 <!-- path: app/dashboard/inventory/qr/[id]/page.tsx -->
@@ -6871,12 +6947,12 @@ export default function QrCodeLayout({
 // app/dashboard/inventory/page.tsx
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive, FiMinusCircle, FiClock, FiUpload } from "react-icons/fi";
+import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiBox, FiMapPin } from "react-icons/fi";
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
@@ -6893,6 +6969,7 @@ import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-acti
 
 // Use the new Transactional Import hook
 import { useInventoryExcelUpload } from "@/hooks/database/excel-queries/useInventoryExcelUpload";
+import { formatCurrency } from "@/utils/formatters";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -7008,6 +7085,62 @@ export default function InventoryPage() {
     });
   }
 
+  const renderMobileItem = useCallback((record: Row<'v_inventory_items'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate pr-2">
+              {record.name}
+            </h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
+               {record.asset_no || 'No Asset ID'}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-sm mt-1">
+           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <div className="text-[10px] text-gray-400 uppercase">Quantity</div>
+               <div className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                   <FiBox className="w-3 h-3" /> {record.quantity}
+               </div>
+           </div>
+           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <div className="text-[10px] text-gray-400 uppercase">Value</div>
+               <div className="font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                   {formatCurrency(record.total_value || 0)}
+               </div>
+           </div>
+        </div>
+
+        <div className="space-y-1 mt-1">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <FiMapPin className="w-3 h-3 text-blue-500" />
+                <span className="truncate">{record.store_location || 'Unknown Location'}</span>
+            </div>
+            {record.functional_location && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500 pl-5">
+                    └ {record.functional_location}
+                </div>
+            )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-[10px] text-gray-400">{record.category_name}</span>
+             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                record.status_name === 'Working' || record.status_name === 'Good' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                record.status_name === 'Faulty' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+             }`}>
+                {record.status_name || 'Unknown'}
+             </span>
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
@@ -7037,6 +7170,7 @@ export default function InventoryPage() {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -7100,7 +7234,7 @@ export default function InventoryPage() {
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, RoleBadge, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { UserFilters } from '@/components/users/UserFilters';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
@@ -7119,6 +7253,8 @@ import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
 import { useUser } from '@/providers/UserProvider';
 import { useUsersData } from '@/hooks/data/useUsersData';
+import Image from 'next/image';
+import { UserRole } from '@/types/user-roles';
 
 const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -7237,6 +7373,48 @@ const AdminUsersPage = () => {
     },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             {record.avatar_url ? (
+                <Image src={record.avatar_url} alt="avatar" width={40} height={40} className="rounded-full" />
+             ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold">
+                    {record.first_name?.charAt(0)}
+                </div>
+             )}
+             <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    {record.full_name}
+                    {record.is_super_admin && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200">SUPER</span>}
+                </h3>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{record.email}</div>
+             </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+            <RoleBadge role={record.role as UserRole} />
+            {record.designation && (
+                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+                    {record.designation}
+                </span>
+            )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400">
+                 Active: {record.last_activity_period || 'Never'}
+             </div>
+             <StatusBadge status={record.status ?? 'inactive'} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) {
     return (
       <ErrorDisplay
@@ -7292,6 +7470,7 @@ const AdminUsersPage = () => {
         }}
         searchable={false}
         filterable={false}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -7604,7 +7783,7 @@ import { toast } from "sonner";
 import { Copy, Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { ConfirmModal, ErrorDisplay, StatusBadge } from "@/components/common/ui";
 import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { Row } from "@/hooks/database";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
@@ -7613,6 +7792,7 @@ import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
 import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
 import { useUser } from "@/providers/UserProvider";
+import { FiMapPin } from "react-icons/fi";
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -7715,6 +7895,51 @@ export default function ServicesPage() {
   const addNewAction = enhancedHeaderActions.pop();
   enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction!);
 
+  const renderMobileItem = useCallback((record: Row<'v_services'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="max-w-[75%]">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm wrap-break-words">
+              {record.name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+               <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                 {record.link_type_name || 'Link'}
+               </span>
+               {record.bandwidth_allocated && (
+                 <span className="text-xs text-gray-500 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
+                   {record.bandwidth_allocated}
+                 </span>
+               )}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 space-y-1">
+           <div className="flex items-start gap-1.5">
+              <FiMapPin className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
+              <span className="truncate">{record.node_name}</span>
+           </div>
+           {record.end_node_name && (
+             <div className="flex items-start gap-1.5">
+                <FiMapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                <span className="truncate">{record.end_node_name}</span>
+             </div>
+           )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400 font-mono">
+               ID: {record.unique_id || 'N/A'} {record.vlan ? `| V:${record.vlan}` : ''}
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
@@ -7736,6 +7961,7 @@ export default function ServicesPage() {
         loading={isLoading}
         isFetching={isFetching}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
@@ -8227,23 +8453,22 @@ export default function CategoriesPage() {
 // app/dashboard/nodes/page.tsx
 'use client';
 
-// ... (Imports remain same)
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
-import { NodesFilters } from '@/components/nodes/NodesFilters';
+import { NodesFilters } from '@/components/nodes/NodesFilters'; // Updated component
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { Filters } from '@/hooks/database';
+import { Filters, Row } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useMemo } from 'react';
-import { FiCpu, FiCopy } from 'react-icons/fi';
+import { useCallback, useMemo } from 'react';
+import { FiCpu, FiCopy, FiMapPin, FiInfo } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
@@ -8279,15 +8504,15 @@ const NodesPage = () => {
     dataQueryHook: useNodesData,
     displayNameField: 'name'
   });
-  const { isSuperAdmin } = useUser();
 
+  const { isSuperAdmin } = useUser();
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
+  // 1. Fetch Node Types for Filter
   const { data: nodeTypeOptionsData } = useOfflineQuery(
     ['node-types-for-filter'],
     async () =>
-      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ??
-      [],
+      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ?? [],
     async () =>
       (await localDb.v_nodes_complete.toArray()).map((n) => ({
         node_type_id: n.node_type_id,
@@ -8308,13 +8533,31 @@ const NodesPage = () => {
         }
       }
     );
-    return Array.from(uniqueNodeTypes.values());
+    return Array.from(uniqueNodeTypes.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [nodeTypeOptionsData]);
+
+  // 2. Fetch Maintenance Areas for Filter
+  const { data: maintenanceAreasData } = useOfflineQuery(
+    ['maintenance-areas-for-filter-nodes'],
+    async () =>
+      (await createClient().from('maintenance_areas').select('id, name').eq('status', true)).data ?? [],
+    async () =>
+      (await localDb.maintenance_areas.where('status').equals('true').toArray()).map((m) => ({
+        id: m.id,
+        name: m.name,
+      }))
+  );
+
+  const maintenanceAreas = useMemo(() => {
+    if (!maintenanceAreasData) return [];
+    return maintenanceAreasData
+      .map(m => ({ id: m.id, name: m.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [maintenanceAreasData]);
 
   const isInitialLoad = isLoading && nodes.length === 0;
 
   const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
-
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_nodes_complete]);
 
   const tableActions = useMemo(
@@ -8351,6 +8594,42 @@ const NodesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+               {record.node_type_name || record.node_type_code || 'Unknown Type'}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="grid grid-cols-1 gap-1 text-sm mt-1">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+             <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+             <span className="truncate">{record.maintenance_area_name || 'No Area'}</span>
+          </div>
+          {record.remark && (
+             <div className="flex items-start gap-2 text-gray-500 dark:text-gray-400 text-xs italic">
+                <FiInfo className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span className="line-clamp-2">{record.remark}</span>
+             </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="text-xs text-gray-400 font-mono">
+                {record.latitude?.toFixed(4)}, {record.longitude?.toFixed(4)}
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -8383,9 +8662,9 @@ const NodesPage = () => {
         actions={tableActions}
         selectable={isSuperAdmin ? true : false}
         showColumnsToggle={true}
-        // IMPORTANT: Must be false so DataTable displays exactly what the hook returns
         searchable={false}
         onCellEdit={crudActions.handleCellEdit}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -8400,10 +8679,19 @@ const NodesPage = () => {
           <NodesFilters
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
+
+            // Node Type Props
             nodeTypes={nodeTypes}
             selectedNodeType={filters.filters.node_type_id as string | undefined}
             onNodeTypeChange={(value) =>
               filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))
+            }
+
+            // Maintenance Area Props
+            maintenanceAreas={maintenanceAreas}
+            selectedMaintenanceArea={filters.filters.maintenance_terminal_id as string | undefined}
+            onMaintenanceAreaChange={(value) =>
+               filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: value } as Filters))
             }
           />
         }
@@ -8438,9 +8726,9 @@ export default NodesPage;
 // app/dashboard/employees/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import EmployeeForm from '@/components/employee/EmployeeForm';
 import EmployeeFilters from '@/components/employee/EmployeeFilters';
 import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
@@ -8454,7 +8742,7 @@ import {
   Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { FiUsers } from 'react-icons/fi';
+import { FiBriefcase, FiUsers } from 'react-icons/fi';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
@@ -8465,6 +8753,7 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
+import { Row } from '@/hooks/database';
 
 const EmployeesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -8543,6 +8832,46 @@ const EmployeesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_employees'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold text-sm">
+                {record.employee_name?.charAt(0)}
+             </div>
+             <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.employee_name}</h3>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                   <FiBriefcase className="w-3 h-3" />
+                   <span>{record.employee_designation_name || 'No Designation'}</span>
+                </div>
+             </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <span className="block text-gray-400 text-[10px] uppercase">ID</span>
+               <span className="font-mono text-gray-700 dark:text-gray-300">{record.employee_pers_no || '-'}</span>
+            </div>
+            <div className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+               <span className="block text-gray-400 text-[10px] uppercase">Contact</span>
+               <span className="text-gray-700 dark:text-gray-300 truncate block">{record.employee_contact || '-'}</span>
+            </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-xs text-gray-500 truncate max-w-[150px]">
+               {record.maintenance_area_name}
+             </span>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -8579,6 +8908,7 @@ const EmployeesPage = () => {
         isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable={isSuperAdmin ? true : false}
+        renderMobileItem={renderMobileItem}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_employeesRowSchema & { id: string } => row.id != null
@@ -8729,9 +9059,9 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner, StatusBadge } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters } from '@/hooks/database';
+import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
@@ -8757,7 +9087,8 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiDatabase, FiGitBranch, FiUpload } from 'react-icons/fi';
+import { FiAnchor, FiArrowRight, FiDatabase, FiGitBranch, FiMapPin, FiPieChart, FiUpload } from 'react-icons/fi';
+import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -8788,6 +9119,14 @@ export default function SystemConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
+
+  // Stats Configuration State
+  const [isStatsConfigOpen, setIsStatsConfigOpen] = useState(false);
+  const [statsFilters, setStatsFilters] = useState<StatsFilterState>({
+    includeAdminDown: true,
+    selectedCapacities: [],
+    selectedTypes: []
+  });
 
   const tracePath = useTracePath(supabase);
 
@@ -8850,23 +9189,31 @@ export default function SystemConnectionsPage() {
       filters: {}
   });
 
-  // --- UPDATED STATS CALCULATION (With Percentage in Brackets) ---
   const headerStats: StatProps[] = useMemo(() => {
     if (!ports || ports.length === 0) {
         return [{ label: 'Total Connections', value: totalConnections }];
     }
 
-    const totalPorts = ports.length;
-    const availablePorts = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
-    const portsDown = ports.filter(p => !p.port_admin_status).length;
-    const utilPercent = totalPorts > 0 ? Math.round((ports.filter(p => p.port_utilization).length / totalPorts) * 100) : 0;
+    const filteredPorts = ports.filter(p => {
+        if (!statsFilters.includeAdminDown && !p.port_admin_status) return false;
+        if (statsFilters.selectedCapacities.length > 0) {
+            if (!p.port_capacity || !statsFilters.selectedCapacities.includes(p.port_capacity)) return false;
+        }
+        const typeLabel = p.port_type_code || p.port_type_name || "Unknown";
+        if (statsFilters.selectedTypes.length > 0) {
+            if (!statsFilters.selectedTypes.includes(typeLabel)) return false;
+        }
+        return true;
+    });
 
-    // Group stats by Port Type Code
-    const typeStats = ports.reduce((acc, port) => {
+    const totalPorts = filteredPorts.length;
+    const availablePorts = filteredPorts.filter(p => !p.port_utilization && p.port_admin_status).length;
+    const portsDown = filteredPorts.filter(p => !p.port_admin_status).length;
+    const utilPercent = totalPorts > 0 ? Math.round((filteredPorts.filter(p => p.port_utilization).length / totalPorts) * 100) : 0;
+
+    const typeStats = filteredPorts.reduce((acc, port) => {
         const code = port.port_type_code || (port.port_type_name ? port.port_type_name.replace(/[^A-Z0-9]/gi, '').substring(0, 6) : 'Other');
-
         if (!acc[code]) acc[code] = { total: 0, used: 0 };
-
         acc[code].total++;
         if (port.port_utilization) {
             acc[code].used++;
@@ -8874,32 +9221,29 @@ export default function SystemConnectionsPage() {
         return acc;
     }, {} as Record<string, { total: number; used: number }>);
 
-    // Create cards for each type
     const typeCards: StatProps[] = Object.entries(typeStats)
-        .sort((a, b) => b[1].total - a[1].total) // Sort by total count descending
+        .sort((a, b) => b[1].total - a[1].total)
         .map(([code, stats]) => {
-            // Calculate specific percentage for this port type
             const percentage = Math.round((stats.used / stats.total) * 100);
-
             return {
                 label: `${code}`,
-                // Format: "5 / 10 (50%)"
                 value: `${stats.used} / ${stats.total} (${percentage}%)`,
-                // Warning color if > 90% used
                 color: percentage > 90 ? 'warning' : 'default'
             };
         });
 
     return [
         { label: 'Connections', value: totalConnections, color: 'default' },
-        { label: 'Utilization', value: `${utilPercent}%`, color: utilPercent > 80 ? 'warning' : 'default' },
+        {
+            label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`,
+            value: `${utilPercent}%`,
+            color: utilPercent > 80 ? 'warning' : 'default'
+        },
         { label: 'Free Ports', value: availablePorts, color: availablePorts === 0 ? 'danger' : 'success' },
-        // Only show 'Down' card if there are actually ports down
         ...(portsDown > 0 ? [{ label: 'Ports Down', value: portsDown, color: 'danger' as const }] : []),
-        // Append dynamic type cards
         ...typeCards
     ];
-  }, [ports, totalConnections]);
+  }, [ports, totalConnections, statsFilters]);
 
   const upsertMutation = useRpcMutation(supabase, 'upsert_system_connection_with_details', {
     onSuccess: () => {
@@ -9018,10 +9362,78 @@ export default function SystemConnectionsPage() {
     }
   });
 
-  headerActions.splice(1, 0, {
+  headerActions.splice(0, 0, {
+    label: "Configure Stats",
+    onClick: () => setIsStatsConfigOpen(true),
+    variant: 'outline',
+    leftIcon: <FiPieChart />,
+    disabled: isLoadingConnections || !ports.length
+  });
+
+  headerActions.splice(2, 0, {
     label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
     variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
   });
+
+  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-3">
+        {/* Header: Service Name & Actions */}
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight wrap-break-words">
+              {record.service_name || record.connected_system_name || 'Unnamed Connection'}
+            </h3>
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+               {record.connected_link_type_name || 'Link'}
+               {record.bandwidth_allocated && <span className="text-gray-400 mx-1">•</span>}
+               {record.bandwidth_allocated}
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
+        </div>
+
+        {/* Port Mapping Card */}
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700 p-2.5">
+            <div className="flex items-center justify-between text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                <span>Local</span>
+                <span>Remote</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-sm">
+                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
+                    {record.system_working_interface || '?'}
+                </div>
+                <FiArrowRight className="text-gray-400 w-4 h-4" />
+                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
+                    {record.en_interface || '?'}
+                </div>
+            </div>
+        </div>
+
+        {/* Remote System Details */}
+        <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+             <div className="flex items-center gap-2">
+                 <FiAnchor className="w-3.5 h-3.5 text-purple-500" />
+                 <span className="truncate font-medium">{record.en_name || 'Unknown Remote System'}</span>
+             </div>
+             <div className="flex items-center gap-2">
+                 <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                 <span className="truncate">{record.en_node_name || 'Unknown Location'}</span>
+             </div>
+        </div>
+
+        {/* Footer: ID & Status */}
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="flex flex-col">
+                <span className="text-[10px] text-gray-400 uppercase">Circuit ID</span>
+                <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{record.unique_id || '-'}</span>
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
   if (!parentSystem) return <ErrorDisplay error="System not found." />;
@@ -9048,6 +9460,14 @@ export default function SystemConnectionsPage() {
 
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
 
+      <StatsConfigModal
+        isOpen={isStatsConfigOpen}
+        onClose={() => setIsStatsConfigOpen(false)}
+        ports={ports}
+        filters={statsFilters}
+        onApply={setStatsFilters}
+      />
+
       <DataTable
         tableName="v_system_connections_complete"
         data={connections}
@@ -9055,6 +9475,7 @@ export default function SystemConnectionsPage() {
         loading={isLoadingConnections}
         isFetching={isLoadingConnections}
         actions={tableActions}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
           onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
@@ -9079,8 +9500,9 @@ export default function SystemConnectionsPage() {
                 options={mediaOptions}
              />
              <SelectFilter
+                // FIX: Used corrected Key
                 label="Link Type"
-                filterKey="connected_link_type_name"
+                filterKey="connected_link_type_id"
                 filters={filters}
                 setFilters={setFilters}
                 options={linkTypeOptions}
@@ -9132,10 +9554,10 @@ export default function SystemConnectionsPage() {
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
-import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from "react-icons/fi";
+import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer, FiMapPin, FiWifi } from "react-icons/fi";
 import { toast } from "sonner";
 import { PageHeader, ActionButton } from "@/components/common/page-header";
-import { ErrorDisplay, ConfirmModal } from "@/components/common/ui";
+import { ErrorDisplay, ConfirmModal, StatusBadge } from "@/components/common/ui";
 import { DataTable } from "@/components/table";
 import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
 import { useRpcMutation, RpcFunctionArgs, buildRpcFilters, Row, TableOrViewName } from "@/hooks/database";
@@ -9191,14 +9613,11 @@ export default function SystemsPage() {
     displayNameField: "system_name",
   });
 
+  // ... (Excel upload/download logic - keep as is) ...
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
-    },
+    onSuccess: (result) => { if (result.successCount > 0) refetch(); },
   });
-
   const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
-
   const allExportColumns = useMemo(() => buildColumnConfig("v_systems_complete"), []);
   const orderedSystems = useOrderedColumns(SystemsTableColumns(systems), [
     ...TABLE_COLUMN_KEYS.v_systems_complete,
@@ -9221,30 +9640,21 @@ export default function SystemsPage() {
 
   const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ["system-types-for-filter"],
-    async () =>
-      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ??
-      [],
+    async () => (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ?? [],
     async () => await localDb.lookup_types.where({ category: "SYSTEM_TYPES" }).toArray()
   );
   const systemTypes = useMemo(() => systemTypesResult || [], [systemTypesResult]);
-
-  // THE FIX: Fetch System Capacities
   const { data: systemCapacitiesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ["system-capacities-for-filter"],
-    async () =>
-      (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_CAPACITY")).data ??
-      [],
+    async () => (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_CAPACITY")).data ?? [],
     async () => await localDb.lookup_types.where({ category: "SYSTEM_CAPACITY" }).toArray()
   );
   const systemCapacities = useMemo(() => systemCapacitiesResult || [], [systemCapacitiesResult]);
 
   const handleView = useCallback(
     (system: V_systems_completeRowSchema) => {
-      if (system.id) {
-        router.push(`/dashboard/systems/${system.id}`);
-      } else {
-        toast.info("System needs to be created before managing connections.");
-      }
+      if (system.id) router.push(`/dashboard/systems/${system.id}`);
+      else toast.info("System needs to be created before managing connections.");
     },
     [router]
   );
@@ -9261,7 +9671,6 @@ export default function SystemsPage() {
       onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
       onToggleStatus: isSuperAdmin ? crudActions.handleToggleStatus : undefined,
     });
-
     actions.unshift({
       key: "manage-ports",
       label: "Manage Ports",
@@ -9269,30 +9678,22 @@ export default function SystemsPage() {
       onClick: handleManagePorts,
       variant: "secondary",
     });
-
     return actions;
   }, [editModal.openEdit, handleView, crudActions, handleManagePorts, isSuperAdmin]);
 
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
+  // ... (Upload/Export handlers - keep as is)
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const uploadConfig = buildUploadConfig("v_systems_complete");
       uploadSystems({ file, columns: uploadConfig.columnMapping });
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
   const handleExport = useCallback(() => {
     exportSystems({
-      fileName: `${formatDate(new Date(), {
-                format: "dd-mm-yyyy",
-              })}-systems-export.xlsx`,
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-systems-export.xlsx`,
       sheetName: "Systems",
       columns: allExportColumns as Column<Row<TableOrViewName>>[],
       rpcConfig: {
@@ -9307,50 +9708,24 @@ export default function SystemsPage() {
     });
   }, [exportSystems, allExportColumns, filters.filters]);
 
-  const headerActions = useMemo(
-    (): ActionButton[] => [
+  // Header Actions
+  const headerActions = useMemo((): ActionButton[] => [
       {
-        label: "Refresh",
-        onClick: () => {
-          refetch();
-          toast.success("Systems refreshed.");
-        },
-        variant: "outline",
-        leftIcon: <FiRefreshCw className={isLoading ? "animate-spin" : ""} />,
-        disabled: isLoading,
+        label: "Refresh", onClick: () => { refetch(); toast.success("Systems refreshed."); },
+        variant: "outline", leftIcon: <FiRefreshCw className={isLoading ? "animate-spin" : ""} />, disabled: isLoading,
       },
       {
-        label: isUploading ? "Uploading..." : "Upload Systems",
-        onClick: handleUploadClick,
-        variant: "outline",
-        leftIcon: <FiUpload />,
-        disabled: isUploading || isLoading,
+        label: isUploading ? "Uploading..." : "Upload", onClick: handleUploadClick,
+        variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,
       },
       {
-        label: isExporting ? "Exporting..." : "Export All Data",
-        onClick: handleExport,
-        variant: "outline",
-        leftIcon: <FiDownload />,
-        disabled: isExporting || isLoading,
+        label: isExporting ? "Exporting..." : "Export", onClick: handleExport,
+        variant: "outline", leftIcon: <FiDownload />, disabled: isExporting || isLoading,
       },
       {
-        label: "Add New",
-        onClick: editModal.openAdd,
-        variant: "primary",
-        leftIcon: <FiDatabase />,
-        disabled: isLoading,
+        label: "Add New", onClick: editModal.openAdd, variant: "primary", leftIcon: <FiDatabase />, disabled: isLoading,
       },
-    ],
-    [
-      isLoading,
-      isUploading,
-      isExporting,
-      refetch,
-      handleUploadClick,
-      handleExport,
-      editModal.openAdd,
-    ]
-  );
+    ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
   const headerStats = [
     { value: totalCount, label: "Total Systems" },
@@ -9378,24 +9753,44 @@ export default function SystemsPage() {
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
         p_system_capacity_id: formData.system_capacity_id || undefined,
-        p_ring_associations:
-          isRingBased && formData.ring_id
-            ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
-            : null,
+        p_ring_associations: isRingBased && formData.ring_id ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }] : null,
       };
-
       upsertSystemMutation.mutate(payload);
-    },
-    [editModal.record, upsertSystemMutation, systemTypes]
+    }, [editModal.record, upsertSystemMutation, systemTypes]
   );
 
-  if (error)
+  // --- MOBILE CARD RENDERER ---
+  const renderMobileSystemCard = useCallback((record: Row<'v_systems_complete'>, actions: React.ReactNode) => {
     return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: "Retry", onClick: refetch, variant: "primary" }]}
-      />
+      <div className="flex flex-col gap-2">
+         <div className="flex justify-between items-start">
+             <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.system_name}</h3>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{record.system_type_code || record.system_type_name}</div>
+             </div>
+             {actions}
+         </div>
+
+         <div className="grid grid-cols-2 gap-2 text-sm mt-1">
+             <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                <span className="truncate">{record.node_name}</span>
+             </div>
+             <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                <FiWifi className="w-3.5 h-3.5 text-gray-400" />
+                <span className="font-mono text-xs">{record.ip_address?.split('/')[0] || 'N/A'}</span>
+             </div>
+         </div>
+
+         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-xs text-gray-500">{record.system_capacity_name || 'Unknown Cap'}</span>
+             <StatusBadge status={record.status ?? false} />
+         </div>
+      </div>
     );
+  }, []);
+
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: "Retry", onClick: refetch, variant: "primary" }]} />;
 
   return (
     <div className='p-6 space-y-6'>
@@ -9409,13 +9804,7 @@ export default function SystemsPage() {
         isFetching={isFetching}
       />
 
-      <input
-        type='file'
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className='hidden'
-        accept='.xlsx, .xls, .csv'
-      />
+      <input type='file' ref={fileInputRef} onChange={handleFileChange} className='hidden' accept='.xlsx, .xls, .csv' />
 
       <DataTable
         tableName='v_systems_complete'
@@ -9424,15 +9813,13 @@ export default function SystemsPage() {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
+        renderMobileItem={renderMobileSystemCard} // Pass the mobile renderer
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
           showSizeChanger: true,
-          onChange: (page, limit) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(limit);
-          },
+          onChange: (page, limit) => { pagination.setCurrentPage(page); pagination.setPageLimit(limit); },
         }}
         customToolbar={
           <SearchAndFilters
@@ -9440,10 +9827,7 @@ export default function SystemsPage() {
             onSearchChange={search.setSearchQuery}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters((p) => !p)}
-            onClearFilters={() => {
-              search.setSearchQuery("");
-              filters.setFilters({});
-            }}
+            onClearFilters={() => { search.setSearchQuery(""); filters.setFilters({}); }}
             hasActiveFilters={Object.values(filters.filters).some(Boolean) || !!search.searchQuery}
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
             searchPlaceholder='Search by system name or type...'>
@@ -9452,60 +9836,28 @@ export default function SystemsPage() {
               filterKey='system_type_name'
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={(systemTypes || [])
-                .filter((s) => s.name !== "DEFAULT")
-                .map((t) => ({
-                  value: t.name,
-                  label: t.code || t.name,
-                }))}
+              options={(systemTypes || []).filter((s) => s.name !== "DEFAULT").map((t) => ({ value: t.name, label: t.code || t.name }))}
             />
-            {/* THE FIX: Added Capacity Filter */}
             <SelectFilter
               label='Capacity'
               filterKey='system_capacity_name'
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={(systemCapacities || [])
-                .filter((s) => s.name !== "DEFAULT")
-                .map((t) => ({
-                  value: t.name,
-                  label: t.name,
-                }))}
+              options={(systemCapacities || []).filter((s) => s.name !== "DEFAULT").map((t) => ({ value: t.name, label: t.name }))}
             />
             <SelectFilter
               label='Status'
               filterKey='status'
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={[
-                { value: "true", label: "Active" },
-                { value: "false", label: "Inactive" },
-              ]}
+              options={[{ value: "true", label: "Active" }, { value: "false", label: "Inactive" }]}
             />
           </SearchAndFilters>
         }
       />
-      <SystemModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        rowData={editModal.record}
-        onSubmit={handleSave}
-        isLoading={upsertSystemMutation.isPending}
-      />
-      <SystemPortsManagerModal
-        isOpen={isPortsModalOpen}
-        onClose={() => setIsPortsModalOpen(false)}
-        system={selectedSystemForPorts}
-      />
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type='danger'
-      />
+      <SystemModal isOpen={editModal.isOpen} onClose={editModal.close} rowData={editModal.record} onSubmit={handleSave} isLoading={upsertSystemMutation.isPending} />
+      <SystemPortsManagerModal isOpen={isPortsModalOpen} onClose={() => setIsPortsModalOpen(false)} system={selectedSystemForPorts} />
+      <ConfirmModal isOpen={deleteModal.isOpen} onConfirm={deleteModal.onConfirm} onCancel={deleteModal.onCancel} title='Confirm Deletion' message={deleteModal.message} loading={deleteModal.loading} type='danger' />
     </div>
   );
 }
@@ -9715,7 +10067,6 @@ import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
-import { useRingManagerStats } from '@/hooks/database/rpc-queries'; // New stats hook
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -9725,13 +10076,21 @@ interface SystemToDisassociate {
   ringName: string;
 }
 
+interface DynamicStats {
+  total: number;
+  spec: { issued: number; pending: number };
+  ofc: { ready: number; partial: number; pending: number };
+  bts: { onAir: number; pending: number; nodesOnAir: number; configuredCount: number }; // Added nodesOnAir
+}
+
+// Extend V_ringsRowSchema to include the new column optionally
+type ExtendedRingRow = V_ringsRowSchema & { bts_node_count?: number };
+
 // --- Helper Hooks ---
 
-// Hook to fetch systems specifically for a ring with hierarchical sorting
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    // Explicitly fetch related system details using the foreign key relation
     columns: `
       order_in_ring,
       ring_id,
@@ -9759,7 +10118,6 @@ const useRingSystems = (ringId: string | null) => {
     select: (result: PagedQueryResult<any>) => {
       const flattened = result.data
         .map((item) => {
-          // Robustly handle nested system object which might come as 'system' or 'systems' depending on PostgREST version
           const sys = item.system || item.systems;
           if (!sys) return null;
 
@@ -9770,12 +10128,8 @@ const useRingSystems = (ringId: string | null) => {
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
             status: sys.status,
-
-            // Essential fields for Update/Upsert forms
             system_type_id: sys.system_type_id,
             node_id: sys.node_id,
-
-            // Optional fields to preserve data integrity during edits
             ip_address:
               typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
             s_no: sys.s_no,
@@ -9797,9 +10151,6 @@ const useRingSystems = (ringId: string | null) => {
   });
 };
 
-// --- Components ---
-
-// Internal component to render the list of systems inside the details panel
 const RingAssociatedSystemsView = ({
   ringId,
   onEdit,
@@ -9895,8 +10246,11 @@ const RingAssociatedSystemsView = ({
   );
 };
 
-// Data fetching hook for the main list
-const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsRowSchema> => {
+// --- Custom Hook with Stats Calculation ---
+const useRingsDataWithStats = (
+  params: DataQueryHookParams,
+  setDynamicStats: (stats: DynamicStats) => void
+): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
@@ -9909,7 +10263,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
     });
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_rings',
-      p_limit: 5000, // Fetch all for client-side processing if needed, or adjust limit
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
@@ -9933,7 +10287,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
   });
 
   const processedData = useMemo(() => {
-    let filtered = allRings;
+    let filtered = allRings as ExtendedRingRow[];
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -9945,11 +10299,8 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
       );
     }
 
-    // Apply Filters
     Object.keys(filters).forEach((key) => {
       if (filters[key] && key !== 'or') {
-        // 'or' is handled by searchQuery logic mostly
-        // Handle status booleans vs strings
         if (key === 'status') {
           filtered = filtered.filter((item) => String(item.status) === filters[key]);
         } else {
@@ -9959,6 +10310,37 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
         }
       }
     });
+
+    // --- CALCULATE DYNAMIC STATS (UPDATED) ---
+    const stats: DynamicStats = {
+        total: filtered.length,
+        spec: { issued: 0, pending: 0 },
+        ofc: { ready: 0, partial: 0, pending: 0 },
+        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+    };
+
+    filtered.forEach(r => {
+        if (r.spec_status === 'Issued') stats.spec.issued++;
+        else stats.spec.pending++;
+
+        if (r.ofc_status === 'Ready') stats.ofc.ready++;
+        else if (r.ofc_status === 'Partial Ready') stats.ofc.partial++;
+        else stats.ofc.pending++;
+
+        if (r.bts_status === 'On-Air') {
+          stats.bts.onAir++;
+          // Sum up the node count. Use bts_node_count if available (after SQL update), else total_nodes
+          stats.bts.nodesOnAir += (r.bts_node_count ?? r.total_nodes ?? 0);
+        } else if (r.bts_status === 'Configured') {
+          stats.bts.configuredCount++;
+        } else {
+          stats.bts.pending++;
+        }
+    });
+
+    // We use a timeout to avoid setting state during render
+    setTimeout(() => setDynamicStats(stats), 0);
+    // -----------------------------
 
     filtered.sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
@@ -9975,6 +10357,7 @@ const useRingsData = (params: DataQueryHookParams): DataQueryHookReturn<V_ringsR
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
@@ -9995,6 +10378,19 @@ export default function RingManagerPage() {
     null
   );
 
+  // --- STATS STATE ---
+  const [dynamicStats, setDynamicStats] = useState<DynamicStats>({
+      total: 0,
+      spec: { issued: 0, pending: 0 },
+      ofc: { ready: 0, partial: 0, pending: 0 },
+      bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+  });
+
+  const useCustomDataHook = useCallback((params: DataQueryHookParams) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      return useRingsDataWithStats(params, setDynamicStats);
+  }, []);
+
   const {
     data: rings,
     isLoading,
@@ -10011,14 +10407,9 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',
-    dataQueryHook: useRingsData,
+    dataQueryHook: useCustomDataHook,
     displayNameField: 'name',
   });
-
-  // Fetch Statistics for Header
-  const { data: stats, refetch: refetchStats } = useRingManagerStats(supabase);
-
-  console.log(stats);
 
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
@@ -10030,7 +10421,6 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      refetchStats(); // Update stats when systems change
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
@@ -10040,13 +10430,13 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success('System disassociated from ring.');
       void refetch();
-      refetchStats(); // Update stats
       queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
+  // ... (handleSaveSystems, handleUpdateSystemInRing, filter option fetches, handleMutationSuccess, handleSave, handleViewDetails, handleUploadClick, handleFileChange, handleExportClick - KEEP AS IS)
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
@@ -10133,7 +10523,6 @@ export default function RingManagerPage() {
     });
   };
 
-  // Fetch filter options
   const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ring-types-for-modal'],
     async () =>
@@ -10151,7 +10540,6 @@ export default function RingManagerPage() {
     toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
     refetch();
-    refetchStats();
   };
 
   const handleSave = (data: RingsInsertSchema) => {
@@ -10169,7 +10557,6 @@ export default function RingManagerPage() {
     [router]
   );
 
-  // ... (Excel Handlers reuse existing logic)
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -10203,7 +10590,6 @@ export default function RingManagerPage() {
           dataIndex: 'maintenance_area_name',
         },
         { key: 'status', title: 'status', dataIndex: 'status' },
-        // New export columns
         { key: 'ofc_status', title: 'ofc_status', dataIndex: 'ofc_status' },
         { key: 'spec_status', title: 'spec_status', dataIndex: 'spec_status' },
         { key: 'bts_status', title: 'bts_status', dataIndex: 'bts_status' },
@@ -10224,7 +10610,6 @@ export default function RingManagerPage() {
         label: 'Refresh',
         onClick: () => {
           refetch();
-          refetchStats();
         },
         variant: 'outline',
         leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
@@ -10264,43 +10649,34 @@ export default function RingManagerPage() {
     isUploading,
     isExporting,
     refetch,
-    refetchStats,
     handleUploadClick,
     handleExportClick,
     editModal.openAdd,
   ]);
 
-  // THE FIX: Use data from the RPC hook
+  // THE FIX: Use dynamic stats from the hook
   const headerStats = useMemo(() => {
-    if (!stats)
-      return [
-        { value: 0, label: 'Total Rings' },
-        { value: 0, label: 'Nodes On-Air', color: 'success' as const },
-      ];
-
     return [
-      { value: stats.total_rings, label: 'Total Rings' },
-      { value: `${stats.on_air_nodes} / ${stats.configured_in_maan}`, label: 'Nodes On-Air/ Rings configured in MAAN but Not On-Air', color: 'success' as const },
+      { value: dynamicStats.total, label: 'Total Rings' },
+      { value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
       {
-        value: `${stats.spec_issued} / ${stats.spec_pending}`,
+        value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
         label: 'SPEC (Issued/Pend)',
         color: 'primary' as const,
       },
       {
-        value: `${stats.ofc_ready} / ${stats.ofc_partial_ready} / ${stats.ofc_pending}`,
+        value: `${dynamicStats.ofc.ready} / ${dynamicStats.ofc.partial} / ${dynamicStats.ofc.pending}`,
         label: 'OFC (Ready/Partial/Pend)',
         color: 'warning' as const,
       },
     ];
-  }, [stats]);
+  }, [dynamicStats]);
 
-  // --- Dynamic Config for Detail View ---
   const dynamicFilterConfig: EntityConfig<RingEntity> = useMemo(
     () => ({
       ...ringConfig,
-      // Add new fields to the detail view (Right Panel)
       detailFields: [
-        ...ringConfig.detailFields.filter((f) => f.key !== 'description'), // Move description to end
+        ...ringConfig.detailFields.filter((f) => f.key !== 'description'),
         { key: 'ofc_status', label: 'OFC Status', type: 'text' },
         { key: 'spec_status', label: 'SPEC Status', type: 'text' },
         { key: 'bts_status', label: 'BTS Status', type: 'text' },
@@ -10346,7 +10722,6 @@ export default function RingManagerPage() {
       ],
       filterOptions: [
         ...ringConfig.filterOptions,
-        // THE FIX: Apply 'as const' to the type property
         {
           key: 'ofc_status',
           label: 'OFC Status',
@@ -10354,6 +10729,7 @@ export default function RingManagerPage() {
           options: [
             { value: 'Ready', label: 'Ready' },
             { value: 'Pending', label: 'Pending' },
+            { value: 'Partial Ready', label: 'Partial Ready' },
           ],
         },
         {
@@ -10363,6 +10739,7 @@ export default function RingManagerPage() {
           options: [
             { value: 'On-Air', label: 'On-Air' },
             { value: 'Pending', label: 'Pending' },
+            { value: 'Configured', label: 'Configured' },
           ],
         },
       ].map((opt) => {
@@ -10461,6 +10838,7 @@ export default function RingManagerPage() {
         />
       </div>
 
+      {/* Modals remain the same... */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -10508,7 +10886,6 @@ export default function RingManagerPage() {
     </div>
   );
 }
-
 ```
 
 <!-- path: app/dashboard/diary/page.tsx -->
@@ -10897,14 +11274,14 @@ export default function NetworkTopologyPage() {
 // app/dashboard/audit-logs/page.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useAuditLogsData } from '@/hooks/data/useAuditLogsData';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
-import { FiShield, FiEye } from 'react-icons/fi';
+import { FiShield, FiEye, FiClock } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { AuditLogsTableColumns } from '@/config/table-columns/AuditLogsTableColumns';
 import { AuditLogDetailsModal } from '@/components/audit/AuditLogDetailsModal';
@@ -10916,6 +11293,8 @@ import { UserRole } from '@/types/user-roles';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { BulkActions } from '@/components/common/BulkActions';
+import { Row } from '@/hooks/database';
+import { formatDate } from '@/utils/formatters';
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
@@ -10964,6 +11343,52 @@ export default function AuditLogsPage() {
     exportConfig: { tableName: 'v_audit_logs' }
   });
 
+  const renderMobileItem = useCallback((record: Row<'v_audit_logs'>, actions: React.ReactNode) => {
+
+    // Action Badge Logic
+    const getActionColor = (action: string) => {
+        switch(action) {
+            case 'INSERT': return 'bg-green-100 text-green-700 border-green-200';
+            case 'UPDATE': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'DELETE': return 'bg-red-100 text-red-700 border-red-200';
+            default: return 'bg-gray-100 text-gray-700 border-gray-200';
+        }
+    };
+
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getActionColor(record.action_type || '')}`}>
+                {record.action_type}
+             </span>
+             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {record.table_name}
+             </span>
+          </div>
+          {actions}
+        </div>
+
+        <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 font-mono break-all line-clamp-2">
+           ID: {record.record_id}
+        </div>
+
+        <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+             <div className="flex items-center gap-1.5">
+                 <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold">
+                    {record.performed_by_name?.charAt(0) || '?'}
+                 </div>
+                 <span className="truncate max-w-[100px]">{record.performed_by_name || 'System'}</span>
+             </div>
+             <div className="flex items-center gap-1">
+                 <FiClock className="w-3 h-3" />
+                 {record.created_at ? formatDate(record.created_at, { format: 'dd-mm-yyyy', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+             </div>
+        </div>
+      </div>
+    );
+  }, []);
+
   // Security check
   if (!isSuperAdmin) {
      return <UnauthorizedModal allowedRoles={[UserRole.ADMIN]} currentRole={role} />;
@@ -11010,6 +11435,7 @@ export default function AuditLogsPage() {
           );
           bulkActions.handleRowSelect(validRows);
         }}
+        renderMobileItem={renderMobileItem}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -11666,10 +12092,10 @@ export default function RingMapPage() {
 // path: app/dashboard/ofc/[id]/page.tsx
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ConfirmModal } from '@/components/common/ui';
+import { PageSpinner, ConfirmModal, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -11694,6 +12120,7 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
+import { FiActivity, FiArrowRight } from 'react-icons/fi';
 
 export const dynamic = 'force-dynamic';
 
@@ -11839,6 +12266,69 @@ export default function OfcCableDetailsPage() {
     ];
   }, [utilization]);
 
+  const renderMobileItem = useCallback((record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+               F{record.fiber_no_sn}
+            </span>
+            {record.fiber_no_sn !== record.fiber_no_en && (
+                <>
+                  <FiArrowRight className="w-3 h-3 text-gray-400" />
+                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+                    F{record.fiber_no_en}
+                  </span>
+                </>
+            )}
+          </div>
+          {actions}
+        </div>
+
+        {/* System / Service Info */}
+        <div className="min-w-0 mt-1">
+           {record.system_name ? (
+             <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">{record.system_name}</h4>
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                   <span className="uppercase font-bold tracking-wider">{record.connection_type || 'Connection'}</span>
+                </div>
+             </div>
+           ) : (
+             <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
+           )}
+        </div>
+
+        {/* Technical Metrics Grid */}
+        <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
+            <div>
+               <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
+               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                  {record.updated_sn_name || 'N/A'}
+               </div>
+               <div className="text-gray-500 mt-0.5">{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</div>
+            </div>
+             <div>
+               <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
+               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                  {record.updated_en_name || 'N/A'}
+               </div>
+               <div className="text-gray-500 mt-0.5">{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</div>
+            </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <FiActivity className="w-3.5 h-3.5" />
+                <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
+             </div>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
   }
@@ -11875,6 +12365,7 @@ export default function OfcCableDetailsPage() {
           actions={tableActions}
           selectable={true}
           searchable={true}
+          renderMobileItem={renderMobileItem}
           pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
@@ -11923,11 +12414,11 @@ export default function OfcCableDetailsPage() {
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/common/BulkActions';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
@@ -11950,6 +12441,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
+import { Row } from '@/hooks/database';
+import { FiActivity, FiMap } from 'react-icons/fi';
 
 const OfcPage = () => {
   const router = useRouter();
@@ -12091,6 +12584,51 @@ const OfcPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
+  const renderMobileItem = useCallback((record: Row<'v_ofc_cables_complete'>, actions: React.ReactNode) => {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start">
+          <div className="max-w-[70%]">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
+              {record.route_name}
+            </h3>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
+               {record.asset_no || 'No Asset #'}
+            </div>
+          </div>
+          {actions}
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs mt-1">
+           <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+             {record.capacity}F
+           </span>
+           <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
+             {record.ofc_type_name}
+           </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300 mt-1">
+           <div className="flex items-center gap-1.5">
+              <FiActivity className="w-3 h-3 text-gray-400" />
+              <span>{record.current_rkm} km</span>
+           </div>
+           <div className="flex items-center gap-1.5">
+              <FiMap className="w-3 h-3 text-gray-400" />
+              <span className="truncate">{record.maintenance_area_name}</span>
+           </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+             <span className="text-[10px] text-gray-400 truncate max-w-[150px]">
+               {record.ofc_owner_name}
+             </span>
+             <StatusBadge status={record.status ?? false} />
+        </div>
+      </div>
+    );
+  }, []);
+
   if (error)
     return (
       <ErrorDisplay
@@ -12128,6 +12666,7 @@ const OfcPage = () => {
         isFetching={isFetching || isMutating}
         actions={tableActions}
         selectable={isSuperAdmin === true}
+        renderMobileItem={renderMobileItem}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
             (row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null
@@ -12611,7 +13150,7 @@ export default function KmlManagerPage() {
             </div>
           ) : (
              <>
-               <div className="absolute top-4 left-14 z-[400] bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-md shadow-md border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">
+               <div className="absolute top-4 left-14 z-400 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-md shadow-md border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">
                   Previewing: {selectedKml.pathname.replace('kml-files/', '')}
                </div>
                <KmlMap kmlUrl={selectedKml.downloadUrl} />
@@ -12656,6 +13195,7 @@ import { UserProvider } from "@/providers/UserProvider";
 import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { CommandMenu } from "@/components/common/CommandMenu";
 
 export default function DashboardLayout({
   children,
@@ -12675,6 +13215,8 @@ export default function DashboardLayout({
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
+            {/* INJECT GLOBAL COMPONENTS*/}
+            <CommandMenu />
             {/* This div contains all the UI chrome and will be hidden during print */}
             <div className="no-print">
               <Sidebar
@@ -13699,7 +14241,9 @@ const PORT_TYPES = {
   GE_OPTICAL: '4b86eede-d502-4368-85c1-8e68d9b50282',
   GE_ELECTRICAL: 'bf63f1aa-0976-401a-8309-1ede374d0c54',
   TEN_GE: '6c9460cb-22dd-4457-82e3-0ccebe0f3afc',
-  STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc'
+  STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc',
+  // New Type for C1 System (Ensure this UUID exists in lookup_types or replace with existing Ethernet UUID)
+  HUNDRED_GE: '8495033c-5353-4876-b605-65476a6a9787'
 };
 
 export const PORT_TEMPLATES: Record<string, PortTemplate> = {
@@ -13792,7 +14336,6 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
   },
 
   // B2 Ports (System Capacity ID: 8e4dde01-4900-4fa5-a9e5-9b89bfe2663a)
-  // Similar to B1 but potentially different specific requirements, matching the SQL logic structure
   "8e4dde01-4900-4fa5-a9e5-9b89bfe2663a": {
     name: "B2 Ports Configuration",
     description: "Configuration matching B1 layout (STM1, E1, GE, 10GE)",
@@ -13836,7 +14379,26 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
     ports: [
       ...Array.from({length: 12}, (_, i) => createPort(`ETH-1-1-${i+1}`, PORT_TYPES.GE_OPTICAL, 'GE(O)')),
       ...['13', '14', '15', '16'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.TEN_GE, '10GE')),
-      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')), // Note: SQL used GE(E) with GE_OPTICAL UUID, preserving that logic here
+      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')),
+      createPort('NMS', PORT_TYPES.FE, 'FE')
+    ]
+  },
+
+  // B4 Ports (System Capacity ID: 2efeaec3-25db-4e92-bb1b-0ce370547cd6)
+  "2efeaec3-25db-4e92-bb1b-0ce370547cd6": {
+    name: "B4 Ports Configuration",
+    description: "High density hybrid configuration (100G/10G/1G)",
+    ports: [
+      // 100G Ports (1 & 2)
+      createPort('ETH-1-1-1', PORT_TYPES.HUNDRED_GE, '100G'),
+      createPort('ETH-1-1-2', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // 10G Ports (4 to 13)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-1-${i+4}`, PORT_TYPES.TEN_GE, '10G')),
+
+      // 1G Ports (14 to 31)
+      ...Array.from({length: 18}, (_, i) => createPort(`ETH-1-1-${i+14}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
       createPort('NMS', PORT_TYPES.FE, 'FE')
     ]
   },
@@ -13851,6 +14413,44 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
       createPort('P3', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
       createPort('P4', PORT_TYPES.TEN_GE, '10GE'),
       createPort('P5', PORT_TYPES.TEN_GE, '10GE')
+    ]
+  },
+
+  // C1 Ports (System Capacity ID: 8be22dce-38be-47d4-a1cb-59749b7c9b07)
+  "8be22dce-38be-47d4-a1cb-59749b7c9b07": {
+    name: "C1 Ports Configuration",
+    description: "High Capacity POTN System (100G, 10G, STM1)",
+    ports: [
+      // Slot 4: ETH-1-4-1 to 4 (10G), 5-6 (100G)
+      ...Array.from({length: 4}, (_, i) => createPort(`ETH-1-4-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      ...Array.from({length: 2}, (_, i) => createPort(`ETH-1-4-${i+5}`, PORT_TYPES.HUNDRED_GE, '100G')),
+
+      // Slot 5: ETH-1-5-1 to 10 (10G), 11 (100G)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-5-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      createPort('ETH-1-5-11', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // Slot 6: ETH-1-6-1 to 10 (10G), 11 (100G)
+      ...Array.from({length: 10}, (_, i) => createPort(`ETH-1-6-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+      createPort('ETH-1-6-11', PORT_TYPES.HUNDRED_GE, '100G'),
+
+      // Slot 7: ETH-1-7-1 to 8 (10G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-7-${i+1}`, PORT_TYPES.TEN_GE, '10G')),
+
+      // Slot 12: ETH-1-12-1 to 4 (1000 BaseT), STM1-1-12-5 to 8
+      ...Array.from({length: 4}, (_, i) => createPort(`ETH-1-12-${i+1}`, PORT_TYPES.GE_ELECTRICAL, '1000 BaseT')),
+      ...Array.from({length: 4}, (_, i) => createPort(`STM1-1-12-${i+5}`, PORT_TYPES.STM1, 'STM1')),
+
+      // Slot 15: ETH-1-15-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-15-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 16: ETH-1-16-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-16-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 17: ETH-1-17-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-17-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
+
+      // Slot 18: ETH-1-18-1 to 8 (1G)
+      ...Array.from({length: 8}, (_, i) => createPort(`ETH-1-18-${i+1}`, PORT_TYPES.GE_OPTICAL, '1G')),
     ]
   }
 };
@@ -14614,7 +15214,7 @@ export const OfcDetailsTableColumns = (
       'system_id',
       // REMOVED 'system_name' from here so it shows up
       'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
-      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name'
+      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", "connection_type","fiber_role","path_direction"
     ],
     overrides: {
       system_name: {
@@ -14634,6 +15234,16 @@ export const OfcDetailsTableColumns = (
              )}
           </div>
         ),
+      },
+      updated_sn_name: {
+        title: 'End A Node',
+        sortable: true,
+        searchable: true,
+      },
+      updated_en_name: {
+        title: 'End B Node',
+        sortable: true,
+        searchable: true,
       },
       updated_fiber_no_sn: {
         title: 'End A Fiber',
@@ -15251,13 +15861,50 @@ export const SystemConnectionsTableColumns = (
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
     omit: [
-      "id", "system_id", "system_name", "system_type_name", "media_type_id",
-      "created_at", "updated_at", "en_interface", "sn_interface", "en_ip",
-      "sn_ip", "sn_id", "en_id", "sn_node_id", "en_node_id", "sdh_a_customer",
-      "sdh_a_slot", "sdh_b_customer", "sdh_b_slot", "sdh_carrier", "sdh_stm_no",
-      "vlan", "en_node_name", "sn_node_name", "media_type_name", "remark",
-      "working_fiber_in_ids", "working_fiber_out_ids", "protection_fiber_in_ids",
-      "protection_fiber_out_ids", "service_id", "connected_link_type_id",
+      "id",
+      "system_id",
+      "system_name",
+      "system_type_name",
+      "media_type_id",
+      "created_at",
+      "updated_at",
+      "en_interface",
+      "sn_interface",
+      "en_ip",
+      "sn_ip",
+      "sn_id",
+      "en_id",
+      "service_node_id",
+      "sn_node_id",
+      "en_node_id",
+      "sdh_a_customer",
+      "sdh_a_slot",
+      "sdh_b_customer",
+      "sdh_b_slot",
+      "sdh_carrier",
+      "sdh_stm_no",
+      "vlan",
+      "en_node_name",
+      "sn_node_name",
+      "media_type_name",
+      "remark",
+      "working_fiber_in_ids",
+      "working_fiber_out_ids",
+      "protection_fiber_in_ids",
+      "protection_fiber_out_ids",
+      "service_id",
+      "connected_link_type_id",
+      "sn_name",
+      "en_name",
+      "connected_system_type_name",
+      "en_system_type_name",
+      "sn_system_type_name",
+      "bandwidth",
+      "connected_system_name",
+      "service_node_name",
+
+
+
     ],
     overrides: {
       service_name: {
@@ -15266,26 +15913,39 @@ export const SystemConnectionsTableColumns = (
         searchable: true,
         width: 250,
         render: (value, record) => (
-          <div className="grid ">
-            <TruncateTooltip text={(value as string) || record.connected_system_name || "N/A"} className='font-medium text-gray-900 dark:text-white' />
+          <div className='grid '>
+            <TruncateTooltip
+              text={(value as string) || record.connected_system_name || "N/A"}
+              className='font-medium text-gray-900 dark:text-white'
+            />
             <div className='text-xs text-gray-500 dark:text-gray-400 flex gap-2'>
               <span>{record.connected_link_type_name || record.en_system_type_name || ""}</span>
               {record.bandwidth_allocated && (
-                 <span className="bg-blue-50 text-blue-700 px-1 rounded">{record.bandwidth_allocated}</span>
+                <span className='bg-blue-50 text-blue-700 px-1 rounded'>
+                  {record.bandwidth_allocated}
+                </span>
               )}
             </div>
           </div>
         ),
       },
-      system_working_interface:{
-        title: 'Working Interface',
+      connected_link_type_name: {
         sortable: true,
-        naturalSort: true
+        naturalSort: true,
       },
-      system_protection_interface:{
-        title: 'Protection Interface',
+      bandwidth_allocated: {
         sortable: true,
-        naturalSort: true
+        naturalSort: true,
+      },
+      system_working_interface: {
+        title: "Working Interface",
+        sortable: true,
+        naturalSort: true,
+      },
+      system_protection_interface: {
+        title: "Protection Interface",
+        sortable: true,
+        naturalSort: true,
       },
       bandwidth: {
         title: "Capacity (Mbps)",
@@ -15318,12 +15978,16 @@ export const SystemConnectionsTableColumns = (
       lc_id: {
         title: "LC ID",
         width: 100,
-        excelFormat: 'text',
+        excelFormat: "text",
+        sortable: true,
+        naturalSort: true,
       },
       unique_id: {
         title: "Unique ID",
         width: 120,
-        excelFormat: 'text',
+        excelFormat: "text",
+        sortable: true,
+        naturalSort: true,
       },
       status: {
         title: "Status",
@@ -15359,6 +16023,7 @@ export const SystemConnectionsTableColumns = (
 
   return finalColumns;
 };
+
 ```
 
 <!-- path: config/table-columns/InventoryTableColumns.tsx -->
@@ -15489,70 +16154,136 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
 <!-- path: config/table-columns/PortsManagementTableColumns.tsx -->
 ```typescript
 // path: config/table-columns/PortsManagementTableColumns.tsx
+import React from 'react';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
-import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_ports_management_completeRowSchema, V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { Activity, Shield } from 'lucide-react';
+import { Row } from '@/hooks/database';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
-export const PortsManagementTableColumns = (data: V_ports_management_completeRowSchema[]) => {
-  return useDynamicColumnConfig('v_ports_management_complete', {
+// Define the structure for our service mapping
+export type PortServiceMap = Record<string, V_system_connections_completeRowSchema[]>;
+
+export const PortsManagementTableColumns = (
+  data: V_ports_management_completeRowSchema[],
+  portServicesMap?: PortServiceMap
+) => {
+  // 1. Generate base columns from the hook
+  const columns = useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    omit: ['id', 'system_id', 'port_type_id'],
+    // THE FIX: Added 'port_type_name' and 'port_capacity' to the omit array
+    omit: [
+      'id',
+      'system_id',
+      'port_type_id',
+      'services_count',
+      'created_at',
+      'updated_at',
+      'system_name',
+      'port_type_name', // Hiding Port Type
+      'port_capacity'   // Hiding Capacity
+    ],
     overrides: {
-      system_name: {
-        title: 'System',
-        render: (value) => <TruncateTooltip text={value as string} />,
-      },
       port: {
         title: 'Port',
-        render: (value) => <span className="font-mono font-medium">{value as string}</span>,
+        width: 140,
+        render: (value) => <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{value as string}</span>,
         sortable: true,
-        naturalSort: true, // Ensure ports like 1.1, 1.2, 1.10 sort correctly
-      },
-      port_type_name: {
-        title: 'Port Type',
-      },
-      port_capacity: {
-        title: 'Capacity',
+        naturalSort: true,
       },
       sfp_serial_no: {
-        title: 'SFP Serial No.',
-        render: (value) => <span className="font-mono text-xs">{value as string}</span>,
+        title: 'SFP Serial',
+        width: 150,
+        render: (value) => (
+          value ?
+            <span className="font-mono text-xs bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded border dark:border-gray-700">{value as string}</span>
+            : <span className="text-gray-300 text-xs">-</span>
+        ),
       },
-      // ADDED: New Columns Renderers
       port_utilization: {
-        title: 'Utilization',
+        title: 'State',
+        width: 100,
         render: (value) => (
           <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
               value
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
             }`}
           >
-            {value ? 'In Use' : 'Free'}
+            {value ? 'Used' : 'Free'}
           </span>
         ),
       },
       port_admin_status: {
-        title: 'Admin Status',
+        title: 'Admin',
+        width: 100,
         render: (value) => (
-          <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-              value
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-            }`}
-          >
-            {value ? 'Up' : 'Down'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className={`text-xs font-medium ${value ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                {value ? 'UP' : 'DOWN'}
+            </span>
+          </div>
         ),
-      },
-      services_count: {
-        title: 'Services',
-        render: (value) => <span className="font-mono font-semibold">{value as number}</span>,
       },
     },
   });
+
+  // 2. Manual Custom Column for Rich Service Display
+  const servicesColumn: Column<Row<'v_ports_management_complete'>> = {
+    key: 'services_info',
+    title: 'Allocated Services',
+    dataIndex: 'port',
+    width: 350,
+    render: (value, _record) => {
+        const portName = value as string;
+        if (!portName || !portServicesMap) return <span className="text-gray-400 italic text-xs">No info</span>;
+
+        const services = portServicesMap[portName] || [];
+
+        if (services.length === 0) {
+            return <span className="text-gray-300 dark:text-gray-600 text-xs italic">Unallocated</span>;
+        }
+
+        return (
+            <div className="flex flex-col gap-1.5 py-1">
+                {services.slice(0, 2).map((svc) => (
+                    <div key={svc.id} className="flex items-center gap-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 shadow-sm">
+                        {/* Role Indicator */}
+                        {svc.system_working_interface === portName ? (
+                            <div title="Working Path" className="p-1 bg-blue-100 dark:bg-blue-900/50 rounded-full shrink-0">
+                                <Activity size={10} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                        ) : (
+                            <div title="Protection Path" className="p-1 bg-purple-100 dark:bg-purple-900/50 rounded-full shrink-0">
+                                <Shield size={10} className="text-purple-600 dark:text-purple-400" />
+                            </div>
+                        )}
+
+                        <div className="flex flex-col min-w-0 flex-1">
+                            <div className="font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
+                                <TruncateTooltip text={svc.service_name || svc.connected_system_name || 'Unknown'} className='truncate' />
+                            </div>
+                            <span className="text-[10px] text-gray-500 truncate">
+                                {svc.connected_link_type_name} {svc.bandwidth_allocated ? `• ${svc.bandwidth_allocated}` : ''}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {services.length > 2 && (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium pl-1 cursor-help" title={`${services.length - 2} more services hidden`}>
+                        +{services.length - 2} more services...
+                    </span>
+                )}
+            </div>
+        );
+    }
+  };
+
+  // 3. Append the custom column
+  return [...columns, servicesColumn];
 };
 ```
 
@@ -15720,6 +16451,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
     overrides: {
       system_name: {
         title: 'Name',
+        sortable: true,
         width: 200,
         render: (value, record) => (
           <div className="flex flex-col">
@@ -15739,16 +16471,19 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       system_type_code: {
         title: 'Type',
         dataIndex: 'system_type_code',
+        sortable: true,
         width: 120,
       },
       // ADDED
       system_capacity_name: {
         title: 'Capacity',
+        sortable: true,
         width: 100,
       },
       node_name: {
         title: 'Node / Location',
         width: 150,
+        sortable: true,
         render: (value) => (
           <div className="flex items-center gap-1">
             <FiMapPin className="h-3 w-3 text-gray-400" />
@@ -19193,6 +19928,7 @@ export type Database = {
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
+          en_protection_interface: string | null
           id: string
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
@@ -19219,6 +19955,7 @@ export type Database = {
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
+          en_protection_interface?: string | null
           id?: string
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
@@ -19245,6 +19982,7 @@ export type Database = {
           en_id?: string | null
           en_interface?: string | null
           en_ip?: unknown
+          en_protection_interface?: string | null
           id?: string
           media_type_id?: string | null
           protection_fiber_in_ids?: string[] | null
@@ -20963,6 +21701,7 @@ export type Database = {
           en_name: string | null
           en_node_id: string | null
           en_node_name: string | null
+          en_protection_interface: string | null
           en_system_type_name: string | null
           id: string | null
           lc_id: string | null
@@ -21803,6 +22542,7 @@ export type Database = {
           p_en_id?: string
           p_en_interface?: string
           p_en_ip?: unknown
+          p_en_protection_interface?: string
           p_id?: string
           p_lc_id?: string
           p_link_type_id?: string
@@ -21835,6 +22575,7 @@ export type Database = {
           en_id: string | null
           en_interface: string | null
           en_ip: unknown
+          en_protection_interface: string | null
           id: string
           media_type_id: string | null
           protection_fiber_in_ids: string[] | null
@@ -23893,6 +24634,7 @@ export type System_connectionsRow = {
     en_id: string | null;
     en_interface: string | null;
     en_ip: unknown;
+    en_protection_interface: string | null;
     id: string;
     media_type_id: string | null;
     protection_fiber_in_ids: string[] | null;
@@ -23920,6 +24662,7 @@ export type System_connectionsInsert = {
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
+    en_protection_interface?: string | null;
     id?: string;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
@@ -23947,6 +24690,7 @@ export type System_connectionsUpdate = {
     en_id?: string | null;
     en_interface?: string | null;
     en_ip?: unknown;
+    en_protection_interface?: string | null;
     id?: string;
     media_type_id?: string | null;
     protection_fiber_in_ids?: string[] | null;
@@ -24489,6 +25233,7 @@ export type V_system_connections_completeRow = {
     en_name: string | null;
     en_node_id: string | null;
     en_node_name: string | null;
+    en_protection_interface: string | null;
     en_system_type_name: string | null;
     id: string | null;
     lc_id: string | null;
@@ -25220,6 +25965,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_id: "system_id",
     system_protection_interface: "system_protection_interface",
     system_working_interface: "system_working_interface",
+    en_protection_interface: "en_protection_interface",
     updated_at: "updated_at",
     working_fiber_in_ids: "working_fiber_in_ids",
     working_fiber_out_ids: "working_fiber_out_ids",
@@ -25542,7 +26288,6 @@ const TABLE_COLUMN_OBJECTS = {
     system_type_name: "system_type_name",
     system_working_interface: "system_working_interface",
     service_name: "service_name",
-    system_protection_interface: "system_protection_interface",
     vlan: "vlan",
     bandwidth_allocated: "bandwidth_allocated",
     sdh_a_customer: "sdh_a_customer",
@@ -25554,8 +26299,6 @@ const TABLE_COLUMN_OBJECTS = {
     connected_link_type_name: "connected_link_type_name",
     sn_interface: "sn_interface",
     connected_link_type_id: "connected_link_type_id",
-    sn_name: "sn_name",
-    en_name: "en_name",
     en_interface: "en_interface",
     service_node_id: "service_node_id",
     service_node_name: "service_node_name",
@@ -25566,10 +26309,14 @@ const TABLE_COLUMN_OBJECTS = {
     sn_node_name: "sn_node_name",
     en_node_name: "en_node_name",
     lc_id: "lc_id",
+    sn_name: "sn_name",
+    en_name: "en_name",
     unique_id: "unique_id",
     service_id: "service_id",
     services_interface: "services_interface",
     services_ip: "services_ip",
+    system_protection_interface: "system_protection_interface",
+    en_protection_interface: "en_protection_interface",
     sn_node_id: "sn_node_id",
     en_node_id: "en_node_id",
     media_type_id: "media_type_id",
@@ -27988,7 +28735,7 @@ GRANT SELECT ON public.v_audit_logs TO admin;
 -- Section 1: Helper Functions (Dependencies)
 -- =================================================================
 
--- Helper function to check if a column exists in a given table/view
+-- Helper function to check if a column exists
 CREATE OR REPLACE FUNCTION public.column_exists(p_schema_name TEXT, p_table_name TEXT, p_column_name TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$
 BEGIN
@@ -28002,67 +28749,7 @@ BEGIN
 END;
 $$;
 
--- ** Moved build_where_clause here from 02_paged_functions.sql to resolve dependency issue.**
--- CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
--- RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
--- DECLARE
---   where_clause TEXT := '';
---   filter_key TEXT;
---   filter_value JSONB;
---   alias_prefix TEXT;
---   or_conditions TEXT;
---   or_key TEXT;
---   or_value TEXT;
--- BEGIN
---     alias_prefix := CASE WHEN p_alias IS NOT NULL AND p_alias != '' THEN format('%I.', p_alias) ELSE '' END;
-
---     IF p_filters IS NULL OR jsonb_typeof(p_filters) != 'object' THEN
---         RETURN '';
---     END IF;
-
---     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
---         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
-
---         IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
---             or_conditions := '';
---             FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
---                 IF or_conditions != '' THEN
---                     or_conditions := or_conditions || ' OR ';
---                 END IF;
---                 or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
---             END LOOP;
---             IF or_conditions != '' THEN
---                 where_clause := where_clause || ' AND (' || or_conditions || ')';
---             END IF;
-
---         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
---             -- THE FIX: Handle complex operator objects, including the 'in' operator.
---             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
---                 -- Special handling for the 'in' operator with an array value
---                 IF filter_value->>'operator' = 'in' AND jsonb_typeof(filter_value->'value') = 'array' THEN
---                     where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
---                 ELSE
---                     -- Handle other simple operators like gt, lt, etc.
---                     where_clause := where_clause || format(' AND %s%I %s %L', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
---                 END IF;
---             ELSIF jsonb_typeof(filter_value) = 'array' THEN
---                 -- Handle top-level array for IN clauses, e.g., { "status": ["active", "pending"] }
---                 where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
---             ELSE
---                 -- Handle simple equality for strings, numbers, booleans
---                 where_clause := where_clause || format(' AND %s%I::text = %L', alias_prefix, filter_key, trim(both '"' from filter_value::text));
---             END IF;
---         END IF;
---     END LOOP;
-
---     IF where_clause != '' THEN
---         RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
---     END IF;
-
---     RETURN '';
--- END;
--- $$;
-
+-- FIXED: build_where_clause now correctly handles string-based OR filters
 CREATE OR REPLACE FUNCTION public.build_where_clause(p_filters JSONB, p_view_name TEXT, p_alias TEXT DEFAULT 'v')
 RETURNS TEXT LANGUAGE plpgsql STABLE AS $$
 DECLARE
@@ -28083,16 +28770,24 @@ BEGIN
     FOR filter_key, filter_value IN SELECT key, value FROM jsonb_each(p_filters) LOOP
         IF filter_value IS NULL OR filter_value = '""'::jsonb THEN CONTINUE; END IF;
 
-        IF filter_key = 'or' AND jsonb_typeof(filter_value) = 'object' THEN
-            or_conditions := '';
-            FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
+        IF filter_key = 'or' THEN
+            -- Case A: OR is a String (Robust Method)
+            -- We expect the frontend to send a valid SQL fragment like "col1 ILIKE '%x%' OR col2::text ILIKE '%x%'"
+            IF jsonb_typeof(filter_value) = 'string' THEN
+                 where_clause := where_clause || ' AND (' || trim(both '"' from filter_value::text) || ')';
+
+            -- Case B: OR is a JSON Object (Legacy/Simple Method)
+            ELSIF jsonb_typeof(filter_value) = 'object' THEN
+                or_conditions := '';
+                FOR or_key, or_value IN SELECT key, value FROM jsonb_each_text(filter_value) LOOP
+                    IF or_conditions != '' THEN
+                        or_conditions := or_conditions || ' OR ';
+                    END IF;
+                    or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
+                END LOOP;
                 IF or_conditions != '' THEN
-                    or_conditions := or_conditions || ' OR ';
+                    where_clause := where_clause || ' AND (' || or_conditions || ')';
                 END IF;
-                or_conditions := or_conditions || format('%s%I::text ILIKE %L', alias_prefix, or_key, '%' || or_value || '%');
-            END LOOP;
-            IF or_conditions != '' THEN
-                where_clause := where_clause || ' AND (' || or_conditions || ')';
             END IF;
 
         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
@@ -28100,28 +28795,26 @@ BEGIN
                 IF filter_value->>'operator' = 'in' AND jsonb_typeof(filter_value->'value') = 'array' THEN
                     where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
                 ELSE
-                    -- For other operators like gt, lt, ensure text casting for safety
                     where_clause := where_clause || format(' AND %s%I::text %s %L::text', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
                 END IF;
             ELSIF jsonb_typeof(filter_value) = 'array' THEN
                 where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
             ELSE
-                -- THE FIX: Explicitly cast both the column and the literal value to ::text.
-                -- This robustly handles simple equality for strings, numbers, and booleans passed as strings.
                 where_clause := where_clause || format(' AND %s%I::text = %L::text', alias_prefix, filter_key, trim(both '"' from filter_value::text));
             END IF;
         END IF;
     END LOOP;
 
     IF where_clause != '' THEN
-        RETURN 'WHERE ' || substr(where_clause, 6); -- Remove initial ' AND '
+        RETURN 'WHERE ' || substr(where_clause, 6);
     END IF;
 
     RETURN '';
 END;
 $$;
 
-
+-- Re-apply grants
+GRANT EXECUTE ON FUNCTION public.build_where_clause(JSONB, TEXT, TEXT) TO authenticated;
 
 -- =================================================================
 -- Section 2: Generic Query & Data Operation Functions
@@ -29638,6 +30331,7 @@ SELECT
   -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
+  sc.en_protection_interface, -- NEW COLUMN ADDED HERE
 
   -- SDH Details
   scs.stm_no AS sdh_stm_no,
@@ -30086,7 +30780,8 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_b_customer TEXT DEFAULT NULL,
 
     -- NEW PARAM: Explicit Service Link
-    p_service_id UUID DEFAULT NULL
+    p_service_id UUID DEFAULT NULL,
+    p_en_protection_interface TEXT DEFAULT NULL
 )
 RETURNS SETOF public.system_connections
 LANGUAGE plpgsql
@@ -30186,7 +30881,7 @@ BEGIN
         sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface,
         bandwidth, commissioned_on, remark,
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
-        system_working_interface, system_protection_interface,
+        system_working_interface, system_protection_interface,en_protection_interface,
         updated_at
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_id, v_service_id, p_media_type_id, p_status,
@@ -30194,7 +30889,7 @@ BEGIN
         p_sn_id, p_en_id, p_sn_ip, p_sn_interface, p_en_ip, p_en_interface,
         p_bandwidth, p_commissioned_on, p_remark,
         p_working_fiber_in_ids, p_working_fiber_out_ids, p_protection_fiber_in_ids, p_protection_fiber_out_ids,
-        p_system_working_interface, p_system_protection_interface,
+        p_system_working_interface, p_system_protection_interface,p_en_protection_interface,
         NOW()
     ) ON CONFLICT (id) DO UPDATE SET
         media_type_id = EXCLUDED.media_type_id,
@@ -30217,6 +30912,7 @@ BEGIN
         protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
         system_working_interface = EXCLUDED.system_working_interface,
         system_protection_interface = EXCLUDED.system_protection_interface,
+        en_protection_interface = EXCLUDED.en_protection_interface,
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
 
@@ -30243,7 +30939,7 @@ GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
     UUID[], UUID[], UUID[], UUID[],
     TEXT, TEXT,
     TEXT, TEXT, TEXT, TEXT, TEXT, TEXT,
-    UUID
+    UUID, TEXT
 ) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring
@@ -30557,6 +31253,7 @@ CREATE TABLE IF NOT EXISTS public.services (
 -- 4. Generic System Connections Table
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  en_protection_interface TEXT,
 
   -- The System providing the connection
   system_id UUID REFERENCES public.systems (id) NOT NULL,
@@ -33998,12 +34695,12 @@ import { DataTableProps, SortConfig } from "@/components/table/datatable-types";
 import { PublicTableOrViewName, Row, Filters } from "@/hooks/database";
 import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queries/excel-helpers";
 import { cn } from "@/lib/utils";
+import { Card } from "../common/ui";
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
-// --- State Management with useReducer ---
-
+// ... (State Management types remain the same as previous)
 type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
   sortConfig: SortConfig<Row<T>> | null;
@@ -34016,7 +34713,7 @@ type TableState<T extends PublicTableOrViewName> = {
   showFilters: boolean;
 };
 
-// Base action type that works with any row type
+// ... (BaseTableAction and TableAction types remain the same)
 type BaseTableAction<R> =
   | { type: "SET_SEARCH_QUERY"; payload: string }
   | { type: "SET_SELECTED_ROWS"; payload: R[] }
@@ -34030,17 +34727,17 @@ type BaseTableAction<R> =
   | { type: "TOGGLE_COLUMN_SELECTOR"; payload?: boolean }
   | { type: "TOGGLE_FILTERS"; payload?: boolean };
 
-// Table-specific action type that extends the base with table-aware actions
-type TableAction<T extends PublicTableOrViewName> =
+type TableActionReducer<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
   | { type: "SET_SORT_CONFIG"; payload: SortConfig<Row<T>> | null }
   | { type: "SET_FILTERS"; payload: Filters };
 
 function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
-  action: TableAction<T> | BaseTableAction<DataRow<T>>
+  action: TableActionReducer<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
-  switch (action.type) {
+  // ... (Reducer logic remains identical)
+   switch (action.type) {
     case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
     case "SET_SORT_CONFIG":
@@ -34106,7 +34803,9 @@ export function DataTable<T extends PublicTableOrViewName>({
   showColumnsToggle,
   exportOptions,
   onSearchChange,
+  renderMobileItem, // NEW PROP
 }: DataTableProps<T>): React.ReactElement {
+
   const initialState: TableState<T> = {
     searchQuery: "",
     sortConfig: null,
@@ -34185,7 +34884,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
 
     if (sortConfig && sortable) {
-      // --- ADDED: Check for natural sort configuration on the column ---
       const sortColumn = columns.find((c) => c.key === sortConfig.key);
       const useNaturalSort = !!sortColumn?.naturalSort;
 
@@ -34232,6 +34930,8 @@ export function DataTable<T extends PublicTableOrViewName>({
     filterable,
     serverSearch,
   ]);
+
+  // ... (handleSort, handleRowSelect, handleSelectAll, handleCellEdit, saveCellEdit, cancelCellEdit, visibleColumnsData, setSearchQueryCb, handleExport) - Same as before
 
   const handleSort = useCallback(
     (columnKey: keyof Row<T> & string) => {
@@ -34307,36 +35007,35 @@ export function DataTable<T extends PublicTableOrViewName>({
   }, []);
 
   const handleExport = useCallback(async () => {
-    if (onExport) {
-      await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
-      return;
-    }
+     if (onExport) {
+       await onExport(processedData as Row<T>[], visibleColumnsData as Column<Row<T>>[]);
+       return;
+     }
+     const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
+     const mergedFilters = exportOptions?.includeFilters
+       ? { ...filters, ...(exportOptions?.filters ?? {}) }
+       : exportOptions?.filters;
 
-    const columnsToExport = (exportOptions?.columns ?? visibleColumnsData) as Column<Row<T>>[];
-    const mergedFilters = exportOptions?.includeFilters
-      ? { ...filters, ...(exportOptions?.filters ?? {}) }
-      : exportOptions?.filters;
+     const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
+       fileName: exportOptions?.fileName,
+       sheetName: exportOptions?.sheetName,
+       maxRows: exportOptions?.maxRows,
+       customStyles: exportOptions?.customStyles,
+       columns: columnsToExport,
+       filters: mergedFilters,
+     };
 
-    const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
-      fileName: exportOptions?.fileName,
-      sheetName: exportOptions?.sheetName,
-      maxRows: exportOptions?.maxRows,
-      customStyles: exportOptions?.customStyles,
-      columns: columnsToExport,
-      filters: mergedFilters,
-    };
-
-    try {
-      if (exportOptions?.rpcConfig) {
-        const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
-          ...baseOptions,
-          rpcConfig: exportOptions.rpcConfig,
-        };
-        await rpcExcelDownload.mutateAsync(rpcOptions);
-      } else {
-        await tableExcelDownload.mutateAsync(baseOptions);
-      }
-    } catch (err) {
+     try {
+       if (exportOptions?.rpcConfig) {
+         const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
+           ...baseOptions,
+           rpcConfig: exportOptions.rpcConfig,
+         };
+         await rpcExcelDownload.mutateAsync(rpcOptions);
+       } else {
+         await tableExcelDownload.mutateAsync(baseOptions);
+       }
+     } catch (err) {
       if (exportOptions?.fallbackToCsv) {
         try {
           const headers = columnsToExport.map((c) => c.title).join(",");
@@ -34367,18 +35066,52 @@ export function DataTable<T extends PublicTableOrViewName>({
       } else {
         throw err;
       }
-    }
-  }, [
-    onExport,
-    processedData,
-    visibleColumnsData,
-    exportOptions,
-    filters,
-    tableExcelDownload,
-    rpcExcelDownload,
-  ]);
+     }
+   }, [
+     onExport,
+     processedData,
+     visibleColumnsData,
+     exportOptions,
+     filters,
+     tableExcelDownload,
+     rpcExcelDownload,
+   ]);
+
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
+
+  // Render Mobile Actions Dropdown or Row
+  const renderActions = (record: DataRow<T>, index: number) => {
+    if (!hasActions) return null;
+    return (
+      <div className="flex gap-1 justify-end">
+        {actions.map((action) => {
+           const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
+           if(isHidden) return null;
+
+           const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
+
+           return (
+             <button
+                key={action.key}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isDisabled) {
+                    action.onClick(record, index);
+                  }
+                }}
+                disabled={isDisabled}
+                className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${
+                    action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
+                }`}
+             >
+                {action.getIcon ? action.getIcon(record) : action.icon}
+             </button>
+           )
+        })}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -34431,10 +35164,45 @@ export function DataTable<T extends PublicTableOrViewName>({
       </div>
 
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
+
+        {/* MOBILE VIEW (CARD LIST) */}
+        {renderMobileItem && (
+            <div className="block sm:hidden p-4 space-y-4">
+                {loading ? (
+                    <div className="space-y-3">
+                         {[1,2,3].map(i => <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg"/>)}
+                    </div>
+                ) : processedData.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">{emptyText}</div>
+                ) : (
+                    processedData.map((record, idx) => (
+                        <Card key={record.id} className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative">
+                             {/* If selectable, add checkbox overlay or header */}
+                             {selectable && (
+                                <div className="absolute top-4 left-4">
+                                     <input
+                                        type="checkbox"
+                                        checked={selectedRows.some(r => r.id === record.id)}
+                                        onChange={(e) => handleRowSelect(record, e.target.checked)}
+                                        className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                                     />
+                                </div>
+                             )}
+
+                             <div className={selectable ? "pl-8" : ""}>
+                                 {renderMobileItem(record, renderActions(record, idx))}
+                             </div>
+                        </Card>
+                    ))
+                )}
+            </div>
+        )}
+
+        {/* DESKTOP VIEW (TABLE) */}
         <table
           className={`min-w-full w-full table-auto sm:table-fixed ${
             bordered ? "border-separate border-spacing-0" : ""
-          }`}>
+          } ${renderMobileItem ? "hidden sm:table" : ""}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}
@@ -34482,7 +35250,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     </div>
   );
 }
-
 ```
 
 <!-- path: components/table/datatable-types.ts -->
@@ -34561,6 +35328,8 @@ export interface DataTableProps<T extends TableOrViewName> {
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
   } & Omit<DownloadOptions<T>, "rpcConfig">;
+  // NEW: Optional render function for mobile view
+  renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
 }
 
 export type SortDirection = "asc" | "desc";
@@ -35493,7 +36262,7 @@ export function RingModal({
                 />
                 <FormSelect
                     name="bts_status"
-                    label="BTS Status"
+                    label="Status"
                     control={control}
                     options={STATUS_OPTIONS.BTS}
                     error={errors.bts_status}
@@ -37602,8 +38371,9 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
 
 import { Button } from "@/components/common/ui";
 import { FiberTraceSegment } from "@/schemas/custom-schemas";
-import { Cable, GitBranch, MapPin, Milestone, RefreshCw, Route } from "lucide-react";
+import { Cable, GitBranch, MapPin, Milestone, Route } from "lucide-react";
 import { useMemo } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 
 // A new type for our oriented steps to add clarity
 interface OrientedStep extends FiberTraceSegment {
@@ -37768,7 +38538,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
         className='absolute top-0 right-10 z-10 animate-pulse'
         onClick={onSync}
         disabled={isSyncing}
-        leftIcon={isSyncing ? <RefreshCw className="animate-spin" /> : <RefreshCw />}
+        leftIcon={isSyncing ? <FiRefreshCw className="animate-spin" /> : <FiRefreshCw />}
       >
         {isSyncing ? "Syncing..." : "Sync Path to DB"}
       </Button>
@@ -42223,7 +42993,7 @@ const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
 
   useEffect(() => {
     if (bounds) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, { padding: [100, 100], animate: true });
     }
   }, [map, bounds]);
 
@@ -42235,78 +43005,116 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const { theme } = useThemeStore();
 
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#0f172a' : '#99ccff';
+  const bgColor = isDark ? '#0f172a' : '#f8fafc'; // Slighly lighter bg for light mode
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
   const spurLineColor = isDark ? '#b4083f' : '#ff0066';
 
   const { nodePositions, bounds } = useMemo(() => {
-    const hubs = nodes.filter((n) => n.is_hub);
-    const spokes = nodes.filter((n) => !n.is_hub);
-    const spokesByHub = new Map<string, RingMapNode[]>();
     const positions = new Map<string, L.LatLng>();
 
-    connections.forEach(([nodeA, nodeB]) => {
-      if (nodeA.is_hub && !nodeB.is_hub) {
-        if (!spokesByHub.has(nodeA.id!)) spokesByHub.set(nodeA.id!, []);
-        spokesByHub.get(nodeA.id!)!.push(nodeB);
-      } else if (nodeB.is_hub && !nodeA.is_hub) {
-        if (!spokesByHub.has(nodeB.id!)) spokesByHub.set(nodeB.id!, []);
-        spokesByHub.get(nodeB.id!)!.push(nodeA);
-      }
+    // Configuration
+    const CENTER_X = 1000;
+    const CENTER_Y = 1000;
+    const RING_RADIUS = 400;
+    const SPUR_LENGTH = 200;
+
+    // 1. Sort nodes by order
+    const sortedNodes = [...nodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+
+    // 2. Separate Backbone (Integer Orders) from Spurs (Decimal Orders)
+    const backboneNodes: RingMapNode[] = [];
+    const spurNodes: RingMapNode[] = [];
+
+    sortedNodes.forEach(node => {
+        const order = node.order_in_ring || 0;
+        // Check if it's effectively an integer (e.g., 1.0, 2.0)
+        if (Math.abs(order - Math.round(order)) < 0.01) {
+            backboneNodes.push(node);
+        } else {
+            spurNodes.push(node);
+        }
     });
 
-    const centerX = 500;
-    const centerY = 500;
-    const hubRadius = 200;
-    const spokeLayerRadius = 350;
-
-    if (hubs.length === 1) {
-      positions.set(hubs[0].id!, new L.LatLng(centerY, centerX));
-    } else {
-      hubs.forEach((hub, index) => {
-        const angle = (index / hubs.length) * 2 * Math.PI - Math.PI / 2;
-        const lng = centerX + hubRadius * Math.cos(angle);
-        const lat = centerY - hubRadius * Math.sin(angle);
-        positions.set(hub.id!, new L.LatLng(lat, lng));
-      });
+    // If no backbone detected (all nulls), treat everyone as backbone
+    if (backboneNodes.length === 0 && spurNodes.length === 0) {
+        backboneNodes.push(...nodes);
     }
 
-    hubs.forEach((hub) => {
-      const hubPos = positions.get(hub.id!);
-      const childSpokes = spokesByHub.get(hub.id!) || [];
-      if (!hubPos || childSpokes.length === 0) return;
+    // 3. Position Backbone Nodes in a Circle
+    const angleStep = (2 * Math.PI) / Math.max(1, backboneNodes.length);
+    // Start from -90deg (Top)
+    const startAngle = -Math.PI / 2;
 
-      const angleToCenter = Math.atan2(centerY - hubPos.lat, centerX - hubPos.lng);
-      const angleOutward = angleToCenter + Math.PI;
-      const spread = hubs.length === 1 ? 2 * Math.PI : Math.PI / 1.5;
-      const startAngle = hubs.length === 1 ? 0 : angleOutward - spread / 2;
-
-      childSpokes.forEach((spoke, index) => {
-        const angle = startAngle + ((index + 1) / (childSpokes.length + 1)) * spread;
-        const lng = hubPos.lng + (spokeLayerRadius - hubRadius) * Math.cos(angle);
-        const lat = hubPos.lat + (spokeLayerRadius - hubRadius) * Math.sin(angle);
-        positions.set(spoke.id!, new L.LatLng(lat, lng));
-      });
+    backboneNodes.forEach((node, index) => {
+        const angle = startAngle + (index * angleStep);
+        const lat = CENTER_Y + RING_RADIUS * Math.sin(angle); // Y corresponds to Lat
+        const lng = CENTER_X + RING_RADIUS * Math.cos(angle); // X corresponds to Lng
+        positions.set(node.id!, new L.LatLng(lat, lng));
     });
 
-    const unpositionedSpokes = spokes.filter((s) => !positions.has(s.id!));
-    if (unpositionedSpokes.length > 0) {
-      const outerRadius = 400;
-      unpositionedSpokes.forEach((spoke, index) => {
-        const angle = (index / unpositionedSpokes.length) * 2 * Math.PI;
-        const lng = centerX + outerRadius * Math.cos(angle);
-        const lat = centerY + outerRadius * Math.sin(angle);
-        positions.set(spoke.id!, new L.LatLng(lat, lng));
-      });
-    }
+    // 4. Position Spur Nodes (Radiating from parent)
+    // Group spurs by their parent integer order
+    const spursByParent = new Map<number, RingMapNode[]>();
+    spurNodes.forEach(node => {
+        const parentOrder = Math.floor(node.order_in_ring || 0);
+        if (!spursByParent.has(parentOrder)) spursByParent.set(parentOrder, []);
+        spursByParent.get(parentOrder)!.push(node);
+    });
 
+    spursByParent.forEach((children, parentOrder) => {
+        // Find parent position
+        const parentNode = backboneNodes.find(n => Math.round(n.order_in_ring || 0) === parentOrder);
+        if (!parentNode) {
+            // Orphaned spur? Just place it somewhere or treat as backbone
+            // For now, ignore or place at 0,0
+            return;
+        }
+
+        const parentPos = positions.get(parentNode.id!);
+        if (!parentPos) return;
+
+        // Calculate vector from center to parent
+        const vecX = parentPos.lng - CENTER_X;
+        const vecY = parentPos.lat - CENTER_Y;
+        const mag = Math.sqrt(vecX * vecX + vecY * vecY);
+
+        // Normalized direction vector
+        const dirX = mag === 0 ? 1 : vecX / mag;
+        const dirY = mag === 0 ? 0 : vecY / mag;
+
+        // Fan out logic if multiple spurs on one node
+        const fanAngle = Math.PI / 4; // 45 degrees spread
+        const totalSpurs = children.length;
+
+        children.forEach((child, idx) => {
+            // If multiple spurs, rotate the vector slightly
+            let rotation = 0;
+            if (totalSpurs > 1) {
+                // Center the fan around the main direction
+                const step = fanAngle / (totalSpurs - 1);
+                rotation = -fanAngle/2 + idx * step;
+            }
+
+            // Rotate direction vector
+            const rotatedX = dirX * Math.cos(rotation) - dirY * Math.sin(rotation);
+            const rotatedY = dirX * Math.sin(rotation) + dirY * Math.cos(rotation);
+
+            const childLng = parentPos.lng + rotatedX * SPUR_LENGTH;
+            const childLat = parentPos.lat + rotatedY * SPUR_LENGTH;
+
+            positions.set(child.id!, new L.LatLng(childLat, childLng));
+        });
+    });
+
+    // 5. Calculate Bounds
     const lats = Array.from(positions.values()).map((p) => p.lat);
     const lngs = Array.from(positions.values()).map((p) => p.lng);
 
-    const minLat = Math.min(...lats, centerY) - 50;
-    const maxLat = Math.max(...lats, centerY) + 50;
-    const minLng = Math.min(...lngs, centerX) - 50;
-    const maxLng = Math.max(...lngs, centerX) + 50;
+    // Add padding to bounds
+    const minLat = Math.min(...lats) - 100;
+    const maxLat = Math.max(...lats) + 100;
+    const minLng = Math.min(...lngs) - 100;
+    const maxLng = Math.max(...lngs) + 100;
 
     const bounds: L.LatLngBoundsExpression = [
       [minLat, minLng],
@@ -42314,7 +43122,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
     ];
 
     return { nodePositions: positions, bounds };
-  }, [nodes, connections]);
+  }, [nodes]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -42363,12 +43171,12 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         bounds={bounds}
         crs={L.CRS.Simple}
         style={{ height: '100%', width: '100%', background: bgColor }}
-        minZoom={-2}
-        maxZoom={4}
+        minZoom={-3}
+        maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
         zoomControl={false}
-        className="dark:!bg-blue-900 shadow-lg"
+        className="dark:bg-blue-950! shadow-lg" // Darker blue background for schematics
       >
         <MeshController bounds={bounds} />
 
@@ -42378,17 +43186,22 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
           const posB = nodePositions.get(nodeB.id!);
           if (!posA || !posB) return null;
 
-          const isHubLink = nodeA.is_hub && nodeB.is_hub;
+          // Determine connection type based on order logic
+          const orderA = nodeA.order_in_ring || 0;
+          const orderB = nodeB.order_in_ring || 0;
+
+          // It's a spur if either node is a decimal (e.g. 3.1)
+          const isSpur = (orderA % 1 !== 0) || (orderB % 1 !== 0);
 
           return (
             <Polyline
               key={`${nodeA.id}-${nodeB.id}-${index}`}
               positions={[posA, posB]}
               pathOptions={{
-                color: isHubLink ? hubLineColor : spurLineColor,
-                weight: isHubLink ? 3 : 1.5,
-                dashArray: isHubLink ? undefined : '5, 6',
-                opacity: isHubLink ? 0.9 : 0.9,
+                color: isSpur ? spurLineColor : hubLineColor,
+                weight: isSpur ? 2 : 4, // Backbone thicker
+                dashArray: isSpur ? '5, 5' : undefined, // Spurs dashed
+                opacity: 0.8,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
@@ -42415,8 +43228,16 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                 permanent
                 className="bg-transparent border-none shadow-none p-0"
               >
-                <div className="px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-600 shadow-md dark:shadow-lg backdrop-blur-md">
-                  {node.name}
+                <div className="flex flex-col items-center">
+                    <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
+                    {node.name}
+                    </div>
+                    {/* Show Order in Ring */}
+                    {/* {node.order_in_ring !== null && (
+                        <div className="mt-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px] font-mono rounded-full">
+                            #{node.order_in_ring}
+                        </div>
+                    )} */}
                 </div>
               </Tooltip>
 
@@ -42431,26 +43252,25 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
 
                   <div className="space-y-2 p-3 text-slate-600 dark:text-slate-300">
                     {node.ip && (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-slate-700 dark:text-slate-200">
-                            IP:
-                          </span>
-                          <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
-                            {node.ip?.split('/')[0]}
-                          </span>
-                        </div>
-                      </>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                          IP:
+                        </span>
+                        <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
+                          {node.ip?.split('/')[0]}
+                        </span>
+                      </div>
                     )}
 
-                    {node.remark && (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-600 dark:text-slate-300">
-                            {<p>Remark: {node.remark}</p>}
-                          </span>
-                        </div>
-                      </>
+                    {node.system_type && (
+                         <div className="flex items-center justify-between">
+                         <span className="font-medium text-slate-700 dark:text-slate-200">
+                           Type:
+                         </span>
+                         <span className="text-xs">
+                           {node.system_type}
+                         </span>
+                       </div>
                     )}
 
                     {node.is_hub && (
@@ -42470,7 +43290,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
     </div>
   );
 }
-
 ```
 
 <!-- path: components/map/types/node.ts -->
@@ -42514,7 +43333,7 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
       {/* 1. Render SVG Icon */}
       {type === 'icon' && icon && !imgSrc && (
         <div
-          className="w-6 h-8"
+          className="w-4 h-6"
           dangerouslySetInnerHTML={{ __html: icon }}
         />
       )}
@@ -42535,7 +43354,7 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
       {/* 3. Render Polyline Style */}
       {type === 'line' && (
         <div
-          className="w-8 h-1"
+          className="w-8 h-0.5"
           style={{
             backgroundColor: dashed ? 'transparent' : color,
             borderTop: dashed ? `2px dashed ${color}` : 'none'
@@ -42548,40 +43367,40 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
 );
 
 export function MapLegend() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="absolute bottom-4 left-4 z-[900] w-60 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
+    <div className="absolute bottom-4 left-4 z-900 w-60 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-2 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <div className="flex items-center gap-2">
           <FiMap className="text-blue-500" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Map Legend</span>
+          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Map Legend</span>
         </div>
         {isOpen ? <FiChevronDown className="text-gray-500" /> : <FiChevronUp className="text-gray-500" />}
       </button>
 
       {isOpen && (
-        <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div className="p-3 space-y-0.5 max-h-[40vh] overflow-y-auto custom-scrollbar text-xs">
 
           {/* PNG BASED ICONS (High Priority Equipment) */}
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-1">Key Equipment</div>
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Key Equipment</div>
           <LegendItem imgSrc="/images/switch_image.png" label="MAAN Aggregator" />
           <LegendItem imgSrc="/images/bts_image.png" label="BTS Tower / Baseband" />
           <LegendItem imgSrc="/images/bts_rl_image.png" label="Radio Link / Microwave" />
 
           {/* SVG BASED ICONS (Generic/Other) */}
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-3">Network Nodes</div>
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2">Network Nodes</div>
           <LegendItem icon={SVG_NETWORK_SWITCH} label="CPAN / Aggregation" />
           <LegendItem icon={SVG_COMPASS} label="Exchange / Terminal" />
           <LegendItem icon={SVG_NETWORK_NODE} label="Network Node / OLT" />
 
-          <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
           {/* LINES */}
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Connection Status</div>
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Connection Status</div>
           <LegendItem type="line" color="#3b82f6" label="Active Route" />
           <LegendItem type="line" color="#ef4444" label="Inactive Route" />
           <LegendItem type="line" color="#ef4444" label="Logical / Spur Path" dashed />
@@ -43512,7 +44331,7 @@ export interface CategoryInfo {
 
 <!-- path: components/nodes/NodesFilters.tsx -->
 ```typescript
-// path: components/nodes/NodesFilters.tsx
+// components/nodes/NodesFilters.tsx
 "use client";
 
 import { memo } from "react";
@@ -43523,9 +44342,14 @@ import { SearchableSelect, Option } from "@/components/common/ui/select/Searchab
 interface NodesFiltersProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  // Node Types
   nodeTypes: Array<{ id: string; name: string }>;
   selectedNodeType?: string;
   onNodeTypeChange: (value: string | null) => void;
+  // Maintenance Areas (New)
+  maintenanceAreas: Array<{ id: string; name: string }>;
+  selectedMaintenanceArea?: string;
+  onMaintenanceAreaChange: (value: string | null) => void;
 }
 
 const NodesFiltersComponent = memo(({
@@ -43533,15 +44357,21 @@ const NodesFiltersComponent = memo(({
   onSearchChange,
   nodeTypes,
   selectedNodeType = "",
-  onNodeTypeChange
+  onNodeTypeChange,
+  maintenanceAreas,
+  selectedMaintenanceArea = "",
+  onMaintenanceAreaChange
 }: NodesFiltersProps) => {
 
   const nodeTypeOptions: Option[] = (nodeTypes || []).map((nt) => ({ value: nt.id, label: nt.name }));
 
+  // Create options for Maintenance Areas
+  const maintenanceAreaOptions: Option[] = (maintenanceAreas || []).map((ma) => ({ value: ma.id, label: ma.name }));
+
   return (
-    <div className='w-full'>
+    <div className='w-full space-y-3 sm:space-y-0'>
       <div className='flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-start'>
-        <div className='relative flex-1 sm:max-w-md lg:max-w-xl'>
+        <div className='relative flex-1 sm:max-w-md lg:max-w-lg'>
           <Input
             type='text'
             placeholder='Search nodes...'
@@ -43553,13 +44383,27 @@ const NodesFiltersComponent = memo(({
             className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
           />
         </div>
-        <div className='w-full sm:w-64'>
+
+        {/* Node Type Filter */}
+        <div className='w-full sm:w-56'>
           <SearchableSelect
             options={nodeTypeOptions}
             value={selectedNodeType}
             onChange={(v) => onNodeTypeChange(v)}
-            placeholder='Filter by node type'
-            searchPlaceholder='Search node types...'
+            placeholder='All Node Types'
+            searchPlaceholder='Search types...'
+            clearable={true}
+          />
+        </div>
+
+        {/* Maintenance Area Filter */}
+        <div className='w-full sm:w-64'>
+          <SearchableSelect
+            options={maintenanceAreaOptions}
+            value={selectedMaintenanceArea}
+            onChange={(v) => onMaintenanceAreaChange(v)}
+            placeholder='All Maintenance Areas'
+            searchPlaceholder='Search areas...'
             clearable={true}
           />
         </div>
@@ -44035,13 +44879,13 @@ import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
-import { FiServer, FiUpload, FiDownload, FiLayout } from 'react-icons/fi';
-import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { FiServer } from 'react-icons/fi';
+import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema, Lookup_typesRowSchema, V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { PortsManagementTableColumns } from '@/config/table-columns/PortsManagementTableColumns';
+import { PortsManagementTableColumns, PortServiceMap } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
 import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
-import { useTableBulkOperations } from '@/hooks/database';
+import { useTableBulkOperations, useTableQuery } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
@@ -44050,6 +44894,17 @@ import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { PortHeatmap } from '@/components/systems/PortHeatmap'; // IMPORTED
+import { Activity, Shield } from 'lucide-react';
+
+// Extended type to handle the new column before codegen updates
+type ExtendedConnection = V_system_connections_completeRowSchema & {
+  en_protection_interface?: string | null;
+};
 
 interface SystemPortsManagerModalProps {
   isOpen: boolean;
@@ -44063,31 +44918,90 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const supabase = createClient();
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
+  // 1. Fetch Ports
   const {
     data: ports, totalCount, isLoading, isMutating, isFetching, error, refetch,
-    pagination, search, editModal, deleteModal, actions: crudActions
+    pagination, search, filters, editModal, deleteModal, actions: crudActions
   } = useCrudManager<'ports_management', V_ports_management_completeRowSchema>({
     tableName: 'ports_management',
     localTableName: 'v_ports_management_complete',
     dataQueryHook: usePortsData(systemId),
     displayNameField: 'port',
+    searchColumn: ['port', 'port_type_name', 'sfp_serial_no']
   });
 
-  // THE FIX: Calculate granular port statistics
+  // 2. Fetch Port Types for Filter
+  const { data: portTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['port-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
+  );
+
+  const portTypeOptions = useMemo(() => {
+    return (portTypesData || [])
+        .filter(t => t.name !== 'DEFAULT')
+        .map(t => ({ value: t.name, label: t.name }));
+  }, [portTypesData]);
+
+
+  // 3. Fetch Connections (Bi-Directional)
+  const { data: connectionsResult } = useTableQuery(supabase, 'v_system_connections_complete', {
+      filters: {
+          or: `system_id.eq.${systemId},en_id.eq.${systemId}`
+      },
+      enabled: !!systemId && isOpen,
+      limit: 2000
+  });
+
+  // 4. Build Service Map (Bi-Directional)
+  const portServicesMap = useMemo((): PortServiceMap => {
+      const map: PortServiceMap = {};
+      if (!Array.isArray(connectionsResult?.data)) return map;
+
+      const connections = connectionsResult.data as ExtendedConnection[];
+
+      connections.forEach(conn => {
+          if (conn.system_id === systemId) {
+              if (conn.system_working_interface) {
+                  if (!map[conn.system_working_interface]) map[conn.system_working_interface] = [];
+                  map[conn.system_working_interface].push(conn);
+              }
+              if (conn.system_protection_interface) {
+                  if (!map[conn.system_protection_interface]) map[conn.system_protection_interface] = [];
+                  map[conn.system_protection_interface].push(conn);
+              }
+          }
+
+          if (conn.en_id === systemId) {
+              if (conn.en_interface) {
+                  if (!map[conn.en_interface]) map[conn.en_interface] = [];
+                  map[conn.en_interface].push(conn);
+              }
+              if (conn.en_protection_interface) {
+                  if (!map[conn.en_protection_interface]) map[conn.en_protection_interface] = [];
+                  map[conn.en_protection_interface].push(conn);
+              }
+          }
+      });
+      return map;
+  }, [connectionsResult?.data, systemId]);
+
+
+  // 5. Calculate Stats
   const portStats = useMemo(() => {
     if (!ports) return { total: 0, used: 0, available: 0, down: 0 };
 
     const total = ports.length;
     const used = ports.filter(p => p.port_utilization).length;
-    // Available = Not utilized AND Admin Status is UP
     const available = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
-    // Down = Admin Status is DOWN (regardless of utilization, though usually 0 util)
     const down = ports.filter(p => !p.port_admin_status).length;
 
     return { total, used, available, down };
   }, [ports]);
 
+  // 6. Mutations
   const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
@@ -44097,18 +45011,20 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(supabase, 'v_ports_management_complete');
   const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
-  const columns = PortsManagementTableColumns(ports);
+  // 7. Configure Columns (Direct call, internal memoization used)
+  const columns = PortsManagementTableColumns(ports, portServicesMap);
 
   const tableActions = useMemo((): TableAction<'v_ports_management_complete'>[] =>
     createStandardActions<V_ports_management_completeRowSchema>({
       onEdit: editModal.openEdit,
       onDelete: crudActions.handleDelete,
-    }), [editModal.openEdit, crudActions.handleDelete]
+      onToggleStatus: (record) => crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
   );
 
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  // 8. Handlers
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -44121,34 +45037,22 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
   const handleExport = useCallback(() => {
     const allExportColumns = buildColumnConfig('v_ports_management_complete');
-
     exportPorts({
-      fileName: `${formatDate(new Date(), {
-                      format: "dd-mm-yyyy",
-                    })}-${system?.system_name}-${system?.system_type_code}_ports.xlsx`,
+      fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-${system?.system_name}_ports.xlsx`,
       sheetName: 'Ports',
       columns: allExportColumns as Column<Row<TableOrViewName>>[],
       filters: { system_id: systemId }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exportPorts, system?.system_name, systemId]);
 
   const handleApplyTemplate = useCallback((templateKey: string) => {
     if (!systemId) return;
-
     const portsPayload = generatePortsFromTemplate(templateKey, systemId);
-
     if (portsPayload.length === 0) {
       toast.error("Selected template is empty or invalid.");
       return;
     }
-
-    bulkUpsert.mutate(
-      {
-        data: portsPayload,
-        onConflict: 'system_id,port'
-      },
-      {
+    bulkUpsert.mutate({ data: portsPayload, onConflict: 'system_id,port' }, {
         onSuccess: () => {
           toast.success(`Successfully populated ${portsPayload.length} ports from template.`);
           refetch();
@@ -44157,8 +45061,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         onError: (err) => {
           toast.error(`Failed to populate ports: ${err.message}`);
         }
-      }
-    );
+    });
   }, [systemId, bulkUpsert, refetch]);
 
   const headerActions = useMemo((): ActionButton[] => {
@@ -44170,40 +45073,87 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         loading: isLoading,
       },
       {
-        label: 'Upload',
-        loadingText: 'Uploading...',
-        onClick: handleUploadClick,
+        label: 'Actions',
         variant: 'outline',
-        leftIcon: <FiUpload />,
-        loading: isUploading,
         disabled: isLoading,
+        'data-dropdown': true,
+        dropdownoptions: [
+            { label: 'Upload Excel', onClick: handleUploadClick, disabled: isUploading },
+            { label: 'Export Excel', onClick: handleExport, disabled: isExporting },
+            { label: 'Apply Template', onClick: () => setIsTemplateModalOpen(true) },
+        ]
       },
       {
-        label: 'Export',
-        loadingText: 'Exporting...',
-        onClick: handleExport,
-        variant: 'outline',
-        leftIcon: <FiDownload />,
-        loading: isExporting,
-        disabled: isLoading,
-      },
-      {
-        label: 'Apply Template',
-        onClick: () => setIsTemplateModalOpen(true),
-        variant: 'outline',
-        leftIcon: <FiLayout className="text-purple-500" />,
-        disabled: isLoading
-      },
-      {
-        label: 'Add New Port',
+        label: 'Add Port',
         onClick: editModal.openAdd,
         variant: 'primary',
         disabled: isLoading,
       }
     ];
-
     return actions;
   }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
+
+  const renderMobileItem = useCallback((record: Row<'v_ports_management_complete'>, actions: React.ReactNode) => {
+    // Lookup services from the map we built earlier
+    const portName = record.port;
+    const services = portName ? portServicesMap[portName] : [];
+
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+             <div className="h-10 w-10 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+                {record.port?.replace(/^(Gi|Te|Fa|Eth)/i, '') || '?'}
+             </div>
+             <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">{record.port}</h4>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex gap-2">
+                   <span>{record.port_type_name || 'Generic'}</span>
+                   {record.sfp_serial_no && <span className="font-mono">SFP: {record.sfp_serial_no}</span>}
+                </div>
+             </div>
+          </div>
+          {actions}
+        </div>
+
+        {/* Service Allocation Section */}
+        {services && services.length > 0 ? (
+           <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
+              <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
+              {services.map(svc => (
+                 <div key={svc.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
+                    {svc.system_working_interface === portName ?
+                        <Activity className="w-3.5 h-3.5 text-blue-500" /> :
+                        <Shield className="w-3.5 h-3.5 text-purple-500" />
+                    }
+                    <div className="min-w-0 flex-1">
+                       <div className="font-medium truncate text-gray-800 dark:text-gray-200">
+                         {svc.service_name || svc.connected_system_name}
+                       </div>
+                       <div className="text-xs text-gray-500 truncate">
+                         {svc.connected_link_type_name} {svc.bandwidth_allocated && `• ${svc.bandwidth_allocated}`}
+                       </div>
+                    </div>
+                 </div>
+              ))}
+           </div>
+        ) : (
+            <div className="text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                No services allocated
+            </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${record.port_admin_status ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                {record.port_admin_status ? 'Admin UP' : 'Admin DOWN'}
+            </span>
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${record.port_utilization ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                {record.port_utilization ? 'Utilized' : 'Free'}
+            </span>
+        </div>
+      </div>
+    );
+  }, [portServicesMap]);
 
   if (!isOpen) return null;
 
@@ -44212,27 +45162,24 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       <div className="space-y-4">
         {error && <ErrorDisplay error={error.message} />}
 
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept=".xlsx, .xls"
-        />
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
 
         <PageHeader
             title="System Ports"
             icon={<FiServer />}
             stats={[
-                { value: portStats.total, label: 'Total Ports' },
-                { value: portStats.used, label: 'In Use', color: 'primary' },
+                { value: portStats.total, label: 'Total' },
+                { value: portStats.used, label: 'Utilized', color: 'primary' },
                 { value: portStats.available, label: 'Available', color: 'success' },
-                { value: portStats.down, label: 'Admin Down', color: 'danger' }
+                { value: portStats.down, label: 'Down', color: 'danger' }
             ]}
             actions={headerActions}
             isLoading={isLoading}
             isFetching={isFetching}
         />
+
+        {/* HEATMAP ADDED HERE */}
+        <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
 
         <DataTable
           tableName="v_ports_management_complete"
@@ -44241,6 +45188,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           loading={isLoading}
           isFetching={isFetching || isMutating}
           actions={tableActions}
+          renderMobileItem={renderMobileItem}
           pagination={{
             current: pagination.currentPage,
             pageSize: pagination.pageLimit,
@@ -44251,9 +45199,47 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
               pagination.setPageLimit(limit);
             },
           }}
-          searchable
-          onSearchChange={search.setSearchQuery}
-          sortable={false}
+          customToolbar={
+            <SearchAndFilters
+                searchTerm={search.searchQuery}
+                onSearchChange={search.setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+                activeFilterCount={Object.keys(filters.filters).length}
+                searchPlaceholder="Search ports, serials..."
+            >
+                <SelectFilter
+                    label="Port Type"
+                    filterKey="port_type_name"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={portTypeOptions}
+                />
+                <SelectFilter
+                    label="Utilization"
+                    filterKey="port_utilization"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: 'true', label: 'In Use' },
+                        { value: 'false', label: 'Free' }
+                    ]}
+                />
+                <SelectFilter
+                    label="Admin Status"
+                    filterKey="port_admin_status"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: 'true', label: 'Up' },
+                        { value: 'false', label: 'Down' }
+                    ]}
+                />
+            </SearchAndFilters>
+          }
+          sortable={true}
         />
 
         {editModal.isOpen && (
@@ -44883,7 +45869,7 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
   const modalTitle = isEditMode ? "Edit Port" : "Add New Port";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="full">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} className="w-o h-0 bg-transparent">
       <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
         <div className='space-y-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -44928,6 +45914,86 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
         </div>
       </FormCard>
     </Modal>
+  );
+};
+```
+
+<!-- path: components/systems/PortHeatmap.tsx -->
+```typescript
+// components/systems/PortHeatmap.tsx
+import React, { useMemo } from 'react';
+import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
+
+interface PortHeatmapProps {
+  ports: V_ports_management_completeRowSchema[];
+  onPortClick: (port: V_ports_management_completeRowSchema) => void;
+}
+
+export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
+
+  // Sort ports naturally (1, 2, 10 instead of 1, 10, 2)
+  const sortedPorts = useMemo(() => {
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return [...ports].sort((a, b) => collator.compare(a.port || '', b.port || ''));
+  }, [ports]);
+
+  const getPortStatusColor = (p: V_ports_management_completeRowSchema) => {
+    if (!p.port_admin_status) return 'bg-red-500 hover:bg-red-600 border-red-600'; // Admin Down
+    if (p.port_utilization) return 'bg-blue-500 hover:bg-blue-600 border-blue-600'; // In Use
+    return 'bg-green-500 hover:bg-green-600 border-green-600'; // Available
+  };
+
+  const formatPortLabel = (name: string | null) => {
+      if (!name) return '?';
+      // Remove common prefixes like 'ETH-', 'Gi', etc. and keep the numbers
+      // e.g. "ETH-1-1-10" -> "1-1-10", "Gi0/1" -> "0/1"
+      return name.replace(/^(ETH-|Gi|Te|Fa|Eth|TenGig|Gig)[a-zA-Z]*[-]?/i, '');
+  };
+
+  if (ports.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Port Status Map</h4>
+
+        {/* Legend */}
+        <div className="flex gap-4 text-xs font-medium">
+            <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                <span className="text-gray-600 dark:text-gray-400">Available</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                <span className="text-gray-600 dark:text-gray-400">Allocated</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+                <span className="text-gray-600 dark:text-gray-400">Admin Down</span>
+            </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {sortedPorts.map((port) => (
+          <button
+            key={port.id}
+            onClick={() => onPortClick(port)}
+            type="button"
+            // THE FIX: Changed from fixed w-10 to variable width with min-width and padding
+            className={`
+              h-9 w-auto min-w-[2.5rem] px-2 flex items-center justify-center rounded-md border
+              text-[11px] font-bold text-white transition-all duration-200
+              hover:scale-105 hover:shadow-md focus:ring-2 focus:ring-offset-1 focus:outline-none
+              ${getPortStatusColor(port)}
+            `}
+            title={`Port: ${port.port}\nStatus: ${port.port_admin_status ? 'UP' : 'DOWN'}\nUtilized: ${port.port_utilization ? 'Yes' : 'No'}`}
+          >
+            {formatPortLabel(port.port)}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 };
 ```
@@ -46614,7 +47680,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                       <div className='h-px w-16 bg-linear-to-r from-transparent to-gray-300 dark:to-gray-700' />
                       <CheckCircle2 className='w-4 h-4' />
                       <span className='text-xs font-medium'>End of documentation</span>
-                      <div className='h-px w-16 bg-gradient-to-l from-transparent to-gray-300 dark:to-gray-700' />
+                      <div className='h-px w-16 bg-linear-to-l from-transparent to-gray-300 dark:to-gray-700' />
                     </div>
                   </motion.div>
                 )}
@@ -46719,7 +47785,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
 
         {/* Decorative background elements */}
         <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute left-0 bottom-0 w-full h-32 bg-gradient-to-t from-black/10 to-transparent"></div>
+        <div className="absolute left-0 bottom-0 w-full h-32 bg-linear-to-t from-black/10 to-transparent"></div>
       </div>
 
       {/* Main Content Grid */}
@@ -47032,7 +48098,7 @@ export default function HeaderSection() {
 
         <div className="relative">
           {/* Vertical Connecting Line */}
-          <div className="absolute left-8 top-4 bottom-12 w-0.5 bg-gradient-to-b from-blue-500 via-violet-500 to-cyan-500 dark:from-blue-600 dark:to-cyan-600 opacity-30"></div>
+          <div className="absolute left-8 top-4 bottom-12 w-0.5 bg-linear-to-b from-blue-500 via-violet-500 to-cyan-500 dark:from-blue-600 dark:to-cyan-600 opacity-30"></div>
 
           {SETUP_FLOW.map((step, index) => (
             <motion.div
@@ -47276,6 +48342,7 @@ export const workflowSections: WorkflowSection[] = [
           "Switch tab to 'Splice Management'.",
           "**Manual:** Click Fiber 1 on Left (Incoming) -> Click Fiber 1 on Right (Outgoing) -> 'Confirm'.",
           "**Auto:** Click 'Auto-Splice' between two segments -> 'Confirm'.",
+          "**Important:** After this, go to `/dashboard/ofc/id` open ***Trace Fiber Path*** and click ***Sync Path to DB***.",
         ],
         uiSteps: [
           "Visual lines connect the fiber indicators.",
@@ -47550,6 +48617,24 @@ import { FeatureItem } from "../types/featureTypes";
 
 export const featuresData: FeatureItem[] = [
   {
+    id: "feat-mobile-ux",
+    title: "Mobile-First Operations",
+    subtitle: "Optimized for Field Engineers",
+    icon: "Smartphone", // Lucide icon
+    color: "violet",
+    description: "The entire application adapts intelligently to your device. Complex data tables automatically transform into rich, easy-to-read cards on mobile devices, ensuring field engineers can access and update critical data without horizontal scrolling or zooming.",
+    benefits: [
+      "Adaptive Interfaces: Tables become Cards on mobile.",
+      "Touch-friendly actions for Editing, Viewing, and Calls.",
+      "Collapsible sidebars and optimized navigation.",
+    ],
+    technicalHighlights: [
+      "Responsive React Design Patterns",
+      "Conditional Component Rendering",
+      "Tailwind CSS Breakpoints",
+    ],
+  },
+  {
     id: "feat-offline-architecture",
     title: "Offline-First Resilience",
     subtitle: "Zero downtime, anywhere access",
@@ -47597,7 +48682,7 @@ export const featuresData: FeatureItem[] = [
     benefits: [
       "Visual Splicing Matrix: Connect fibers with a click.",
       "End-to-End Tracing: See the full path from Source to Destination.",
-      "Automated Loss Calculation based on distance and splices.",
+      "Visual Port Heatmaps: See port utilization at a glance.",
       "Auto-provisioning for straight-through joints.",
     ],
     technicalHighlights: [
@@ -49860,6 +50945,168 @@ export function BulkActions({
 }
 
 
+```
+
+<!-- path: components/common/CommandMenu.tsx -->
+```typescript
+// components/common/CommandMenu.tsx
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Command } from "cmdk";
+import { FiSearch, FiServer, FiMapPin, FiActivity, FiFileText } from "react-icons/fi";
+import { createClient } from "@/utils/supabase/client";
+import { useDebounce } from "use-debounce";
+
+// Basic types for search results
+type SearchResult = {
+  id: string;
+  title: string;
+  type: 'system' | 'node' | 'cable' | 'page';
+  url: string;
+};
+
+export function CommandMenu() {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [debouncedQuery] = useDebounce(query, 300);
+  const [results, setResults] = React.useState<SearchResult[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const supabase = createClient();
+
+  // Toggle with Cmd+K
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((open) => !open);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
+
+  // Search Logic
+  React.useEffect(() => {
+    async function search() {
+      if (!debouncedQuery) {
+        setResults([]);
+        return;
+      }
+      setLoading(true);
+
+      const searchTerm = `%${debouncedQuery}%`;
+
+      // Parallel queries for speed
+      const [systems, nodes, cables] = await Promise.all([
+        supabase.from('systems').select('id, system_name').ilike('system_name', searchTerm).limit(3),
+        supabase.from('nodes').select('id, name').ilike('name', searchTerm).limit(3),
+        supabase.from('ofc_cables').select('id, route_name').ilike('route_name', searchTerm).limit(3)
+      ]);
+
+      const newResults: SearchResult[] = [];
+
+      // Static Pages
+      if ("dashboard".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
+      if ("inventory".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'inv', title: 'Inventory', type: 'page', url: '/dashboard/inventory' });
+
+      // DB Results
+      systems.data?.forEach(s => newResults.push({ id: s.id, title: s.system_name || 'System', type: 'system', url: `/dashboard/systems/${s.id}` }));
+      nodes.data?.forEach(n => newResults.push({ id: n.id, title: n.name, type: 'node', url: `/dashboard/nodes?search=${n.name}` })); // Nodes might not have details page, linking to table filter
+      cables.data?.forEach(c => newResults.push({ id: c.id, title: c.route_name, type: 'cable', url: `/dashboard/ofc/${c.id}` }));
+
+      setResults(newResults);
+      setLoading(false);
+    }
+
+    search();
+  }, [debouncedQuery, supabase]);
+
+  const handleSelect = (url: string) => {
+    router.push(url);
+    setOpen(false);
+    setQuery("");
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[20vh] px-4">
+      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+        <Command label="Global Search" shouldFilter={false} className="w-full">
+
+          {/* Search Input */}
+          <div className="flex items-center border-b border-gray-200 dark:border-gray-700 px-4">
+            <FiSearch className="w-5 h-5 text-gray-400 mr-3" />
+            <Command.Input
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Search systems, nodes, cables..."
+              className="w-full py-4 text-base bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              autoFocus
+            />
+            {loading && <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>}
+          </div>
+
+          {/* Results List */}
+          <Command.List className="max-h-[300px] overflow-y-auto p-2 scroll-py-2">
+
+            {query && results.length === 0 && !loading && (
+              <div className="py-6 text-center text-sm text-gray-500">No results found.</div>
+            )}
+
+            {!query && (
+               <div className="px-4 py-2">
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Quick Navigation</p>
+                  {/* Default suggestions if query is empty */}
+                  <Command.Item onSelect={() => handleSelect('/dashboard/systems')} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
+                     <FiServer className="w-4 h-4" /> Systems Manager
+                  </Command.Item>
+                  <Command.Item onSelect={() => handleSelect('/dashboard/rings')} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
+                     <FiActivity className="w-4 h-4" /> Ring Manager
+                  </Command.Item>
+               </div>
+            )}
+
+            {results.length > 0 && (
+              <Command.Group heading="Search Results" className="px-2">
+                {results.map((item) => (
+                  <Command.Item
+                    key={`${item.type}-${item.id}`}
+                    onSelect={() => handleSelect(item.url)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                  >
+                    <div className="flex items-center justify-center w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
+                        {item.type === 'system' && <FiServer size={14} />}
+                        {item.type === 'node' && <FiMapPin size={14} />}
+                        {item.type === 'cable' && <FiActivity size={14} />}
+                        {item.type === 'page' && <FiFileText size={14} />}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-medium">{item.title}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{item.type}</span>
+                    </div>
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            )}
+
+          </Command.List>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center text-xs text-gray-400">
+            <span>Use arrows to navigate</span>
+            <span>ESC to close</span>
+          </div>
+        </Command>
+      </div>
+
+      {/* Click outside to close */}
+      <div className="absolute inset-0 -z-10" onClick={() => setOpen(false)} />
+    </div>
+  );
+}
 ```
 
 <!-- path: components/common/ui/index.ts -->
@@ -55326,7 +56573,7 @@ import { cn } from "@/utils/classNames";
 
 interface FormCardProps {
   title: React.ReactNode;
-  subtitle?: string;
+  subtitle?:string | React.ReactNode;
   isLoading?: boolean;
   onCancel: () => void;
   onSubmit?: React.FormEventHandler<HTMLFormElement>;
@@ -55538,7 +56785,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   if (standalone) {
     return (
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        className="fixed inset-0 z-9999 flex items-center justify-center p-4"
         style={{
           background: "rgba(0, 0, 0, 0.6)",
           animation: "fadeIn 0.3s ease-out"
@@ -59095,6 +60342,7 @@ import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
+import { FiActivity, FiHash, FiServer, FiTag } from 'react-icons/fi';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -59294,6 +60542,117 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  const renderCircuitMobile = useCallback((record: any, _actions: React.ReactNode) => {
+    return (
+        <div className="flex flex-col gap-4">
+            {/* Header: Service Name */}
+            <div>
+                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wide">Service Name / Customer</div>
+                <div className="font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight">
+                    {record.service_name || record.customer_name || 'N/A'}
+                </div>
+                 <div className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    {record.connected_link_type_name || 'Link'}
+                </div>
+            </div>
+
+            {/* Bandwidth Card */}
+            <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-3">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                        <FiActivity size={12} />
+                        <span className="text-[10px] uppercase font-bold">Capacity</span>
+                    </div>
+                    <div className="font-mono text-sm font-semibold">{record.bandwidth || '-'}</div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-3">
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                        <FiActivity size={12} />
+                        <span className="text-[10px] uppercase font-bold">Allocated</span>
+                    </div>
+                    <div className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        {record.bandwidth_allocated || '-'}
+                    </div>
+                </div>
+            </div>
+
+            {/* IDs Grid */}
+            <div className="grid grid-cols-3 gap-2">
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiTag size={10} />
+                        <span className="text-[10px] uppercase font-bold">VLAN</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate">{record.vlan || '-'}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiHash size={10} />
+                        <span className="text-[10px] uppercase font-bold">LC ID</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate" title={record.lc_id}>{record.lc_id || '-'}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1 text-gray-400 mb-1">
+                        <FiHash size={10} />
+                        <span className="text-[10px] uppercase font-bold">Unique</span>
+                    </div>
+                    <span className="font-mono font-medium text-xs block truncate" title={record.unique_id}>{record.unique_id || '-'}</span>
+                </div>
+            </div>
+        </div>
+    );
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderEndpointMobile = useCallback((record: any) => {
+     return (
+        <div className="flex items-center justify-between">
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-blue-600 text-xs uppercase tracking-wide">{record.end}</span>
+                    <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300">
+                        {record.node_ip || 'No IP'}
+                    </span>
+                </div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <FiServer className="w-3.5 h-3.5 text-gray-400" />
+                    {record.system_name}
+                </div>
+            </div>
+            <div className="text-right">
+                <div className="text-[10px] text-gray-400 uppercase mb-0.5">Interface</div>
+                <div className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
+                    {record.interface || '-'}
+                </div>
+            </div>
+        </div>
+     );
+  }, []);
+
+  const renderFiberMobile = useCallback((record: Row<'v_ofc_connections_complete'>) => {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+                 <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[70%]">
+                    {record.ofc_route_name}
+                 </span>
+                 <div className="flex items-center gap-1 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                    <span>F{record.fiber_no_sn}</span>
+                    <span className="text-gray-400">→</span>
+                    <span>F{record.fiber_no_en}</span>
+                 </div>
+            </div>
+
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
+                <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
+                <span>Loss: {record.route_loss_db || '-'} dB</span>
+            </div>
+        </div>
+    );
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -59319,6 +60678,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 searchable={false}
                 showColumnSelector={false}
                 onCellEdit={handleCellEdit}
+                renderMobileItem={renderCircuitMobile}
                 pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
                 bordered={false}
                 density="compact"
@@ -59338,6 +60698,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 columns={endPointColumns}
                 searchable={false}
                 showColumnSelector={false}
+                renderMobileItem={renderEndpointMobile}
                 onCellEdit={handleCellEdit}
                 pagination={{ current: 1, pageSize: 2, total: 2, onChange: () => {} }}
                 bordered={false}
@@ -59380,6 +60741,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}
+                        renderMobileItem={renderFiberMobile}
                         pagination={{ current: 1, pageSize: 10, total: ofcData.data.length, onChange: () => {} }}
                         density="compact"
                     />
@@ -59842,44 +61204,257 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
 };
 ```
 
+<!-- path: components/system-details/StatsConfigModal.tsx -->
+```typescript
+// path: components/system-details/StatsConfigModal.tsx
+"use client";
+
+import React, { useMemo } from 'react';
+import { Modal, Button } from '@/components/common/ui';
+import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
+import { Check } from 'lucide-react';
+
+export interface StatsFilterState {
+  includeAdminDown: boolean;
+  selectedCapacities: string[]; // Empty means ALL
+  selectedTypes: string[];      // Empty means ALL
+}
+
+interface StatsConfigModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  ports: V_ports_management_completeRowSchema[];
+  filters: StatsFilterState;
+  onApply: (newFilters: StatsFilterState) => void;
+}
+
+export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
+  isOpen,
+  onClose,
+  ports,
+  filters,
+  onApply
+}) => {
+  const [localFilters, setLocalFilters] = React.useState<StatsFilterState>(filters);
+
+  // Reset local state when modal opens
+  React.useEffect(() => {
+    if (isOpen) setLocalFilters(filters);
+  }, [isOpen, filters]);
+
+  // Extract unique options from available ports
+  const options = useMemo(() => {
+    const caps = new Set<string>();
+    const types = new Set<string>();
+
+    ports.forEach(p => {
+      if (p.port_capacity) caps.add(p.port_capacity);
+      const typeLabel = p.port_type_code || p.port_type_name || "Unknown";
+      types.add(typeLabel);
+    });
+
+    return {
+      capacities: Array.from(caps).sort(),
+      types: Array.from(types).sort()
+    };
+  }, [ports]);
+
+  const toggleCapacity = (cap: string) => {
+    setLocalFilters(prev => {
+      const current = prev.selectedCapacities;
+      const exists = current.includes(cap);
+      return {
+        ...prev,
+        selectedCapacities: exists
+          ? current.filter(c => c !== cap)
+          : [...current, cap]
+      };
+    });
+  };
+
+  const toggleType = (type: string) => {
+    setLocalFilters(prev => {
+      const current = prev.selectedTypes;
+      const exists = current.includes(type);
+      return {
+        ...prev,
+        selectedTypes: exists
+          ? current.filter(t => t !== type)
+          : [...current, type]
+      };
+    });
+  };
+
+  const handleSave = () => {
+    onApply(localFilters);
+    onClose();
+  };
+
+  const clearAll = () => {
+    setLocalFilters({
+      includeAdminDown: true,
+      selectedCapacities: [],
+      selectedTypes: []
+    });
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Configure Statistics Calculation" size="md">
+      <div className="space-y-6 p-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800 text-sm text-blue-800 dark:text-blue-200">
+          Select which ports to include in the utilization and count statistics. Unchecked items will be ignored in calculations.
+        </div>
+
+        {/* 1. Status Filter */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+            Operational Status
+          </h4>
+          <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+            <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+              localFilters.includeAdminDown
+                ? 'bg-blue-600 border-blue-600 text-white'
+                : 'border-gray-400 bg-white dark:bg-gray-700'
+            }`}>
+              {localFilters.includeAdminDown && <Check size={14} />}
+            </div>
+            <input
+              type="checkbox"
+              className="hidden"
+              checked={localFilters.includeAdminDown}
+              onChange={(e) => setLocalFilters(prev => ({ ...prev, includeAdminDown: e.target.checked }))}
+            />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Include Admin Down</span>
+              <span className="text-xs text-gray-500">Ports that are administratively disabled</span>
+            </div>
+          </label>
+        </div>
+
+        {/* 2. Capacity Filter */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Port Capacity
+            </h4>
+            <span className="text-xs text-gray-500">
+              {localFilters.selectedCapacities.length === 0 ? "Including All" : `${localFilters.selectedCapacities.length} Selected`}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {options.capacities.map(cap => {
+              const isActive = localFilters.selectedCapacities.includes(cap);
+
+              return (
+                <button
+                  key={cap}
+                  onClick={() => toggleCapacity(cap)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-md text-sm border transition-all ${
+                    isActive
+                      ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  <span>{cap}</span>
+                  {isActive && <Check size={14} />}
+                </button>
+              );
+            })}
+          </div>
+          {localFilters.selectedCapacities.length === 0 && (
+             <p className="text-xs text-gray-400 italic">Select specific capacities to filter, otherwise all are included.</p>
+          )}
+        </div>
+
+        {/* 3. Type Filter */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Port Type
+            </h4>
+            <span className="text-xs text-gray-500">
+              {localFilters.selectedTypes.length === 0 ? "Including All" : `${localFilters.selectedTypes.length} Selected`}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {options.types.map(type => {
+              const isActive = localFilters.selectedTypes.includes(type);
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleType(type)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-md text-sm border transition-all ${
+                    isActive
+                      ? 'bg-purple-50 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500 dark:text-purple-300'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  <span className="truncate pr-2">{type}</span>
+                  {isActive && <Check size={14} className="shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+           <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
+              Reset to Default
+           </Button>
+           <div className="flex gap-2">
+             <Button variant="outline" onClick={onClose}>Cancel</Button>
+             <Button variant="primary" onClick={handleSave}>Apply Filters</Button>
+           </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+```
+
 <!-- path: components/system-details/SystemConnectionFormModal.tsx -->
 ```typescript
 // path: components/system-details/SystemConnectionFormModal.tsx
-"use client";
+'use client';
 
-import { FC, useCallback, useEffect, useMemo, useState } from "react";
-import { useForm, SubmitErrorHandler } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm, SubmitErrorHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  V_servicesRowSchema, // Changed from ServicesRowSchema
+  V_servicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { useTableQuery } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
-import { Modal, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label } from "@/components/common/ui";
+import { useTableQuery, useTableRecord } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
 import {
-  FormCard,
-  FormDateInput,
-  FormInput,
-  FormSearchableSelect,
-} from "@/components/common/form";
-import { z } from "zod";
-import { toast } from "sonner";
-import { Network, Settings, Activity } from "lucide-react";
-import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
-import { formatIP } from "@/utils/formatters";
+  Modal,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Input,
+  Label,
+} from '@/components/common/ui';
+import { FormCard, FormDateInput, FormInput, FormSearchableSelect } from '@/components/common/form';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { Network, Settings, Activity, RefreshCw } from 'lucide-react';
+import { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
+import { formatIP } from '@/utils/formatters';
 
+// Update schema to include the new field
 const formSchema = z.object({
   // Connection Keys
   system_id: z.string().uuid(),
-  media_type_id: z.string().uuid("Media Type is required"),
+  media_type_id: z.string().uuid('Media Type is required'),
   status: z.boolean(),
   commissioned_on: z.string().nullable().optional(),
   remark: z.string().nullable().optional(),
 
   // Service Keys (Logical)
-  service_name: z.string().min(1, "Service Name / Customer is required"),
+  service_name: z.string().min(1, 'Service Name / Customer is required'),
   link_type_id: z.string().uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -59892,7 +61467,7 @@ const formSchema = z.object({
   // Connectivity
   services_ip: z.string().nullable().optional(),
   services_interface: z.string().nullable().optional(),
-  system_working_interface: z.string().min(1, "Working Interface is required"),
+  system_working_interface: z.string().min(1, 'Working Interface is required'),
   system_protection_interface: z.string().nullable().optional(),
 
   // Topology
@@ -59902,6 +61477,8 @@ const formSchema = z.object({
   en_ip: z.string().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   en_interface: z.string().nullable().optional(),
+  // Destination Protection Interface
+  en_protection_interface: z.string().nullable().optional(),
   bandwidth: z.string().nullable().optional(),
 
   // SDH
@@ -59914,10 +61491,12 @@ const formSchema = z.object({
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
+// Define extended type to handle the new property until zod schema is regenerated
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & {
-    services_ip?: unknown;
-    services_interface?: string | null;
-    customer_name?: string | null;
+  services_ip?: unknown;
+  services_interface?: string | null;
+  customer_name?: string | null;
+  en_protection_interface?: string | null;
 };
 type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -59940,8 +61519,16 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 }) => {
   const supabase = createClient();
   const isEditMode = !!editingConnection;
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState('general');
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
+
+  // Fetch the pristine record from DB when editing to avoid "flipped" view logic issues
+  const { data: pristineRecord, isLoading: isLoadingPristine } = useTableRecord(
+    supabase,
+    'v_system_connections_complete',
+    isEditMode ? editingConnection?.id || null : null,
+    { enabled: isOpen && isEditMode }
+  );
 
   const {
     control,
@@ -59954,156 +61541,180 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   } = useForm<SystemConnectionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      system_id: parentSystem.id ?? "",
+      system_id: parentSystem.id ?? '',
       status: true,
-      media_type_id: "",
-      service_name: "",
-      link_type_id: "",
+      media_type_id: '',
+      service_name: '',
+      link_type_id: '',
     },
   });
 
-  const watchLinkTypeId = watch("link_type_id");
-  const watchExistingServiceId = watch("existing_service_id");
-  const watchSystemId = watch("system_id");
-  const watchEnId = watch("en_id");
-  const watchWorkingInterface = watch("system_working_interface");
-  const watchProtectionInterface = watch("system_protection_interface");
-  const watchSnInterface = watch("sn_interface");
-  const watchEnInterface = watch("en_interface");
-  const watchSnId = watch("sn_id");
+  const watchLinkTypeId = watch('link_type_id');
+  const watchExistingServiceId = watch('existing_service_id');
+  const watchSystemId = watch('system_id');
+  const watchEnId = watch('en_id');
+  const watchWorkingInterface = watch('system_working_interface');
+  const watchProtectionInterface = watch('system_protection_interface');
+  const watchSnInterface = watch('sn_interface');
+  const watchEnInterface = watch('en_interface');
+  const watchEnProtectionInterface = watch('en_protection_interface');
+  const watchSnId = watch('sn_id');
 
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
-    columns: "id, system_name, ip_address, node_name",
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, 'v_systems_complete', {
+    columns: 'id, system_name, ip_address, node_name',
     limit: 5000,
   });
 
-  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name",
-    filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
+  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
+    columns: 'id, name',
+    filters: { category: 'MEDIA_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
   });
 
-  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name",
-    filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
+  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
+    columns: 'id, name',
+    filters: { category: 'LINK_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
   });
 
-  // THE FIX: Switch to 'v_services' view to get 'link_type_name'
-  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
-      columns: "id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id",
-      filters: { status: true },
-      orderBy: [{ column: "name", ascending: true }],
-      limit: 2000
+  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, 'v_services', {
+    columns: 'id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id',
+    filters: { status: true },
+    orderBy: [{ column: 'name', ascending: true }],
+    limit: 2000,
   });
 
-  // THE FIX: Cast to V_servicesRowSchema to include link_type_name property
   const servicesData = useMemo(
     () => (servicesResult?.data ? (servicesResult.data as unknown as V_servicesRowSchema[]) : []),
     [servicesResult.data]
   );
 
-  const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
+  const { data: mainSystemPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
+    columns: 'port, port_utilization, port_type_name, port_type_code',
     filters: { system_id: watchSystemId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchSystemId,
   });
 
-  const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
+  const { data: snPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
+    columns: 'port, port_utilization, port_type_name, port_type_code',
     filters: { system_id: watchSnId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchSnId,
   });
 
-  const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
+  const { data: enPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
+    columns: 'port, port_utilization, port_type_name, port_type_code',
     filters: { system_id: watchEnId || '', port_admin_status: true },
     limit: 1000,
     enabled: !!watchEnId,
   });
 
   const mapPortsToOptions = (
-    portsData: { port: string | null, port_utilization: boolean | null }[] | undefined,
+    portsData: { port: string | null; port_utilization: boolean | null }[] | undefined,
     currentValue?: string | null,
     excludePort?: string | null
   ) => {
     const options = (portsData || [])
-      .filter(p => p.port)
-      .filter(p => p.port !== excludePort)
-      .map(p => ({
+      .filter((p) => p.port)
+      .filter((p) => p.port !== excludePort)
+      .map((p) => ({
         value: p.port!,
         label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
       }))
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
 
-    if (currentValue && !options.find(o => o.value === currentValue)) {
+    if (currentValue && !options.find((o) => o.value === currentValue)) {
       options.unshift({ value: currentValue, label: `${currentValue} (Current)` });
     }
 
     return options;
   };
 
-  const getPortTypeDisplay = useCallback((portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
-    if (!portsList?.data || !portInterface) return "";
-    const port = portsList.data.find(p => p.port === portInterface);
-    if (!port) return "Unknown";
-    return port.port_type_code || port.port_type_name || "Unknown";
-  }, []);
+  const getPortTypeDisplay = useCallback(
+    (portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
+      if (!portsList?.data || !portInterface) return '';
+      const port = portsList.data.find((p) => p.port === portInterface);
+      if (!port) return 'Unknown';
+      return port.port_type_code || port.port_type_name || 'Unknown';
+    },
+    []
+  );
 
-  const systemOptions = useMemo(() => (systemsResult.data || []).map((s) => {
-      const loc = s.node_name ? ` @ ${s.node_name}` : "";
-      const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
-      return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
-    }), [systemsResult.data]);
+  const systemOptions = useMemo(
+    () =>
+      (systemsResult.data || []).map((s) => {
+        const loc = s.node_name ? ` @ ${s.node_name}` : '';
+        const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : '';
+        return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
+      }),
+    [systemsResult.data]
+  );
 
-  const mediaTypeOptions = useMemo(() => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })), [mediaTypes.data]);
-  const linkTypeOptions = useMemo(() => linkTypes.data.map((t) => ({ value: t.id, label: t.name })), [linkTypes.data]);
+  const mediaTypeOptions = useMemo(
+    () => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })),
+    [mediaTypes.data]
+  );
+  const linkTypeOptions = useMemo(
+    () => linkTypes.data.map((t) => ({ value: t.id, label: t.name })),
+    [linkTypes.data]
+  );
 
-  // THE FIX: Updated label generation to include link_type_name
   const serviceOptions = useMemo(() => {
-      let filteredServices = servicesData;
-      if (watchLinkTypeId) {
-          filteredServices = filteredServices.filter(s => s.link_type_id === watchLinkTypeId);
-      }
-      return filteredServices.map(s => ({
-          value: s.id!, // V_servicesRowSchema id can be null in types, but is UUID in DB.
-          label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}`
-      }));
+    let filteredServices = servicesData;
+    if (watchLinkTypeId) {
+      filteredServices = filteredServices.filter((s) => s.link_type_id === watchLinkTypeId);
+    }
+    return filteredServices.map((s) => ({
+      value: s.id!,
+      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}`,
+    }));
   }, [servicesData, watchLinkTypeId]);
+
+  // NEW: Effect to sync system_working_interface to sn_interface
+  // This ensures that when user picks a working port in General tab,
+  // it auto-populates the Start Interface in Connectivity tab if start node == current system
+  useEffect(() => {
+    // Only auto-sync if:
+    // 1. We have a working interface selected
+    // 2. The Start Node (sn_id) matches the Main System (system_id)
+    if (watchWorkingInterface && watchSnId === watchSystemId) {
+      setValue('sn_interface', watchWorkingInterface);
+    }
+  }, [watchWorkingInterface, watchSnId, watchSystemId, setValue]);
 
   useEffect(() => {
     if (watchSnId && systemsResult.data) {
-      const sys = systemsResult.data.find(s => s.id === watchSnId);
-      if (sys && sys.ip_address) setValue("sn_ip", formatIP(sys.ip_address));
-      else setValue("sn_ip", "");
+      const sys = systemsResult.data.find((s) => s.id === watchSnId);
+      if (sys && sys.ip_address) setValue('sn_ip', formatIP(sys.ip_address));
+      else setValue('sn_ip', '');
     }
   }, [watchSnId, systemsResult.data, setValue]);
 
   useEffect(() => {
     if (watchEnId && systemsResult.data) {
-      const sys = systemsResult.data.find(s => s.id === watchEnId);
-      if (sys && sys.ip_address) setValue("en_ip", formatIP(sys.ip_address));
-      else setValue("en_ip", "");
+      const sys = systemsResult.data.find((s) => s.id === watchEnId);
+      if (sys && sys.ip_address) setValue('en_ip', formatIP(sys.ip_address));
+      else setValue('en_ip', '');
     }
   }, [watchEnId, systemsResult.data, setValue]);
 
   useEffect(() => {
-      if (serviceMode === 'existing' && watchExistingServiceId) {
-          const selectedService = servicesData.find(s => s.id === watchExistingServiceId);
-          if (selectedService) {
-              setValue("service_name", selectedService.name!);
-              if(selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
-              if(selectedService.vlan) setValue("vlan", selectedService.vlan);
-              if(selectedService.bandwidth_allocated) setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
-              if(selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
-              if(selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
-          }
+    if (serviceMode === 'existing' && watchExistingServiceId) {
+      const selectedService = servicesData.find((s) => s.id === watchExistingServiceId);
+      if (selectedService) {
+        setValue('service_name', selectedService.name!);
+        if (selectedService.link_type_id) setValue('link_type_id', selectedService.link_type_id);
+        if (selectedService.vlan) setValue('vlan', selectedService.vlan);
+        if (selectedService.bandwidth_allocated)
+          setValue('bandwidth_allocated', selectedService.bandwidth_allocated);
+        if (selectedService.lc_id) setValue('lc_id', selectedService.lc_id);
+        if (selectedService.unique_id) setValue('unique_id', selectedService.unique_id);
       }
+    }
   }, [watchExistingServiceId, serviceMode, servicesData, setValue]);
 
   useEffect(() => {
     if (serviceMode === 'manual') {
-      setValue("existing_service_id", null);
+      setValue('existing_service_id', null);
     }
   }, [serviceMode, setValue]);
 
@@ -60111,19 +61722,50 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const protectionPortType = getPortTypeDisplay(watchProtectionInterface, mainSystemPorts);
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
+  const enProtectionPortType = getPortTypeDisplay(watchEnProtectionInterface, enPorts);
 
+  // --- FORM INITIALIZATION ---
   useEffect(() => {
     if (isOpen) {
-      setActiveTab("general");
-      if (isEditMode && editingConnection) {
-        const extConnection = editingConnection as ExtendedConnectionRow;
-        const safeValue = (val: string | null | undefined) => val ?? "";
+      setActiveTab('general');
+
+      if (isEditMode && pristineRecord) {
+        const extConnection = pristineRecord as ExtendedConnectionRow;
+        const safeValue = (val: string | null | undefined) => val ?? '';
         const safeNull = (val: string | null | undefined) => val ?? null;
+
+        const isFlipped = extConnection.system_id !== parentSystem.id;
+
+        const mappedData = isFlipped
+          ? {
+              system_id: parentSystem.id,
+              working_interface: extConnection.en_interface,
+              protection_interface: extConnection.en_protection_interface,
+              sn_id: extConnection.en_node_id,
+              en_id: extConnection.system_id,
+              sn_interface: extConnection.en_interface,
+              en_interface: extConnection.system_working_interface,
+              en_protection_interface: extConnection.system_protection_interface,
+              sn_ip: extConnection.en_ip,
+              en_ip: extConnection.sn_ip || extConnection.services_ip,
+            }
+          : {
+              system_id: extConnection.system_id,
+              working_interface: extConnection.system_working_interface,
+              protection_interface: extConnection.system_protection_interface,
+              sn_id: extConnection.sn_id,
+              en_id: extConnection.en_id,
+              sn_interface: extConnection.sn_interface,
+              en_interface: extConnection.en_interface,
+              en_protection_interface: extConnection.en_protection_interface,
+              sn_ip: extConnection.sn_ip,
+              en_ip: extConnection.en_ip,
+            };
 
         setServiceMode(extConnection.service_id ? 'existing' : 'manual');
 
         reset({
-          system_id: extConnection.system_id ?? parentSystem.id ?? "",
+          system_id: mappedData.system_id ?? '',
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
@@ -60134,19 +61776,25 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
-          services_ip: safeValue(String(extConnection.services_ip || "")),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          services_ip: safeValue(String((extConnection as any).services_ip || '')),
           services_interface: safeValue(extConnection.services_interface),
-          system_working_interface: safeValue(extConnection.system_working_interface),
-          system_protection_interface: safeNull(extConnection.system_protection_interface),
+
+          system_working_interface: safeValue(mappedData.working_interface),
+          system_protection_interface: safeNull(mappedData.protection_interface),
+
+          sn_id: safeNull(mappedData.sn_id),
+          en_id: safeNull(mappedData.en_id),
+          sn_interface: safeNull(mappedData.sn_interface),
+          en_interface: safeNull(mappedData.en_interface),
+          en_protection_interface: safeNull(mappedData.en_protection_interface),
+          sn_ip: safeNull(String(mappedData.sn_ip || '')),
+          en_ip: safeNull(String(mappedData.en_ip || '')),
+
           commissioned_on: safeNull(extConnection.commissioned_on),
           remark: safeNull(extConnection.remark),
           bandwidth: safeNull(extConnection.bandwidth),
-          sn_id: safeNull(extConnection.sn_id),
-          en_id: safeNull(extConnection.en_id),
-          sn_interface: safeNull(extConnection.sn_interface),
-          en_interface: safeNull(extConnection.en_interface),
-          sn_ip: safeNull(extConnection.sn_ip as string),
-          en_ip: safeNull(extConnection.en_ip as string),
+
           stm_no: safeNull(extConnection.sdh_stm_no),
           carrier: safeNull(extConnection.sdh_carrier),
           a_slot: safeNull(extConnection.sdh_a_slot),
@@ -60154,292 +61802,490 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           b_slot: safeNull(extConnection.sdh_b_slot),
           b_customer: safeNull(extConnection.sdh_b_customer),
         });
-      } else {
+      } else if (!isEditMode) {
+        // Create Mode - Auto-fill Start Node
         reset({
           system_id: parentSystem.id!,
           status: true,
-          media_type_id: "",
-          service_name: "",
-          link_type_id: "",
+          media_type_id: '',
+          service_name: '',
+          link_type_id: '',
+          // FIX: Correctly map system_id to sn_id (source system)
+          sn_id: parentSystem.id, // Was defaulting to node_id incorrectly before
+          sn_ip: formatIP(parentSystem.ip_address),
+          sn_interface: '', // Will be auto-filled by effect when working port is chosen
         });
         setServiceMode('existing');
       }
     }
-  }, [isOpen, isEditMode, editingConnection, parentSystem, reset]);
+  }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
 
-    const onValidSubmit = useCallback((formData: SystemConnectionFormValues) => {
-      const payload: UpsertPayload = {
-          p_id: isEditMode && editingConnection?.id ? editingConnection.id : undefined,
-          p_system_id: formData.system_id,
-          p_service_name: formData.service_name,
-          p_link_type_id: formData.link_type_id || undefined,
-          p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
-          p_vlan: formData.vlan || undefined,
-          p_lc_id: formData.lc_id || undefined,
-          p_unique_id: formData.unique_id || undefined,
-          p_services_ip: formData.services_ip || undefined,
-          p_services_interface: formData.services_interface || undefined,
-          p_media_type_id: formData.media_type_id,
-          p_status: formData.status,
-          p_bandwidth: formData.bandwidth || undefined,
-          p_commissioned_on: formData.commissioned_on || undefined,
-          p_remark: formData.remark || undefined,
-          p_sn_id: formData.sn_id || undefined,
-          p_en_id: formData.en_id || undefined,
-          p_sn_ip: formData.sn_ip || undefined,
-          p_en_ip: formData.en_ip || undefined,
-          p_sn_interface: formData.sn_interface || undefined,
-          p_en_interface: formData.en_interface || undefined,
-          p_system_working_interface: formData.system_working_interface || undefined,
-          p_system_protection_interface: formData.system_protection_interface || undefined,
-          p_stm_no: formData.stm_no || undefined,
-          p_carrier: formData.carrier || undefined,
-          p_a_slot: formData.a_slot || undefined,
-          p_a_customer: formData.a_customer || undefined,
-          p_b_slot: formData.b_slot || undefined,
-          p_b_customer: formData.b_customer || undefined,
-          p_service_id: formData.existing_service_id || undefined
+  const onValidSubmit = useCallback(
+    (formData: SystemConnectionFormValues) => {
+      const payload: UpsertPayload & { p_en_protection_interface?: string | null } = {
+        p_id: isEditMode && editingConnection?.id ? editingConnection.id : undefined,
+        p_system_id: formData.system_id,
+        p_service_name: formData.service_name,
+        p_link_type_id: formData.link_type_id || undefined,
+        p_bandwidth_allocated: formData.bandwidth_allocated || undefined,
+        p_vlan: formData.vlan || undefined,
+        p_lc_id: formData.lc_id || undefined,
+        p_unique_id: formData.unique_id || undefined,
+        p_services_ip: formData.services_ip || undefined,
+        p_services_interface: formData.services_interface || undefined,
+        p_media_type_id: formData.media_type_id,
+        p_status: formData.status,
+        p_bandwidth: formData.bandwidth || undefined,
+        p_commissioned_on: formData.commissioned_on || undefined,
+        p_remark: formData.remark || undefined,
+        p_sn_id: formData.sn_id || undefined,
+        p_en_id: formData.en_id || undefined,
+        p_sn_ip: formData.sn_ip || undefined,
+        p_en_ip: formData.en_ip || undefined,
+        p_sn_interface: formData.sn_interface || undefined,
+        p_en_interface: formData.en_interface || undefined,
+        p_en_protection_interface: formData.en_protection_interface || undefined,
+        p_system_working_interface: formData.system_working_interface || undefined,
+        p_system_protection_interface: formData.system_protection_interface || undefined,
+        p_stm_no: formData.stm_no || undefined,
+        p_carrier: formData.carrier || undefined,
+        p_a_slot: formData.a_slot || undefined,
+        p_a_customer: formData.a_customer || undefined,
+        p_b_slot: formData.b_slot || undefined,
+        p_b_customer: formData.b_customer || undefined,
+        p_service_id: formData.existing_service_id || undefined,
       };
       onSubmit(payload);
-  }, [onSubmit, isEditMode, editingConnection]);
+    },
+    [onSubmit, isEditMode, editingConnection]
+  );
 
   const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = (errors) => {
-    console.error("Form Errors:", errors);
-    toast.error("Please check the form for errors.");
+    console.error('Form Errors:', errors);
+    toast.error('Please check the form for errors.');
   };
 
+  const effectiveLoading = isLoading || (isEditMode && isLoadingPristine);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Service Connection" : "New Service Connection"} size="full">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditMode ? 'Edit Service Connection' : 'New Service Connection'}
+      size="full"
+    >
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
-        isLoading={isLoading}
-        title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
-        subtitle={`System: ${parentSystem.system_name}`}
+        isLoading={effectiveLoading}
+        title={
+          <div className="flex items-center gap-2">
+            <span>{isEditMode ? 'Edit Service Connection' : 'New Service Connection'}</span>
+            {effectiveLoading && <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />}
+          </div>
+        }
+        subtitle={
+          isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
+            <span className="text-red-100 bg-red-500 rounded-2xl px-2 py-1">
+              ⚠️ Editing Physical Source: {pristineRecord.system_name}
+            </span> // Alert user they are editing the remote end source
+          ) : (
+            `System: ${parentSystem.system_name}`
+          )
+        }
         standalone
         widthClass="w-full max-w-full"
         heightClass="h-auto max-h-[90vh]"
       >
-         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="general" className="flex items-center gap-2"><Activity className="w-4 h-4" /> General</TabsTrigger>
-                <TabsTrigger value="connectivity" className="flex items-center gap-2"><Network className="w-4 h-4" /> Connectivity</TabsTrigger>
-                <TabsTrigger value="sdh" className="flex items-center gap-2"><Settings className="w-4 h-4" /> SDH / Legacy</TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" /> General
+            </TabsTrigger>
+            <TabsTrigger value="connectivity" className="flex items-center gap-2">
+              <Network className="w-4 h-4" /> Connectivity
+            </TabsTrigger>
+            <TabsTrigger value="sdh" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" /> SDH / Legacy
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
-                {/* TAB 1: GENERAL */}
-                <TabsContent value="general" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormSearchableSelect
-                            name="link_type_id"
-                            label="Link Type"
-                            control={control}
-                            options={linkTypeOptions}
-                            error={errors.link_type_id}
-                            placeholder="Select Type (e.g. MPLS)"
+          <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
+            {/* TAB 1: GENERAL */}
+            <TabsContent value="general" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormSearchableSelect
+                  name="link_type_id"
+                  label="Link Type"
+                  control={control}
+                  options={linkTypeOptions}
+                  error={errors.link_type_id}
+                  placeholder="Select Type (e.g. MPLS)"
+                />
+
+                <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={serviceMode === 'existing'}
+                          onChange={() => setServiceMode('existing')}
+                          className="text-blue-600"
                         />
-
-                        <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-4">
-                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={serviceMode === 'existing'}
-                                            onChange={() => setServiceMode('existing')}
-                                            className="text-blue-600"
-                                        />
-                                        <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={serviceMode === 'manual'}
-                                            onChange={() => setServiceMode('manual')}
-                                            className="text-blue-600"
-                                        />
-                                        <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
-                                    </label>
-                                </div>
-                                {isEditMode && serviceMode === 'manual' && (
-                                   <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200">
-                                      ⚠️ Service unlinked or deleted
-                                   </span>
-                                )}
-                            </div>
-
-                            {serviceMode === 'existing' ? (
-                                <div className="space-y-2">
-                                    <FormSearchableSelect
-                                        name="existing_service_id"
-                                        label="Select Service"
-                                        control={control}
-                                        options={serviceOptions}
-                                        error={errors.existing_service_id}
-                                        placeholder="Search services..."
-                                        clearable
-                                    />
-                                    {/* Hidden input to hold the name for submission */}
-                                    <input type="hidden" {...register("service_name")} />
-                                </div>
-                            ) : (
-                                <FormInput
-                                    name="service_name"
-                                    label="New Service Name / Customer"
-                                    register={register}
-                                    error={errors.service_name}
-                                    placeholder="e.g. SBI-Kolkata-Main"
-                                    required
-                                />
-                            )}
-                        </div>
-
-                        <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
-                        <FormInput name="bandwidth_allocated" label="Allocated BW" register={register} error={errors.bandwidth_allocated} />
-                        <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
-                        <FormInput name="unique_id" label="Unique ID" register={register} error={errors.unique_id} />
+                        <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={serviceMode === 'manual'}
+                          onChange={() => setServiceMode('manual')}
+                          className="text-blue-600"
+                        />
+                        <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
+                      </label>
                     </div>
+                    {isEditMode && serviceMode === 'manual' && (
+                      <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200">
+                        ⚠️ Service unlinked or deleted
+                      </span>
+                    )}
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700">
-                        <FormSearchableSelect name="media_type_id" label="Media Type" control={control} options={mediaTypeOptions} error={errors.media_type_id} required />
-                        <FormInput name="bandwidth" label="Physical Port Capacity" register={register} error={errors.bandwidth} placeholder="e.g. 1G" />
-                        <FormDateInput name="commissioned_on" label="Commissioned On" control={control} error={errors.commissioned_on} />
-
-                        <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
-                          <div className="col-span-2">
-                            <FormSearchableSelect
-                              name="system_working_interface"
-                              label="Working Port"
-                              control={control}
-                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_working_interface)}
-                              error={errors.system_working_interface}
-                              placeholder="Select Working Port"
-                              required
-                            />
-                          </div>
-                          <div className="col-span-1">
-                            <Label disabled className="mb-1">Type</Label>
-                            <Input disabled value={workingPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
-                          </div>
-                        </div>
-
-                         <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
-                          <div className="col-span-2">
-                            <FormSearchableSelect
-                              name="system_protection_interface"
-                              label="Protection Port"
-                              control={control}
-                              options={mapPortsToOptions(mainSystemPorts?.data, editingConnection?.system_protection_interface, watchWorkingInterface)}
-                              error={errors.system_protection_interface}
-                              placeholder="Select Protection Port"
-                              clearable
-                            />
-                          </div>
-                          <div className="col-span-1">
-                            <Label disabled className="mb-1">Type</Label>
-                            <Input disabled value={protectionPortType} className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm" />
-                          </div>
-                        </div>
-
+                  {serviceMode === 'existing' ? (
+                    <div className="space-y-2">
+                      <FormSearchableSelect
+                        name="existing_service_id"
+                        label="Select Service"
+                        control={control}
+                        options={serviceOptions}
+                        error={errors.existing_service_id}
+                        placeholder="Search services..."
+                        clearable
+                      />
+                      <input type="hidden" {...register('service_name')} />
                     </div>
-                </TabsContent>
+                  ) : (
+                    <FormInput
+                      name="service_name"
+                      label="New Service Name / Customer"
+                      register={register}
+                      error={errors.service_name}
+                      placeholder="e.g. SBI-Kolkata-Main"
+                      required
+                    />
+                  )}
+                </div>
 
-                {/* TAB 2: CONNECTIVITY (unchanged) */}
-                <TabsContent value="connectivity" className="space-y-6">
-                    <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
-                        <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">Service Endpoint Configuration</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <FormInput name="services_ip" label="Service IP" register={register} error={errors.services_ip} placeholder="x.x.x.x" />
-                             <FormInput name="services_interface" label="Service Interface / Port" register={register} error={errors.services_interface} placeholder="e.g. Vlan100" />
-                        </div>
+                <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
+                <FormInput
+                  name="bandwidth_allocated"
+                  label="Allocated BW"
+                  register={register}
+                  error={errors.bandwidth_allocated}
+                />
+                <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
+                <FormInput
+                  name="unique_id"
+                  label="Unique ID"
+                  register={register}
+                  error={errors.unique_id}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700">
+                <FormSearchableSelect
+                  name="media_type_id"
+                  label="Media Type"
+                  control={control}
+                  options={mediaTypeOptions}
+                  error={errors.media_type_id}
+                  required
+                />
+                <FormInput
+                  name="bandwidth"
+                  label="Physical Port Capacity"
+                  register={register}
+                  error={errors.bandwidth}
+                  placeholder="e.g. 1G"
+                />
+                <FormDateInput
+                  name="commissioned_on"
+                  label="Commissioned On"
+                  control={control}
+                  error={errors.commissioned_on}
+                />
+
+                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                  <div className="col-span-2">
+                    <FormSearchableSelect
+                      name="system_working_interface"
+                      label="Working Port *"
+                      control={control}
+                      options={mapPortsToOptions(
+                        mainSystemPorts?.data,
+                        pristineRecord?.system_working_interface
+                      )}
+                      error={errors.system_working_interface}
+                      placeholder="Select Working Port"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label disabled className="mb-1">
+                      Type
+                    </Label>
+                    <Input
+                      disabled
+                      value={workingPortType}
+                      className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
+                  <div className="col-span-2">
+                    <FormSearchableSelect
+                      name="system_protection_interface"
+                      label="Protection Port"
+                      control={control}
+                      options={mapPortsToOptions(
+                        mainSystemPorts?.data,
+                        pristineRecord?.system_protection_interface,
+                        watchWorkingInterface
+                      )}
+                      error={errors.system_protection_interface}
+                      placeholder="Select Protection Port"
+                      clearable
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label disabled className="mb-1">
+                      Type
+                    </Label>
+                    <Input
+                      disabled
+                      value={protectionPortType}
+                      className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* TAB 2: CONNECTIVITY */}
+            <TabsContent value="connectivity" className="space-y-6">
+              <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
+                <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">
+                  Service Endpoint Configuration
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormInput
+                    name="services_ip"
+                    label="Service IP"
+                    register={register}
+                    error={errors.services_ip}
+                    placeholder="x.x.x.x"
+                  />
+                  <FormInput
+                    name="services_interface"
+                    label="Service Interface / Port"
+                    register={register}
+                    error={errors.services_interface}
+                    placeholder="e.g. Vlan100"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 border rounded dark:border-gray-700">
+                  <h3 className="font-semibold mb-3">Start Node (Side A)</h3>
+                  <FormSearchableSelect
+                    name="sn_id"
+                    label="Start System"
+                    control={control}
+                    options={systemOptions}
+                    error={errors.sn_id}
+                  />
+
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    <div className="col-span-2">
+                      <FormSearchableSelect
+                        name="sn_interface"
+                        label="Interface"
+                        control={control}
+                        options={mapPortsToOptions(snPorts?.data, pristineRecord?.sn_interface)}
+                        error={errors.sn_interface}
+                        placeholder={watchSnId ? 'Select Start Port' : 'Select System First'}
+                        disabled={!watchSnId}
+                      />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-4 border rounded dark:border-gray-700">
-                            <h3 className="font-semibold mb-3">Start Node (Side A)</h3>
-                            <FormSearchableSelect name="sn_id" label="Start System" control={control} options={systemOptions} error={errors.sn_id} />
-
-                            <div className="grid grid-cols-3 gap-3 mt-2">
-                                <div className="col-span-2">
-                                    <FormSearchableSelect
-                                        name="sn_interface"
-                                        label="Interface"
-                                        control={control}
-                                        options={mapPortsToOptions(snPorts?.data, editingConnection?.sn_interface)}
-                                        error={errors.sn_interface}
-                                        placeholder={watchSnId ? "Select Start Port" : "Select System First"}
-                                        disabled={!watchSnId}
-                                    />
-                                </div>
-                                <div className="col-span-1">
-                                    <Label disabled className="mb-1">Type</Label>
-                                    <Input disabled value={snPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
-                                </div>
-                            </div>
-
-                            <FormInput name="sn_ip" label="IP Address" register={register} error={errors.sn_ip} className="mt-2" />
-                        </div>
-
-                        <div className="p-4 border rounded dark:border-gray-700">
-                            <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
-                                <h3 className="font-semibold">End Node (Side B)</h3>
-                            </div>
-                            <FormSearchableSelect name="en_id" label="End System (If internal)" control={control} options={systemOptions} error={errors.en_id} />
-
-                            <div className="grid grid-cols-3 gap-3 mt-2">
-                                <div className="col-span-2">
-                                    {watchEnId ? (
-                                        <FormSearchableSelect
-                                            name="en_interface"
-                                            label="Interface"
-                                            control={control}
-                                            options={mapPortsToOptions(enPorts?.data, editingConnection?.en_interface)}
-                                            error={errors.en_interface}
-                                            placeholder="Select End Port"
-                                        />
-                                    ) : (
-                                        <FormInput name="en_interface" label="Interface / Port" register={register} placeholder="e.g. Port 1" />
-                                    )}
-                                </div>
-                                <div className="col-span-1">
-                                    <Label disabled className="mb-1">Type</Label>
-                                    <Input disabled value={enPortType} className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]" />
-                                </div>
-                            </div>
-
-                            <FormInput name="en_ip" label="IP Address" register={register} error={errors.en_ip} className="mt-2" />
-                        </div>
+                    <div className="col-span-1">
+                      <Label disabled className="mb-1">
+                        Type
+                      </Label>
+                      <Input
+                        disabled
+                        value={snPortType}
+                        className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                      />
                     </div>
-                </TabsContent>
+                  </div>
 
-                {/* TAB 3: SDH (unchanged) */}
-                <TabsContent value="sdh" className="space-y-6">
-                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                        Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
-                        </p>
+                  <FormInput
+                    name="sn_ip"
+                    label="IP Address"
+                    register={register}
+                    error={errors.sn_ip}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div className="p-4 border rounded dark:border-gray-700">
+                  <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
+                    <h3 className="font-semibold">End Node (Side B)</h3>
+                  </div>
+                  <FormSearchableSelect
+                    name="en_id"
+                    label="End System (If internal)"
+                    control={control}
+                    options={systemOptions}
+                    error={errors.en_id}
+                  />
+
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    <div className="col-span-2">
+                      {watchEnId ? (
+                        <FormSearchableSelect
+                          name="en_interface"
+                          label="Interface"
+                          control={control}
+                          options={mapPortsToOptions(enPorts?.data, watchEnInterface)}
+                          error={errors.en_interface}
+                          placeholder="Select End Port"
+                        />
+                      ) : (
+                        <FormInput
+                          name="en_interface"
+                          label="Interface / Port"
+                          register={register}
+                          placeholder="e.g. Port 1"
+                        />
+                      )}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormInput name="stm_no" label="STM Number / Hierarchy" register={register} error={errors.stm_no} placeholder="e.g. STM-16" />
-                        <FormInput name="carrier" label="Carrier / Operator" register={register} error={errors.carrier} />
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
-                            <FormInput name="a_slot" label="Slot/Port" register={register} error={errors.a_slot} />
-                            <FormInput name="a_customer" label="Customer/Location" register={register} error={errors.a_customer} />
-                        </div>
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
-                            <FormInput name="b_slot" label="Slot/Port" register={register} error={errors.b_slot} />
-                            <FormInput name="b_customer" label="Customer/Location" register={register} error={errors.b_customer} />
-                        </div>
+                    <div className="col-span-1">
+                      <Label disabled className="mb-1">
+                        Type
+                      </Label>
+                      <Input
+                        disabled
+                        value={enPortType}
+                        className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                      />
                     </div>
-                </TabsContent>
-            </div>
+                  </div>
+
+                  {/* NEW FIELD: Destination Protection Port */}
+                  {watchEnId && (
+                    <div className="grid grid-cols-3 gap-3 mt-2">
+                      <div className="col-span-2">
+                        <FormSearchableSelect
+                          name="en_protection_interface"
+                          label="Protection Interface"
+                          control={control}
+                          options={mapPortsToOptions(
+                            enPorts?.data,
+                            watchEnProtectionInterface,
+                            watchEnInterface
+                          )}
+                          error={errors.en_protection_interface}
+                          placeholder="Select Protection Port (Opt)"
+                          clearable
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Label disabled className="mb-1">
+                          Type
+                        </Label>
+                        <Input
+                          disabled
+                          value={enProtectionPortType}
+                          className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <FormInput
+                    name="en_ip"
+                    label="IP Address"
+                    register={register}
+                    error={errors.en_ip}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* TAB 3: SDH */}
+            <TabsContent value="sdh" className="space-y-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormInput
+                  name="stm_no"
+                  label="STM Number / Hierarchy"
+                  register={register}
+                  error={errors.stm_no}
+                  placeholder="e.g. STM-16"
+                />
+                <FormInput
+                  name="carrier"
+                  label="Carrier / Operator"
+                  register={register}
+                  error={errors.carrier}
+                />
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
+                  <FormInput
+                    name="a_slot"
+                    label="Slot/Port"
+                    register={register}
+                    error={errors.a_slot}
+                  />
+                  <FormInput
+                    name="a_customer"
+                    label="Customer/Location"
+                    register={register}
+                    error={errors.a_customer}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
+                  <FormInput
+                    name="b_slot"
+                    label="Slot/Port"
+                    register={register}
+                    error={errors.b_slot}
+                  />
+                  <FormInput
+                    name="b_customer"
+                    label="Customer/Location"
+                    register={register}
+                    error={errors.b_customer}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </div>
         </Tabs>
       </FormCard>
     </Modal>
   );
 };
+
 ```
 
 <!-- path: components/dashboard/SyncStatusModal.tsx -->
@@ -62026,7 +63872,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
 ```typescript
 // components/diagrams/hooks/useUppyUploader.ts
 import { useRef, useState, useEffect } from 'react';
-import Uppy from '@uppy/core';
+import Uppy, { UppyFile } from '@uppy/core';
 import XHRUpload from '@uppy/xhr-upload';
 import Webcam from '@uppy/webcam';
 import { createClient } from "@/utils/supabase/client";
@@ -62078,24 +63924,44 @@ export function useUppyUploader({
     }
 
     // Initialize Uppy
-    // createOptimizedUppy expects generic Uppy options structure
-    // We force cast to AppUppy because we know the meta structure we are using
     const uppy = createOptimizedUppy({ folderId }) as unknown as AppUppy;
 
+    // THE FIX: Construct Absolute URL to prevent relative path issues
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const endpoint = `${origin}/api/upload`;
+
+    // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions
+    // which sometimes misses 'getResponseError' in specific versions
     uppy.use(XHRUpload, {
-      endpoint: "/api/upload",
+      endpoint: endpoint,
       method: "POST",
       formData: true,
       fieldName: "file",
       bundle: false,
+      // Removed retryDelays as it is not natively supported by XHRUpload in this version
       headers: {
         "x-folder-id": folderId || "",
       },
       limit: 5,
-    });
+      // THE FIX: Robust error parsing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getResponseError(responseText: string, response: any) {
+        console.log("Raw Upload Response:", responseText); // Debugging
+        try {
+            const json = JSON.parse(responseText);
+            if (json.error) return new Error(json.error);
+        } catch (e) {
+          console.log(e);
+
+            // ignore JSON parse error
+        }
+        return new Error(response.statusText || "Upload failed due to network or server error");
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     // Configure Webcam
-    const webcamPlugin = uppy.use(Webcam, {
+    uppy.use(Webcam, {
       onBeforeSnapshot: () => Promise.resolve(),
       countdown: false,
       modes: ["video-audio", "video-only", "audio-only", "picture"],
@@ -62106,12 +63972,9 @@ export function useUppyUploader({
       showVideoSourceDropdown: true,
     });
 
-    if (webcamPlugin && typeof webcamPlugin.on === "function") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      webcamPlugin.on("error", (error: any) => {
-        setCameraError(`Camera error: ${error.message || "Unknown error"}`);
-      });
-    }
+    // Removed specific webcam 'error' listener here because it was catching
+    // general upload errors and displaying them as "Camera error".
+    // General errors are handled by 'upload-error' below.
 
     // Pre-processing logic (Compression)
     uppy.addPreProcessor(async (fileIDs) => {
@@ -62143,10 +64006,11 @@ export function useUppyUploader({
     uppy.on("upload", () => {
       setIsUploading(true);
       setCameraError(null);
+      setError(""); // Clear previous errors
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    uppy.on("upload-success", async (file: any, response: any) => {
+    uppy.on("upload-success", async (file: UppyFile<any, any> | undefined, response: any) => {
       if (!file || processedFiles.has(file.id)) return;
 
       setProcessedFiles(prev => new Set(prev).add(file.id));
@@ -62189,14 +64053,16 @@ export function useUppyUploader({
     });
 
     uppy.on("upload-error", (_file, error) => {
-        setError(`Upload failed: ${error.message}`);
+        console.error("Uppy Upload Error:", error);
+        // Use the error message returned by getResponseError
+        setError(error.message || "Upload failed");
         setIsUploading(false);
     });
 
     uppy.on("complete", (result) => {
         setIsUploading(false);
         if (result && result.successful && Array.isArray(result.successful) && result.successful.length > 0) {
-            setError(""); // Clear previous errors on success
+            setError("");
             setSelectedFiles([]);
             setTimeout(() => setProcessedFiles(new Set()), 1000);
         }
@@ -62224,7 +64090,7 @@ export function useUppyUploader({
         uppyRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId, facingMode]); // Removed dependencies that cause re-init loops
+  }, [folderId, facingMode]);
 
   const handleStartUpload = () => {
     if (!folderId) {
@@ -62242,7 +64108,6 @@ export function useUppyUploader({
     const newMode = facingMode === "user" ? "environment" : "user";
     setFacingMode(newMode);
     localStorage.setItem("preferredCamera", newMode);
-    // Webcam plugin update is handled by Uppy instance recreation in useEffect
   };
 
   const toggleCameraActive = () => setIsCameraActive(!isCameraActive);
@@ -70263,7 +72128,7 @@ export function useDeleteFolder() {
 
 <!-- path: hooks/database/utility-functions.ts -->
 ```typescript
-// path: hooks/database/utility-functions.ts
+// hooks/database/utility-functions.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from "@tanstack/react-query";
 import {
@@ -70280,16 +72145,20 @@ export function buildRpcFilters(filters: Filters): Json {
   const rpcFilters: { [key: string]: Json | undefined } = {};
 
   for (const key in filters) {
-    // --- THIS IS THE FIX ---
-    // Pass the 'or' string value directly through to the RPC parameters.
-    // The previous implementation was only looking for an object, which was incorrect for the data hooks.
-    if (key === 'or' && typeof filters.or === 'string' && filters.or.trim() !== '') {
-      rpcFilters.or = filters.or;
-      continue; // Continue to the next key
-    }
-    // --- END FIX ---
-
     const filterValue = filters[key];
+
+    // FIX: Correctly handle 'or' filter.
+    // If it's an object (Record<string, string>), pass it as a JSON object.
+    // If it's a string, pass it as a string.
+    if (key === 'or') {
+       if (typeof filterValue === 'object' && filterValue !== null && !Array.isArray(filterValue)) {
+         rpcFilters.or = filterValue as unknown as Json;
+       } else if (typeof filterValue === 'string' && filterValue.trim() !== '') {
+          rpcFilters.or = filterValue;
+       }
+       continue;
+    }
+
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
       rpcFilters[key] = filterValue as Json;
     }
@@ -70342,15 +72211,12 @@ export function applyFilters(query: any, filters: Filters): any {
     if (value === undefined || value === null) return;
 
     if (key === 'or') {
-      // THE FIX: Handle both string and object formats for the 'or' filter for consistency.
       if (typeof value === 'string' && value.trim() !== '') {
-        // Handles strings like `(column1.ilike.%value%,column2.ilike.%value%)`
-        const orConditions = value.replace(/[()]/g, ''); // Remove parentheses
+        const orConditions = value.replace(/[()]/g, '');
         if (orConditions) {
           modifiedQuery = modifiedQuery.or(orConditions);
         }
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        // Handles objects like `{ column1: 'value', column2: 'value' }`
         const orConditions = Object.entries(value)
           .map(([col, val]) => `${col}.ilike.%${String(val).replace(/%/g, '')}%`)
           .join(',');
@@ -71289,23 +73155,30 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { MaintenanceAreaWithRelations } from '@/config/areas';
 
-/**
- * Implements the local-first data fetching strategy for the Maintenance Areas page.
- * This version now correctly constructs the hierarchical data expected by the UI.
- */
 export const useMaintenanceAreasData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<MaintenanceAreaWithRelations> => {
   const { filters, searchQuery } = params;
 
-  // 1. Online Fetcher (remains the same, fetches the flat view)
   const onlineQueryFn = useCallback(async (): Promise<V_maintenance_areasRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `code ILIKE '%${term}%' OR ` +
+        `contact_person ILIKE '%${term}%' OR ` +
+        `email ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,code.ilike.%${searchQuery}%,contact_person.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_maintenance_areas',
       p_limit: 5000,
@@ -71317,12 +73190,10 @@ export const useMaintenanceAreasData = (
     return (data as { data: V_maintenance_areasRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // 2. Offline Fetcher (remains the same)
   const localQueryFn = useCallback(() => {
     return localDb.v_maintenance_areas.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allAreasFlat = [],
     isLoading,
@@ -71336,7 +73207,7 @@ export const useMaintenanceAreasData = (
     dexieTable: localDb.v_maintenance_areas,
   });
 
-  // 4. Client-side processing (filtering, hierarchy construction, pagination)
+  // (Processing logic remains the same)
   const processedData = useMemo(() => {
     if (!allAreasFlat) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -71348,7 +73219,6 @@ export const useMaintenanceAreasData = (
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
 
-      // Initial filter based on search term
       const initialFilter = filtered.filter(area =>
         area.name?.toLowerCase().includes(lowerQuery) ||
         area.code?.toLowerCase().includes(lowerQuery) ||
@@ -71356,7 +73226,6 @@ export const useMaintenanceAreasData = (
         area.email?.toLowerCase().includes(lowerQuery)
       );
 
-      // Include parents of matched items to maintain tree structure
       const addParents = (area: V_maintenance_areasRowSchema) => {
         if (area.id && !searchFilteredIds.has(area.id)) {
           searchFilteredIds.add(area.id);
@@ -71379,14 +73248,13 @@ export const useMaintenanceAreasData = (
       filtered = filtered.filter(area => area.area_type_id === filters.area_type_id);
     }
 
-    // --- THE FIX: Construct the hierarchical data structure ---
     const areasWithRelations = filtered.map(area => ({
       ...area,
-      id: area.id!, // Assert id is not null after filtering
-      name: area.name!, // Assert name is not null
-      area_type: null, // Placeholder
-      parent_area: null, // Placeholder
-      child_areas: [],   // Placeholder
+      id: area.id!,
+      name: area.name!,
+      area_type: null,
+      parent_area: null,
+      child_areas: [],
     })) as MaintenanceAreaWithRelations[];
 
     const areaMap = new Map(areasWithRelations.map(a => [a.id, a]));
@@ -71400,13 +73268,10 @@ export const useMaintenanceAreasData = (
         }
       }
     });
-    // --- END FIX ---
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((a) => a.status === true).length;
 
-    // For hierarchical data, pagination is often handled differently (e.g., virtual scrolling)
-    // or applied only to root items. Here, we'll return the full structure for the EntityManagementComponent to handle.
     return {
       data: areasWithRelations,
       totalCount,
@@ -71426,9 +73291,9 @@ import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { buildRpcFilters } from '@/hooks/database'; // Using the standard helper
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 /**
  * Implements the local-first data fetching strategy for the Nodes page.
@@ -71441,18 +73306,33 @@ export const useNodesData = (
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
 
-    // Construct the filters.
-    // We send a STRING for the 'or' clause, which is safer for existing backend functions.
+    // FIX: Removed 'maintenance_area_name' from search.
+    // This prevents generic terms like "Transmission" (containing "mission") from matching every node.
+    // We also construct the SQL string manually to allow casting numeric coords to text.
+    let searchString: string | undefined;
+
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''"); // Basic sanitization
+
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        // `node_type_name ILIKE '%${term}%' OR ` +
+        // maintenance_area_name ILIKE ... <-- REMOVED
+        `node_type_code ILIKE '%${term}%' OR ` +
+        `remark ILIKE '%${term}%' OR ` +
+        `latitude::text ILIKE '%${term}%' OR ` +
+        `longitude::text ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery && searchQuery.trim() !== ''
-        ? `(name.ilike.%${searchQuery}%,node_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%,node_type_code.ilike.%${searchQuery}%,remark.ilike.%${searchQuery}%)`
-        : undefined
+      or: searchString
     });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_nodes_complete',
-      p_limit: 5000, // Fetch all matching records to ensure client sorting/filtering works on full set
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
@@ -71491,7 +73371,6 @@ export const useNodesData = (
     let filtered = allNodes;
 
     // Robust Client-Side Filtering
-    // We trim and lowercase once for performance
     const cleanSearch = (searchQuery || '').trim().toLowerCase();
 
     if (cleanSearch) {
@@ -71499,8 +73378,8 @@ export const useNodesData = (
             // Helper to safely check inclusion against multiple fields
             const valuesToCheck = [
                 node.name,
-                node.node_type_name,
-                node.maintenance_area_name,
+                // node.node_type_name,
+                // node.maintenance_area_name, <-- REMOVED here as well
                 node.node_type_code,
                 node.remark,
                 node.latitude,
@@ -71520,6 +73399,10 @@ export const useNodesData = (
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
 
+    if (filters.maintenance_terminal_id) {
+        filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+
     if (filters.status) {
          const statusBool = filters.status === 'true';
          filtered = filtered.filter((node) => node.status === statusBool);
@@ -71530,6 +73413,7 @@ export const useNodesData = (
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
+    const inactiveCount = totalCount - activeCount;
 
     // Pagination Logic
     const start = (currentPage - 1) * pageLimit;
@@ -71540,7 +73424,7 @@ export const useNodesData = (
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: totalCount - activeCount
+        inactiveCount
     };
   }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
 
@@ -71610,21 +73494,32 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
 
-/**
- * Implements the local-first data fetching strategy for the OFC Cables page.
- */
 export const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `route_name ILIKE '%${term}%' OR ` +
+        `asset_no ILIKE '%${term}%' OR ` +
+        `transnet_id ILIKE '%${term}%' OR ` +
+        `sn_name ILIKE '%${term}%' OR ` +
+        `en_name ILIKE '%${term}%' OR ` +
+        `ofc_owner_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(route_name.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%,transnet_id.ilike.%${searchQuery}%,sn_name.ilike.%${searchQuery}%,en_name.ilike.%${searchQuery}%,ofc_owner_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_ofc_cables_complete",
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -71661,7 +73556,6 @@ export const useOfcData = (
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      // THE FIX: This client-side filter now mirrors the server-side search logic.
       filtered = filtered.filter(
         (cable) =>
           cable.route_name?.toLowerCase().includes(lowerQuery) ||
@@ -71717,12 +73611,24 @@ export const useAuditLogsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_audit_logsRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `action_type ILIKE '%${term}%' OR ` +
+        `table_name ILIKE '%${term}%' OR ` +
+        `performed_by_name ILIKE '%${term}%' OR ` +
+        `performed_by_email ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(action_type.ilike.%${searchQuery}%,table_name.ilike.%${searchQuery}%,performed_by_name.ilike.%${searchQuery}%,performed_by_email.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_audit_logs',
       p_limit: 5000,
@@ -71810,14 +73716,25 @@ export const useRingsData = (
 ): DataQueryHookReturn<V_ringsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // THE FIX: Wrap onlineQueryFn in useCallback to stabilize its reference.
   const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax for search
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `ring_type_name ILIKE '%${term}%' OR ` +
+        `maintenance_area_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_rings',
       p_limit: 5000,
@@ -71827,12 +73744,11 @@ export const useRingsData = (
     });
     if (error) throw error;
     return (data as { data: V_ringsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]); // Dependencies are correct.
+  }, [searchQuery, filters]);
 
-  // THE FIX: Wrap localQueryFn in useCallback to stabilize its reference.
   const localQueryFn = useCallback(() => {
     return localDb.v_rings.toArray();
-  }, []); // This function has no dependencies.
+  }, []);
 
   const {
     data: allRings = [],
@@ -71906,9 +73822,6 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for the Systems page.
- */
 export const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
@@ -71916,15 +73829,31 @@ export const useSystemsData = (
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
+
+    // FIX: Construct proper SQL string for search
+    let searchString: string | undefined;
+
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+
+      searchString = `(` +
+        `system_name ILIKE '%${term}%' OR ` +
+        `system_type_name ILIKE '%${term}%' OR ` +
+        `node_name ILIKE '%${term}%' OR ` +
+        `ip_address::text ILIKE '%${term}%' OR ` + // Cast INET to text
+        `make ILIKE '%${term}%' OR ` +
+        `s_no ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(system_name.ilike.%${searchQuery}%,system_type_name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,ip_address::text.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_systems_complete',
-      p_limit: 5000, // Fetch all matching for client-side processing
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'system_name',
@@ -71935,7 +73864,6 @@ export const useSystemsData = (
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    // THE FIX: Use orderBy to get initial sorted data from Dexie
     return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
@@ -71953,7 +73881,7 @@ export const useSystemsData = (
     dexieTable: localDb.v_systems_complete,
   });
 
-  // 4. Client-side processing (filtering and pagination)
+  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allSystems) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -71967,7 +73895,9 @@ export const useSystemsData = (
           system.system_name?.toLowerCase().includes(lowerQuery) ||
           system.system_type_name?.toLowerCase().includes(lowerQuery) ||
           system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery)
+          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery) ||
+          system.make?.toLowerCase().includes(lowerQuery) ||
+          system.s_no?.toLowerCase().includes(lowerQuery)
       );
     }
     if (filters.system_type_name) {
@@ -71976,7 +73906,6 @@ export const useSystemsData = (
           system.system_type_name === filters.system_type_name
       );
     }
-    // THE FIX: Add filtering for system capacity
     if (filters.system_capacity_name) {
       filtered = filtered.filter(
         (system) =>
@@ -71989,7 +73918,6 @@ export const useSystemsData = (
       );
     }
 
-    // Explicitly sort the filtered results before pagination
     filtered.sort((a, b) =>
       (a.system_name || '').localeCompare(b.system_name || '', undefined, {
         numeric: true,
@@ -72395,21 +74323,24 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DesignationWithRelations } from '@/config/designations';
 
-/**
- * Implements the local-first data fetching strategy for the Designations page.
- * This version constructs the hierarchical data expected by the UI.
- */
 export const useDesignationsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<DesignationWithRelations> => {
   const { filters, searchQuery } = params;
 
-  // 1. Online Fetcher (fetches the flat view)
   const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+        const term = searchQuery.trim().replace(/'/g, "''");
+        searchString = `(name ILIKE '%${term}%')`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery ? `(name.ilike.%${searchQuery}%)` : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employee_designations',
       p_limit: 5000,
@@ -72421,13 +74352,10 @@ export const useDesignationsData = (
     return (data as { data: V_employee_designationsRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    // THE FIX: Query the new view-specific table.
     return localDb.v_employee_designations.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allDesignationsFlat = [],
     isLoading,
@@ -72435,21 +74363,17 @@ export const useDesignationsData = (
     error,
     refetch,
   } = useLocalFirstQuery<'v_employee_designations'>({
-    // THE FIX: Key must contain 'employee_designations' for uploader invalidation to work
     queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
-    // THE FIX: Point to the new, correctly typed Dexie table.
     dexieTable: localDb.v_employee_designations,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allDesignationsFlat) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
 
-    // Filter out records with null IDs, which are invalid for our UI components.
     let filtered = allDesignationsFlat.filter(d => d.id != null);
 
     if (searchQuery) {
@@ -72522,22 +74446,29 @@ import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
 
-/**
- * Implements the local-first data fetching strategy for the Inventory page.
- */
 export const useInventoryData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `asset_no ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,asset_no.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_inventory_items',
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -72550,12 +74481,10 @@ export const useInventoryData = (
     return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
     return localDb.v_inventory_items.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allItems = [],
     isLoading,
@@ -72569,7 +74498,6 @@ export const useInventoryData = (
     dexieTable: localDb.v_inventory_items,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allItems) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -72585,11 +74513,9 @@ export const useInventoryData = (
         item.asset_no?.toLowerCase().includes(lowerQuery)
       );
     }
-    // Add other client-side filters if needed from the `filters` object
 
     const totalCount = filtered.length;
-    // This view doesn't have a standard 'status' boolean, so we count all as 'active' for stats purposes.
-    const activeCount = totalCount;
+    const activeCount = totalCount; // No status field
 
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
@@ -72626,18 +74552,28 @@ export const useServicesData = (
 
   // 1. Online Fetcher (RPC)
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-    // buildRpcFilters automatically maps filter keys (like link_type_id, status)
-    // to the JSON parameter expected by the get_paged_data RPC.
+
+    // FIX: Use standard SQL syntax for the OR clause
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
+      searchString = `(` +
+        `name ILIKE '%${term}%' OR ` +
+        `node_name ILIKE '%${term}%' OR ` +
+        `end_node_name ILIKE '%${term}%' OR ` +
+        `description ILIKE '%${term}%' OR ` +
+        `link_type_name ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,node_name.ilike.%${searchQuery}%,end_node_name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,link_type_name.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
 
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
-      p_limit: 5000, // Fetch all matching records to support client-side pagination/sorting if needed
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
@@ -72645,9 +74581,7 @@ export const useServicesData = (
 
     if (error) throw error;
 
-    // Safe unwrapping of the RPC response
     let resultList: V_servicesRowSchema[] = [];
-
     if (Array.isArray(data)) {
       if (data.length > 0 && 'data' in data[0]) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72710,7 +74644,6 @@ export const useServicesData = (
 
     // Status Filter
     if (filters.status) {
-        // The filter value comes as a string 'true'/'false' from the URL/Select
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(s => s.status === statusBool);
     }
@@ -72917,28 +74850,34 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { DEFAULTS } from '@/constants/constants';
 
-/**
- * This is the refactored data fetching hook for the Employees page.
- * It now uses the `useLocalFirstQuery` hook to implement a local-first strategy.
- */
 export const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // THE FIX: Wrap onlineQueryFn in useCallback.
   const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `employee_name ILIKE '%${term}%' OR ` +
+        `employee_pers_no ILIKE '%${term}%' OR ` +
+        `employee_email ILIKE '%${term}%' OR ` +
+        `employee_contact ILIKE '%${term}%'` +
+      `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery
-        ? `(employee_name.ilike.%${searchQuery}%,employee_pers_no.ilike.%${searchQuery}%,employee_email.ilike.%${searchQuery}%,employee_contact.ilike.%${searchQuery}%)`
-        : undefined,
+      or: searchString,
     });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
-      p_limit: 5000, // Fetch all for client-side filtering
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
     });
@@ -72946,12 +74885,10 @@ export const useEmployeesData = (
     return (data as { data: V_employeesRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // THE FIX: Wrap localQueryFn in useCallback.
   const localQueryFn = useCallback(() => {
     return localDb.v_employees.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allEmployees = [],
     isLoading,
@@ -72965,7 +74902,6 @@ export const useEmployeesData = (
     dexieTable: localDb.v_employees,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allEmployees) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -73031,7 +74967,6 @@ interface UseLocalFirstQueryOptions<
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
   localQueryDeps?: unknown[];
-  // THE FIX: Allow any key type (string, number, compound) for the Dexie table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dexieTable: Table<TLocal, any>;
   enabled?: boolean;
@@ -73054,33 +74989,36 @@ export function useLocalFirstQuery<
   // const isOnline = useOnlineStatus();
   // const queryClient = useQueryClient();
 
+  // 1. Fetch Local Data (Always available via Dexie)
   const localData = useLiveQuery(localQueryFn, localQueryDeps, undefined);
 
+  // 2. Fetch Network Data (Standard React Query)
   const {
     data: networkData,
     isLoading: isNetworkLoading,
     isFetching,
-    isError,
-    error,
+    isError: isNetworkError,
+    error: networkError,
     refetch,
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: onlineQueryFn,
     enabled: enabled,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
+    refetchOnMount: true, // Attempt to fetch on mount to keep data fresh
+    refetchOnReconnect: true,
     staleTime,
+    retry: 1, // Minimize retries to avoid long waiting times if offline
   });
 
+  // 3. Sync Network Data to Local DB
   useEffect(() => {
     if (networkData) {
       const syncToLocal = async () => {
         try {
-          // The `bulkPut` operation now expects data that conforms to `TLocal`.
-          // The `onlineQueryFn` must return data that can be safely cast to `TLocal[]`.
+          // Transactional bulk put to ensure data consistency
+          // We rely on the caller to ensure TRow matches TLocal structure or is compatible
           await dexieTable.bulkPut(networkData as unknown as TLocal[]);
-          console.log(`[useLocalFirstQuery] Synced ${networkData.length} records to ${dexieTable.name}`);
         } catch (e) {
           console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
         }
@@ -73089,10 +75027,25 @@ export function useLocalFirstQuery<
     }
   }, [networkData, dexieTable]);
 
-  const isLoading = isNetworkLoading && localData === undefined;
+  // 4. Determine "Effective" State (Offline-First Logic)
+
+  // Check if we actually have local data
+  const hasLocalData = Array.isArray(localData) ? localData.length > 0 : !!localData;
+
+  // LOGIC FIX:
+  // If we have local data, we are NOT loading (even if network is fetching).
+  // We only show loading state if we have NO data at all and are waiting for network.
+  const isLoading = isNetworkLoading && !hasLocalData;
+
+  // LOGIC FIX:
+  // If we have local data, we SUPPRESS the network error.
+  // The user sees the stale data, and we can show a toast or indicator elsewhere if needed.
+  // We only show the error screen if we have NO data and the network failed.
+  const error = hasLocalData ? null : networkError;
+  const isError = hasLocalData ? false : isNetworkError;
 
   return {
-    data: localData,
+    data: localData, // Always return local data as the source of truth for the UI
     isLoading,
     isFetching,
     isError,
@@ -73381,26 +75334,31 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for OFC Connections.
- * Filters by cable ID and performs client-side search.
- */
 export const useOfcConnectionsData = (
   cableId: string | null
 ) => {
-  // Wrapped in a factory function to be used by useCrudManager
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
 
+      // FIX: Use standard SQL syntax
+      let searchString: string | undefined;
+      if (searchQuery && searchQuery.trim() !== '') {
+          const term = searchQuery.trim().replace(/'/g, "''");
+          searchString = `(` +
+            `system_name ILIKE '%${term}%' OR ` +
+            `connection_type ILIKE '%${term}%' OR ` +
+            `updated_sn_name ILIKE '%${term}%' OR ` + // Added these helpful fields for user
+            `updated_en_name ILIKE '%${term}%'` +
+          `)`;
+      }
+
       const rpcFilters = buildRpcFilters({
         ...filters,
         ofc_id: cableId,
-        or: searchQuery
-          ? `(system_name.ilike.%${searchQuery}%,connection_type.ilike.%${searchQuery}%,customer_name.ilike.%${searchQuery}%)`
-          : undefined,
+        or: searchString,
       });
 
       const { data, error } = await createClient().rpc('get_paged_data', {
@@ -73419,14 +75377,12 @@ export const useOfcConnectionsData = (
 
     const localQueryFn = useCallback(() => {
       if (!cableId) {
-        // THE FIX: Return a valid Dexie PromiseExtended that resolves to an empty array
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
       return localDb.v_ofc_connections_complete.where('ofc_id').equals(cableId).toArray();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cableId]);
 
-    // THE FIX: Explicitly pass the Row Schema type to the hook
     const {
       data: allConnections = [],
       isLoading,
@@ -73448,7 +75404,6 @@ export const useOfcConnectionsData = (
 
       let filtered = allConnections;
 
-      // Client-side filtering
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
@@ -73457,11 +75412,9 @@ export const useOfcConnectionsData = (
         );
       }
 
-      // Default sort by fiber number
       filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
       const totalCount = filtered.length;
-      // THE FIX: Use loose comparison or boolean conversion if status might be null/undefined
       const activeCount = filtered.filter((c) => !!c.status).length;
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
@@ -73787,7 +75740,18 @@ export const useSystemConnectionsData = (
       }
 
       // 2. Client-Side Filtering
-      if (filters.connected_link_type_name) {
+
+      // FIX 1: Add Media Type Filter
+      if (filters.media_type_id) {
+        filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
+      }
+
+      // FIX 2: Check correct property for Link Type (ID vs Name)
+      // The Page component passes IDs for the options, so we must filter by ID.
+      if (filters.connected_link_type_id) {
+        filtered = filtered.filter(c => c.connected_link_type_id === filters.connected_link_type_id);
+      } else if (filters.connected_link_type_name) {
+        // Fallback for name-based filtering if needed
         filtered = filtered.filter(c => c.connected_link_type_name === filters.connected_link_type_name);
       }
 
@@ -73833,23 +75797,31 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for the Lookup Types page.
- */
 export const useLookupTypesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<Lookup_typesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
+
+    // FIX: Use standard SQL syntax
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+        const term = searchQuery.trim().replace(/'/g, "''");
+        searchString = `(` +
+          `name ILIKE '%${term}%' OR ` +
+          `code ILIKE '%${term}%' OR ` +
+          `description ILIKE '%${term}%'` +
+        `)`;
+    }
+
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchQuery ? `(name.ilike.%${searchQuery}%,code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%)` : undefined,
+      or: searchString,
     });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'lookup_types', // Note: We query the base table here
+      p_view_name: 'lookup_types',
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
@@ -73858,12 +75830,10 @@ export const useLookupTypesData = (
     return (data as { data: Lookup_typesRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
-  // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
     return localDb.lookup_types.toArray();
   }, []);
 
-  // 3. Use the local-first query hook
   const {
     data: allLookups = [],
     isLoading,
@@ -73877,7 +75847,6 @@ export const useLookupTypesData = (
     dexieTable: localDb.lookup_types,
   });
 
-  // 4. Client-side processing
   const processedData = useMemo(() => {
     if (!allLookups) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -73885,12 +75854,10 @@ export const useLookupTypesData = (
 
     let filtered = allLookups;
 
-    // Filter by selected category (from the main filters object)
     if (filters.category) {
         filtered = filtered.filter(lookup => lookup.category === filters.category);
     }
 
-    // Filter by search term
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(lookup =>
@@ -73900,8 +75867,6 @@ export const useLookupTypesData = (
       );
     }
 
-    // THE FIX: Only hide 'DEFAULT' items if NO specific category is selected.
-    // If a user actively selects 'SYSTEM_CAPACITY', they should see the 'DEFAULT' item.
     if (!filters.category) {
         filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
     }
@@ -73909,7 +75874,6 @@ export const useLookupTypesData = (
     const totalCount = filtered.length;
     const activeCount = filtered.filter((l) => l.status === true).length;
 
-    // Apply pagination
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
@@ -74060,31 +76024,34 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * Implements the local-first data fetching strategy for System Ports.
- * Filters by system ID and performs client-side search.
- */
 export const usePortsData = (
   systemId: string | null
 ) => {
-  // Wrapped in a factory function to be used by useCrudManager
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
     const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
       if (!systemId) return [];
 
+      let searchString: string | undefined;
+      if (searchQuery && searchQuery.trim() !== '') {
+          const term = searchQuery.trim().replace(/'/g, "''");
+          searchString = `(` +
+            `port ILIKE '%${term}%' OR ` +
+            `port_type_name ILIKE '%${term}%' OR ` +
+            `sfp_serial_no ILIKE '%${term}%'` +
+          `)`;
+      }
+
       const rpcFilters = buildRpcFilters({
         ...filters,
         system_id: systemId,
-        or: searchQuery
-          ? `(port.ilike.%${searchQuery}%,port_type_name.ilike.%${searchQuery}%,sfp_serial_no.ilike.%${searchQuery}%)`
-          : undefined,
+        or: searchString,
       });
 
       const { data, error } = await createClient().rpc('get_paged_data', {
         p_view_name: 'v_ports_management_complete',
-        p_limit: 5000, // Fetch larger set for client-side processing
+        p_limit: 5000,
         p_offset: 0,
         p_filters: rpcFilters,
         p_order_by: 'port',
@@ -74125,6 +76092,7 @@ export const usePortsData = (
 
       let filtered = allPorts;
 
+      // 1. Search Filtering
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((p) =>
@@ -74134,13 +76102,25 @@ export const usePortsData = (
         );
       }
 
-      // Natural sort for ports (e.g., 1.1, 1.2, 1.10)
+      // 2. Explicit Field Filtering (THE FIX)
+      if (filters.port_type_name) {
+          filtered = filtered.filter(p => p.port_type_name === filters.port_type_name);
+      }
+      if (filters.port_utilization) {
+          const utilBool = filters.port_utilization === 'true';
+          filtered = filtered.filter(p => p.port_utilization === utilBool);
+      }
+      if (filters.port_admin_status) {
+          const adminBool = filters.port_admin_status === 'true';
+          filtered = filtered.filter(p => p.port_admin_status === adminBool);
+      }
+
+      // 3. Natural Sort
       const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      // Assuming valid port means "active" in this context since there is no active status column on the view
-      const activeCount = totalCount;
+      const activeCount = filtered.filter(p => p.port_admin_status).length; // "Active" here implies Admin Up
 
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
@@ -74150,10 +76130,10 @@ export const usePortsData = (
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: 0,
+        inactiveCount: totalCount - activeCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allPorts, searchQuery, currentPage, pageLimit, systemId]);
+    }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };
@@ -75325,6 +77305,61 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
 
 ```
 
+<!-- path: hooks/useHotkeys.ts -->
+```typescript
+import { useEffect, useRef } from 'react';
+
+type KeyHandler = (e: KeyboardEvent) => void;
+
+interface HotkeyOptions {
+  preventDefault?: boolean;
+  enabled?: boolean;
+}
+
+export function useHotkeys(
+  key: string,
+  callback: KeyHandler,
+  options: HotkeyOptions = { preventDefault: true, enabled: true }
+) {
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (!options.enabled) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Parse key combination
+      const keys = key.toLowerCase().split('+');
+      const mainKey = keys[keys.length - 1];
+      const needsCtrl = keys.includes('ctrl');
+      const needsShift = keys.includes('shift');
+      const needsAlt = keys.includes('alt');
+      const needsMeta = keys.includes('meta') || keys.includes('cmd');
+
+      // Check modifiers
+      if (needsCtrl && !event.ctrlKey) return;
+      if (needsShift && !event.shiftKey) return;
+      if (needsAlt && !event.altKey) return;
+      if (needsMeta && !event.metaKey) return;
+
+      // Check main key
+      if (event.key.toLowerCase() === mainKey) {
+        if (options.preventDefault) {
+          event.preventDefault();
+        }
+        callbackRef.current(event);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [key, options.enabled, options.preventDefault]);
+}
+```
+
 <!-- path: hooks/useOnlineStatus.ts -->
 ```typescript
 // hooks/useOnlineStatus.ts
@@ -75636,6 +77671,7 @@ export default useIsMobile;
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "core-js": "^3.45.0",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
@@ -79025,7 +81061,7 @@ export function createClient() {
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "paths": {
       "@/*": ["./*"]

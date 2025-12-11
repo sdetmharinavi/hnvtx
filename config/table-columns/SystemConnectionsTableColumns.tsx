@@ -4,62 +4,80 @@ import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { FiMapPin } from "react-icons/fi";
 import { formatDate } from "@/utils/formatters";
 import { Row } from "@/hooks/database";
-import { PathDisplay } from "@/components/system-details/PathDisplay"; // Updated Import
+import { PathDisplay } from "@/components/system-details/PathDisplay";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
 
 export const SystemConnectionsTableColumns = (
-  data: Row<"v_system_connections_complete">[]
+  data: Row<"v_system_connections_complete">[],
+  showSystemContext: boolean = false // NEW PARAMETER
 ): Column<Row<"v_system_connections_complete">>[] => {
+
+  const omitFields = [
+    "id",
+    "system_id",
+    // "system_name", // We conditionally remove this from omit list
+    "system_type_name",
+    "media_type_id",
+    "created_at",
+    "updated_at",
+    "en_interface",
+    "sn_interface",
+    "en_ip",
+    "sn_ip",
+    "sn_id",
+    "en_id",
+    "service_node_id",
+    "sn_node_id",
+    "en_node_id",
+    "sdh_a_customer",
+    "sdh_a_slot",
+    "sdh_b_customer",
+    "sdh_b_slot",
+    "sdh_carrier",
+    "sdh_stm_no",
+    "vlan",
+    "en_node_name",
+    "sn_node_name",
+    "media_type_name",
+    "remark",
+    "working_fiber_in_ids",
+    "working_fiber_out_ids",
+    "protection_fiber_in_ids",
+    "protection_fiber_out_ids",
+    "service_id",
+    "connected_link_type_id",
+    "sn_name",
+    "en_name",
+    "connected_system_type_name",
+    "en_system_type_name",
+    "sn_system_type_name",
+    "bandwidth",
+    "connected_system_name",
+    "service_node_name",
+  ];
+
+  // If showing system context, do not omit system_name
+  const finalOmit = showSystemContext
+    ? omitFields.filter((f) => f !== "system_name")
+    : [...omitFields, "system_name"];
+
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
-    omit: [
-      "id",
-      "system_id",
-      "system_name",
-      "system_type_name",
-      "media_type_id",
-      "created_at",
-      "updated_at",
-      "en_interface",
-      "sn_interface",
-      "en_ip",
-      "sn_ip",
-      "sn_id",
-      "en_id",
-      "service_node_id",
-      "sn_node_id",
-      "en_node_id",
-      "sdh_a_customer",
-      "sdh_a_slot",
-      "sdh_b_customer",
-      "sdh_b_slot",
-      "sdh_carrier",
-      "sdh_stm_no",
-      "vlan",
-      "en_node_name",
-      "sn_node_name",
-      "media_type_name",
-      "remark",
-      "working_fiber_in_ids",
-      "working_fiber_out_ids",
-      "protection_fiber_in_ids",
-      "protection_fiber_out_ids",
-      "service_id",
-      "connected_link_type_id",
-      "sn_name",
-      "en_name",
-      "connected_system_type_name",
-      "en_system_type_name",
-      "sn_system_type_name",
-      "bandwidth",
-      "connected_system_name",
-      "service_node_name",
-
-
-
-    ],
+    omit: finalOmit as (keyof Row<"v_system_connections_complete"> & string)[],
     overrides: {
+      // NEW: Definition for System Name column
+      system_name: {
+        title: "Host System",
+        sortable: true,
+        searchable: true,
+        width: 180,
+        render: (value) => (
+          <span className="font-semibold text-gray-800 dark:text-gray-200">
+            <TruncateTooltip text={value as string} />
+          </span>
+        ),
+      },
       service_name: {
         title: "Service / Customer",
         sortable: true,
@@ -91,19 +109,19 @@ export const SystemConnectionsTableColumns = (
         naturalSort: true,
       },
       system_working_interface: {
-        title: "Working Interface",
+        title: "Working Port",
         sortable: true,
         naturalSort: true,
       },
       system_protection_interface: {
-        title: "Protection Interface",
+        title: "Protection Port",
         sortable: true,
         naturalSort: true,
       },
       bandwidth: {
-        title: "Capacity (Mbps)",
+        title: "Capacity",
         sortable: true,
-        width: 120,
+        width: 100,
         render: (value) => <span className='font-mono text-sm'>{value ? `${value}` : "N/A"}</span>,
       },
       en_name: {
@@ -149,9 +167,9 @@ export const SystemConnectionsTableColumns = (
         render: (value) => <StatusBadge status={value as boolean} />,
       },
       commissioned_on: {
-        title: "Commissioned On",
+        title: "Commissioned",
         sortable: true,
-        width: 150,
+        width: 120,
         render: (value) => formatDate(value as string, { format: "dd-mm-yyyy" }),
       },
     },
@@ -168,10 +186,20 @@ export const SystemConnectionsTableColumns = (
   const serviceNameIndex = baseColumns.findIndex((c) => c.key === "service_name");
   const finalColumns = [...baseColumns];
 
+  // Insert path column after service name
   if (serviceNameIndex !== -1) {
     finalColumns.splice(serviceNameIndex + 1, 0, provisionedPathColumn);
   } else {
     finalColumns.unshift(provisionedPathColumn);
+  }
+
+  // If showing system context, reorder to put system_name first
+  if (showSystemContext) {
+    const sysNameIndex = finalColumns.findIndex((c) => c.key === "system_name");
+    if (sysNameIndex !== -1) {
+      const [sysNameCol] = finalColumns.splice(sysNameIndex, 1);
+      finalColumns.unshift(sysNameCol);
+    }
   }
 
   return finalColumns;

@@ -121,10 +121,10 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-    
-    // UPDATED: Version 20
-    // Changes: Added 'en_id' to v_system_connections_complete indexes
-    this.version(20).stores({ 
+
+    // UPDATED: Version 21
+    // Changes: Added 'created_at' to v_system_connections_complete index to allow sorting
+    this.version(21).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -145,7 +145,7 @@ export class HNVTMDatabase extends Dexie {
       services: '&id, name',
       logical_fiber_paths: '&id, path_name, system_connection_id',
       inventory_transactions: '&id, inventory_item_id',
-      
+
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
       v_systems_complete: '&id, system_name',
@@ -158,8 +158,8 @@ export class HNVTMDatabase extends Dexie {
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      // FIX HERE: Added en_id to allow querying both ends of a connection locally
-      v_system_connections_complete: '&id, system_id, en_id, connected_system_name',
+      // FIX HERE: Added created_at
+      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',
