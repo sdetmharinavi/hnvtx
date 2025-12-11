@@ -15,7 +15,7 @@ export const OfcDetailsTableColumns = (
       'system_id', 
       // REMOVED 'system_name' from here so it shows up
       'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
-      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name'
+      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", "connection_type","fiber_role","path_direction"
     ],
     overrides: {
       system_name: {
@@ -35,6 +35,16 @@ export const OfcDetailsTableColumns = (
              )}
           </div>
         ),
+      },
+      updated_sn_name: {
+        title: 'End A Node',
+        sortable: true,
+        searchable: true,
+      },
+      updated_en_name: {
+        title: 'End B Node',
+        sortable: true,
+        searchable: true,
       },
       updated_fiber_no_sn: {
         title: 'End A Fiber',

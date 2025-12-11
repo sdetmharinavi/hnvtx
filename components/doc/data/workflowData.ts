@@ -180,6 +180,7 @@ export const workflowSections: WorkflowSection[] = [
           "Switch tab to 'Splice Management'.",
           "**Manual:** Click Fiber 1 on Left (Incoming) -> Click Fiber 1 on Right (Outgoing) -> 'Confirm'.",
           "**Auto:** Click 'Auto-Splice' between two segments -> 'Confirm'.",
+          "**Important:** After this, go to `/dashboard/ofc/id` open ***Trace Fiber Path*** and click ***Sync Path to DB***.",
         ],
         uiSteps: [
           "Visual lines connect the fiber indicators.",
