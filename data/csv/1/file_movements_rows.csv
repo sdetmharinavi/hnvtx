@@ -1,0 +1,131 @@
+id,file_id,from_employee_id,to_employee_id,performed_by_user_id,action_type,remarks,created_at
+0d206e9b-c919-4a76-a576-53843c54a9e6,fa47cf88-e241-4039-96e3-f868fbe2eb38,11578160-98a0-4a1a-bc98-6005794f5636,250d0e29-c841-4501-87ea-a94fab492422,95dfd320-0767-4a1e-81c2-61f67f472fe2,forwarded,"One P2P connection have to be put through for Sr DCM, Sealdah Division, Eastern Railway at Station Manager, Sonarpur Railway Station, PO- Sonarpur, Sonarpur Bazar, South 24 Parganas- 700150 (LC Id: 1000645008). One proposal is put up in Note No.- 302 .
+
+Please give suggestions of the above mentioned proposal . ",2025-12-09 18:19:29.471878+00
+10ffcd27-a568-401d-92b5-de6c676e4967,03e4c21c-7a26-41e5-b62f-18e43ae308a3,d2e067dd-c83a-4327-b940-d14951035ad5,fbd900d3-7bc4-4737-a9ed-202937d55750,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:45:42.059754+00
+145f593b-5858-4bf8-a6fb-e94bd40e31bb,03e4c21c-7a26-41e5-b62f-18e43ae308a3,d7a5da93-34eb-4871-802d-d0f15945b087,6642b580-ac9c-4273-8981-da218efbeca3,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:44:58.321312+00
+32ae5fea-fb86-483c-9017-5b793ed120db,03e4c21c-7a26-41e5-b62f-18e43ae308a3,fbd900d3-7bc4-4737-a9ed-202937d55750,2f433d5f-689a-43b1-ae72-74e5c45ae21f,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:46:03.479723+00
+3cb8d8c7-160f-4c47-9527-00f49ee7f2c5,03e4c21c-7a26-41e5-b62f-18e43ae308a3,d7a5da93-34eb-4871-802d-d0f15945b087,0954076c-15d1-4ba0-851c-c286496aa740,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:44:26.750962+00
+45433c6e-d3cb-4957-9b44-43542c2c2425,03e4c21c-7a26-41e5-b62f-18e43ae308a3,f6c124b9-4e13-41d8-8536-a150bac1ea61,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:42:42.495459+00
+6133d7e7-ce7d-4aa2-b0d8-de60ca803bbe,03e4c21c-7a26-41e5-b62f-18e43ae308a3,f3123cd0-7d1c-4331-ad30-9b98004d7ace,250d0e29-c841-4501-87ea-a94fab492422,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:47:16.019761+00
+675b4fe3-2853-4e39-97d4-302e8a5d4e22,fa47cf88-e241-4039-96e3-f868fbe2eb38,250d0e29-c841-4501-87ea-a94fab492422,0954076c-15d1-4ba0-851c-c286496aa740,95dfd320-0767-4a1e-81c2-61f67f472fe2,forwarded,forwarded,2025-12-09 18:27:34.628545+00
+696dc20d-6067-43c8-a1d6-e7ee5b22e8ee,03e4c21c-7a26-41e5-b62f-18e43ae308a3,6642b580-ac9c-4273-8981-da218efbeca3,d7a5da93-34eb-4871-802d-d0f15945b087,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:44:12.726453+00
+6a1ed3f6-b144-40fa-866c-523b8fd36146,fa47cf88-e241-4039-96e3-f868fbe2eb38,,11578160-98a0-4a1a-bc98-6005794f5636,95dfd320-0767-4a1e-81c2-61f67f472fe2,initiated,File initiated,2025-12-09 18:16:38.132871+00
+6bf402ba-1d90-4fda-a97f-8da2a7539cea,03e4c21c-7a26-41e5-b62f-18e43ae308a3,2f433d5f-689a-43b1-ae72-74e5c45ae21f,d7a5da93-34eb-4871-802d-d0f15945b087,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:46:14.211573+00
+6e3c8353-16cc-4463-8692-27dec5b69d5f,7a51e6f6-6a58-4828-b5fe-0e57eac2730a,,d7a5da93-34eb-4871-802d-d0f15945b087,95dfd320-0767-4a1e-81c2-61f67f472fe2,initiated,File initiated,2025-12-09 18:45:18.018138+00
+71e7a713-40d4-47e8-ace7-1694a15f8b6f,03e4c21c-7a26-41e5-b62f-18e43ae308a3,2a51cb05-19c0-4732-bade-3631b2d73b2c,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:37:37.361399+00
+7eb7b47c-0400-4b84-af2e-a5e22f87bdae,7a51e6f6-6a58-4828-b5fe-0e57eac2730a,d7a5da93-34eb-4871-802d-d0f15945b087,0954076c-15d1-4ba0-851c-c286496aa740,95dfd320-0767-4a1e-81c2-61f67f472fe2,forwarded,For DPR Earthing file preparation,2025-12-09 18:46:35.139817+00
+81ee2d7b-0fce-497f-8552-cde583242e1d,03e4c21c-7a26-41e5-b62f-18e43ae308a3,6642b580-ac9c-4273-8981-da218efbeca3,f6c124b9-4e13-41d8-8536-a150bac1ea61,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:36:46.298924+00
+824dd17f-91fe-4458-addd-fa9d4e339bda,03e4c21c-7a26-41e5-b62f-18e43ae308a3,250d0e29-c841-4501-87ea-a94fab492422,11578160-98a0-4a1a-bc98-6005794f5636,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:47:34.719713+00
+85c71d4c-bd13-4c13-bf1f-c055b8d933c1,03e4c21c-7a26-41e5-b62f-18e43ae308a3,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,f6c124b9-4e13-41d8-8536-a150bac1ea61,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:43:44.803078+00
+892429b5-5479-4758-8a90-c51bcdf00f65,03e4c21c-7a26-41e5-b62f-18e43ae308a3,558dd729-8bbd-4af9-88bc-03c1bcff128a,6642b580-ac9c-4273-8981-da218efbeca3,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:36:30.317736+00
+8e6b342b-3e3e-4891-9733-a817f1d7e3aa,03e4c21c-7a26-41e5-b62f-18e43ae308a3,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,2a51cb05-19c0-4732-bade-3631b2d73b2c,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:37:13.276722+00
+9ad2b1f8-b735-45b3-8c12-4cfd1af5583e,03e4c21c-7a26-41e5-b62f-18e43ae308a3,d7a5da93-34eb-4871-802d-d0f15945b087,2f433d5f-689a-43b1-ae72-74e5c45ae21f,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:46:32.122805+00
+9f813410-e371-4957-b8ce-429b86bb556c,03e4c21c-7a26-41e5-b62f-18e43ae308a3,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,2a51cb05-19c0-4732-bade-3631b2d73b2c,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:42:55.182788+00
+ab422563-60d5-471e-89a6-dc92e47d3e82,fa47cf88-e241-4039-96e3-f868fbe2eb38,0954076c-15d1-4ba0-851c-c286496aa740,250d0e29-c841-4501-87ea-a94fab492422,95dfd320-0767-4a1e-81c2-61f67f472fe2,forwarded,"Ref: Note No. 302 & 303 regarding Administrative Approval for preparation of PE/WBS for OFC laying through O/H & L/I for providing P2P connectivity to Sr. DCM, Sealdah Division, Eastern Railway at Station Manager, Sonarpur Railway Station (LC Id: 1000645008).
+
+
+It is observed that the proposal in Note No. 302 recommends laying 1 no. of 4F OFC from Sonarpur Telephone Exchange to Sonarpur Railway Station (approx. 850m).
+
+However, another file regarding closure and vacation of A.P. Nagar Telephone Exchange by 08-04-2026 has been put for approval for shifting all the services/OFC to a suitable nearby site. During the shifting/diversion exercise, considerable fibre rearrangement and additional spare fibre requirements will arise. So, instead of laying 4F OFC, it is recommended to revise the proposal to lay 24F OFC on the Sonarpur Exchange – Sonarpur Railway Station route. When A.P. Nagar Exchange will be vacated, spare fibres of this newly-laid 24F cable can be used to absorb and reroute required services, as the existing AP Nagar–Sonarpur 24F cables have no working spare fibres available.
+
+
+If approved, PE/WBS may be prepared accordingly, replacing 4F with 24F OFC, and revising material quantities and cost estimates.
+
+Submitted for kind consideration and approval, please.",2025-12-09 18:42:01.974373+00
+acfb5866-e370-4725-bea9-7ad16407a268,03e4c21c-7a26-41e5-b62f-18e43ae308a3,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,f6c124b9-4e13-41d8-8536-a150bac1ea61,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:37:50.262438+00
+b5a3eca3-be84-4c2d-93e1-d18bf0af9612,03e4c21c-7a26-41e5-b62f-18e43ae308a3,,558dd729-8bbd-4af9-88bc-03c1bcff128a,714844d8-f933-4ef6-a29d-0559e5d03f38,initiated,"The Lease Deed for A.P. Nagar Telephone Exchange- comprising 1430 Sq ft of Covered Area in the Ground Floor and First Floor & 120 Sq ft of Open space for earthing, cable entry etc. at A.P. Nagar, P.O & P.S- Sonarpur, Kolkata-700150 was signed for a period of 25 years w.e.f 09.04.2001 to 08.04.2026 with Smt Bharati Majumder ( agreement placed in Pg-1 to Pg-4 ).
+
+   As per the existing Rent Sanction Memo for the last 5-year term w.e.f 09.04.2021 to 08.04.2026 ( in Pg-5 ) the present monthly Rent is Rs. 18,286/- per month- i.r.o the A.P. Nagar Telephone Exchange under Garia Cluster.
+
+ Previously, the Lessor- Smt Bharati Majumder had verbally expressed her unwillingness for renewal/ extension of the lease agreement after its expiry on 08.04.2026, which was conveyed to the field unit ( i.e CFA and Transmission wings ). 
+
+ However, a formal intimation/ notice regarding vacating of the A.P.Nagar Exchange within 08.04.2026 is received vide letter dtd 17.10.2025 ( in Pg-6 ) whereby the Exchange is to be fully vacated and handed over to the lessor within 08.04.2026 since she has decided to sell off the property. 
+
+As per current ITPC Report ( Excel Sheet dtd 17.10.2025 attached herewith ) 
+
+The No of Cxns of A.P. Nagar Exchange ( as on 17.10.2025 ) is-
+
+     A) LL- 69 & B) BB- 2    i.e Total 71 Nos ( of which active Cxns are 64 Nos ).
+
+Of these 64 DELs,
+
+Total No of Bill paying customers is only 23 ( LL- 23 & BB- 0 )
+
+Customer Category wise breakup of the current active 64 DELs is mentioned below-
+
+2 Nos are Office Cxns ( LL-1 & BB-1 )
+
+        and
+
+39 Nos are RSTC ( including both Retired & Serving BSNL Employees )-
+
+of which LL-38 Nos & BB- 1 No
+
+ 
+
+  The lease term of 25 years for the A.P. Nagar Exchange is expiring on 08.04.2026 ( as seen in the Lease Deed dtd 09.04.2001 placed in in Pg-1 to Pg-4 ) and as demanded by the Lessor, BSNL has to vacate the A.P. Nagar Exchange and handover vacant possession of the premises as early as possible, preferably within MARCH-2026. 
+
+ 
+
+The Basic details of A.P. Nagar Telephone Exchange are: 
+
+1) Agreement Started on- 09-04-2001
+
+2) Agreement Expired on- 08-04-2026
+
+3) Total Rented Area- 
+
+       a) Covered Area- 1430 Sq. Ft in the Ground Floor & First Floor
+
+        b) Open Space-   120 Sq Ft. ( for Earthing, cable entry etc. )
+
+ 
+
+4)  Present Rent:  Rs. 18,286/- ( Rent Sanction Memo attached in Pg-5 ) 
+
+           and Average monthly Electricity Bill:  Rs. 8,500/-   
+
+      Thus, Monthly Expenses = Rs. 27,000 ( approx ).....................................(I)
+
+ 
+
+5) It may be noted that-
+
+     a) There is no co-located BTS in A.P. Nagar Exchange 
+
+      b) No OLTE is installed inside A.P. Nagar Exchange
+
+  Monthly Revenue earned from the Exchange ( Copper based DELs ) is- Rs. 7,059....(II)
+
+                                                         ( as per ABF data for OCTOBER-2025 )
+
+Hence,
+
+BSNL is also losing around Rs. 20,000 per month ( as seen from I & II ) due to much higher Expenditure than Revenue earned from A.P. Nagar Exchange.
+
+   
+
+ Considering the above scenario, it is hereby proposed for-
+
+I) Shutdown of the LMG within DECEMBER-2025, so that subsequently the A.P. Nagar Exchange can be completely vacated by the active involvement of the different concerned wings- Transmission, EI, Electrical etc and handed over to the Landlord preferably within MARCH-2026.
+
+II) To arrange for shifting the Transmission Equipments & OFC to any convenient nearby site for early vacating of the Exchange.
+
+      The approval for closure of the A.P. Nagar Exchange is to be accorded by the competent authority for planning & execution of the shifting of Transmission Equipments as well as re-routing/ shifting of the Transmission OFC network present in A.P. Nagar Exchange for interconnection with the adjacent Tx nodes.
+
+     Comments of field unit- DE/ Garia Cluster and SDE/ Incharge of A.P. Nagar Exchange regarding the afore-mentioned proposal may kindly be taken. 
+
+       Thereafter, the e-file is to be routed to Transmission wing for urgent planning & execution of the shifting of Transmission Equipments as well as re-routing/ diversion of the existing Transmission OFC network, due to Closure of the A.P. Nagar Exchange. 
+
+Submitted please.
+
+",2025-12-06 16:32:51.03484+00
+c3f10258-3e21-4780-854b-ee33ba5f4733,03e4c21c-7a26-41e5-b62f-18e43ae308a3,f6c124b9-4e13-41d8-8536-a150bac1ea61,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:36:59.437993+00
+c44d1021-301b-4dd6-a66f-149d62136084,03e4c21c-7a26-41e5-b62f-18e43ae308a3,e1f50865-b747-4436-8a54-21b4b4887a11,f3123cd0-7d1c-4331-ad30-9b98004d7ace,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:46:59.531396+00
+c9f5a37b-31aa-4bea-ac9e-a38023d5da78,03e4c21c-7a26-41e5-b62f-18e43ae308a3,f6c124b9-4e13-41d8-8536-a150bac1ea61,d2e067dd-c83a-4327-b940-d14951035ad5,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:45:30.089455+00
+cab292ce-9df6-49d1-b0d1-3443f215185a,03e4c21c-7a26-41e5-b62f-18e43ae308a3,f6c124b9-4e13-41d8-8536-a150bac1ea61,6642b580-ac9c-4273-8981-da218efbeca3,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:43:56.93851+00
+cece25d7-3268-4952-b650-932c09adb69e,03e4c21c-7a26-41e5-b62f-18e43ae308a3,0954076c-15d1-4ba0-851c-c286496aa740,d7a5da93-34eb-4871-802d-d0f15945b087,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:44:47.939518+00
+e2f129a0-bb7c-4b5f-a82f-51df9c990993,03e4c21c-7a26-41e5-b62f-18e43ae308a3,2a51cb05-19c0-4732-bade-3631b2d73b2c,3bdeae9d-6e0f-4bc6-bb09-1f00623684d7,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:43:28.328585+00
+e85b8c94-25cd-4245-b6a7-7a293d531ee9,03e4c21c-7a26-41e5-b62f-18e43ae308a3,6642b580-ac9c-4273-8981-da218efbeca3,f6c124b9-4e13-41d8-8536-a150bac1ea61,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:45:13.432422+00
+f25808e4-bd72-49a2-8702-c812dec2e598,03e4c21c-7a26-41e5-b62f-18e43ae308a3,2f433d5f-689a-43b1-ae72-74e5c45ae21f,e1f50865-b747-4436-8a54-21b4b4887a11,714844d8-f933-4ef6-a29d-0559e5d03f38,forwarded,forwarded,2025-12-06 16:46:42.946175+00

@@ -60,7 +60,7 @@ export function MapLegend() {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="absolute bottom-4 left-4 z-[900] w-60 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
+    <div className="absolute bottom-4 left-4 z-900 w-48 text-sm bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-2 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -73,7 +73,7 @@ export function MapLegend() {
       </button>
 
       {isOpen && (
-        <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div className="p-3 space-y-1 max-h-[40vh] overflow-y-auto custom-scrollbar">
           
           {/* PNG BASED ICONS (High Priority Equipment) */}
           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-1">Key Equipment</div>
