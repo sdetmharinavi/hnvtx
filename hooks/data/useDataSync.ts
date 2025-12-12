@@ -20,7 +20,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'systems',
   'ring_based_systems',
   'ports_management',
-  'logical_fiber_paths', // Added
+  'logical_fiber_paths',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -35,7 +35,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ofc_connections_complete',
   'v_system_connections_complete',
   'v_ports_management_complete',
-  'v_end_to_end_paths', // Added
+  'v_end_to_end_paths',
   'v_services',
 ];
 
@@ -50,12 +50,11 @@ export async function syncEntity(
     const table = getTable(entityName);
     let offset = 0;
     let hasMore = true;
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allFetchedData: any[] = [];
 
     while (hasMore) {
-        // Fetch data in chunks using the RPC
         const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
             p_view_name: entityName,
             p_limit: BATCH_SIZE,
@@ -68,12 +67,11 @@ export async function syncEntity(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const responseData = (rpcResponse as { data: any[] })?.data || [];
         const validData = responseData.filter(item => item.id != null);
-        
+
         if (validData.length > 0) {
             allFetchedData.push(...validData);
         }
 
-        // Check if we reached the end
         if (responseData.length < BATCH_SIZE) {
             hasMore = false;
         } else {
@@ -81,7 +79,6 @@ export async function syncEntity(
         }
     }
 
-    // Safe transactional update
     await db.transaction('rw', table, async () => {
         await table.clear();
         if (allFetchedData.length > 0) {
@@ -109,12 +106,12 @@ export function useDataSync() {
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
 
-  const { isLoading, error, refetch } = useQuery({
+  const { isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
       try {
         const failures: string[] = [];
-        
+
         for (const entity of entitiesToSync) {
           try {
               await syncEntity(supabase, localDb, entity);
@@ -122,42 +119,41 @@ export function useDataSync() {
               failures.push(`${entity} (${(e as Error).message})`);
           }
         }
-  
+
         if (failures.length > 0) {
           throw new Error(`Failed entities: ${failures.join(', ')}`);
         }
-        
+
         if (typeof window !== 'undefined') {
           localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
         }
-        
+
         await queryClient.invalidateQueries({
           predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
-        
-        // Success Feedback
+
         toast.success('Local data is up to date.');
-        
+
         return { lastSynced: new Date().toISOString() };
       } catch (err) {
-        // Error Feedback
         const message = (err as Error).message;
         toast.error(`Data sync failed: ${message}`);
         throw err;
       }
     },
-    staleTime: Infinity,          
-    gcTime: 1000 * 60 * 60 * 24,  
-    refetchOnMount: false,        
-    refetchOnWindowFocus: false,  
-    refetchOnReconnect: false,    
-    retry: false,                 
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 
-  return { 
-    isSyncing: isLoading, 
-    syncError: error, 
-    syncStatus, 
-    sync: refetch 
+  return {
+    // THE FIX: Use isFetching so manual refetches trigger the syncing state
+    isSyncing: isLoading || isFetching,
+    syncError: error,
+    syncStatus,
+    sync: refetch
   };
 }
