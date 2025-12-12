@@ -147,7 +147,8 @@ export default function AuditLogsPage() {
         isOperationLoading={isMutating}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_audit_logs"
         data={logs}
         columns={orderedColumns}

@@ -217,7 +217,8 @@ export default function InventoryPage() {
         isFetching={isFetching}
       />
       
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_inventory_items"
         data={inventory}
         columns={columns}

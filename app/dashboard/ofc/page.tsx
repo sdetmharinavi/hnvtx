@@ -246,7 +246,8 @@ const OfcPage = () => {
         showStatusUpdate={true}
         canDelete={() => isSuperAdmin === true}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_ofc_cables_complete"
         data={ofcData}
         columns={orderedColumns}

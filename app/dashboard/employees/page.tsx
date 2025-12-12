@@ -175,7 +175,8 @@ const EmployeesPage = () => {
         entityName="employee"
         showStatusUpdate={true}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_employees"
         data={employees}
         columns={orderedColumns}

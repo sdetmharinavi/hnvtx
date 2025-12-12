@@ -1,7 +1,7 @@
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -316,7 +316,6 @@ const useRingsDataWithStats = (
 
         if (r.bts_status === 'On-Air') {
           stats.bts.onAir++;
-          // Sum up the node count. Use bts_node_count if available (after SQL update), else total_nodes
           stats.bts.nodesOnAir += (r.bts_node_count ?? r.total_nodes ?? 0);
         } else if (r.bts_status === 'Configured') {
           stats.bts.configuredCount++;
@@ -325,8 +324,7 @@ const useRingsDataWithStats = (
         }
     });
 
-    // We use a timeout to avoid setting state during render
-    setTimeout(() => setDynamicStats(stats), 0);
+    // REMOVED: setTimeout(() => setDynamicStats(stats), 0);
     // -----------------------------
 
     filtered.sort((a, b) =>
@@ -343,9 +341,15 @@ const useRingsDataWithStats = (
       totalCount,
       activeCount,
       inactiveCount: totalCount - activeCount,
+      stats, // ← ADD THIS: return the stats so useEffect can access them
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
+
+  // ADD THIS: useEffect to update the stats state
+  useEffect(() => {
+    setDynamicStats(processedData.stats);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setDynamicStats]);
 
   return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
 };

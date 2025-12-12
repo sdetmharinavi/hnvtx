@@ -219,7 +219,8 @@ const AdminUsersPage = () => {
         onBulkUpdateStatus={handleBulkUpdateStatus}
         onClearSelection={handleClearSelection}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_user_profiles_extended"
         data={users.map(user => ({
           ...user,

@@ -1,9 +1,11 @@
+"use client"
+
 // components/diary/DiaryFormModal.tsx
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { diary_notesInsertSchema, Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { Modal } from '@/components/common/ui';
-import { FormCard, FormDateInput, FormTextarea } from '@/components/common/form';
+import { FormCard, FormDateInput, FormRichTextEditor } from '@/components/common/form'; // Changed FormTextarea to FormRichTextEditor
 import { useEffect } from 'react';
 
 interface DiaryFormModalProps {
@@ -12,7 +14,7 @@ interface DiaryFormModalProps {
   onSubmit: (data: Diary_notesInsertSchema) => void;
   isLoading: boolean;
   editingNote?: Diary_notesInsertSchema | null;
-  selectedDate?: Date; // New prop for pre-filling date
+  selectedDate?: Date;
 }
 
 export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNote, selectedDate }: DiaryFormModalProps) => {
@@ -28,7 +30,6 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
           content: editingNote.content,
         });
       } else {
-        // Pre-fill with the selected date from the calendar
         const formatLocalYMD = (d: Date) => {
           const y = d.getFullYear();
           const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -54,10 +55,19 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
         isLoading={isLoading}
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
         standalone
+        widthClass="max-w-4xl" // Wider for WYSIWYG
       >
         <div className="space-y-4">
           <FormDateInput name="note_date" label="Note Date" control={control} error={errors.note_date} required pickerProps={{ readOnly: !editingNote }} />
-          <FormTextarea name="content" label="Content" control={control} error={errors.content} rows={8} placeholder="Write your daily notes here..." />
+          
+          {/* Replaced Textarea with RichTextEditor */}
+          <FormRichTextEditor 
+            name="content" 
+            label="Content" 
+            control={control} 
+            error={errors.content} 
+            placeholder="Write your daily notes here..." 
+          />
         </div>
       </FormCard>
     </Modal>

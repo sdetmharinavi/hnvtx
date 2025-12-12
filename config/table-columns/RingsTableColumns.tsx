@@ -5,6 +5,7 @@ import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { V_ringsRowSchema } from "@/schemas/zod-schemas";
 
 // Helper to render phase status badges
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PhaseBadge = ({ value, type }: { value: unknown, type: 'spec' | 'ofc' | 'bts' }) => {
     const status = value as string || 'Pending';
     let color = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';

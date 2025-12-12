@@ -255,7 +255,8 @@ export default function SystemsPage() {
 
       <input type='file' ref={fileInputRef} onChange={handleFileChange} className='hidden' accept='.xlsx, .xls, .csv' />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName='v_systems_complete'
         data={systems}
         columns={orderedSystems}

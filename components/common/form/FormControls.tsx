@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/common/ui/select/Select';
 import IPAddressInput from '@/components/common/form/IPAddressInput';
+import { RichTextEditor } from '@/components/common/form/RichTextEditor';
 
 // --- TYPE DEFINITIONS for Generic Components ---
 
@@ -520,6 +521,40 @@ export function FormIPAddressInput<T extends FieldValues>({
           {typeof error?.message === 'string' ? error.message : 'Invalid input'}
         </p>
       )}
+    </div>
+  );
+}
+
+interface FormRichTextEditorProps<T extends FieldValues> extends BaseProps<T> {
+  control: Control<T, any, any>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+export function FormRichTextEditor<T extends FieldValues>({
+  name,
+  control,
+  label,
+  error,
+  className,
+  ...props
+}: FormRichTextEditorProps<T>) {
+  return (
+    <div className={className}>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <RichTextEditor
+            label={label}
+            value={field.value ?? ""}
+            onChange={field.onChange}
+            error={typeof error?.message === 'string' ? error.message : undefined}
+            disabled={props.disabled}
+            placeholder={props.placeholder}
+          />
+        )}
+      />
     </div>
   );
 }

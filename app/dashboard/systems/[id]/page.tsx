@@ -414,7 +414,8 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_system_connections_complete"
         data={connections}
         columns={orderedColumns}

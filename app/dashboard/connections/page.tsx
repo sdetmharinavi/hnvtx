@@ -1,5 +1,5 @@
 // app/dashboard/connections/page.tsx
-"use client";
+'use client';
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -7,7 +7,10 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { ErrorDisplay } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import { V_system_connections_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import {
+  V_system_connections_completeRowSchema,
+  Lookup_typesRowSchema,
+} from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
@@ -55,30 +58,41 @@ export default function GlobalConnectionsPage() {
     localTableName: 'v_system_connections_complete',
     dataQueryHook: useAllSystemConnectionsData, // Uses the new global hook
     displayNameField: 'service_name',
-    searchColumn: ['service_name', 'system_name', 'connected_system_name']
+    searchColumn: ['service_name', 'system_name', 'connected_system_name'],
   });
 
   // 2. Fetch Options for Filters
   const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['media-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
   );
 
   const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['link-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
   );
 
-  const mediaOptions = useMemo(() => (mediaTypesData || []).map(t => ({ value: t.id, label: t.name })), [mediaTypesData]);
-  const linkTypeOptions = useMemo(() => (linkTypesData || []).map(t => ({ value: t.id, label: t.name })), [linkTypesData]);
+  const mediaOptions = useMemo(
+    () => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+    [mediaTypesData]
+  );
+  const linkTypeOptions = useMemo(
+    () => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+    [linkTypesData]
+  );
 
   // 3. Configure Columns
   // pass 'true' to show the System Name column since we are in global view
   const columns = SystemConnectionsTableColumns(connections, true);
-  
-  const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+
+  const orderedColumns = useOrderedColumns(columns, [
+    'system_name',
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
 
   // 4. Handlers
   const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
@@ -94,7 +108,7 @@ export default function GlobalConnectionsPage() {
       const traceData = await tracePath(record);
       setTraceModalData(traceData);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to trace path");
+      toast.error(error instanceof Error ? error.message : 'Failed to trace path');
       setIsTraceModalOpen(false);
     } finally {
       setIsTracing(false);
@@ -102,44 +116,52 @@ export default function GlobalConnectionsPage() {
   };
 
   const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
-      if(record.system_id) {
-          router.push(`/dashboard/systems/${record.system_id}`);
-      }
+    if (record.system_id) {
+      router.push(`/dashboard/systems/${record.system_id}`);
+    }
   };
 
-  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => [
-    {
-      key: 'view-details',
-      label: 'Full Details',
-      icon: <FiMonitor />,
-      onClick: handleViewDetails,
-      variant: 'primary'
-    },
-    {
-      key: 'view-path',
-      label: 'View Path',
-      icon: <FiEye />,
-      onClick: handleTracePath,
-      variant: 'secondary',
-      hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0)
-    },
-    {
+  const tableActions = useMemo(
+    (): TableAction<'v_system_connections_complete'>[] => [
+      {
+        key: 'view-details',
+        label: 'Full Details',
+        icon: <FiMonitor />,
+        onClick: handleViewDetails,
+        variant: 'primary',
+      },
+      {
+        key: 'view-path',
+        label: 'View Path',
+        icon: <FiEye />,
+        onClick: handleTracePath,
+        variant: 'secondary',
+        hidden: (record) =>
+          !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0),
+      },
+      {
         key: 'go-to-system',
         label: 'Go to System',
         icon: <FiGitBranch />,
         onClick: handleGoToSystem,
-        variant: 'secondary'
-    }
-  ], [handleGoToSystem]);
+        variant: 'secondary',
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleGoToSystem]
+  );
 
   const headerActions = useStandardHeaderActions({
     data: connections,
-    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed!');
+    },
     isLoading,
     exportConfig: {
-        tableName: 'v_system_connections_complete',
-        fileName: 'Global_Connections_List'
-    }
+      tableName: 'v_system_connections_complete',
+      fileName: 'Global_Connections_List',
+    },
   });
 
   const headerStats = [
@@ -149,27 +171,36 @@ export default function GlobalConnectionsPage() {
   ];
 
   // Mobile Renderer
-  const renderMobileItem = (record: V_system_connections_completeRowSchema, actions: React.ReactNode) => (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-             <div className="min-w-0">
-                <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                    {record.service_name || record.connected_system_name || 'Unnamed'}
-                </h3>
-                <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                   {record.system_name}
-                </div>
-             </div>
-             {actions}
+  const renderMobileItem = (
+    record: V_system_connections_completeRowSchema,
+    actions: React.ReactNode
+  ) => (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-start">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+            {record.service_name || record.connected_system_name || 'Unnamed'}
+          </h3>
+          <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            {record.system_name}
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
-             <div>Type: {record.connected_link_type_name || '-'}</div>
-             <div>BW: {record.bandwidth_allocated || '-'}</div>
-        </div>
+        {actions}
       </div>
+      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+        <div>Type: {record.connected_link_type_name || '-'}</div>
+        <div>BW: {record.bandwidth_allocated || '-'}</div>
+      </div>
+    </div>
   );
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="p-6 space-y-6">
@@ -184,6 +215,7 @@ export default function GlobalConnectionsPage() {
       />
 
       <DataTable
+        autoHideEmptyColumns={true}
         tableName="v_system_connections_complete"
         data={connections}
         columns={orderedColumns}
@@ -192,48 +224,55 @@ export default function GlobalConnectionsPage() {
         actions={tableActions}
         renderMobileItem={renderMobileItem}
         pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
         }}
         searchable={false}
-        // ENABLE AUTO HIDE
-        autoHideEmptyColumns={true}
         customToolbar={
-            <SearchAndFilters
-                searchTerm={search.searchQuery}
-                onSearchChange={search.setSearchQuery}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
-                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-                activeFilterCount={Object.keys(filters.filters).length}
-                searchPlaceholder="Search Service, System, or ID..."
-            >
-                <SelectFilter
-                    label="Media Type"
-                    filterKey="media_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={mediaOptions}
-                />
-                <SelectFilter
-                    label="Link Type"
-                    filterKey="connected_link_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={linkTypeOptions}
-                />
-                <SelectFilter
-                    label="Status"
-                    filterKey="status"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
-                />
-            </SearchAndFilters>
+          <SearchAndFilters
+            searchTerm={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            onClearFilters={() => {
+              search.setSearchQuery('');
+              filters.setFilters({});
+            }}
+            hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+            activeFilterCount={Object.keys(filters.filters).length}
+            searchPlaceholder="Search Service, System, or ID..."
+          >
+            <SelectFilter
+              label="Media Type"
+              filterKey="media_type_id"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={mediaOptions}
+            />
+            <SelectFilter
+              label="Link Type"
+              filterKey="connected_link_type_id"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={linkTypeOptions}
+            />
+            <SelectFilter
+              label="Status"
+              filterKey="status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+            />
+          </SearchAndFilters>
         }
       />
 

@@ -97,7 +97,8 @@ export const InventoryHistoryModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`History: ${itemName}`} size="xl">
       <div className="p-6">
-        <DataTable
+             <DataTable
+      autoHideEmptyColumns={true}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           tableName={'v_inventory_transactions_extended' as any} // Type assertion to bypass strict literal check for this specific view
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

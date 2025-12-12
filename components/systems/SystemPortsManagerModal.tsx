@@ -320,7 +320,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
         <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
 
-        <DataTable
+             <DataTable
+      autoHideEmptyColumns={true}
           tableName="v_ports_management_complete"
           data={ports}
           columns={columns}

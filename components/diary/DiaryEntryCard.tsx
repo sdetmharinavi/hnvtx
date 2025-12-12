@@ -5,6 +5,7 @@ import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 import { Button } from '@/components/common/ui';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { HtmlContent } from '@/components/common/ui/HtmlContent'; // Import HtmlContent
 
 interface DiaryEntryCardProps {
   entry: Diary_notesRowSchema & { full_name?: string | null };
@@ -14,12 +15,11 @@ interface DiaryEntryCardProps {
 }
 
 export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntryCardProps) => {
-  // THE FIX: Destructure `role` from useUser and alias it to `currentUserRole`.
   const { isSuperAdmin, role: currentUserRole } = useUser();
   const formattedDate = new Date(entry.note_date!).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
-  
+
   return (
     <motion.div
       layout
@@ -45,7 +45,6 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntr
           )}
         </div>
 
-        {/* THE FIX: This conditional now works because `currentUserRole` is defined. */}
         {(isSuperAdmin || currentUserRole === UserRole.ADMIN) && entry.full_name && (
           <div className="flex items-center gap-2 mt-2 pl-8 text-sm text-gray-500 dark:text-gray-400">
             <FiUser className="w-4 h-4" />
@@ -54,7 +53,8 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntr
         )}
 
         <div className="mt-4 pl-8 border-l-2 border-gray-200 dark:border-gray-700">
-          <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{entry.content}</p>
+          {/* THE FIX: Use HtmlContent for WYSIWYG output */}
+          <HtmlContent content={entry.content} className="text-gray-700 dark:text-gray-300" />
         </div>
       </div>
     </motion.div>

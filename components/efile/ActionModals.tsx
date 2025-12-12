@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect } from "@/components/common/form";
+import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect, FormRichTextEditor } from "@/components/common/form"; // Added FormRichTextEditor
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,7 +22,7 @@ const getEmployeeOptions = (employees: V_employeesRowSchema[] | undefined) => {
 export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { mutate, isPending } = useInitiateFile();
   const { data: employeeData } = useEmployeeOptions();
-  
+
   const employeeOptions = useMemo(() => getEmployeeOptions(employeeData?.data), [employeeData]);
 
   const { register, control, handleSubmit, formState: { errors } } = useForm<InitiateFilePayload>({
@@ -36,39 +36,39 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Initiate New E-File" size="lg">
-      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone>
+      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone widthClass="max-w-4xl">
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput name="file_number" label="File Number *" register={register} error={errors.file_number} placeholder="e.g. FILE/2024/001" required />
-                <FormSelect 
-                    name="priority" 
-                    label="Priority" 
-                    control={control} 
+                <FormSelect
+                    name="priority"
+                    label="Priority"
+                    control={control}
                     options={[
                         { value: 'normal', label: 'Normal' },
                         { value: 'urgent', label: 'Urgent' },
                         { value: 'immediate', label: 'Immediate' }
-                    ]} 
+                    ]}
                 />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormSelect 
-                    name="category" 
-                    label="Category *" 
-                    control={control} 
+                 <FormSelect
+                    name="category"
+                    label="Category *"
+                    control={control}
                     options={[
                         { value: 'administrative', label: 'Administrative' },
                         { value: 'technical', label: 'Technical' },
                         { value: 'other', label: 'Other' }
-                    ]} 
+                    ]}
                 />
-                 <FormSearchableSelect 
-                    name="initiator_employee_id" 
-                    label="Initiator (Employee) *" 
-                    control={control} 
-                    options={employeeOptions} 
-                    error={errors.initiator_employee_id} 
+                 <FormSearchableSelect
+                    name="initiator_employee_id"
+                    label="Initiator (Employee) *"
+                    control={control}
+                    options={employeeOptions}
+                    error={errors.initiator_employee_id}
                     placeholder="Select employee..."
                     required
                     searchPlaceholder="Search employees..."
@@ -76,9 +76,15 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
             </div>
 
             <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
-            
-            <FormTextarea name="description" label="Description" control={control} rows={3} />
-            
+
+            {/* Replaced Textarea with WYSIWYG */}
+            <FormRichTextEditor 
+                name="description" 
+                label="Description" 
+                control={control} 
+                error={errors.description} 
+            />
+
             <FormTextarea name="remarks" label="Initial Note" control={control} rows={2} placeholder="e.g. Starting new file..." />
         </div>
       </FormCard>
@@ -86,11 +92,11 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
   );
 };
 
-// --- FORWARD MODAL ---
+// --- FORWARD MODAL (Kept text area as it's a short remark usually) ---
 export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean; onClose: () => void; fileId: string }) => {
     const { mutate, isPending } = useForwardFile();
     const { data: employeeData } = useEmployeeOptions();
-  
+
     const employeeOptions = useMemo(() => getEmployeeOptions(employeeData?.data), [employeeData]);
 
     const { control, handleSubmit, formState: { errors } } = useForm<ForwardFilePayload>({
@@ -105,21 +111,21 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Forward File">
             <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Forwarding Details" standalone submitText="Send">
-                <FormSearchableSelect 
-                    name="to_employee_id" 
-                    label="Forward To (Employee) *" 
-                    control={control} 
-                    options={employeeOptions} 
-                    error={errors.to_employee_id} 
+                <FormSearchableSelect
+                    name="to_employee_id"
+                    label="Forward To (Employee) *"
+                    control={control}
+                    options={employeeOptions}
+                    error={errors.to_employee_id}
                     placeholder="Select recipient..."
                     required
                     searchPlaceholder="Search employees..."
                 />
-                <FormSelect 
-                    name="action_type" 
-                    label="Action" 
-                    control={control} 
-                    options={[{value: 'forwarded', label: 'Forward'}, {value: 'returned', label: 'Return'}]} 
+                <FormSelect
+                    name="action_type"
+                    label="Action"
+                    control={control}
+                    options={[{value: 'forwarded', label: 'Forward'}, {value: 'returned', label: 'Return'}]}
                 />
                 <FormTextarea name="remarks" label="Remarks / Instructions *" control={control} error={errors.remarks} required rows={4} />
             </FormCard>
@@ -128,7 +134,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
 };
 
 
-// --- EDIT DETAILS MODAL (NEW) ---
+// --- EDIT DETAILS MODAL ---
 
 const editSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
@@ -141,7 +147,7 @@ type EditSchemaType = z.infer<typeof editSchema>;
 
 export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onClose: () => void; file: V_e_files_extendedRowSchema }) => {
     const { mutate, isPending } = useUpdateFileDetails();
-    
+
     const { register, control, handleSubmit, formState: { errors }, reset } = useForm<EditSchemaType>({
         resolver: zodResolver(editSchema),
     });
@@ -169,23 +175,28 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Edit File Details">
-            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update">
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit File Details" size="lg">
+            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update" widthClass="max-w-4xl">
                  <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
                  <div className="grid grid-cols-2 gap-4">
                     <FormInput name="category" label="Category *" register={register} error={errors.category} required />
-                    <FormSelect 
-                        name="priority" 
-                        label="Priority" 
-                        control={control} 
+                    <FormSelect
+                        name="priority"
+                        label="Priority"
+                        control={control}
                         options={[
                             { value: 'normal', label: 'Normal' },
                             { value: 'urgent', label: 'Urgent' },
                             { value: 'immediate', label: 'Immediate' }
-                        ]} 
+                        ]}
                     />
                  </div>
-                 <FormTextarea name="description" label="Description" control={control} rows={4} />
+                 {/* Replaced Textarea with WYSIWYG */}
+                 <FormRichTextEditor 
+                    name="description" 
+                    label="Description" 
+                    control={control} 
+                 />
             </FormCard>
         </Modal>
     );
