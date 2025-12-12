@@ -79,7 +79,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
           render: (val) => <PhaseBadge value={val} type="ofc" />
       },
       bts_status: {
-          title: "BTS",
+          title: "WORKING STATUS",
           width: 100,
           render: (val) => <PhaseBadge value={val} type="bts" />
       },

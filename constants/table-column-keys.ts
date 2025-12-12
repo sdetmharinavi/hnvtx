@@ -1193,7 +1193,6 @@ export const VIEWS = {
   v_maintenance_areas: "v_maintenance_areas",
   v_employees: "v_employees",
   v_rings: "v_rings",
-  // v_system_ring_paths_detailed: "v_system_ring_paths_detailed",
   v_cable_segments_at_jc: "v_cable_segments_at_jc",
   v_junction_closures_complete: "v_junction_closures_complete",
   v_ring_nodes: "v_ring_nodes",
