@@ -84,7 +84,11 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const portTypeCodeOptions = useMemo(() => {
     return (portTypesData || [])
         .filter(t => t.name !== 'DEFAULT' && t.code)
-        .map(t => ({ value: t.name!, label: t.code }));
+        .map(t => ({
+          value: t.name!,
+          // Coerce to string to satisfy Option['label'] which requires string
+          label: t.code ?? t.name ?? ''
+        }));
   }, [portTypesData]);
 
 
