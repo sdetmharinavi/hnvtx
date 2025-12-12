@@ -9,10 +9,8 @@ import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queri
 import { cn } from "@/lib/utils";
 import { Card } from "../common/ui";
 
-// Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
-// ... (State Management types remain the same as previous)
 type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
   sortConfig: SortConfig<Row<T>> | null;
@@ -25,7 +23,6 @@ type TableState<T extends PublicTableOrViewName> = {
   showFilters: boolean;
 };
 
-// ... (BaseTableAction and TableAction types remain the same)
 type BaseTableAction<R> =
   | { type: "SET_SEARCH_QUERY"; payload: string }
   | { type: "SET_SELECTED_ROWS"; payload: R[] }
@@ -48,7 +45,6 @@ function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
   action: TableActionReducer<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
-  // ... (Reducer logic remains identical)
    switch (action.type) {
     case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
@@ -115,9 +111,10 @@ export function DataTable<T extends PublicTableOrViewName>({
   showColumnsToggle,
   exportOptions,
   onSearchChange,
-  renderMobileItem, // NEW PROP
+  renderMobileItem,
+  autoHideEmptyColumns = false, // Default to false
 }: DataTableProps<T>): React.ReactElement {
-  
+
   const initialState: TableState<T> = {
     searchQuery: "",
     sortConfig: null,
@@ -243,8 +240,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     serverSearch,
   ]);
 
-  // ... (handleSort, handleRowSelect, handleSelectAll, handleCellEdit, saveCellEdit, cancelCellEdit, visibleColumnsData, setSearchQueryCb, handleExport) - Same as before
-
   const handleSort = useCallback(
     (columnKey: keyof Row<T> & string) => {
       if (!sortable) return;
@@ -309,9 +304,44 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   const cancelCellEdit = useCallback(() => dispatch({ type: "CANCEL_EDIT" }), []);
 
+  // --- LOGIC: Calculate Empty Columns ---
+  // Identify columns where ALL rows have null/undefined/empty string
+  const emptyColumnKeys = useMemo(() => {
+    if (!autoHideEmptyColumns || processedData.length === 0) return new Set<string>();
+
+    const nonEmptyKeys = new Set<string>();
+
+    columns.forEach(col => {
+      // Check if ANY row has a valid value for this column
+      const hasValue = processedData.some(row => {
+        const val = row[col.dataIndex as keyof typeof row];
+        
+        // Value is considered valid if it's not null, undefined, or empty string
+        // Note: We deliberately treat 0 and false as valid values
+        if (val === null || val === undefined) return false;
+        if (typeof val === 'string' && val.trim() === '') return false;
+        if (Array.isArray(val) && val.length === 0) return false;
+        
+        return true;
+      });
+
+      if (hasValue) {
+        nonEmptyKeys.add(col.key);
+      }
+    });
+
+    // Return all column keys that are NOT in the non-empty set
+    return new Set(columns.filter(c => !nonEmptyKeys.has(c.key)).map(c => c.key));
+  }, [autoHideEmptyColumns, columns, processedData]);
+
+  // --- LOGIC: Filter Visible Columns ---
   const visibleColumnsData = useMemo<Column<Row<T>>[]>(
-    () => columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden),
-    [columns, visibleColumns]
+    () => columns.filter((col) => 
+        visibleColumns.includes(col.key) && 
+        !col.hidden &&
+        !emptyColumnKeys.has(col.key) // Hide if empty
+    ),
+    [columns, visibleColumns, emptyColumnKeys]
   );
 
   const setSearchQueryCb = useCallback((query: string) => {
@@ -327,7 +357,7 @@ export function DataTable<T extends PublicTableOrViewName>({
      const mergedFilters = exportOptions?.includeFilters
        ? { ...filters, ...(exportOptions?.filters ?? {}) }
        : exportOptions?.filters;
- 
+
      const baseOptions: Omit<DownloadOptions<T>, "rpcConfig"> = {
        fileName: exportOptions?.fileName,
        sheetName: exportOptions?.sheetName,
@@ -336,7 +366,7 @@ export function DataTable<T extends PublicTableOrViewName>({
        columns: columnsToExport,
        filters: mergedFilters,
      };
- 
+
      try {
        if (exportOptions?.rpcConfig) {
          const rpcOptions: DownloadOptions<T> & { rpcConfig: RPCConfig } = {
@@ -392,7 +422,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
-  // Render Mobile Actions Dropdown or Row
   const renderActions = (record: DataRow<T>, index: number) => {
     if (!hasActions) return null;
     return (
@@ -400,9 +429,9 @@ export function DataTable<T extends PublicTableOrViewName>({
         {actions.map((action) => {
            const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
            if(isHidden) return null;
-           
+
            const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
-           
+
            return (
              <button
                 key={action.key}
@@ -476,7 +505,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       </div>
 
       <div className='flex-1 w-full overflow-auto min-h-0 relative'>
-        
+
         {/* MOBILE VIEW (CARD LIST) */}
         {renderMobileItem && (
             <div className="block sm:hidden p-4 space-y-4">
@@ -489,18 +518,17 @@ export function DataTable<T extends PublicTableOrViewName>({
                 ) : (
                     processedData.map((record, idx) => (
                         <Card key={record.id} className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative">
-                             {/* If selectable, add checkbox overlay or header */}
                              {selectable && (
                                 <div className="absolute top-4 left-4">
-                                     <input 
-                                        type="checkbox" 
+                                     <input
+                                        type="checkbox"
                                         checked={selectedRows.some(r => r.id === record.id)}
                                         onChange={(e) => handleRowSelect(record, e.target.checked)}
                                         className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500"
                                      />
                                 </div>
                              )}
-                             
+
                              <div className={selectable ? "pl-8" : ""}>
                                  {renderMobileItem(record, renderActions(record, idx))}
                              </div>

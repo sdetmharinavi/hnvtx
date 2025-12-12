@@ -172,7 +172,7 @@ export default function DashboardHeader({
                         </div>
                       )}
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden lg:block">
-                        {user?.user_metadata?.first_name || "User"}
+                        {user?.user_metadata?.first_name || user?.user_metadata?.name || "User"}
                       </span>
                     </Link>
                     <div className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">

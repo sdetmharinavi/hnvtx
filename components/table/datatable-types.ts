@@ -31,7 +31,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   loading?: boolean;
   isFetching?: boolean;
   showColumnSelector?: boolean;
-  // Controls visibility of the Columns toggle button in the toolbar
   showColumnsToggle?: boolean;
   pagination?: {
     current: number;
@@ -43,7 +42,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   };
   actions?: TableAction<T>[];
   searchable?: boolean;
-  // If true, DataTable will not perform client-side search and will delegate to parent via onSearchChange
   serverSearch?: boolean;
   filterable?: boolean;
   sortable?: boolean;
@@ -58,7 +56,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   emptyText?: string;
   title?: string;
   onRefresh?: () => void;
-  // Called when the search query changes; useful for server-side search or fetching more rows
   onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
@@ -72,8 +69,10 @@ export interface DataTableProps<T extends TableOrViewName> {
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
   } & Omit<DownloadOptions<T>, "rpcConfig">;
-  // NEW: Optional render function for mobile view
   renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
+  
+  // NEW PROP
+  autoHideEmptyColumns?: boolean; 
 }
 
 export type SortDirection = "asc" | "desc";
