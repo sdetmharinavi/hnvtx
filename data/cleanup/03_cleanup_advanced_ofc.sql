@@ -14,7 +14,6 @@ DROP FUNCTION IF EXISTS public.manage_cable_segments() CASCADE;
 DROP VIEW IF EXISTS public.v_junction_closures_complete;
 DROP VIEW IF EXISTS public.v_cable_segments_at_jc;
 DROP VIEW IF EXISTS public.v_end_to_end_paths;
-DROP VIEW IF EXISTS public.v_system_ring_paths_detailed;
 DROP VIEW IF EXISTS public.v_cable_utilization;
 
 -- Drop Tables (in reverse order of dependency)

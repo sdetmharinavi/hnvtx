@@ -150,7 +150,6 @@ export function useDataSync() {
   });
 
   return {
-    // THE FIX: Use isFetching so manual refetches trigger the syncing state
     isSyncing: isLoading || isFetching,
     syncError: error,
     syncStatus,

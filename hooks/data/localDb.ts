@@ -122,8 +122,6 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // UPDATED: Version 21
-    // Changes: Added 'created_at' to v_system_connections_complete index to allow sorting
     this.version(21).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
@@ -158,7 +156,6 @@ export class HNVTMDatabase extends Dexie {
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      // FIX HERE: Added created_at
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
