@@ -304,7 +304,8 @@ export default function EFilesPage() {
         ]}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_e_files_extended"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data={files as any}

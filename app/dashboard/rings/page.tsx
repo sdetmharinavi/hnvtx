@@ -168,7 +168,8 @@ export default function RingsPage() {
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName='v_rings'
         data={rings}
         columns={orderedColumns}

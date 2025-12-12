@@ -7,13 +7,14 @@ import { EFileTimeline } from "@/components/efile/EFileTimeline";
 import { ForwardFileModal } from "@/components/efile/ActionModals";
 import { useState } from "react";
 import { ArrowLeft, Send, Archive, FileText, User } from "lucide-react";
+import { HtmlContent } from "@/components/common/ui/HtmlContent"; // Import HtmlContent
 
 export default function EFileDetailsPage() {
     const { id } = useParams();
     const router = useRouter();
     const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-    
+
     const { data, isLoading, isError, error } = useEFileDetails(id as string);
     const closeMutation = useCloseFile();
 
@@ -21,7 +22,7 @@ export default function EFileDetailsPage() {
     if (isError || !data) return <ErrorDisplay error={error?.message || "File not found"} />;
 
     const { file, history } = data;
-    
+
     const isActive = file.status === 'active';
 
     return (
@@ -36,7 +37,7 @@ export default function EFileDetailsPage() {
                     </span>
                 )}
             </div>
-            
+
             {/* Custom Header with Break Words to prevent overflow */}
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-6">
                 <div className="flex-1 min-w-0">
@@ -54,18 +55,18 @@ export default function EFileDetailsPage() {
                         </div>
                     </div>
                 </div>
-                
+
                 {isActive && (
                     <div className="flex gap-2 shrink-0">
-                        <Button 
-                            variant="danger" 
+                        <Button
+                            variant="danger"
                             onClick={() => setIsCloseModalOpen(true)}
                             leftIcon={<Archive className="w-4 h-4" />}
                         >
                             Close File
                         </Button>
-                        <Button 
-                            variant="primary" 
+                        <Button
+                            variant="primary"
                             onClick={() => setIsForwardModalOpen(true)}
                             leftIcon={<Send className="w-4 h-4" />}
                         >
@@ -100,12 +101,12 @@ export default function EFileDetailsPage() {
                                 </div>
                                 {file.current_holder_area && (
                                     <p className="text-xs text-gray-500 mt-2 flex items-start gap-1">
-                                        <span className="font-semibold shrink-0">Loc:</span> 
+                                        <span className="font-semibold shrink-0">Loc:</span>
                                         <span className="wrap-break-word">{file.current_holder_area}</span>
                                     </p>
                                 )}
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t dark:border-gray-700">
                                 <div>
                                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Initiator</span>
@@ -132,7 +133,8 @@ export default function EFileDetailsPage() {
                     <Card className="p-6">
                          <h3 className="font-semibold mb-3 text-gray-900 dark:text-white border-b dark:border-gray-700 pb-2">Description</h3>
                          <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border dark:border-gray-700 whitespace-pre-wrap wrap-break-word">
-                             {file.description || "No detailed description provided."}
+                             {/* THE FIX: Use HtmlContent for the description */}
+                             <HtmlContent content={file.description} />
                          </div>
                     </Card>
                 </div>
@@ -149,13 +151,13 @@ export default function EFileDetailsPage() {
             </div>
 
             {/* Modals */}
-            <ForwardFileModal 
-                isOpen={isForwardModalOpen} 
-                onClose={() => setIsForwardModalOpen(false)} 
-                fileId={file.id} 
+            <ForwardFileModal
+                isOpen={isForwardModalOpen}
+                onClose={() => setIsForwardModalOpen(false)}
+                fileId={file.id}
             />
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 isOpen={isCloseModalOpen}
                 onCancel={() => setIsCloseModalOpen(false)}
                 onConfirm={() => {

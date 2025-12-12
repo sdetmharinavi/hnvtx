@@ -108,7 +108,7 @@ export default function ScalableFiberNetworkDashboard() {
 
   const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
     { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },
+    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_code' },
     { key: 'node_name', title: 'Node', dataIndex: 'node_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
     { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{formatIP(val)}</code> : null },
     { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
@@ -256,7 +256,8 @@ export default function ScalableFiberNetworkDashboard() {
             </div>
           )}
           {activeTab === 'systems' && (
-            <DataTable
+                 <DataTable
+      autoHideEmptyColumns={true}
               tableName="v_systems_complete"
               data={data.systems}
               columns={systemColumns}
@@ -272,7 +273,8 @@ export default function ScalableFiberNetworkDashboard() {
             />
           )}
           {activeTab === 'routes' && (
-            <DataTable
+                 <DataTable
+      autoHideEmptyColumns={true}
               tableName="v_ofc_cables_complete"
               data={data.ofcCables}
               columns={cableColumns}

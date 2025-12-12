@@ -386,7 +386,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
-              <DataTable
+                   <DataTable
+      autoHideEmptyColumns={true}
                 tableName="v_system_connections_complete"
                 data={[connection]}
                 columns={circuitColumns}
@@ -405,7 +406,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-              <DataTable
+                   <DataTable
+      autoHideEmptyColumns={true}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 tableName={'v_system_connections_complete' as any}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -452,7 +454,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                       </p>
                     </div>
                   ) : (
-                    <DataTable
+                         <DataTable
+      autoHideEmptyColumns={true}
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}

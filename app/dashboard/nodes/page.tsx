@@ -202,7 +202,8 @@ const NodesPage = () => {
         node={viewModal.record as V_nodes_completeRowSchema}
         onClose={viewModal.close}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_nodes_complete"
         data={nodes}
         columns={orderedColumns}

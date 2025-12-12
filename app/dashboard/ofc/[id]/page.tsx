@@ -1,5 +1,5 @@
 // path: app/dashboard/ofc/[id]/page.tsx
-"use client";
+'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -60,7 +60,7 @@ export default function OfcCableDetailsPage() {
   // Fetch specific utilization stats for this cable
   const { data: utilResult } = useTableQuery(supabase, 'v_cable_utilization', {
     filters: { cable_id: cableId as string },
-    limit: 1
+    limit: 1,
   });
   const utilization = utilResult?.data?.[0];
 
@@ -150,93 +150,104 @@ export default function OfcCableDetailsPage() {
 
   const headerStats: StatProps[] = useMemo(() => {
     const utilPercent = utilization?.utilization_percent ?? 0;
-    
+
     return [
-      { 
-        value: utilization?.capacity ?? 0, 
+      {
+        value: utilization?.capacity ?? 0,
         label: 'Total Capacity',
-        color: 'default'
+        color: 'default',
       },
-      { 
-        value: utilization?.used_fibers ?? 0, 
-        label: 'Utilized', 
-        color: 'primary'
+      {
+        value: utilization?.used_fibers ?? 0,
+        label: 'Utilized',
+        color: 'primary',
       },
-      { 
-        value: utilization?.available_fibers ?? 0, 
-        label: 'Available', 
-        color: 'success'
+      {
+        value: utilization?.available_fibers ?? 0,
+        label: 'Available',
+        color: 'success',
       },
-      { 
-        value: `${utilPercent}%`, 
-        label: 'Utilization', 
-        color: utilPercent > 80 ? 'warning' : 'default'
+      {
+        value: `${utilPercent}%`,
+        label: 'Utilization',
+        color: utilPercent > 80 ? 'warning' : 'default',
       },
     ];
   }, [utilization]);
 
-  const renderMobileItem = useCallback((record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-               F{record.fiber_no_sn}
-            </span>
-            {record.fiber_no_sn !== record.fiber_no_en && (
+  const renderMobileItem = useCallback(
+    (record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+                F{record.fiber_no_sn}
+              </span>
+              {record.fiber_no_sn !== record.fiber_no_en && (
                 <>
                   <FiArrowRight className="w-3 h-3 text-gray-400" />
                   <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
                     F{record.fiber_no_en}
                   </span>
                 </>
+              )}
+            </div>
+            {actions}
+          </div>
+
+          {/* System / Service Info */}
+          <div className="min-w-0 mt-1">
+            {record.system_name ? (
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                  {record.system_name}
+                </h4>
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                  <span className="uppercase font-bold tracking-wider">
+                    {record.connection_type || 'Connection'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
             )}
           </div>
-          {actions}
-        </div>
-        
-        {/* System / Service Info */}
-        <div className="min-w-0 mt-1">
-           {record.system_name ? (
-             <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">{record.system_name}</h4>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
-                   <span className="uppercase font-bold tracking-wider">{record.connection_type || 'Connection'}</span>
-                </div>
-             </div>
-           ) : (
-             <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
-           )}
-        </div>
 
-        {/* Technical Metrics Grid */}
-        <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
+          {/* Technical Metrics Grid */}
+          <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
             <div>
-               <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
-               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                  {record.updated_sn_name || 'N/A'}
-               </div>
-               <div className="text-gray-500 mt-0.5">{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</div>
+              <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
+              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                {record.updated_sn_name || 'N/A'}
+              </div>
+              <div className="text-gray-500 mt-0.5">
+                {record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}
+              </div>
             </div>
-             <div>
-               <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
-               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                  {record.updated_en_name || 'N/A'}
-               </div>
-               <div className="text-gray-500 mt-0.5">{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</div>
+            <div>
+              <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
+              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                {record.updated_en_name || 'N/A'}
+              </div>
+              <div className="text-gray-500 mt-0.5">
+                {record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}
+              </div>
             </div>
-        </div>
+          </div>
 
-        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <FiActivity className="w-3.5 h-3.5" />
-                <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
-             </div>
-             <StatusBadge status={record.status ?? false} />
+          <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <FiActivity className="w-3.5 h-3.5" />
+              <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
+            </div>
+            <StatusBadge status={record.status ?? false} />
+          </div>
         </div>
-      </div>
-    );
-  }, []);
+      );
+    },
+    []
+  );
 
   if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
@@ -267,6 +278,7 @@ export default function OfcCableDetailsPage() {
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <DataTable<'v_ofc_connections_complete'>
+          autoHideEmptyColumns={true}
           tableName="v_ofc_connections_complete"
           data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
           columns={orderedColumns}

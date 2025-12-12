@@ -184,7 +184,8 @@ export default function ServicesPage() {
         isFetching={isFetching}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_services"
         data={data}
         columns={columns}

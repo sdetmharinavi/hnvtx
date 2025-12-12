@@ -1,5 +1,6 @@
 import React from 'react';
 import { BaseEntity } from '@/components/common/entity-management/types';
+import { HtmlContent } from '@/components/common/ui/HtmlContent';
 
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
@@ -53,7 +54,7 @@ export function DetailItem<T extends BaseEntity>({
       case 'custom':
         if (typeof value === 'string') {
           // 🧩 Render as HTML
-          return <div dangerouslySetInnerHTML={{ __html: value }} />;
+          return <HtmlContent content={value} />;
         }
         return String(value);
 

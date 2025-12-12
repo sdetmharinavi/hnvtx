@@ -160,7 +160,8 @@ export default function LogicalPathsPage() {
         isLoading={isLoading}
       />
 
-      <DataTable<'v_end_to_end_paths'>
+           <DataTable
+      autoHideEmptyColumns={true}<'v_end_to_end_paths'>
         tableName="v_end_to_end_paths"
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}
