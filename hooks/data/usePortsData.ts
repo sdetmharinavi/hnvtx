@@ -22,6 +22,7 @@ export const usePortsData = (
           searchString = `(` +
             `port ILIKE '%${term}%' OR ` +
             `port_type_name ILIKE '%${term}%' OR ` +
+            `port_type_code ILIKE '%${term}%' OR ` +
             `sfp_serial_no ILIKE '%${term}%'` +
           `)`;
       }
@@ -34,7 +35,7 @@ export const usePortsData = (
 
       const { data, error } = await createClient().rpc('get_paged_data', {
         p_view_name: 'v_ports_management_complete',
-        p_limit: 5000, 
+        p_limit: 5000,
         p_offset: 0,
         p_filters: rpcFilters,
         p_order_by: 'port',
@@ -81,14 +82,24 @@ export const usePortsData = (
         filtered = filtered.filter((p) =>
           p.port?.toLowerCase().includes(lowerQuery) ||
           p.port_type_name?.toLowerCase().includes(lowerQuery) ||
+          p.port_type_code?.toLowerCase().includes(lowerQuery) ||
           p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
         );
       }
 
-      // 2. Explicit Field Filtering (THE FIX)
-      if (filters.port_type_name) {
-          filtered = filtered.filter(p => p.port_type_name === filters.port_type_name);
+      // 2. Explicit Field Filtering
+      
+      // NEW: Handle Multi-Select for Port Type Code
+      if (filters.port_type_code) {
+          const codes = Array.isArray(filters.port_type_code) 
+              ? (filters.port_type_code as string[])
+              : [filters.port_type_code as string];
+              
+          if (codes.length > 0) {
+              filtered = filtered.filter(p => p.port_type_code && codes.includes(p.port_type_code));
+          }
       }
+
       if (filters.port_utilization) {
           const utilBool = filters.port_utilization === 'true';
           filtered = filtered.filter(p => p.port_utilization === utilBool);
@@ -103,7 +114,7 @@ export const usePortsData = (
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      const activeCount = filtered.filter(p => p.port_admin_status).length; // "Active" here implies Admin Up
+      const activeCount = filtered.filter(p => p.port_admin_status).length; 
 
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;

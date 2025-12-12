@@ -1,7 +1,7 @@
 // components/systems/SystemPortsManagerModal.tsx
 "use client";
 
-import { useMemo, useRef, useCallback, useState } from 'react';
+import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
@@ -11,7 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 import { FiServer } from 'react-icons/fi';
 import { V_ports_management_completeRowSchema, Ports_managementInsertSchema, V_systems_completeRowSchema, Lookup_typesRowSchema, V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { PortsManagementTableColumns, PortServiceMap } from '@/config/table-columns/PortsManagementTableColumns'; 
+import { PortsManagementTableColumns, PortServiceMap } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
 import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
 import { useTableBulkOperations, useTableQuery } from '@/hooks/database';
@@ -27,8 +27,9 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { PortHeatmap } from '@/components/systems/PortHeatmap'; // IMPORTED
+import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
+import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 
 // Extended type to handle the new column before codegen updates
 type ExtendedConnection = V_system_connections_completeRowSchema & {
@@ -47,7 +48,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const supabase = createClient();
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false); 
+  const [showFilters, setShowFilters] = useState(false);
 
   // 1. Fetch Ports
   const {
@@ -61,24 +62,36 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     searchColumn: ['port', 'port_type_name', 'sfp_serial_no']
   });
 
+  // Set default filters on mount
+  useEffect(() => {
+    if (isOpen) {
+        filters.setFilters(prev => ({
+            ...prev,
+            // Default select GE(O), GE(E), and 10GE
+            port_type_code: ['GE(O)', 'GE(E)', '10GE']
+        }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Run once when modal opens
+
   // 2. Fetch Port Types for Filter
   const { data: portTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['port-types-filter'],
     async () => (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
   );
-  
-  const portTypeOptions = useMemo(() => {
+
+  const portTypeCodeOptions = useMemo(() => {
     return (portTypesData || [])
-        .filter(t => t.name !== 'DEFAULT')
-        .map(t => ({ value: t.name, label: t.name }));
+        .filter(t => t.name !== 'DEFAULT' && t.code)
+        .map(t => ({ value: t.code!, label: t.name }));
   }, [portTypesData]);
 
 
   // 3. Fetch Connections (Bi-Directional)
   const { data: connectionsResult } = useTableQuery(supabase, 'v_system_connections_complete', {
-      filters: { 
-          or: `system_id.eq.${systemId},en_id.eq.${systemId}` 
+      filters: {
+          or: `system_id.eq.${systemId},en_id.eq.${systemId}`
       },
       enabled: !!systemId && isOpen,
       limit: 2000
@@ -121,7 +134,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   // 5. Calculate Stats
   const portStats = useMemo(() => {
     if (!ports) return { total: 0, used: 0, available: 0, down: 0 };
-    
+
     const total = ports.length;
     const used = ports.filter(p => p.port_utilization).length;
     const available = ports.filter(p => !p.port_utilization && p.port_admin_status).length;
@@ -143,15 +156,15 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   // 7. Configure Columns (Direct call, internal memoization used)
   const columns = PortsManagementTableColumns(ports, portServicesMap);
 
-  const tableActions = useMemo((): TableAction<'v_ports_management_complete'>[] => 
+  const tableActions = useMemo((): TableAction<'v_ports_management_complete'>[] =>
     createStandardActions<V_ports_management_completeRowSchema>({
       onEdit: editModal.openEdit,
       onDelete: crudActions.handleDelete,
-      onToggleStatus: (record) => crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }), 
+      onToggleStatus: (record) => crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
   );
-  
+
   // 8. Handlers
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -223,7 +236,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
   const renderMobileItem = useCallback((record: Row<'v_ports_management_complete'>, actions: React.ReactNode) => {
-    // Lookup services from the map we built earlier
     const portName = record.port;
     const services = portName ? portServicesMap[portName] : [];
 
@@ -245,14 +257,13 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           {actions}
         </div>
 
-        {/* Service Allocation Section */}
         {services && services.length > 0 ? (
            <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
               {services.map(svc => (
                  <div key={svc.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
-                    {svc.system_working_interface === portName ? 
-                        <Activity className="w-3.5 h-3.5 text-blue-500" /> : 
+                    {svc.system_working_interface === portName ?
+                        <Activity className="w-3.5 h-3.5 text-blue-500" /> :
                         <Shield className="w-3.5 h-3.5 text-purple-500" />
                     }
                     <div className="min-w-0 flex-1">
@@ -306,10 +317,9 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
             isLoading={isLoading}
             isFetching={isFetching}
         />
-        
-        {/* HEATMAP ADDED HERE */}
+
         <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
-        
+
         <DataTable
           tableName="v_ports_management_complete"
           data={ports}
@@ -334,19 +344,24 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
                 onSearchChange={search.setSearchQuery}
                 showFilters={showFilters}
                 onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+                onClearFilters={() => {
+                  search.setSearchQuery('');
+                  // THE FIX: Reset filters to empty object to actually clear all filters
+                  filters.setFilters({}); 
+                }}
                 hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
                 activeFilterCount={Object.keys(filters.filters).length}
                 searchPlaceholder="Search ports, serials..."
             >
-                <SelectFilter 
-                    label="Port Type"
-                    filterKey="port_type_name"
+                <MultiSelectFilter
+                    label="Port Types"
+                    filterKey="port_type_code"
                     filters={filters.filters}
                     setFilters={filters.setFilters}
-                    options={portTypeOptions}
+                    options={portTypeCodeOptions}
                 />
-                <SelectFilter 
+
+                <SelectFilter
                     label="Utilization"
                     filterKey="port_utilization"
                     filters={filters.filters}
@@ -356,7 +371,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
                         { value: 'false', label: 'Free' }
                     ]}
                 />
-                <SelectFilter 
+                <SelectFilter
                     label="Admin Status"
                     filterKey="port_admin_status"
                     filters={filters.filters}
@@ -381,8 +396,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
             isLoading={isMutating}
           />
         )}
-        
-        <PortTemplateModal 
+
+        <PortTemplateModal
           isOpen={isTemplateModalOpen}
           onClose={() => setIsTemplateModalOpen(false)}
           onSubmit={handleApplyTemplate}
