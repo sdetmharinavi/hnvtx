@@ -16,7 +16,8 @@ import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiActivity, FiHash, FiServer, FiTag } from 'react-icons/fi';
+import { FiActivity, FiHash, FiServer, FiTag, FiGlobe, FiCpu } from 'react-icons/fi';
+import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const [isTracing, setIsTracing] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tracePath = useTracePath(supabase);
-  
+
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
 
@@ -128,6 +129,24 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         dataIndex: 'connected_link_type_name',
         width: 120,
       },
+      // Added Service IP Column
+      {
+        key: 'services_ip',
+        title: 'Service IP',
+        dataIndex: 'services_ip',
+        editable: true,
+        width: 130,
+        render: (val) => val ? <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{formatIP(val)}</span> : <span className="text-gray-400 italic text-xs">-</span>
+      },
+      // Added Service Interface Column
+      {
+        key: 'services_interface',
+        title: 'Service Port',
+        dataIndex: 'services_interface',
+        editable: true,
+        width: 120,
+        render: (val) => val ? <span className="font-mono text-sm">{val as string}</span> : <span className="text-gray-400 italic text-xs">-</span>
+      },
       { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
       {
         key: 'bandwidth_allocated',
@@ -147,7 +166,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const endPointData = useMemo(() => {
     if (!connection) return [];
     const hasStartNode = !!connection.sn_name;
-    
+
     return [
       {
         id: `${connection.id}-A`, // Virtual ID
@@ -230,6 +249,28 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                     {record.connected_link_type_name || 'Link'}
                 </div>
             </div>
+
+            {/* Service Connectivity Details (IP/Interface) */}
+            {(record.services_ip || record.services_interface) && (
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                 {record.services_ip && (
+                   <div className="flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold mb-0.5">
+                         <FiGlobe size={10} /> Service IP
+                      </div>
+                      <div className="font-mono text-sm font-medium">{formatIP(record.services_ip)}</div>
+                   </div>
+                 )}
+                 {record.services_interface && (
+                   <div className="flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold mb-0.5">
+                         <FiCpu size={10} /> Service Port
+                      </div>
+                      <div className="font-mono text-sm font-medium">{record.services_interface}</div>
+                   </div>
+                 )}
+              </div>
+            )}
 
             {/* Bandwidth Card */}
             <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -318,7 +359,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                     <span>F{record.fiber_no_en}</span>
                  </div>
             </div>
-            
+
             <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
                 <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
                 <span>Loss: {record.route_loss_db || '-'} dB</span>
@@ -333,7 +374,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={connection?.service_name || connection?.system_name || "Connection Details"} 
+      title={connection?.service_name || connection?.system_name || "Connection Details"}
       size="full"
       className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
     >
@@ -347,7 +388,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             <div className="p-0">
               <DataTable
                 tableName="v_system_connections_complete"
-                data={[connection]} 
+                data={[connection]}
                 columns={circuitColumns}
                 searchable={false}
                 showColumnSelector={false}
@@ -386,8 +427,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             <SectionHeader
               title="Optical Fiber Path"
               action={
-                <button 
-                  onClick={handleOpenAllocationModal} 
+                <button
+                  onClick={handleOpenAllocationModal}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
                 >
                   {allocatedFiberIds.length > 0 ? "Modify Allocation" : "Map OFC"}
@@ -411,7 +452,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                       </p>
                     </div>
                   ) : (
-                    <DataTable 
+                    <DataTable
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}
@@ -433,12 +474,12 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
           {/* Render the Allocation Modal */}
           {isAllocationModalOpen && (
-            <FiberAllocationModal 
-                isOpen={isAllocationModalOpen} 
-                onClose={() => setIsAllocationModalOpen(false)} 
-                connection={connectionToAllocate} 
-                onSave={handleAllocationSave} 
-                parentSystem={parentSystem || null} 
+            <FiberAllocationModal
+                isOpen={isAllocationModalOpen}
+                onClose={() => setIsAllocationModalOpen(false)}
+                connection={connectionToAllocate}
+                onSave={handleAllocationSave}
+                parentSystem={parentSystem || null}
             />
           )}
 

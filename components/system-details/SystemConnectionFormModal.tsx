@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { Network, Settings, Activity, RefreshCw } from 'lucide-react';
 import { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
 import { formatIP } from '@/utils/formatters';
+import Link from 'next/link';
 
 // Update schema to include the new field
 const formSchema = z.object({
@@ -469,9 +470,17 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         }
         subtitle={
           isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
-            <span className="text-red-100 bg-red-500 rounded-2xl px-2 py-1">
-              ⚠️ Editing Physical Source: {pristineRecord.system_name}
-            </span> // Alert user they are editing the remote end source
+            <span className="inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs">
+              <span className="shrink-0">⚠️ Editing Physical Source:</span>
+              <Link 
+                href={`/dashboard/systems/${pristineRecord.system_id}`} 
+                className="underline hover:text-white font-bold truncate max-w-[200px]"
+                title={`Go to ${pristineRecord.system_name}`}
+                target="_blank"
+              >
+                {pristineRecord.system_name}
+              </Link>
+            </span>
           ) : (
             `System: ${parentSystem.system_name}`
           )

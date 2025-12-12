@@ -78,9 +78,6 @@ export default function GlobalConnectionsPage() {
   // pass 'true' to show the System Name column since we are in global view
   const columns = SystemConnectionsTableColumns(connections, true);
   
-  // THE FIX: We want 'system_name' first. Since we are passing the entire TABLE_COLUMN_KEYS list
-  // which contains 'system_name', we construct the array to force system_name to the front.
-  // The updated hook will handle the duplication gracefully now.
   const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
 
   // 4. Handlers
@@ -133,7 +130,6 @@ export default function GlobalConnectionsPage() {
         onClick: handleGoToSystem,
         variant: 'secondary'
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [handleGoToSystem]);
 
   const headerActions = useStandardHeaderActions({
@@ -203,6 +199,8 @@ export default function GlobalConnectionsPage() {
             onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
         }}
         searchable={false}
+        // ENABLE AUTO HIDE
+        autoHideEmptyColumns={true}
         customToolbar={
             <SearchAndFilters
                 searchTerm={search.searchQuery}
