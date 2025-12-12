@@ -21,9 +21,11 @@ import { createClient } from '@/utils/supabase/client';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
-const useLogicalPathsData = (
-  params: { currentPage: number; pageLimit: number; searchQuery: string }
-): DataQueryHookReturn<LogicalPathView> => {
+const useLogicalPathsData = (params: {
+  currentPage: number;
+  pageLimit: number;
+  searchQuery: string;
+}): DataQueryHookReturn<LogicalPathView> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
 
@@ -45,7 +47,7 @@ const useLogicalPathsData = (
   );
 
   const mappedData = useMemo(() => {
-    return (data?.data || []).map(path => ({
+    return (data?.data || []).map((path) => ({
       ...path,
       id: path.path_id,
     }));
@@ -56,13 +58,16 @@ const useLogicalPathsData = (
     totalCount: data?.total_count || 0,
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
-    isLoading, isFetching, error, refetch,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
   };
 };
 
 export default function LogicalPathsPage() {
   const router = useRouter();
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,9 +76,16 @@ export default function LogicalPathsPage() {
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const {
-    data: logicalPaths, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch
+    data: logicalPaths,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
   } = useLogicalPathsData({ currentPage, pageLimit, searchQuery });
-  
+
   const deprovisionMutation = useDeprovisionPath();
 
   const handleClearFilters = () => setSearchQuery('');
@@ -81,62 +93,71 @@ export default function LogicalPathsPage() {
 
   const handleDeletePath = useCallback((record: Row<'v_end_to_end_paths'>) => {
     if (!record.path_id) {
-      toast.error("Cannot de-provision: Path ID is missing.");
+      toast.error('Cannot de-provision: Path ID is missing.');
       return;
     }
     setItemToDelete({
       id: record.path_id,
-      name: record.path_name || `Path ${record.path_id.slice(0, 8)}`
+      name: record.path_name || `Path ${record.path_id.slice(0, 8)}`,
     });
     setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      deprovisionMutation.mutate({ pathId: itemToDelete.id }, {
-        onSuccess: () => {
-          toast.success(`Successfully de-provisioned "${itemToDelete.name}".`);
-          setItemToDelete(null);
-          setDeleteModalOpen(false);
-          refetch();
-        },
-        onError: (err) => {
-          toast.error(`De-provision failed: ${err.message}`);
-          setItemToDelete(null);
-          setDeleteModalOpen(false);
+      deprovisionMutation.mutate(
+        { pathId: itemToDelete.id },
+        {
+          onSuccess: () => {
+            toast.success(`Successfully de-provisioned "${itemToDelete.name}".`);
+            setItemToDelete(null);
+            setDeleteModalOpen(false);
+            refetch();
+          },
+          onError: (err) => {
+            toast.error(`De-provision failed: ${err.message}`);
+            setItemToDelete(null);
+            setDeleteModalOpen(false);
+          },
         }
-      });
+      );
     }
   };
 
-  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(() => [
-    {
-      key: 'view',
-      label: 'View Details',
-      icon: <FiEye />, 
-      onClick: (record) => {
-        if (record.source_system_id) {
-          router.push(`/dashboard/systems/${record.source_system_id}`);
-        } else {
-          toast.info('This path does not have a source system assigned.');
-        }
+  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(
+    () => [
+      {
+        key: 'view',
+        label: 'View Details',
+        icon: <FiEye />,
+        onClick: (record) => {
+          if (record.source_system_id) {
+            router.push(`/dashboard/systems/${record.source_system_id}`);
+          } else {
+            toast.info('This path does not have a source system assigned.');
+          }
+        },
+        variant: 'secondary',
       },
-      variant: 'secondary',
-    },
-    {
-      key: 'deprovision',
-      label: 'De-provision Path',
-      icon: <FiTrash2 />,
-      onClick: handleDeletePath,
-      variant: 'danger',
-    },
-  ], [handleDeletePath, router]);
+      {
+        key: 'deprovision',
+        label: 'De-provision Path',
+        icon: <FiTrash2 />,
+        onClick: handleDeletePath,
+        variant: 'danger',
+      },
+    ],
+    [handleDeletePath, router]
+  );
 
   const headerActions = useStandardHeaderActions<'v_end_to_end_paths'>({
     data: logicalPaths,
-    onRefresh: async () => { await refetch(); toast.success('Logical paths refreshed!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Logical paths refreshed!');
+    },
     isLoading: isLoading,
-    exportConfig: { tableName: 'v_end_to_end_paths' }
+    exportConfig: { tableName: 'v_end_to_end_paths' },
   });
 
   const headerStats = [
@@ -144,9 +165,14 @@ export default function LogicalPathsPage() {
     { value: activeCount, label: 'Active' },
     { value: inactiveCount, label: 'Inactive' },
   ];
-  
+
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
   }
 
   return (
@@ -160,8 +186,8 @@ export default function LogicalPathsPage() {
         isLoading={isLoading}
       />
 
-           <DataTable
-      autoHideEmptyColumns={true}<'v_end_to_end_paths'>
+      <DataTable<'v_end_to_end_paths'>
+        autoHideEmptyColumns={true}
         tableName="v_end_to_end_paths"
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}
@@ -184,7 +210,7 @@ export default function LogicalPathsPage() {
             searchTerm={searchQuery}
             onSearchChange={setSearchQuery}
             showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(p => !p)}
+            onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={handleClearFilters}
             hasActiveFilters={hasActiveFilters}
             activeFilterCount={0}
@@ -194,7 +220,7 @@ export default function LogicalPathsPage() {
           </SearchAndFilters>
         }
       />
-      
+
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onConfirm={handleConfirmDelete}
