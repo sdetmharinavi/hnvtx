@@ -15,19 +15,17 @@ import { useCallback, useState, useRef, useEffect } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
-import { SyncStatusModal } from "./SyncStatusModal"; // IMPORTED
+import { SyncStatusModal } from "./SyncStatusModal";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
   title?: string;
 }
 
-// Sync Status Indicator Component
 const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
   const { pendingCount, failedCount } = useMutationQueue();
   const isOnline = useOnlineStatus();
 
-  // Offline State
   if (!isOnline) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
@@ -40,7 +38,6 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Failed State
   if (failedCount > 0) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors animate-pulse">
@@ -50,7 +47,6 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Pending State
   if (pendingCount > 0) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
@@ -60,9 +56,8 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Synced State
   return (
-    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
+    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-red-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
       <Cloud className="w-4 h-4 text-green-600 dark:text-green-400" />
       <span className="text-xs font-medium text-green-700 dark:text-green-300 hidden sm:inline">Synced</span>
     </button>
@@ -78,7 +73,7 @@ export default function DashboardHeader({
   const { isSyncing, sync } = useDataSync();
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // New State
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = useCallback(() => {
@@ -108,16 +103,16 @@ export default function DashboardHeader({
             </div>
 
             <div className="relative flex items-center space-x-2 sm:space-x-4">
-              
-              {/* Sync Indicator acts as button to open modal */}
+
               <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
-              
+
               <button
                 onClick={handleRefresh}
                 disabled={isSyncing}
                 className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh all data"
               >
+                {/* THE FIX: isSyncing now includes manual fetches, triggering the spin */}
                 <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
 
@@ -193,8 +188,7 @@ export default function DashboardHeader({
           </div>
         </div>
       </header>
-      
-      {/* Modal is rendered here */}
+
       <SyncStatusModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />
     </>
   );
